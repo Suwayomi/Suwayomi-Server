@@ -75,7 +75,7 @@ class Main {
 
         @JvmStatic
         fun main(args: Array<String>) {
-            val app = Javalin.create().start(7000)
+            val app = Javalin.create().start(4567)
             app["/", { ctx: Context -> ctx.result("Hello World") }]
         }
     }
