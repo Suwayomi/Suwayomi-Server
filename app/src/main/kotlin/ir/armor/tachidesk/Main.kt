@@ -76,7 +76,18 @@ class Main {
         @JvmStatic
         fun main(args: Array<String>) {
             val app = Javalin.create().start(4567)
-            app["/", { ctx: Context -> ctx.result("Hello World") }]
+
+            app.before() { ctx ->
+                ctx.header("Access-Control-Allow-Origin", "*")
+            }
+
+            app.get("/api/v1/extensions") { ctx ->
+                runBlocking {
+                    val api = ExtensionGithubApi()
+                    val sources = api.findExtensions()
+                    ctx.json(sources)
+                }
+            }
         }
     }
 }
