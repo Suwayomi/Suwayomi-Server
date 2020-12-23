@@ -63,6 +63,9 @@ dependencies {
     // dex2jar
     implementation(fileTree("lib/dex2jar/"))
 
+    // api
+    implementation("io.javalin:javalin:3.12.0")
+
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")

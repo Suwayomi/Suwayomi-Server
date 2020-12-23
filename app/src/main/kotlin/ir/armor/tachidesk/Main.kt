@@ -1,22 +1,20 @@
 package ir.armor.tachidesk
 
-import com.googlecode.d2j.dex.Dex2jar
-import com.googlecode.d2j.reader.DexFileReader
 import com.googlecode.dex2jar.tools.Dex2jarCmd
 import eu.kanade.tachiyomi.extension.api.ExtensionGithubApi
 import eu.kanade.tachiyomi.network.NetworkHelper
-import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.online.HttpSource
+import io.javalin.Javalin
+import io.javalin.http.Context
 import kotlinx.coroutines.runBlocking
 import okhttp3.Request
-import okio.BufferedSink
 import okio.buffer
 import okio.sink
 import java.io.File
 import java.net.URL
 import java.net.URLClassLoader
-import kotlin.system.exitProcess
+
 
 class Main {
     companion object {
@@ -33,9 +31,8 @@ class Main {
             sink.close()
         }
 
-
         @JvmStatic
-        fun main(args: Array<String>) {
+        fun testExtensionExecution(){
             File(contentRoot).mkdirs()
             var sourcePkg = ""
 
@@ -72,7 +69,14 @@ class Main {
             mangasPage.mangas.forEach {
                 println(it.title)
             }
-            exitProcess(0)
+//            exitProcess(0)
+        }
+
+
+        @JvmStatic
+        fun main(args: Array<String>) {
+            val app = Javalin.create().start(7000)
+            app["/", { ctx: Context -> ctx.result("Hello World") }]
         }
     }
 }
