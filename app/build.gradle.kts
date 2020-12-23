@@ -61,7 +61,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
 
     // dex2jar
-    implementation(fileTree("../lib/dex2jar/"))
+    implementation(fileTree("lib/dex2jar/"))
 
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
