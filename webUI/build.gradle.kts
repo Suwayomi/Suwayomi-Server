@@ -3,6 +3,6 @@ plugins {
 }
 
 node {
-    workDir = file("${project.projectDir}/webUI/TachiWeb-React")
-    nodeModulesDir = file("${project.projectDir}/webUI/TachiWeb-React/node_modules")
+    workDir = file("${project.projectDir}/react/")
+    nodeModulesDir = file("${project.projectDir}/react/node_modules")
 }
