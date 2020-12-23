@@ -15,9 +15,6 @@ compileKotlin.kotlinOptions {
 
 repositories {
     mavenCentral()
-    maven {
-        url = uri("http://repository-dex2jar.forge.cloudbees.com/release/")
-    }
 }
 
 dependencies {
@@ -45,7 +42,7 @@ dependencies {
     implementation("com.squareup.retrofit2:adapter-rxjava:$retrofit_version")
 
 
-
+    // reactivex
     implementation("io.reactivex:rxjava:1.3.8")
 //    implementation("io.reactivex:rxandroid:1.2.1")
 //    implementation("com.jakewharton.rxrelay:rxrelay:1.2.0")
@@ -64,7 +61,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
 
     // dex2jar
-    implementation("com.googlecode.d2j:dex-reader:2.0")
+    implementation(fileTree("../lib/dex2jar/"))
 
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")

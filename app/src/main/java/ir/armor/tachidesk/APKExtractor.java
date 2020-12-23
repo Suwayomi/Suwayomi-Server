@@ -8,8 +8,11 @@ import org.xml.sax.InputSource;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+import java.util.zip.ZipInputStream;
 
 class APKExtractor {
     // decompressXML -- Parse the 'compressed' binary form of Android XML docs
@@ -203,29 +206,28 @@ class APKExtractor {
     }
 
     public static String extract_dex_and_read_className(String filePath, String dexPath) throws IOException {
-        InputStream is = null;
         ZipFile zip = null;
 
         zip = new ZipFile(filePath);
         ZipEntry androidManifest = zip.getEntry("AndroidManifest.xml");
         ZipEntry classesDex = zip.getEntry("classes.dex");
-        is = zip.getInputStream(androidManifest);
 
         // write dex file
         InputStream dexStream = zip.getInputStream(classesDex);
-        byte[] dexBuffer = new byte[dexStream.available()];
-        FileOutputStream dexOs = new FileOutputStream(new File(dexPath));
-        dexOs.write(dexBuffer);
-        dexOs.close();
-
-
-        byte[] buf = new byte[10240];
-        int bytesRead = is.read(buf);
-
-        is.close();
-        if (zip != null) {
-            zip.close();
+        try (OutputStream os = Files.newOutputStream(Paths.get(dexPath))) {
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = dexStream.read(buffer)) > 0) {
+                os.write(buffer, 0, len);
+            }
         }
+
+        // read xml file
+        InputStream is = zip.getInputStream(androidManifest);
+        byte[] buf = new byte[1024000]; // 100 kb
+        is.read(buf);
+        is.close();
+        zip.close();
 
         String xml = APKExtractor.decompressXML(buf);
         try {

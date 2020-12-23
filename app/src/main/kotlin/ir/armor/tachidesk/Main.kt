@@ -1,5 +1,9 @@
 package ir.armor.tachidesk
 
+import com.googlecode.d2j.dex.Dex2jar
+import com.googlecode.d2j.reader.DexFileReader
+import com.googlecode.dex2jar.tools.Dex2jarCmd
+
 class Main {
     companion object {
         @JvmStatic
@@ -50,7 +54,12 @@ class Main {
 
             val apk = "/tmp/tachidesk/tachiyomi-en.killsixbilliondemons-v1.2.3.apk"
             val dex = "/tmp/tachidesk/tachiyomi-en.killsixbilliondemons-v1.2.3.dex"
+            val jar = "/tmp/tachidesk/tachiyomi-en.killsixbilliondemons-v1.2.3.jar"
             val pkg = APKExtractor.extract_dex_and_read_className(apk, dex)
+
+            Dex2jarCmd.main(dex, "-o", jar, "--force")
+
+
         }
     }
 }
