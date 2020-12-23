@@ -14,10 +14,10 @@ compileKotlin.kotlinOptions {
 }
 
 repositories {
-//    gradlePluginPortal()
-//    google()
     mavenCentral()
-    jcenter()
+    maven {
+        url = uri("http://repository-dex2jar.forge.cloudbees.com/release/")
+    }
 }
 
 dependencies {
@@ -62,6 +62,9 @@ dependencies {
 
     val coroutinesVersion = "1.3.9"
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
+
+    // dex2jar
+    implementation("com.googlecode.d2j:dex-reader:2.0")
 
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
