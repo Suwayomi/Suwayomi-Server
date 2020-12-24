@@ -3,4 +3,6 @@ interface IExtension {
     lang: string
     versionName: string
     iconUrl: string
+    installed: boolean
+    apkName: string
 }

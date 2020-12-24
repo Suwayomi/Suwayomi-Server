@@ -207,6 +207,7 @@ class Main {
 
             app.get("/api/v1/extensions/install/:apkName") { ctx ->
                 val apkName = ctx.pathParam("apkName")
+                println(apkName)
                 ctx.status(
                         downloadApk(apkName)
                 )

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
@@ -36,15 +36,23 @@ interface IProps {
     extension: IExtension
 }
 
-export default function ExtensionCard({
-    extension: {
-        name, lang, versionName, iconUrl,
-    },
-}: IProps) {
+export default function ExtensionCard(props: IProps) {
+    const {
+        extension: {
+            name, lang, versionName, iconUrl, installed, apkName,
+        },
+    } = props;
+    const [installedState, setInstalledState] = useState<string>((installed ? 'installed' : 'install'));
+
     const classes = useStyles();
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const bull = <span className={classes.bullet}>•</span>;
     const langPress = lang === 'all' ? 'All' : lang.toUpperCase();
+
+    function install() {
+        setInstalledState('installing');
+        fetch(`http://127.0.0.1:4567/api/v1/extensions/install/${apkName}`).then(() => {
+            setInstalledState('installed');
+        });
+    }
 
     return (
         <Card>
@@ -68,7 +76,7 @@ export default function ExtensionCard({
                     </div>
                 </div>
 
-                <Button variant="outlined">install</Button>
+                <Button variant="outlined" onClick={() => install()}>{installedState}</Button>
             </CardContent>
         </Card>
     );
