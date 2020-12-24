@@ -33,9 +33,8 @@ export default function NavBar() {
                         <MenuIcon/>
                     </IconButton>
                     <Typography variant="h6" className={classes.title}>
-                        News
+                        Tachidesk
                     </Typography>
-                    <Button color="inherit">Login</Button>
                 </Toolbar>
             </AppBar>
             <TemporaryDrawer drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen}/>

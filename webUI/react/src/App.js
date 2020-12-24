@@ -8,6 +8,7 @@ import {
 import Button from '@material-ui/core/Button';
 import TemporaryDrawer from "./components/TemporaryDrawer";
 import NavBar from "./components/NavBar";
+import ExtensionCard from "./components/ExtensionCard";
 
 
 export default function App() {
@@ -41,7 +42,7 @@ function Extensions() {
             .then(response => response.json())
             .then(data => setExtensions(data));
     } else {
-        mapped = extensions.map(it => <h3>{it.name}</h3>);
+        mapped = extensions.map(it => <ExtensionCard {...it} />);
     }
 
     return <h2>{mapped}</h2>;

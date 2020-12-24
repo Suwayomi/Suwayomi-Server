@@ -32,9 +32,11 @@ const useStyles = makeStyles((theme) => ({
     }
 }));
 
-export default function SimpleCard() {
+export default function ExtensionCard(props) {
     const classes = useStyles();
     const bull = <span className={classes.bullet}>•</span>;
+    const {name, lang, versionName, iconUrl} = props
+    const langPress = lang === "all"? "All": lang.toUpperCase()
 
     return (
         <Card>
@@ -43,20 +45,20 @@ export default function SimpleCard() {
                     <Avatar
                         variant="rounded"
                         className={classes.icon}
-                        alt="Madara"
-                        src="https://raw.githubusercontent.com/inorichi/tachiyomi-extensions/repo/icon/tachiyomi-all.fmreader-v1.2.22.png"
+                        alt={name}
+                        src={iconUrl}
                     />
                     <div style={{display:"flex", flexDirection:"column"}}>
                         <Typography variant="h5" component="h2">
-                            Madara
+                            {name}
                         </Typography>
                         <Typography variant="caption" display="block" gutterBottom>
-                            All 1.2.161
+                            {langPress} {versionName}
                         </Typography>
                     </div>
                 </div>
 
-                <Button size="small">install</Button>
+                <Button variant="outlined" >install</Button>
             </CardContent>
         </Card>
     );
