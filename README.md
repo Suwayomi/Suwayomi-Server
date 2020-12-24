@@ -10,7 +10,7 @@ This project has two components:
  run `./gradlew :server:run` to run the server
 ### the webUI
 how to do it is described in `webUI/react/README.md` but for short,
- first run `yarn` to install the node modules(do this only once)
+ first cd into `webUI/react` then run `yarn` to install the node modules(do this only once)
  then `yarn start` to start the client if a new browser window doesn't start automatically,
  then open `http://127.0.0.1:3000` in a modern browser.
 
