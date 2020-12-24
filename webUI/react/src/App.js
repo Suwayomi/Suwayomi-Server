@@ -1,31 +1,28 @@
-import React, {useState} from "react";
+import React, { useState } from 'react';
 import {
     BrowserRouter as Router,
     Switch,
     Route,
-    Link
-} from "react-router-dom";
+} from 'react-router-dom';
 import Button from '@material-ui/core/Button';
-import TemporaryDrawer from "./components/TemporaryDrawer";
-import NavBar from "./components/NavBar";
-import ExtensionCard from "./components/ExtensionCard";
-
+import NavBar from './components/NavBar';
+import ExtensionCard from './components/ExtensionCard';
 
 export default function App() {
     return (
         <Router>
-            {/*<TemporaryDrawer/>*/}
-            <NavBar/>
+            {/* <TemporaryDrawer/> */}
+            <NavBar />
 
             <Switch>
                 <Route path="/extensions">
-                    <Extensions/>
+                    <Extensions />
                 </Route>
                 <Route path="/users">
-                    <Users/>
+                    <Users />
                 </Route>
                 <Route path="/">
-                    <Home/>
+                    <Home />
                 </Route>
             </Switch>
         </Router>
@@ -34,15 +31,15 @@ export default function App() {
 
 function Extensions() {
     let mapped;
-    let [extensions, setExtensions] = useState([])
+    const [extensions, setExtensions] = useState([]);
 
     if (extensions.length === 0) {
         mapped = <h3>wait</h3>;
-        fetch("http://127.0.0.1:4567/api/v1/extensions")
-            .then(response => response.json())
-            .then(data => setExtensions(data));
+        fetch('http://127.0.0.1:4567/api/v1/extensions')
+            .then((response) => response.json())
+            .then((data) => setExtensions(data));
     } else {
-        mapped = extensions.map(it => <ExtensionCard {...it} />);
+        mapped = extensions.map((it) => <ExtensionCard {...it} />);
     }
 
     return <h2>{mapped}</h2>;
@@ -53,7 +50,7 @@ function Home() {
         <Button variant="contained" color="primary">
             Hello World
         </Button>
-    )
+    );
 }
 
 function Users() {
