@@ -5,39 +5,28 @@ import {
     Route,
     Link
 } from "react-router-dom";
+import Button from '@material-ui/core/Button';
+import TemporaryDrawer from "./components/TemporaryDrawer";
+import NavBar from "./components/NavBar";
+
 
 export default function App() {
     return (
         <Router>
-            <div>
-                <nav>
-                    <ul>
-                        <li>
-                            <Link to="/">Home</Link>
-                        </li>
-                        <li>
-                            <Link to="/extensions">Extensions</Link>
-                        </li>
-                        <li>
-                            <Link to="/users">Users</Link>
-                        </li>
-                    </ul>
-                </nav>
+            {/*<TemporaryDrawer/>*/}
+            <NavBar/>
 
-                {/* A <Switch> looks through its children <Route>s and
-            renders the first one that matches the current URL. */}
-                <Switch>
-                    <Route path="/extensions">
-                        <Extensions/>
-                    </Route>
-                    <Route path="/users">
-                        <Users/>
-                    </Route>
-                    <Route path="/">
-                        <Home/>
-                    </Route>
-                </Switch>
-            </div>
+            <Switch>
+                <Route path="/extensions">
+                    <Extensions/>
+                </Route>
+                <Route path="/users">
+                    <Users/>
+                </Route>
+                <Route path="/">
+                    <Home/>
+                </Route>
+            </Switch>
         </Router>
     );
 }
@@ -59,7 +48,11 @@ function Extensions() {
 }
 
 function Home() {
-    return <h2>Home</h2>;
+    return (
+        <Button variant="contained" color="primary">
+            Hello World
+        </Button>
+    )
 }
 
 function Users() {
