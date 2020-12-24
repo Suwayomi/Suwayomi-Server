@@ -15,16 +15,23 @@ object ExtensionsTable : IntIdTable() {
     val versionName = varchar("version_name", 16)
     val versionCode = integer("version_code")
     val lang = varchar("lang", 5)
-    val isNsfw  = bool("is_nsfw")
+    val isNsfw = bool("is_nsfw")
+    val apkName = varchar("apk_name", 1024)
+    val iconUrl = varchar("icon_url", 2048)
+
+    val installed = bool("installed").default(false)
+    val classFQName = varchar("class_name", 256).default("") // fully qualified name
 }
 
-//class Extension(id: EntityID<Int>) : IntEntity(id) {
-//    companion object : IntEntityClass<Extension>(ExtensionsTable)
-//
-//    val name by ExtensionsTable.name
-//    val pkgName by ExtensionsTable.pkgName
-//    val versionName by ExtensionsTable.versionName
-//    val versionCode by ExtensionsTable.versionCode
-//    val lang by ExtensionsTable.lang
-//    val isNsfw by ExtensionsTable.isNsfw
-//}
+data class ExtensionDataClass(
+        val name: String,
+        val pkgName: String,
+        val versionName: String,
+        val versionCode: Int,
+        val lang: String,
+        val isNsfw: Boolean,
+        val apkName: String,
+        val iconUrl : String,
+        val installed: Boolean,
+        val classFQName: String,
+)

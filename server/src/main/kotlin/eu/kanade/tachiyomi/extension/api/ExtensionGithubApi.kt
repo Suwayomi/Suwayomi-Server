@@ -7,6 +7,7 @@ import com.github.salomonbrys.kotson.int
 import eu.kanade.tachiyomi.extension.model.Extension
 import eu.kanade.tachiyomi.extension.model.LoadResult
 import eu.kanade.tachiyomi.extension.util.ExtensionLoader
+import ir.armor.tachidesk.database.model.ExtensionDataClass
 //import kotlinx.coroutines.Dispatchers
 //import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
@@ -72,6 +73,10 @@ internal class ExtensionGithubApi {
     }
 
     fun getApkUrl(extension: Extension.Available): String {
+        return "$REPO_URL_PREFIX/apk/${extension.apkName}"
+    }
+
+    fun getApkUrl(extension: ExtensionDataClass): String {
         return "$REPO_URL_PREFIX/apk/${extension.apkName}"
     }
 
