@@ -11,7 +11,7 @@ This project has two components:
 ### the webUI
 how to do it is described in `webUI/react/README.md` but for short,
  first run `yarn` to install the node modules(do this only once)
- then `yarn start` to start the client if a browser windows doesn't open automatically,
+ then `yarn start` to start the client if a new browser window doesn't start automatically,
  then open `http://127.0.0.1:3000` in a modern browser.
 
 ## License
