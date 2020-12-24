@@ -8,6 +8,34 @@ import Button from '@material-ui/core/Button';
 import NavBar from './components/NavBar';
 import ExtensionCard from './components/ExtensionCard';
 
+function Extensions() {
+    let mapped;
+    const [extensions, setExtensions] = useState<IExtension[]>([]);
+
+    if (extensions.length === 0) {
+        mapped = <h3>wait</h3>;
+        fetch('http://127.0.0.1:4567/api/v1/extensions')
+            .then((response) => response.json())
+            .then((data) => setExtensions(data));
+    } else {
+        mapped = extensions.map((it) => <ExtensionCard extension={it} />);
+    }
+
+    return <h2>{mapped}</h2>;
+}
+
+function Home() {
+    return (
+        <Button variant="contained" color="primary">
+            Hello World
+        </Button>
+    );
+}
+
+function Users() {
+    return <h2>Users</h2>;
+}
+
 export default function App() {
     return (
         <Router>
@@ -27,32 +55,4 @@ export default function App() {
             </Switch>
         </Router>
     );
-}
-
-function Extensions() {
-    let mapped;
-    const [extensions, setExtensions] = useState([]);
-
-    if (extensions.length === 0) {
-        mapped = <h3>wait</h3>;
-        fetch('http://127.0.0.1:4567/api/v1/extensions')
-            .then((response) => response.json())
-            .then((data) => setExtensions(data));
-    } else {
-        mapped = extensions.map((it) => <ExtensionCard {...it} />);
-    }
-
-    return <h2>{mapped}</h2>;
-}
-
-function Home() {
-    return (
-        <Button variant="contained" color="primary">
-            Hello World
-        </Button>
-    );
-}
-
-function Users() {
-    return <h2>Users</h2>;
 }
