@@ -1,5 +1,5 @@
 rootProject.name = "Tachidesk"
 
-include("app")
+include("server")
 
 include("webUI")
