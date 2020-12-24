@@ -2,8 +2,8 @@
 A not so much port of [Tachiyomi](https://tachiyomi.org/) to the web (and later Electron for the desktop experience)!
 
 This project has two components: 
-1. server: contains some of the original Tachiyomi code and serves a REST API
-2. webUI: A react project that works with the server to do the presentation
+1. **server:** contains some of the original Tachiyomi code and serves a REST API
+2. **webUI:** A react project that works with the server to do the presentation
 
 ## How do I run the thing?
 ### The Server
