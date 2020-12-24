@@ -7,19 +7,25 @@ import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.online.HttpSource
 import io.javalin.Javalin
 import io.javalin.http.Context
+import ir.armor.tachidesk.database.DBMangaer
+import ir.armor.tachidesk.database.makeDataBaseTables
+import ir.armor.tachidesk.database.model.ExtensionsTable
+import ir.armor.tachidesk.database.model.SourcesTable
 import kotlinx.coroutines.runBlocking
+import net.harawata.appdirs.AppDirsFactory
 import okhttp3.Request
 import okio.buffer
 import okio.sink
+import org.jetbrains.exposed.sql.Database
 import java.io.File
 import java.net.URL
 import java.net.URLClassLoader
+import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.transactions.transaction
 
 
 class Main {
     companion object {
-        const val contentRoot = "/tmp/tachidesk"
-
         @JvmStatic
         fun downloadAPK(url: String, apkPath: String){
             val request = Request.Builder().url(url).build()
@@ -33,6 +39,7 @@ class Main {
 
         @JvmStatic
         fun testExtensionExecution(){
+            val contentRoot = Config.dataRoot + "/extensions"
             File(contentRoot).mkdirs()
             var sourcePkg = ""
 
@@ -61,7 +68,7 @@ class Main {
             // dex -> jar
             Dex2jarCmd.main(dexFilePath, "-o", jarFilePath, "--force")
 
-            val child = URLClassLoader(arrayOf<URL>(URL("file:$jarFilePath")), this.javaClass.classLoader)
+            val child = URLClassLoader(arrayOf<URL>(URL("file:$jarFilePath")), this::class.java.classLoader)
             val classToLoad = Class.forName(className, true, child)
             val instance = classToLoad.newInstance() as HttpSource
             val result = instance.fetchPopularManga(1)
@@ -75,19 +82,34 @@ class Main {
 
         @JvmStatic
         fun main(args: Array<String>) {
-            val app = Javalin.create().start(4567)
+            // make sure data everything we need exists
+            File(Config.dataRoot).mkdirs()
+            makeDataBaseTables()
 
-            app.before() { ctx ->
-                ctx.header("Access-Control-Allow-Origin", "*")
-            }
 
-            app.get("/api/v1/extensions") { ctx ->
-                runBlocking {
-                    val api = ExtensionGithubApi()
-                    val sources = api.findExtensions()
-                    ctx.json(sources)
-                }
-            }
+//            val app = Javalin.create().start(4567)
+//
+//            app.before() { ctx ->
+//                ctx.header("Access-Control-Allow-Origin", "*")
+//            }
+//
+//            app.get("/api/v1/extensions") { ctx ->
+//                runBlocking {
+//                    val api = ExtensionGithubApi()
+//                    val sources = api.findExtensions()
+//                    ctx.json(sources)
+//                }
+//            }
+//
+//            app.get("/api/v1/extensions/install/:extensionURL") { ctx ->
+//                ctx.pathParam("extensionURL")
+//            })
+
+
+//            ExtensionTable.new {
+//                name = "khar"
+//                pkgName = "eu.khar"
+//            }
         }
     }
 }

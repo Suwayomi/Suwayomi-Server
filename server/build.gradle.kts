@@ -15,6 +15,7 @@ compileKotlin.kotlinOptions {
 
 repositories {
     mavenCentral()
+    jcenter()
 }
 
 dependencies {
@@ -68,6 +69,16 @@ dependencies {
     implementation("org.slf4j:slf4j-simple:1.8.0-beta4")
     implementation("org.slf4j:slf4j-api:1.8.0-beta4")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.10.3")
+
+    // to get application content root
+    implementation("net.harawata:appdirs:1.2.0")
+
+    // Exposed ORM
+    val exposed_version = "0.28.1"
+    implementation ("org.jetbrains.exposed:exposed-core:$exposed_version")
+    implementation ("org.jetbrains.exposed:exposed-dao:$exposed_version")
+    implementation ("org.jetbrains.exposed:exposed-jdbc:$exposed_version")
+    implementation ("org.xerial:sqlite-jdbc:3.30.1")
 
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
