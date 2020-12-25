@@ -1,13 +1,10 @@
 package eu.kanade.tachiyomi.extension.api
 
 //import android.content.Context
-import com.github.salomonbrys.kotson.get
-import com.github.salomonbrys.kotson.int
 //import eu.kanade.tachiyomi.data.preference.PreferencesHelper
 import eu.kanade.tachiyomi.extension.model.Extension
-import eu.kanade.tachiyomi.extension.model.LoadResult
 import eu.kanade.tachiyomi.extension.util.ExtensionLoader
-import ir.armor.tachidesk.database.model.ExtensionDataClass
+import ir.armor.tachidesk.database.dataclass.ExtensionDataClass
 //import kotlinx.coroutines.Dispatchers
 //import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
@@ -15,7 +12,6 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 //import uy.kohesive.injekt.injectLazy
-import java.util.Date
 
 internal class ExtensionGithubApi {
 

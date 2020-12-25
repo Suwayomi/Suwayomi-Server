@@ -8,8 +8,12 @@ import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.online.HttpSource
 import io.javalin.Javalin
+import ir.armor.tachidesk.database.dataclass.ExtensionDataClass
+import ir.armor.tachidesk.database.dataclass.SourceDataClass
+import ir.armor.tachidesk.database.entity.ExtensionEntity
+import ir.armor.tachidesk.database.entity.SourceEntity
 import ir.armor.tachidesk.database.makeDataBaseTables
-import ir.armor.tachidesk.database.model.*
+import ir.armor.tachidesk.database.table.*
 import kotlinx.coroutines.runBlocking
 import okhttp3.Request
 import okio.buffer

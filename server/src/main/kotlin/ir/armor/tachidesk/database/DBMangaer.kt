@@ -1,8 +1,8 @@
 package ir.armor.tachidesk.database
 
 import ir.armor.tachidesk.Config
-import ir.armor.tachidesk.database.model.ExtensionsTable
-import ir.armor.tachidesk.database.model.SourcesTable
+import ir.armor.tachidesk.database.table.ExtensionsTable
+import ir.armor.tachidesk.database.table.SourcesTable
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
