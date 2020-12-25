@@ -146,7 +146,7 @@ class Main {
         fun downloadApk(apkName: String): Int {
             val extensionRecord = getExtensionList(true).first { it.apkName == apkName }
             val fileNameWithoutType = apkName.substringBefore(".apk")
-            val dirPathWithoutType = "${Config.extensionsRoot}/$apkName"
+            val dirPathWithoutType = "${Config.extensionsRoot}/$fileNameWithoutType"
 
             // check if we don't have the dex file already downloaded
             val dexPath = "${Config.extensionsRoot}/$fileNameWithoutType.jar"
@@ -168,7 +168,9 @@ class Main {
                     // dex -> jar
                     Dex2jarCmd.main(dexFilePath, "-o", jarFilePath, "--force")
 
+                    // clean up
                     File(apkFilePath).delete()
+                    File(dexFilePath).delete()
 
                     // update sources of the extension
                     val child = URLClassLoader(arrayOf<URL>(URL("file:$jarFilePath")), this::class.java.classLoader)
@@ -237,6 +239,44 @@ class Main {
             }
         }
 
+        fun getHttpSource(sourceId: Long): HttpSource {
+            return transaction {
+                val sourceRecord = SourceEntity.find { SourcesTable.sourceId eq sourceId }.first()
+                val extensionId = sourceRecord.extension.id.value
+                val extensionRecord = ExtensionEntity.get(extensionId)
+                val apkName = extensionRecord.apkName
+                val className = extensionRecord.classFQName
+                val jarName = apkName.substringBefore(".apk") + ".jar"
+                val jarPath = "${Config.extensionsRoot}/$jarName"
+
+                println(jarPath)
+
+                val child = URLClassLoader(arrayOf<URL>(URL("file:$jarPath")), this::class.java.classLoader)
+                val classToLoad = Class.forName(className, true, child)
+                val instance = classToLoad.newInstance()
+
+                if (sourceRecord.partOfFactorySource) {
+                    return@transaction (instance as SourceFactory).createSources()[sourceRecord.positionInFactorySource!!] as HttpSource
+                } else {
+                    return@transaction instance as HttpSource
+                }
+            }
+        }
+
+        fun getSourceList(): List<SourceDataClass> {
+            return transaction {
+                return@transaction SourcesTable.selectAll().map {
+                    SourceDataClass(
+                            it[SourcesTable.sourceId],
+                            it[SourcesTable.name],
+                            it[SourcesTable.lang],
+                            ExtensionsTable.select { ExtensionsTable.id eq it[SourcesTable.extension] }.first()[ExtensionsTable.iconUrl],
+                            getHttpSource(it[SourcesTable.sourceId]).supportsLatest
+                            )
+                }
+            }
+        }
+
 
         @JvmStatic
         fun main(args: Array<String>) {
@@ -264,6 +304,10 @@ class Main {
                         downloadApk(apkName)
                 )
             }
+            app.get("/api/v1/sources/") { ctx ->
+                ctx.json(getSourceList())
+            }
+
 
         }
     }

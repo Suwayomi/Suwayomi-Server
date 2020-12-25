@@ -9,12 +9,20 @@ import org.jetbrains.exposed.sql.Table
 
 object SourcesTable : IntIdTable() {
     val sourceId = long("source_id")
-    val name= varchar("name", 128)
-    val lang= varchar("lang", 5)
+    val name = varchar("name", 128)
+    val lang = varchar("lang", 5)
     val extension = reference("extension", ExtensionsTable)
     val partOfFactorySource = bool("part_of_factory_source").default(false)
     val positionInFactorySource = integer("position_in_factory_source").nullable()
 }
+
+data class SourceDataClass(
+        val id: Long,
+        val name: String,
+        val lang: String,
+        val iconUrl: String,
+        val supportsLatest: Boolean
+)
 
 class SourceEntity(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<SourceEntity>(SourcesTable)
