@@ -15,7 +15,8 @@ class Main {
             val app = Javalin.create().start(4567)
 
             app.before() { ctx ->
-                ctx.header("Access-Control-Allow-Origin", "*") // allow the client which is running on another port
+                // allow the client which is running on another port
+                ctx.header("Access-Control-Allow-Origin", "*")
             }
 
             app.get("/api/v1/extension/list") { ctx ->
@@ -36,7 +37,7 @@ class Main {
 
             app.get("/api/v1/source/:source_id/popular") { ctx ->
                 val sourceId = ctx.pathParam("source_id")
-//                ctx.json(getPopularManga(sourceId))
+                ctx.json(getPopularManga(sourceId))
             }
         }
     }
