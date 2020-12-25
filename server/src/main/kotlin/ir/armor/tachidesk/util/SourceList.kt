@@ -73,7 +73,7 @@ fun getSourceList(): List<SourceDataClass> {
     return transaction {
         return@transaction SourcesTable.selectAll().map {
             SourceDataClass(
-                    it[SourcesTable.id].value,
+                    it[SourcesTable.id].value.toString(),
                     it[SourcesTable.name],
                     Locale(it[SourcesTable.lang]).getDisplayLanguage(Locale(it[SourcesTable.lang])),
                     ExtensionsTable.select { ExtensionsTable.id eq it[SourcesTable.extension] }.first()[ExtensionsTable.iconUrl],

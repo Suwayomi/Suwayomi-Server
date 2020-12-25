@@ -41,7 +41,7 @@ interface IProps {
 export default function MangaCard(props: IProps) {
     const {
         manga: {
-            name, imageUrl,
+            title, thumbnailUrl,
         },
     } = props;
     const classes = useStyles();
@@ -53,12 +53,12 @@ export default function MangaCard(props: IProps) {
                     <CardMedia
                         className={classes.image}
                         component="img"
-                        alt="Nagatoro"
-                        image={imageUrl}
-                        title="Nagatoro"
+                        alt={title}
+                        image={thumbnailUrl}
+                        title={title}
                     />
                     <div className={classes.gradient} />
-                    <Typography className={classes.title} variant="h5" component="h2">{name}</Typography>
+                    <Typography className={classes.title} variant="h5" component="h2">{title}</Typography>
                 </div>
             </CardActionArea>
         </Card>

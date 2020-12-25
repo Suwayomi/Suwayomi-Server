@@ -3,6 +3,7 @@ import {
     BrowserRouter as Router,
     Switch,
     Route,
+    useParams,
 } from 'react-router-dom';
 import Button from '@material-ui/core/Button';
 import NavBar from './components/NavBar';
@@ -11,14 +12,15 @@ import SourceCard from './components/SourceCard';
 import MangaCard from './components/MangaCard';
 
 function MangaPage() {
+    const { sourceId } = useParams<{sourceId: string}>();
     let mapped;
     const [mangas, setMangas] = useState<IManga[]>([]);
 
     useEffect(() => {
-        fetch('https://picsum.photos/v2/list')
+        fetch(`http://127.0.0.1:4567/api/v1/source/${sourceId}/popular`)
             .then((response) => response.json())
-            .then((data: { author: string, download_url: string }[]) => setMangas(
-                data.map((it) => ({ name: it.author, imageUrl: it.download_url })),
+            .then((data: { title: string, thumbnail_url: string }[]) => setMangas(
+                data.map((it) => ({ title: it.title, thumbnailUrl: it.thumbnail_url })),
             ));
     });
 
@@ -84,11 +86,12 @@ export default function App() {
             <NavBar />
 
             <Switch>
-                <Route path="/mangapage">
-                    <MangaPage />
-                </Route>
                 <Route path="/extensions">
                     <Extensions />
+                </Route>
+                {/* eslint-disable-next-line react/no-children-prop */}
+                <Route path="/sources/:sourceId/popular">
+                    <MangaPage />
                 </Route>
                 <Route path="/sources">
                     <Sources />

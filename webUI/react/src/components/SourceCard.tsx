@@ -39,7 +39,7 @@ interface IProps {
 export default function SourceCard(props: IProps) {
     const {
         source: {
-            name, lang, iconUrl, supportsLatest,
+            id, name, lang, iconUrl, supportsLatest,
         },
     } = props;
 
@@ -66,7 +66,7 @@ export default function SourceCard(props: IProps) {
                 </div>
                 <div style={{ display: 'flex' }}>
                     {supportsLatest && <Button variant="outlined">Latest</Button>}
-                    <Button variant="outlined" style={{ marginLeft: 20 }}>Browse</Button>
+                    <Button variant="outlined" style={{ marginLeft: 20 }} onClick={() => { window.location.href = `sources/${id}/popular`; }}>Browse</Button>
                 </div>
             </CardContent>
         </Card>

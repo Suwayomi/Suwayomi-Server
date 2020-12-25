@@ -8,14 +8,15 @@ interface IExtension {
 }
 
 interface ISource {
-    id: number
+    id: string
     name: string
     lang: string
     iconUrl: string
     supportsLatest: boolean
+    history: any
 }
 
 interface IManga {
-    name: string
-    imageUrl: string
+    title: string
+    thumbnailUrl: string
 }

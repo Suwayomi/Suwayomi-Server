@@ -8,7 +8,7 @@ object ExtensionsTable : IntIdTable() {
     val pkgName = varchar("pkg_name", 128)
     val versionName = varchar("version_name", 16)
     val versionCode = integer("version_code")
-    val lang = varchar("lang", 5)
+    val lang = varchar("lang", 10)
     val isNsfw = bool("is_nsfw")
     val apkName = varchar("apk_name", 1024)
     val iconUrl = varchar("icon_url", 2048)
