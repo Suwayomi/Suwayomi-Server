@@ -14,3 +14,8 @@ interface ISource {
     iconUrl: string
     supportsLatest: boolean
 }
+
+interface IManga {
+    name: string
+    imageUrl: string
+}
