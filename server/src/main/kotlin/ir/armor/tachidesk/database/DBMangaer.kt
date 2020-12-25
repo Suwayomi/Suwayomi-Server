@@ -2,6 +2,7 @@ package ir.armor.tachidesk.database
 
 import ir.armor.tachidesk.Config
 import ir.armor.tachidesk.database.table.ExtensionsTable
+import ir.armor.tachidesk.database.table.MangasTable
 import ir.armor.tachidesk.database.table.SourcesTable
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -20,5 +21,6 @@ fun makeDataBaseTables() {
     transaction {
         SchemaUtils.create(ExtensionsTable)
         SchemaUtils.create(SourcesTable)
+        SchemaUtils.create(MangasTable)
     }
 }

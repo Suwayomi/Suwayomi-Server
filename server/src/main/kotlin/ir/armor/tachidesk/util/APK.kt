@@ -68,9 +68,9 @@ fun installAPK(apkName: String): Int {
 //                                name = httpSource.name
 //                                this.extension =  ExtensionEntity.find { ExtensionsTable.name eq extension.name }.first().id
 //                            }
-                    if (SourcesTable.select { SourcesTable.sourceId eq httpSource.id }.count() == 0L) {
+                    if (SourcesTable.select { SourcesTable.id eq httpSource.id }.count() == 0L) {
                         SourcesTable.insert {
-                            it[this.sourceId] = httpSource.id
+                            it[this.id] = httpSource.id
                             it[name] = httpSource.name
                             it[this.lang] = httpSource.lang
                             it[extension] = extensionId
@@ -86,9 +86,9 @@ fun installAPK(apkName: String): Int {
                 transaction {
                     sourceFactory.createSources().forEachIndexed { index, source ->
                         val httpSource = source as HttpSource
-                        if (SourcesTable.select { SourcesTable.sourceId eq httpSource.id }.count() == 0L) {
+                        if (SourcesTable.select { SourcesTable.id eq httpSource.id }.count() == 0L) {
                             SourcesTable.insert {
-                                it[this.sourceId] = httpSource.id
+                                it[this.id] = httpSource.id
                                 it[name] = httpSource.name
                                 it[this.lang] = httpSource.lang
                                 it[extension] = extensionId

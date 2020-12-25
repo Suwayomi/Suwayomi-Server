@@ -18,7 +18,7 @@ import java.net.URLClassLoader
 
 fun getHttpSource(sourceId: Long): HttpSource {
     return transaction {
-        val sourceRecord = SourceEntity.find { SourcesTable.sourceId eq sourceId }.first()
+        val sourceRecord = SourceEntity.get(sourceId)
         val extensionId = sourceRecord.extension.id.value
         val extensionRecord = ExtensionEntity.get(extensionId)
         val apkName = extensionRecord.apkName
@@ -44,11 +44,11 @@ fun getSourceList(): List<SourceDataClass> {
     return transaction {
         return@transaction SourcesTable.selectAll().map {
             SourceDataClass(
-                    it[SourcesTable.sourceId],
+                    it[SourcesTable.id].value,
                     it[SourcesTable.name],
                     it[SourcesTable.lang],
                     ExtensionsTable.select { ExtensionsTable.id eq it[SourcesTable.extension] }.first()[ExtensionsTable.iconUrl],
-                    getHttpSource(it[SourcesTable.sourceId]).supportsLatest
+                    getHttpSource(it[SourcesTable.id].value).supportsLatest
             )
         }
     }

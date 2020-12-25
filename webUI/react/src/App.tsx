@@ -15,7 +15,7 @@ function Extensions() {
 
     if (extensions.length === 0) {
         mapped = <h3>wait</h3>;
-        fetch('http://127.0.0.1:4567/api/v1/extensions')
+        fetch('http://127.0.0.1:4567/api/v1/extension/list')
             .then((response) => response.json())
             .then((data) => setExtensions(data));
     } else {
@@ -31,7 +31,7 @@ function Sources() {
 
     if (sources.length === 0) {
         mapped = <h3>wait</h3>;
-        fetch('http://127.0.0.1:4567/api/v1/sources')
+        fetch('http://127.0.0.1:4567/api/v1/source/list')
             .then((response) => response.json())
             .then((data) => setSources(data));
     } else {

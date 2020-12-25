@@ -49,7 +49,7 @@ export default function ExtensionCard(props: IProps) {
 
     function install() {
         setInstalledState('installing');
-        fetch(`http://127.0.0.1:4567/api/v1/extensions/install/${apkName}`).then(() => {
+        fetch(`http://127.0.0.1:4567/api/v1/extension/install/${apkName}`).then(() => {
             setInstalledState('installed');
         });
     }
