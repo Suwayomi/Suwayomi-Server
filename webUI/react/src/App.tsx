@@ -41,11 +41,14 @@ function Extensions() {
     let mapped;
     const [extensions, setExtensions] = useState<IExtension[]>([]);
 
-    if (extensions.length === 0) {
-        mapped = <h3>wait</h3>;
+    useEffect(() => {
         fetch('http://127.0.0.1:4567/api/v1/extension/list')
             .then((response) => response.json())
             .then((data) => setExtensions(data));
+    });
+
+    if (extensions.length === 0) {
+        mapped = <h3>wait</h3>;
     } else {
         mapped = extensions.map((it) => <ExtensionCard extension={it} />);
     }
@@ -57,11 +60,14 @@ function Sources() {
     let mapped;
     const [sources, setSources] = useState<ISource[]>([]);
 
-    if (sources.length === 0) {
-        mapped = <h3>wait</h3>;
+    useEffect(() => {
         fetch('http://127.0.0.1:4567/api/v1/source/list')
             .then((response) => response.json())
             .then((data) => setSources(data));
+    });
+
+    if (sources.length === 0) {
+        mapped = <h3>wait</h3>;
     } else {
         mapped = sources.map((it) => <SourceCard source={it} />);
     }
