@@ -16,6 +16,7 @@ const useStyles = makeStyles({
 
 interface IProps {
     drawerOpen: boolean
+
     setDrawerOpen(state: boolean): void
 }
 
@@ -37,6 +38,14 @@ export default function TemporaryDrawer({ drawerOpen, setDrawerOpen }: IProps) {
                             <InboxIcon />
                         </ListItemIcon>
                         <ListItemText primary="Extensions" />
+                    </ListItem>
+                </Link>
+                <Link to="/sources" style={{ color: 'inherit', textDecoration: 'none' }}>
+                    <ListItem button key="Sources">
+                        <ListItemIcon>
+                            <InboxIcon />
+                        </ListItemIcon>
+                        <ListItemText primary="Sources" />
                     </ListItem>
                 </Link>
             </List>

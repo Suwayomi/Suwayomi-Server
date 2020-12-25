@@ -7,6 +7,7 @@ import {
 import Button from '@material-ui/core/Button';
 import NavBar from './components/NavBar';
 import ExtensionCard from './components/ExtensionCard';
+import SourceCard from './components/SourceCard';
 
 function Extensions() {
     let mapped;
@@ -24,16 +25,28 @@ function Extensions() {
     return <h2>{mapped}</h2>;
 }
 
+function Sources() {
+    let mapped;
+    const [sources, setSources] = useState<ISource[]>([]);
+
+    if (sources.length === 0) {
+        mapped = <h3>wait</h3>;
+        fetch('http://127.0.0.1:4567/api/v1/sources')
+            .then((response) => response.json())
+            .then((data) => setSources(data));
+    } else {
+        mapped = sources.map((it) => <SourceCard source={it} />);
+    }
+
+    return <h2>{mapped}</h2>;
+}
+
 function Home() {
     return (
         <Button variant="contained" color="primary">
             Hello World
         </Button>
     );
-}
-
-function Users() {
-    return <h2>Users</h2>;
 }
 
 export default function App() {
@@ -46,8 +59,8 @@ export default function App() {
                 <Route path="/extensions">
                     <Extensions />
                 </Route>
-                <Route path="/users">
-                    <Users />
+                <Route path="/sources">
+                    <Sources />
                 </Route>
                 <Route path="/">
                     <Home />
