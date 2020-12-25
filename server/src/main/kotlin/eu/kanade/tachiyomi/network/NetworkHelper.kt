@@ -62,9 +62,9 @@ class NetworkHelper() {
         builder.build()
     }
 
-//    val cloudflareClient by lazy {
-//        client.newBuilder()
-//            .addInterceptor(CloudflareInterceptor(context))
-//            .build()
-//    }
+    val cloudflareClient by lazy {
+        client.newBuilder()
+            .addInterceptor(CloudflareInterceptor())
+            .build()
+    }
 }

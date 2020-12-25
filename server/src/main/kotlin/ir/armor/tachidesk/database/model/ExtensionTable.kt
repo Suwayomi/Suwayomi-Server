@@ -31,7 +31,22 @@ data class ExtensionDataClass(
         val lang: String,
         val isNsfw: Boolean,
         val apkName: String,
-        val iconUrl : String,
+        val iconUrl: String,
         val installed: Boolean,
         val classFQName: String,
 )
+
+class ExtensionEntity(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<ExtensionEntity>(ExtensionsTable)
+
+    var name by ExtensionsTable.name
+    var pkgName by ExtensionsTable.pkgName
+    var versionName by ExtensionsTable.versionName
+    var versionCode by ExtensionsTable.versionCode
+    var lang by ExtensionsTable.lang
+    var isNsfw by ExtensionsTable.isNsfw
+    var apkName by ExtensionsTable.apkName
+    var iconUrl by ExtensionsTable.iconUrl
+    var installed by ExtensionsTable.installed
+    var classFQName by ExtensionsTable.classFQName
+}
