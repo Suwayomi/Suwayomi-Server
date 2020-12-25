@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     BrowserRouter as Router,
     Switch,
@@ -8,6 +8,34 @@ import Button from '@material-ui/core/Button';
 import NavBar from './components/NavBar';
 import ExtensionCard from './components/ExtensionCard';
 import SourceCard from './components/SourceCard';
+import MangaCard from './components/MangaCard';
+
+function MangaPage() {
+    let mapped;
+    const [mangas, setMangas] = useState<IManga[]>([]);
+
+    useEffect(() => {
+        fetch('https://picsum.photos/v2/list')
+            .then((response) => response.json())
+            .then((data: { author: string, download_url: string }[]) => setMangas(
+                data.map((it) => ({ name: it.author, imageUrl: it.download_url })),
+            ));
+    });
+
+    if (mangas.length === 0) {
+        mapped = <h3>wait</h3>;
+    } else {
+        mapped = (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, auto)', gridGap: '1em' }}>
+                {mangas.map((it) => (
+                    <MangaCard manga={it} />
+                ))}
+            </div>
+        );
+    }
+
+    return mapped;
+}
 
 function Extensions() {
     let mapped;
@@ -56,6 +84,9 @@ export default function App() {
             <NavBar />
 
             <Switch>
+                <Route path="/mangapage">
+                    <MangaPage />
+                </Route>
                 <Route path="/extensions">
                     <Extensions />
                 </Route>
