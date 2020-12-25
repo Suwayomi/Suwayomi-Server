@@ -14,6 +14,9 @@ how to do it is described in `webUI/react/README.md` but for short,
  then `yarn start` to start the client if a new browser window doesn't start automatically,
  then open `http://127.0.0.1:3000` in a modern browser.
 
+## Can I use this?
+checkout [the state of project](https://github.com/AriaMoradi/Tachidesk) to see what's implemented.
+
 ## License
 
     Copyright (C) 2020 Aria Moradi
