@@ -1,10 +1,8 @@
 package ir.armor.tachidesk
 
 import io.javalin.Javalin
-import ir.armor.tachidesk.util.applicationSetup
-import ir.armor.tachidesk.util.installAPK
-import ir.armor.tachidesk.util.getExtensionList
-import ir.armor.tachidesk.util.getSourceList
+import ir.armor.tachidesk.util.*
+import java.util.*
 
 class Main {
     companion object {
@@ -38,14 +36,8 @@ class Main {
 
             app.get("/api/v1/source/:source_id/popular") { ctx ->
                 val sourceId = ctx.pathParam("source_id")
-                ctx.json(getPopularManga(sourceId))
+//                ctx.json(getPopularManga(sourceId))
             }
-
-
-        }
-
-        private fun getPopularManga(sourceId: String): List<Any> {
-            TODO("Not yet implemented")
         }
     }
 }

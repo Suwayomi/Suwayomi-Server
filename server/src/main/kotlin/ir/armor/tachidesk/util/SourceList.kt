@@ -15,29 +15,58 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.net.URL
 import java.net.URLClassLoader
+import java.util.*
+
+private val sourceCache = mutableListOf<Pair<Long, HttpSource>>()
+private val extensionCache = mutableListOf<Pair<String, Any>>()
 
 fun getHttpSource(sourceId: Long): HttpSource {
-    return transaction {
-        val sourceRecord = SourceEntity.get(sourceId)
+    val cachedResult: Pair<Long, HttpSource>? = sourceCache.firstOrNull { it.first == sourceId }
+    if (cachedResult != null) {
+        println("used cached HttpSource: ${cachedResult.second.name}")
+        return cachedResult.second
+    }
+
+    val result: HttpSource = transaction {
+        val sourceRecord = SourceEntity.findById(sourceId)!!
         val extensionId = sourceRecord.extension.id.value
-        val extensionRecord = ExtensionEntity.get(extensionId)
+        val extensionRecord = ExtensionEntity.findById(extensionId)!!
         val apkName = extensionRecord.apkName
         val className = extensionRecord.classFQName
         val jarName = apkName.substringBefore(".apk") + ".jar"
         val jarPath = "${Config.extensionsRoot}/$jarName"
 
-        println(jarPath)
+        println(jarName)
 
-        val child = URLClassLoader(arrayOf<URL>(URL("file:$jarPath")), this::class.java.classLoader)
-        val classToLoad = Class.forName(className, true, child)
-        val instance = classToLoad.newInstance()
-
+        val cachedExtensionPair = extensionCache.firstOrNull { it.first == jarPath }
+        var usedCached = false
+        val instance =
+                if (cachedExtensionPair != null) {
+                    usedCached = true
+                    println("Used cached Extension")
+                    cachedExtensionPair.second
+                } else {
+                    println("No Extension cache")
+                    val child = URLClassLoader(arrayOf<URL>(URL("file:$jarPath")), this::class.java.classLoader)
+                    val classToLoad = Class.forName(className, true, child)
+                    classToLoad.newInstance()
+                }
         if (sourceRecord.partOfFactorySource) {
-            return@transaction (instance as SourceFactory).createSources()[sourceRecord.positionInFactorySource!!] as HttpSource
+            return@transaction if (usedCached) {
+                (instance as List<HttpSource>)[sourceRecord.positionInFactorySource!!]
+            } else {
+                val list = (instance as SourceFactory).createSources()
+                extensionCache.add(Pair(jarPath, list))
+                list[sourceRecord.positionInFactorySource!!] as HttpSource
+            }
         } else {
+            if (!usedCached)
+                extensionCache.add(Pair(jarPath, instance))
             return@transaction instance as HttpSource
         }
     }
+    sourceCache.add(Pair(sourceId, result))
+    return result
 }
 
 fun getSourceList(): List<SourceDataClass> {
@@ -46,7 +75,7 @@ fun getSourceList(): List<SourceDataClass> {
             SourceDataClass(
                     it[SourcesTable.id].value,
                     it[SourcesTable.name],
-                    it[SourcesTable.lang],
+                    Locale(it[SourcesTable.lang]).getDisplayLanguage(Locale(it[SourcesTable.lang])),
                     ExtensionsTable.select { ExtensionsTable.id eq it[SourcesTable.extension] }.first()[ExtensionsTable.iconUrl],
                     getHttpSource(it[SourcesTable.id].value).supportsLatest
             )

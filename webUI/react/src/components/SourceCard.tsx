@@ -44,7 +44,6 @@ export default function SourceCard(props: IProps) {
     } = props;
 
     const classes = useStyles();
-    const langPress = lang === 'all' ? 'All' : lang.toUpperCase();
 
     return (
         <Card>
@@ -61,7 +60,7 @@ export default function SourceCard(props: IProps) {
                             {name}
                         </Typography>
                         <Typography variant="caption" display="block" gutterBottom>
-                            {langPress}
+                            {lang}
                         </Typography>
                     </div>
                 </div>
