@@ -16,6 +16,9 @@ compileKotlin.kotlinOptions {
 repositories {
     mavenCentral()
     jcenter()
+    maven {
+        url = uri("https://jitpack.io")
+    }
 }
 
 dependencies {
@@ -26,7 +29,7 @@ dependencies {
     // using source class from tachiyomi commit 9493577de27c40ce8b2b6122cc447d025e34c477 to not depend on tachiyomi.sourceapi
 //    implementation("tachiyomi.sourceapi:source-api:1.1")
 
-//    implementation("com.github.inorichi.injekt:injekt-core:65b0440")
+    implementation("com.github.inorichi.injekt:injekt-core:65b0440")
 
     val okhttp_version = "4.10.0-RC1"
     implementation("com.squareup.okhttp3:okhttp:$okhttp_version")
