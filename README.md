@@ -7,7 +7,7 @@ This project has two components:
 
 ## How do I run the thing?
 ### Getting things ready
-run `$ scripts/getAndroid.sh` to do download Google's Android stubs jar.(do this only once)
+run `scripts/getAndroid.sh` from project's root directory to download Google's Android stubs jar.(do this only once)
 ### The Server
 run `./gradlew :server:run` to run the server
 ### the webUI
