@@ -18,6 +18,9 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
+import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.net.URL
 import java.net.URLClassLoader
@@ -118,9 +121,11 @@ fun installAPK(apkName: String): Int {
     }
 }
 
+val networkHelper: NetworkHelper by injectLazy()
+
 private fun downloadAPKFile(url: String, apkPath: String) {
     val request = Request.Builder().url(url).build()
-    val response = NetworkHelper().client.newCall(request).execute();
+    val response =  networkHelper.client.newCall(request).execute()
 
     val downloadedFile = File(apkPath)
     val sink = downloadedFile.sink().buffer()

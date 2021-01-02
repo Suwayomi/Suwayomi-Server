@@ -15,6 +15,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import rx.Observable
+import uy.kohesive.injekt.injectLazy
 //import uy.kohesive.injekt.injectLazy
 import java.net.URI
 import java.net.URISyntaxException
@@ -28,7 +29,7 @@ abstract class HttpSource : CatalogueSource {
     /**
      * Network service.
      */
-    protected val network = NetworkHelper()
+    protected val network: NetworkHelper by injectLazy()
 
 //    /**
 //     * Preferences that a source may need.

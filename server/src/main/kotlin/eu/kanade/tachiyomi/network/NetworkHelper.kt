@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.network
 //import android.content.Context
 //import eu.kanade.tachiyomi.BuildConfig
 //import eu.kanade.tachiyomi.data.preference.PreferencesHelper
+import android.content.Context
 import okhttp3.Cache
 //import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
@@ -13,7 +14,7 @@ import java.io.File
 import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 
-class NetworkHelper() {
+class NetworkHelper(context: Context) {
 
 //    private val preferences: PreferencesHelper by injectLazy()
 

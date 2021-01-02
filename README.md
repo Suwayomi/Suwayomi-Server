@@ -6,8 +6,10 @@ This project has two components:
 2. **webUI:** A react project that works with the server to do the presentation
 
 ## How do I run the thing?
+## Getting things ready
+run `$ scripts/getAndroid.sh` to do download Google's Android stubs jar.(do this only once)
 ### The Server
- run `./gradlew :server:run` to run the server
+run `./gradlew :server:run` to run the server
 ### the webUI
 how to do it is described in `webUI/react/README.md` but for short,
  first cd into `webUI/react` then run `yarn` to install the node modules(do this only once)

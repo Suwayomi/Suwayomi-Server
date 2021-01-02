@@ -7,6 +7,8 @@ import kotlinx.serialization.json.JsonArray
 import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.Retrofit
 import retrofit2.http.GET
+import uy.kohesive.injekt.injectLazy
+
 //import uy.kohesive.injekt.injectLazy
 
 /**
@@ -16,7 +18,7 @@ interface ExtensionGithubService {
 
     companion object {
         private val client by lazy {
-            val network: NetworkHelper = NetworkHelper()
+            val network: NetworkHelper by injectLazy()
             network.client.newBuilder()
                 .addNetworkInterceptor { chain ->
                     val originalResponse = chain.proceed(chain.request())
