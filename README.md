@@ -6,7 +6,7 @@ This project has two components:
 2. **webUI:** A react project that works with the server to do the presentation
 
 ## How do I run the thing?
-## Getting things ready
+### Getting things ready
 run `$ scripts/getAndroid.sh` to do download Google's Android stubs jar.(do this only once)
 ### The Server
 run `./gradlew :server:run` to run the server
