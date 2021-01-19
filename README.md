@@ -6,8 +6,11 @@ This project has two components:
 2. **webUI:** A react project that works with the server to do the presentation
 
 ## How do I run the thing?
-### Getting things ready
-run `scripts/getAndroid.sh` from project's root directory to download Google's Android stubs jar.(do this only once)
+### Get Android stubs jar(do this only once)
+#### Manual download
+Download [android.jar](https://raw.githubusercontent.com/AriaMoradi/Tachidesk/android-jar/android.jar) and put it under `AndroidCompat/lib`.
+#### Building from source(needs `bash`, `curl`, `base64`, `zip` to work)
+run `scripts/getAndroid.sh` from project's root directory to download and rebuild the jar file from Google's repository.
 ### The Server
 run `./gradlew :server:run` to run the server
 ### the webUI
