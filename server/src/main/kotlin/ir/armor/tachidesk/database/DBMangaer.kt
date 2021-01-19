@@ -2,8 +2,8 @@ package ir.armor.tachidesk.database
 
 import ir.armor.tachidesk.Config
 import ir.armor.tachidesk.database.table.ExtensionsTable
-import ir.armor.tachidesk.database.table.MangasTable
-import ir.armor.tachidesk.database.table.SourcesTable
+import ir.armor.tachidesk.database.table.MangaTable
+import ir.armor.tachidesk.database.table.SourceTable
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -20,7 +20,7 @@ fun makeDataBaseTables() {
 
     transaction {
         SchemaUtils.create(ExtensionsTable)
-        SchemaUtils.create(SourcesTable)
-        SchemaUtils.create(MangasTable)
+        SchemaUtils.create(SourceTable)
+        SchemaUtils.create(MangaTable)
     }
 }

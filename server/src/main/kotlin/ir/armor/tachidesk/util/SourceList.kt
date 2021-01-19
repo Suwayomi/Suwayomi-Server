@@ -3,13 +3,11 @@ package ir.armor.tachidesk.util
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
 import ir.armor.tachidesk.Config
-import ir.armor.tachidesk.Main
 import ir.armor.tachidesk.database.dataclass.SourceDataClass
 import ir.armor.tachidesk.database.entity.ExtensionEntity
 import ir.armor.tachidesk.database.entity.SourceEntity
 import ir.armor.tachidesk.database.table.ExtensionsTable
-import ir.armor.tachidesk.database.table.SourcesTable
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import ir.armor.tachidesk.database.table.SourceTable
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -71,13 +69,13 @@ fun getHttpSource(sourceId: Long): HttpSource {
 
 fun getSourceList(): List<SourceDataClass> {
     return transaction {
-        return@transaction SourcesTable.selectAll().map {
+        return@transaction SourceTable.selectAll().map {
             SourceDataClass(
-                    it[SourcesTable.id].value.toString(),
-                    it[SourcesTable.name],
-                    Locale(it[SourcesTable.lang]).getDisplayLanguage(Locale(it[SourcesTable.lang])),
-                    ExtensionsTable.select { ExtensionsTable.id eq it[SourcesTable.extension] }.first()[ExtensionsTable.iconUrl],
-                    getHttpSource(it[SourcesTable.id].value).supportsLatest
+                    it[SourceTable.id].value.toString(),
+                    it[SourceTable.name],
+                    Locale(it[SourceTable.lang]).getDisplayLanguage(Locale(it[SourceTable.lang])),
+                    ExtensionsTable.select { ExtensionsTable.id eq it[SourceTable.extension] }.first()[ExtensionsTable.iconUrl],
+                    getHttpSource(it[SourceTable.id].value).supportsLatest
             )
         }
     }

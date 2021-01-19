@@ -2,7 +2,7 @@ package ir.armor.tachidesk.database.table
 
 import org.jetbrains.exposed.dao.id.IdTable
 
-object SourcesTable : IdTable<Long>() {
+object SourceTable : IdTable<Long>() {
     override val id = long("id").entityId()
     val name= varchar("name", 128)
     val lang = varchar("lang", 10)

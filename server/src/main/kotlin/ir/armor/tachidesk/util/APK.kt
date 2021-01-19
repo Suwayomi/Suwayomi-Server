@@ -8,18 +8,15 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import ir.armor.tachidesk.APKExtractor
 import ir.armor.tachidesk.Config
 import ir.armor.tachidesk.database.table.ExtensionsTable
-import ir.armor.tachidesk.database.table.SourcesTable
+import ir.armor.tachidesk.database.table.SourceTable
 import kotlinx.coroutines.runBlocking
 import okhttp3.Request
 import okio.buffer
 import okio.sink
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import uy.kohesive.injekt.Injekt
-import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.net.URL
@@ -71,8 +68,8 @@ fun installAPK(apkName: String): Int {
 //                                name = httpSource.name
 //                                this.extension =  ExtensionEntity.find { ExtensionsTable.name eq extension.name }.first().id
 //                            }
-                    if (SourcesTable.select { SourcesTable.id eq httpSource.id }.count() == 0L) {
-                        SourcesTable.insert {
+                    if (SourceTable.select { SourceTable.id eq httpSource.id }.count() == 0L) {
+                        SourceTable.insert {
                             it[this.id] = httpSource.id
                             it[name] = httpSource.name
                             it[this.lang] = httpSource.lang
@@ -89,8 +86,8 @@ fun installAPK(apkName: String): Int {
                 transaction {
                     sourceFactory.createSources().forEachIndexed { index, source ->
                         val httpSource = source as HttpSource
-                        if (SourcesTable.select { SourcesTable.id eq httpSource.id }.count() == 0L) {
-                            SourcesTable.insert {
+                        if (SourceTable.select { SourceTable.id eq httpSource.id }.count() == 0L) {
+                            SourceTable.insert {
                                 it[this.id] = httpSource.id
                                 it[name] = httpSource.name
                                 it[this.lang] = httpSource.lang
