@@ -76,6 +76,11 @@ class Main {
                 ctx.json(getManga(mangaId))
             }
 
+            app.get("/api/v1/chapters/:mangaId/") { ctx ->
+                val mangaId = ctx.pathParam("mangaId").toInt()
+                ctx.json(getChapterList(mangaId))
+            }
+
 
         }
 

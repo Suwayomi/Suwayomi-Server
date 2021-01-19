@@ -31,12 +31,13 @@ const useStyles = makeStyles((theme) => ({
     },
 }));
 
-export default function ChapterCard() {
-    const name = 'Chapter 1';
-    const relaseDate = '16/01/21';
-    // const downloaded = false;
-    // const downloadedText = downloaded ? 'open' : 'download';
+interface IProps{
+    chapter: IChapter
+}
+
+export default function ChapterCard(props: IProps) {
     const classes = useStyles();
+    const { chapter } = props;
 
     return (
         <>
@@ -46,10 +47,14 @@ export default function ChapterCard() {
                         <div style={{ display: 'flex' }}>
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 <Typography variant="h5" component="h2">
-                                    {name}
+                                    {chapter.name}
+                                    {chapter.chapter_number > 0 && ` : ${chapter.chapter_number}`}
                                 </Typography>
                                 <Typography variant="caption" display="block" gutterBottom>
-                                    {relaseDate}
+                                    {chapter.scanlator}
+                                    {chapter.scanlator && ' '}
+                                    {chapter.date_upload
+                                    && new Date(chapter.date_upload).toISOString().slice(0, 10)}
                                 </Typography>
                             </div>
                         </div>

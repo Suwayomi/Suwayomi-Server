@@ -21,3 +21,11 @@ interface IManga {
     title: string
     thumbnailUrl: string
 }
+
+interface IChapter {
+    url: string
+    name: string
+    date_upload: string
+    chapter_number: number
+    scanlator: String
+}

@@ -1,10 +1,10 @@
 package ir.armor.tachidesk.util
 
 import eu.kanade.tachiyomi.source.model.SManga
+import ir.armor.tachidesk.database.dataclass.ChapterDataClass
 import ir.armor.tachidesk.database.dataclass.MangaDataClass
 import ir.armor.tachidesk.database.table.MangaStatus
 import ir.armor.tachidesk.database.table.MangaTable
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -75,6 +75,26 @@ fun getManga(mangaId: Int): MangaDataClass {
             )
         }
     }
+}
 
+fun getChapterList(mangaId: Int): List<ChapterDataClass> {
+    val mangaDetails = getManga(mangaId)
+    val source = getHttpSource(mangaDetails.sourceId)
 
+    val chapterList = source.fetchChapterList(
+            SManga.create().apply {
+                title = mangaDetails.title
+                url = mangaDetails.url
+            }
+    ).toBlocking().first()
+
+    return chapterList.map {
+        ChapterDataClass(
+                it.url,
+                it.name,
+                it.date_upload.toString(),
+                it.chapter_number,
+                it.scanlator,
+        )
+    }
 }
