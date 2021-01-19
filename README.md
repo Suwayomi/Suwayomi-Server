@@ -10,7 +10,7 @@ This project has two components:
 #### Manual download
 Download [android.jar](https://raw.githubusercontent.com/AriaMoradi/Tachidesk/android-jar/android.jar) and put it under `AndroidCompat/lib`.
 #### Building from source(needs `bash`, `curl`, `base64`, `zip` to work)
-run `scripts/getAndroid.sh` from project's root directory to download and rebuild the jar file.
+run `scripts/getAndroid.sh` from project's root directory to download and rebuild the jar file from Google's repository.
 ### The Server
 run `./gradlew :server:run` to run the server
 ### the webUI
