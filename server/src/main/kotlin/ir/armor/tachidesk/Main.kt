@@ -66,6 +66,10 @@ class Main {
                 val sourceId = ctx.pathParam("source_id")
                 ctx.json(getPopularManga(sourceId))
             }
+            app.get("/api/v1/source/:source_id/latest") { ctx ->
+                val sourceId = ctx.pathParam("source_id")
+                ctx.json(getLatestManga(sourceId))
+            }
         }
 
 
