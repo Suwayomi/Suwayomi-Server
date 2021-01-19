@@ -56,10 +56,10 @@ fun getChapterList(mangaId: Int): List<ChapterDataClass> {
     }
 }
 
-fun getPages(chapterId: Int): List<PageDataClass> {
+fun getPages(chapterId: Int, mangaId: Int): List<PageDataClass> {
     return transaction {
         val chapterEntry = ChapterTable.select { ChapterTable.id eq chapterId }.firstOrNull()!!
-        val mangaId = chapterEntry[ChapterTable.manga].value
+        assert(mangaId == chapterEntry[ChapterTable.manga].value) // sanity check
         val mangaEntry = MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!!
         val source = getHttpSource(mangaEntry[MangaTable.sourceReference].value)
 

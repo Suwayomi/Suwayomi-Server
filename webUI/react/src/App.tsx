@@ -8,6 +8,7 @@ import Sources from './screens/Sources';
 import Extensions from './screens/Extensions';
 import MangaList from './screens/MangaList';
 import Manga from './screens/Manga';
+import Reader from './screens/Reader';
 
 export default function App() {
     return (
@@ -26,6 +27,9 @@ export default function App() {
                 </Route>
                 <Route path="/sources">
                     <Sources />
+                </Route>
+                <Route path="/manga/:mangaId/chapter/:chapterId">
+                    <Reader />
                 </Route>
                 <Route path="/manga/:id">
                     <Manga />

@@ -60,7 +60,7 @@ export default function ChapterCard(props: IProps) {
                             </div>
                         </div>
                         <div style={{ display: 'flex' }}>
-                            <Button variant="outlined" style={{ marginLeft: 20 }} onClick={() => { window.location.href = `http://127.0.0.1:4567/api/v1/chapter/${chapter.id}`; }}>open</Button>
+                            <Button variant="outlined" style={{ marginLeft: 20 }} onClick={() => { window.location.href = `/manga/${chapter.mangaId}/chapter/${chapter.id}`; }}>open</Button>
                         </div>
                     </CardContent>
                 </Card>
