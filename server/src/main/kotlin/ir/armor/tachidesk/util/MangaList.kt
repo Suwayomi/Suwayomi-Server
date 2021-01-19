@@ -3,8 +3,8 @@ package ir.armor.tachidesk.util
 import ir.armor.tachidesk.database.dataclass.MangaDataClass
 import ir.armor.tachidesk.database.table.MangaStatus
 
-fun getPopularManga(sourceId: String): List<MangaDataClass> {
-    val manguasPage = getHttpSource(sourceId.toLong()).fetchPopularManga(1).toBlocking().first()
+fun getPopularManga(sourceId: String, pageNum: Int = 1): List<MangaDataClass> {
+    val manguasPage = getHttpSource(sourceId.toLong()).fetchPopularManga(pageNum).toBlocking().first()
     return manguasPage.mangas.map {
         MangaDataClass(
                 sourceId.toLong(),
@@ -24,8 +24,8 @@ fun getPopularManga(sourceId: String): List<MangaDataClass> {
     }
 }
 
-fun getLatestManga(sourceId: String): List<MangaDataClass> {
-    val manguasPage = getHttpSource(sourceId.toLong()).fetchLatestUpdates(1).toBlocking().first()
+fun getLatestManga(sourceId: String, pageNum: Int = 1): List<MangaDataClass> {
+    val manguasPage = getHttpSource(sourceId.toLong()).fetchLatestUpdates(pageNum).toBlocking().first()
     return manguasPage.mangas.map {
         MangaDataClass(
                 sourceId.toLong(),

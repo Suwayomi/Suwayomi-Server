@@ -6,7 +6,7 @@ import NavBar from './components/NavBar';
 import Home from './screens/Home';
 import Sources from './screens/Sources';
 import Extensions from './screens/Extensions';
-import MangaList from './screens/PopularManga';
+import MangaList from './screens/MangaList';
 
 export default function App() {
     return (
@@ -17,10 +17,10 @@ export default function App() {
                 <Route path="/extensions">
                     <Extensions />
                 </Route>
-                <Route path="/sources/:sourceId/popular">
+                <Route path="/sources/:sourceId/popular/">
                     <MangaList popular />
                 </Route>
-                <Route path="/sources/:sourceId/latest">
+                <Route path="/sources/:sourceId/latest/">
                     <MangaList popular={false} />
                 </Route>
                 <Route path="/sources">

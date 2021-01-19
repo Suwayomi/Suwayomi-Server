@@ -62,13 +62,15 @@ class Main {
                 ctx.json(getSourceList())
             }
 
-            app.get("/api/v1/source/:source_id/popular") { ctx ->
+            app.get("/api/v1/source/:source_id/popular/:pageNum") { ctx ->
                 val sourceId = ctx.pathParam("source_id")
-                ctx.json(getPopularManga(sourceId))
+                val pageNum = ctx.pathParam("pageNum").toInt()
+                ctx.json(getPopularManga(sourceId,pageNum))
             }
-            app.get("/api/v1/source/:source_id/latest") { ctx ->
+            app.get("/api/v1/source/:source_id/latest/:pageNum") { ctx ->
                 val sourceId = ctx.pathParam("source_id")
-                ctx.json(getLatestManga(sourceId))
+                val pageNum = ctx.pathParam("pageNum").toInt()
+                ctx.json(getLatestManga(sourceId,pageNum))
             }
         }
 
