@@ -1,6 +1,7 @@
 package ir.armor.tachidesk.database
 
 import ir.armor.tachidesk.Config
+import ir.armor.tachidesk.database.table.ChapterTable
 import ir.armor.tachidesk.database.table.ExtensionsTable
 import ir.armor.tachidesk.database.table.MangaTable
 import ir.armor.tachidesk.database.table.SourceTable
@@ -22,5 +23,6 @@ fun makeDataBaseTables() {
         SchemaUtils.create(ExtensionsTable)
         SchemaUtils.create(SourceTable)
         SchemaUtils.create(MangaTable)
+        SchemaUtils.create(ChapterTable)
     }
 }

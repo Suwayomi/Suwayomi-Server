@@ -39,6 +39,8 @@ export default function ChapterCard(props: IProps) {
     const classes = useStyles();
     const { chapter } = props;
 
+    const dateStr = chapter.date_upload && new Date(chapter.date_upload).toISOString().slice(0, 10);
+
     return (
         <>
             <li>
@@ -53,13 +55,12 @@ export default function ChapterCard(props: IProps) {
                                 <Typography variant="caption" display="block" gutterBottom>
                                     {chapter.scanlator}
                                     {chapter.scanlator && ' '}
-                                    {chapter.date_upload
-                                    && new Date(chapter.date_upload).toISOString().slice(0, 10)}
+                                    {dateStr}
                                 </Typography>
                             </div>
                         </div>
                         <div style={{ display: 'flex' }}>
-                            <Button variant="outlined" style={{ marginLeft: 20 }} onClick={() => { /* window.location.href = 'sources/popular/'; */ }}>open</Button>
+                            <Button variant="outlined" style={{ marginLeft: 20 }} onClick={() => { window.location.href = `http://127.0.0.1:4567/api/v1/chapter/${chapter.id}`; }}>open</Button>
                         </div>
                     </CardContent>
                 </Card>

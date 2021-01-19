@@ -23,9 +23,11 @@ interface IManga {
 }
 
 interface IChapter {
+    id: number
     url: string
     name: string
-    date_upload: string
+    date_upload: number
     chapter_number: number
     scanlator: String
+    mangaId: number
 }

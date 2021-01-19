@@ -16,7 +16,7 @@ export default function Manga() {
     }, []);
 
     useEffect(() => {
-        fetch(`http://127.0.0.1:4567/api/v1/chapters/${id}/`)
+        fetch(`http://127.0.0.1:4567/api/v1/manga/${id}/chapters`)
             .then((response) => response.json())
             .then((data) => setChapters(data));
     }, []);
