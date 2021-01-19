@@ -6,3 +6,16 @@ node {
     workDir = file("${project.projectDir}/react/")
     nodeModulesDir = file("${project.projectDir}/react/node_modules")
 }
+
+tasks.named("yarn_build") {
+    dependsOn("yarn_install")
+}
+
+tasks.register<Copy>("copyBuild") {
+    from(file("$rootDir/webUI/react/build"))
+    into(file("$rootDir/server/src/main/resources/react"))
+}
+
+tasks.named("copyBuild") {
+    dependsOn("yarn_build")
+}

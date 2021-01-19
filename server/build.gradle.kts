@@ -1,6 +1,9 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 plugins {
 //    id("org.jetbrains.kotlin.jvm") version "1.4.21"
     application
+    id("com.github.johnrengelman.shadow") version "6.1.0"
 }
 
 
@@ -84,5 +87,43 @@ dependencies {
 }
 
 application {
-    mainClass.set("ir.armor.tachidesk.Main")
+    val name = "ir.armor.tachidesk.Main"
+    mainClass.set(name)
+
+    // Required by ShadowJar.
+    mainClassName = name
 }
+
+sourceSets {
+    main {
+        resources {
+            srcDir("src/main/resources")
+        }
+    }
+}
+
+tasks {
+    jar {
+        manifest {
+            attributes(
+                    mapOf(
+                            "Main-Class" to "com.example.MainKt", //will make your jar (produced by jar task) runnable
+                            "ImplementationTitle" to project.name,
+                            "Implementation-Version" to project.version)
+            )
+        }
+    }
+    shadowJar {
+        manifest.inheritFrom(jar.get().manifest) //will make your shadowJar (produced by jar task) runnable
+    }
+}
+
+tasks.withType<ShadowJar> {
+    destinationDir = File("$rootDir/server/build")
+    //dependsOn(":webUI:copyBuild")
+}
+
+tasks.named("processResources") {
+    dependsOn(":webUI:copyBuild")
+}
+

@@ -37,7 +37,12 @@ class Main {
 
 
 
-            val app = Javalin.create().start(4567)
+            val app = Javalin.create { config ->
+    //                config.addSinglePageRoot("/", "")
+                config.addStaticFiles("/react")
+            }.start(4567)
+
+
 
             app.before() { ctx ->
                 // allow the client which is running on another port

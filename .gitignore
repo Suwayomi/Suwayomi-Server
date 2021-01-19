@@ -4,3 +4,5 @@
 
 # Ignore Gradle build output directory
 build
+
+server/src/main/resources/react
