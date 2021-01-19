@@ -3,6 +3,7 @@ package ir.armor.tachidesk.database.dataclass
 import ir.armor.tachidesk.database.table.MangaStatus
 
 data class MangaDataClass(
+        val id: Int,
         val sourceId: Long,
 
         val url: String,

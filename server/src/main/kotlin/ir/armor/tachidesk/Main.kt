@@ -9,8 +9,6 @@ import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
 import xyz.nulldev.ts.config.ConfigKodeinModule
 import xyz.nulldev.ts.config.GlobalConfigManager
-import xyz.nulldev.ts.config.ServerConfig
-import java.util.*
 
 class Main {
     companion object {
@@ -62,16 +60,23 @@ class Main {
                 ctx.json(getSourceList())
             }
 
-            app.get("/api/v1/source/:source_id/popular/:pageNum") { ctx ->
-                val sourceId = ctx.pathParam("source_id")
+            app.get("/api/v1/source/:sourceId/popular/:pageNum") { ctx ->
+                val sourceId = ctx.pathParam("sourceId").toLong()
                 val pageNum = ctx.pathParam("pageNum").toInt()
-                ctx.json(getPopularManga(sourceId,pageNum))
+                ctx.json(getMangaList(sourceId,pageNum,popular = true))
             }
-            app.get("/api/v1/source/:source_id/latest/:pageNum") { ctx ->
-                val sourceId = ctx.pathParam("source_id")
+            app.get("/api/v1/source/:sourceId/latest/:pageNum") { ctx ->
+                val sourceId = ctx.pathParam("sourceId").toLong()
                 val pageNum = ctx.pathParam("pageNum").toInt()
-                ctx.json(getLatestManga(sourceId,pageNum))
+                ctx.json(getMangaList(sourceId,pageNum,popular = false))
             }
+
+            app.get("/api/v1/manga/:mangaId/") { ctx ->
+                val mangaId = ctx.pathParam("mangaId").toInt()
+                ctx.json(getManga(mangaId))
+            }
+
+
         }
 
 

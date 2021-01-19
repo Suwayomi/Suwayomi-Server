@@ -2,11 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import MangaCard from '../components/MangaCard';
 
-interface IManga {
-    title: string
-    thumbnailUrl: string
-}
-
 export default function MangaList(props: { popular: boolean }) {
     const { sourceId } = useParams<{sourceId: string}>();
     let mapped;
@@ -17,8 +12,8 @@ export default function MangaList(props: { popular: boolean }) {
         const sourceType = props.popular ? 'popular' : 'latest';
         fetch(`http://127.0.0.1:4567/api/v1/source/${sourceId}/${sourceType}/${lastPageNum}`)
             .then((response) => response.json())
-            .then((data: { title: string, thumbnail_url: string }[]) => setMangas(
-                data.map((it) => ({ title: it.title, thumbnailUrl: it.thumbnail_url })),
+            .then((data: { title: string, thumbnail_url: string, id:number }[]) => setMangas(
+                data.map((it) => ({ title: it.title, thumbnailUrl: it.thumbnail_url, id: it.id })),
             ));
     }, []);
 

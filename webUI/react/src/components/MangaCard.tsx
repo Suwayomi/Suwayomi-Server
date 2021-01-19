@@ -4,6 +4,7 @@ import Card from '@material-ui/core/Card';
 import CardActionArea from '@material-ui/core/CardActionArea';
 import CardMedia from '@material-ui/core/CardMedia';
 import Typography from '@material-ui/core/Typography';
+import { Link } from 'react-router-dom';
 
 const useStyles = makeStyles({
     root: {
@@ -41,26 +42,28 @@ interface IProps {
 export default function MangaCard(props: IProps) {
     const {
         manga: {
-            title, thumbnailUrl,
+            id, title, thumbnailUrl,
         },
     } = props;
     const classes = useStyles();
 
     return (
-        <Card className={classes.root}>
-            <CardActionArea>
-                <div className={classes.wrapper}>
-                    <CardMedia
-                        className={classes.image}
-                        component="img"
-                        alt={title}
-                        image={thumbnailUrl}
-                        title={title}
-                    />
-                    <div className={classes.gradient} />
-                    <Typography className={classes.title} variant="h5" component="h2">{title}</Typography>
-                </div>
-            </CardActionArea>
-        </Card>
+        <Link to={`/manga/${id}/`}>
+            <Card className={classes.root}>
+                <CardActionArea>
+                    <div className={classes.wrapper}>
+                        <CardMedia
+                            className={classes.image}
+                            component="img"
+                            alt={title}
+                            image={thumbnailUrl}
+                            title={title}
+                        />
+                        <div className={classes.gradient} />
+                        <Typography className={classes.title} variant="h5" component="h2">{title}</Typography>
+                    </div>
+                </CardActionArea>
+            </Card>
+        </Link>
     );
 }

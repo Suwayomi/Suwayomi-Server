@@ -7,6 +7,7 @@ import Home from './screens/Home';
 import Sources from './screens/Sources';
 import Extensions from './screens/Extensions';
 import MangaList from './screens/MangaList';
+import Manga from './screens/Manga';
 
 export default function App() {
     return (
@@ -25,6 +26,9 @@ export default function App() {
                 </Route>
                 <Route path="/sources">
                     <Sources />
+                </Route>
+                <Route path="/manga/:id">
+                    <Manga />
                 </Route>
                 <Route path="/">
                     <Home />
