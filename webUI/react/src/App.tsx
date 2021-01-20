@@ -9,6 +9,7 @@ import Extensions from './screens/Extensions';
 import MangaList from './screens/MangaList';
 import Manga from './screens/Manga';
 import Reader from './screens/Reader';
+import Search from './screens/Search';
 
 export default function App() {
     return (
@@ -16,6 +17,9 @@ export default function App() {
             <NavBar />
 
             <Switch>
+                <Route path="/search">
+                    <Search />
+                </Route>
                 <Route path="/extensions">
                     <Extensions />
                 </Route>

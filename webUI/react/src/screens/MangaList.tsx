@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import MangaCard from '../components/MangaCard';
+import MangaGrid from '../components/MangaGrid';
 
 export default function MangaList(props: { popular: boolean }) {
     const { sourceId } = useParams<{sourceId: string}>();
-    let mapped;
     const [mangas, setMangas] = useState<IManga[]>([]);
     const [lastPageNum] = useState<number>(1);
 
@@ -17,17 +16,5 @@ export default function MangaList(props: { popular: boolean }) {
             ));
     }, []);
 
-    if (mangas.length === 0) {
-        mapped = <h3>wait</h3>;
-    } else {
-        mapped = (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, auto)', gridGap: '1em' }}>
-                {mangas.map((it) => (
-                    <MangaCard manga={it} />
-                ))}
-            </div>
-        );
-    }
-
-    return mapped;
+    return <MangaGrid mangas={mangas} />;
 }

@@ -36,10 +36,13 @@ class Main {
             androidCompat.startApp(App())
 
 
-
             val app = Javalin.create { config ->
-    //                config.addSinglePageRoot("/", "")
-                config.addStaticFiles("/react")
+                try {
+                    this::class.java.classLoader.getResource("/react/index.html")
+                    config.addStaticFiles("/react")
+                } catch (e: RuntimeException) {
+                    println("Warning: react build files are missing.")
+                }
             }.start(4567)
 
 
@@ -68,12 +71,12 @@ class Main {
             app.get("/api/v1/source/:sourceId/popular/:pageNum") { ctx ->
                 val sourceId = ctx.pathParam("sourceId").toLong()
                 val pageNum = ctx.pathParam("pageNum").toInt()
-                ctx.json(getMangaList(sourceId,pageNum,popular = true))
+                ctx.json(getMangaList(sourceId, pageNum, popular = true))
             }
             app.get("/api/v1/source/:sourceId/latest/:pageNum") { ctx ->
                 val sourceId = ctx.pathParam("sourceId").toLong()
                 val pageNum = ctx.pathParam("pageNum").toInt()
-                ctx.json(getMangaList(sourceId,pageNum,popular = false))
+                ctx.json(getMangaList(sourceId, pageNum, popular = false))
             }
 
             app.get("/api/v1/manga/:mangaId/") { ctx ->
@@ -89,7 +92,7 @@ class Main {
             app.get("/api/v1/manga/:mangaId/chapter/:chapterId") { ctx ->
                 val chapterId = ctx.pathParam("chapterId").toInt()
                 val mangaId = ctx.pathParam("mangaId").toInt()
-                ctx.json(getPages(chapterId,mangaId))
+                ctx.json(getPages(chapterId, mangaId))
             }
         }
 
