@@ -12,7 +12,7 @@ Download [android.jar](https://raw.githubusercontent.com/AriaMoradi/Tachidesk/an
 #### Building from source(needs `bash`, `curl`, `base64`, `zip` to work)
 run `scripts/getAndroid.sh` from project's root directory to download and rebuild the jar file from Google's repository.
 ### building the jar
-run `./gradlew :server:fatJar` the resulting jar file will be `server/build/server-1.0-all.jar`. Simply double click on it or run `java -jar server-1.0-all.jar`. The server will be running on `http://localhost:4567` open this url in your browser.
+run `./gradlew :server:shadowJar` the resulting jar file will be `server/build/server-1.0-all.jar`. Simply double click on it or run `java -jar server-1.0-all.jar`. The server will be running on `http://localhost:4567` open this url in your browser.
 ## running for development purposes
 ### The Server
 run `./gradlew :server:run -x :webUI:copyBuild --stacktrace` to run the server
