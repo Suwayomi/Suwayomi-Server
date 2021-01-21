@@ -41,6 +41,12 @@ jobs:
         with:
           java-version: 1.8
 
+      - name: Download and process android.jar
+        if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk'
+        run: |
+          cd master
+          ./scripts/getAndroid.sh
+
       - name: Build the Jar
         uses: eskatos/gradle-command-action@v1
         with:
