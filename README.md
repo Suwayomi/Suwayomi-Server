@@ -6,23 +6,32 @@ This project has two components:
 2. **webUI:** A react project that works with the server to do the presentation
 
 ## How do I run the thing?
-### Get Android stubs jar(do this only once)
+#### Running pre-built jar packages
+Download the latest (or a working more stable older) release from [the repo branch](https://github.com/AriaMoradi/Tachidesk/tree/repo) or obtain it from [the releases section](https://github.com/AriaMoradi/Tachidesk/releases).
+
+Double click on the jar file or run `java -jar tachidesk-latest.jar` or `java -jar tachidesk-r0xxx.jar`
+
+The server will be running on `http://localhost:4567` open this url in your browser.
+
+## Building from source
+### Get Android stubs jar
 #### Manual download
 Download [android.jar](https://raw.githubusercontent.com/AriaMoradi/Tachidesk/android-jar/android.jar) and put it under `AndroidCompat/lib`.
 #### Building from source(needs `bash`, `curl`, `base64`, `zip` to work)
-run `scripts/getAndroid.sh` from project's root directory to download and rebuild the jar file from Google's repository.
+Run `scripts/getAndroid.sh` from project's root directory to download and rebuild the jar file from Google's repository.
 ### building the jar
-run `./gradlew :server:shadowJar` the resulting jar file will be `server/build/server-1.0-all.jar`. Simply double click on it or run `java -jar server-1.0-all.jar`. The server will be running on `http://localhost:4567` open this url in your browser.
+Run `./gradlew :server:shadowJar` the resulting built jar file will be `server/build/server-1.0-all.jar`.
 ## running for development purposes
-### The Server
-run `./gradlew :server:run -x :webUI:copyBuild --stacktrace` to run the server
-### the webUI
-how to do it is described in `webUI/react/README.md` but for short,
+### `server` module
+Run `./gradlew :server:run -x :webUI:copyBuild --stacktrace` to run the server
+### `webUI` module
+How to do it is described in `webUI/react/README.md` but for short,
  first cd into `webUI/react` then run `yarn` to install the node modules(do this only once)
  then `yarn start` to start the client if a new browser window doesn't start automatically,
- then open `http://127.0.0.1:3000` in a modern browser.
+ then open `http://127.0.0.1:3000` in a modern browser. This is a `creat-react-app` project/
+ and supports HMR and other goodies it provides.
 
-## Is the application usable? Should I test it?
+## Is this application usable? Should I test it?
 Checkout [the state of project](https://github.com/AriaMoradi/Tachidesk/issues/2) to see what's implemented.
 
 ## Credit
