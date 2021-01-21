@@ -42,6 +42,12 @@ jobs:
         with:
           java-version: 1.8
 
+      - name: Copy CI gradle.properties
+        run: |
+          cd master
+          mkdir -p ~/.gradle
+          cp .github/runner-files/ci-gradle.properties ~/.gradle/gradle.properties
+
       - name: Download and process android.jar
         if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk'
         run: |
