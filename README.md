@@ -1,9 +1,12 @@
 # Tachidesk
 A free and open source manga reader than runs extensions built for [Tachiyomi](https://tachiyomi.org/) which runs on desktop operating systems.
 
+Ability to read and write Tachiyomi compatible backups and syncing is a planned feature.
+
+## How does it work?
 This project has two components: 
-1. **server:** contains some of the original Tachiyomi code and serves a REST API
-2. **webUI:** A react project that works with the server to do the presentation
+1. **server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run apk extensions. All this conclude to serving a REST API to `webUI`.
+2. **webUI:** A react SPA project that works with the server to do the presentation.
 
 ## How do I run the thing?
 #### Running pre-built jar packages
