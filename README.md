@@ -25,6 +25,10 @@ how to do it is described in `webUI/react/README.md` but for short,
 ## Is the application usable? Should I test it?
 Checkout [the state of project](https://github.com/AriaMoradi/Tachidesk/issues/2) to see what's implemented.
 
+## Credit
+The `AndroidCompat` and `scripts/getAndroid.sh` module is originally developed by [@null-dev](https://github.com/null-dev) for [TachiWeb-Server](https://github.com/Tachiweb/TachiWeb-server) and is licensed under `Apache License Version 2.0`.
+Also parts of [tachiyomi](https://github.com/tachiyomiorg/tachiyomi) is adopted into this codebase, also licensed under `Apache License Version 2.0`.
+
 ## License
 
     Copyright (C) 2020-2021 Aria Moradi
