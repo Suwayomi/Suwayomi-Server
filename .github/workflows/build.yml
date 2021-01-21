@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  check_wrapper:
+    name: Validate Gradle Wrapper
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@v2
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/wrapper-validation-action@v1
+
+  build:
+    name: Build FatJar
+    needs: check_wrapper
+    if: "!startsWith(github.event.head_commit.message, '[SKIP CI]')"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Cancel previous runs
+        uses: styfle/cancel-workflow-action@0.5.0
+        with:
+          access_token: ${{ github.token }}
+
+      - name: Checkout master branch
+        uses: actions/checkout@v2
+        with:
+          ref: master
+          path: master
+
+      - name: Set up JDK 1.8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 1.8
+
+      - name: Build the Jar
+        uses: eskatos/gradle-command-action@v1
+        with:
+          build-root-directory: master
+          wrapper-directory: master
+          arguments: :server:shadowJar
+          wrapper-cache-enabled: true
+          dependencies-cache-enabled: true
+          configuration-cache-enabled: true
+
+      - name: Create repo artifacts
+        if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk'
+        run: |
+          cd master
+          ./.github/scripts/create-repo.sh
+
+      - name: Checkout repo branch
+        if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk'
+        uses: actions/checkout@v2
+        with:
+          ref: repo
+          path: repo
+
+      - name: Deploy repo
+        if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk'
+        run: |
+          cd repo
+          ../master/.github/scripts/commit-repo.sh

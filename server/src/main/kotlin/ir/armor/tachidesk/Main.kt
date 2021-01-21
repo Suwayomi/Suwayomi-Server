@@ -94,9 +94,30 @@ class Main {
                 val mangaId = ctx.pathParam("mangaId").toInt()
                 ctx.json(getPages(chapterId, mangaId))
             }
+
+            // global search
+            app.get("/api/v1/search/:searchTerm") { ctx ->
+                val searchTerm = ctx.pathParam("searchTerm")
+                ctx.json(sourceGlobalSearch(searchTerm))
+            }
+
+            // single source search
+            app.get("/api/v1/source/:sourceId/search/:searchTerm") { ctx ->
+                val sourceId = ctx.pathParam("sourceId").toLong()
+                val searchTerm = ctx.pathParam("searchTerm")
+                ctx.json(sourceSearch(sourceId, searchTerm))
+            }
+
+            // source filter list
+            app.get("/api/v1/source/:sourceId/filters/") { ctx ->
+                val sourceId = ctx.pathParam("sourceId").toLong()
+                ctx.json(sourceFilters(sourceId))
+            }
+
+
+
+
         }
-
-
     }
 }
 
