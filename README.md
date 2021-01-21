@@ -10,7 +10,7 @@ This project has two components:
 
 ## How do I run the thing?
 #### Running pre-built jar packages
-Download the latest (or a working more stable older) release from [the repo branch](https://github.com/AriaMoradi/Tachidesk/tree/repo) or obtain it from [the releases section](https://github.com/AriaMoradi/Tachidesk/releases).
+Download the latest (or a working more stable) release from [the repo branch](https://github.com/AriaMoradi/Tachidesk/tree/repo) or obtain it from [the releases section](https://github.com/AriaMoradi/Tachidesk/releases).
 
 Double click on the jar file or run `java -jar Tachidesk-latest.jar` or `java -jar Tachidesk-vX.Y.Z-rxxx.jar`
 
@@ -31,8 +31,8 @@ Run `./gradlew :server:run -x :webUI:copyBuild --stacktrace` to run the server
 How to do it is described in `webUI/react/README.md` but for short,
  first cd into `webUI/react` then run `yarn` to install the node modules(do this only once)
  then `yarn start` to start the client if a new browser window doesn't start automatically,
- then open `http://127.0.0.1:3000` in a modern browser. This is a `creat-react-app` project/
- and supports HMR and other goodies it provides.
+ then open `http://127.0.0.1:3000` in a modern browser. This is a `create-react-app` project
+ and supports HMR and all the other goodies you'll need.
 
 ## Is this application usable? Should I test it?
 Checkout [the state of project](https://github.com/AriaMoradi/Tachidesk/issues/2) to see what's implemented.
