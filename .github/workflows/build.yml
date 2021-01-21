@@ -65,7 +65,7 @@ jobs:
           configuration-cache-enabled: true
 
       - name: Create repo artifacts
-        if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk' && "startsWith(github.event.head_commit.message, '[RELEASE CI]')"
+        if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk'
         run: |
           cd master
           ./.github/scripts/create-repo.sh

@@ -1,10 +1,13 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import java.io.BufferedReader
 
 plugins {
 //    id("org.jetbrains.kotlin.jvm") version "1.4.21"
     application
     id("com.github.johnrengelman.shadow") version "6.1.0"
 }
+
+val TachideskVersion = "v0.0.1"
 
 
 repositories {
@@ -102,6 +105,19 @@ sourceSets {
     }
 }
 
+val TachideskRevision = Runtime
+        .getRuntime()
+        .exec("git rev-list master --count")
+        .let { process ->
+            process.waitFor()
+            val output = process.inputStream.use {
+                it.bufferedReader().use(BufferedReader::readText)
+            }
+            process.destroy()
+            "r"+output.trim()
+
+        }
+
 tasks {
     jar {
         manifest {
@@ -115,12 +131,14 @@ tasks {
     }
     shadowJar {
         manifest.inheritFrom(jar.get().manifest) //will make your shadowJar (produced by jar task) runnable
+        archiveBaseName.set("Tachidesk")
+        archiveVersion.set(TachideskVersion)
+        archiveClassifier.set(TachideskRevision)
     }
 }
 
 tasks.withType<ShadowJar> {
     destinationDir = File("$rootDir/server/build")
-    //dependsOn(":webUI:copyBuild")
 }
 
 tasks.named("processResources") {
