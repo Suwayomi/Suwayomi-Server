@@ -24,7 +24,7 @@ Download [android.jar](https://raw.githubusercontent.com/AriaMoradi/Tachidesk/an
 Run `scripts/getAndroid.sh` from project's root directory to download and rebuild the jar file from Google's repository.
 ### building the jar
 Run `./gradlew shadowJar` the resulting built jar file will be `server/build/Tachidesk-vX.Y.Z-rxxx.jar`.
-## running for development purposes
+## Running for development purposes
 ### `server` module
 Run `./gradlew :server:run -x :webUI:copyBuild --stacktrace` to run the server
 ### `webUI` module
