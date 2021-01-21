@@ -5,7 +5,7 @@ Ability to read and write Tachiyomi compatible backups and syncing is a planned 
 
 ## How does it work?
 This project has two components: 
-1. **server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run apk extensions. All this conclude to serving a REST API to `webUI`.
+1. **server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run apk extensions. All this concludes to serving a REST API to `webUI`.
 2. **webUI:** A react SPA project that works with the server to do the presentation.
 
 ## How do I run the thing?
