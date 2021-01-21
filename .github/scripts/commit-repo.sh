@@ -3,11 +3,12 @@ set -e
 
 cp ../master/repo/server-r* .
 new_build=$(ls | tail -1)
-diff $new_build server-latest.jar > /dev/null
-if [ "$?" -ne 0 ]; then # same file?
-    rm $new_build
+
+diff $new_build server-latest.jar
+if [ "$?" -eq 1 ]; then
+  cp -f $new_build server-latest.jar
 else
-    cp -f $new_build server-latest.jar
+  rm $new_build
 fi
 
 
