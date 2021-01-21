@@ -3,4 +3,6 @@ set -e
 
 mkdir -p repo/
 
-cp -f server/build/server-1.0-all.jar repo/
+revision=$(git rev-list HEAD --count)
+
+cp server/build/server-1.0-all.jar "repo/server-r$revision.jar"
