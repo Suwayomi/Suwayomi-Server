@@ -4,11 +4,11 @@ plugins {
 
 node {
     workDir = file("${project.projectDir}/react/")
-    nodeModulesDir = file("${project.projectDir}/react/node_modules")
+    nodeModulesDir = file("${project.projectDir}/react/")
 }
 
 tasks.named("yarn_build") {
-    dependsOn("yarn_install")
+    dependsOn("yarn") // install node_moduels
 }
 
 tasks.register<Copy>("copyBuild") {
