@@ -12,7 +12,7 @@ This project has two components:
 #### Running pre-built jar packages
 Download the latest (or a working more stable older) release from [the repo branch](https://github.com/AriaMoradi/Tachidesk/tree/repo) or obtain it from [the releases section](https://github.com/AriaMoradi/Tachidesk/releases).
 
-Double click on the jar file or run `java -jar tachidesk-latest.jar` or `java -jar tachidesk-r0xxx.jar`
+Double click on the jar file or run `java -jar Tachidesk-latest.jar` or `java -jar Tachidesk-vX.Y.Z-rxxx.jar`
 
 The server will be running on `http://localhost:4567` open this url in your browser.
 
@@ -23,7 +23,7 @@ Download [android.jar](https://raw.githubusercontent.com/AriaMoradi/Tachidesk/an
 #### Building from source(needs `bash`, `curl`, `base64`, `zip` to work)
 Run `scripts/getAndroid.sh` from project's root directory to download and rebuild the jar file from Google's repository.
 ### building the jar
-Run `./gradlew :server:shadowJar` the resulting built jar file will be `server/build/server-1.0-all.jar`.
+Run `./gradlew shadowJar` the resulting built jar file will be `server/build/Tachidesk-vX.Y.Z-rxxx.jar`.
 ## running for development purposes
 ### `server` module
 Run `./gradlew :server:run -x :webUI:copyBuild --stacktrace` to run the server
