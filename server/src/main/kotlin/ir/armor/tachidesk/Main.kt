@@ -40,6 +40,7 @@ class Main {
                 try {
                     this::class.java.classLoader.getResource("/react/index.html")
                     config.addStaticFiles("/react")
+                    config.addSinglePageRoot("/","/react/index.html")
                 } catch (e: RuntimeException) {
                     println("Warning: react build files are missing.")
                 }
