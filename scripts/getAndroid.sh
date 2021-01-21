@@ -58,9 +58,8 @@ function dedup() {
 
 pushd ..
 dedup AndroidCompat/src/main/java
-dedup TachiServer/src/main/java
-dedup Tachiyomi-App/src/main/java
-dedup Tachiyomi-App/src/compat/java
+dedup server/src/main/java
+dedup server/src/main/kotlin
 popd
 
 popd
