@@ -52,7 +52,7 @@ jobs:
         with:
           build-root-directory: master
           wrapper-directory: master
-          arguments: :server:shadowJar
+          arguments: :server:shadowJar --stacktrace
           wrapper-cache-enabled: true
           dependencies-cache-enabled: true
           configuration-cache-enabled: true
