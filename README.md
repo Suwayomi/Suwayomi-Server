@@ -1,5 +1,5 @@
 # Tachidesk
-A free and open source manga reader than runs extensions built for [Tachiyomi](https://tachiyomi.org/) for desktop operating systems.
+A free and open source manga reader than runs extensions built for [Tachiyomi](https://tachiyomi.org/) which runs on desktop operating systems.
 
 This project has two components: 
 1. **server:** contains some of the original Tachiyomi code and serves a REST API
