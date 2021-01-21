@@ -1,5 +1,5 @@
 # Tachidesk
-A not so much port of [Tachiyomi](https://tachiyomi.org/) to the web (and later Electron for the desktop experience)!
+A free and open source manga reader than runs extensions built for [Tachiyomi](https://tachiyomi.org/) for desktop operating systems.
 
 This project has two components: 
 1. **server:** contains some of the original Tachiyomi code and serves a REST API
