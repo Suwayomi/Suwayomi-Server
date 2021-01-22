@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
     BrowserRouter as Router, Route, Switch,
 } from 'react-router-dom';
+import { Container } from '@material-ui/core';
 import CssBaseline from '@material-ui/core/CssBaseline';
 import { createMuiTheme, ThemeProvider } from '@material-ui/core/styles';
 
@@ -40,33 +41,34 @@ export default function App() {
                     <DarkTheme.Provider value={darkThemeContext}>
                         <NavBar />
                     </DarkTheme.Provider>
-
-                    <Switch>
-                        <Route path="/sources/:sourceId/search/">
-                            <Search />
-                        </Route>
-                        <Route path="/extensions">
-                            <Extensions />
-                        </Route>
-                        <Route path="/sources/:sourceId/popular/">
-                            <MangaList popular />
-                        </Route>
-                        <Route path="/sources/:sourceId/latest/">
-                            <MangaList popular={false} />
-                        </Route>
-                        <Route path="/sources">
-                            <Sources />
-                        </Route>
-                        <Route path="/manga/:mangaId/chapter/:chapterId">
-                            <Reader />
-                        </Route>
-                        <Route path="/manga/:id">
-                            <Manga />
-                        </Route>
-                        <Route path="/">
-                            <Home />
-                        </Route>
-                    </Switch>
+                    <Container maxWidth={false} disableGutters style={{ padding: '5px' }}>
+                        <Switch>
+                            <Route path="/sources/:sourceId/search/">
+                                <Search />
+                            </Route>
+                            <Route path="/extensions">
+                                <Extensions />
+                            </Route>
+                            <Route path="/sources/:sourceId/popular/">
+                                <MangaList popular />
+                            </Route>
+                            <Route path="/sources/:sourceId/latest/">
+                                <MangaList popular={false} />
+                            </Route>
+                            <Route path="/sources">
+                                <Sources />
+                            </Route>
+                            <Route path="/manga/:mangaId/chapter/:chapterId">
+                                <Reader />
+                            </Route>
+                            <Route path="/manga/:id">
+                                <Manga />
+                            </Route>
+                            <Route path="/">
+                                <Home />
+                            </Route>
+                        </Switch>
+                    </Container>
                 </NavBarTitle.Provider>
             </ThemeProvider>
         </Router>
