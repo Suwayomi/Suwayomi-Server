@@ -91,8 +91,18 @@ export default function NavBar() {
                         open={open}
                         onClose={handleClose}
                     >
-                        <MenuItem onClick={() => setDarkTheme(true)}>Dark Theme</MenuItem>
-                        <MenuItem onClick={() => setDarkTheme(false)}>Light Theme</MenuItem>
+                        <MenuItem
+                            onClick={() => { setDarkTheme(true); handleClose(); }}
+                        >
+                            Dark Theme
+
+                        </MenuItem>
+                        <MenuItem
+                            onClick={() => { setDarkTheme(false); handleClose(); }}
+                        >
+                            Light Theme
+
+                        </MenuItem>
                     </Menu>
                 </Toolbar>
             </AppBar>
