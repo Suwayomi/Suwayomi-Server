@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import Grid from '@material-ui/core/Grid';
 import MangaCard from './MangaCard';
 
 interface IProps{
@@ -43,9 +44,9 @@ export default function MangaGrid(props: IProps) {
     }
 
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, auto)', gridGap: '1em' }}>
+        <Grid container spacing={1}>
             {mapped}
-        </div>
+        </Grid>
     );
 }
 
