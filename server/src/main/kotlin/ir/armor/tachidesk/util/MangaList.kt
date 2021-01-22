@@ -2,13 +2,14 @@ package ir.armor.tachidesk.util
 
 import eu.kanade.tachiyomi.source.model.MangasPage
 import ir.armor.tachidesk.database.dataclass.MangaDataClass
+import ir.armor.tachidesk.database.dataclass.PagedMangaListDataClass
 import ir.armor.tachidesk.database.table.MangaStatus
 import ir.armor.tachidesk.database.table.MangaTable
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 
-fun getMangaList(sourceId: Long, pageNum: Int = 1, popular: Boolean): List<MangaDataClass> {
+fun getMangaList(sourceId: Long, pageNum: Int = 1, popular: Boolean): PagedMangaListDataClass {
     val source = getHttpSource(sourceId.toLong())
     val mangasPage = if (popular) {
         source.fetchPopularManga(pageNum).toBlocking().first()
@@ -21,9 +22,9 @@ fun getMangaList(sourceId: Long, pageNum: Int = 1, popular: Boolean): List<Manga
     return mangasPage.processEntries(sourceId)
 }
 
-fun MangasPage.processEntries(sourceId: Long): List<MangaDataClass> {
+fun MangasPage.processEntries(sourceId: Long): PagedMangaListDataClass {
     val mangasPage = this
-    return transaction {
+    val mangaList = transaction {
         return@transaction mangasPage.mangas.map { manga ->
             var mangaEntry = MangaTable.select { MangaTable.url eq manga.url }.firstOrNull()
             var mangaEntityId = if (mangaEntry == null) { // create manga entry
@@ -62,4 +63,8 @@ fun MangasPage.processEntries(sourceId: Long): List<MangaDataClass> {
             )
         }
     }
+    return PagedMangaListDataClass(
+        mangaList,
+        mangasPage.hasNextPage
+    )
 }

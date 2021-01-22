@@ -18,3 +18,8 @@ data class MangaDataClass(
     val genre: String? = null,
     val status: String = MangaStatus.UNKNOWN.name
 )
+
+data class PagedMangaListDataClass(
+    val mangaList: List<MangaDataClass>,
+    val hasNextPage: Boolean
+)

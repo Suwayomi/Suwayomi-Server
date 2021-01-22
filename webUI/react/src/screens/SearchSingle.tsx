@@ -22,8 +22,9 @@ export default function SearchSingle() {
     const [error, setError] = useState<boolean>(false);
     const [mangas, setMangas] = useState<IManga[]>([]);
     const [message, setMessage] = useState<string>('');
-    const [lastPageNum] = useState<number>(1);
     const [searchTerm, setSearchTerm] = useState<string>('');
+    const [hasNextPage, setHasNextPage] = useState<boolean>(false);
+    const [lastPageNum, setLastPageNum] = useState<number>(1);
 
     const textInput = React.createRef<HTMLInputElement>();
 
@@ -51,13 +52,14 @@ export default function SearchSingle() {
         if (searchTerm.length > 0) {
             fetch(`http://127.0.0.1:4567/api/v1/source/${sourceId}/search/${searchTerm}/${lastPageNum}`)
                 .then((response) => response.json())
-                .then((data: IManga[]) => {
-                    if (data.length > 0) {
-                        setMangas(
-                            data.map((it) => (
-                                { title: it.title, thumbnailUrl: it.thumbnailUrl, id: it.id }
-                            )),
-                        );
+                .then((data: { mangaList: IManga[], hasNextPage: boolean }) => {
+                    if (data.mangaList.length > 0) {
+                        setMangas([
+                            ...mangas,
+                            ...data.mangaList.map((it) => ({
+                                title: it.title, thumbnailUrl: it.thumbnailUrl, id: it.id,
+                            }))]);
+                        setHasNextPage(data.hasNextPage);
                     } else {
                         setMessage('search qeury returned nothing.');
                     }
@@ -65,7 +67,15 @@ export default function SearchSingle() {
         }
     }, [searchTerm]);
 
-    const mangaGrid = <MangaGrid mangas={mangas} message={message} />;
+    const mangaGrid = (
+        <MangaGrid
+            mangas={mangas}
+            message={message}
+            hasNextPage={hasNextPage}
+            lastPageNum={lastPageNum}
+            setLastPageNum={setLastPageNum}
+        />
+    );
 
     return (
         <>

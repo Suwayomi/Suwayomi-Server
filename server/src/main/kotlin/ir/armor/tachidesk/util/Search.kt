@@ -1,13 +1,13 @@
 package ir.armor.tachidesk.util
 
-import ir.armor.tachidesk.database.dataclass.MangaDataClass
+import ir.armor.tachidesk.database.dataclass.PagedMangaListDataClass
 
 fun sourceFilters(sourceId: Long) {
     val source = getHttpSource(sourceId)
     // source.getFilterList().toItems()
 }
 
-fun sourceSearch(sourceId: Long, searchTerm: String, pageNum: Int): List<MangaDataClass> {
+fun sourceSearch(sourceId: Long, searchTerm: String, pageNum: Int): PagedMangaListDataClass {
     val source = getHttpSource(sourceId)
     val searchManga = source.fetchSearchManga(pageNum, searchTerm, source.getFilterList()).toBlocking().first()
     return searchManga.processEntries(sourceId)

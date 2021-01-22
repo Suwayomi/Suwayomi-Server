@@ -38,8 +38,10 @@ const useStyles = makeStyles({
 
 interface IProps {
     manga: IManga
+    // eslint-disable-next-line react/no-unused-prop-types, react/require-default-props
+    // ref?: false | React.MutableRefObject<HTMLInputElement | undefined>
 }
-export default function MangaCard(props: IProps) {
+const MangaCard = React.forwardRef((props: IProps, ref) => {
     const {
         manga: {
             id, title, thumbnailUrl,
@@ -49,7 +51,7 @@ export default function MangaCard(props: IProps) {
 
     return (
         <Link to={`/manga/${id}/`}>
-            <Card className={classes.root}>
+            <Card className={classes.root} ref={ref}>
                 <CardActionArea>
                     <div className={classes.wrapper}>
                         <CardMedia
@@ -66,4 +68,6 @@ export default function MangaCard(props: IProps) {
             </Card>
         </Link>
     );
-}
+});
+
+export default MangaCard;
