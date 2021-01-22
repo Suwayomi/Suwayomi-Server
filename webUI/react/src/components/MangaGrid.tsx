@@ -41,6 +41,7 @@ export default function MangaGrid(props: IProps) {
             return <MangaCard manga={it} />;
         });
     }
+    
 
     return (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, auto)', gridGap: '1em' }}>
