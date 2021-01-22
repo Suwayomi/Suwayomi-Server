@@ -34,9 +34,9 @@ class Main {
 
         @JvmStatic
         fun main(args: Array<String>) {
-            System.getProperties()["proxySet"] = "true"
-            System.getProperties()["socksProxyHost"] = "127.0.0.1"
-            System.getProperties()["socksProxyPort"] = "2020"
+//            System.getProperties()["proxySet"] = "true"
+//            System.getProperties()["socksProxyHost"] = "127.0.0.1"
+//            System.getProperties()["socksProxyPort"] = "2020"
 
             // make sure everything we need exists
             applicationSetup()

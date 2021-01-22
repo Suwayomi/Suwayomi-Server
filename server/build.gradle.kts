@@ -8,7 +8,7 @@ plugins {
     id("org.jmailen.kotlinter") version "3.3.0"
 }
 
-val TachideskVersion = "v0.0.2"
+val TachideskVersion = "v0.0.3"
 
 
 repositories {
