@@ -44,7 +44,7 @@ export default function MangaGrid(props: IProps) {
     }
 
     return (
-        <Grid container spacing={1} xs={12} style={{ margin: 0 }}>
+        <Grid container spacing={1} xs={12} style={{ margin: 0, padding: '5px' }}>
             {mapped}
         </Grid>
     );

@@ -28,6 +28,21 @@ export default function App() {
             palette: {
                 type: darkTheme ? 'dark' : 'light',
             },
+            overrides: {
+                MuiCssBaseline: {
+                    '@global': {
+                        '*::-webkit-scrollbar': {
+                            width: '10px',
+                            background: darkTheme ? '#222' : '#e1e1e1',
+
+                        },
+                        '*::-webkit-scrollbar-thumb': {
+                            background: darkTheme ? '#111' : '#aaa',
+                            borderRadius: '5px',
+                        },
+                    },
+                },
+            },
         }),
         [darkTheme],
     );
@@ -41,7 +56,7 @@ export default function App() {
                     <DarkTheme.Provider value={darkThemeContext}>
                         <NavBar />
                     </DarkTheme.Provider>
-                    <Container maxWidth={false} disableGutters style={{ padding: '5px' }}>
+                    <Container maxWidth={false} disableGutters>
                         <Switch>
                             <Route path="/sources/:sourceId/search/">
                                 <Search />
