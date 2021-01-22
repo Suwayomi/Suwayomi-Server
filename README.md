@@ -42,7 +42,7 @@ How to do it is described in `webUI/react/README.md` but for short,
 ## Is this application usable? Should I test it?
 If you'd ask me, I'd tell you If you want to read your manga **online** from tachiyomi or in one place and bypass all the ads, you can use Tachidesk.
 
-There is almost no quality of life feature and no library and downloading and sadly no MangaDex search.
+There are almost no quality of life features including no library, no downloading for offline enjoyment and sadly no MangaDex search.
 
 Anyways, for more info checkout [finished milestone #1](https://github.com/AriaMoradi/Tachidesk/issues/2) and [milestone #2](https://github.com/AriaMoradi/Tachidesk/projects/1) to see what's implemented.
 
