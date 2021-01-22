@@ -9,7 +9,7 @@ import Extensions from './screens/Extensions';
 import MangaList from './screens/MangaList';
 import Manga from './screens/Manga';
 import Reader from './screens/Reader';
-import Search from './screens/Search';
+import Search from './screens/SearchSingle';
 import NavBarTitle from './context/NavbarTitle';
 
 export default function App() {
@@ -22,7 +22,7 @@ export default function App() {
                 <NavBar />
 
                 <Switch>
-                    <Route path="/search">
+                    <Route path="/sources/:sourceId/search/">
                         <Search />
                     </Route>
                     <Route path="/extensions">

@@ -1,13 +1,16 @@
 package ir.armor.tachidesk.util
 
+import ir.armor.tachidesk.database.dataclass.MangaDataClass
+
 fun sourceFilters(sourceId: Long) {
     val source = getHttpSource(sourceId)
     // source.getFilterList().toItems()
 }
 
-fun sourceSearch(sourceId: Long, searchTerm: String) {
+fun sourceSearch(sourceId: Long, searchTerm: String, pageNum: Int): List<MangaDataClass> {
     val source = getHttpSource(sourceId)
-    // source.fetchSearchManga()
+    val searchManga = source.fetchSearchManga(pageNum, searchTerm, source.getFilterList()).toBlocking().first()
+    return searchManga.processEntries(sourceId)
 }
 
 fun sourceGlobalSearch(searchTerm: String) {
@@ -18,7 +21,7 @@ data class FilterWrapper(
     val filter: Any
 )
 
-// private fun FilterList.toItems(): List<FilterWrapper> {
+// private fun FilterList.toFilterWrapper(): List<FilterWrapper> {
 //    return mapNotNull { filter ->
 //        when (filter) {
 //            is Filter.Header -> FilterWrapper("Header",filter)

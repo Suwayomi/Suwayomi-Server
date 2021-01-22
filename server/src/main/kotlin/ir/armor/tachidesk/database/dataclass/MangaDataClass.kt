@@ -8,7 +8,7 @@ data class MangaDataClass(
 
     val url: String,
     val title: String,
-    val thumbnail_url: String? = null,
+    val thumbnailUrl: String? = null,
 
     val initialized: Boolean = false,
 

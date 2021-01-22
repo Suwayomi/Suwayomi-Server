@@ -1,5 +1,6 @@
 package ir.armor.tachidesk.util
 
+import eu.kanade.tachiyomi.source.model.MangasPage
 import ir.armor.tachidesk.database.dataclass.MangaDataClass
 import ir.armor.tachidesk.database.table.MangaStatus
 import ir.armor.tachidesk.database.table.MangaTable
@@ -17,6 +18,11 @@ fun getMangaList(sourceId: Long, pageNum: Int = 1, popular: Boolean): List<Manga
         else
             throw Exception("Source $source doesn't support latest")
     }
+    return mangasPage.processEntries(sourceId)
+}
+
+fun MangasPage.processEntries(sourceId: Long): List<MangaDataClass> {
+    val mangasPage = this
     return transaction {
         return@transaction mangasPage.mangas.map { manga ->
             var mangaEntry = MangaTable.select { MangaTable.url eq manga.url }.firstOrNull()

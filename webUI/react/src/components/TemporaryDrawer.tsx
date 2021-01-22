@@ -48,14 +48,14 @@ export default function TemporaryDrawer({ drawerOpen, setDrawerOpen }: IProps) {
                         <ListItemText primary="Sources" />
                     </ListItem>
                 </Link>
-                <Link to="/search" style={{ color: 'inherit', textDecoration: 'none' }}>
+                {/* <Link to="/search" style={{ color: 'inherit', textDecoration: 'none' }}>
                     <ListItem button key="Search">
                         <ListItemIcon>
                             <InboxIcon />
                         </ListItemIcon>
                         <ListItemText primary="Global Search" />
                     </ListItem>
-                </Link>
+                </Link> */}
             </List>
         </div>
     );

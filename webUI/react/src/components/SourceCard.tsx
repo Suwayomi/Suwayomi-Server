@@ -65,8 +65,9 @@ export default function SourceCard(props: IProps) {
                     </div>
                 </div>
                 <div style={{ display: 'flex' }}>
-                    {supportsLatest && <Button variant="outlined" style={{ marginLeft: 20 }} onClick={() => { window.location.href = `sources/${id}/latest/`; }}>Latest</Button>}
-                    <Button variant="outlined" style={{ marginLeft: 20 }} onClick={() => { window.location.href = `sources/${id}/popular/`; }}>Browse</Button>
+                    <Button variant="outlined" style={{ marginLeft: 20 }} onClick={() => { window.location.href = `/sources/${id}/search/`; }}>Search</Button>
+                    {supportsLatest && <Button variant="outlined" style={{ marginLeft: 20 }} onClick={() => { window.location.href = `/sources/${id}/latest/`; }}>Latest</Button>}
+                    <Button variant="outlined" style={{ marginLeft: 20 }} onClick={() => { window.location.href = `/sources/${id}/popular/`; }}>Browse</Button>
                 </div>
             </CardContent>
         </Card>

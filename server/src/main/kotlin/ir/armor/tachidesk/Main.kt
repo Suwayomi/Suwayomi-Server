@@ -119,10 +119,11 @@ class Main {
             }
 
             // single source search
-            app.get("/api/v1/source/:sourceId/search/:searchTerm") { ctx ->
+            app.get("/api/v1/source/:sourceId/search/:searchTerm/:pageNum") { ctx ->
                 val sourceId = ctx.pathParam("sourceId").toLong()
                 val searchTerm = ctx.pathParam("searchTerm")
-                ctx.json(sourceSearch(sourceId, searchTerm))
+                val pageNum = ctx.pathParam("pageNum").toInt()
+                ctx.json(sourceSearch(sourceId, searchTerm, pageNum))
             }
 
             // source filter list
