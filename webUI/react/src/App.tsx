@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import {
     BrowserRouter as Router, Route, Switch,
 } from 'react-router-dom';
+import CssBaseline from '@material-ui/core/CssBaseline';
+import { createMuiTheme, ThemeProvider } from '@material-ui/core/styles';
+
 import NavBar from './components/NavBar';
 import Home from './screens/Home';
 import Sources from './screens/Sources';
@@ -11,43 +14,61 @@ import Manga from './screens/Manga';
 import Reader from './screens/Reader';
 import Search from './screens/SearchSingle';
 import NavBarTitle from './context/NavbarTitle';
+import DarkTheme from './context/DarkTheme';
 
 export default function App() {
     const [title, setTitle] = useState<string>('Tachidesk');
-    const contextValue = { title, setTitle };
+    const [darkTheme, setDarkTheme] = useState<boolean>(true);
+    const navTitleContext = { title, setTitle };
+    const darkThemeContext = { darkTheme, setDarkTheme };
+
+    const theme = React.useMemo(
+        () => createMuiTheme({
+            palette: {
+                type: darkTheme ? 'dark' : 'light',
+            },
+        }),
+        [darkTheme],
+    );
 
     return (
         <Router>
-            <NavBarTitle.Provider value={contextValue}>
-                <NavBar />
 
-                <Switch>
-                    <Route path="/sources/:sourceId/search/">
-                        <Search />
-                    </Route>
-                    <Route path="/extensions">
-                        <Extensions />
-                    </Route>
-                    <Route path="/sources/:sourceId/popular/">
-                        <MangaList popular />
-                    </Route>
-                    <Route path="/sources/:sourceId/latest/">
-                        <MangaList popular={false} />
-                    </Route>
-                    <Route path="/sources">
-                        <Sources />
-                    </Route>
-                    <Route path="/manga/:mangaId/chapter/:chapterId">
-                        <Reader />
-                    </Route>
-                    <Route path="/manga/:id">
-                        <Manga />
-                    </Route>
-                    <Route path="/">
-                        <Home />
-                    </Route>
-                </Switch>
-            </NavBarTitle.Provider>
+            <ThemeProvider theme={theme}>
+                <NavBarTitle.Provider value={navTitleContext}>
+                    <CssBaseline />
+                    <DarkTheme.Provider value={darkThemeContext}>
+                        <NavBar />
+                    </DarkTheme.Provider>
+
+                    <Switch>
+                        <Route path="/sources/:sourceId/search/">
+                            <Search />
+                        </Route>
+                        <Route path="/extensions">
+                            <Extensions />
+                        </Route>
+                        <Route path="/sources/:sourceId/popular/">
+                            <MangaList popular />
+                        </Route>
+                        <Route path="/sources/:sourceId/latest/">
+                            <MangaList popular={false} />
+                        </Route>
+                        <Route path="/sources">
+                            <Sources />
+                        </Route>
+                        <Route path="/manga/:mangaId/chapter/:chapterId">
+                            <Reader />
+                        </Route>
+                        <Route path="/manga/:id">
+                            <Manga />
+                        </Route>
+                        <Route path="/">
+                            <Home />
+                        </Route>
+                    </Switch>
+                </NavBarTitle.Provider>
+            </ThemeProvider>
         </Router>
     );
 }

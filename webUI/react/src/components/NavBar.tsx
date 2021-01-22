@@ -1,12 +1,17 @@
 import React, { useContext, useState } from 'react';
 import { makeStyles } from '@material-ui/core/styles';
+import MoreIcon from '@material-ui/icons/MoreVert';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
 import IconButton from '@material-ui/core/IconButton';
 import MenuIcon from '@material-ui/icons/Menu';
+import MenuItem from '@material-ui/core/MenuItem';
+import Menu from '@material-ui/core/Menu';
+
 import TemporaryDrawer from './TemporaryDrawer';
 import NavBarTitle from '../context/NavbarTitle';
+import DarkTheme from '../context/DarkTheme';
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -20,14 +25,35 @@ const useStyles = makeStyles((theme) => ({
     },
 }));
 
+// const theme = createMuiTheme({
+//     overrides: {
+//         MuiAppBar: {
+//             colorPrimary: { backgroundColor: '#FFC0CB' },
+//         },
+//     },
+//     palette: { type: 'dark' },
+// });
+
 export default function NavBar() {
     const classes = useStyles();
     const [drawerOpen, setDrawerOpen] = useState(false);
+    const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const { title } = useContext(NavBarTitle);
+    const open = Boolean(anchorEl);
+
+    const { setDarkTheme } = useContext(DarkTheme);
+
+    const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
+        setAnchorEl(event.currentTarget);
+    };
+
+    const handleClose = () => {
+        setAnchorEl(null);
+    };
 
     return (
         <div className={classes.root}>
-            <AppBar position="static">
+            <AppBar position="static" color="default">
                 <Toolbar>
                     <IconButton
                         edge="start"
@@ -42,6 +68,32 @@ export default function NavBar() {
                     <Typography variant="h6" className={classes.title}>
                         {title}
                     </Typography>
+                    <IconButton
+                        onClick={handleMenu}
+                        aria-label="display more actions"
+                        edge="end"
+                        color="inherit"
+                    >
+                        <MoreIcon />
+                    </IconButton>
+                    <Menu
+                        id="menu-appbar"
+                        anchorEl={anchorEl}
+                        anchorOrigin={{
+                            vertical: 'top',
+                            horizontal: 'right',
+                        }}
+                        keepMounted
+                        transformOrigin={{
+                            vertical: 'top',
+                            horizontal: 'right',
+                        }}
+                        open={open}
+                        onClose={handleClose}
+                    >
+                        <MenuItem onClick={() => setDarkTheme(true)}>Dark Theme</MenuItem>
+                        <MenuItem onClick={() => setDarkTheme(false)}>Light Theme</MenuItem>
+                    </Menu>
                 </Toolbar>
             </AppBar>
             <TemporaryDrawer drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen} />
