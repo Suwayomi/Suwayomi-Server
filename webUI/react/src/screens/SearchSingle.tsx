@@ -82,7 +82,7 @@ export default function SearchSingle() {
             <form className={classes.root} noValidate autoComplete="off">
                 <TextField inputRef={textInput} error={error} id="standard-basic" label="Search text.." />
                 <Button variant="contained" color="primary" onClick={() => processInput()}>
-                    Primary
+                    Search
                 </Button>
             </form>
             {mangaGrid}
