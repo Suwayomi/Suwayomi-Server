@@ -6,7 +6,6 @@ export default function Sources() {
     const { setTitle } = useContext(NavBarTitle);
     setTitle('Sources');
     const [sources, setSources] = useState<ISource[]>([]);
-    let mapped;
 
     useEffect(() => {
         fetch('http://127.0.0.1:4567/api/v1/source/list')
@@ -15,10 +14,7 @@ export default function Sources() {
     }, []);
 
     if (sources.length === 0) {
-        mapped = <h3>wait</h3>;
-    } else {
-        mapped = sources.map((it) => <SourceCard source={it} />);
+        return (<h3>wait</h3>);
     }
-
-    return <h2>{mapped}</h2>;
+    return <>{sources.map((it) => <SourceCard source={it} />)}</>;
 }

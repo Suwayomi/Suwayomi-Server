@@ -6,7 +6,6 @@ export default function Extensions() {
     const { setTitle } = useContext(NavBarTitle);
     setTitle('Extensions');
     const [extensions, setExtensions] = useState<IExtension[]>([]);
-    let mapped;
 
     useEffect(() => {
         fetch('http://127.0.0.1:4567/api/v1/extension/list')
@@ -15,10 +14,7 @@ export default function Extensions() {
     }, []);
 
     if (extensions.length === 0) {
-        mapped = <h3>wait</h3>;
-    } else {
-        mapped = extensions.map((it) => <ExtensionCard extension={it} />);
+        return <h3>wait</h3>;
     }
-
-    return <h2>{mapped}</h2>;
+    return <>{extensions.map((it) => <ExtensionCard extension={it} />)}</>;
 }
