@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import TextField from '@material-ui/core/TextField';
 import Button from '@material-ui/core/Button';
 import MangaGrid from '../components/MangaGrid';
+import NavBarTitle from '../context/NavbarTitle';
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -14,6 +15,8 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 export default function Search() {
+    const { setTitle } = useContext(NavBarTitle);
+    setTitle('Search');
     const classes = useStyles();
     const [error, setError] = useState<boolean>(false);
     const [mangas, setMangas] = useState<IManga[]>([]);

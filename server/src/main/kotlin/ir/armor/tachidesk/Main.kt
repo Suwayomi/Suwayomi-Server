@@ -8,6 +8,7 @@ import ir.armor.tachidesk.util.getExtensionList
 import ir.armor.tachidesk.util.getManga
 import ir.armor.tachidesk.util.getMangaList
 import ir.armor.tachidesk.util.getPages
+import ir.armor.tachidesk.util.getSource
 import ir.armor.tachidesk.util.getSourceList
 import ir.armor.tachidesk.util.installAPK
 import ir.armor.tachidesk.util.sourceFilters
@@ -33,6 +34,10 @@ class Main {
 
         @JvmStatic
         fun main(args: Array<String>) {
+            System.getProperties()["proxySet"] = "true"
+            System.getProperties()["socksProxyHost"] = "127.0.0.1"
+            System.getProperties()["socksProxyPort"] = "2020"
+
             // make sure everything we need exists
             applicationSetup()
 
@@ -73,6 +78,11 @@ class Main {
             }
             app.get("/api/v1/source/list") { ctx ->
                 ctx.json(getSourceList())
+            }
+
+            app.get("/api/v1/source/:sourceId") { ctx ->
+                val sourceId = ctx.pathParam("sourceId").toLong()
+                ctx.json(getSource(sourceId))
             }
 
             app.get("/api/v1/source/:sourceId/popular/:pageNum") { ctx ->

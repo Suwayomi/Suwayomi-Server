@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import NavBarTitle from '../context/NavbarTitle';
 
 const style = {
     display: 'flex',
@@ -14,14 +15,24 @@ interface IPage {
     imageUrl: string
 }
 
+interface IData {
+    first: IChapter
+    second: IPage[]
+}
+
 export default function Reader() {
+    const { setTitle } = useContext(NavBarTitle);
+
     const [pages, setPages] = useState<IPage[]>([]);
     const { chapterId, mangaId } = useParams<{chapterId: string, mangaId: string}>();
 
     useEffect(() => {
         fetch(`http://127.0.0.1:4567/api/v1/manga/${mangaId}/chapter/${chapterId}`)
             .then((response) => response.json())
-            .then((data) => setPages(data));
+            .then((data:IData) => {
+                setTitle(data.first.name);
+                setPages(data.second);
+            });
     }, []);
 
     pages.sort((a, b) => (a.index - b.index));

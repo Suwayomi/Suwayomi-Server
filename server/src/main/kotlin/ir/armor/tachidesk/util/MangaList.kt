@@ -40,7 +40,7 @@ fun getMangaList(sourceId: Long, pageNum: Int = 1, popular: Boolean): List<Manga
 
             MangaDataClass(
                 mangaEntityId,
-                sourceId.toLong(),
+                sourceId,
 
                 manga.url,
                 manga.title,

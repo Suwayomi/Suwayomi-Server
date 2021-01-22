@@ -80,3 +80,17 @@ fun getSourceList(): List<SourceDataClass> {
         }
     }
 }
+
+fun getSource(sourceId: Long): SourceDataClass {
+    return transaction {
+        val source = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!!
+
+        return@transaction SourceDataClass(
+            source[SourceTable.id].value.toString(),
+            source[SourceTable.name],
+            Locale(source[SourceTable.lang]).getDisplayLanguage(Locale(source[SourceTable.lang])),
+            ExtensionsTable.select { ExtensionsTable.id eq source[SourceTable.extension] }.first()[ExtensionsTable.iconUrl],
+            getHttpSource(source[SourceTable.id].value).supportsLatest
+        )
+    }
+}

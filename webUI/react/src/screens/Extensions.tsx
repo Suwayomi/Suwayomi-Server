@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import ExtensionCard from '../components/ExtensionCard';
+import NavBarTitle from '../context/NavbarTitle';
 
 export default function Extensions() {
-    let mapped;
+    const { setTitle } = useContext(NavBarTitle);
+    setTitle('Extensions');
     const [extensions, setExtensions] = useState<IExtension[]>([]);
+    let mapped;
 
     useEffect(() => {
         fetch('http://127.0.0.1:4567/api/v1/extension/list')

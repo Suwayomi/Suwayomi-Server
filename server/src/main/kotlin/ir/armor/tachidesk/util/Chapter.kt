@@ -53,7 +53,7 @@ fun getChapterList(mangaId: Int): List<ChapterDataClass> {
     }
 }
 
-fun getPages(chapterId: Int, mangaId: Int): List<PageDataClass> {
+fun getPages(chapterId: Int, mangaId: Int): Pair<ChapterDataClass, List<PageDataClass>> {
     return transaction {
         val chapterEntry = ChapterTable.select { ChapterTable.id eq chapterId }.firstOrNull()!!
         assert(mangaId == chapterEntry[ChapterTable.manga].value) // sanity check
@@ -67,12 +67,24 @@ fun getPages(chapterId: Int, mangaId: Int): List<PageDataClass> {
             }
         ).toBlocking().first()
 
-        return@transaction pagesList.map {
+        val chapter = ChapterDataClass(
+            chapterEntry[ChapterTable.id].value,
+            chapterEntry[ChapterTable.url],
+            chapterEntry[ChapterTable.name],
+            chapterEntry[ChapterTable.date_upload],
+            chapterEntry[ChapterTable.chapter_number],
+            chapterEntry[ChapterTable.scanlator],
+            mangaId
+        )
+
+        val pages = pagesList.map {
             PageDataClass(
                 it.index,
                 getTrueImageUrl(it, source)
             )
         }
+
+        return@transaction Pair(chapter, pages)
     }
 }
 
