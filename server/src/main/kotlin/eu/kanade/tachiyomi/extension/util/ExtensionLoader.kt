@@ -1,28 +1,22 @@
 package eu.kanade.tachiyomi.extension.util
 
-//import android.annotation.SuppressLint
-//import android.content.Context
-//import android.content.pm.PackageInfo
-//import android.content.pm.PackageManager
-//import dalvik.system.PathClassLoader
-import eu.kanade.tachiyomi.annoations.Nsfw
-//import eu.kanade.tachiyomi.data.preference.PreferenceValues
-//import eu.kanade.tachiyomi.data.preference.PreferencesHelper
-import eu.kanade.tachiyomi.extension.model.Extension
-import eu.kanade.tachiyomi.extension.model.LoadResult
-import eu.kanade.tachiyomi.source.CatalogueSource
-import eu.kanade.tachiyomi.source.Source
-import eu.kanade.tachiyomi.source.SourceFactory
-//import eu.kanade.tachiyomi.util.lang.Hash
-//import kotlinx.coroutines.async
-//import kotlinx.coroutines.runBlocking
-//import timber.log.Timber
-//import uy.kohesive.injekt.injectLazy
+// import android.annotation.SuppressLint
+// import android.content.Context
+// import android.content.pm.PackageInfo
+// import android.content.pm.PackageManager
+// import dalvik.system.PathClassLoader
+// import eu.kanade.tachiyomi.data.preference.PreferenceValues
+// import eu.kanade.tachiyomi.data.preference.PreferencesHelper
+// import eu.kanade.tachiyomi.util.lang.Hash
+// import kotlinx.coroutines.async
+// import kotlinx.coroutines.runBlocking
+// import timber.log.Timber
+// import uy.kohesive.injekt.injectLazy
 
 /**
  * Class that handles the loading of the extensions installed in the system.
  */
-//@SuppressLint("PackageManagerGetSignatures")
+// @SuppressLint("PackageManagerGetSignatures")
 internal object ExtensionLoader {
 
 //    private val preferences: PreferencesHelper by injectLazy()

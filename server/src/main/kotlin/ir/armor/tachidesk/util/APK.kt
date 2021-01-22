@@ -41,7 +41,6 @@ fun installAPK(apkName: String): Int {
             // download apk file
             downloadAPKFile(apkToDownload, apkFilePath)
 
-
             val className: String = APKExtractor.extract_dex_and_read_className(apkFilePath, dexFilePath)
             println(className)
             // dex -> jar
@@ -60,7 +59,7 @@ fun installAPK(apkName: String): Int {
                 return@transaction ExtensionsTable.select { ExtensionsTable.name eq extensionRecord.name }.first()[ExtensionsTable.id]
             }
 
-            if (instance is HttpSource) {// single source
+            if (instance is HttpSource) { // single source
                 val httpSource = instance as HttpSource
                 transaction {
 //                            SourceEntity.new  {
@@ -80,7 +79,6 @@ fun installAPK(apkName: String): Int {
 //                            println(httpSource.name)
 //                            println()
                 }
-
             } else { // multi source
                 val sourceFactory = instance as SourceFactory
                 transaction {
@@ -110,7 +108,6 @@ fun installAPK(apkName: String): Int {
                     it[classFQName] = className
                 }
             }
-
         }
         return 201 // we downloaded successfully
     } else {
@@ -122,7 +119,7 @@ val networkHelper: NetworkHelper by injectLazy()
 
 private fun downloadAPKFile(url: String, apkPath: String) {
     val request = Request.Builder().url(url).build()
-    val response =  networkHelper.client.newCall(request).execute()
+    val response = networkHelper.client.newCall(request).execute()
 
     val downloadedFile = File(apkPath)
     val sink = downloadedFile.sink().buffer()

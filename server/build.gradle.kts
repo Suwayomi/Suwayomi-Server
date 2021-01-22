@@ -5,6 +5,7 @@ plugins {
 //    id("org.jetbrains.kotlin.jvm") version "1.4.21"
     application
     id("com.github.johnrengelman.shadow") version "6.1.0"
+    id("org.jmailen.kotlinter") version "3.3.0"
 }
 
 val TachideskVersion = "v0.0.2"
@@ -139,9 +140,16 @@ tasks {
 
 tasks.withType<ShadowJar> {
     destinationDir = File("$rootDir/server/build")
+    dependsOn("lintKotlin")
 }
 
 tasks.named("processResources") {
     dependsOn(":webUI:copyBuild")
 }
+
+tasks.named("run") {
+    dependsOn("formatKotlin", "lintKotlin")
+}
+
+
 

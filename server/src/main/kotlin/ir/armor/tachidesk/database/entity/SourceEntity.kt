@@ -1,7 +1,8 @@
 package ir.armor.tachidesk.database.entity
 
 import ir.armor.tachidesk.database.table.SourceTable
-import org.jetbrains.exposed.dao.*
+import org.jetbrains.exposed.dao.EntityClass
+import org.jetbrains.exposed.dao.LongEntity
 import org.jetbrains.exposed.dao.id.EntityID
 
 class SourceEntity(id: EntityID<Long>) : LongEntity(id) {

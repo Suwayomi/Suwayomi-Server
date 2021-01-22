@@ -13,7 +13,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.net.URL
 import java.net.URLClassLoader
-import java.util.*
+import java.util.Locale
 
 private val sourceCache = mutableListOf<Pair<Long, HttpSource>>()
 private val extensionCache = mutableListOf<Pair<String, Any>>()
@@ -39,16 +39,16 @@ fun getHttpSource(sourceId: Long): HttpSource {
         val cachedExtensionPair = extensionCache.firstOrNull { it.first == jarPath }
         var usedCached = false
         val instance =
-                if (cachedExtensionPair != null) {
-                    usedCached = true
-                    println("Used cached Extension")
-                    cachedExtensionPair.second
-                } else {
-                    println("No Extension cache")
-                    val child = URLClassLoader(arrayOf<URL>(URL("file:$jarPath")), this::class.java.classLoader)
-                    val classToLoad = Class.forName(className, true, child)
-                    classToLoad.newInstance()
-                }
+            if (cachedExtensionPair != null) {
+                usedCached = true
+                println("Used cached Extension")
+                cachedExtensionPair.second
+            } else {
+                println("No Extension cache")
+                val child = URLClassLoader(arrayOf<URL>(URL("file:$jarPath")), this::class.java.classLoader)
+                val classToLoad = Class.forName(className, true, child)
+                classToLoad.newInstance()
+            }
         if (sourceRecord.partOfFactorySource) {
             return@transaction if (usedCached) {
                 (instance as List<HttpSource>)[sourceRecord.positionInFactorySource!!]
@@ -71,11 +71,11 @@ fun getSourceList(): List<SourceDataClass> {
     return transaction {
         return@transaction SourceTable.selectAll().map {
             SourceDataClass(
-                    it[SourceTable.id].value.toString(),
-                    it[SourceTable.name],
-                    Locale(it[SourceTable.lang]).getDisplayLanguage(Locale(it[SourceTable.lang])),
-                    ExtensionsTable.select { ExtensionsTable.id eq it[SourceTable.extension] }.first()[ExtensionsTable.iconUrl],
-                    getHttpSource(it[SourceTable.id].value).supportsLatest
+                it[SourceTable.id].value.toString(),
+                it[SourceTable.name],
+                Locale(it[SourceTable.lang]).getDisplayLanguage(Locale(it[SourceTable.lang])),
+                ExtensionsTable.select { ExtensionsTable.id eq it[SourceTable.extension] }.first()[ExtensionsTable.iconUrl],
+                getHttpSource(it[SourceTable.id].value).supportsLatest
             )
         }
     }

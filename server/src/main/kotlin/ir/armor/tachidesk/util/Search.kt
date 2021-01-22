@@ -1,28 +1,24 @@
 package ir.armor.tachidesk.util
 
-import eu.kanade.tachiyomi.source.model.Filter
-import eu.kanade.tachiyomi.source.model.FilterList
-
 fun sourceFilters(sourceId: Long) {
     val source = getHttpSource(sourceId)
-    //source.getFilterList().toItems()
+    // source.getFilterList().toItems()
 }
 
 fun sourceSearch(sourceId: Long, searchTerm: String) {
     val source = getHttpSource(sourceId)
-    //source.fetchSearchManga()
+    // source.fetchSearchManga()
 }
 
 fun sourceGlobalSearch(searchTerm: String) {
-
 }
 
 data class FilterWrapper(
-        val type: String,
-        val filter: Any
+    val type: String,
+    val filter: Any
 )
 
-//private fun FilterList.toItems(): List<FilterWrapper> {
+// private fun FilterList.toItems(): List<FilterWrapper> {
 //    return mapNotNull { filter ->
 //        when (filter) {
 //            is Filter.Header -> FilterWrapper("Header",filter)
@@ -56,4 +52,4 @@ data class FilterWrapper(
 //            }
 //        }
 //    }
-//}
+// }

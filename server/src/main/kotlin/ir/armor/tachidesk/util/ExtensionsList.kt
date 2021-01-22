@@ -67,18 +67,17 @@ fun getExtensionList(offline: Boolean = false): List<ExtensionDataClass> {
     return transaction {
         return@transaction ExtensionsTable.selectAll().map {
             ExtensionDataClass(
-                    it[ExtensionsTable.name],
-                    it[ExtensionsTable.pkgName],
-                    it[ExtensionsTable.versionName],
-                    it[ExtensionsTable.versionCode],
-                    it[ExtensionsTable.lang],
-                    it[ExtensionsTable.isNsfw],
-                    it[ExtensionsTable.apkName],
-                    it[ExtensionsTable.iconUrl],
-                    it[ExtensionsTable.installed],
-                    it[ExtensionsTable.classFQName]
+                it[ExtensionsTable.name],
+                it[ExtensionsTable.pkgName],
+                it[ExtensionsTable.versionName],
+                it[ExtensionsTable.versionCode],
+                it[ExtensionsTable.lang],
+                it[ExtensionsTable.isNsfw],
+                it[ExtensionsTable.apkName],
+                it[ExtensionsTable.iconUrl],
+                it[ExtensionsTable.installed],
+                it[ExtensionsTable.classFQName]
             )
         }
-
     }
 }

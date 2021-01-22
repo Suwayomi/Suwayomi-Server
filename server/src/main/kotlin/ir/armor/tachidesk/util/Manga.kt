@@ -14,28 +14,28 @@ fun getManga(mangaId: Int): MangaDataClass {
 
         return@transaction if (mangaEntry[MangaTable.initialized]) {
             MangaDataClass(
-                    mangaId,
-                    mangaEntry[MangaTable.sourceReference].value,
+                mangaId,
+                mangaEntry[MangaTable.sourceReference].value,
 
-                    mangaEntry[MangaTable.url],
-                    mangaEntry[MangaTable.title],
-                    mangaEntry[MangaTable.thumbnail_url],
+                mangaEntry[MangaTable.url],
+                mangaEntry[MangaTable.title],
+                mangaEntry[MangaTable.thumbnail_url],
 
-                    true,
+                true,
 
-                    mangaEntry[MangaTable.artist],
-                    mangaEntry[MangaTable.author],
-                    mangaEntry[MangaTable.description],
-                    mangaEntry[MangaTable.genre],
-                    MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
+                mangaEntry[MangaTable.artist],
+                mangaEntry[MangaTable.author],
+                mangaEntry[MangaTable.description],
+                mangaEntry[MangaTable.genre],
+                MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
             )
         } else { // initialize manga
             val source = getHttpSource(mangaEntry[MangaTable.sourceReference].value)
             val fetchedManga = source.fetchMangaDetails(
-                    SManga.create().apply {
-                        url = mangaEntry[MangaTable.url]
-                        title = mangaEntry[MangaTable.title]
-                    }
+                SManga.create().apply {
+                    url = mangaEntry[MangaTable.url]
+                    title = mangaEntry[MangaTable.title]
+                }
             ).toBlocking().first()
 
             // update database
@@ -56,23 +56,21 @@ fun getManga(mangaId: Int): MangaDataClass {
             mangaEntry = MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!!
 
             MangaDataClass(
-                    mangaId,
-                    mangaEntry[MangaTable.sourceReference].value,
+                mangaId,
+                mangaEntry[MangaTable.sourceReference].value,
 
+                mangaEntry[MangaTable.url],
+                mangaEntry[MangaTable.title],
+                mangaEntry[MangaTable.thumbnail_url],
 
-                    mangaEntry[MangaTable.url],
-                    mangaEntry[MangaTable.title],
-                    mangaEntry[MangaTable.thumbnail_url],
+                true,
 
-                    true,
-
-                    mangaEntry[MangaTable.artist],
-                    mangaEntry[MangaTable.author],
-                    mangaEntry[MangaTable.description],
-                    mangaEntry[MangaTable.genre],
-                    MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
+                mangaEntry[MangaTable.artist],
+                mangaEntry[MangaTable.author],
+                mangaEntry[MangaTable.description],
+                mangaEntry[MangaTable.genre],
+                MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
             )
         }
     }
 }
-

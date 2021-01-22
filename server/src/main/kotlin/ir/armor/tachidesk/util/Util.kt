@@ -9,6 +9,5 @@ fun applicationSetup() {
     File(Config.dataRoot).mkdirs()
     File(Config.extensionsRoot).mkdirs()
 
-
     makeDataBaseTables()
 }

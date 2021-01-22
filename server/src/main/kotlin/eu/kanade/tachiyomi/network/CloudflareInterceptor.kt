@@ -1,30 +1,23 @@
 package eu.kanade.tachiyomi.network
 
-//import android.annotation.SuppressLint
-//import android.content.Context
-//import android.os.Build
-//import android.os.Handler
-//import android.os.Looper
-//import android.webkit.WebSettings
-//import android.webkit.WebView
-//import android.widget.Toast
-//import eu.kanade.tachiyomi.R
-import eu.kanade.tachiyomi.source.online.HttpSource
-//import eu.kanade.tachiyomi.util.lang.launchUI
-//import eu.kanade.tachiyomi.util.system.WebViewClientCompat
-//import eu.kanade.tachiyomi.util.system.WebViewUtil
-//import eu.kanade.tachiyomi.util.system.isOutdated
-//import eu.kanade.tachiyomi.util.system.setDefaultSettings
-//import eu.kanade.tachiyomi.util.system.toast
-import okhttp3.Cookie
-import okhttp3.HttpUrl.Companion.toHttpUrl
+// import android.annotation.SuppressLint
+// import android.content.Context
+// import android.os.Build
+// import android.os.Handler
+// import android.os.Looper
+// import android.webkit.WebSettings
+// import android.webkit.WebView
+// import android.widget.Toast
+// import eu.kanade.tachiyomi.R
+// import eu.kanade.tachiyomi.util.lang.launchUI
+// import eu.kanade.tachiyomi.util.system.WebViewClientCompat
+// import eu.kanade.tachiyomi.util.system.WebViewUtil
+// import eu.kanade.tachiyomi.util.system.isOutdated
+// import eu.kanade.tachiyomi.util.system.setDefaultSettings
+// import eu.kanade.tachiyomi.util.system.toast
 import okhttp3.Interceptor
-import okhttp3.Request
 import okhttp3.Response
-//import uy.kohesive.injekt.injectLazy
-import java.io.IOException
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
+// import uy.kohesive.injekt.injectLazy
 
 class CloudflareInterceptor() : Interceptor {
 
@@ -77,7 +70,7 @@ class CloudflareInterceptor() : Interceptor {
 //        }
     }
 //
-////    @SuppressLint("SetJavaScriptEnabled")
+// //    @SuppressLint("SetJavaScriptEnabled")
 //    private fun resolveWithWebView(request: Request, oldCookie: Cookie?) {
 //        // We need to lock this thread until the WebView finds the challenge solution url, because
 //        // OkHttp doesn't support asynchronous interceptors.

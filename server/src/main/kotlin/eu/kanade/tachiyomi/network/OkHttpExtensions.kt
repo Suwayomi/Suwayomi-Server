@@ -1,18 +1,14 @@
 package eu.kanade.tachiyomi.network
 
-//import kotlinx.coroutines.suspendCancellableCoroutine
+// import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
-import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import rx.Observable
 import rx.Producer
 import rx.Subscription
-import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 fun Call.asObservable(): Observable<Response> {
     return Observable.unsafeCreate { subscriber ->
@@ -52,7 +48,7 @@ fun Call.asObservable(): Observable<Response> {
 }
 
 // Based on https://github.com/gildor/kotlin-coroutines-okhttp
-//suspend fun Call.await(assertSuccess: Boolean = false): Response {
+// suspend fun Call.await(assertSuccess: Boolean = false): Response {
 //    return suspendCancellableCoroutine { continuation ->
 //        enqueue(
 //            object : Callback {
@@ -81,7 +77,7 @@ fun Call.asObservable(): Observable<Response> {
 //            }
 //        }
 //    }
-//}
+// }
 
 fun Call.asObservableSuccess(): Observable<Response> {
     return asObservable().doOnNext { response ->
@@ -92,7 +88,7 @@ fun Call.asObservableSuccess(): Observable<Response> {
     }
 }
 
-//fun OkHttpClient.newCallWithProgress(request: Request, listener: ProgressListener): Call {
+// fun OkHttpClient.newCallWithProgress(request: Request, listener: ProgressListener): Call {
 //    val progressClient = newBuilder()
 //        .cache(null)
 //        .addNetworkInterceptor { chain ->
@@ -104,7 +100,7 @@ fun Call.asObservableSuccess(): Observable<Response> {
 //        .build()
 //
 //    return progressClient.newCall(request)
-//}
+// }
 
 fun OkHttpClient.newCallWithProgress(request: Request, listener: ProgressListener): Call {
     val progressClient = newBuilder()

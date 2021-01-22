@@ -3,8 +3,6 @@ package ir.armor.tachidesk.util
 import ir.armor.tachidesk.database.dataclass.MangaDataClass
 import ir.armor.tachidesk.database.table.MangaStatus
 import ir.armor.tachidesk.database.table.MangaTable
-import ir.armor.tachidesk.database.table.SourceTable
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -41,20 +39,20 @@ fun getMangaList(sourceId: Long, pageNum: Int = 1, popular: Boolean): List<Manga
             }
 
             MangaDataClass(
-                    mangaEntityId,
-                    sourceId.toLong(),
+                mangaEntityId,
+                sourceId.toLong(),
 
-                    manga.url,
-                    manga.title,
-                    manga.thumbnail_url,
+                manga.url,
+                manga.title,
+                manga.thumbnail_url,
 
-                    manga.initialized,
+                manga.initialized,
 
-                    manga.artist,
-                    manga.author,
-                    manga.description,
-                    manga.genre,
-                    MangaStatus.valueOf(manga.status).name,
+                manga.artist,
+                manga.author,
+                manga.description,
+                manga.genre,
+                MangaStatus.valueOf(manga.status).name,
             )
         }
     }

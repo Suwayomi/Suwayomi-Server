@@ -2,7 +2,17 @@ package ir.armor.tachidesk
 
 import eu.kanade.tachiyomi.App
 import io.javalin.Javalin
-import ir.armor.tachidesk.util.*
+import ir.armor.tachidesk.util.applicationSetup
+import ir.armor.tachidesk.util.getChapterList
+import ir.armor.tachidesk.util.getExtensionList
+import ir.armor.tachidesk.util.getManga
+import ir.armor.tachidesk.util.getMangaList
+import ir.armor.tachidesk.util.getPages
+import ir.armor.tachidesk.util.getSourceList
+import ir.armor.tachidesk.util.installAPK
+import ir.armor.tachidesk.util.sourceFilters
+import ir.armor.tachidesk.util.sourceGlobalSearch
+import ir.armor.tachidesk.util.sourceSearch
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import xyz.nulldev.androidcompat.AndroidCompat
@@ -28,25 +38,22 @@ class Main {
 
             registerConfigModules()
 
-            //Load config API
+            // Load config API
             DI.global.addImport(ConfigKodeinModule().create())
-            //Load Android compatibility dependencies
+            // Load Android compatibility dependencies
             AndroidCompatInitializer().init()
             // start app
             androidCompat.startApp(App())
-
 
             val app = Javalin.create { config ->
                 try {
                     this::class.java.classLoader.getResource("/react/index.html")
                     config.addStaticFiles("/react")
-                    config.addSinglePageRoot("/","/react/index.html")
+                    config.addSinglePageRoot("/", "/react/index.html")
                 } catch (e: RuntimeException) {
                     println("Warning: react build files are missing.")
                 }
             }.start(4567)
-
-
 
             app.before() { ctx ->
                 // allow the client which is running on another port
@@ -57,12 +64,11 @@ class Main {
                 ctx.json(getExtensionList())
             }
 
-
             app.get("/api/v1/extension/install/:apkName") { ctx ->
                 val apkName = ctx.pathParam("apkName")
                 println(apkName)
                 ctx.status(
-                        installAPK(apkName)
+                    installAPK(apkName)
                 )
             }
             app.get("/api/v1/source/list") { ctx ->
@@ -114,11 +120,6 @@ class Main {
                 val sourceId = ctx.pathParam("sourceId").toLong()
                 ctx.json(sourceFilters(sourceId))
             }
-
-
-
-
         }
     }
 }
-

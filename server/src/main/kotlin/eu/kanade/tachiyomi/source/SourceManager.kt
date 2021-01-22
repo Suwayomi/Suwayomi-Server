@@ -1,7 +1,7 @@
 package eu.kanade.tachiyomi.source
 
-//import android.content.Context
-//import eu.kanade.tachiyomi.R
+// import android.content.Context
+// import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga

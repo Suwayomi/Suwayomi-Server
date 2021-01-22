@@ -4,7 +4,7 @@ import org.jetbrains.exposed.dao.id.IdTable
 
 object SourceTable : IdTable<Long>() {
     override val id = long("id").entityId()
-    val name= varchar("name", 128)
+    val name = varchar("name", 128)
     val lang = varchar("lang", 10)
     val extension = reference("extension", ExtensionsTable)
     val partOfFactorySource = bool("part_of_factory_source").default(false)

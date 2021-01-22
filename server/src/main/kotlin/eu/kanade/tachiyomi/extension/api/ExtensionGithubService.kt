@@ -9,7 +9,7 @@ import retrofit2.Retrofit
 import retrofit2.http.GET
 import uy.kohesive.injekt.injectLazy
 
-//import uy.kohesive.injekt.injectLazy
+// import uy.kohesive.injekt.injectLazy
 
 /**
  * Used to get the extension repo listing from GitHub.
