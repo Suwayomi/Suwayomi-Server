@@ -5,18 +5,21 @@ Tachidesk is as multi-platform as you can get. Any platform that runs java and/o
 
 Ability to read and write Tachiyomi compatible backups and syncing is a planned feature.
 
-## How does it work?
-This project has two components: 
-1. **server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run apk extensions. All this concludes to serving a REST API to `webUI`.
-2. **webUI:** A react SPA project that works with the server to do the presentation.
-
 ## How do I run the thing?
+#### Prerequisites
+You should have java 8 or newer and a modern browser installed. Also an internet connection is required as almost everything this app does is downloading stuff. 
+
 #### Running pre-built jar packages
 Download the latest (or a working more stable) release from [the repo branch](https://github.com/AriaMoradi/Tachidesk/tree/repo) or obtain it from [the releases section](https://github.com/AriaMoradi/Tachidesk/releases).
 
 Double click on the jar file or run `java -jar Tachidesk-latest.jar` or `java -jar Tachidesk-vX.Y.Z-rxxx.jar`
 
 The server will be running on `http://localhost:4567` open this url in your browser.
+
+## How does it work?
+This project has two components: 
+1. **server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run apk extensions. All this concludes to serving a REST API to `webUI`.
+2. **webUI:** A react SPA project that works with the server to do the presentation.
 
 ## Building from source
 ### Get Android stubs jar
@@ -37,7 +40,11 @@ How to do it is described in `webUI/react/README.md` but for short,
  and supports HMR and all the other goodies you'll need.
 
 ## Is this application usable? Should I test it?
-Checkout [the state of project](https://github.com/AriaMoradi/Tachidesk/issues/2) to see what's implemented.
+If you'd ask me, I'd tell you If you want to read your manga **online** from tachiyomi or in one place and bypass all the ads, you can use Tachidesk.
+
+There is almost no quality of life feature and no library and downloading and sadly no MangaDex search.
+
+Anyways, for more info checkout [finished milestone #1](https://github.com/AriaMoradi/Tachidesk/issues/2) and [milestone #2](https://github.com/AriaMoradi/Tachidesk/projects/1) to see what's implemented.
 
 ## Credit
 The `AndroidCompat` module and `scripts/getAndroid.sh` was originally developed by [@null-dev](https://github.com/null-dev) for [TachiWeb-Server](https://github.com/Tachiweb/TachiWeb-server) and is licensed under `Apache License Version 2.0`.
