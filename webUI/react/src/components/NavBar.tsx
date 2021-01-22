@@ -41,7 +41,7 @@ export default function NavBar() {
     const { title } = useContext(NavBarTitle);
     const open = Boolean(anchorEl);
 
-    const { setDarkTheme } = useContext(DarkTheme);
+    const { darkTheme, setDarkTheme } = useContext(DarkTheme);
 
     const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
         setAnchorEl(event.currentTarget);
@@ -53,7 +53,7 @@ export default function NavBar() {
 
     return (
         <div className={classes.root}>
-            <AppBar position="static" color="default">
+            <AppBar position="static" color={darkTheme ? 'default' : 'primary'}>
                 <Toolbar>
                     <IconButton
                         edge="start"
