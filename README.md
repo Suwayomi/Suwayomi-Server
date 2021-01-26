@@ -51,6 +51,8 @@ The `AndroidCompat` module and `scripts/getAndroid.sh` was originally developed 
 
 Parts of [tachiyomi](https://github.com/tachiyomiorg/tachiyomi) is adopted into this codebase, also licensed under `Apache License Version 2.0`.
 
+Changes to both projects is licensed under `MPL v. 2.0` as the rest of this project.
+
 You can obtain a copy of the license from  http://www.apache.org/licenses/LICENSE-2.0
 
 ## License
