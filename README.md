@@ -16,10 +16,8 @@ Double click on the jar file or run `java -jar Tachidesk-latest.jar` or `java -j
 
 The server will be running on `http://localhost:4567` open this url in your browser.
 
-## How does it work?
-This project has two components: 
-1. **server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run apk extensions. All this concludes to serving a REST API to `webUI`.
-2. **webUI:** A react SPA project that works with the server to do the presentation.
+#### Running on Docker
+Check [arbuilder's repo](https://github.com/arbuilder/Tachidesk-docker) out for more details and the dockerfile.
 
 ## Building from source
 ### Get Android stubs jar
@@ -45,6 +43,11 @@ If you'd ask me, I'd tell you If you want to read your manga **online** from tac
 There are almost no quality of life features, including no library, no downloading for offline enjoyment and sadly no MangaDex search.
 
 Anyways, for more info checkout [finished milestone #1](https://github.com/AriaMoradi/Tachidesk/issues/2) and [milestone #2](https://github.com/AriaMoradi/Tachidesk/projects/1) to see what's implemented.
+
+## How does it work?
+This project has two components: 
+1. **server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run apk extensions. All this concludes to serving a REST API to `webUI`.
+2. **webUI:** A react SPA project that works with the server to do the presentation.
 
 ## Credit
 The `AndroidCompat` module and `scripts/getAndroid.sh` was originally developed by [@null-dev](https://github.com/null-dev) for [TachiWeb-Server](https://github.com/Tachiweb/TachiWeb-server) and is licensed under `Apache License Version 2.0`.
