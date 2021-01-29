@@ -27,6 +27,8 @@ class NetworkHelper(context: Context) {
 //            .cache(Cache(cacheDir, cacheSize))
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
+//            .dispatcher(Dispatcher(Executors.newFixedThreadPool(1)))
+
 //            .addInterceptor(UserAgentInterceptor())
 
 //        if (BuildConfig.DEBUG) {

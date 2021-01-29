@@ -11,9 +11,11 @@ import ir.armor.tachidesk.util.getChapterList
 import ir.armor.tachidesk.util.getExtensionList
 import ir.armor.tachidesk.util.getManga
 import ir.armor.tachidesk.util.getMangaList
+import ir.armor.tachidesk.util.getMangaUpdateQueueThread
 import ir.armor.tachidesk.util.getPages
 import ir.armor.tachidesk.util.getSource
 import ir.armor.tachidesk.util.getSourceList
+import ir.armor.tachidesk.util.getThumbnail
 import ir.armor.tachidesk.util.installAPK
 import ir.armor.tachidesk.util.sourceFilters
 import ir.armor.tachidesk.util.sourceGlobalSearch
@@ -53,6 +55,8 @@ class Main {
             AndroidCompatInitializer().init()
             // start app
             androidCompat.startApp(App())
+
+            Thread(getMangaUpdateQueueThread).start()
 
             val app = Javalin.create { config ->
                 try {
@@ -114,6 +118,15 @@ class Main {
                 val chapterId = ctx.pathParam("chapterId").toInt()
                 val mangaId = ctx.pathParam("mangaId").toInt()
                 ctx.json(getPages(chapterId, mangaId))
+            }
+
+            app.get("api/v1/manga/:mangaId/thumbnail") { ctx ->
+                val mangaId = ctx.pathParam("mangaId").toInt()
+                println("got request for: $mangaId")
+                val result = getThumbnail(mangaId)
+
+                ctx.result(result.first)
+                ctx.header("content-type", result.second)
             }
 
             // global search

@@ -12,6 +12,7 @@ fun applicationSetup() {
     // make dirs we need
     File(Config.dataRoot).mkdirs()
     File(Config.extensionsRoot).mkdirs()
+    File(Config.thumbnailsRoot).mkdirs()
 
     makeDataBaseTables()
 }

@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import Card from '@material-ui/core/Card';
 import CardActionArea from '@material-ui/core/CardActionArea';
@@ -43,14 +43,28 @@ const useStyles = makeStyles({
 
 interface IProps {
     manga: IManga
+    setMangaThumbnailUrl: (thumbnailUrl:string) => void
 }
 const MangaCard = React.forwardRef((props: IProps, ref) => {
     const {
         manga: {
             id, title, thumbnailUrl,
-        },
+        }, setMangaThumbnailUrl,
     } = props;
     const classes = useStyles();
+
+    console.log(`${title} has ${thumbnailUrl}`);
+
+    if (thumbnailUrl === null || thumbnailUrl.length === 0) {
+        useEffect(() => {
+            fetch(`http://127.0.0.1:4567/api/v1/manga/${id}/`)
+                .then((response) => response.json())
+                .then((data: IManga) => {
+                    setMangaThumbnailUrl(data.thumbnailUrl);
+                });
+        },
+        []);
+    }
 
     return (
         <Grid item xs={6} sm={4} md={3} lg={2}>
