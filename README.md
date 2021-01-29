@@ -49,6 +49,9 @@ This project has two components:
 1. **server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run apk extensions. All this concludes to serving a REST API to `webUI`.
 2. **webUI:** A react SPA project that works with the server to do the presentation.
 
+## Support
+Join Tachidesk's [discord server](https://discord.gg/wgPyb7hE5d) to hang out with the community and receive support.
+
 ## Credit
 The `AndroidCompat` module and `scripts/getAndroid.sh` was originally developed by [@null-dev](https://github.com/null-dev) for [TachiWeb-Server](https://github.com/Tachiweb/TachiWeb-server) and is licensed under `Apache License Version 2.0`.
 
