@@ -12,20 +12,14 @@ interface IProps{
     hasNextPage: boolean
     lastPageNum: number
     setLastPageNum: (lastPageNum: number) => void
-    setMangas: (mangas: IManga[]) => void
 }
 
 export default function MangaGrid(props: IProps) {
     const {
-        mangas, message, hasNextPage, lastPageNum, setLastPageNum, setMangas,
+        mangas, message, hasNextPage, lastPageNum, setLastPageNum,
     } = props;
     let mapped;
     const lastManga = useRef<HTMLInputElement>();
-
-    function setMangaThumbnailUrl(index: number, thumbnailUrl: string) {
-        mangas[index].thumbnailUrl = thumbnailUrl;
-        setMangas(mangas);
-    }
 
     const scrollHandler = () => {
         if (lastManga.current) {
@@ -47,24 +41,9 @@ export default function MangaGrid(props: IProps) {
     } else {
         mapped = mangas.map((it, idx) => {
             if (idx === mangas.length - 1) {
-                return (
-                    <MangaCard
-                        manga={it}
-                        ref={lastManga}
-                        setMangaThumbnailUrl={
-                            (thumbnailUrl:string) => setMangaThumbnailUrl(idx, thumbnailUrl)
-                        }
-                    />
-                );
+                return <MangaCard manga={it} ref={lastManga} />;
             }
-            return (
-                <MangaCard
-                    manga={it}
-                    setMangaThumbnailUrl={
-                        (thumbnailUrl:string) => setMangaThumbnailUrl(idx, thumbnailUrl)
-                    }
-                />
-            );
+            return <MangaCard manga={it} />;
         });
     }
 

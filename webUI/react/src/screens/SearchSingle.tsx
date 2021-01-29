@@ -73,7 +73,6 @@ export default function SearchSingle() {
 
     const mangaGrid = (
         <MangaGrid
-            setMangas={setMangas}
             mangas={mangas}
             message={message}
             hasNextPage={hasNextPage}

@@ -37,7 +37,6 @@ export default function MangaList(props: { popular: boolean }) {
     return (
         <MangaGrid
             mangas={mangas}
-            setMangas={setMangas}
             hasNextPage={hasNextPage}
             lastPageNum={lastPageNum}
             setLastPageNum={setLastPageNum}
