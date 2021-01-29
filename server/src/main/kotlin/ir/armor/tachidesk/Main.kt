@@ -17,6 +17,7 @@ import ir.armor.tachidesk.util.getSource
 import ir.armor.tachidesk.util.getSourceList
 import ir.armor.tachidesk.util.getThumbnail
 import ir.armor.tachidesk.util.installAPK
+import ir.armor.tachidesk.util.removeExtension
 import ir.armor.tachidesk.util.sourceFilters
 import ir.armor.tachidesk.util.sourceGlobalSearch
 import ir.armor.tachidesk.util.sourceSearch
@@ -79,11 +80,20 @@ class Main {
 
             app.get("/api/v1/extension/install/:apkName") { ctx ->
                 val apkName = ctx.pathParam("apkName")
-                println(apkName)
+                println("installing $apkName")
+
                 ctx.status(
                     installAPK(apkName)
                 )
             }
+
+            app.get("/api/v1/extension/uninstall/:apkName") { ctx ->
+                val apkName = ctx.pathParam("apkName")
+                println("uninstalling $apkName")
+                removeExtension(apkName)
+                ctx.status(200)
+            }
+
             app.get("/api/v1/source/list") { ctx ->
                 ctx.json(getSourceList())
             }

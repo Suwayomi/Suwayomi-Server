@@ -46,7 +46,7 @@ export default function ExtensionCard(props: IProps) {
             name, lang, versionName, iconUrl, installed, apkName,
         },
     } = props;
-    const [installedState, setInstalledState] = useState<string>((installed ? 'installed' : 'install'));
+    const [installedState, setInstalledState] = useState<string>((installed ? 'uninstall' : 'install'));
 
     const classes = useStyles();
     const langPress = lang === 'all' ? 'All' : lang.toUpperCase();
@@ -54,8 +54,23 @@ export default function ExtensionCard(props: IProps) {
     function install() {
         setInstalledState('installing');
         fetch(`http://127.0.0.1:4567/api/v1/extension/install/${apkName}`).then(() => {
-            setInstalledState('installed');
+            setInstalledState('uninstall');
         });
+    }
+
+    function uninstall() {
+        setInstalledState('uninstalling');
+        fetch(`http://127.0.0.1:4567/api/v1/extension/uninstall/${apkName}`).then(() => {
+            setInstalledState('install');
+        });
+    }
+
+    function handleButtonClick() {
+        if (installedState === 'install') {
+            install();
+        } else {
+            uninstall();
+        }
     }
 
     return (
@@ -80,7 +95,7 @@ export default function ExtensionCard(props: IProps) {
                     </div>
                 </div>
 
-                <Button variant="outlined" onClick={() => install()}>{installedState}</Button>
+                <Button variant="outlined" onClick={() => handleButtonClick()}>{installedState}</Button>
             </CardContent>
         </Card>
     );

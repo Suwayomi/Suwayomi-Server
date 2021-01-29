@@ -17,6 +17,7 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.Request
 import okio.buffer
 import okio.sink
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -32,8 +33,8 @@ fun installAPK(apkName: String): Int {
     val dirPathWithoutType = "${Config.extensionsRoot}/$fileNameWithoutType"
 
     // check if we don't have the dex file already downloaded
-    val dexPath = "${Config.extensionsRoot}/$fileNameWithoutType.jar"
-    if (!File(dexPath).exists()) {
+    val jarPath = "${Config.extensionsRoot}/$fileNameWithoutType.jar"
+    if (!File(jarPath).exists()) {
         runBlocking {
             val api = ExtensionGithubApi()
             val apkToDownload = api.getApkUrl(extensionRecord)
@@ -129,4 +130,22 @@ private fun downloadAPKFile(url: String, apkPath: String) {
     val sink = downloadedFile.sink().buffer()
     sink.writeAll(response.body!!.source())
     sink.close()
+}
+
+fun removeExtension(pkgName: String) {
+    val extensionRecord = getExtensionList(true).first { it.apkName == pkgName }
+    val fileNameWithoutType = pkgName.substringBefore(".apk")
+    val jarPath = "${Config.extensionsRoot}/$fileNameWithoutType.jar"
+    transaction {
+        val extensionId = ExtensionsTable.select { ExtensionsTable.name eq extensionRecord.name }.first()[ExtensionsTable.id]
+
+        SourceTable.deleteWhere { SourceTable.extension eq extensionId }
+        ExtensionsTable.update({ ExtensionsTable.name eq extensionRecord.name }) {
+            it[ExtensionsTable.installed] = false
+        }
+    }
+
+    if (File(jarPath).exists()) {
+        File(jarPath).delete()
+    }
 }

@@ -66,28 +66,28 @@ fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
                 println("${mangaEntry[MangaTable.title]} is initialized")
                 println("${mangaEntry[MangaTable.thumbnail_url]}")
                 MangaDataClass(
-                        mangaId,
-                        mangaEntry[MangaTable.sourceReference].value,
+                    mangaId,
+                    mangaEntry[MangaTable.sourceReference].value,
 
-                        mangaEntry[MangaTable.url],
-                        mangaEntry[MangaTable.title],
-                        if (proxyThumbnail) proxyThumbnailUrl(mangaId) else mangaEntry[MangaTable.thumbnail_url],
+                    mangaEntry[MangaTable.url],
+                    mangaEntry[MangaTable.title],
+                    if (proxyThumbnail) proxyThumbnailUrl(mangaId) else mangaEntry[MangaTable.thumbnail_url],
 
-                        true,
+                    true,
 
-                        mangaEntry[MangaTable.artist],
-                        mangaEntry[MangaTable.author],
-                        mangaEntry[MangaTable.description],
-                        mangaEntry[MangaTable.genre],
-                        MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
+                    mangaEntry[MangaTable.artist],
+                    mangaEntry[MangaTable.author],
+                    mangaEntry[MangaTable.description],
+                    mangaEntry[MangaTable.genre],
+                    MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
                 )
             } else { // initialize manga
                 val source = getHttpSource(mangaEntry[MangaTable.sourceReference].value)
                 val fetchedManga = source.fetchMangaDetails(
-                        SManga.create().apply {
-                            url = mangaEntry[MangaTable.url]
-                            title = mangaEntry[MangaTable.title]
-                        }
+                    SManga.create().apply {
+                        url = mangaEntry[MangaTable.url]
+                        title = mangaEntry[MangaTable.title]
+                    }
                 ).toBlocking().first()
 
                 // update database
@@ -97,25 +97,25 @@ fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
 
 //            mangaEntry = MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!!
                 val newThumbnail =
-                        if (fetchedManga.thumbnail_url != null && fetchedManga.thumbnail_url!!.isNotEmpty()) {
-                            fetchedManga.thumbnail_url
-                        } else mangaEntry[MangaTable.thumbnail_url]
+                    if (fetchedManga.thumbnail_url != null && fetchedManga.thumbnail_url!!.isNotEmpty()) {
+                        fetchedManga.thumbnail_url
+                    } else mangaEntry[MangaTable.thumbnail_url]
 
                 MangaDataClass(
-                        mangaId,
-                        mangaEntry[MangaTable.sourceReference].value,
+                    mangaId,
+                    mangaEntry[MangaTable.sourceReference].value,
 
-                        mangaEntry[MangaTable.url],
-                        mangaEntry[MangaTable.title],
-                        if (proxyThumbnail) proxyThumbnailUrl(mangaId) else newThumbnail,
+                    mangaEntry[MangaTable.url],
+                    mangaEntry[MangaTable.title],
+                    if (proxyThumbnail) proxyThumbnailUrl(mangaId) else newThumbnail,
 
-                        true,
+                    true,
 
-                        fetchedManga.artist,
-                        fetchedManga.author,
-                        fetchedManga.description,
-                        fetchedManga.genre,
-                        MangaStatus.valueOf(fetchedManga.status).name,
+                    fetchedManga.artist,
+                    fetchedManga.author,
+                    fetchedManga.description,
+                    fetchedManga.genre,
+                    MangaStatus.valueOf(fetchedManga.status).name,
                 )
             }
         }
@@ -135,8 +135,8 @@ fun getThumbnail(mangaId: Int): Pair<InputStream, String> {
         if (potentialCache != null) {
             println("using cached thumbnail file")
             return@transaction Pair(
-                    pathToInputStream(potentialCache),
-                    "image/${potentialCache.substringAfter("$mangaId.")}"
+                pathToInputStream(potentialCache),
+                "image/${potentialCache.substringAfter("$mangaId.")}"
             )
         }
 
@@ -149,7 +149,7 @@ fun getThumbnail(mangaId: Int): Pair<InputStream, String> {
         }
         println(thumbnailUrl)
         val response = source.client.newCall(
-                GET(thumbnailUrl, source.headers)
+            GET(thumbnailUrl, source.headers)
         ).execute()
 
         println(response.code)
@@ -161,8 +161,8 @@ fun getThumbnail(mangaId: Int): Pair<InputStream, String> {
             writeStream(response.body!!.byteStream(), filePath)
 
             return@transaction Pair(
-                    pathToInputStream(filePath),
-                    contentType
+                pathToInputStream(filePath),
+                contentType
             )
         } else {
             throw Exception("request error! ${response.code}")
