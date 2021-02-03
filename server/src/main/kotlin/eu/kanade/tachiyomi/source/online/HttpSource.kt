@@ -29,7 +29,7 @@ abstract class HttpSource : CatalogueSource {
     /**
      * Network service.
      */
-    protected val network: NetworkHelper by injectLazy()
+    val network: NetworkHelper by injectLazy()
 
 //    /**
 //     * Preferences that a source may need.

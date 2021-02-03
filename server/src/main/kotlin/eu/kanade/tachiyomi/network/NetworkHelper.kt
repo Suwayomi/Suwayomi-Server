@@ -19,11 +19,11 @@ class NetworkHelper(context: Context) {
 
     private val cacheSize = 5L * 1024 * 1024 // 5 MiB
 
-//    val cookieManager = AndroidCookieJar()
+    val cookieManager = MemoryCookieJar()
 
     val client by lazy {
         val builder = OkHttpClient.Builder()
-//            .cookieJar(cookieManager)
+            .cookieJar(cookieManager)
 //            .cache(Cache(cacheDir, cacheSize))
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
