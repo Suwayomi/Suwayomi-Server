@@ -12,164 +12,116 @@ import ir.armor.tachidesk.database.table.MangaStatus
 import ir.armor.tachidesk.database.table.MangaTable
 import ir.armor.tachidesk.database.table.SourceTable
 import org.jetbrains.exposed.sql.select
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import java.io.File
 import java.io.InputStream
-import java.util.concurrent.ArrayBlockingQueue
-
-val getMangaUpdateQueue = ArrayBlockingQueue<Pair<Int, SManga?>>(1000)
-@Volatile
-var getMangaCount = 0
-
-val getMangaUpdateQueueThread = Runnable {
-    while (true) {
-        val p = getMangaUpdateQueue.take()
-        println("took ${p.first}")
-        while (getMangaCount > 0) {
-            println("count is $getMangaCount")
-            Thread.sleep(1000)
-        }
-        val mangaId = p.first
-        println("working on $mangaId")
-        val fetchedManga = p.second!!
-        try {
-            transaction {
-                println("transaction start $mangaId")
-                MangaTable.update({ MangaTable.id eq mangaId }) {
-
-                    it[MangaTable.initialized] = true
-
-                    it[MangaTable.artist] = fetchedManga.artist
-                    it[MangaTable.author] = fetchedManga.author
-                    it[MangaTable.description] = fetchedManga.description
-                    it[MangaTable.genre] = fetchedManga.genre
-                    it[MangaTable.status] = fetchedManga.status
-                    if (fetchedManga.thumbnail_url != null && fetchedManga.thumbnail_url!!.isNotEmpty())
-                        it[MangaTable.thumbnail_url] = fetchedManga.thumbnail_url
-                }
-                println("transaction end $mangaId")
-            }
-        } catch (e: Exception) {
-            println(e)
-        }
-    }
-}
 
 fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
-    synchronized(getMangaCount) {
-        getMangaCount++
-    }
-    return try {
+    var mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
+
+    return if (mangaEntry[MangaTable.initialized]) {
+        MangaDataClass(
+            mangaId,
+            mangaEntry[MangaTable.sourceReference].value,
+
+            mangaEntry[MangaTable.url],
+            mangaEntry[MangaTable.title],
+            if (proxyThumbnail) proxyThumbnailUrl(mangaId) else mangaEntry[MangaTable.thumbnail_url],
+
+            true,
+
+            mangaEntry[MangaTable.artist],
+            mangaEntry[MangaTable.author],
+            mangaEntry[MangaTable.description],
+            mangaEntry[MangaTable.genre],
+            MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
+        )
+    } else { // initialize manga
+        val source = getHttpSource(mangaEntry[MangaTable.sourceReference].value)
+        val fetchedManga = source.fetchMangaDetails(
+            SManga.create().apply {
+                url = mangaEntry[MangaTable.url]
+                title = mangaEntry[MangaTable.title]
+            }
+        ).toBlocking().first()
+
         transaction {
-            var mangaEntry = MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!!
+            MangaTable.update({ MangaTable.id eq mangaId }) {
 
-            return@transaction if (mangaEntry[MangaTable.initialized]) {
-                println("${mangaEntry[MangaTable.title]} is initialized")
-                println("${mangaEntry[MangaTable.thumbnail_url]}")
-                MangaDataClass(
-                    mangaId,
-                    mangaEntry[MangaTable.sourceReference].value,
+                it[MangaTable.initialized] = true
 
-                    mangaEntry[MangaTable.url],
-                    mangaEntry[MangaTable.title],
-                    if (proxyThumbnail) proxyThumbnailUrl(mangaId) else mangaEntry[MangaTable.thumbnail_url],
-
-                    true,
-
-                    mangaEntry[MangaTable.artist],
-                    mangaEntry[MangaTable.author],
-                    mangaEntry[MangaTable.description],
-                    mangaEntry[MangaTable.genre],
-                    MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
-                )
-            } else { // initialize manga
-                val source = getHttpSource(mangaEntry[MangaTable.sourceReference].value)
-                val fetchedManga = source.fetchMangaDetails(
-                    SManga.create().apply {
-                        url = mangaEntry[MangaTable.url]
-                        title = mangaEntry[MangaTable.title]
-                    }
-                ).toBlocking().first()
-
-                // update database
-                // TODO: sqlite gets fucked here
-                println("putting $mangaId")
-                getMangaUpdateQueue.put(Pair(mangaId, fetchedManga))
-
-//            mangaEntry = MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!!
-                val newThumbnail =
-                    if (fetchedManga.thumbnail_url != null && fetchedManga.thumbnail_url!!.isNotEmpty()) {
-                        fetchedManga.thumbnail_url
-                    } else mangaEntry[MangaTable.thumbnail_url]
-
-                MangaDataClass(
-                    mangaId,
-                    mangaEntry[MangaTable.sourceReference].value,
-
-                    mangaEntry[MangaTable.url],
-                    mangaEntry[MangaTable.title],
-                    if (proxyThumbnail) proxyThumbnailUrl(mangaId) else newThumbnail,
-
-                    true,
-
-                    fetchedManga.artist,
-                    fetchedManga.author,
-                    fetchedManga.description,
-                    fetchedManga.genre,
-                    MangaStatus.valueOf(fetchedManga.status).name,
-                )
+                it[MangaTable.artist] = fetchedManga.artist
+                it[MangaTable.author] = fetchedManga.author
+                it[MangaTable.description] = fetchedManga.description
+                it[MangaTable.genre] = fetchedManga.genre
+                it[MangaTable.status] = fetchedManga.status
+                if (fetchedManga.thumbnail_url != null && fetchedManga.thumbnail_url!!.isNotEmpty())
+                    it[MangaTable.thumbnail_url] = fetchedManga.thumbnail_url
             }
         }
-    } finally {
-        synchronized(getMangaCount) {
-            getMangaCount--
-        }
+
+        mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
+        val newThumbnail = mangaEntry[MangaTable.thumbnail_url]
+
+        MangaDataClass(
+            mangaId,
+            mangaEntry[MangaTable.sourceReference].value,
+
+            mangaEntry[MangaTable.url],
+            mangaEntry[MangaTable.title],
+            if (proxyThumbnail) proxyThumbnailUrl(mangaId) else newThumbnail,
+
+            true,
+
+            fetchedManga.artist,
+            fetchedManga.author,
+            fetchedManga.description,
+            fetchedManga.genre,
+            MangaStatus.valueOf(fetchedManga.status).name,
+        )
     }
 }
 
 fun getThumbnail(mangaId: Int): Pair<InputStream, String> {
-    return transaction {
-        var mangaEntry = MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!!
-        var filePath = Config.thumbnailsRoot + "/$mangaId"
+    val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
+    var filePath = Config.thumbnailsRoot + "/$mangaId"
 
-        val potentialCache = findFileNameStartingWith(Config.thumbnailsRoot, mangaId.toString())
-        if (potentialCache != null) {
-            println("using cached thumbnail file")
-            return@transaction Pair(
-                pathToInputStream(potentialCache),
-                "image/${potentialCache.substringAfter("$mangaId.")}"
-            )
-        }
+    val potentialCache = findFileNameStartingWith(Config.thumbnailsRoot, mangaId.toString())
+    if (potentialCache != null) {
+        println("using cached thumbnail file")
+        return Pair(
+            pathToInputStream(potentialCache),
+            "image/${potentialCache.substringAfter("$mangaId.")}"
+        )
+    }
 
-        val sourceId = mangaEntry[MangaTable.sourceReference].value
-        println("getting source for $mangaId")
-        val source = getHttpSource(sourceId)
-        var thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
-        if (thumbnailUrl == null || thumbnailUrl.isEmpty()) {
-            thumbnailUrl = getManga(mangaId, proxyThumbnail = false).thumbnailUrl!!
-        }
-        println(thumbnailUrl)
-        val response = source.client.newCall(
-            GET(thumbnailUrl, source.headers)
-        ).execute()
+    val sourceId = mangaEntry[MangaTable.sourceReference].value
+    println("getting source for $mangaId")
+    val source = getHttpSource(sourceId)
+    var thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
+    if (thumbnailUrl == null || thumbnailUrl.isEmpty()) {
+        thumbnailUrl = getManga(mangaId, proxyThumbnail = false).thumbnailUrl!!
+    }
+    println(thumbnailUrl)
+    val response = source.client.newCall(
+        GET(thumbnailUrl, source.headers)
+    ).execute()
 
-        println(response.code)
+    println(response.code)
 
-        if (response.code == 200) {
-            val contentType = response.headers["content-type"]!!
-            filePath += "." + contentType.substringAfter("image/")
+    if (response.code == 200) {
+        val contentType = response.headers["content-type"]!!
+        filePath += "." + contentType.substringAfter("image/")
 
-            writeStream(response.body!!.byteStream(), filePath)
+        writeStream(response.body!!.byteStream(), filePath)
 
-            return@transaction Pair(
-                pathToInputStream(filePath),
-                contentType
-            )
-        } else {
-            throw Exception("request error! ${response.code}")
-        }
+        return Pair(
+            pathToInputStream(filePath),
+            contentType
+        )
+    } else {
+        throw Exception("request error! ${response.code}")
     }
 }
 

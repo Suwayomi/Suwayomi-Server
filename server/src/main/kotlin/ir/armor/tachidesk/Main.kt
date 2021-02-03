@@ -11,7 +11,7 @@ import ir.armor.tachidesk.util.getChapterList
 import ir.armor.tachidesk.util.getExtensionList
 import ir.armor.tachidesk.util.getManga
 import ir.armor.tachidesk.util.getMangaList
-import ir.armor.tachidesk.util.getMangaUpdateQueueThread
+// import ir.armor.tachidesk.util.getMangaUpdateQueueThread
 import ir.armor.tachidesk.util.getPages
 import ir.armor.tachidesk.util.getSource
 import ir.armor.tachidesk.util.getSourceList
@@ -57,7 +57,7 @@ class Main {
             // start app
             androidCompat.startApp(App())
 
-            Thread(getMangaUpdateQueueThread).start()
+//            Thread(getMangaUpdateQueueThread).start()
 
             val app = Javalin.create { config ->
                 try {

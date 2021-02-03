@@ -50,10 +50,10 @@ class WrappedCookie private constructor(val cookie: Cookie) {
         if (other !is WrappedCookie) return false
 
         return other.cookie.name == cookie.name &&
-                other.cookie.domain == cookie.domain &&
-                other.cookie.path == cookie.path &&
-                other.cookie.secure == cookie.secure &&
-                other.cookie.hostOnly == cookie.hostOnly
+            other.cookie.domain == cookie.domain &&
+            other.cookie.path == cookie.path &&
+            other.cookie.secure == cookie.secure &&
+            other.cookie.hostOnly == cookie.hostOnly
     }
 
     override fun hashCode(): Int {

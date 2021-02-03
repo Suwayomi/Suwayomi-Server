@@ -80,6 +80,8 @@ dependencies {
     implementation ("org.jetbrains.exposed:exposed-dao:$exposed_version")
     implementation ("org.jetbrains.exposed:exposed-jdbc:$exposed_version")
     implementation ("org.xerial:sqlite-jdbc:3.30.1")
+    implementation ("com.h2database:h2:1.4.199")
+
 
     // AndroidCompat
     implementation(project(":AndroidCompat"))

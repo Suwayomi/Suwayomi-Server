@@ -1,30 +1,32 @@
 package ir.armor.tachidesk.util
 
-import com.android.dx.util.ExceptionWithContext.withContext
 import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.source.online.HttpSource
-import kotlinx.coroutines.Dispatchers
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import java.net.URLEncoder
+
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 class MangaDexHelper(private val mangaDexSource: HttpSource) {
 
     private fun clientBuilder(): OkHttpClient = clientBuilder(0)
 
     private fun clientBuilder(
-            r18Toggle: Int,
-            okHttpClient: OkHttpClient = mangaDexSource.network.client
+        r18Toggle: Int,
+        okHttpClient: OkHttpClient = mangaDexSource.network.client
     ): OkHttpClient = okHttpClient.newBuilder()
-            .addNetworkInterceptor { chain ->
-                val originalCookies = chain.request().header("Cookie") ?: ""
-                val newReq = chain
-                        .request()
-                        .newBuilder()
-                        .header("Cookie", "$originalCookies; ${cookiesHeader(r18Toggle)}")
-                        .build()
-                chain.proceed(newReq)
-            }.build()
+        .addNetworkInterceptor { chain ->
+            val originalCookies = chain.request().header("Cookie") ?: ""
+            val newReq = chain
+                .request()
+                .newBuilder()
+                .header("Cookie", "$originalCookies; ${cookiesHeader(r18Toggle)}")
+                .build()
+            chain.proceed(newReq)
+        }.build()
 
     private fun cookiesHeader(r18Toggle: Int): String {
         val cookies = mutableMapOf<String, String>()
@@ -33,9 +35,9 @@ class MangaDexHelper(private val mangaDexSource: HttpSource) {
     }
 
     private fun buildCookies(cookies: Map<String, String>) =
-            cookies.entries.joinToString(separator = "; ", postfix = ";") {
-                "${URLEncoder.encode(it.key, "UTF-8")}=${URLEncoder.encode(it.value, "UTF-8")}"
-            }
+        cookies.entries.joinToString(separator = "; ", postfix = ";") {
+            "${URLEncoder.encode(it.key, "UTF-8")}=${URLEncoder.encode(it.value, "UTF-8")}"
+        }
 
 //    fun isLogged(): Boolean {
 //        val httpUrl = mangaDexSource.baseUrl.toHttpUrlOrNull()!!
@@ -44,21 +46,21 @@ class MangaDexHelper(private val mangaDexSource: HttpSource) {
 
     fun login(username: String, password: String, twoFactorCode: String = ""): Boolean {
         val formBody = FormBody.Builder()
-                .add("login_username", username)
-                .add("login_password", password)
-                .add("no_js", "1")
-                .add("remember_me", "1")
+            .add("login_username", username)
+            .add("login_password", password)
+            .add("no_js", "1")
+            .add("remember_me", "1")
 
         twoFactorCode.let {
             formBody.add("two_factor", it)
         }
 
         val response = clientBuilder().newCall(
-                POST(
-                        "${mangaDexSource.baseUrl}/ajax/actions.ajax.php?function=login",
-                        mangaDexSource.headers,
-                        formBody.build()
-                )
+            POST(
+                "${mangaDexSource.baseUrl}/ajax/actions.ajax.php?function=login",
+                mangaDexSource.headers,
+                formBody.build()
+            )
         ).execute()
         return response.body!!.string().isEmpty()
     }
