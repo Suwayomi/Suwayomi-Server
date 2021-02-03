@@ -10,9 +10,12 @@ import ir.armor.tachidesk.Config
 import ir.armor.tachidesk.database.dataclass.MangaDataClass
 import ir.armor.tachidesk.database.table.MangaStatus
 import ir.armor.tachidesk.database.table.MangaTable
+import ir.armor.tachidesk.database.table.SourceTable
 import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import java.io.File
 import java.io.InputStream
 import java.util.concurrent.ArrayBlockingQueue
 
@@ -128,8 +131,8 @@ fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
 
 fun getThumbnail(mangaId: Int): Pair<InputStream, String> {
     return transaction {
-        var filePath = Config.thumbnailsRoot + "/$mangaId"
         var mangaEntry = MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!!
+        var filePath = Config.thumbnailsRoot + "/$mangaId"
 
         val potentialCache = findFileNameStartingWith(Config.thumbnailsRoot, mangaId.toString())
         if (potentialCache != null) {
@@ -168,4 +171,18 @@ fun getThumbnail(mangaId: Int): Pair<InputStream, String> {
             throw Exception("request error! ${response.code}")
         }
     }
+}
+
+fun getMangaDir(mangaId: Int): String {
+    val mangaEntry = MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!!
+    val sourceId = mangaEntry[MangaTable.sourceReference].value
+    val sourceEntry = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!!
+
+    val mangaTitle = mangaEntry[MangaTable.title]
+    val sourceName = sourceEntry[SourceTable.name]
+
+    val mangaDir = "${Config.mangaRoot}/$sourceName/$mangaTitle"
+    // make sure dirs exist
+    File(mangaDir).mkdirs()
+    return mangaDir
 }

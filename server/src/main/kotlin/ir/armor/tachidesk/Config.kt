@@ -10,4 +10,5 @@ object Config {
     val dataRoot = AppDirsFactory.getInstance().getUserDataDir("Tachidesk", null, null)
     val extensionsRoot = "$dataRoot/extensions"
     val thumbnailsRoot = "$dataRoot/thumbnails"
+    val mangaRoot = "$dataRoot/manga"
 }
