@@ -16,14 +16,14 @@ import org.jetbrains.exposed.sql.transactions.transaction
 object DBMangaer {
     val db by lazy {
         Database.connect("jdbc:h2:${Config.dataRoot}/database.h2", "org.h2.Driver")
-//        Database.connect("jdbc:sqlite:${Config.dataRoot}/database.sqlite3", "org.sqlite.JDBC")
     }
 }
 
 fun makeDataBaseTables() {
     // mention db object to connect
-    val db = DBMangaer.db
-    db.useNestedTransactions = true
+    DBMangaer.db
+//    val db = DBMangaer.db
+//    db.useNestedTransactions = true
 
     transaction {
         SchemaUtils.create(ExtensionsTable)
