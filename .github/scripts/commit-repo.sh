@@ -1,7 +1,7 @@
 #!/bin/bash
 
 git lfs install
-git lfs track "*.zip"
+#git lfs track "*.zip"
 
 cp ../master/repo/* .
 new_jar_build=$(ls *.jar| tail -1)
