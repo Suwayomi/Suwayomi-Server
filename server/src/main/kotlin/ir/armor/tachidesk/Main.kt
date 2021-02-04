@@ -7,12 +7,12 @@ package ir.armor.tachidesk
 import eu.kanade.tachiyomi.App
 import io.javalin.Javalin
 import ir.armor.tachidesk.util.applicationSetup
+import ir.armor.tachidesk.util.getChapter
 import ir.armor.tachidesk.util.getChapterList
 import ir.armor.tachidesk.util.getExtensionList
 import ir.armor.tachidesk.util.getManga
 import ir.armor.tachidesk.util.getMangaList
-// import ir.armor.tachidesk.util.getMangaUpdateQueueThread
-import ir.armor.tachidesk.util.getPages
+import ir.armor.tachidesk.util.getPageImage
 import ir.armor.tachidesk.util.getSource
 import ir.armor.tachidesk.util.getSourceList
 import ir.armor.tachidesk.util.getThumbnail
@@ -119,6 +119,14 @@ class Main {
                 ctx.json(getManga(mangaId))
             }
 
+            app.get("api/v1/manga/:mangaId/thumbnail") { ctx ->
+                val mangaId = ctx.pathParam("mangaId").toInt()
+                val result = getThumbnail(mangaId)
+
+                ctx.result(result.first)
+                ctx.header("content-type", result.second)
+            }
+
             app.get("/api/v1/manga/:mangaId/chapters") { ctx ->
                 val mangaId = ctx.pathParam("mangaId").toInt()
                 ctx.json(getChapterList(mangaId))
@@ -127,13 +135,14 @@ class Main {
             app.get("/api/v1/manga/:mangaId/chapter/:chapterId") { ctx ->
                 val chapterId = ctx.pathParam("chapterId").toInt()
                 val mangaId = ctx.pathParam("mangaId").toInt()
-                ctx.json(getPages(chapterId, mangaId))
+                ctx.json(getChapter(chapterId, mangaId))
             }
 
-            app.get("api/v1/manga/:mangaId/thumbnail") { ctx ->
+            app.get("/api/v1/manga/:mangaId/chapter/:chapterId/page/:index") { ctx ->
+                val chapterId = ctx.pathParam("chapterId").toInt()
                 val mangaId = ctx.pathParam("mangaId").toInt()
-                println("got request for: $mangaId")
-                val result = getThumbnail(mangaId)
+                val index = ctx.pathParam("index").toInt()
+                val result = getPageImage(mangaId, chapterId, index)
 
                 ctx.result(result.first)
                 ctx.header("content-type", result.second)

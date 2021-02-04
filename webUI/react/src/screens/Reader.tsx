@@ -14,44 +14,36 @@ const style = {
     backgroundColor: '#343a40',
 } as React.CSSProperties;
 
-interface IPage {
-    index: number
-    imageUrl: string
-}
-
-interface IData {
-    first: IChapter
-    second: IPage[]
-}
+const range = (n:number) => Array.from({ length: n }, (value, key) => key);
 
 export default function Reader() {
     const { setTitle } = useContext(NavBarTitle);
 
-    const [pages, setPages] = useState<IPage[]>([]);
+    const [pageCount, setPageCount] = useState<number>(-1);
     const { chapterId, mangaId } = useParams<{chapterId: string, mangaId: string}>();
 
     useEffect(() => {
         fetch(`http://127.0.0.1:4567/api/v1/manga/${mangaId}/chapter/${chapterId}`)
             .then((response) => response.json())
-            .then((data:IData) => {
-                setTitle(data.first.name);
-                setPages(data.second);
+            .then((data:IChapter) => {
+                setTitle(data.name);
+                setPageCount(data.pageCount);
             });
     }, []);
 
-    pages.sort((a, b) => (a.index - b.index));
-
-    let mapped;
-    if (pages.length === 0) {
-        mapped = <h3>wait</h3>;
-    } else {
-        mapped = pages.map(({ imageUrl }) => (
-            <div style={{ margin: '0 auto' }}>
-                <img src={imageUrl} alt="f" style={{ maxWidth: '100%' }} />
+    if (pageCount === -1) {
+        return (
+            <div style={style}>
+                <h3>wait</h3>
             </div>
-        ));
+        );
     }
 
+    const mapped = range(pageCount).map((index) => (
+        <div style={{ margin: '0 auto' }}>
+            <img src={`http://127.0.0.1:4567/api/v1/manga/${mangaId}/chapter/${chapterId}/page/${index}`} alt="f" style={{ maxWidth: '100%' }} />
+        </div>
+    ));
     return (
         <div style={style}>
             {mapped}

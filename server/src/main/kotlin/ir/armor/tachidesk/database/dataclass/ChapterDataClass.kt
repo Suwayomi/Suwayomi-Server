@@ -12,4 +12,5 @@ data class ChapterDataClass(
     val chapter_number: Float,
     val scanlator: String?,
     val mangaId: Int,
+    val pageCount: Int? = null,
 )

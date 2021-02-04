@@ -4,8 +4,10 @@ package eu.kanade.tachiyomi.network
 // import eu.kanade.tachiyomi.BuildConfig
 // import eu.kanade.tachiyomi.data.preference.PreferencesHelper
 import android.content.Context
+import okhttp3.Dispatcher
 // import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
+import java.util.concurrent.Executors
 // import okhttp3.dnsoverhttps.DnsOverHttps
 // import okhttp3.logging.HttpLoggingInterceptor
 // import uy.kohesive.injekt.injectLazy
@@ -26,7 +28,8 @@ class NetworkHelper(context: Context) {
             .cookieJar(cookieManager)
 //            .cache(Cache(cacheDir, cacheSize))
             .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.MINUTES)
+            .writeTimeout(5, TimeUnit.MINUTES)
 //            .dispatcher(Dispatcher(Executors.newFixedThreadPool(1)))
 
 //            .addInterceptor(UserAgentInterceptor())

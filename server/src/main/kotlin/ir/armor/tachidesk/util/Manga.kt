@@ -85,14 +85,14 @@ fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
 
 fun getThumbnail(mangaId: Int): Pair<InputStream, String> {
     val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
-    var filePath = Config.thumbnailsRoot + "/$mangaId"
+    var filePath = "${Config.thumbnailsRoot}/$mangaId."
 
     val potentialCache = findFileNameStartingWith(Config.thumbnailsRoot, mangaId.toString())
     if (potentialCache != null) {
         println("using cached thumbnail file")
         return Pair(
             pathToInputStream(potentialCache),
-            "image/${potentialCache.substringAfter("$mangaId.")}"
+            "image/${potentialCache.substringAfter(filePath)}"
         )
     }
 
@@ -108,11 +108,9 @@ fun getThumbnail(mangaId: Int): Pair<InputStream, String> {
         GET(thumbnailUrl, source.headers)
     ).execute()
 
-    println(response.code)
-
     if (response.code == 200) {
         val contentType = response.headers["content-type"]!!
-        filePath += "." + contentType.substringAfter("image/")
+        filePath += contentType.substringAfter("image/")
 
         writeStream(response.body!!.byteStream(), filePath)
 
@@ -126,9 +124,9 @@ fun getThumbnail(mangaId: Int): Pair<InputStream, String> {
 }
 
 fun getMangaDir(mangaId: Int): String {
-    val mangaEntry = MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!!
+    val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
     val sourceId = mangaEntry[MangaTable.sourceReference].value
-    val sourceEntry = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!!
+    val sourceEntry = transaction { SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!! }
 
     val mangaTitle = mangaEntry[MangaTable.title]
     val sourceName = sourceEntry[SourceTable.name]

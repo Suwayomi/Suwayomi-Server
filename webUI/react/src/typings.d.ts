@@ -34,4 +34,5 @@ interface IChapter {
     chapter_number: number
     scanlator: String
     mangaId: number
+    pageCount: number
 }

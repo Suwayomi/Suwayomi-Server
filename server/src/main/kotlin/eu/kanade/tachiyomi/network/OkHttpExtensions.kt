@@ -80,17 +80,18 @@ fun Call.asObservable(): Observable<Response> {
 // }
 
 fun Call.asObservableSuccess(): Observable<Response> {
-    return asObservable().doOnNext { response ->
-        if (!response.isSuccessful) {
-            response.close()
-            throw Exception("HTTP error ${response.code}")
-        }
-    }
+    return asObservable()
+//        .doOnNext { response ->
+//            if (!response.isSuccessful) {
+//                response.close()
+//                throw Exception("HTTP error ${response.code}")
+//            }
+//        }
 }
 
 // fun OkHttpClient.newCallWithProgress(request: Request, listener: ProgressListener): Call {
 //    val progressClient = newBuilder()
-//        .cache(null)
+//        .cache(nasObservableSuccessull)
 //        .addNetworkInterceptor { chain ->
 //            val originalResponse = chain.proceed(chain.request())
 //            originalResponse.newBuilder()
@@ -104,7 +105,7 @@ fun Call.asObservableSuccess(): Observable<Response> {
 
 fun OkHttpClient.newCallWithProgress(request: Request, listener: ProgressListener): Call {
     val progressClient = newBuilder()
-        .cache(null)
+//        .cache(null)
 //        .addNetworkInterceptor { chain ->
 //            val originalResponse = chain.proceed(chain.request())
 //            originalResponse.newBuilder()
