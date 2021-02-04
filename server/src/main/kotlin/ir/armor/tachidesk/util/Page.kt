@@ -4,8 +4,6 @@ package ir.armor.tachidesk.util
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import eu.kanade.tachiyomi.network.asObservableSuccess
-import eu.kanade.tachiyomi.network.newCallWithProgress
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
 import ir.armor.tachidesk.database.table.ChapterTable
@@ -60,12 +58,7 @@ fun getPageImage(mangaId: Int, chapterId: Int, index: Int): Pair<InputStream, St
         )
     }
 
-    // Note: line bellow somehow closes the okhttp reqest!
-//    val response = source.fetchImage(tachiPage).toBlocking().first()
-    // Note: also this which is the same
-//    val response = source.client.newCallWithProgress(source.imageRequest(tachiPage), tachiPage)
-//            .asObservableSuccess().toBlocking().first()
-    val response = source.client.newCall(source.imageRequest(tachiPage)).execute()
+    val response = source.fetchImage(tachiPage).toBlocking().first()
 
     if (response.code == 200) {
         val contentType = response.headers["content-type"]!!

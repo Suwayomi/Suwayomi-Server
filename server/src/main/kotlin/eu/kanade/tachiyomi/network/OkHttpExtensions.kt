@@ -34,7 +34,7 @@ fun Call.asObservable(): Observable<Response> {
             }
 
             override fun unsubscribe() {
-                call.cancel()
+                // call.cancel()
             }
 
             override fun isUnsubscribed(): Boolean {
@@ -81,12 +81,12 @@ fun Call.asObservable(): Observable<Response> {
 
 fun Call.asObservableSuccess(): Observable<Response> {
     return asObservable()
-//        .doOnNext { response ->
-//            if (!response.isSuccessful) {
-//                response.close()
-//                throw Exception("HTTP error ${response.code}")
-//            }
-//        }
+        .doOnNext { response ->
+            if (!response.isSuccessful) {
+                response.close()
+                throw Exception("HTTP error ${response.code}")
+            }
+        }
 }
 
 // fun OkHttpClient.newCallWithProgress(request: Request, listener: ProgressListener): Call {
