@@ -81,6 +81,10 @@ dependencies {
     implementation ("org.jetbrains.exposed:exposed-jdbc:$exposed_version")
     implementation ("com.h2database:h2:1.4.199")
 
+    // tray icon
+    implementation("com.dorkbox:SystemTray:3.17")
+
+
 
     // AndroidCompat
     implementation(project(":AndroidCompat"))

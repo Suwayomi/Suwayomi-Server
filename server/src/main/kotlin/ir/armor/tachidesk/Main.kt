@@ -18,10 +18,12 @@ import ir.armor.tachidesk.util.getSource
 import ir.armor.tachidesk.util.getSourceList
 import ir.armor.tachidesk.util.getThumbnail
 import ir.armor.tachidesk.util.installAPK
+import ir.armor.tachidesk.util.openInBrowser
 import ir.armor.tachidesk.util.removeExtension
 import ir.armor.tachidesk.util.sourceFilters
 import ir.armor.tachidesk.util.sourceGlobalSearch
 import ir.armor.tachidesk.util.sourceSearch
+import ir.armor.tachidesk.util.systemTray
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import xyz.nulldev.androidcompat.AndroidCompat
@@ -48,6 +50,7 @@ class Main {
 
             // make sure everything we need exists
             applicationSetup()
+            val tray = systemTray()
 
             registerConfigModules()
 
@@ -58,17 +61,22 @@ class Main {
             // start app
             androidCompat.startApp(App())
 
-//            Thread(getMangaUpdateQueueThread).start()
+            var hasWebUiBundled: Boolean = false
 
             val app = Javalin.create { config ->
                 try {
                     this::class.java.classLoader.getResource("/react/index.html")
+                    hasWebUiBundled = true
                     config.addStaticFiles("/react")
                     config.addSinglePageRoot("/", "/react/index.html")
                 } catch (e: RuntimeException) {
                     println("Warning: react build files are missing.")
+                    hasWebUiBundled = false
                 }
             }.start(4567)
+            if (hasWebUiBundled) {
+                openInBrowser()
+            }
 
             app.before() { ctx ->
                 // allow the client which is running on another port
