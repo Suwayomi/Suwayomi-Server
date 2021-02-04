@@ -80,7 +80,7 @@ fun getExtensionList(offline: Boolean = false): List<ExtensionDataClass> {
                 it[ExtensionsTable.lang],
                 it[ExtensionsTable.isNsfw],
                 it[ExtensionsTable.apkName],
-                it[ExtensionsTable.iconUrl],
+                getExtensionIconUrl(it[ExtensionsTable.apkName]),
                 it[ExtensionsTable.installed],
                 it[ExtensionsTable.classFQName]
             )
