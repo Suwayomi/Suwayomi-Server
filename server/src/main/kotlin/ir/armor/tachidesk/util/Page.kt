@@ -6,9 +6,12 @@ package ir.armor.tachidesk.util
 
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
+import ir.armor.tachidesk.Config
 import ir.armor.tachidesk.database.table.ChapterTable
 import ir.armor.tachidesk.database.table.MangaTable
 import ir.armor.tachidesk.database.table.PageTable
+import ir.armor.tachidesk.database.table.SourceTable
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -45,7 +48,7 @@ fun getPageImage(mangaId: Int, chapterId: Int, index: Int): Pair<InputStream, St
         }
     }
 
-    val saveDir = getMangaDir(mangaId) + "/" + chapterEntry[ChapterTable.chapter_number]
+    val saveDir = getChapterDir(mangaId, chapterId)
     File(saveDir).mkdirs()
     var filePath = "$saveDir/$index."
 
@@ -78,4 +81,25 @@ fun getPageImage(mangaId: Int, chapterId: Int, index: Int): Pair<InputStream, St
     } else {
         throw Exception("request error! ${response.code}")
     }
+}
+
+fun getChapterDir(mangaId: Int, chapterId: Int): String {
+    val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
+    val sourceId = mangaEntry[MangaTable.sourceReference].value
+    val source = getHttpSource(sourceId)
+    val sourceEntry = transaction { SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!! }
+    val chapterEntry = transaction { ChapterTable.select { ChapterTable.id eq chapterId }.firstOrNull()!! }
+
+    val chapterDir = when {
+        chapterEntry[ChapterTable.scanlator] != null -> "${chapterEntry[ChapterTable.scanlator]}_${chapterEntry[ChapterTable.name]}"
+        else -> chapterEntry[ChapterTable.name]
+    }
+
+    val mangaTitle = mangaEntry[MangaTable.title]
+    val sourceName = source.toString()
+
+    val mangaDir = "${Config.mangaRoot}/$sourceName/$mangaTitle/$chapterDir"
+    // make sure dirs exist
+    File(mangaDir).mkdirs()
+    return mangaDir
 }

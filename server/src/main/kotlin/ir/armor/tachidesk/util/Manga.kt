@@ -10,11 +10,9 @@ import ir.armor.tachidesk.Config
 import ir.armor.tachidesk.database.dataclass.MangaDataClass
 import ir.armor.tachidesk.database.table.MangaStatus
 import ir.armor.tachidesk.database.table.MangaTable
-import ir.armor.tachidesk.database.table.SourceTable
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import java.io.File
 import java.io.InputStream
 
 fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
@@ -121,18 +119,4 @@ fun getThumbnail(mangaId: Int): Pair<InputStream, String> {
     } else {
         throw Exception("request error! ${response.code}")
     }
-}
-
-fun getMangaDir(mangaId: Int): String {
-    val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
-    val sourceId = mangaEntry[MangaTable.sourceReference].value
-    val sourceEntry = transaction { SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!! }
-
-    val mangaTitle = mangaEntry[MangaTable.title]
-    val sourceName = sourceEntry[SourceTable.name]
-
-    val mangaDir = "${Config.mangaRoot}/$sourceName/$mangaTitle"
-    // make sure dirs exist
-    File(mangaDir).mkdirs()
-    return mangaDir
 }

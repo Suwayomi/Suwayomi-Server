@@ -16,7 +16,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 object DBMangaer {
     val db by lazy {
-        Database.connect("jdbc:h2:${Config.dataRoot}/database.h2", "org.h2.Driver")
+        Database.connect("jdbc:h2:${Config.dataRoot}/database", "org.h2.Driver")
     }
 }
 
