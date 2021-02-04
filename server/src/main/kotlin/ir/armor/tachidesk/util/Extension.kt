@@ -6,6 +6,7 @@ package ir.armor.tachidesk.util
 
 import com.googlecode.dex2jar.tools.Dex2jarCmd
 import eu.kanade.tachiyomi.extension.api.ExtensionGithubApi
+import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
@@ -24,6 +25,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import uy.kohesive.injekt.injectLazy
 import java.io.File
+import java.io.InputStream
 import java.net.URL
 import java.net.URLClassLoader
 
@@ -147,5 +149,20 @@ fun removeExtension(pkgName: String) {
 
     if (File(jarPath).exists()) {
         File(jarPath).delete()
+    }
+}
+
+val network: NetworkHelper by injectLazy()
+
+fun getExtensionIcon(apkName: String): Pair<InputStream, String> {
+    val iconUrl = transaction { ExtensionsTable.select { ExtensionsTable.apkName eq apkName }.firstOrNull()!! }[ExtensionsTable.iconUrl]
+
+    val saveDir = "${Config.extensionsRoot}/icon"
+    val fileName = apkName
+
+    return getCachedResponse(saveDir, fileName) {
+        network.client.newCall(
+            GET(iconUrl)
+        ).execute()
     }
 }

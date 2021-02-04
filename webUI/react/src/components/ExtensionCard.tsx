@@ -43,7 +43,7 @@ interface IProps {
 export default function ExtensionCard(props: IProps) {
     const {
         extension: {
-            name, lang, versionName, iconUrl, installed, apkName,
+            name, lang, versionName, installed, apkName,
         },
     } = props;
     const [installedState, setInstalledState] = useState<string>((installed ? 'uninstall' : 'install'));
@@ -81,7 +81,7 @@ export default function ExtensionCard(props: IProps) {
                         variant="rounded"
                         className={classes.icon}
                         alt={name}
-                        src={iconUrl}
+                        src={`http://127.0.0.1:4567/api/v1/extension/icon/${apkName}`}
                     />
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <Typography variant="h5" component="h2">

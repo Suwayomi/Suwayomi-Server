@@ -83,40 +83,19 @@ fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
 
 fun getThumbnail(mangaId: Int): Pair<InputStream, String> {
     val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
-    var filePath = "${Config.thumbnailsRoot}/$mangaId."
+    val saveDir = Config.thumbnailsRoot
+    val fileName = mangaId.toString()
 
-    val potentialCache = findFileNameStartingWith(Config.thumbnailsRoot, mangaId.toString())
-    if (potentialCache != null) {
-        println("using cached thumbnail file")
-        return Pair(
-            pathToInputStream(potentialCache),
-            "image/${potentialCache.substringAfter(filePath)}"
-        )
-    }
+    return getCachedResponse(saveDir, fileName) {
+        val sourceId = mangaEntry[MangaTable.sourceReference].value
+        val source = getHttpSource(sourceId)
+        var thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
+        if (thumbnailUrl == null || thumbnailUrl.isEmpty()) {
+            thumbnailUrl = getManga(mangaId, proxyThumbnail = false).thumbnailUrl!!
+        }
 
-    val sourceId = mangaEntry[MangaTable.sourceReference].value
-    println("getting source for $mangaId")
-    val source = getHttpSource(sourceId)
-    var thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
-    if (thumbnailUrl == null || thumbnailUrl.isEmpty()) {
-        thumbnailUrl = getManga(mangaId, proxyThumbnail = false).thumbnailUrl!!
-    }
-    println(thumbnailUrl)
-    val response = source.client.newCall(
-        GET(thumbnailUrl, source.headers)
-    ).execute()
-
-    if (response.code == 200) {
-        val contentType = response.headers["content-type"]!!
-        filePath += contentType.substringAfter("image/")
-
-        writeStream(response.body!!.byteStream(), filePath)
-
-        return Pair(
-            pathToInputStream(filePath),
-            contentType
-        )
-    } else {
-        throw Exception("request error! ${response.code}")
+        source.client.newCall(
+            GET(thumbnailUrl, source.headers)
+        ).execute()
     }
 }

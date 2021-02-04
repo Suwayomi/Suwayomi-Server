@@ -9,6 +9,7 @@ import io.javalin.Javalin
 import ir.armor.tachidesk.util.applicationSetup
 import ir.armor.tachidesk.util.getChapter
 import ir.armor.tachidesk.util.getChapterList
+import ir.armor.tachidesk.util.getExtensionIcon
 import ir.armor.tachidesk.util.getExtensionList
 import ir.armor.tachidesk.util.getManga
 import ir.armor.tachidesk.util.getMangaList
@@ -92,6 +93,14 @@ class Main {
                 println("uninstalling $apkName")
                 removeExtension(apkName)
                 ctx.status(200)
+            }
+
+            app.get("/api/v1/extension/icon/:apkName") { ctx ->
+                val apkName = ctx.pathParam("apkName")
+                val result = getExtensionIcon(apkName)
+
+                ctx.result(result.first)
+                ctx.header("content-type", result.second)
             }
 
             app.get("/api/v1/source/list") { ctx ->

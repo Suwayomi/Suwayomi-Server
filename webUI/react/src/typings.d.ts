@@ -9,6 +9,7 @@ interface IExtension {
     iconUrl: string
     installed: boolean
     apkName: string
+    pkgName: string
 }
 
 interface ISource {

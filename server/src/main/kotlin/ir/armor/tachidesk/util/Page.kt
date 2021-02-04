@@ -18,8 +18,6 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import java.io.File
 import java.io.InputStream
-import java.nio.file.Files
-import java.nio.file.Paths
 
 fun getTrueImageUrl(page: Page, source: HttpSource): String {
     if (page.imageUrl == null) {
@@ -50,36 +48,10 @@ fun getPageImage(mangaId: Int, chapterId: Int, index: Int): Pair<InputStream, St
 
     val saveDir = getChapterDir(mangaId, chapterId)
     File(saveDir).mkdirs()
-    var filePath = "$saveDir/$index."
+    val fileName = index.toString()
 
-    val potentialCache = findFileNameStartingWith(saveDir, index.toString())
-    if (potentialCache != null) {
-        println("using cached page file for $index")
-        return Pair(
-            pathToInputStream(potentialCache),
-            "image/${potentialCache.substringAfter("$filePath")}"
-        )
-    }
-
-    val response = source.fetchImage(tachiPage).toBlocking().first()
-
-    if (response.code == 200) {
-        val contentType = response.headers["content-type"]!!
-        filePath += contentType.substringAfter("image/")
-
-        Files.newOutputStream(Paths.get(filePath)).use { os ->
-
-            response.body!!.source().saveTo(os)
-        }
-
-//        writeStream(response.body!!.source(), filePath)
-
-        return Pair(
-            pathToInputStream(filePath),
-            contentType
-        )
-    } else {
-        throw Exception("request error! ${response.code}")
+    return getCachedResponse(saveDir, fileName) {
+        source.fetchImage(tachiPage).toBlocking().first()
     }
 }
 

@@ -66,6 +66,8 @@ fun getExtensionList(offline: Boolean = false): List<ExtensionDataClass> {
                 }
             }
         }
+    } else {
+        println("used cached extension list")
     }
 
     return transaction {
