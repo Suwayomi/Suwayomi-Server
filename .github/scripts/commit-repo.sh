@@ -1,10 +1,14 @@
 #!/bin/bash
 
 cp ../master/repo/* .
-new_build=$(ls | tail -1)
-echo "New build file name: $new_build"
+new_jar_build=$(ls *.jar| tail -1)
+echo "last jar build file name: $new_jar_build"
 
-cp -f $new_build Tachidesk-latest.jar
+new_win32_build=$(ls *.zip| tail -1)
+echo "last win32 build file name: $new_win32_build"
+
+cp -f $new_jar_build Tachidesk-latest.jar
+cp -f $new_win32_build Tachidesk-latest-win32.zip
 
 git config --global user.email "github-actions[bot]@users.noreply.github.com"
 git config --global user.name "github-actions[bot]"

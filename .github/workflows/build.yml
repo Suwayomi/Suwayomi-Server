@@ -54,12 +54,12 @@ jobs:
           cd master
           ./scripts/getAndroid.sh
 
-      - name: Build the Jar
+      - name: Build Jar and launch4j
         uses: eskatos/gradle-command-action@v1
         with:
           build-root-directory: master
           wrapper-directory: master
-          arguments: :server:shadowJar --stacktrace
+          arguments: :server:windowsPackage --stacktrace
           wrapper-cache-enabled: true
           dependencies-cache-enabled: true
           configuration-cache-enabled: true

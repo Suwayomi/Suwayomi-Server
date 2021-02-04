@@ -10,4 +10,5 @@ echo "count is: $filter_count"
 if [ "$filter_count" -gt 0 ]; then
   mkdir -p repo/
   cp server/build/Tachidesk-*.jar repo/
+  cp server/build/Tachidesk-*.zip repo/
 fi
