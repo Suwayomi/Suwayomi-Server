@@ -7,7 +7,7 @@ Ability to read and write Tachiyomi compatible backups and syncing is a planned 
 
 ## How do I run the thing?
 #### Prerequisites
-You should have The Java Runtime Environment(JRE) 8 or newer (if youre not planning to use the windows specific build) and a modern browser installed. Also an internet connection is required as almost everything this app does is downloading stuff. 
+You should have The Java Runtime Environment(JRE) 8 or newer (if you're not planning to use the windows specific build) and a modern browser installed. Also an internet connection is required as almost everything this app does is downloading stuff. 
 
 #### Running pre-built jar packages
 Download the latest (or a working more stable) release from [the repo branch](https://github.com/AriaMoradi/Tachidesk/tree/repo) or obtain it from [the releases section](https://github.com/AriaMoradi/Tachidesk/releases).
