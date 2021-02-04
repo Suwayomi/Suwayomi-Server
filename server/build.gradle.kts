@@ -6,6 +6,7 @@ plugins {
     application
     id("com.github.johnrengelman.shadow") version "6.1.0"
     id("org.jmailen.kotlinter") version "3.3.0"
+    id("edu.sc.seis.launch4j") version "2.4.9"
 }
 
 val TachideskVersion = "v0.1.5"
@@ -76,14 +77,13 @@ dependencies {
 
     // Exposed ORM
     val exposed_version = "0.28.1"
-    implementation ("org.jetbrains.exposed:exposed-core:$exposed_version")
-    implementation ("org.jetbrains.exposed:exposed-dao:$exposed_version")
-    implementation ("org.jetbrains.exposed:exposed-jdbc:$exposed_version")
-    implementation ("com.h2database:h2:1.4.199")
+    implementation("org.jetbrains.exposed:exposed-core:$exposed_version")
+    implementation("org.jetbrains.exposed:exposed-dao:$exposed_version")
+    implementation("org.jetbrains.exposed:exposed-jdbc:$exposed_version")
+    implementation("com.h2database:h2:1.4.199")
 
     // tray icon
     implementation("com.dorkbox:SystemTray:3.17")
-
 
 
     // AndroidCompat
@@ -95,8 +95,8 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
 }
 
+val name = "ir.armor.tachidesk.Main"
 application {
-    val name = "ir.armor.tachidesk.Main"
     mainClass.set(name)
 
     // Required by ShadowJar.
@@ -120,7 +120,7 @@ val TachideskRevision = Runtime
                 it.bufferedReader().use(BufferedReader::readText)
             }
             process.destroy()
-            "r"+output.trim()
+            "r" + output.trim()
 
         }
 
@@ -141,6 +141,63 @@ tasks {
         archiveVersion.set(TachideskVersion)
         archiveClassifier.set(TachideskRevision)
     }
+}
+
+launch4j { //used for windows
+    mainClassName = name
+    bundledJrePath = "jre"
+    bundledJre64Bit = true
+    jreMinVersion = "8"
+    outputDir = "Tachidesk-$TachideskVersion-$TachideskRevision-win32"
+    icon = "${projectDir}/src/main/resources/icon/icon_round.ico"
+    jar = "${projectDir}/build/Tachidesk-$TachideskVersion-$TachideskRevision.jar"
+}
+
+tasks.register<Zip>("windowsPackage") {
+    from(fileTree("$buildDir/Tachidesk-$TachideskVersion-$TachideskRevision-win32"))
+    destinationDirectory.set(File("$buildDir"))
+    archiveFileName.set("Tachidesk-$TachideskVersion-$TachideskRevision-win32.zip")
+    dependsOn("windowsPackageWorkaround2")
+}
+
+tasks.register<Delete>("windowsPackageWorkaround2") {
+    delete(
+            "$buildDir/Tachidesk-$TachideskVersion-$TachideskRevision-win32/jre",
+            "$buildDir/Tachidesk-$TachideskVersion-$TachideskRevision-win32/lib",
+            "$buildDir/Tachidesk-$TachideskVersion-$TachideskRevision-win32/server.exe",
+            "$buildDir/Tachidesk-$TachideskVersion-$TachideskRevision-win32/Tachidesk-$TachideskVersion-$TachideskRevision-win32/Tachidesk-$TachideskVersion-$TachideskRevision-win32"
+    )
+    dependsOn("windowsPackageWorkaround")
+}
+
+tasks.register<Copy>("windowsPackageWorkaround") {
+    from("$buildDir/Tachidesk-$TachideskVersion-$TachideskRevision-win32")
+    into("$buildDir/Tachidesk-$TachideskVersion-$TachideskRevision-win32/Tachidesk-$TachideskVersion-$TachideskRevision-win32")
+    dependsOn("deleteUnwantedJreDir")
+}
+
+tasks.register<Delete>("deleteUnwantedJreDir") {
+    delete(
+            "$buildDir/Tachidesk-$TachideskVersion-$TachideskRevision-win32/jdk8u282-b08-jre"
+    )
+    dependsOn("addJreToDistributable")
+}
+
+tasks.register<Copy>("addJreToDistributable") {
+    from(zipTree("$buildDir/OpenJDK8U-jre_x86-32_windows_hotspot_8u282b08.zip"))
+    into("$buildDir/Tachidesk-$TachideskVersion-$TachideskRevision-win32")
+    eachFile {
+        path = path.replace(".*-jre".toRegex(),"jre")
+    }
+    dependsOn("downloadJre")
+    dependsOn("createExe")
+}
+
+tasks.register<de.undercouch.gradle.tasks.download.Download>("downloadJre") {
+    src("https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u282-b08/OpenJDK8U-jre_x86-32_windows_hotspot_8u282b08.zip")
+    dest(buildDir)
+    overwrite(false)
+    onlyIfModified(true)
 }
 
 tasks.withType<ShadowJar> {
