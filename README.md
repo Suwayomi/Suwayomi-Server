@@ -14,7 +14,7 @@ Download the latest (or a working more stable) release from [the repo branch](ht
 
 Double click on the jar file or run `java -jar Tachidesk-latest.jar` or `java -jar Tachidesk-vX.Y.Z-rxxx.jar`
 
-The server will be running on `http://localhost:4567`. A new browser window will be opened automatically. Also the System Tray Icon is your friend if you need to open the browser window or close Tachidesk.
+The server will be running on `http://localhost:4567`. A new browser window will be opened automatically. Also the System Tray Icon is your friend if you need to open the browser window again or close Tachidesk.
 
 #### Running pre-built windows packages
 Windows specific builds have java bundled inside them. Download the zip release insted of the jar release which is named `Tachidesk-latest-win32.zip` or `Tachidesk-vX.Y.Z-rxxx-win32.zip`, unizp it and run `server.exe`.
