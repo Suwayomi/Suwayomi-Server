@@ -30,7 +30,7 @@ Download [android.jar](https://raw.githubusercontent.com/AriaMoradi/Tachidesk/an
 Run `scripts/getAndroid.sh` from project's root directory to download and rebuild the jar file from Google's repository.
 ### building the jar
 Run `./gradlew shadowJar`, the resulting built jar file will be `server/build/Tachidesk-vX.Y.Z-rxxx.jar`.
-### building windows package
+### building the windows package
 Run `./gradlew windowsPackage`, the resulting built zip package file will be `server/build/Tachidesk-vX.Y.Z-rxxx-win32.zip`.
 ## Running for development purposes
 ### `server` module
