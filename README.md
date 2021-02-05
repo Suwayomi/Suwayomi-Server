@@ -26,7 +26,7 @@ Check [arbuilder's repo](https://github.com/arbuilder/Tachidesk-docker) out for 
 ### Get Android stubs jar
 #### Manual download
 Download [android.jar](https://raw.githubusercontent.com/AriaMoradi/Tachidesk/android-jar/android.jar) and put it under `AndroidCompat/lib`.
-#### Building from source(needs `bash`, `curl`, `base64`, `zip` to work)
+#### Automated download(needs `bash`, `curl`, `base64`, `zip` to work)
 Run `scripts/getAndroid.sh` from project's root directory to download and rebuild the jar file from Google's repository.
 ### building the jar
 Run `./gradlew shadowJar`, the resulting built jar file will be `server/build/Tachidesk-vX.Y.Z-rxxx.jar`.
