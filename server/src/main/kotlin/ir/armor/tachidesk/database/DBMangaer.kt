@@ -5,8 +5,9 @@ package ir.armor.tachidesk.database
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import ir.armor.tachidesk.Config
+import ir.armor.tachidesk.database.table.CategoryTable
 import ir.armor.tachidesk.database.table.ChapterTable
-import ir.armor.tachidesk.database.table.ExtensionsTable
+import ir.armor.tachidesk.database.table.ExtensionTable
 import ir.armor.tachidesk.database.table.MangaTable
 import ir.armor.tachidesk.database.table.PageTable
 import ir.armor.tachidesk.database.table.SourceTable
@@ -27,10 +28,11 @@ fun makeDataBaseTables() {
 //    db.useNestedTransactions = true
 
     transaction {
-        SchemaUtils.create(ExtensionsTable)
+        SchemaUtils.create(ExtensionTable)
         SchemaUtils.create(SourceTable)
         SchemaUtils.create(MangaTable)
         SchemaUtils.create(ChapterTable)
         SchemaUtils.create(PageTable)
+        SchemaUtils.create(CategoryTable)
     }
 }

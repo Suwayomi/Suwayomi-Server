@@ -144,6 +144,26 @@ class Main {
                 ctx.header("content-type", result.second)
             }
 
+            // adds the manga to library
+            app.get("api/v1/manga/:mangaId/library") { ctx ->
+                // TODO
+            }
+
+            // removes the manga from the library
+            app.delete("api/v1/manga/:mangaId/library") { ctx ->
+                // TODO
+            }
+
+            // adds the manga to category
+            app.get("api/v1/manga/:mangaId/category/:categoryId") { ctx ->
+                // TODO
+            }
+
+            // removes the manga from the category
+            app.delete("api/v1/manga/:mangaId/category/:categoryId") { ctx ->
+                // TODO
+            }
+
             app.get("/api/v1/manga/:mangaId/chapters") { ctx ->
                 val mangaId = ctx.pathParam("mangaId").toInt()
                 ctx.json(getChapterList(mangaId))
@@ -183,6 +203,31 @@ class Main {
             app.get("/api/v1/source/:sourceId/filters/") { ctx ->
                 val sourceId = ctx.pathParam("sourceId").toLong()
                 ctx.json(sourceFilters(sourceId))
+            }
+
+            // lists all manga in the library, suitable if no categories are defined
+            app.get("/api/v1/library/") { ctx ->
+                // TODO
+            }
+
+            // category list
+            app.get("/api/v1/category/") { ctx ->
+                // TODO
+            }
+
+            // category create
+            app.post("/api/v1/category/") { ctx ->
+                // TODO
+            }
+
+            // category modification
+            app.patch("/api/v1/category/:categoryId") { ctx ->
+                // TODO
+            }
+
+            // returns the manga list associated with a category
+            app.get("/api/v1/category/:categoryId") { ctx ->
+                // TODO
             }
         }
     }

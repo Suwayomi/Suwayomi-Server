@@ -12,7 +12,7 @@ import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
 import ir.armor.tachidesk.APKExtractor
 import ir.armor.tachidesk.Config
-import ir.armor.tachidesk.database.table.ExtensionsTable
+import ir.armor.tachidesk.database.table.ExtensionTable
 import ir.armor.tachidesk.database.table.SourceTable
 import kotlinx.coroutines.runBlocking
 import okhttp3.Request
@@ -63,7 +63,7 @@ fun installAPK(apkName: String): Int {
             val instance = classToLoad.newInstance()
 
             val extensionId = transaction {
-                return@transaction ExtensionsTable.select { ExtensionsTable.name eq extensionRecord.name }.first()[ExtensionsTable.id]
+                return@transaction ExtensionTable.select { ExtensionTable.name eq extensionRecord.name }.first()[ExtensionTable.id]
             }
 
             if (instance is HttpSource) { // single source
@@ -110,7 +110,7 @@ fun installAPK(apkName: String): Int {
 
             // update extension info
             transaction {
-                ExtensionsTable.update({ ExtensionsTable.name eq extensionRecord.name }) {
+                ExtensionTable.update({ ExtensionTable.name eq extensionRecord.name }) {
                     it[installed] = true
                     it[classFQName] = className
                 }
@@ -139,11 +139,11 @@ fun removeExtension(pkgName: String) {
     val fileNameWithoutType = pkgName.substringBefore(".apk")
     val jarPath = "${Config.extensionsRoot}/$fileNameWithoutType.jar"
     transaction {
-        val extensionId = ExtensionsTable.select { ExtensionsTable.name eq extensionRecord.name }.first()[ExtensionsTable.id]
+        val extensionId = ExtensionTable.select { ExtensionTable.name eq extensionRecord.name }.first()[ExtensionTable.id]
 
         SourceTable.deleteWhere { SourceTable.extension eq extensionId }
-        ExtensionsTable.update({ ExtensionsTable.name eq extensionRecord.name }) {
-            it[ExtensionsTable.installed] = false
+        ExtensionTable.update({ ExtensionTable.name eq extensionRecord.name }) {
+            it[ExtensionTable.installed] = false
         }
     }
 
@@ -155,7 +155,7 @@ fun removeExtension(pkgName: String) {
 val network: NetworkHelper by injectLazy()
 
 fun getExtensionIcon(apkName: String): Pair<InputStream, String> {
-    val iconUrl = transaction { ExtensionsTable.select { ExtensionsTable.apkName eq apkName }.firstOrNull()!! }[ExtensionsTable.iconUrl]
+    val iconUrl = transaction { ExtensionTable.select { ExtensionTable.apkName eq apkName }.firstOrNull()!! }[ExtensionTable.iconUrl]
 
     val saveDir = "${Config.extensionsRoot}/icon"
     val fileName = apkName

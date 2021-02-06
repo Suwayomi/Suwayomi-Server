@@ -21,6 +21,8 @@ object MangaTable : IntIdTable() {
     val status = integer("status").default(SManga.UNKNOWN)
     val thumbnail_url = varchar("thumbnail_url", 2048).nullable()
 
+    val inLibrary = bool("in_library").default(false)
+
     // source is used by some ancestor of IntIdTable
     val sourceReference = reference("source", SourceTable)
 }

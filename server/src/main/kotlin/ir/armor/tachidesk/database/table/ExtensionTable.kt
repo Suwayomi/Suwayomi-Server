@@ -6,7 +6,7 @@ package ir.armor.tachidesk.database.table
 
 import org.jetbrains.exposed.dao.id.IntIdTable
 
-object ExtensionsTable : IntIdTable() {
+object ExtensionTable : IntIdTable() {
     val name = varchar("name", 128)
     val pkgName = varchar("pkg_name", 128)
     val versionName = varchar("version_name", 16)

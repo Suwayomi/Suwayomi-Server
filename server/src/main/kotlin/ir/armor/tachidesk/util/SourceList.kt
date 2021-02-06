@@ -10,7 +10,7 @@ import ir.armor.tachidesk.Config
 import ir.armor.tachidesk.database.dataclass.SourceDataClass
 import ir.armor.tachidesk.database.entity.ExtensionEntity
 import ir.armor.tachidesk.database.entity.SourceEntity
-import ir.armor.tachidesk.database.table.ExtensionsTable
+import ir.armor.tachidesk.database.table.ExtensionTable
 import ir.armor.tachidesk.database.table.SourceTable
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
@@ -78,7 +78,7 @@ fun getSourceList(): List<SourceDataClass> {
                 it[SourceTable.id].value.toString(),
                 it[SourceTable.name],
                 Locale(it[SourceTable.lang]).getDisplayLanguage(Locale(it[SourceTable.lang])),
-                getExtensionIconUrl(ExtensionsTable.select { ExtensionsTable.id eq it[SourceTable.extension] }.first()[ExtensionsTable.apkName]),
+                getExtensionIconUrl(ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }.first()[ExtensionTable.apkName]),
                 getHttpSource(it[SourceTable.id].value).supportsLatest
             )
         }
@@ -93,7 +93,7 @@ fun getSource(sourceId: Long): SourceDataClass {
             source[SourceTable.id].value.toString(),
             source[SourceTable.name],
             Locale(source[SourceTable.lang]).getDisplayLanguage(Locale(source[SourceTable.lang])),
-            ExtensionsTable.select { ExtensionsTable.id eq source[SourceTable.extension] }.first()[ExtensionsTable.iconUrl],
+            ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()[ExtensionTable.iconUrl],
             getHttpSource(source[SourceTable.id].value).supportsLatest
         )
     }

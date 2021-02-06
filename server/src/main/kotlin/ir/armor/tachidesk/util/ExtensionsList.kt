@@ -7,9 +7,8 @@ package ir.armor.tachidesk.util
 import eu.kanade.tachiyomi.extension.api.ExtensionGithubApi
 import eu.kanade.tachiyomi.extension.model.Extension
 import ir.armor.tachidesk.database.dataclass.ExtensionDataClass
-import ir.armor.tachidesk.database.table.ExtensionsTable
+import ir.armor.tachidesk.database.table.ExtensionTable
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
@@ -22,7 +21,7 @@ private object Data {
 
 private fun extensionDatabaseIsEmtpy(): Boolean {
     return transaction {
-        return@transaction ExtensionsTable.selectAll().count() == 0L
+        return@transaction ExtensionTable.selectAll().count() == 0L
     }
 }
 
@@ -37,10 +36,10 @@ fun getExtensionList(offline: Boolean = false): List<ExtensionDataClass> {
             foundExtensions = api.findExtensions()
             transaction {
                 foundExtensions.forEach { foundExtension ->
-                    val extensionRecord = ExtensionsTable.select { ExtensionsTable.name eq foundExtension.name }.firstOrNull()
+                    val extensionRecord = ExtensionTable.select { ExtensionTable.name eq foundExtension.name }.firstOrNull()
                     if (extensionRecord != null) {
                         // update the record
-                        ExtensionsTable.update({ ExtensionsTable.name eq foundExtension.name }) {
+                        ExtensionTable.update({ ExtensionTable.name eq foundExtension.name }) {
                             it[name] = foundExtension.name
                             it[pkgName] = foundExtension.pkgName
                             it[versionName] = foundExtension.versionName
@@ -52,7 +51,7 @@ fun getExtensionList(offline: Boolean = false): List<ExtensionDataClass> {
                         }
                     } else {
                         // insert new record
-                        ExtensionsTable.insert {
+                        ExtensionTable.insert {
                             it[name] = foundExtension.name
                             it[pkgName] = foundExtension.pkgName
                             it[versionName] = foundExtension.versionName
@@ -71,18 +70,18 @@ fun getExtensionList(offline: Boolean = false): List<ExtensionDataClass> {
     }
 
     return transaction {
-        return@transaction ExtensionsTable.selectAll().map {
+        return@transaction ExtensionTable.selectAll().map {
             ExtensionDataClass(
-                it[ExtensionsTable.name],
-                it[ExtensionsTable.pkgName],
-                it[ExtensionsTable.versionName],
-                it[ExtensionsTable.versionCode],
-                it[ExtensionsTable.lang],
-                it[ExtensionsTable.isNsfw],
-                it[ExtensionsTable.apkName],
-                getExtensionIconUrl(it[ExtensionsTable.apkName]),
-                it[ExtensionsTable.installed],
-                it[ExtensionsTable.classFQName]
+                it[ExtensionTable.name],
+                it[ExtensionTable.pkgName],
+                it[ExtensionTable.versionName],
+                it[ExtensionTable.versionCode],
+                it[ExtensionTable.lang],
+                it[ExtensionTable.isNsfw],
+                it[ExtensionTable.apkName],
+                getExtensionIconUrl(it[ExtensionTable.apkName]),
+                it[ExtensionTable.installed],
+                it[ExtensionTable.classFQName]
             )
         }
     }
