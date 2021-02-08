@@ -66,19 +66,28 @@ jobs:
 
       - name: Create repo artifacts
         if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk'
+
         run: |
           cd master
           ./.github/scripts/create-repo.sh
 
-      - name: Checkout repo branch
-        if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk'
-        uses: actions/checkout@v2
-        with:
-          ref: repo
-          path: repo
+#      - name: Checkout repo branch
+#        if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk'
+#        uses: actions/checkout@v2
+#        with:
+#          ref: repo
+#          path: repo
 
-      - name: Deploy repo
+      - name: Upload release binaries
         if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk'
-        run: |
-          cd repo
-          ../master/.github/scripts/commit-repo.sh
+        uses: alexellis/upload-assets@0.2.2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          asset_paths: '["./repo/*"]'
+
+#      - name: Deploy repo
+#        if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk'
+#        run: |
+#          cd repo
+#          ../master/.github/scripts/commit-repo.sh
