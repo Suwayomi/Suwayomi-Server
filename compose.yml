@@ -1,0 +1,13 @@
+---
+version: "2.1"
+services:
+  tachideskdocker:
+    image: docker.io/arbuild/tachidesk-docker
+    container_name: tachidesk-docker
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+    ports:
+      - 4567:4567
+    restart: unless-stopped
