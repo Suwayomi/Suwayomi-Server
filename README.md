@@ -23,6 +23,7 @@ Windows specific builds have java bundled inside them, so you don't have to inst
 Run Tachidesk inside docker container.
 
 Tachidesk dockerfile - https://github.com/arbuilder/Tachidesk-docker
+
 Docker Image - https://hub.docker.com/repository/docker/arbuild/tachidesk-docker
 
 docker run -p 127.0.0.1:4567:4567 docker.io/arbuild/tachidesk-docker
