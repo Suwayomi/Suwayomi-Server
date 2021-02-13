@@ -1,9 +1,10 @@
-name: Publish
+name: CI
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - master
+  pull_request:
 
 jobs:
   check_wrapper:
@@ -20,6 +21,7 @@ jobs:
   build:
     name: Build FatJar
     needs: check_wrapper
+    if: "!startsWith(github.event.head_commit.message, '[SKIP CI]')"
     runs-on: ubuntu-latest
 
     steps:
@@ -51,7 +53,6 @@ jobs:
           cd master
           curl https://raw.githubusercontent.com/AriaMoradi/Tachidesk/android-jar/android.jar -o AndroidCompat/lib/android.jar
 
-
       - name: Build Jar and launch4j
         uses: eskatos/gradle-command-action@v1
         with:
@@ -61,39 +62,3 @@ jobs:
           wrapper-cache-enabled: true
           dependencies-cache-enabled: true
           configuration-cache-enabled: true
-
-
-      - name: Create repo artifacts
-        run: |
-          cd master
-          ./.github/scripts/create-repo.sh
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          body: |
-                  Release body
-          draft: false
-          prerelease: true
-
-      - name: Get the Ref
-        id: get-ref
-        uses: ankitvgupta/ref-to-tag-action@master
-        with:
-          ref: ${{ github.ref }}
-          head_ref: ${{ github.head_ref }}
-
-      - name: Get the tag
-        run: echo "The tag was ${{ steps.get-ref.outputs.tag }}"
-
-      - name: Upload Release
-        uses: AButler/upload-release-assets@v2.0
-        with:
-          files: 'master/repo/*'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: ${{ steps.get-ref.outputs.tag }}
