@@ -76,6 +76,7 @@ jobs:
         with:
           files: 'repo/*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: 'v0.2.0'
 
 #      - name: Create Release
 #          if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk' && startsWith(github.event.head_commit.message, '[RELEASE CI]')
