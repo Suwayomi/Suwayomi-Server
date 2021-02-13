@@ -80,14 +80,14 @@ jobs:
           body: |
                   Release body
           draft: false
-          prerelease: false
+          prerelease: true
             
       - name: Upload Release
         uses: AButler/upload-release-assets@v2.0
         with:
           files: 'master/repo/*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-#          release-tag: ${{ github.ref }}
+          release-tag: ${{ github.ref }}
 
 #      - name: Checkout repo branch
 #        if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk'
