@@ -17,10 +17,10 @@ Double click on the jar file or run `java -jar Tachidesk-vX.Y.Z-rxxx.jar` from a
 
 #### Running pre-built Windows packages
 Windows specific builds have java bundled inside them, so you don't have to install java to use it. Unzip `Tachidesk-vX.Y.Z-rxxx-win32.zip` and run `server.exe`, the rest will work like the jar release.
-<!--
+
 #### Running on Docker
 Check [arbuilder's repo](https://github.com/arbuilder/Tachidesk-docker) out for more details and the dockerfile.
--->
+
 ## Building from source
 ### Get Android stubs jar
 #### Manual download
