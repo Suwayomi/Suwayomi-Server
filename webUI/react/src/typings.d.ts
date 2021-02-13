@@ -25,6 +25,7 @@ interface IManga {
     id: number
     title: string
     thumbnailUrl: string
+    inLibrary?: boolean
 }
 
 interface IChapter {

@@ -6,11 +6,13 @@ package ir.armor.tachidesk
 
 import eu.kanade.tachiyomi.App
 import io.javalin.Javalin
+import ir.armor.tachidesk.util.addMangaToLibrary
 import ir.armor.tachidesk.util.applicationSetup
 import ir.armor.tachidesk.util.getChapter
 import ir.armor.tachidesk.util.getChapterList
 import ir.armor.tachidesk.util.getExtensionIcon
 import ir.armor.tachidesk.util.getExtensionList
+import ir.armor.tachidesk.util.getLibraryMangas
 import ir.armor.tachidesk.util.getManga
 import ir.armor.tachidesk.util.getMangaList
 import ir.armor.tachidesk.util.getPageImage
@@ -20,6 +22,7 @@ import ir.armor.tachidesk.util.getThumbnail
 import ir.armor.tachidesk.util.installAPK
 import ir.armor.tachidesk.util.openInBrowser
 import ir.armor.tachidesk.util.removeExtension
+import ir.armor.tachidesk.util.removeMangaFromLibrary
 import ir.armor.tachidesk.util.sourceFilters
 import ir.armor.tachidesk.util.sourceGlobalSearch
 import ir.armor.tachidesk.util.sourceSearch
@@ -73,15 +76,16 @@ class Main {
                     println("Warning: react build files are missing.")
                     hasWebUiBundled = false
                 }
+                config.enableCorsForAllOrigins()
             }.start(4567)
             if (hasWebUiBundled) {
                 openInBrowser()
             }
 
-            app.before() { ctx ->
-                // allow the client which is running on another port
-                ctx.header("Access-Control-Allow-Origin", "*")
-            }
+//            app.before() { ctx ->
+//                // allow the client which is running on another port
+//                ctx.header("Access-Control-Allow-Origin", "*")
+//            }
 
             app.get("/api/v1/extension/list") { ctx ->
                 ctx.json(getExtensionList())
@@ -146,12 +150,17 @@ class Main {
 
             // adds the manga to library
             app.get("api/v1/manga/:mangaId/library") { ctx ->
-                // TODO
+                val mangaId = ctx.pathParam("mangaId").toInt()
+                addMangaToLibrary(mangaId)
+                ctx.status(200)
             }
 
             // removes the manga from the library
             app.delete("api/v1/manga/:mangaId/library") { ctx ->
-                // TODO
+                val mangaId = ctx.pathParam("mangaId").toInt()
+                println("fuck")
+                removeMangaFromLibrary(mangaId)
+                ctx.status(200)
             }
 
             // adds the manga to category
@@ -207,7 +216,7 @@ class Main {
 
             // lists all manga in the library, suitable if no categories are defined
             app.get("/api/v1/library/") { ctx ->
-                // TODO
+                ctx.json(getLibraryMangas())
             }
 
             // category list

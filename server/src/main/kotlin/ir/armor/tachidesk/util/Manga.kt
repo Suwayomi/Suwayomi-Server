@@ -34,6 +34,7 @@ fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
             mangaEntry[MangaTable.description],
             mangaEntry[MangaTable.genre],
             MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
+            mangaEntry[MangaTable.inLibrary]
         )
     } else { // initialize manga
         val source = getHttpSource(mangaEntry[MangaTable.sourceReference].value)
@@ -77,6 +78,7 @@ fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
             fetchedManga.description,
             fetchedManga.genre,
             MangaStatus.valueOf(fetchedManga.status).name,
+            false
         )
     }
 }

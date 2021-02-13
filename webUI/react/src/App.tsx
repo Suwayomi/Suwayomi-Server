@@ -20,6 +20,7 @@ import Reader from './screens/Reader';
 import Search from './screens/SearchSingle';
 import NavBarTitle from './context/NavbarTitle';
 import DarkTheme from './context/DarkTheme';
+import Library from './screens/Library';
 
 export default function App() {
     const [title, setTitle] = useState<string>('Tachidesk');
@@ -53,7 +54,6 @@ export default function App() {
 
     return (
         <Router>
-
             <ThemeProvider theme={theme}>
                 <NavBarTitle.Provider value={navTitleContext}>
                     <CssBaseline />
@@ -82,6 +82,9 @@ export default function App() {
                             </Route>
                             <Route path="/manga/:id">
                                 <Manga />
+                            </Route>
+                            <Route path="/library">
+                                <Library />
                             </Route>
                             <Route path="/">
                                 <Home />

@@ -5,7 +5,10 @@ package ir.armor.tachidesk.database.table
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.SManga
+import ir.armor.tachidesk.database.dataclass.MangaDataClass
+import ir.armor.tachidesk.util.proxyThumbnailUrl
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.ResultRow
 
 object MangaTable : IntIdTable() {
     val url = varchar("url", 2048)
@@ -26,6 +29,25 @@ object MangaTable : IntIdTable() {
     // source is used by some ancestor of IntIdTable
     val sourceReference = reference("source", SourceTable)
 }
+
+fun MangaTable.toDataClass(mangaEntry: ResultRow) =
+    MangaDataClass(
+        mangaEntry[MangaTable.id].value,
+        mangaEntry[sourceReference].value,
+
+        mangaEntry[MangaTable.url],
+        mangaEntry[MangaTable.title],
+        proxyThumbnailUrl(mangaEntry[MangaTable.id].value),
+
+        mangaEntry[MangaTable.initialized],
+
+        mangaEntry[MangaTable.artist],
+        mangaEntry[MangaTable.author],
+        mangaEntry[MangaTable.description],
+        mangaEntry[MangaTable.genre],
+        MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
+        mangaEntry[MangaTable.inLibrary]
+    )
 
 enum class MangaStatus(val status: Int) {
     UNKNOWN(0),

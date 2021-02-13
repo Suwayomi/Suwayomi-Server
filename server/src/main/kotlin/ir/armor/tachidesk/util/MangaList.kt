@@ -64,7 +64,7 @@ fun MangasPage.processEntries(sourceId: Long): PagedMangaListDataClass {
                     manga.author,
                     manga.description,
                     manga.genre,
-                    MangaStatus.valueOf(manga.status).name,
+                    MangaStatus.valueOf(manga.status).name
                 )
             } else {
                 val mangaId = mangaEntry[MangaTable.id].value
@@ -83,6 +83,7 @@ fun MangasPage.processEntries(sourceId: Long): PagedMangaListDataClass {
                     mangaEntry[MangaTable.description],
                     mangaEntry[MangaTable.genre],
                     MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
+                    mangaEntry[MangaTable.inLibrary]
                 )
             }
         }

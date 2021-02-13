@@ -20,7 +20,8 @@ data class MangaDataClass(
     val author: String? = null,
     val description: String? = null,
     val genre: String? = null,
-    val status: String = MangaStatus.UNKNOWN.name
+    val status: String = MangaStatus.UNKNOWN.name,
+    val inLibrary: Boolean = false
 )
 
 data class PagedMangaListDataClass(

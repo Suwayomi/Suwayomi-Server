@@ -36,6 +36,14 @@ export default function TemporaryDrawer({ drawerOpen, setDrawerOpen }: IProps) {
             onKeyDown={() => setDrawerOpen(false)}
         >
             <List>
+                <Link to="/library" style={{ color: 'inherit', textDecoration: 'none' }}>
+                    <ListItem button key="Library">
+                        <ListItemIcon>
+                            <InboxIcon />
+                        </ListItemIcon>
+                        <ListItemText primary="Library" />
+                    </ListItem>
+                </Link>
                 <Link to="/extensions" style={{ color: 'inherit', textDecoration: 'none' }}>
                     <ListItem button key="Extensions">
                         <ListItemIcon>

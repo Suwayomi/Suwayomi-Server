@@ -38,7 +38,7 @@ export default function Manga() {
 
     return (
         <>
-            <MangaDetails manga={manga} />
+            {manga && <MangaDetails manga={manga} />}
             {chapterCards}
         </>
     );
