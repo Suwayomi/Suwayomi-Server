@@ -81,13 +81,23 @@ jobs:
                   Release body
           draft: false
           prerelease: true
-            
+
+      - name: Get the Ref
+        id: get-ref
+        uses: ankitvgupta/ref-to-tag-action@master
+        with:
+          ref: ${{ github.ref }}
+          head_ref: ${{ github.head_ref }}
+
+      - name: Get the tag
+        run: echo "The tag was ${{ steps.get-ref.outputs.tag }}"
+
       - name: Upload Release
         uses: AButler/upload-release-assets@v2.0
         with:
           files: 'master/repo/*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: ${{ github.ref }}
+          release-tag: ${{ steps.get-ref.outputs.tag }}
 
 #      - name: Checkout repo branch
 #        if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk'
