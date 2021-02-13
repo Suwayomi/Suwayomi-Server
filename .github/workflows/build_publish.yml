@@ -71,6 +71,26 @@ jobs:
           cd master
           ./.github/scripts/create-repo.sh
 
+      - uses: AButler/upload-release-assets@v2.0
+          if: startsWith(github.event.head_commit.message, '[RELEASE CI]')
+          with:
+            files: 'repo/*'
+            repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+#      - name: Create Release
+#          if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk' && startsWith(github.event.head_commit.message, '[RELEASE CI]')
+#          id: create_release
+#          uses: actions/create-release@v1
+#          env:
+#            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#          with:
+#            tag_name: ${{ github.ref }}
+#            release_name: Release ${{ github.ref }}
+#            body: |
+#              Release body
+#            draft: true
+#            prerelease: false
+
 #      - name: Checkout repo branch
 #        if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk'
 #        uses: actions/checkout@v2
@@ -78,13 +98,6 @@ jobs:
 #          ref: repo
 #          path: repo
 
-      - name: Upload release binaries
-        if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk'
-        uses: alexellis/upload-assets@0.2.2
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          asset_paths: '["./repo/*"]'
 
 #      - name: Deploy repo
 #        if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk'
