@@ -79,7 +79,7 @@ jobs:
           release_name: Release ${{ github.ref }}
           body: |
                   Release body
-          draft: true
+          draft: false
           prerelease: false
             
       - name: Upload Release
