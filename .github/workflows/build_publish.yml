@@ -66,13 +66,12 @@ jobs:
 
       - name: Create repo artifacts
         if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk'
-
         run: |
           cd master
           ./.github/scripts/create-repo.sh
 
       - uses: AButler/upload-release-assets@v2.0
-          if: startsWith(github.event.head_commit.message, '[RELEASE CI]')
+          if: "startsWith(github.event.head_commit.message, '[RELEASE CI]')"
           with:
             files: 'repo/*'
             repo-token: ${{ secrets.GITHUB_TOKEN }}
