@@ -6,8 +6,12 @@ package ir.armor.tachidesk
 
 import eu.kanade.tachiyomi.App
 import io.javalin.Javalin
+import ir.armor.tachidesk.util.addMangaToCategory
 import ir.armor.tachidesk.util.addMangaToLibrary
 import ir.armor.tachidesk.util.applicationSetup
+import ir.armor.tachidesk.util.createCategory
+import ir.armor.tachidesk.util.getCategoryList
+import ir.armor.tachidesk.util.getCategoryMangaList
 import ir.armor.tachidesk.util.getChapter
 import ir.armor.tachidesk.util.getChapterList
 import ir.armor.tachidesk.util.getExtensionIcon
@@ -21,12 +25,15 @@ import ir.armor.tachidesk.util.getSourceList
 import ir.armor.tachidesk.util.getThumbnail
 import ir.armor.tachidesk.util.installAPK
 import ir.armor.tachidesk.util.openInBrowser
+import ir.armor.tachidesk.util.removeCategory
 import ir.armor.tachidesk.util.removeExtension
+import ir.armor.tachidesk.util.removeMangaFromCategory
 import ir.armor.tachidesk.util.removeMangaFromLibrary
 import ir.armor.tachidesk.util.sourceFilters
 import ir.armor.tachidesk.util.sourceGlobalSearch
 import ir.armor.tachidesk.util.sourceSearch
 import ir.armor.tachidesk.util.systemTray
+import ir.armor.tachidesk.util.updateCategory
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import xyz.nulldev.androidcompat.AndroidCompat
@@ -165,12 +172,18 @@ class Main {
 
             // adds the manga to category
             app.get("api/v1/manga/:mangaId/category/:categoryId") { ctx ->
-                // TODO
+                val mangaId = ctx.pathParam("mangaId").toInt()
+                val categoryId = ctx.pathParam("categoryId").toInt()
+                addMangaToCategory(mangaId, categoryId)
+                ctx.status(200)
             }
 
             // removes the manga from the category
             app.delete("api/v1/manga/:mangaId/category/:categoryId") { ctx ->
-                // TODO
+                val mangaId = ctx.pathParam("mangaId").toInt()
+                val categoryId = ctx.pathParam("categoryId").toInt()
+                removeMangaFromCategory(mangaId, categoryId)
+                ctx.status(200)
             }
 
             app.get("/api/v1/manga/:mangaId/chapters") { ctx ->
@@ -221,22 +234,37 @@ class Main {
 
             // category list
             app.get("/api/v1/category/") { ctx ->
-                // TODO
+                ctx.json(getCategoryList())
             }
 
             // category create
             app.post("/api/v1/category/") { ctx ->
-                // TODO
+                val name = ctx.formParam("name")!!
+                val isLanding = ctx.formParam("isLanding", "false").toBoolean()
+                createCategory(name, isLanding)
+                ctx.status(200)
             }
 
             // category modification
-            app.patch("/api/v1/category/:categoryId") { ctx ->
-                // TODO
+            app.put("/api/v1/category/:categoryId") { ctx ->
+                val categoryId = ctx.pathParam("categoryId").toInt()
+                val name = ctx.formParam("name")!!
+                val isLanding = ctx.formParam("isLanding").toBoolean()
+                updateCategory(categoryId, name, isLanding)
+                ctx.status(200)
+            }
+
+            // category delete
+            app.delete("/api/v1/category/:categoryId") { ctx ->
+                val categoryId = ctx.pathParam("categoryId").toInt()
+                removeCategory(categoryId)
+                ctx.status(200)
             }
 
             // returns the manga list associated with a category
             app.get("/api/v1/category/:categoryId") { ctx ->
-                // TODO
+                val categoryId = ctx.pathParam("categoryId").toInt()
+                ctx.json(getCategoryMangaList(categoryId))
             }
         }
     }
