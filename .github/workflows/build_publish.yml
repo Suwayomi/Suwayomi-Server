@@ -70,11 +70,12 @@ jobs:
           cd master
           ./.github/scripts/create-repo.sh
 
-      - uses: AButler/upload-release-assets@v2.0
-          if: "startsWith(github.event.head_commit.message, '[RELEASE CI]')"
-          with:
-            files: 'repo/*'
-            repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Release
+        uses: AButler/upload-release-assets@v2.0
+        if: "startsWith(github.event.head_commit.message, '[RELEASE CI]')"
+        with:
+          files: 'repo/*'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
 #      - name: Create Release
 #          if: github.event_name == 'push' && github.repository == 'AriaMoradi/Tachidesk' && startsWith(github.event.head_commit.message, '[RELEASE CI]')
