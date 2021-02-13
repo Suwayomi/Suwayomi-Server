@@ -51,6 +51,12 @@ jobs:
           cd master
           curl https://raw.githubusercontent.com/AriaMoradi/Tachidesk/android-jar/android.jar -o AndroidCompat/lib/android.jar
 
+      - name: Cache node_modules
+        uses: actions/cache@v2
+        with:
+          path: |
+            **/react/node_modules
+          key: ${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
 
       - name: Build Jar and launch4j
         uses: eskatos/gradle-command-action@v1
