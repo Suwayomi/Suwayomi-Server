@@ -9,7 +9,7 @@ plugins {
     id("edu.sc.seis.launch4j") version "2.4.9"
 }
 
-val TachideskVersion = "v0.2.0"
+val TachideskVersion = "v0.2.1"
 
 
 repositories {
