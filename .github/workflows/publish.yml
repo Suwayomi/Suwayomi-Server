@@ -74,32 +74,42 @@ jobs:
           cd master
           ./.github/scripts/create-repo.sh
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Upload Release
+      - uses: xresloader/upload-to-github-release@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          body: |
-                  Release body
+          file: "master/repo/*"
+          tags: true
           draft: true
-          prerelease: true
+          verbose: true
 
-      - name: Get the Ref
-        id: get-ref
-        uses: ankitvgupta/ref-to-tag-action@master
-        with:
-          ref: ${{ github.ref }}
-          head_ref: ${{ github.head_ref }}
-
-      - name: Get the tag
-        run: echo "The tag was ${{ steps.get-ref.outputs.tag }}"
-
-      - name: Upload Release
-        uses: AButler/upload-release-assets@v2.0
-        with:
-          files: 'master/repo/*'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: ${{ steps.get-ref.outputs.tag }}
+#      - name: Create Release
+#        id: create_release
+#        uses: actions/create-release@v1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          tag_name: ${{ github.ref }}
+#          release_name: Release ${{ github.ref }}
+#          body: |
+#                  Release body
+#          draft: false
+#          prerelease: true
+#
+#      - name: Get the Ref
+#        id: get-ref
+#        uses: ankitvgupta/ref-to-tag-action@master
+#        with:
+#          ref: ${{ github.ref }}
+#          head_ref: ${{ github.head_ref }}
+#
+#      - name: Get the tag
+#        run: echo "The tag was ${{ steps.get-ref.outputs.tag }}"
+#
+#      - name: Upload Release
+#        uses: AButler/upload-release-assets@v2.0
+#        with:
+#          files: 'master/repo/*'
+#          repo-token: ${{ secrets.GITHUB_TOKEN }}
+#          release-tag: ${{ steps.get-ref.outputs.tag }}
