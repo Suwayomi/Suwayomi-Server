@@ -8,7 +8,10 @@ import ListItem, { ListItemProps } from '@material-ui/core/ListItem';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
 import InboxIcon from '@material-ui/icons/Inbox';
+import Brightness6Icon from '@material-ui/icons/Brightness6';
+import { ListItemSecondaryAction, Switch } from '@material-ui/core';
 import NavBarTitle from '../context/NavbarTitle';
+import DarkTheme from '../context/DarkTheme';
 
 function ListItemLink(props: ListItemProps<'a', { button?: true }>) {
     // eslint-disable-next-line react/jsx-props-no-spreading
@@ -18,6 +21,7 @@ function ListItemLink(props: ListItemProps<'a', { button?: true }>) {
 export default function Settings() {
     const { setTitle } = useContext(NavBarTitle);
     setTitle('Settings');
+    const { darkTheme, setDarkTheme } = useContext(DarkTheme);
 
     return (
         <div>
@@ -28,6 +32,19 @@ export default function Settings() {
                     </ListItemIcon>
                     <ListItemText primary="Categories" />
                 </ListItemLink>
+                <ListItem>
+                    <ListItemIcon>
+                        <Brightness6Icon />
+                    </ListItemIcon>
+                    <ListItemText primary="Dark Theme" />
+                    <ListItemSecondaryAction>
+                        <Switch
+                            edge="end"
+                            checked={darkTheme}
+                            onChange={() => setDarkTheme(!darkTheme)}
+                        />
+                    </ListItemSecondaryAction>
+                </ListItem>
             </List>
         </div>
     );

@@ -58,9 +58,7 @@ export default function App() {
             <ThemeProvider theme={theme}>
                 <NavBarTitle.Provider value={navTitleContext}>
                     <CssBaseline />
-                    <DarkTheme.Provider value={darkThemeContext}>
-                        <NavBar />
-                    </DarkTheme.Provider>
+                    <NavBar />
                     <Container maxWidth={false} disableGutters>
                         <Switch>
                             <Route path="/sources/:sourceId/search/">
@@ -91,7 +89,9 @@ export default function App() {
                                 <Categories />
                             </Route>
                             <Route path="/settings">
-                                <Settings />
+                                <DarkTheme.Provider value={darkThemeContext}>
+                                    <Settings />
+                                </DarkTheme.Provider>
                             </Route>
                             <Route
                                 exact

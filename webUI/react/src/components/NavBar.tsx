@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// TODO: remove above!
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
@@ -45,7 +47,7 @@ export default function NavBar() {
     const { title } = useContext(NavBarTitle);
     const open = Boolean(anchorEl);
 
-    const { darkTheme, setDarkTheme } = useContext(DarkTheme);
+    const { darkTheme } = useContext(DarkTheme);
 
     const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
         setAnchorEl(event.currentTarget);
@@ -80,7 +82,7 @@ export default function NavBar() {
                     >
                         <MoreIcon />
                     </IconButton>
-                    <Menu
+                    {/* <Menu
                         id="menu-appbar"
                         anchorEl={anchorEl}
                         anchorOrigin={{
@@ -107,7 +109,7 @@ export default function NavBar() {
                             Light Theme
 
                         </MenuItem>
-                    </Menu>
+                    </Menu> */}
                 </Toolbar>
             </AppBar>
             <TemporaryDrawer drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen} />
