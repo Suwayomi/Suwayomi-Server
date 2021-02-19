@@ -4,14 +4,13 @@
 
 import React, { useState } from 'react';
 import {
-    BrowserRouter as Router, Route, Switch,
+    BrowserRouter as Router, Redirect, Route, Switch,
 } from 'react-router-dom';
 import { Container } from '@material-ui/core';
 import CssBaseline from '@material-ui/core/CssBaseline';
 import { createMuiTheme, ThemeProvider } from '@material-ui/core/styles';
 
 import NavBar from './components/NavBar';
-import Home from './screens/Home';
 import Sources from './screens/Sources';
 import Extensions from './screens/Extensions';
 import SourceMangas from './screens/SourceMangas';
@@ -94,9 +93,13 @@ export default function App() {
                             <Route path="/settings">
                                 <Settings />
                             </Route>
-                            <Route path="/">
-                                <Home />
-                            </Route>
+                            <Route
+                                exact
+                                path="/"
+                                render={() => (
+                                    <Redirect to="/library" />
+                                )}
+                            />
                         </Switch>
                     </Container>
                 </NavBarTitle.Provider>
