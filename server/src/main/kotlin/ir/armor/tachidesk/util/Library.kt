@@ -25,7 +25,7 @@ fun addMangaToLibrary(mangaId: Int) {
 
 fun removeMangaFromLibrary(mangaId: Int) {
     val manga = getManga(mangaId)
-    if (!manga.inLibrary) {
+    if (manga.inLibrary) {
         transaction {
             MangaTable.update({ MangaTable.id eq manga.id }) {
                 it[inLibrary] = false

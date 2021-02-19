@@ -166,7 +166,6 @@ class Main {
             // removes the manga from the library
             app.delete("api/v1/manga/:mangaId/library") { ctx ->
                 val mangaId = ctx.pathParam("mangaId").toInt()
-                println("fuck")
                 removeMangaFromLibrary(mangaId)
                 ctx.status(200)
             }
