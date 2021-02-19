@@ -25,6 +25,7 @@ object MangaTable : IntIdTable() {
     val thumbnail_url = varchar("thumbnail_url", 2048).nullable()
 
     val inLibrary = bool("in_library").default(false)
+    val defaultCategory = bool("default_category").default(true)
 
     // source is used by some ancestor of IntIdTable
     val sourceReference = reference("source", SourceTable)

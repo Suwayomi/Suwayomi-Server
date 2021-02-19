@@ -3,6 +3,7 @@ package ir.armor.tachidesk.util
 import ir.armor.tachidesk.database.dataclass.MangaDataClass
 import ir.armor.tachidesk.database.table.MangaTable
 import ir.armor.tachidesk.database.table.toDataClass
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -35,7 +36,7 @@ fun removeMangaFromLibrary(mangaId: Int) {
 
 fun getLibraryMangas(): List<MangaDataClass> {
     return transaction {
-        MangaTable.select { MangaTable.inLibrary eq true }.map {
+        MangaTable.select { (MangaTable.inLibrary eq true) and (MangaTable.defaultCategory eq true) }.map {
             MangaTable.toDataClass(it)
         }
     }

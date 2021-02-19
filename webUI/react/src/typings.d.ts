@@ -38,3 +38,10 @@ interface IChapter {
     mangaId: number
     pageCount: number
 }
+
+interface ICategory {
+    id: number
+    order: number
+    name: String
+    isLanding: boolean
+}

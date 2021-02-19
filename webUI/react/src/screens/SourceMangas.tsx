@@ -7,7 +7,7 @@ import { useParams } from 'react-router-dom';
 import MangaGrid from '../components/MangaGrid';
 import NavBarTitle from '../context/NavbarTitle';
 
-export default function MangaList(props: { popular: boolean }) {
+export default function SourceMangas(props: { popular: boolean }) {
     const { sourceId } = useParams<{sourceId: string}>();
     const { setTitle } = useContext(NavBarTitle);
     const [mangas, setMangas] = useState<IManga[]>([]);

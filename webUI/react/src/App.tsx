@@ -14,13 +14,15 @@ import NavBar from './components/NavBar';
 import Home from './screens/Home';
 import Sources from './screens/Sources';
 import Extensions from './screens/Extensions';
-import MangaList from './screens/MangaList';
+import SourceMangas from './screens/SourceMangas';
 import Manga from './screens/Manga';
 import Reader from './screens/Reader';
 import Search from './screens/SearchSingle';
 import NavBarTitle from './context/NavbarTitle';
 import DarkTheme from './context/DarkTheme';
 import Library from './screens/Library';
+import Settings from './screens/Settings';
+import Categories from './screens/settings/Categories';
 
 export default function App() {
     const [title, setTitle] = useState<string>('Tachidesk');
@@ -69,10 +71,10 @@ export default function App() {
                                 <Extensions />
                             </Route>
                             <Route path="/sources/:sourceId/popular/">
-                                <MangaList popular />
+                                <SourceMangas popular />
                             </Route>
                             <Route path="/sources/:sourceId/latest/">
-                                <MangaList popular={false} />
+                                <SourceMangas popular={false} />
                             </Route>
                             <Route path="/sources">
                                 <Sources />
@@ -85,6 +87,12 @@ export default function App() {
                             </Route>
                             <Route path="/library">
                                 <Library />
+                            </Route>
+                            <Route path="/settings/categories">
+                                <Categories />
+                            </Route>
+                            <Route path="/settings">
+                                <Settings />
                             </Route>
                             <Route path="/">
                                 <Home />

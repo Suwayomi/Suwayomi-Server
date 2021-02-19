@@ -29,6 +29,7 @@ import ir.armor.tachidesk.util.removeCategory
 import ir.armor.tachidesk.util.removeExtension
 import ir.armor.tachidesk.util.removeMangaFromCategory
 import ir.armor.tachidesk.util.removeMangaFromLibrary
+import ir.armor.tachidesk.util.reorderCategory
 import ir.armor.tachidesk.util.sourceFilters
 import ir.armor.tachidesk.util.sourceGlobalSearch
 import ir.armor.tachidesk.util.sourceSearch
@@ -60,7 +61,7 @@ class Main {
 
             // make sure everything we need exists
             applicationSetup()
-            val tray = systemTray()
+            val tray = systemTray() // assign it to a variable so it's kept in the memory and not garbage collected
 
             registerConfigModules()
 
@@ -227,7 +228,7 @@ class Main {
                 ctx.json(sourceFilters(sourceId))
             }
 
-            // lists all manga in the library, suitable if no categories are defined
+            // lists mangas that have no category assigned
             app.get("/api/v1/library/") { ctx ->
                 ctx.json(getLibraryMangas())
             }
@@ -240,17 +241,25 @@ class Main {
             // category create
             app.post("/api/v1/category/") { ctx ->
                 val name = ctx.formParam("name")!!
-                val isLanding = ctx.formParam("isLanding", "false").toBoolean()
-                createCategory(name, isLanding)
+                createCategory(name)
                 ctx.status(200)
             }
 
             // category modification
-            app.put("/api/v1/category/:categoryId") { ctx ->
-                val categoryId = ctx.pathParam("categoryId").toInt()
-                val name = ctx.formParam("name")!!
-                val isLanding = ctx.formParam("isLanding").toBoolean()
+            app.patch("/api/v1/category/:categoryId") { ctx ->
+                val categoryId = ctx.pathParam("categoryId")!!.toInt()
+                val name = ctx.formParam("name")
+                val isLanding = if (ctx.formParam("isLanding") != null) ctx.formParam("isLanding")?.toBoolean() else null
                 updateCategory(categoryId, name, isLanding)
+                ctx.status(200)
+            }
+
+            // category re-ordering
+            app.patch("/api/v1/category/:categoryId/reorder") { ctx ->
+                val categoryId = ctx.pathParam("categoryId").toInt()
+                val from = ctx.formParam("from")!!.toInt()
+                val to = ctx.formParam("to")!!.toInt()
+                reorderCategory(categoryId, from, to)
                 ctx.status(200)
             }
 

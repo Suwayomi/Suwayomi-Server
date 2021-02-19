@@ -9,6 +9,7 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -21,6 +22,10 @@ fun addMangaToCategory(mangaId: Int, categoryId: Int) {
                 it[CategoryMangaTable.category] = categoryId
                 it[CategoryMangaTable.manga] = mangaId
             }
+
+            MangaTable.update({ MangaTable.id eq mangaId }) {
+                it[MangaTable.defaultCategory] = false
+            }
         }
     }
 }
@@ -28,6 +33,11 @@ fun addMangaToCategory(mangaId: Int, categoryId: Int) {
 fun removeMangaFromCategory(mangaId: Int, categoryId: Int) {
     transaction {
         CategoryMangaTable.deleteWhere { (CategoryMangaTable.category eq categoryId) and (CategoryMangaTable.manga eq mangaId) }
+        if (CategoryMangaTable.select { CategoryMangaTable.manga eq mangaId }.count() == 0L) {
+            MangaTable.update({ MangaTable.id eq mangaId }) {
+                it[MangaTable.defaultCategory] = true
+            }
+        }
     }
 }
 

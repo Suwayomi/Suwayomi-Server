@@ -60,6 +60,14 @@ export default function TemporaryDrawer({ drawerOpen, setDrawerOpen }: IProps) {
                         <ListItemText primary="Sources" />
                     </ListItem>
                 </Link>
+                <Link to="/settings" style={{ color: 'inherit', textDecoration: 'none' }}>
+                    <ListItem button key="settings">
+                        <ListItemIcon>
+                            <InboxIcon />
+                        </ListItemIcon>
+                        <ListItemText primary="Settings" />
+                    </ListItem>
+                </Link>
                 {/* <Link to="/search" style={{ color: 'inherit', textDecoration: 'none' }}>
                     <ListItem button key="Search">
                         <ListItemIcon>

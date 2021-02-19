@@ -5,6 +5,8 @@ package ir.armor.tachidesk.database.dataclass
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 data class CategoryDataClass(
+    val id: Int,
+    val order: Int,
     val name: String,
     val isLanding: Boolean
 )

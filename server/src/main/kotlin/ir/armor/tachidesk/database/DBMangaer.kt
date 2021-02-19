@@ -29,12 +29,14 @@ fun makeDataBaseTables() {
 //    db.useNestedTransactions = true
 
     transaction {
-        SchemaUtils.create(ExtensionTable)
-        SchemaUtils.create(SourceTable)
-        SchemaUtils.create(MangaTable)
-        SchemaUtils.create(ChapterTable)
-        SchemaUtils.create(PageTable)
-        SchemaUtils.create(CategoryTable)
-        SchemaUtils.create(CategoryMangaTable)
+        SchemaUtils.createMissingTablesAndColumns(
+            ExtensionTable,
+            SourceTable,
+            MangaTable,
+            ChapterTable,
+            PageTable,
+            CategoryTable,
+            CategoryMangaTable,
+        )
     }
 }
