@@ -74,14 +74,14 @@ export default function NavBar() {
                     <Typography variant="h6" className={classes.title}>
                         {title}
                     </Typography>
-                    <IconButton
+                    {/* <IconButton
                         onClick={handleMenu}
                         aria-label="display more actions"
                         edge="end"
                         color="inherit"
                     >
                         <MoreIcon />
-                    </IconButton>
+                    </IconButton> */}
                     {/* <Menu
                         id="menu-appbar"
                         anchorEl={anchorEl}
