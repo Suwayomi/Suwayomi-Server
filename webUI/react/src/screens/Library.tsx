@@ -46,37 +46,38 @@ export default function Library() {
     useEffect(() => {
         setTitle('Library');
     }, []);
-
     useEffect(() => {
+        // eslint-disable-next-line no-var
+        var newTabs: IMangaCategory[] = [];
         fetch('http://127.0.0.1:4567/api/v1/library')
             .then((response) => response.json())
             .then((data: IManga[]) => {
+                // if some manga with no category exist, they will be added under a virtual category
                 if (data.length > 0) {
-                    setTabs([
-                        ...tabs,
+                    newTabs = [
                         {
                             category: {
                                 name: 'Default', isLanding: true, order: 0, id: 0,
                             },
                             mangas: data,
                         },
-                    ]);
+                    ]; // will set state on the next fetch
                 }
-            });
+            })
+            .then(
+                () => {
+                    fetch('http://127.0.0.1:4567/api/v1/category')
+                        .then((response) => response.json())
+                        .then((data: ICategory[]) => {
+                            const mangaCategories = data.map((category) => ({
+                                category,
+                                mangas: [] as IManga[],
+                            }));
+                            setTabs([...newTabs, ...mangaCategories]);
+                        });
+                },
+            );
     }, []);
-
-    useEffect(() => {
-        fetch('http://127.0.0.1:4567/api/v1/category')
-            .then((response) => response.json())
-            .then((data: ICategory[]) => {
-                const mangaCategories = data.map((category) => ({
-                    category,
-                    mangas: [] as IManga[],
-                }));
-                setTabs([...tabs, ...mangaCategories]);
-            });
-    }, []);
-
     // eslint-disable-next-line max-len
     const handleTabChange = (event: React.ChangeEvent<{}>, newValue: number) => setTabNum(newValue);
 
@@ -84,8 +85,8 @@ export default function Library() {
     if (tabs.length > 1) {
         const tabDefines = tabs.map((tab) => (<Tab label={tab.category.name} />));
 
-        const tabBodies = tabs.map((tab) => (
-            <TabPanel value={tabNum} index={0}>
+        const tabBodies = tabs.map((tab, index) => (
+            <TabPanel value={tabNum} index={index}>
                 <MangaGrid
                     mangas={tab.mangas}
                     hasNextPage={false}
@@ -94,6 +95,9 @@ export default function Library() {
                 />
             </TabPanel>
         ));
+
+        // 160px is min-width for viewport width of >600
+        const scrollableTabs = window.innerWidth < tabs.length * 160;
         toRender = (
             <>
                 <Tabs
@@ -101,7 +105,9 @@ export default function Library() {
                     onChange={handleTabChange}
                     indicatorColor="primary"
                     textColor="primary"
-                    centered
+                    centered={!scrollableTabs}
+                    variant={scrollableTabs ? 'scrollable' : 'fullWidth'}
+                    scrollButtons="on"
                 >
                     {tabDefines}
                 </Tabs>
