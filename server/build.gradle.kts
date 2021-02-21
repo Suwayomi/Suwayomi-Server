@@ -149,7 +149,7 @@ launch4j { //used for windows
     bundledJre64Bit = true
     jreMinVersion = "8"
     outputDir = "Tachidesk-$TachideskVersion-$TachideskRevision-win32"
-    icon = "${projectDir}/src/main/resources/icon/icon_round.ico"
+    icon = "${projectDir}/src/main/resources/icon/faviconlogo.ico"
     jar = "${projectDir}/build/Tachidesk-$TachideskVersion-$TachideskRevision.jar"
 }
 

@@ -30,7 +30,7 @@ fun openInBrowser() {
     Desktop.browseURL("http://127.0.0.1:4567")
 }
 
-val icon = Main::class.java.getResource("/icon/icon_round.png")
+val icon = Main::class.java.getResource("/icon/faviconlogo.png")
 
 fun systemTray(): SystemTray? {
     // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
