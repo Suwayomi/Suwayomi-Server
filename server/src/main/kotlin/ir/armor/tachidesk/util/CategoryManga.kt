@@ -1,9 +1,12 @@
 package ir.armor.tachidesk.util
 
+import ir.armor.tachidesk.database.dataclass.CategoryDataClass
 import ir.armor.tachidesk.database.dataclass.MangaDataClass
 import ir.armor.tachidesk.database.table.CategoryMangaTable
+import ir.armor.tachidesk.database.table.CategoryTable
 import ir.armor.tachidesk.database.table.MangaTable
 import ir.armor.tachidesk.database.table.toDataClass
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
@@ -45,6 +48,14 @@ fun getCategoryMangaList(categoryId: Int): List<MangaDataClass> {
     return transaction {
         CategoryMangaTable.innerJoin(MangaTable).select { CategoryMangaTable.category eq categoryId }.map {
             MangaTable.toDataClass(it)
+        }
+    }
+}
+
+fun getMangaCategories(mangaId: Int): List<CategoryDataClass> {
+    return transaction {
+        CategoryMangaTable.innerJoin(CategoryTable).select { CategoryMangaTable.manga eq mangaId }.orderBy(CategoryTable.order to SortOrder.ASC).map {
+            CategoryTable.toDataClass(it)
         }
     }
 }

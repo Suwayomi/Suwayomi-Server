@@ -18,6 +18,7 @@ import ir.armor.tachidesk.util.getExtensionIcon
 import ir.armor.tachidesk.util.getExtensionList
 import ir.armor.tachidesk.util.getLibraryMangas
 import ir.armor.tachidesk.util.getManga
+import ir.armor.tachidesk.util.getMangaCategories
 import ir.armor.tachidesk.util.getMangaList
 import ir.armor.tachidesk.util.getPageImage
 import ir.armor.tachidesk.util.getSource
@@ -168,6 +169,12 @@ class Main {
                 val mangaId = ctx.pathParam("mangaId").toInt()
                 removeMangaFromLibrary(mangaId)
                 ctx.status(200)
+            }
+
+            // adds the manga to category
+            app.get("api/v1/manga/:mangaId/category/") { ctx ->
+                val mangaId = ctx.pathParam("mangaId").toInt()
+                ctx.json(getMangaCategories(mangaId))
             }
 
             // adds the manga to category

@@ -66,6 +66,7 @@ export default function Categories() {
         formData.append('to', to + 1);
         fetch(`http://127.0.0.1:4567/api/v1/category/${category.id}/reorder`, {
             method: 'PATCH',
+            mode: 'cors',
             body: formData,
         }).finally(() => triggerUpdate());
 
@@ -112,12 +113,14 @@ export default function Categories() {
         if (categoryToEdit === -1) {
             fetch('http://127.0.0.1:4567/api/v1/category/', {
                 method: 'POST',
+                mode: 'cors',
                 body: formData,
             }).finally(() => triggerUpdate());
         } else {
             const category = categories[categoryToEdit];
             fetch(`http://127.0.0.1:4567/api/v1/category/${category.id}`, {
                 method: 'PATCH',
+                mode: 'cors',
                 body: formData,
             }).finally(() => triggerUpdate());
         }
@@ -127,6 +130,7 @@ export default function Categories() {
         const category = categories[index];
         fetch(`http://127.0.0.1:4567/api/v1/category/${category.id}`, {
             method: 'DELETE',
+            mode: 'cors',
         }).finally(() => triggerUpdate());
     };
 

@@ -20,7 +20,7 @@ interface TabPanelProps {
 
 function TabPanel(props: TabPanelProps) {
     const {
-        children, value, index, ...other
+        children, value, index,
     } = props;
 
     return (
@@ -28,9 +28,6 @@ function TabPanel(props: TabPanelProps) {
             role="tabpanel"
             hidden={value !== index}
             id={`simple-tabpanel-${index}`}
-            aria-labelledby={`simple-tab-${index}`}
-            // eslint-disable-next-line react/jsx-props-no-spreading
-            {...other}
         >
             {value === index && children}
         </div>
@@ -41,31 +38,57 @@ export default function Library() {
     const { setTitle } = useContext(NavBarTitle);
     const [tabs, setTabs] = useState<IMangaCategory[]>([]);
     const [tabNum, setTabNum] = useState<number>(0);
-    const [lastPageNum, setLastPageNum] = useState<number>(1);
 
+    // a hack so MangaGrid doesn't stop working. I won't change it in case
+    // if I do manga pagination for library..
+    const [lastPageNum, setLastPageNum] = useState<number>(1);
     useEffect(() => {
         setTitle('Library');
     }, []);
+
+    // eslint-disable-next-line @typescript-eslint/no-shadow
+    const fetchAndSetMangas = (tabs: IMangaCategory[], tab: IMangaCategory, index: number) => {
+        fetch(`http://127.0.0.1:4567/api/v1/category/${tab.category.id}`)
+            .then((response) => response.json())
+            .then((data: IManga[]) => {
+                const tabsClone = JSON.parse(JSON.stringify(tabs));
+                tabsClone[index].mangas = data;
+                setTabs(tabsClone); // clone the object
+            });
+    };
+
+    const handleTabChange = (newTab: number) => {
+        setTabNum(newTab);
+        tabs.forEach((tab, index) => {
+            if (tab.category.order === newTab && tab.mangas.length === 0) {
+                // mangas are empty, fetch the mangas
+                fetchAndSetMangas(tabs, tab, index);
+            }
+        });
+    };
+
     useEffect(() => {
-        // eslint-disable-next-line no-var
-        var newTabs: IMangaCategory[] = [];
         fetch('http://127.0.0.1:4567/api/v1/library')
             .then((response) => response.json())
             .then((data: IManga[]) => {
                 // if some manga with no category exist, they will be added under a virtual category
                 if (data.length > 0) {
-                    newTabs = [
+                    return [
                         {
                             category: {
-                                name: 'Default', isLanding: true, order: 0, id: 0,
+                                name: 'Default', isLanding: true, order: 0, id: -1,
                             },
                             mangas: data,
                         },
                     ]; // will set state on the next fetch
                 }
+
+                // no default category so the first tab is 1
+                setTabNum(1);
+                return [];
             })
             .then(
-                () => {
+                (newTabs: IMangaCategory[]) => {
                     fetch('http://127.0.0.1:4567/api/v1/category')
                         .then((response) => response.json())
                         .then((data: ICategory[]) => {
@@ -73,20 +96,24 @@ export default function Library() {
                                 category,
                                 mangas: [] as IManga[],
                             }));
-                            setTabs([...newTabs, ...mangaCategories]);
+                            const newNewTabs = [...newTabs, ...mangaCategories];
+                            setTabs(newNewTabs);
+
+                            // if no default category, we must fetch the first tab now...
+                            // eslint-disable-next-line max-len
+                            if (newTabs.length === 0) { fetchAndSetMangas(newNewTabs, newNewTabs[0], 0); }
                         });
                 },
             );
     }, []);
-    // eslint-disable-next-line max-len
-    const handleTabChange = (event: React.ChangeEvent<{}>, newValue: number) => setTabNum(newValue);
 
     let toRender;
     if (tabs.length > 1) {
-        const tabDefines = tabs.map((tab) => (<Tab label={tab.category.name} />));
+        // eslint-disable-next-line max-len
+        const tabDefines = tabs.map((tab) => (<Tab label={tab.category.name} value={tab.category.order} />));
 
-        const tabBodies = tabs.map((tab, index) => (
-            <TabPanel value={tabNum} index={index}>
+        const tabBodies = tabs.map((tab) => (
+            <TabPanel value={tabNum} index={tab.category.order}>
                 <MangaGrid
                     mangas={tab.mangas}
                     hasNextPage={false}
@@ -102,7 +129,7 @@ export default function Library() {
             <>
                 <Tabs
                     value={tabNum}
-                    onChange={handleTabChange}
+                    onChange={(e, newTab) => handleTabChange(newTab)}
                     indicatorColor="primary"
                     textColor="primary"
                     centered={!scrollableTabs}
