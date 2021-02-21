@@ -38,8 +38,11 @@ Check [arbuilder's repo](https://github.com/arbuilder/Tachidesk-docker) out for 
 If the app breaks try deleting the directory below and re-running the app (**This will delete all your data!**) and if the problem persists open an issue. 
 
 On Mac OS X : `/Users/<Account>/Library/Application Support/Tachidesk`
+
 On Windows XP : `C:\Documents and Settings<Account>\Application Data\Local Settings\Tachidesk`
+
 On Windows 7 and later : `C:\Users<Account>\AppData\Tachidesk`
+
 On Unix/Linux : `/home/<account>/.local/share/Tachidesk`
 
 ## Support and help
