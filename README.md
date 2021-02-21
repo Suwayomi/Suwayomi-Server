@@ -14,11 +14,11 @@ Here is a list of current features:
 - A minimal manga reader.
 - Ability to download Mangas for offline read(This partially works)
 
-**Note:** Keep in mind that Tachidesk is alpha software and can break rarely and/or with each update so you may have to delete your data to fix it.
+**Note:** Keep in mind that Tachidesk is alpha software and can break rarely and/or with each update, so you may have to delete your data to fix it. See [General troubleshooting](#general-troubleshooting) and [Support and help](#support-and-help) if it happens.
 
 Anyways, for more info checkout [finished milestone #1](https://github.com/AriaMoradi/Tachidesk/issues/2) and [milestone #2](https://github.com/AriaMoradi/Tachidesk/projects/1) to see what's implemented in more detail.
 
-## How do I run the app?
+## Downloading and Running the app
 #### Prerequisites
 You should have The Java Runtime Environment(JRE) 8 or newer (if you're not planning to use the Windows specific build) and a modern browser installed. Also an internet connection is required as almost everything this app does is downloading stuff. 
 
@@ -34,7 +34,7 @@ Windows specific builds have java bundled inside them, so you don't have to inst
 #### Running on Docker
 Check [arbuilder's repo](https://github.com/arbuilder/Tachidesk-docker) out for more details and the dockerfile.
 
-## General troubleshooting guide
+## General troubleshooting
 If the app breaks try deleting the directory below and re-running the app (**This will delete all your data!**) and if the problem persists open an issue. 
 
 On Mac OS X : `/Users/<Account>/Library/Application Support/Tachidesk`
