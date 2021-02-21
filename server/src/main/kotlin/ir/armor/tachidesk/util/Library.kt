@@ -1,9 +1,12 @@
 package ir.armor.tachidesk.util
 
 import ir.armor.tachidesk.database.dataclass.MangaDataClass
+import ir.armor.tachidesk.database.table.CategoryMangaTable
 import ir.armor.tachidesk.database.table.MangaTable
 import ir.armor.tachidesk.database.table.toDataClass
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -29,7 +32,9 @@ fun removeMangaFromLibrary(mangaId: Int) {
         transaction {
             MangaTable.update({ MangaTable.id eq manga.id }) {
                 it[inLibrary] = false
+                it[defaultCategory] = true
             }
+            CategoryMangaTable.deleteWhere { CategoryMangaTable.manga eq mangaId }
         }
     }
 }

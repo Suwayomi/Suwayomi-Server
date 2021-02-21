@@ -56,7 +56,7 @@ export default function CategorySelect(props: IProps) {
                         setCategoryInfos(tmpCategoryInfos);
                     });
             });
-    }, [updateTriggerHolder]);
+    }, [updateTriggerHolder, open]);
 
     const handleCancel = () => {
         setOpen(false);
@@ -90,7 +90,6 @@ export default function CategorySelect(props: IProps) {
                                 <Checkbox
                                     checked={categoryInfo.selected}
                                     onChange={(e) => handleChange(e, categoryInfo.category.id)}
-                                    name="checkedB"
                                     color="default"
                                 />
                             )}
