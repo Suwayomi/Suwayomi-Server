@@ -39,7 +39,7 @@ If the app breaks try deleting the directory below and re-running the app (**Thi
 
 On Mac OS X : `/Users/<Account>/Library/Application Support/Tachidesk`
 
-On Windows XP : `C:\Documents and Settings<Account>\Application Data\Local Settings\Tachidesk`
+On Windows XP : `C:\Documents and Settings\<Account>\Application Data\Local Settings\Tachidesk`
 
 On Windows 7 and later : `C:\Users<Account>\AppData\Tachidesk`
 
