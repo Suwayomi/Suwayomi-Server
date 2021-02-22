@@ -10,7 +10,7 @@ Here is a list of current features:
 
 - Installing and executing Tachiyomi's Extensions, So you'll get the same sources.
 - A library to save your mangas and categories to put them into.
-- Searching and browseing installed sources.
+- Searching and browsing installed sources.
 - A minimal manga reader.
 - Ability to download Mangas for offline read(This partially works)
 
