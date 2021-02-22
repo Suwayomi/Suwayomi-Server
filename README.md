@@ -41,7 +41,7 @@ On Mac OS X : `/Users/<Account>/Library/Application Support/Tachidesk`
 
 On Windows XP : `C:\Documents and Settings\<Account>\Application Data\Local Settings\Tachidesk`
 
-On Windows 7 and later : `C:\Users<Account>\AppData\Tachidesk`
+On Windows 7 and later : `C:\Users\<Account>\AppData\Tachidesk`
 
 On Unix/Linux : `/home/<account>/.local/share/Tachidesk`
 
