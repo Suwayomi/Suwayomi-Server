@@ -27,45 +27,54 @@ fun applicationSetup() {
 }
 
 fun openInBrowser() {
-    Desktop.browseURL("http://127.0.0.1:4567")
+    try {
+        Desktop.browseURL("http://127.0.0.1:4567")
+    } catch (e1: IOException) {
+        e1.printStackTrace()
+    }
 }
 
 val icon = Main::class.java.getResource("/icon/faviconlogo.png")
 
 fun systemTray(): SystemTray? {
-    // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
-    SystemTray.DEBUG = true; // for test apps, we always want to run in debug mode
-    if (System.getProperty("os.name").startsWith("Windows"))
-        SystemTray.FORCE_TRAY_TYPE = TrayType.Swing
+    try {
+        // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
+        SystemTray.DEBUG = true; // for test apps, we always want to run in debug mode
+        if (System.getProperty("os.name").startsWith("Windows"))
+            SystemTray.FORCE_TRAY_TYPE = TrayType.Swing
 
-    CacheUtil.clear()
+        CacheUtil.clear()
 
-    val systemTray = SystemTray.get() ?: return null
-    val mainMenu = systemTray.menu
+        val systemTray = SystemTray.get() ?: return null
+        val mainMenu = systemTray.menu
 
-    mainMenu.add(
-        MenuItem(
-            "Open Tachidesk",
-            ActionListener {
-                try {
-                    Desktop.browseURL("http://127.0.0.1:4567")
-                } catch (e1: IOException) {
-                    e1.printStackTrace()
+        mainMenu.add(
+            MenuItem(
+                "Open Tachidesk",
+                ActionListener {
+                    try {
+                        Desktop.browseURL("http://127.0.0.1:4567")
+                    } catch (e: IOException) {
+                        e.printStackTrace()
+                    }
                 }
-            }
+            )
         )
-    )
 
 //    systemTray.setTooltip("Tachidesk")
-    systemTray.setImage(icon)
+        systemTray.setImage(icon)
 //    systemTray.status = "No Mail"
 
-    systemTray.getMenu().add(
-        MenuItem("Quit") {
-            systemTray.shutdown()
-            System.exit(0)
-        }
-    )
+        systemTray.getMenu().add(
+            MenuItem("Quit") {
+                systemTray.shutdown()
+                System.exit(0)
+            }
+        )
 
-    return systemTray
+        return systemTray
+    } catch (e: Exception) {
+        e.printStackTrace()
+        return null
+    }
 }
