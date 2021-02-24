@@ -5,7 +5,20 @@ Tachidesk is as multi-platform as you can get. Any platform that runs java and/o
 
 Ability to read and write Tachiyomi compatible backups and syncing is a planned feature.
 
-## How do I run the app?
+## Is this application usable? Should I test it?
+Here is a list of current features:
+
+- Installing and executing Tachiyomi's Extensions, So you'll get the same sources.
+- A library to save your mangas and categories to put them into.
+- Searching and browsing installed sources.
+- A minimal chapter reader.
+- Ability to download Mangas for offline read(This partially works)
+
+**Note:** Keep in mind that Tachidesk is alpha software and can break rarely and/or with each update, so you may have to delete your data to fix it. See [General troubleshooting](#general-troubleshooting) and [Support and help](#support-and-help) if it happens.
+
+Anyways, for more info checkout [finished milestone #1](https://github.com/AriaMoradi/Tachidesk/issues/2) and [milestone #2](https://github.com/AriaMoradi/Tachidesk/projects/1) to see what's implemented in more detail.
+
+## Downloading and Running the app
 #### Prerequisites
 You should have The Java Runtime Environment(JRE) 8 or newer (if you're not planning to use the Windows specific build) and a modern browser installed. Also an internet connection is required as almost everything this app does is downloading stuff. 
 
@@ -20,6 +33,25 @@ Windows specific builds have java bundled inside them, so you don't have to inst
 
 #### Running on Docker
 Check [arbuilder's repo](https://github.com/arbuilder/Tachidesk-docker) out for more details and the dockerfile.
+
+## General troubleshooting
+If the app breaks try deleting the directory below and re-running the app (**This will delete all your data!**) and if the problem persists open an issue. 
+
+On Mac OS X : `/Users/<Account>/Library/Application Support/Tachidesk`
+
+On Windows XP : `C:\Documents and Settings\<Account>\Application Data\Local Settings\Tachidesk`
+
+On Windows 7 and later : `C:\Users\<Account>\AppData\Tachidesk`
+
+On Unix/Linux : `/home/<account>/.local/share/Tachidesk`
+
+## Support and help
+Join Tachidesk's [discord server](https://discord.gg/wgPyb7hE5d) to hang out with the community and receive support and help.
+
+## How does it work?
+This project has two components: 
+1. **server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run apk extensions. All this concludes to serving a REST API to `webUI`.
+2. **webUI:** A react SPA project that works with the server to do the presentation.
 
 ## Building from source
 ### Get Android stubs jar
@@ -40,21 +72,6 @@ How to do it is described in `webUI/react/README.md` but for short,
  then `yarn start` to start the client if a new browser window doesn't start automatically,
  then open `http://127.0.0.1:3000` in a modern browser. This is a `create-react-app` project
  and supports HMR and all the other goodies you'll need.
-
-## Is this application usable? Should I test it?
-If you'd ask me, I'd tell you If you want to read your manga **online** from tachiyomi or in one place and bypass all the ads, you can use Tachidesk.
-
-There are almost no quality of life features, including no library, no downloading for offline enjoyment and sadly no MangaDex search.
-
-Anyways, for more info checkout [finished milestone #1](https://github.com/AriaMoradi/Tachidesk/issues/2) and [milestone #2](https://github.com/AriaMoradi/Tachidesk/projects/1) to see what's implemented.
-
-## How does it work?
-This project has two components: 
-1. **server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run apk extensions. All this concludes to serving a REST API to `webUI`.
-2. **webUI:** A react SPA project that works with the server to do the presentation.
-
-## Support
-Join Tachidesk's [discord server](https://discord.gg/wgPyb7hE5d) to hang out with the community and receive support.
 
 ## Credit
 The `AndroidCompat` module and `scripts/getAndroid.sh` was originally developed by [@null-dev](https://github.com/null-dev) for [TachiWeb-Server](https://github.com/Tachiweb/TachiWeb-server) and is licensed under `Apache License Version 2.0`.
