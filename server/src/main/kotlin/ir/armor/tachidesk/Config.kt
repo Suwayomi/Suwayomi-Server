@@ -11,4 +11,5 @@ object Config {
     val extensionsRoot = "$dataRoot/extensions"
     val thumbnailsRoot = "$dataRoot/thumbnails"
     val mangaRoot = "$dataRoot/manga"
+    val serverPort = 4567
 }

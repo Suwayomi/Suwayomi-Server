@@ -22,10 +22,11 @@ import DarkTheme from './context/DarkTheme';
 import Library from './screens/Library';
 import Settings from './screens/Settings';
 import Categories from './screens/settings/Categories';
+import useLocalStorage from './util/useLocalStorage';
 
 export default function App() {
     const [title, setTitle] = useState<string>('Tachidesk');
-    const [darkTheme, setDarkTheme] = useState<boolean>(true);
+    const [darkTheme, setDarkTheme] = useLocalStorage<boolean>('darkTheme', true);
     const navTitleContext = { title, setTitle };
     const darkThemeContext = { darkTheme, setDarkTheme };
 
