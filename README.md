@@ -1,3 +1,5 @@
+
+![image](https://github.com/AriaMoradi/Tachidesk/raw/master/server/src/main/resources/icon/faviconlogo.png)
 # Tachidesk
 A free and open source manga reader that runs extensions built for [Tachiyomi](https://tachiyomi.org/). 
 
