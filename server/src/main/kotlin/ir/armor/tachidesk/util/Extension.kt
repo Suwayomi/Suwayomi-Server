@@ -168,5 +168,5 @@ fun getExtensionIcon(apkName: String): Pair<InputStream, String> {
 }
 
 fun getExtensionIconUrl(apkName: String): String {
-    return "http://127.0.0.1:4567/api/v1/extension/icon/$apkName"
+    return "/api/v1/extension/icon/$apkName"
 }

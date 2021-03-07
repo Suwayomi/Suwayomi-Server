@@ -10,6 +10,7 @@ import Button from '@material-ui/core/Button';
 import Avatar from '@material-ui/core/Avatar';
 import Typography from '@material-ui/core/Typography';
 import client from '../util/client';
+import useLocalStorage from '../util/useLocalStorage';
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -49,6 +50,8 @@ export default function ExtensionCard(props: IProps) {
     } = props;
     const [installedState, setInstalledState] = useState<string>((installed ? 'uninstall' : 'install'));
 
+    const [serverAddress] = useLocalStorage<String>('serverBaseURL', '');
+
     const classes = useStyles();
     const langPress = lang === 'all' ? 'All' : lang.toUpperCase();
 
@@ -84,7 +87,7 @@ export default function ExtensionCard(props: IProps) {
                         variant="rounded"
                         className={classes.icon}
                         alt={name}
-                        src={iconUrl}
+                        src={serverAddress + iconUrl}
                     />
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <Typography variant="h5" component="h2">

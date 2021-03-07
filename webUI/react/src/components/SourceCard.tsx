@@ -9,6 +9,7 @@ import CardContent from '@material-ui/core/CardContent';
 import Button from '@material-ui/core/Button';
 import Avatar from '@material-ui/core/Avatar';
 import Typography from '@material-ui/core/Typography';
+import useLocalStorage from '../util/useLocalStorage';
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -47,6 +48,8 @@ export default function SourceCard(props: IProps) {
         },
     } = props;
 
+    const [serverAddress] = useLocalStorage<String>('serverBaseURL', '');
+
     const classes = useStyles();
 
     return (
@@ -57,7 +60,7 @@ export default function SourceCard(props: IProps) {
                         variant="rounded"
                         className={classes.icon}
                         alt={name}
-                        src={iconUrl}
+                        src={serverAddress + iconUrl}
                     />
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <Typography variant="h5" component="h2">

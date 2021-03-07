@@ -14,7 +14,7 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 
 fun proxyThumbnailUrl(mangaId: Int): String {
-    return "http://127.0.0.1:4567/api/v1/manga/$mangaId/thumbnail"
+    return "/api/v1/manga/$mangaId/thumbnail"
 }
 
 fun getMangaList(sourceId: Long, pageNum: Int = 1, popular: Boolean): PagedMangaListDataClass {

@@ -10,6 +10,7 @@ import CardMedia from '@material-ui/core/CardMedia';
 import Typography from '@material-ui/core/Typography';
 import { Link } from 'react-router-dom';
 import { Grid } from '@material-ui/core';
+import useLocalStorage from '../util/useLocalStorage';
 
 const useStyles = makeStyles({
     root: {
@@ -51,6 +52,7 @@ const MangaCard = React.forwardRef((props: IProps, ref) => {
         },
     } = props;
     const classes = useStyles();
+    const [serverAddress] = useLocalStorage<String>('serverBaseURL', '');
 
     return (
         <Grid item xs={6} sm={4} md={3} lg={2}>
@@ -62,7 +64,7 @@ const MangaCard = React.forwardRef((props: IProps, ref) => {
                                 className={classes.image}
                                 component="img"
                                 alt={title}
-                                image={thumbnailUrl}
+                                image={serverAddress + thumbnailUrl}
                                 title={title}
                             />
                             <div className={classes.gradient} />
