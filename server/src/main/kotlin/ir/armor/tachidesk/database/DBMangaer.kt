@@ -23,10 +23,9 @@ object DBMangaer {
 }
 
 fun makeDataBaseTables() {
-    // mention db object to connect
-    DBMangaer.db
-//    val db = DBMangaer.db
-//    db.useNestedTransactions = true
+    // must mention db object so the lazy block executes
+    val db = DBMangaer.db
+    db.useNestedTransactions = true
 
     transaction {
         SchemaUtils.createMissingTablesAndColumns(

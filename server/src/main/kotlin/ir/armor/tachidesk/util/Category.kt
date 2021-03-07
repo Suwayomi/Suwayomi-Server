@@ -1,6 +1,7 @@
 package ir.armor.tachidesk.util
 
 import ir.armor.tachidesk.database.dataclass.CategoryDataClass
+import ir.armor.tachidesk.database.table.CategoryMangaTable
 import ir.armor.tachidesk.database.table.CategoryTable
 import ir.armor.tachidesk.database.table.toDataClass
 import org.jetbrains.exposed.sql.SortOrder
@@ -49,6 +50,9 @@ fun reorderCategory(categoryId: Int, from: Int, to: Int) {
 
 fun removeCategory(categoryId: Int) {
     transaction {
+        CategoryMangaTable.select { CategoryMangaTable.category eq categoryId }.forEach {
+            removeMangaFromCategory(it[CategoryMangaTable.manga].value, categoryId)
+        }
         CategoryTable.deleteWhere { CategoryTable.id eq categoryId }
     }
 }
