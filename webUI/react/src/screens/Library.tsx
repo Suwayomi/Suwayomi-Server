@@ -6,10 +6,12 @@ import { Tab, Tabs } from '@material-ui/core';
 import React, { useContext, useEffect, useState } from 'react';
 import MangaGrid from '../components/MangaGrid';
 import NavBarTitle from '../context/NavbarTitle';
+import client from '../util/client';
 
 interface IMangaCategory {
     category: ICategory
     mangas: IManga[]
+    isFetched: boolean
 }
 
 interface TabPanelProps {
@@ -46,66 +48,62 @@ export default function Library() {
         setTitle('Library');
     }, []);
 
-    // eslint-disable-next-line @typescript-eslint/no-shadow
-    const fetchAndSetMangas = (tabs: IMangaCategory[], tab: IMangaCategory, index: number) => {
-        fetch(`http://127.0.0.1:4567/api/v1/category/${tab.category.id}`)
-            .then((response) => response.json())
-            .then((data: IManga[]) => {
-                const tabsClone = JSON.parse(JSON.stringify(tabs));
-                tabsClone[index].mangas = data;
-                setTabs(tabsClone); // clone the object
-            });
-    };
-
     const handleTabChange = (newTab: number) => {
         setTabNum(newTab);
-        tabs.forEach((tab, index) => {
-            if (tab.category.order === newTab && tab.mangas.length === 0) {
-                // mangas are empty, fetch the mangas
-                fetchAndSetMangas(tabs, tab, index);
-            }
-        });
     };
 
     useEffect(() => {
-        fetch('http://127.0.0.1:4567/api/v1/library')
-            .then((response) => response.json())
-            .then((data: IManga[]) => {
-                // if some manga with no category exist, they will be added under a virtual category
-                if (data.length > 0) {
-                    return [
-                        {
-                            category: {
-                                name: 'Default', isLanding: true, order: 0, id: -1,
-                            },
-                            mangas: data,
-                        },
-                    ]; // will set state on the next fetch
-                }
-
-                // no default category so the first tab is 1
-                setTabNum(1);
-                return [];
-            })
+        Promise.all<IManga[], ICategory[]>([
+            client.get('/api/v1/library').then((response) => response.data),
+            client.get('/api/v1/category').then((response) => response.data),
+        ])
             .then(
-                (newTabs: IMangaCategory[]) => {
-                    fetch('http://127.0.0.1:4567/api/v1/category')
-                        .then((response) => response.json())
-                        .then((data: ICategory[]) => {
-                            const mangaCategories = data.map((category) => ({
-                                category,
-                                mangas: [] as IManga[],
-                            }));
-                            const newNewTabs = [...newTabs, ...mangaCategories];
-                            setTabs(newNewTabs);
+                ([libraryMangas, categories]) => {
+                    const categoryTabs = categories.map((category) => ({
+                        category,
+                        mangas: [] as IManga[],
+                        isFetched: false,
+                    }));
 
-                            // if no default category, we must fetch the first tab now...
-                            // eslint-disable-next-line max-len
-                            if (newTabs.length === 0) { fetchAndSetMangas(newNewTabs, newNewTabs[0], 0); }
-                        });
+                    if (libraryMangas.length > 0 || categoryTabs.length === 0) {
+                        const defaultCategoryTab = {
+                            category: {
+                                name: 'Default',
+                                isLanding: true,
+                                order: 0,
+                                id: -1,
+                            },
+                            mangas: libraryMangas,
+                            isFetched: true,
+                        };
+                        setTabs(
+                            [defaultCategoryTab, ...categoryTabs],
+                        );
+                    } else {
+                        setTabs(categoryTabs);
+                        setTabNum(1);
+                    }
                 },
             );
     }, []);
+
+    // fetch the current tab
+    useEffect(() => {
+        tabs.forEach((tab, index) => {
+            if (tab.category.order === tabNum && !tab.isFetched) {
+                // eslint-disable-next-line @typescript-eslint/no-shadow
+                fetch(`http://127.0.0.1:4567/api/v1/category/${tab.category.id}`)
+                    .then((response) => response.json())
+                    .then((data: IManga[]) => {
+                        const tabsClone = JSON.parse(JSON.stringify(tabs));
+                        tabsClone[index].mangas = data;
+                        tabsClone[index].isFetched = true;
+
+                        setTabs(tabsClone); // clone the object
+                    });
+            }
+        });
+    }, [tabNum]);
 
     let toRender;
     if (tabs.length > 1) {
@@ -119,6 +117,7 @@ export default function Library() {
                     hasNextPage={false}
                     lastPageNum={lastPageNum}
                     setLastPageNum={setLastPageNum}
+                    message={tab.isFetched ? 'Category is Empty' : 'Loading...'}
                 />
             </TabPanel>
         ));
@@ -149,6 +148,7 @@ export default function Library() {
                 hasNextPage={false}
                 lastPageNum={lastPageNum}
                 setLastPageNum={setLastPageNum}
+                message={tabs.length > 0 ? 'Library is Empty' : undefined}
             />
         );
     }

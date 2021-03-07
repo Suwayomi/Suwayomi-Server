@@ -8,6 +8,7 @@
     "@testing-library/jest-dom": "^5.11.4",
     "@testing-library/react": "^11.1.0",
     "@testing-library/user-event": "^12.1.10",
+    "axios": "^0.21.1",
     "fontsource-roboto": "^4.0.0",
     "react": "^17.0.1",
     "react-beautiful-dnd": "^13.0.0",

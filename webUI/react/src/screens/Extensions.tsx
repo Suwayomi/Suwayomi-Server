@@ -18,7 +18,7 @@ export default function Extensions() {
     }, []);
 
     if (extensions.length === 0) {
-        return <h3>wait</h3>;
+        return <h3>loading...</h3>;
     }
     return <>{extensions.map((it) => <ExtensionCard extension={it} />)}</>;
 }

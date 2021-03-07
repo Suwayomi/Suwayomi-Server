@@ -10,15 +10,17 @@ export default function Sources() {
     const { setTitle } = useContext(NavBarTitle);
     setTitle('Sources');
     const [sources, setSources] = useState<ISource[]>([]);
+    const [fetched, setFetched] = useState<boolean>(false);
 
     useEffect(() => {
         fetch('http://127.0.0.1:4567/api/v1/source/list')
             .then((response) => response.json())
-            .then((data) => setSources(data));
+            .then((data) => { setSources(data); setFetched(true); });
     }, []);
 
     if (sources.length === 0) {
-        return (<h3>wait</h3>);
+        if (fetched) return (<h3>No sources found. Install Some Extensions first.</h3>);
+        return (<h3>loading...</h3>);
     }
     return <>{sources.map((it) => <SourceCard source={it} />)}</>;
 }
