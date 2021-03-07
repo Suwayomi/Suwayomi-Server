@@ -5,6 +5,8 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import NavBarTitle from '../context/NavbarTitle';
+import client from '../util/client';
+import useLocalStorage from '../util/useLocalStorage';
 
 const style = {
     display: 'flex',
@@ -17,14 +19,15 @@ const style = {
 const range = (n:number) => Array.from({ length: n }, (value, key) => key);
 
 export default function Reader() {
+    const [serverAddress] = useLocalStorage<String>('serverBaseURL', '');
     const { setTitle } = useContext(NavBarTitle);
 
     const [pageCount, setPageCount] = useState<number>(-1);
     const { chapterId, mangaId } = useParams<{chapterId: string, mangaId: string}>();
 
     useEffect(() => {
-        fetch(`http://127.0.0.1:4567/api/v1/manga/${mangaId}/chapter/${chapterId}`)
-            .then((response) => response.json())
+        client.get(`/api/v1/manga/${mangaId}/chapter/${chapterId}`)
+            .then((response) => response.data)
             .then((data:IChapter) => {
                 setTitle(data.name);
                 setPageCount(data.pageCount);
@@ -41,7 +44,7 @@ export default function Reader() {
 
     const mapped = range(pageCount).map((index) => (
         <div style={{ margin: '0 auto' }}>
-            <img src={`http://127.0.0.1:4567/api/v1/manga/${mangaId}/chapter/${chapterId}/page/${index}`} alt="f" style={{ maxWidth: '100%' }} />
+            <img src={`${serverAddress}/api/v1/manga/${mangaId}/chapter/${chapterId}/page/${index}`} alt="F" style={{ maxWidth: '100%' }} />
         </div>
     ));
     return (

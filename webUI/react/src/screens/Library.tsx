@@ -87,13 +87,14 @@ export default function Library() {
             );
     }, []);
 
+    // console.log(client.defaults.baseURL);
     // fetch the current tab
     useEffect(() => {
         tabs.forEach((tab, index) => {
             if (tab.category.order === tabNum && !tab.isFetched) {
                 // eslint-disable-next-line @typescript-eslint/no-shadow
-                fetch(`http://127.0.0.1:4567/api/v1/category/${tab.category.id}`)
-                    .then((response) => response.json())
+                client.get(`/api/v1/category/${tab.category.id}`)
+                    .then((response) => response.data)
                     .then((data: IManga[]) => {
                         const tabsClone = JSON.parse(JSON.stringify(tabs));
                         tabsClone[index].mangas = data;
@@ -122,7 +123,7 @@ export default function Library() {
             </TabPanel>
         ));
 
-        // 160px is min-width for viewport width of >600
+        // Visual Hack: 160px is min-width for viewport width of >600
         const scrollableTabs = window.innerWidth < tabs.length * 160;
         toRender = (
             <>

@@ -4,6 +4,7 @@
 
 import { Button, createStyles, makeStyles } from '@material-ui/core';
 import React, { useState } from 'react';
+import client from '../util/client';
 import CategorySelect from './CategorySelect';
 
 const useStyles = makeStyles(() => createStyles({
@@ -30,14 +31,14 @@ export default function MangaDetails(props: IProps) {
 
     function addToLibrary() {
         setInLibrary('adding');
-        fetch(`http://127.0.0.1:4567/api/v1/manga/${manga.id}/library/`).then(() => {
+        client.get(`/api/v1/manga/${manga.id}/library/`).then(() => {
             setInLibrary('In Library');
         });
     }
 
     function removeFromLibrary() {
         setInLibrary('removing');
-        fetch(`http://127.0.0.1:4567/api/v1/manga/${manga.id}/library/`, { method: 'DELETE', mode: 'cors' }).then(() => {
+        client.delete(`/api/v1/manga/${manga.id}/library/`).then(() => {
             setInLibrary('Not In Library');
         });
     }

@@ -5,6 +5,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import ExtensionCard from '../components/ExtensionCard';
 import NavBarTitle from '../context/NavbarTitle';
+import client from '../util/client';
 
 export default function Extensions() {
     const { setTitle } = useContext(NavBarTitle);
@@ -12,8 +13,8 @@ export default function Extensions() {
     const [extensions, setExtensions] = useState<IExtension[]>([]);
 
     useEffect(() => {
-        fetch('http://127.0.0.1:4567/api/v1/extension/list')
-            .then((response) => response.json())
+        client.get('/api/v1/extension/list')
+            .then((response) => response.data)
             .then((data) => setExtensions(data));
     }, []);
 

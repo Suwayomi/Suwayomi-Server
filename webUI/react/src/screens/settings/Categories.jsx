@@ -28,6 +28,7 @@ import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import NavBarTitle from '../../context/NavbarTitle';
+import client from '../../util/client';
 
 const getItemStyle = (isDragging, draggableStyle, palette) => ({
     // styles we need to apply on draggables
@@ -43,7 +44,7 @@ export default function Categories() {
     setTitle('Categories');
     const [categories, setCategories] = useState([]);
     const [categoryToEdit, setCategoryToEdit] = useState(-1); // -1 means new category
-    const [dialogOpen, setDialogOpen] = React.useState(false);
+    const [dialogOpen, setDialogOpen] = useState(false);
     const [dialogValue, setDialogValue] = useState('');
     const theme = useTheme();
 
@@ -52,8 +53,8 @@ export default function Categories() {
 
     useEffect(() => {
         if (!dialogOpen) {
-            fetch('http://127.0.0.1:4567/api/v1/category/')
-                .then((response) => response.json())
+            client.get('/api/v1/category/')
+                .then((response) => response.data)
                 .then((data) => setCategories(data));
         }
     }, [updateTriggerHolder]);
@@ -64,11 +65,8 @@ export default function Categories() {
         const formData = new FormData();
         formData.append('from', from + 1);
         formData.append('to', to + 1);
-        fetch(`http://127.0.0.1:4567/api/v1/category/${category.id}/reorder`, {
-            method: 'PATCH',
-            mode: 'cors',
-            body: formData,
-        }).finally(() => triggerUpdate());
+        client.post(`/api/v1/category/${category.id}/reorder`, formData)
+            .finally(() => triggerUpdate());
 
         // also move it in local state to avoid jarring moving behviour...
         const result = Array.from(list);
@@ -90,48 +88,40 @@ export default function Categories() {
         ));
     };
 
-    const handleDialogOpen = () => {
-        setDialogOpen(true);
-    };
-
     const resetDialog = () => {
-        setDialogOpen(false);
         setDialogValue('');
         setCategoryToEdit(-1);
     };
 
-    const handleDialogCancel = () => {
+    const handleDialogOpen = () => {
         resetDialog();
+        setDialogOpen(true);
+    };
+
+    const handleDialogCancel = () => {
+        setDialogOpen(false);
     };
 
     const handleDialogSubmit = () => {
-        resetDialog();
+        setDialogOpen(false);
 
         const formData = new FormData();
         formData.append('name', dialogValue);
 
         if (categoryToEdit === -1) {
-            fetch('http://127.0.0.1:4567/api/v1/category/', {
-                method: 'POST',
-                mode: 'cors',
-                body: formData,
-            }).finally(() => triggerUpdate());
+            client.post('/api/v1/category/', formData)
+                .finally(() => triggerUpdate());
         } else {
             const category = categories[categoryToEdit];
-            fetch(`http://127.0.0.1:4567/api/v1/category/${category.id}`, {
-                method: 'PATCH',
-                mode: 'cors',
-                body: formData,
-            }).finally(() => triggerUpdate());
+            client.patch(`/api/v1/category/${category.id}`, formData)
+                .finally(() => triggerUpdate());
         }
     };
 
     const deleteCategory = (index) => {
         const category = categories[index];
-        fetch(`http://127.0.0.1:4567/api/v1/category/${category.id}`, {
-            method: 'DELETE',
-            mode: 'cors',
-        }).finally(() => triggerUpdate());
+        client.delete(`/api/v1/category/${category.id}`)
+            .finally(() => triggerUpdate());
     };
 
     return (
@@ -167,8 +157,8 @@ export default function Categories() {
                                             />
                                             <IconButton
                                                 onClick={() => {
-                                                    setCategoryToEdit(index);
                                                     handleDialogOpen();
+                                                    setCategoryToEdit(index);
                                                 }}
                                             >
                                                 <EditIcon />
@@ -201,7 +191,7 @@ export default function Categories() {
             >
                 <AddIcon />
             </Fab>
-            <Dialog open={dialogOpen} onClose={handleDialogCancel} aria-labelledby="form-dialog-title">
+            <Dialog open={dialogOpen} onClose={handleDialogCancel}>
                 <DialogTitle id="form-dialog-title">
                     {categoryToEdit === -1 ? 'New Catalog' : `Rename: ${categories[categoryToEdit].name}`}
                 </DialogTitle>

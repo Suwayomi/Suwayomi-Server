@@ -12,6 +12,7 @@ import Dialog from '@material-ui/core/Dialog';
 import Checkbox from '@material-ui/core/Checkbox';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import FormGroup from '@material-ui/core/FormGroup';
+import client from '../util/client';
 
 const useStyles = makeStyles(() => createStyles({
     paper: {
@@ -41,14 +42,14 @@ export default function CategorySelect(props: IProps) {
 
     useEffect(() => {
         let tmpCategoryInfos: ICategoryInfo[] = [];
-        fetch('http://127.0.0.1:4567/api/v1/category/')
-            .then((response) => response.json())
+        client.get('/api/v1/category/')
+            .then((response) => response.data)
             .then((data: ICategory[]) => {
                 tmpCategoryInfos = data.map((category) => ({ category, selected: false }));
             })
             .then(() => {
-                fetch(`http://127.0.0.1:4567/api/v1/manga/${mangaId}/category/`)
-                    .then((response) => response.json())
+                client.get(`/api/v1/manga/${mangaId}/category/`)
+                    .then((response) => response.data)
                     .then((data: ICategory[]) => {
                         data.forEach((category) => {
                             tmpCategoryInfos[category.order - 1].selected = true;
@@ -69,9 +70,9 @@ export default function CategorySelect(props: IProps) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleChange = (event: React.ChangeEvent<HTMLInputElement>, categoryId: number) => {
         const { checked } = event.target as HTMLInputElement;
-        fetch(`http://127.0.0.1:4567/api/v1/manga/${mangaId}/category/${categoryId}`, {
-            method: checked ? 'GET' : 'DELETE', mode: 'cors',
-        })
+
+        const method = checked ? client.get : client.delete;
+        method(`/api/v1/manga/${mangaId}/category/${categoryId}`)
             .then(() => triggerUpdate());
     };
 

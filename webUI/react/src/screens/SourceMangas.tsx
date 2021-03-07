@@ -6,6 +6,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import MangaGrid from '../components/MangaGrid';
 import NavBarTitle from '../context/NavbarTitle';
+import client from '../util/client';
 
 export default function SourceMangas(props: { popular: boolean }) {
     const { sourceId } = useParams<{sourceId: string}>();
@@ -15,15 +16,15 @@ export default function SourceMangas(props: { popular: boolean }) {
     const [lastPageNum, setLastPageNum] = useState<number>(1);
 
     useEffect(() => {
-        fetch(`http://127.0.0.1:4567/api/v1/source/${sourceId}`)
-            .then((response) => response.json())
+        client.get(`/api/v1/source/${sourceId}`)
+            .then((response) => response.data)
             .then((data: { name: string }) => setTitle(data.name));
     }, []);
 
     useEffect(() => {
         const sourceType = props.popular ? 'popular' : 'latest';
-        fetch(`http://127.0.0.1:4567/api/v1/source/${sourceId}/${sourceType}/${lastPageNum}`)
-            .then((response) => response.json())
+        client.get(`/api/v1/source/${sourceId}/${sourceType}/${lastPageNum}`)
+            .then((response) => response.data)
             .then((data: { mangaList: IManga[], hasNextPage: boolean }) => {
                 setMangas([
                     ...mangas,

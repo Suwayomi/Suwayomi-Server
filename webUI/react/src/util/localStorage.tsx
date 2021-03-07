@@ -1,14 +1,20 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
 function getItem<T>(key: string, defaultValue: T) : T {
     try {
         const item = window.localStorage.getItem(key);
 
-        if (item !== null) { return JSON.parse(item); }
+        if (item !== null) {
+            return JSON.parse(item);
+        }
 
         window.localStorage.setItem(key, JSON.stringify(defaultValue));
-    } finally {
-        // eslint-disable-next-line no-unsafe-finally
-        return defaultValue;
-    }
+
+        /* eslint-disable no-empty */
+    } finally { }
+    return defaultValue;
 }
 
 function setItem<T>(key: string, value: T): void {
@@ -16,7 +22,7 @@ function setItem<T>(key: string, value: T): void {
         window.localStorage.setItem(key, JSON.stringify(value));
 
         // eslint-disable-next-line no-empty
-    } catch (error) { }
+    } finally { }
 }
 
 export default { getItem, setItem };

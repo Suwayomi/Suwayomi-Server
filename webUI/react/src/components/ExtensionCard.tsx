@@ -9,6 +9,7 @@ import CardContent from '@material-ui/core/CardContent';
 import Button from '@material-ui/core/Button';
 import Avatar from '@material-ui/core/Avatar';
 import Typography from '@material-ui/core/Typography';
+import client from '../util/client';
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -53,16 +54,18 @@ export default function ExtensionCard(props: IProps) {
 
     function install() {
         setInstalledState('installing');
-        fetch(`http://127.0.0.1:4567/api/v1/extension/install/${apkName}`).then(() => {
-            setInstalledState('uninstall');
-        });
+        client.get(`/api/v1/extension/install/${apkName}`)
+            .then(() => {
+                setInstalledState('uninstall');
+            });
     }
 
     function uninstall() {
         setInstalledState('uninstalling');
-        fetch(`http://127.0.0.1:4567/api/v1/extension/uninstall/${apkName}`).then(() => {
-            setInstalledState('install');
-        });
+        client.get(`/api/v1/extension/uninstall/${apkName}`)
+            .then(() => {
+                setInstalledState('install');
+            });
     }
 
     function handleButtonClick() {

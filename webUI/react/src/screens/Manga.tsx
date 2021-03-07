@@ -7,6 +7,7 @@ import { useParams } from 'react-router-dom';
 import ChapterCard from '../components/ChapterCard';
 import MangaDetails from '../components/MangaDetails';
 import NavBarTitle from '../context/NavbarTitle';
+import client from '../util/client';
 
 export default function Manga() {
     const { id } = useParams<{id: string}>();
@@ -16,8 +17,8 @@ export default function Manga() {
     const [chapters, setChapters] = useState<IChapter[]>([]);
 
     useEffect(() => {
-        fetch(`http://127.0.0.1:4567/api/v1/manga/${id}/`)
-            .then((response) => response.json())
+        client.get(`/api/v1/manga/${id}/`)
+            .then((response) => response.data)
             .then((data: IManga) => {
                 setManga(data);
                 setTitle(data.title);
@@ -25,8 +26,8 @@ export default function Manga() {
     }, []);
 
     useEffect(() => {
-        fetch(`http://127.0.0.1:4567/api/v1/manga/${id}/chapters`)
-            .then((response) => response.json())
+        client.get(`/api/v1/manga/${id}/chapters`)
+            .then((response) => response.data)
             .then((data) => setChapters(data));
     }, []);
 

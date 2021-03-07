@@ -5,6 +5,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import SourceCard from '../components/SourceCard';
 import NavBarTitle from '../context/NavbarTitle';
+import client from '../util/client';
 
 export default function Sources() {
     const { setTitle } = useContext(NavBarTitle);
@@ -13,8 +14,8 @@ export default function Sources() {
     const [fetched, setFetched] = useState<boolean>(false);
 
     useEffect(() => {
-        fetch('http://127.0.0.1:4567/api/v1/source/list')
-            .then((response) => response.json())
+        client.get('/api/v1/source/list')
+            .then((response) => response.data)
             .then((data) => { setSources(data); setFetched(true); });
     }, []);
 

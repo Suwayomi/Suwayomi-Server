@@ -9,6 +9,7 @@ import Button from '@material-ui/core/Button';
 import { useParams } from 'react-router-dom';
 import MangaGrid from '../components/MangaGrid';
 import NavBarTitle from '../context/NavbarTitle';
+import client from '../util/client';
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -33,8 +34,8 @@ export default function SearchSingle() {
     const textInput = React.createRef<HTMLInputElement>();
 
     useEffect(() => {
-        fetch(`http://127.0.0.1:4567/api/v1/source/${sourceId}`)
-            .then((response) => response.json())
+        client.get(`/api/v1/source/${sourceId}`)
+            .then((response) => response.data)
             .then((data: { name: string }) => setTitle(`Search: ${data.name}`));
     }, []);
 
@@ -54,8 +55,8 @@ export default function SearchSingle() {
 
     useEffect(() => {
         if (searchTerm.length > 0) {
-            fetch(`http://127.0.0.1:4567/api/v1/source/${sourceId}/search/${searchTerm}/${lastPageNum}`)
-                .then((response) => response.json())
+            client.get(`/api/v1/source/${sourceId}/search/${searchTerm}/${lastPageNum}`)
+                .then((response) => response.data)
                 .then((data: { mangaList: IManga[], hasNextPage: boolean }) => {
                     if (data.mangaList.length > 0) {
                         setMangas([
