@@ -4,7 +4,7 @@
 
 import React, { useContext, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import NavBarTitle from '../context/NavbarTitle';
+import NavbarContext from '../context/NavbarContext';
 import client from '../util/client';
 import useLocalStorage from '../util/useLocalStorage';
 
@@ -20,7 +20,7 @@ const range = (n:number) => Array.from({ length: n }, (value, key) => key);
 
 export default function Reader() {
     const [serverAddress] = useLocalStorage<String>('serverBaseURL', '');
-    const { setTitle } = useContext(NavBarTitle);
+    const { setTitle } = useContext(NavbarContext);
 
     const [pageCount, setPageCount] = useState<number>(-1);
     const { chapterId, mangaId } = useParams<{chapterId: string, mangaId: string}>();

@@ -8,7 +8,7 @@ import TextField from '@material-ui/core/TextField';
 import Button from '@material-ui/core/Button';
 import { useParams } from 'react-router-dom';
 import MangaGrid from '../components/MangaGrid';
-import NavBarTitle from '../context/NavbarTitle';
+import NavbarContext from '../context/NavbarContext';
 import client from '../util/client';
 
 const useStyles = makeStyles((theme) => ({
@@ -21,7 +21,7 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 export default function SearchSingle() {
-    const { setTitle } = useContext(NavBarTitle);
+    const { setTitle } = useContext(NavbarContext);
     const { sourceId } = useParams<{sourceId: string}>();
     const classes = useStyles();
     const [error, setError] = useState<boolean>(false);

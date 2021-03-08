@@ -5,7 +5,7 @@
 import { Tab, Tabs } from '@material-ui/core';
 import React, { useContext, useEffect, useState } from 'react';
 import MangaGrid from '../components/MangaGrid';
-import NavBarTitle from '../context/NavbarTitle';
+import NavbarContext from '../context/NavbarContext';
 import client from '../util/client';
 
 interface IMangaCategory {
@@ -37,7 +37,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export default function Library() {
-    const { setTitle } = useContext(NavBarTitle);
+    const { setTitle } = useContext(NavbarContext);
     const [tabs, setTabs] = useState<IMangaCategory[]>([]);
     const [tabNum, setTabNum] = useState<number>(0);
 

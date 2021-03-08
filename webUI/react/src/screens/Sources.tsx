@@ -4,11 +4,11 @@
 
 import React, { useContext, useEffect, useState } from 'react';
 import SourceCard from '../components/SourceCard';
-import NavBarTitle from '../context/NavbarTitle';
+import NavbarContext from '../context/NavbarContext';
 import client from '../util/client';
 
 export default function Sources() {
-    const { setTitle } = useContext(NavBarTitle);
+    const { setTitle } = useContext(NavbarContext);
     setTitle('Sources');
     const [sources, setSources] = useState<ISource[]>([]);
     const [fetched, setFetched] = useState<boolean>(false);

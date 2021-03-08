@@ -14,7 +14,7 @@ import {
     ListItemIcon, ListItemText,
 } from '@material-ui/core';
 import ListItem, { ListItemProps } from '@material-ui/core/ListItem';
-import NavBarTitle from '../context/NavbarTitle';
+import NavbarContext from '../context/NavbarContext';
 import DarkTheme from '../context/DarkTheme';
 import useLocalStorage from '../util/useLocalStorage';
 
@@ -24,7 +24,7 @@ function ListItemLink(props: ListItemProps<'a', { button?: true }>) {
 }
 
 export default function Settings() {
-    const { setTitle } = useContext(NavBarTitle);
+    const { setTitle } = useContext(NavbarContext);
     setTitle('Settings');
     const { darkTheme, setDarkTheme } = useContext(DarkTheme);
     const [serverAddress, setServerAddress] = useLocalStorage<String>('serverBaseURL', '');

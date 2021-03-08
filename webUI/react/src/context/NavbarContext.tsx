@@ -7,11 +7,15 @@ import React from 'react';
 type ContextType = {
     title: string
     setTitle: React.Dispatch<React.SetStateAction<string>>
+    action: any
+    setAction: React.Dispatch<React.SetStateAction<any>>
 };
 
-const NavBarTitle = React.createContext<ContextType>({
+const NavBarContext = React.createContext<ContextType>({
     title: 'Tachidesk',
     setTitle: ():void => {},
+    action: <div />,
+    setAction: ():void => {},
 });
 
-export default NavBarTitle;
+export default NavBarContext;

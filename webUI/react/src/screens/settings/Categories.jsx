@@ -27,7 +27,7 @@ import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
-import NavBarTitle from '../../context/NavbarTitle';
+import NavbarContext from '../../context/NavbarContext';
 import client from '../../util/client';
 
 const getItemStyle = (isDragging, draggableStyle, palette) => ({
@@ -40,7 +40,7 @@ const getItemStyle = (isDragging, draggableStyle, palette) => ({
 });
 
 export default function Categories() {
-    const { setTitle } = useContext(NavBarTitle);
+    const { setTitle } = useContext(NavbarContext);
     setTitle('Categories');
     const [categories, setCategories] = useState([]);
     const [categoryToEdit, setCategoryToEdit] = useState(-1); // -1 means new category

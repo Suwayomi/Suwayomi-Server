@@ -5,12 +5,12 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import MangaGrid from '../components/MangaGrid';
-import NavBarTitle from '../context/NavbarTitle';
+import NavbarContext from '../context/NavbarContext';
 import client from '../util/client';
 
 export default function SourceMangas(props: { popular: boolean }) {
     const { sourceId } = useParams<{sourceId: string}>();
-    const { setTitle } = useContext(NavBarTitle);
+    const { setTitle } = useContext(NavbarContext);
     const [mangas, setMangas] = useState<IManga[]>([]);
     const [hasNextPage, setHasNextPage] = useState<boolean>(false);
     const [lastPageNum, setLastPageNum] = useState<number>(1);

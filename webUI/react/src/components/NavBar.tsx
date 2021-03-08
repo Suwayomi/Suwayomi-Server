@@ -16,7 +16,7 @@ import MenuItem from '@material-ui/core/MenuItem';
 import Menu from '@material-ui/core/Menu';
 
 import TemporaryDrawer from './TemporaryDrawer';
-import NavBarTitle from '../context/NavbarTitle';
+import NavBarContext from '../context/NavbarContext';
 import DarkTheme from '../context/DarkTheme';
 
 const useStyles = makeStyles((theme) => ({
@@ -44,7 +44,7 @@ export default function NavBar() {
     const classes = useStyles();
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-    const { title } = useContext(NavBarTitle);
+    const { title, action } = useContext(NavBarContext);
     const open = Boolean(anchorEl);
 
     const { darkTheme } = useContext(DarkTheme);
@@ -74,13 +74,14 @@ export default function NavBar() {
                     <Typography variant="h6" className={classes.title}>
                         {title}
                     </Typography>
+                    {action}
                     {/* <IconButton
                         onClick={handleMenu}
                         aria-label="display more actions"
                         edge="end"
                         color="inherit"
                     >
-                        <MoreIcon />
+                        <FilterListIcon />
                     </IconButton> */}
                     {/* <Menu
                         id="menu-appbar"

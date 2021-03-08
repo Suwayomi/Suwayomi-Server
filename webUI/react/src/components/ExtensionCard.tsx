@@ -40,6 +40,7 @@ const useStyles = makeStyles((theme) => ({
 
 interface IProps {
     extension: IExtension
+    notifyInstall: () => void
 }
 
 export default function ExtensionCard(props: IProps) {
@@ -47,6 +48,7 @@ export default function ExtensionCard(props: IProps) {
         extension: {
             name, lang, versionName, installed, apkName, iconUrl,
         },
+        notifyInstall,
     } = props;
     const [installedState, setInstalledState] = useState<string>((installed ? 'uninstall' : 'install'));
 
@@ -60,6 +62,7 @@ export default function ExtensionCard(props: IProps) {
         client.get(`/api/v1/extension/install/${apkName}`)
             .then(() => {
                 setInstalledState('uninstall');
+                notifyInstall();
             });
     }
 
@@ -67,7 +70,8 @@ export default function ExtensionCard(props: IProps) {
         setInstalledState('uninstalling');
         client.get(`/api/v1/extension/uninstall/${apkName}`)
             .then(() => {
-                setInstalledState('install');
+                // setInstalledState('install');
+                notifyInstall();
             });
     }
 

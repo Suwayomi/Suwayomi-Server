@@ -17,7 +17,7 @@ import SourceMangas from './screens/SourceMangas';
 import Manga from './screens/Manga';
 import Reader from './screens/Reader';
 import Search from './screens/SearchSingle';
-import NavBarTitle from './context/NavbarTitle';
+import NavbarContext from './context/NavbarContext';
 import DarkTheme from './context/DarkTheme';
 import Library from './screens/Library';
 import Settings from './screens/Settings';
@@ -26,8 +26,11 @@ import useLocalStorage from './util/useLocalStorage';
 
 export default function App() {
     const [title, setTitle] = useState<string>('Tachidesk');
+    const [action, setAction] = useState<any>(<div />);
     const [darkTheme, setDarkTheme] = useLocalStorage<boolean>('darkTheme', true);
-    const navTitleContext = { title, setTitle };
+    const navBarContext = {
+        title, setTitle, action, setAction,
+    };
     const darkThemeContext = { darkTheme, setDarkTheme };
 
     const theme = React.useMemo(
@@ -57,7 +60,7 @@ export default function App() {
     return (
         <Router>
             <ThemeProvider theme={theme}>
-                <NavBarTitle.Provider value={navTitleContext}>
+                <NavbarContext.Provider value={navBarContext}>
                     <CssBaseline />
                     <NavBar />
                     <Container maxWidth={false} disableGutters>
@@ -103,7 +106,7 @@ export default function App() {
                             />
                         </Switch>
                     </Container>
-                </NavBarTitle.Provider>
+                </NavbarContext.Provider>
             </ThemeProvider>
         </Router>
     );

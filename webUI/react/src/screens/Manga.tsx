@@ -6,12 +6,12 @@ import React, { useEffect, useState, useContext } from 'react';
 import { useParams } from 'react-router-dom';
 import ChapterCard from '../components/ChapterCard';
 import MangaDetails from '../components/MangaDetails';
-import NavBarTitle from '../context/NavbarTitle';
+import NavbarContext from '../context/NavbarContext';
 import client from '../util/client';
 
 export default function Manga() {
     const { id } = useParams<{id: string}>();
-    const { setTitle } = useContext(NavBarTitle);
+    const { setTitle } = useContext(NavbarContext);
 
     const [manga, setManga] = useState<IManga>();
     const [chapters, setChapters] = useState<IChapter[]>([]);
