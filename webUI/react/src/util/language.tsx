@@ -6,6 +6,7 @@ export const ISOLanguages = [
     { code: 'all', name: 'All', nativeName: 'All' },
     { code: 'installed', name: 'Installed', nativeName: 'Installed' },
 
+    // full list: https://github.com/meikidd/iso-639-1/blob/master/src/data.js
     { code: 'en', name: 'English', nativeName: 'English' },
     { code: 'ca', name: 'Catalan; Valencian', nativeName: 'Català' },
     { code: 'de', name: 'German', nativeName: 'Deutsch' },
@@ -23,13 +24,46 @@ export const ISOLanguages = [
     { code: 'zh', name: 'Chinese', nativeName: '中文' },
     { code: 'ja', name: 'Japanese', nativeName: '日本語' },
     { code: 'ko', name: 'Korean', nativeName: '한국어' },
+    { code: 'zu', name: 'Zulu', nativeName: 'isiZulu' },
+    { code: 'xh', name: 'Xhosa', nativeName: 'isiXhosa' },
+    { code: 'uk', name: 'Ukrainian', nativeName: 'Українська' },
+    { code: 'ro', name: 'Romanian', nativeName: 'Română' },
+    { code: 'bg', name: 'Bulgarian', nativeName: 'български' },
+    { code: 'cs', name: 'Czech', nativeName: 'čeština' },
+    { code: 'pl', name: 'Polish', nativeName: 'polski' },
+    { code: 'no', name: 'Norwegian', nativeName: 'Norsk' },
+    { code: 'nl', name: 'Dutch', nativeName: 'Nederlands' },
+    { code: 'my', name: 'Burmese', nativeName: 'ဗမာစာ' },
+    { code: 'ms', name: 'Malay', nativeName: 'Malaysia' },
+    { code: 'mn', name: 'Mongolian', nativeName: 'Монгол' },
+    { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം' },
+    { code: 'ku', name: 'Kurdish', nativeName: 'Kurdî' },
+    { code: 'hu', name: 'Hungarian', nativeName: 'Magyar' },
+    { code: 'hr', name: 'Croatian', nativeName: 'Hrvatski' },
+    { code: 'he', name: 'Hebrew', nativeName: 'עברית' },
+    { code: 'fil', name: 'Filipino', nativeName: 'Filipino' },
+    { code: 'fi', name: 'Finnish', nativeName: 'suomi' },
+    { code: 'fa', name: 'Persian', nativeName: 'فارسی' },
+    { code: 'eu', name: 'Basque', nativeName: 'euskara' },
+    { code: 'el', name: 'Greek', nativeName: 'Ελληνικά' },
+    { code: 'da', name: 'Danish', nativeName: 'dansk' },
 ];
 
 export function langCodeToName(code: string): string {
+    const whereToCut = code.indexOf('-') !== -1 ? code.indexOf('-') : code.length;
+
+    const proccessedCode = code.toLocaleLowerCase().substring(0, whereToCut);
+    let result = 'Error';
+
     for (let i = 0; i < ISOLanguages.length; i++) {
-        if (ISOLanguages[i].code === code) return ISOLanguages[i].nativeName;
+        if (ISOLanguages[i].code === proccessedCode) result = ISOLanguages[i].nativeName;
     }
-    return 'Error';
+
+    if (code.indexOf('-') !== -1) {
+        result = `${result} (${code.substring(whereToCut + 1)})`;
+    }
+
+    return result;
 }
 
 export function defualtLangs() {

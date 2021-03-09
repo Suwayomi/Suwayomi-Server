@@ -14,7 +14,7 @@ function sourceToLangList(sources: ISource[]) {
     const result: string[] = [];
 
     sources.forEach((source) => {
-        if (result.indexOf(source.lang) === -1 && langCodeToName(source.lang) !== 'Error') { result.push(source.lang); }
+        if (result.indexOf(source.lang) === -1) { result.push(source.lang); }
     });
 
     result.sort(langSortCmp);
