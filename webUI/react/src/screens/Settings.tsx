@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import React, { useContext, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import List from '@material-ui/core/List';
 import InboxIcon from '@material-ui/icons/Inbox';
 import Brightness6Icon from '@material-ui/icons/Brightness6';
@@ -24,8 +24,9 @@ function ListItemLink(props: ListItemProps<'a', { button?: true }>) {
 }
 
 export default function Settings() {
-    const { setTitle } = useContext(NavbarContext);
-    setTitle('Settings');
+    const { setTitle, setAction } = useContext(NavbarContext);
+    useEffect(() => { setTitle('Settings'); setAction(<></>); }, []);
+
     const { darkTheme, setDarkTheme } = useContext(DarkTheme);
     const [serverAddress, setServerAddress] = useLocalStorage<String>('serverBaseURL', '');
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -47,7 +48,7 @@ export default function Settings() {
 
     return (
         <>
-            <List component="nav" style={{ padding: 0 }}>
+            <List style={{ padding: 0 }}>
                 <ListItemLink href="/settings/categories">
                     <ListItemIcon>
                         <InboxIcon />

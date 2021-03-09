@@ -9,11 +9,12 @@ import DialogTitle from '@material-ui/core/DialogTitle';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogActions from '@material-ui/core/DialogActions';
 import Dialog from '@material-ui/core/Dialog';
-import Checkbox from '@material-ui/core/Checkbox';
-import FormControlLabel from '@material-ui/core/FormControlLabel';
-import FormGroup from '@material-ui/core/FormGroup';
+import Switch from '@material-ui/core/Switch';
 import IconButton from '@material-ui/core/IconButton';
 import FilterListIcon from '@material-ui/icons/FilterList';
+import { List, ListItemSecondaryAction, ListItemText } from '@material-ui/core';
+import ListItem from '@material-ui/core/ListItem';
+import { langCodeToName } from '../util/language';
 
 const useStyles = makeStyles(() => createStyles({
     paper: {
@@ -72,21 +73,22 @@ export default function ExtensionLangSelect(props: IProps) {
                 open={open}
             >
                 <DialogTitle>Enabled Languages</DialogTitle>
-                <DialogContent dividers>
-                    <FormGroup>
+                <DialogContent dividers style={{ padding: 0 }}>
+                    <List>
                         {allLangs.map((lang) => (
-                            <FormControlLabel
-                                control={(
-                                    <Checkbox
+                            <ListItem key={lang}>
+                                <ListItemText primary={langCodeToName(lang)} />
+
+                                <ListItemSecondaryAction>
+                                    <Switch
                                         checked={mShownLangs.indexOf(lang) !== -1}
                                         onChange={(e) => handleChange(e, lang)}
-                                        color="default"
                                     />
-                                )}
-                                label={lang}
-                            />
+                                </ListItemSecondaryAction>
+
+                            </ListItem>
                         ))}
-                    </FormGroup>
+                    </List>
 
                 </DialogContent>
                 <DialogActions>

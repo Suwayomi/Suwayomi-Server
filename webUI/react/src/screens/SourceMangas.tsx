@@ -9,8 +9,10 @@ import NavbarContext from '../context/NavbarContext';
 import client from '../util/client';
 
 export default function SourceMangas(props: { popular: boolean }) {
+    const { setTitle, setAction } = useContext(NavbarContext);
+    useEffect(() => { setTitle('Source'); setAction(<></>); }, []);
+
     const { sourceId } = useParams<{sourceId: string}>();
-    const { setTitle } = useContext(NavbarContext);
     const [mangas, setMangas] = useState<IManga[]>([]);
     const [hasNextPage, setHasNextPage] = useState<boolean>(false);
     const [lastPageNum, setLastPageNum] = useState<number>(1);

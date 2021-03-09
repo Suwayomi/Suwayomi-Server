@@ -21,7 +21,9 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 export default function SearchSingle() {
-    const { setTitle } = useContext(NavbarContext);
+    const { setTitle, setAction } = useContext(NavbarContext);
+    useEffect(() => { setTitle('Search'); setAction(<></>); }, []);
+
     const { sourceId } = useParams<{sourceId: string}>();
     const classes = useStyles();
     const [error, setError] = useState<boolean>(false);

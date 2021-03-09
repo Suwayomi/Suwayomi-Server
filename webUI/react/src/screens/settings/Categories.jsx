@@ -40,8 +40,9 @@ const getItemStyle = (isDragging, draggableStyle, palette) => ({
 });
 
 export default function Categories() {
-    const { setTitle } = useContext(NavbarContext);
-    setTitle('Categories');
+    const { setTitle, setAction } = useContext(NavbarContext);
+    useEffect(() => { setTitle('Categories'); setAction(<></>); }, []);
+
     const [categories, setCategories] = useState([]);
     const [categoryToEdit, setCategoryToEdit] = useState(-1); // -1 means new category
     const [dialogOpen, setDialogOpen] = useState(false);

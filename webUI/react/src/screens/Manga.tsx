@@ -10,8 +10,10 @@ import NavbarContext from '../context/NavbarContext';
 import client from '../util/client';
 
 export default function Manga() {
+    const { setTitle, setAction } = useContext(NavbarContext);
+    useEffect(() => { setTitle('Manga'); setAction(<></>); }, []);
+
     const { id } = useParams<{id: string}>();
-    const { setTitle } = useContext(NavbarContext);
 
     const [manga, setManga] = useState<IManga>();
     const [chapters, setChapters] = useState<IChapter[]>([]);

@@ -77,7 +77,7 @@ fun getSourceList(): List<SourceDataClass> {
             SourceDataClass(
                 it[SourceTable.id].value.toString(),
                 it[SourceTable.name],
-                Locale(it[SourceTable.lang]).getDisplayLanguage(Locale(it[SourceTable.lang])),
+                it[SourceTable.lang],
                 getExtensionIconUrl(ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }.first()[ExtensionTable.apkName]),
                 getHttpSource(it[SourceTable.id].value).supportsLatest
             )

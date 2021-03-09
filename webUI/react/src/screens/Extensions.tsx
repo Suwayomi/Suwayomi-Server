@@ -8,6 +8,7 @@ import NavbarContext from '../context/NavbarContext';
 import client from '../util/client';
 import useLocalStorage from '../util/useLocalStorage';
 import ExtensionLangSelect from '../components/ExtensionLangSelect';
+import { defualtLangs, langCodeToName, langSortCmp } from '../util/language';
 
 const allLangs: string[] = [];
 
@@ -19,7 +20,7 @@ function groupExtensions(extensions: IExtension[]) {
     extensions.forEach((extension) => {
         if (result[extension.lang] === undefined) {
             result[extension.lang] = [];
-            allLangs.push(extension.lang);
+            if (extension.lang !== 'all') { allLangs.push(extension.lang); }
         }
         if (extension.installed) {
             result.installed.push(extension);
@@ -28,14 +29,10 @@ function groupExtensions(extensions: IExtension[]) {
         }
     });
 
-    return result;
-}
+    // put english first for convience
+    allLangs.sort(langSortCmp);
 
-function defualtLangs() {
-    return [
-        'all',
-        'en',
-    ];
+    return result;
 }
 
 export default function Extensions() {
@@ -72,32 +69,30 @@ export default function Extensions() {
         }
     }, [extensionsRaw]);
 
-    if (extensions.length === 0) {
+    if (Object.entries(extensions).length === 0) {
         return <h3>loading...</h3>;
     }
     return (
         <>
             {
                 Object.entries(extensions).map(([lang, list]) => (
-                    <>
-                        {['installed', ...shownLangs].indexOf(lang) !== -1
+                    (['installed', ...shownLangs].indexOf(lang) !== -1
                         && (
-                            <>
-                                <h1 key={lang} style={{ marginLeft: 25 }}>{lang}</h1>
+                            <React.Fragment key={lang}>
+                                <h1 key={lang} style={{ marginLeft: 25 }}>
+                                    {langCodeToName(lang)}
+                                </h1>
                                 {(list as IExtension[]).map((it) => (
                                     <ExtensionCard
                                         key={it.apkName}
                                         extension={it}
-                                        // eslint-disable-next-line max-len
-                                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
                                         notifyInstall={() => {
                                             triggerUpdate();
                                         }}
                                     />
                                 ))}
-                            </>
-                        ) }
-                    </>
+                            </React.Fragment>
+                        ))
                 ))
             }
         </>

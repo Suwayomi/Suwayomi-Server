@@ -13,5 +13,7 @@ module.exports = {
 
         // Indent props with 4 spaces
         'react/jsx-indent-props': ['error', 4],
+
+        'no-plusplus': ['error', { 'allowForLoopAfterthoughts': true }]
     },
 };

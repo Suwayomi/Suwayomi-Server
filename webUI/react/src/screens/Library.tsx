@@ -37,16 +37,15 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export default function Library() {
-    const { setTitle } = useContext(NavbarContext);
+    const { setTitle, setAction } = useContext(NavbarContext);
+    useEffect(() => { setTitle('Library'); setAction(<></>); }, []);
+
     const [tabs, setTabs] = useState<IMangaCategory[]>([]);
     const [tabNum, setTabNum] = useState<number>(0);
 
     // a hack so MangaGrid doesn't stop working. I won't change it in case
     // if I do manga pagination for library..
     const [lastPageNum, setLastPageNum] = useState<number>(1);
-    useEffect(() => {
-        setTitle('Library');
-    }, []);
 
     const handleTabChange = (newTab: number) => {
         setTabNum(newTab);
