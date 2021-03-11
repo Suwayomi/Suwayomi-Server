@@ -6,7 +6,7 @@ package ir.armor.tachidesk.util
 
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
-import ir.armor.tachidesk.Config
+import ir.armor.tachidesk.applicationDirs
 import ir.armor.tachidesk.database.dataclass.SourceDataClass
 import ir.armor.tachidesk.database.entity.ExtensionEntity
 import ir.armor.tachidesk.database.entity.SourceEntity
@@ -36,7 +36,7 @@ fun getHttpSource(sourceId: Long): HttpSource {
         val apkName = extensionRecord.apkName
         val className = extensionRecord.classFQName
         val jarName = apkName.substringBefore(".apk") + ".jar"
-        val jarPath = "${Config.extensionsRoot}/$jarName"
+        val jarPath = "${applicationDirs.extensionsRoot}/$jarName"
 
         println(jarName)
 

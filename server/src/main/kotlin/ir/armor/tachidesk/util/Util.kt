@@ -9,22 +9,9 @@ import dorkbox.systemTray.SystemTray
 import dorkbox.systemTray.SystemTray.TrayType
 import dorkbox.util.CacheUtil
 import dorkbox.util.Desktop
-import ir.armor.tachidesk.Config
 import ir.armor.tachidesk.Main
-import ir.armor.tachidesk.database.makeDataBaseTables
 import java.awt.event.ActionListener
-import java.io.File
 import java.io.IOException
-
-fun applicationSetup() {
-    // make dirs we need
-    File(Config.dataRoot).mkdirs()
-    File(Config.extensionsRoot).mkdirs()
-    File("${Config.extensionsRoot}/icon").mkdirs()
-    File(Config.thumbnailsRoot).mkdirs()
-
-    makeDataBaseTables()
-}
 
 fun openInBrowser() {
     try {
@@ -33,8 +20,6 @@ fun openInBrowser() {
         e1.printStackTrace()
     }
 }
-
-val icon = Main::class.java.getResource("/icon/faviconlogo.png")
 
 fun systemTray(): SystemTray? {
     try {
@@ -60,6 +45,8 @@ fun systemTray(): SystemTray? {
                 }
             )
         )
+
+        val icon = Main::class.java.getResource("/icon/faviconlogo.png")
 
 //    systemTray.setTooltip("Tachidesk")
         systemTray.setImage(icon)

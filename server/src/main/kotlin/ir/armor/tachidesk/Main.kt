@@ -4,11 +4,9 @@ package ir.armor.tachidesk
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import eu.kanade.tachiyomi.App
 import io.javalin.Javalin
 import ir.armor.tachidesk.util.addMangaToCategory
 import ir.armor.tachidesk.util.addMangaToLibrary
-import ir.armor.tachidesk.util.applicationSetup
 import ir.armor.tachidesk.util.createCategory
 import ir.armor.tachidesk.util.getCategoryList
 import ir.armor.tachidesk.util.getCategoryMangaList
@@ -34,44 +32,13 @@ import ir.armor.tachidesk.util.reorderCategory
 import ir.armor.tachidesk.util.sourceFilters
 import ir.armor.tachidesk.util.sourceGlobalSearch
 import ir.armor.tachidesk.util.sourceSearch
-import ir.armor.tachidesk.util.systemTray
 import ir.armor.tachidesk.util.updateCategory
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import xyz.nulldev.androidcompat.AndroidCompat
-import xyz.nulldev.androidcompat.AndroidCompatInitializer
-import xyz.nulldev.ts.config.ConfigKodeinModule
-import xyz.nulldev.ts.config.GlobalConfigManager
 
 class Main {
     companion object {
-        val androidCompat by lazy { AndroidCompat() }
-
-        fun registerConfigModules() {
-            GlobalConfigManager.registerModules(
-//                    ServerConfig.register(GlobalConfigManager.config),
-//                    SyncConfigModule.register(GlobalConfigManager.config)
-            )
-        }
-
         @JvmStatic
         fun main(args: Array<String>) {
-//            System.getProperties()["proxySet"] = "true"
-//            System.getProperties()["socksProxyHost"] = "127.0.0.1"
-//            System.getProperties()["socksProxyPort"] = "2020"
-
-            // make sure everything we need exists
-            applicationSetup()
-            val tray = systemTray() // assign it to a variable so it's kept in the memory and not garbage collected
-
-            registerConfigModules()
-
-            // Load config API
-            DI.global.addImport(ConfigKodeinModule().create())
-            // Load Android compatibility dependencies
-            AndroidCompatInitializer().init()
-            // start app
-            androidCompat.startApp(App())
+            serverSetup()
 
             var hasWebUiBundled: Boolean = false
 
@@ -86,15 +53,10 @@ class Main {
                     hasWebUiBundled = false
                 }
                 config.enableCorsForAllOrigins()
-            }.start(4567)
+            }.start(serverConfig.ip, serverConfig.port)
             if (hasWebUiBundled) {
                 openInBrowser()
             }
-
-//            app.before() { ctx ->
-//                // allow the client which is running on another port
-//                ctx.header("Access-Control-Allow-Origin", "*")
-//            }
 
             app.get("/api/v1/extension/list") { ctx ->
                 ctx.json(getExtensionList())

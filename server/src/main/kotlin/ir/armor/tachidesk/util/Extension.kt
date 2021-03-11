@@ -11,7 +11,7 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
 import ir.armor.tachidesk.APKExtractor
-import ir.armor.tachidesk.Config
+import ir.armor.tachidesk.applicationDirs
 import ir.armor.tachidesk.database.table.ExtensionTable
 import ir.armor.tachidesk.database.table.SourceTable
 import kotlinx.coroutines.runBlocking
@@ -32,10 +32,10 @@ import java.net.URLClassLoader
 fun installAPK(apkName: String): Int {
     val extensionRecord = getExtensionList(true).first { it.apkName == apkName }
     val fileNameWithoutType = apkName.substringBefore(".apk")
-    val dirPathWithoutType = "${Config.extensionsRoot}/$fileNameWithoutType"
+    val dirPathWithoutType = "${applicationDirs.extensionsRoot}/$fileNameWithoutType"
 
     // check if we don't have the dex file already downloaded
-    val jarPath = "${Config.extensionsRoot}/$fileNameWithoutType.jar"
+    val jarPath = "${applicationDirs.extensionsRoot}/$fileNameWithoutType.jar"
     if (!File(jarPath).exists()) {
         runBlocking {
             val api = ExtensionGithubApi()
@@ -137,7 +137,7 @@ private fun downloadAPKFile(url: String, apkPath: String) {
 fun removeExtension(pkgName: String) {
     val extensionRecord = getExtensionList(true).first { it.apkName == pkgName }
     val fileNameWithoutType = pkgName.substringBefore(".apk")
-    val jarPath = "${Config.extensionsRoot}/$fileNameWithoutType.jar"
+    val jarPath = "${applicationDirs.extensionsRoot}/$fileNameWithoutType.jar"
     transaction {
         val extensionId = ExtensionTable.select { ExtensionTable.name eq extensionRecord.name }.first()[ExtensionTable.id]
 
@@ -157,7 +157,7 @@ val network: NetworkHelper by injectLazy()
 fun getExtensionIcon(apkName: String): Pair<InputStream, String> {
     val iconUrl = transaction { ExtensionTable.select { ExtensionTable.apkName eq apkName }.firstOrNull()!! }[ExtensionTable.iconUrl]
 
-    val saveDir = "${Config.extensionsRoot}/icon"
+    val saveDir = "${applicationDirs.extensionsRoot}/icon"
     val fileName = apkName
 
     return getCachedResponse(saveDir, fileName) {

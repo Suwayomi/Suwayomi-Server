@@ -4,7 +4,7 @@ package ir.armor.tachidesk.database
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import ir.armor.tachidesk.Config
+import ir.armor.tachidesk.applicationDirs
 import ir.armor.tachidesk.database.table.CategoryMangaTable
 import ir.armor.tachidesk.database.table.CategoryTable
 import ir.armor.tachidesk.database.table.ChapterTable
@@ -18,7 +18,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 object DBMangaer {
     val db by lazy {
-        Database.connect("jdbc:h2:${Config.dataRoot}/database", "org.h2.Driver")
+        Database.connect("jdbc:h2:${applicationDirs.dataRoot}/database", "org.h2.Driver")
     }
 }
 

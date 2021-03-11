@@ -6,7 +6,7 @@ package ir.armor.tachidesk.util
 
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.model.SManga
-import ir.armor.tachidesk.Config
+import ir.armor.tachidesk.applicationDirs
 import ir.armor.tachidesk.database.dataclass.MangaDataClass
 import ir.armor.tachidesk.database.table.MangaStatus
 import ir.armor.tachidesk.database.table.MangaTable
@@ -85,7 +85,7 @@ fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
 
 fun getThumbnail(mangaId: Int): Pair<InputStream, String> {
     val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
-    val saveDir = Config.thumbnailsRoot
+    val saveDir = applicationDirs.thumbnailsRoot
     val fileName = mangaId.toString()
 
     return getCachedResponse(saveDir, fileName) {

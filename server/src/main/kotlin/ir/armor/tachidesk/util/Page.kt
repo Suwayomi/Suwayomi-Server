@@ -6,12 +6,11 @@ package ir.armor.tachidesk.util
 
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
-import ir.armor.tachidesk.Config
+import ir.armor.tachidesk.applicationDirs
 import ir.armor.tachidesk.database.table.ChapterTable
 import ir.armor.tachidesk.database.table.MangaTable
 import ir.armor.tachidesk.database.table.PageTable
 import ir.armor.tachidesk.database.table.SourceTable
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -70,7 +69,7 @@ fun getChapterDir(mangaId: Int, chapterId: Int): String {
     val mangaTitle = mangaEntry[MangaTable.title]
     val sourceName = source.toString()
 
-    val mangaDir = "${Config.mangaRoot}/$sourceName/$mangaTitle/$chapterDir"
+    val mangaDir = "${applicationDirs.mangaRoot}/$sourceName/$mangaTitle/$chapterDir"
     // make sure dirs exist
     File(mangaDir).mkdirs()
     return mangaDir

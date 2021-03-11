@@ -76,5 +76,8 @@ configure(listOf(
 
         // dependency of :AndroidCompat:Config
         implementation("com.typesafe:config:1.4.0")
+
+        // to get application content root
+        implementation("net.harawata:appdirs:1.2.0")
     }
 }
