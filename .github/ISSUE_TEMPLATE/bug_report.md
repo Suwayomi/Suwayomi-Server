@@ -34,10 +34,10 @@ Note that the issue will be automatically closed if you do not fill out the titl
 2. Second Step
 
 ### Expected behavior
-Describe what should have happened
+Describe what should have happened. Remove this line after you are done.
 
 ### Actual behavior
-Describe what happens instead
+Describe what happens instead. Remove this line after you are done.
 
 ## Other details
-Describe additional details If necessary 
+Describe additional details If necessary. Remove this line after you are done.

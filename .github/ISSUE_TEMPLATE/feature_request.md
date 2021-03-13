@@ -23,7 +23,7 @@ Note that the issue will be automatically closed if you do not fill out the titl
 ---
 
 ## What feature should be added to Tachidesk?
-Explain What the feature is and how it should work in detail
+Explain What the feature is and how it should work in detail. Remove this line after you are done.
 
 ##  Why/Project's Benefit/Existing Problem
-Explain why this should be added
+Explain why this should be added. Remove this line after you are done.
