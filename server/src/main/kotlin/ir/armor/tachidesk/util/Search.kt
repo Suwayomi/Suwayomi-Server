@@ -18,6 +18,7 @@ fun sourceSearch(sourceId: Long, searchTerm: String, pageNum: Int): PagedMangaLi
 }
 
 fun sourceGlobalSearch(searchTerm: String) {
+    // TODO
 }
 
 data class FilterWrapper(

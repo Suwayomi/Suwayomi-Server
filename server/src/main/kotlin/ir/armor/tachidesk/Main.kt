@@ -78,6 +78,7 @@ class Main {
                 ctx.status(200)
             }
 
+            // icon for extension named `apkName`
             app.get("/api/v1/extension/icon/:apkName") { ctx ->
                 val apkName = ctx.pathParam("apkName")
                 val result = getExtensionIcon(apkName)
@@ -86,31 +87,38 @@ class Main {
                 ctx.header("content-type", result.second)
             }
 
+            // list of sources
             app.get("/api/v1/source/list") { ctx ->
                 ctx.json(getSourceList())
             }
 
+            // fetch source with id `sourceId`
             app.get("/api/v1/source/:sourceId") { ctx ->
                 val sourceId = ctx.pathParam("sourceId").toLong()
                 ctx.json(getSource(sourceId))
             }
 
+            // popular mangas from source with id `sourceId`
             app.get("/api/v1/source/:sourceId/popular/:pageNum") { ctx ->
                 val sourceId = ctx.pathParam("sourceId").toLong()
                 val pageNum = ctx.pathParam("pageNum").toInt()
                 ctx.json(getMangaList(sourceId, pageNum, popular = true))
             }
+
+            // latest mangas from source with id `sourceId`
             app.get("/api/v1/source/:sourceId/latest/:pageNum") { ctx ->
                 val sourceId = ctx.pathParam("sourceId").toLong()
                 val pageNum = ctx.pathParam("pageNum").toInt()
                 ctx.json(getMangaList(sourceId, pageNum, popular = false))
             }
 
+            // get manga info
             app.get("/api/v1/manga/:mangaId/") { ctx ->
                 val mangaId = ctx.pathParam("mangaId").toInt()
                 ctx.json(getManga(mangaId))
             }
 
+            // manga thumbnail
             app.get("api/v1/manga/:mangaId/thumbnail") { ctx ->
                 val mangaId = ctx.pathParam("mangaId").toInt()
                 val result = getThumbnail(mangaId)
@@ -133,7 +141,7 @@ class Main {
                 ctx.status(200)
             }
 
-            // adds the manga to category
+            // list manga's categories
             app.get("api/v1/manga/:mangaId/category/") { ctx ->
                 val mangaId = ctx.pathParam("mangaId").toInt()
                 ctx.json(getMangaCategories(mangaId))
