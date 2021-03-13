@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+
+# foolproof against running from AndroidCompat dir instead of running from project root
+if [ "$(basename $(pwd))" = "AndroidCompat" ]; then
+  cd ..
+fi
+
+
 echo "Getting required Android.jar..."
 rm -rf "tmp"
 mkdir -p "tmp"
