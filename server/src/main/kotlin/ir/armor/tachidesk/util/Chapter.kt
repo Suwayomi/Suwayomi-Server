@@ -18,7 +18,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 fun getChapterList(mangaId: Int): List<ChapterDataClass> {
     val mangaDetails = getManga(mangaId)
-    val source = getHttpSource(mangaDetails.sourceId)
+    val source = getHttpSource(mangaDetails.sourceId.toLong())
 
     val chapterList = source.fetchChapterList(
         SManga.create().apply {
@@ -62,7 +62,7 @@ fun getChapter(chapterId: Int, mangaId: Int): ChapterDataClass {
         val chapterEntry = ChapterTable.select { ChapterTable.id eq chapterId }.firstOrNull()!!
         assert(mangaId == chapterEntry[ChapterTable.manga].value) // sanity check
         val mangaEntry = MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!!
-        val source = getHttpSource(mangaEntry[MangaTable.sourceReference].value)
+        val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
 
         val pageList = source.fetchPageList(
             SChapter.create().apply {

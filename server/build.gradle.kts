@@ -88,8 +88,8 @@ dependencies {
     implementation(project(":AndroidCompat:Config"))
 
 
-    testImplementation("org.jetbrains.kotlin:kotlin-test")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
+//    testImplementation("org.jetbrains.kotlin:kotlin-test")
+//    testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
 }
 
 val name = "ir.armor.tachidesk.Main"

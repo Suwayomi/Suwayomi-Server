@@ -15,14 +15,18 @@ import ir.armor.tachidesk.database.table.SourceTable
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.lang.NullPointerException
 import java.net.URL
 import java.net.URLClassLoader
-import java.util.Locale
 
 private val sourceCache = mutableListOf<Pair<Long, HttpSource>>()
 private val extensionCache = mutableListOf<Pair<String, Any>>()
 
 fun getHttpSource(sourceId: Long): HttpSource {
+    val sourceRecord = transaction {
+        SourceEntity.findById(sourceId)
+    } ?: throw NullPointerException("Source with id $sourceId is not installed")
+
     val cachedResult: Pair<Long, HttpSource>? = sourceCache.firstOrNull { it.first == sourceId }
     if (cachedResult != null) {
         println("used cached HttpSource: ${cachedResult.second.name}")
@@ -30,7 +34,6 @@ fun getHttpSource(sourceId: Long): HttpSource {
     }
 
     val result: HttpSource = transaction {
-        val sourceRecord = SourceEntity.findById(sourceId)!!
         val extensionId = sourceRecord.extension.id.value
         val extensionRecord = ExtensionEntity.findById(extensionId)!!
         val apkName = extensionRecord.apkName
@@ -87,14 +90,14 @@ fun getSourceList(): List<SourceDataClass> {
 
 fun getSource(sourceId: Long): SourceDataClass {
     return transaction {
-        val source = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!!
+        val source = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
 
         return@transaction SourceDataClass(
-            source[SourceTable.id].value.toString(),
-            source[SourceTable.name],
-            Locale(source[SourceTable.lang]).getDisplayLanguage(Locale(source[SourceTable.lang])),
-            ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()[ExtensionTable.iconUrl],
-            getHttpSource(source[SourceTable.id].value).supportsLatest
+            sourceId.toString(),
+            source?.get(SourceTable.name),
+            source?.get(SourceTable.lang),
+            source?.let { ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()[ExtensionTable.iconUrl] },
+            source?.let { getHttpSource(sourceId).supportsLatest }
         )
     }
 }

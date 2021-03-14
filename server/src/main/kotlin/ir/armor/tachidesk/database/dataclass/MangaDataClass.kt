@@ -8,7 +8,7 @@ import ir.armor.tachidesk.database.table.MangaStatus
 
 data class MangaDataClass(
     val id: Int,
-    val sourceId: Long,
+    val sourceId: String,
 
     val url: String,
     val title: String,
@@ -21,7 +21,8 @@ data class MangaDataClass(
     val description: String? = null,
     val genre: String? = null,
     val status: String = MangaStatus.UNKNOWN.name,
-    val inLibrary: Boolean = false
+    val inLibrary: Boolean = false,
+    val source: SourceDataClass? = null
 )
 
 data class PagedMangaListDataClass(

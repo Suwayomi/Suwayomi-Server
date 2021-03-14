@@ -21,7 +21,7 @@ fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
     return if (mangaEntry[MangaTable.initialized]) {
         MangaDataClass(
             mangaId,
-            mangaEntry[MangaTable.sourceReference].value,
+            mangaEntry[MangaTable.sourceReference].toString(),
 
             mangaEntry[MangaTable.url],
             mangaEntry[MangaTable.title],
@@ -34,10 +34,11 @@ fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
             mangaEntry[MangaTable.description],
             mangaEntry[MangaTable.genre],
             MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
-            mangaEntry[MangaTable.inLibrary]
+            mangaEntry[MangaTable.inLibrary],
+            getSource(mangaEntry[MangaTable.sourceReference])
         )
     } else { // initialize manga
-        val source = getHttpSource(mangaEntry[MangaTable.sourceReference].value)
+        val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
         val fetchedManga = source.fetchMangaDetails(
             SManga.create().apply {
                 url = mangaEntry[MangaTable.url]
@@ -65,7 +66,7 @@ fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
 
         MangaDataClass(
             mangaId,
-            mangaEntry[MangaTable.sourceReference].value,
+            mangaEntry[MangaTable.sourceReference].toString(),
 
             mangaEntry[MangaTable.url],
             mangaEntry[MangaTable.title],
@@ -78,7 +79,8 @@ fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
             fetchedManga.description,
             fetchedManga.genre,
             MangaStatus.valueOf(fetchedManga.status).name,
-            false
+            false,
+            getSource(mangaEntry[MangaTable.sourceReference])
         )
     }
 }
@@ -89,7 +91,7 @@ fun getThumbnail(mangaId: Int): Pair<InputStream, String> {
     val fileName = mangaId.toString()
 
     return getCachedResponse(saveDir, fileName) {
-        val sourceId = mangaEntry[MangaTable.sourceReference].value
+        val sourceId = mangaEntry[MangaTable.sourceReference]
         val source = getHttpSource(sourceId)
         var thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
         if (thumbnailUrl == null || thumbnailUrl.isEmpty()) {

@@ -23,6 +23,7 @@ interface ISource {
 
 interface IManga {
     id: number
+    sourceId?: string
     title: string
     thumbnailUrl: string
     inLibrary?: boolean

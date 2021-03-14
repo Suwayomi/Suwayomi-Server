@@ -16,6 +16,7 @@ export default function Manga() {
     const { id } = useParams<{id: string}>();
 
     const [manga, setManga] = useState<IManga>();
+    const [source, setSource] = useState<ISource>();
     const [chapters, setChapters] = useState<IChapter[]>([]);
 
     useEffect(() => {
@@ -26,6 +27,16 @@ export default function Manga() {
                 setTitle(data.title);
             });
     }, []);
+
+    useEffect(() => {
+        if (manga !== undefined) {
+            client.get(`/api/v1/source/${manga.sourceId}`)
+                .then((response) => response.data)
+                .then((data: ISource) => {
+                    setSource(data);
+                });
+        }
+    }, [manga]);
 
     useEffect(() => {
         client.get(`/api/v1/manga/${id}/chapters`)
@@ -41,7 +52,7 @@ export default function Manga() {
 
     return (
         <>
-            {manga && <MangaDetails manga={manga} />}
+            {(manga && source) && <MangaDetails manga={manga} source={source} />}
             {chapterCards}
         </>
     );

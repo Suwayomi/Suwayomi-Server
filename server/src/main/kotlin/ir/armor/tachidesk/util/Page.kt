@@ -27,7 +27,7 @@ fun getTrueImageUrl(page: Page, source: HttpSource): String {
 
 fun getPageImage(mangaId: Int, chapterId: Int, index: Int): Pair<InputStream, String> {
     val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
-    val source = getHttpSource(mangaEntry[MangaTable.sourceReference].value)
+    val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
     val chapterEntry = transaction { ChapterTable.select { ChapterTable.id eq chapterId }.firstOrNull()!! }
     val pageEntry = transaction { PageTable.select { (PageTable.chapter eq chapterId) and (PageTable.index eq index) }.firstOrNull()!! }
 
@@ -56,7 +56,7 @@ fun getPageImage(mangaId: Int, chapterId: Int, index: Int): Pair<InputStream, St
 
 fun getChapterDir(mangaId: Int, chapterId: Int): String {
     val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
-    val sourceId = mangaEntry[MangaTable.sourceReference].value
+    val sourceId = mangaEntry[MangaTable.sourceReference]
     val source = getHttpSource(sourceId)
     val sourceEntry = transaction { SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!! }
     val chapterEntry = transaction { ChapterTable.select { ChapterTable.id eq chapterId }.firstOrNull()!! }

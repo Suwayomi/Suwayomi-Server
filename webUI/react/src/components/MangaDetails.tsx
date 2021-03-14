@@ -19,11 +19,17 @@ const useStyles = makeStyles(() => createStyles({
 
 interface IProps{
     manga: IManga
+    source: ISource
+}
+
+function getSourceName(source: ISource) {
+    if (source.name !== null) { return source.name; }
+    return source.id;
 }
 
 export default function MangaDetails(props: IProps) {
     const classes = useStyles();
-    const { manga } = props;
+    const { manga, source } = props;
     const [inLibrary, setInLibrary] = useState<string>(
         manga.inLibrary ? 'In Library' : 'Not In Library',
     );
@@ -54,8 +60,13 @@ export default function MangaDetails(props: IProps) {
     return (
         <div>
             <h1>
-                {manga && manga.title}
+                {manga.title}
             </h1>
+            <h3>
+                Source:
+                {' '}
+                {getSourceName(source)}
+            </h3>
             <div className={classes.root}>
                 <Button variant="outlined" onClick={() => handleButtonClick()}>{inLibrary}</Button>
                 {inLibrary === 'In Library'

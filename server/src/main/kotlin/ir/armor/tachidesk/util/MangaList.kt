@@ -52,7 +52,7 @@ fun MangasPage.processEntries(sourceId: Long): PagedMangaListDataClass {
 
                 MangaDataClass(
                     mangaId,
-                    sourceId,
+                    sourceId.toString(),
 
                     manga.url,
                     manga.title,
@@ -70,7 +70,7 @@ fun MangasPage.processEntries(sourceId: Long): PagedMangaListDataClass {
                 val mangaId = mangaEntry[MangaTable.id].value
                 MangaDataClass(
                     mangaId,
-                    sourceId,
+                    sourceId.toString(),
 
                     manga.url,
                     manga.title,

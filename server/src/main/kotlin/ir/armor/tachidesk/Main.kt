@@ -58,6 +58,10 @@ class Main {
                 openInBrowser()
             }
 
+            app.exception(NullPointerException::class.java) { _, ctx ->
+                ctx.status(404)
+            }
+
             app.get("/api/v1/extension/list") { ctx ->
                 ctx.json(getExtensionList())
             }

@@ -28,13 +28,13 @@ object MangaTable : IntIdTable() {
     val defaultCategory = bool("default_category").default(true)
 
     // source is used by some ancestor of IntIdTable
-    val sourceReference = reference("source", SourceTable)
+    val sourceReference = long("source")
 }
 
 fun MangaTable.toDataClass(mangaEntry: ResultRow) =
     MangaDataClass(
         mangaEntry[MangaTable.id].value,
-        mangaEntry[sourceReference].value,
+        mangaEntry[sourceReference].toString(),
 
         mangaEntry[MangaTable.url],
         mangaEntry[MangaTable.title],
