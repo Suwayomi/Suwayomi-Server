@@ -76,7 +76,7 @@ export default function Extensions() {
         <>
             {
                 Object.entries(extensions).map(([lang, list]) => (
-                    (['installed', ...shownLangs].indexOf(lang) !== -1
+                    ((['installed', ...shownLangs].indexOf(lang) !== -1 && (list as []).length > 0)
                         && (
                             <React.Fragment key={lang}>
                                 <h1 key={lang} style={{ marginLeft: 25 }}>
