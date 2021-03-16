@@ -29,7 +29,7 @@ You should have The Java Runtime Environment(JRE) 8 or newer and a modern browse
 
 Double click on the jar file or run `java -jar Tachidesk-vX.Y.Z-rxxx.jar` from a Terminal/Command Prompt window to run the app which will open a new browser window automatically. Also the System Tray Icon is your friend if you need to open the browser window again or close Tachidesk.
 
-### Windows only
+### Windows
 The Windows specific build has java bundled inside, so you don't have to install java to use it. Unzip `Tachidesk-vX.Y.Z-rxxx-win32.zip` and run `server.exe`.
 
 ### Arch Linux
@@ -38,7 +38,7 @@ You can install Tachidesk from the AUR
 yay -S tachidesk
 ```
 
-### Running on Docker
+### Docker
 Check [arbuilder's repo](https://github.com/arbuilder/Tachidesk-docker) out for more details and the dockerfile.
 
 ## General troubleshooting
