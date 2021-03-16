@@ -35,9 +35,13 @@ function groupExtensions(extensions: IExtension[]) {
     return result;
 }
 
+function extensionDefaultLangs() {
+    return [...defualtLangs(), 'all'];
+}
+
 export default function Extensions() {
     const { setTitle, setAction } = useContext(NavbarContext);
-    const [shownLangs, setShownLangs] = useLocalStorage<string[]>('shownExtensionLangs', defualtLangs());
+    const [shownLangs, setShownLangs] = useLocalStorage<string[]>('shownExtensionLangs', extensionDefaultLangs());
 
     useEffect(() => {
         setTitle('Extensions');
