@@ -227,7 +227,7 @@ class Main {
 
             // category modification
             app.patch("/api/v1/category/:categoryId") { ctx ->
-                val categoryId = ctx.pathParam("categoryId")!!.toInt()
+                val categoryId = ctx.pathParam("categoryId").toInt()
                 val name = ctx.formParam("name")
                 val isLanding = if (ctx.formParam("isLanding") != null) ctx.formParam("isLanding")?.toBoolean() else null
                 updateCategory(categoryId, name, isLanding)

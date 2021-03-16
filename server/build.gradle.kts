@@ -63,7 +63,7 @@ dependencies {
     val coroutinesVersion = "1.3.9"
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
 
-    // dex2jar
+    // dex2jar: https://github.com/DexPatcher/dex2jar/releases/tag/v2.1-20190905-lanchon
     implementation(fileTree("lib/dex2jar/"))
 
     // api
