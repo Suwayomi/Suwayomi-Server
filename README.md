@@ -32,6 +32,12 @@ Double click on the jar file or run `java -jar Tachidesk-vX.Y.Z-rxxx.jar` from a
 ### Windows only
 The Windows specific build has java bundled inside, so you don't have to install java to use it. Unzip `Tachidesk-vX.Y.Z-rxxx-win32.zip` and run `server.exe`.
 
+### Arch Linux
+You can install Tachidesk from the AUR
+```
+yay -S tachidesk
+```
+
 ### Running on Docker
 Check [arbuilder's repo](https://github.com/arbuilder/Tachidesk-docker) out for more details and the dockerfile.
 
