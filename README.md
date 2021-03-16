@@ -21,19 +21,18 @@ Here is a list of current features:
 Anyways, for more info checkout [finished milestone #1](https://github.com/AriaMoradi/Tachidesk/issues/2) and [milestone #2](https://github.com/AriaMoradi/Tachidesk/projects/1) to see what's implemented in more detail.
 
 ## Downloading and Running the app
-#### Prerequisites
-You should have The Java Runtime Environment(JRE) 8 or newer (if you're not planning to use the Windows specific build) and a modern browser installed. Also an internet connection is required as almost everything this app does is downloading stuff. 
-
-#### Download the app
+### Downloading the app
 Download the latest jar or windows(win32) release from [the releases section](https://github.com/AriaMoradi/Tachidesk/releases).
 
-#### Running pre-built jar packages
+### All Operating Systems
+You should have The Java Runtime Environment(JRE) 8 or newer and a modern browser installed. Also an internet connection is required as almost everything this app does is downloading stuff. 
+
 Double click on the jar file or run `java -jar Tachidesk-vX.Y.Z-rxxx.jar` from a Terminal/Command Prompt window to run the app which will open a new browser window automatically. Also the System Tray Icon is your friend if you need to open the browser window again or close Tachidesk.
 
-#### Running pre-built Windows packages
-Windows specific builds have java bundled inside them, so you don't have to install java to use it. Unzip `Tachidesk-vX.Y.Z-rxxx-win32.zip` and run `server.exe`, the rest will work like the jar release.
+### Windows only
+The Windows specific build has java bundled inside, so you don't have to install java to use it. Unzip `Tachidesk-vX.Y.Z-rxxx-win32.zip` and run `server.exe`.
 
-#### Running on Docker
+### Running on Docker
 Check [arbuilder's repo](https://github.com/arbuilder/Tachidesk-docker) out for more details and the dockerfile.
 
 ## General troubleshooting
