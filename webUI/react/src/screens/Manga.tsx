@@ -10,13 +10,12 @@ import NavbarContext from '../context/NavbarContext';
 import client from '../util/client';
 
 export default function Manga() {
-    const { setTitle, setAction } = useContext(NavbarContext);
-    useEffect(() => { setTitle('Manga'); setAction(<></>); }, []);
+    const { setTitle } = useContext(NavbarContext);
+    useEffect(() => { setTitle('Manga'); }, []); // delegate setting topbar action to MangaDetails
 
     const { id } = useParams<{id: string}>();
 
     const [manga, setManga] = useState<IManga>();
-    const [source, setSource] = useState<ISource>();
     const [chapters, setChapters] = useState<IChapter[]>([]);
 
     useEffect(() => {
@@ -27,16 +26,6 @@ export default function Manga() {
                 setTitle(data.title);
             });
     }, []);
-
-    useEffect(() => {
-        if (manga !== undefined) {
-            client.get(`/api/v1/source/${manga.sourceId}`)
-                .then((response) => response.data)
-                .then((data: ISource) => {
-                    setSource(data);
-                });
-        }
-    }, [manga]);
 
     useEffect(() => {
         client.get(`/api/v1/manga/${id}/chapters`)
@@ -52,7 +41,7 @@ export default function Manga() {
 
     return (
         <>
-            {(manga && source) && <MangaDetails manga={manga} source={source} />}
+            {manga && <MangaDetails manga={manga} />}
             {chapterCards}
         </>
     );

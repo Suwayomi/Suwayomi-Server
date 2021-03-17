@@ -85,6 +85,14 @@ export default function CategorySelect(props: IProps) {
             <DialogTitle>Set categories</DialogTitle>
             <DialogContent dividers>
                 <FormGroup>
+                    {categoryInfos.length === 0
+                        && (
+                            <span>
+                                No categories found!
+                                <br />
+                                You should make some from settings.
+                            </span>
+                        )}
                     {categoryInfos.map((categoryInfo) => (
                         <FormControlLabel
                             control={(

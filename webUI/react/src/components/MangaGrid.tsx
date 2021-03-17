@@ -7,7 +7,7 @@ import Grid from '@material-ui/core/Grid';
 import MangaCard from './MangaCard';
 
 interface IProps{
-    mangas: IManga[]
+    mangas: IMangaCard[]
     message?: string
     hasNextPage: boolean
     lastPageNum: number
@@ -48,7 +48,7 @@ export default function MangaGrid(props: IProps) {
     }
 
     return (
-        <Grid container spacing={1} style={{ margin: 0, padding: '5px' }}>
+        <Grid container spacing={1} style={{ margin: 0, width: '100%', padding: '5px' }}>
             {mapped}
         </Grid>
     );

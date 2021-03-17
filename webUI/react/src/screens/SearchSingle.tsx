@@ -27,7 +27,7 @@ export default function SearchSingle() {
     const { sourceId } = useParams<{sourceId: string}>();
     const classes = useStyles();
     const [error, setError] = useState<boolean>(false);
-    const [mangas, setMangas] = useState<IManga[]>([]);
+    const [mangas, setMangas] = useState<IMangaCard[]>([]);
     const [message, setMessage] = useState<string>('');
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [hasNextPage, setHasNextPage] = useState<boolean>(false);

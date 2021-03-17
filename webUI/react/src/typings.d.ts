@@ -21,12 +21,28 @@ interface ISource {
     history: any
 }
 
-interface IManga {
+interface IMangaCard {
     id: number
-    sourceId?: string
     title: string
     thumbnailUrl: string
-    inLibrary?: boolean
+}
+
+interface IManga {
+    id: number
+    sourceId: string
+
+    url: string
+    title: string
+    thumbnailUrl: string
+
+    artist: string
+    author: string
+    description: string
+    genre: string
+    status: string
+
+    inLibrary: boolean
+    source: ISource
 }
 
 interface IChapter {

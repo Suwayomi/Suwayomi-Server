@@ -43,7 +43,7 @@ const useStyles = makeStyles({
 });
 
 interface IProps {
-    manga: IManga
+    manga: IMangaCard
 }
 const MangaCard = React.forwardRef((props: IProps, ref) => {
     const {
