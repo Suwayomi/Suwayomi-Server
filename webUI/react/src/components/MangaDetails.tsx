@@ -18,15 +18,15 @@ import CategorySelect from './CategorySelect';
 const useStyles = (inLibrary: string) => makeStyles((theme: Theme) => ({
     root: {
         width: '100%',
-        [theme.breakpoints.up('md')]: {
-            display: 'flex',
-        },
+        // [theme.breakpoints.up('md')]: {
+        //     display: 'flex',
+        // },
     },
     top: {
         padding: '10px',
-        [theme.breakpoints.up('md')]: {
-            minWidth: '50%',
-        },
+        // [theme.breakpoints.up('md')]: {
+        //     minWidth: '50%',
+        // },
     },
     leftRight: {
         display: 'flex',
@@ -39,9 +39,9 @@ const useStyles = (inLibrary: string) => makeStyles((theme: Theme) => ({
             height: 'auto',
         },
         maxWidth: '50%',
-        [theme.breakpoints.up('md')]: {
-            minWidth: '100px',
-        },
+        // [theme.breakpoints.up('md')]: {
+        //     minWidth: '100px',
+        // },
     },
     rightSide: {
         marginLeft: 15,
@@ -76,7 +76,7 @@ const useStyles = (inLibrary: string) => makeStyles((theme: Theme) => ({
         paddingRight: '10px',
         [theme.breakpoints.up('md')]: {
             fontSize: '1.2em',
-            maxWidth: '50%',
+            // maxWidth: '50%',
         },
         [theme.breakpoints.up('lg')]: {
             fontSize: '1.3em',
