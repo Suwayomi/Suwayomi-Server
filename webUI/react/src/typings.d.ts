@@ -62,3 +62,8 @@ interface ICategory {
     name: String
     isLanding: boolean
 }
+
+interface INavbarOverride {
+    status: boolean
+    value: any
+}

@@ -8,6 +8,7 @@ import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import Button from '@material-ui/core/Button';
 import Typography from '@material-ui/core/Typography';
+import { useHistory } from 'react-router-dom';
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -41,6 +42,7 @@ interface IProps{
 
 export default function ChapterCard(props: IProps) {
     const classes = useStyles();
+    const history = useHistory();
     const { chapter } = props;
 
     const dateStr = chapter.date_upload && new Date(chapter.date_upload).toISOString().slice(0, 10);
@@ -64,7 +66,7 @@ export default function ChapterCard(props: IProps) {
                             </div>
                         </div>
                         <div style={{ display: 'flex' }}>
-                            <Button variant="outlined" style={{ marginLeft: 20 }} onClick={() => { window.location.href = `/manga/${chapter.mangaId}/chapter/${chapter.id}`; }}>open</Button>
+                            <Button variant="outlined" style={{ marginLeft: 20 }} onClick={() => { history.push(`/manga/${chapter.mangaId}/chapter/${chapter.id}`); }}>open</Button>
                         </div>
                     </CardContent>
                 </Card>

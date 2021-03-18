@@ -9,6 +9,8 @@ type ContextType = {
     setTitle: React.Dispatch<React.SetStateAction<string>>
     action: any
     setAction: React.Dispatch<React.SetStateAction<any>>
+    override: INavbarOverride
+    setOverride: React.Dispatch<React.SetStateAction<INavbarOverride>>
 };
 
 const NavBarContext = React.createContext<ContextType>({
@@ -16,6 +18,8 @@ const NavBarContext = React.createContext<ContextType>({
     setTitle: ():void => {},
     action: <div />,
     setAction: ():void => {},
+    override: { status: false, value: <div /> },
+    setOverride: ():void => {},
 });
 
 export default NavBarContext;

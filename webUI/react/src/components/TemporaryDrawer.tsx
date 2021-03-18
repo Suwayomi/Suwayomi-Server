@@ -27,68 +27,54 @@ interface IProps {
 export default function TemporaryDrawer({ drawerOpen, setDrawerOpen }: IProps) {
     const classes = useStyles();
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const sideList = (side: 'left') => (
-        <div
-            className={classes.list}
-            role="presentation"
-            onClick={() => setDrawerOpen(false)}
-            onKeyDown={() => setDrawerOpen(false)}
-        >
-            <List>
-                <Link to="/library" style={{ color: 'inherit', textDecoration: 'none' }}>
-                    <ListItem button key="Library">
-                        <ListItemIcon>
-                            <InboxIcon />
-                        </ListItemIcon>
-                        <ListItemText primary="Library" />
-                    </ListItem>
-                </Link>
-                <Link to="/extensions" style={{ color: 'inherit', textDecoration: 'none' }}>
-                    <ListItem button key="Extensions">
-                        <ListItemIcon>
-                            <InboxIcon />
-                        </ListItemIcon>
-                        <ListItemText primary="Extensions" />
-                    </ListItem>
-                </Link>
-                <Link to="/sources" style={{ color: 'inherit', textDecoration: 'none' }}>
-                    <ListItem button key="Sources">
-                        <ListItemIcon>
-                            <InboxIcon />
-                        </ListItemIcon>
-                        <ListItemText primary="Sources" />
-                    </ListItem>
-                </Link>
-                <Link to="/settings" style={{ color: 'inherit', textDecoration: 'none' }}>
-                    <ListItem button key="settings">
-                        <ListItemIcon>
-                            <InboxIcon />
-                        </ListItemIcon>
-                        <ListItemText primary="Settings" />
-                    </ListItem>
-                </Link>
-                {/* <Link to="/search" style={{ color: 'inherit', textDecoration: 'none' }}>
-                    <ListItem button key="Search">
-                        <ListItemIcon>
-                            <InboxIcon />
-                        </ListItemIcon>
-                        <ListItemText primary="Global Search" />
-                    </ListItem>
-                </Link> */}
-            </List>
-        </div>
-    );
-
     return (
         <div>
             <Drawer
-                BackdropProps={{ invisible: true }}
                 open={drawerOpen}
                 anchor="left"
                 onClose={() => setDrawerOpen(false)}
             >
-                {sideList('left')}
+                <div
+                    className={classes.list}
+                    role="presentation"
+                    onClick={() => setDrawerOpen(false)}
+                    onKeyDown={() => setDrawerOpen(false)}
+                >
+                    <List>
+                        <Link to="/library" style={{ color: 'inherit', textDecoration: 'none' }}>
+                            <ListItem button key="Library">
+                                <ListItemIcon>
+                                    <InboxIcon />
+                                </ListItemIcon>
+                                <ListItemText primary="Library" />
+                            </ListItem>
+                        </Link>
+                        <Link to="/extensions" style={{ color: 'inherit', textDecoration: 'none' }}>
+                            <ListItem button key="Extensions">
+                                <ListItemIcon>
+                                    <InboxIcon />
+                                </ListItemIcon>
+                                <ListItemText primary="Extensions" />
+                            </ListItem>
+                        </Link>
+                        <Link to="/sources" style={{ color: 'inherit', textDecoration: 'none' }}>
+                            <ListItem button key="Sources">
+                                <ListItemIcon>
+                                    <InboxIcon />
+                                </ListItemIcon>
+                                <ListItemText primary="Sources" />
+                            </ListItem>
+                        </Link>
+                        <Link to="/settings" style={{ color: 'inherit', textDecoration: 'none' }}>
+                            <ListItem button key="settings">
+                                <ListItemIcon>
+                                    <InboxIcon />
+                                </ListItemIcon>
+                                <ListItemText primary="Settings" />
+                            </ListItem>
+                        </Link>
+                    </List>
+                </div>
             </Drawer>
         </div>
     );

@@ -27,9 +27,12 @@ import useLocalStorage from './util/useLocalStorage';
 export default function App() {
     const [title, setTitle] = useState<string>('Tachidesk');
     const [action, setAction] = useState<any>(<div />);
+    const [override, setOverride] = useState<INavbarOverride>({ status: false, value: <div /> });
+
     const [darkTheme, setDarkTheme] = useLocalStorage<boolean>('darkTheme', true);
+
     const navBarContext = {
-        title, setTitle, action, setAction,
+        title, setTitle, action, setAction, override, setOverride,
     };
     const darkThemeContext = { darkTheme, setDarkTheme };
 
@@ -63,7 +66,7 @@ export default function App() {
                 <NavbarContext.Provider value={navBarContext}>
                     <CssBaseline />
                     <NavBar />
-                    <Container maxWidth={false} disableGutters>
+                    <Container id="appMainContainer" maxWidth={false} disableGutters>
                         <Switch>
                             <Route path="/sources/:sourceId/search/">
                                 <Search />
@@ -81,7 +84,7 @@ export default function App() {
                                 <Sources />
                             </Route>
                             <Route path="/manga/:mangaId/chapter/:chapterId">
-                                <Reader />
+                                <></>
                             </Route>
                             <Route path="/manga/:id">
                                 <Manga />
@@ -106,6 +109,11 @@ export default function App() {
                             />
                         </Switch>
                     </Container>
+                    <Switch>
+                        <Route path="/manga/:mangaId/chapter/:chapterId">
+                            <Reader />
+                        </Route>
+                    </Switch>
                 </NavbarContext.Provider>
             </ThemeProvider>
         </Router>
