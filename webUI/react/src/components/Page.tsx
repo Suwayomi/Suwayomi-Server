@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unused-prop-types */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -5,7 +6,7 @@
 
 import CircularProgress from '@material-ui/core/CircularProgress';
 import { makeStyles } from '@material-ui/core/styles';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import LazyLoad from 'react-lazyload';
 
 const useStyles = makeStyles({
@@ -25,12 +26,31 @@ const useStyles = makeStyles({
 interface IProps {
     src: string
     index: number
+    setCurPage: React.Dispatch<React.SetStateAction<number>>
 }
 
 function LazyImage(props: IProps) {
     const classes = useStyles();
-    const { src, index } = props;
+    const { src, index, setCurPage } = props;
     const [imageSrc, setImagsrc] = useState<string>('');
+    const ref = useRef<HTMLImageElement>(null);
+
+    const handleScroll = () => {
+        if (ref.current) {
+            const rect = ref.current.getBoundingClientRect();
+            if (rect.y < 0 && rect.y + rect.height > 0) {
+                setCurPage(index);
+            }
+        }
+    };
+
+    useEffect(() => {
+        window.addEventListener('scroll', handleScroll);
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+        };
+    }, [handleScroll]);
 
     useEffect(() => {
         const img = new Image();
@@ -48,12 +68,17 @@ function LazyImage(props: IProps) {
     }
 
     return (
-        <img src={imageSrc} alt={`Page #${index}`} style={{ maxWidth: '100%' }} />
+        <img
+            ref={ref}
+            src={imageSrc}
+            alt={`Page #${index}`}
+            style={{ maxWidth: '100%' }}
+        />
     );
 }
 
 export default function Page(props: IProps) {
-    const { src, index } = props;
+    const { src, index, setCurPage } = props;
     const classes = useStyles();
 
     return (
@@ -67,7 +92,7 @@ export default function Page(props: IProps) {
                     </div>
                 )}
             >
-                <LazyImage src={src} index={index} />
+                <LazyImage src={src} index={index} setCurPage={setCurPage} />
             </LazyLoad>
         </div>
     );

@@ -8,12 +8,12 @@ import { makeStyles } from '@material-ui/core/styles';
 import React, { useContext, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Page from '../components/Page';
-import ReaderNavBar, { IReaderSettings } from '../components/ReaderNavBar';
+import ReaderNavBar, { defaultReaderSettings, IReaderSettings } from '../components/ReaderNavBar';
 import NavbarContext from '../context/NavbarContext';
 import client from '../util/client';
 import useLocalStorage from '../util/useLocalStorage';
 
-const useStyles = makeStyles({
+const useStyles = (settings: IReaderSettings) => makeStyles({
     reader: {
         display: 'flex',
         flexDirection: 'column',
@@ -24,20 +24,32 @@ const useStyles = makeStyles({
     loading: {
         margin: '50px auto',
     },
+
+    pageNumber: {
+        display: settings.showPageNumber ? 'block' : 'none',
+        position: 'fixed',
+        bottom: '50px',
+        right: settings.staticNav ? 'calc((100vw - 325px)/2)' : 'calc((100vw - 25px)/2)',
+        width: '50px',
+        textAlign: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        borderRadius: '10px',
+    },
 });
 
 const range = (n:number) => Array.from({ length: n }, (value, key) => key);
 
 export default function Reader() {
-    const classes = useStyles();
+    const [settings, setSettings] = useLocalStorage<IReaderSettings>('readerSettings', defaultReaderSettings);
 
-    const [settings, setSettings] = useState<IReaderSettings>({});
+    const classes = useStyles(settings)();
 
     const [serverAddress] = useLocalStorage<String>('serverBaseURL', '');
 
     const { chapterId, mangaId } = useParams<{chapterId: string, mangaId: string}>();
     const [manga, setManga] = useState<IMangaCard | IManga>({ id: +mangaId, title: '', thumbnailUrl: '' });
     const [pageCount, setPageCount] = useState<number>(-1);
+    const [curPage, setCurPage] = useState<number>(0);
 
     const { setOverride, setTitle } = useContext(NavbarContext);
     useEffect(() => {
@@ -54,7 +66,7 @@ export default function Reader() {
 
         // clean up for when we leave the reader
         return () => setOverride({ status: false, value: <div /> });
-    }, [manga]);
+    }, [manga, settings]);
 
     useEffect(() => {
         setTitle('Reader');
@@ -83,8 +95,16 @@ export default function Reader() {
     }
     return (
         <div className={classes.reader}>
+            <div className={classes.pageNumber}>
+                {`${curPage + 1} / ${pageCount}`}
+            </div>
             {range(pageCount).map((index) => (
-                <Page key={index} index={index} src={`${serverAddress}/api/v1/manga/${mangaId}/chapter/${chapterId}/page/${index}`} />
+                <Page
+                    key={index}
+                    index={index}
+                    src={`${serverAddress}/api/v1/manga/${mangaId}/chapter/${chapterId}/page/${index}`}
+                    setCurPage={setCurPage}
+                />
             ))}
         </div>
     );

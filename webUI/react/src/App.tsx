@@ -66,7 +66,12 @@ export default function App() {
                 <NavbarContext.Provider value={navBarContext}>
                     <CssBaseline />
                     <NavBar />
-                    <Container id="appMainContainer" maxWidth={false} disableGutters>
+                    <Container
+                        id="appMainContainer"
+                        maxWidth={false}
+                        disableGutters
+                        style={{ paddingTop: '64px' }}
+                    >
                         <Switch>
                             <Route path="/sources/:sourceId/search/">
                                 <Search />

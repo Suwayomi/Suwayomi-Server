@@ -39,7 +39,7 @@ export default function NavBar() {
             {!override.status
         && (
             <div className={classes.root}>
-                <AppBar position="static" color={darkTheme ? 'default' : 'primary'}>
+                <AppBar position="fixed" color={darkTheme ? 'default' : 'primary'}>
                     <Toolbar>
                         <IconButton
                             edge="start"

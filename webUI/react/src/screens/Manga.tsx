@@ -19,6 +19,15 @@ const useStyles = makeStyles((theme: Theme) => ({
         },
     },
 
+    chapters: {
+        listStyle: 'none',
+        padding: 0,
+        [theme.breakpoints.up('md')]: {
+            width: '50%',
+            marginLeft: '50%',
+        },
+    },
+
     loading: {
         margin: '10px 0',
         display: 'flex',
@@ -53,7 +62,7 @@ export default function Manga() {
     }, []);
 
     const chapterCards = (
-        <ol style={{ listStyle: 'none', padding: 0, width: '100%' }}>
+        <ol className={classes.chapters}>
             {chapters.length === 0
             && (
                 <div className={classes.loading}>

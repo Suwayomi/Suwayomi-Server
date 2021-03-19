@@ -18,9 +18,10 @@ import CategorySelect from './CategorySelect';
 const useStyles = (inLibrary: string) => makeStyles((theme: Theme) => ({
     root: {
         width: '100%',
-        // [theme.breakpoints.up('md')]: {
-        //     display: 'flex',
-        // },
+        [theme.breakpoints.up('md')]: {
+            position: 'fixed',
+            width: '50vw',
+        },
     },
     top: {
         padding: '10px',

@@ -14,10 +14,11 @@ import { useHistory } from 'react-router-dom';
 import Slide from '@material-ui/core/Slide';
 import Fade from '@material-ui/core/Fade';
 import Zoom from '@material-ui/core/Zoom';
+import { Switch } from '@material-ui/core';
 import NavBarContext from '../context/NavbarContext';
 import DarkTheme from '../context/DarkTheme';
 
-const useStyles = makeStyles((theme: Theme) => ({
+const useStyles = (settings: IReaderSettings) => makeStyles((theme: Theme) => ({
     // main container and root div need to change classes...
     AppMainContainer: {
         display: 'none',
@@ -27,7 +28,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     },
 
     root: {
-        position: 'fixed',
+        position: settings.staticNav ? 'sticky' : 'fixed',
         top: 0,
         left: 0,
         minWidth: '300px',
@@ -81,8 +82,14 @@ const useStyles = makeStyles((theme: Theme) => ({
 }));
 
 export interface IReaderSettings{
-
+    staticNav: boolean
+    showPageNumber: boolean
 }
+
+export const defaultReaderSettings = () => ({
+    staticNav: false,
+    showPageNumber: true,
+} as IReaderSettings);
 
 interface IProps {
     settings: IReaderSettings
@@ -96,14 +103,16 @@ export default function ReaderNavBar(props: IProps) {
 
     const history = useHistory();
 
-    const [drawerOpen, setDrawerOpen] = useState(false);
+    const { settings, setSettings, manga } = props;
+
+    const [drawerOpen, setDrawerOpen] = useState(false || settings.staticNav);
     const [hideOpenButton, setHideOpenButton] = useState(false);
     const [prevScrollPos, setPrevScrollPos] = useState(0);
 
     const theme = useTheme();
-    const classes = useStyles();
+    const classes = useStyles(settings)();
 
-    const { settings, setSettings, manga } = props;
+    const setSettingValue = (key: string, value: any) => setSettings({ ...settings, [key]: value });
 
     const handleScroll = () => {
         const currentScrollPos = window.pageYOffset;
@@ -120,7 +129,7 @@ export default function ReaderNavBar(props: IProps) {
         return () => {
             window.removeEventListener('scroll', handleScroll);
         };
-    }, [handleScroll]);
+    }, [handleScroll]);// handleScroll changes on every render
 
     useEffect(() => {
         window.addEventListener('scroll', handleScroll);
@@ -135,7 +144,7 @@ export default function ReaderNavBar(props: IProps) {
             rootEl.classList.remove(classes.AppRootElment);
             mainContainer.classList.remove(classes.AppMainContainer);
         };
-    }, []);
+    }, [handleScroll]);// handleScroll changes on every render
 
     return (
         <>
@@ -154,16 +163,29 @@ export default function ReaderNavBar(props: IProps) {
                         <Typography variant="h1">
                             {title}
                         </Typography>
-                        <IconButton
-                            edge="start"
-                            color="inherit"
-                            aria-label="menu"
-                            disableRipple
-                            onClick={() => setDrawerOpen(false)}
-                        >
-                            <KeyboardArrowLeftIcon />
-                        </IconButton>
+                        {!settings.staticNav
+                        && (
+                            <IconButton
+                                edge="start"
+                                color="inherit"
+                                aria-label="menu"
+                                disableRipple
+                                onClick={() => setDrawerOpen(false)}
+                            >
+                                <KeyboardArrowLeftIcon />
+                            </IconButton>
+                        ) }
                     </header>
+                    <h3>Static Navigation</h3>
+                    <Switch
+                        checked={settings.staticNav}
+                        onChange={(e) => setSettingValue('staticNav', e.target.checked)}
+                    />
+                    <h3>Show page number</h3>
+                    <Switch
+                        checked={settings.showPageNumber}
+                        onChange={(e) => setSettingValue('showPageNumber', e.target.checked)}
+                    />
                 </div>
             </Slide>
             <Zoom in={!drawerOpen}>
