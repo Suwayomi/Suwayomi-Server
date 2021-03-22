@@ -53,7 +53,15 @@ interface IChapter {
     chapter_number: number
     scanlator: String
     mangaId: number
+    chapterIndex: number
+    chapterCount: number
     pageCount: number
+}
+
+interface IPartialChpter {
+    pageCount: number
+    chapterIndex: number
+    chapterCount: number
 }
 
 interface ICategory {

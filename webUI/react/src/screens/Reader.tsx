@@ -38,6 +38,7 @@ const useStyles = (settings: IReaderSettings) => makeStyles({
 });
 
 const range = (n:number) => Array.from({ length: n }, (value, key) => key);
+const initialChapter = () => ({ pageCount: -1, chapterIndex: -1, chapterCount: 0 });
 
 export default function Reader() {
     const [settings, setSettings] = useLocalStorage<IReaderSettings>('readerSettings', defaultReaderSettings);
@@ -46,9 +47,9 @@ export default function Reader() {
 
     const [serverAddress] = useLocalStorage<String>('serverBaseURL', '');
 
-    const { chapterId, mangaId } = useParams<{chapterId: string, mangaId: string}>();
+    const { chapterIndex, mangaId } = useParams<{chapterIndex: string, mangaId: string}>();
     const [manga, setManga] = useState<IMangaCard | IManga>({ id: +mangaId, title: '', thumbnailUrl: '' });
-    const [pageCount, setPageCount] = useState<number>(-1);
+    const [chapter, setChapter] = useState<IChapter | IPartialChpter>(initialChapter());
     const [curPage, setCurPage] = useState<number>(0);
 
     const { setOverride, setTitle } = useContext(NavbarContext);
@@ -56,17 +57,21 @@ export default function Reader() {
         setOverride(
             {
                 status: true,
-                value: <ReaderNavBar
-                    settings={settings}
-                    setSettings={setSettings}
-                    manga={manga}
-                />,
+                value: (
+                    <ReaderNavBar
+                        settings={settings}
+                        setSettings={setSettings}
+                        manga={manga}
+                        chapter={chapter}
+                        curPage={curPage}
+                    />
+                ),
             },
         );
 
         // clean up for when we leave the reader
         return () => setOverride({ status: false, value: <div /> });
-    }, [manga, settings]);
+    }, [manga, chapter, settings, curPage, chapterIndex]);
 
     useEffect(() => {
         setTitle('Reader');
@@ -76,17 +81,18 @@ export default function Reader() {
                 setManga(data);
                 setTitle(data.title);
             });
-    }, []);
+    }, [chapterIndex]);
 
     useEffect(() => {
-        client.get(`/api/v1/manga/${mangaId}/chapter/${chapterId}`)
+        setChapter(initialChapter);
+        client.get(`/api/v1/manga/${mangaId}/chapter/${chapterIndex}`)
             .then((response) => response.data)
             .then((data:IChapter) => {
-                setPageCount(data.pageCount);
+                setChapter(data);
             });
-    }, []);
+    }, [chapterIndex]);
 
-    if (pageCount === -1) {
+    if (chapter.pageCount === -1) {
         return (
             <div className={classes.loading}>
                 <CircularProgress thickness={5} />
@@ -96,14 +102,15 @@ export default function Reader() {
     return (
         <div className={classes.reader}>
             <div className={classes.pageNumber}>
-                {`${curPage + 1} / ${pageCount}`}
+                {`${curPage + 1} / ${chapter.pageCount}`}
             </div>
-            {range(pageCount).map((index) => (
+            {range(chapter.pageCount).map((index) => (
                 <Page
                     key={index}
                     index={index}
-                    src={`${serverAddress}/api/v1/manga/${mangaId}/chapter/${chapterId}/page/${index}`}
+                    src={`${serverAddress}/api/v1/manga/${mangaId}/chapter/${chapterIndex}/page/${index}`}
                     setCurPage={setCurPage}
+                    settings={settings}
                 />
             ))}
         </div>

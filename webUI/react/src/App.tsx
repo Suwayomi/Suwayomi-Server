@@ -88,7 +88,7 @@ export default function App() {
                             <Route path="/sources">
                                 <Sources />
                             </Route>
-                            <Route path="/manga/:mangaId/chapter/:chapterId">
+                            <Route path="/manga/:mangaId/chapter/:chapterNum">
                                 <></>
                             </Route>
                             <Route path="/manga/:id">
@@ -115,7 +115,7 @@ export default function App() {
                         </Switch>
                     </Container>
                     <Switch>
-                        <Route path="/manga/:mangaId/chapter/:chapterId">
+                        <Route path="/manga/:mangaId/chapter/:chapterIndex">
                             <Reader />
                         </Route>
                     </Switch>

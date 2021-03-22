@@ -13,5 +13,7 @@ object ChapterTable : IntIdTable() {
     val chapter_number = float("chapter_number").default(-1f)
     val scanlator = varchar("scanlator", 128).nullable()
 
+    val chapterIndex = integer("number_in_list")
+
     val manga = reference("manga", MangaTable)
 }

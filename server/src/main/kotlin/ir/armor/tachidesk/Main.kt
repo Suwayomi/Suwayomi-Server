@@ -172,10 +172,10 @@ class Main {
                 ctx.json(getChapterList(mangaId))
             }
 
-            app.get("/api/v1/manga/:mangaId/chapter/:chapterId") { ctx ->
-                val chapterId = ctx.pathParam("chapterId").toInt()
+            app.get("/api/v1/manga/:mangaId/chapter/:chapterIndex") { ctx ->
+                val chapterIndex = ctx.pathParam("chapterIndex").toInt()
                 val mangaId = ctx.pathParam("mangaId").toInt()
-                ctx.json(getChapter(chapterId, mangaId))
+                ctx.json(getChapter(chapterIndex, mangaId))
             }
 
             app.get("/api/v1/manga/:mangaId/chapter/:chapterId/page/:index") { ctx ->

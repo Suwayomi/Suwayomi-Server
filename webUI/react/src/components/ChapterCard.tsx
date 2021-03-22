@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
@@ -8,7 +9,7 @@ import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import Button from '@material-ui/core/Button';
 import Typography from '@material-ui/core/Typography';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -65,9 +66,19 @@ export default function ChapterCard(props: IProps) {
                                 </Typography>
                             </div>
                         </div>
-                        <div style={{ display: 'flex' }}>
-                            <Button variant="outlined" style={{ marginLeft: 20 }} onClick={() => { history.push(`/manga/${chapter.mangaId}/chapter/${chapter.id}`); }}>open</Button>
-                        </div>
+                        <Link
+                            to={`/manga/${chapter.mangaId}/chapter/${chapter.chapterIndex}`}
+                            style={{ textDecoration: 'none' }}
+                        >
+                            <Button
+                                variant="outlined"
+                                style={{ marginLeft: 20 }}
+                            >
+                                open
+
+                            </Button>
+                        </Link>
+
                     </CardContent>
                 </Card>
             </li>

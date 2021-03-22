@@ -14,7 +14,9 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 
 fun getChapterList(mangaId: Int): List<ChapterDataClass> {
     val mangaDetails = getManga(mangaId)
@@ -27,8 +29,10 @@ fun getChapterList(mangaId: Int): List<ChapterDataClass> {
         }
     ).toBlocking().first()
 
+    val chapterCount = chapterList.count()
+
     return transaction {
-        chapterList.forEach { fetchedChapter ->
+        chapterList.reversed().forEachIndexed { index, fetchedChapter ->
             val chapterEntry = ChapterTable.select { ChapterTable.url eq fetchedChapter.url }.firstOrNull()
             if (chapterEntry == null) {
                 ChapterTable.insertAndGetId {
@@ -38,12 +42,29 @@ fun getChapterList(mangaId: Int): List<ChapterDataClass> {
                     it[chapter_number] = fetchedChapter.chapter_number
                     it[scanlator] = fetchedChapter.scanlator
 
+                    it[chapterIndex] = index + 1
+                    it[manga] = mangaId
+                }
+            } else {
+                ChapterTable.update({ ChapterTable.url eq fetchedChapter.url }) {
+                    it[name] = fetchedChapter.name
+                    it[date_upload] = fetchedChapter.date_upload
+                    it[chapter_number] = fetchedChapter.chapter_number
+                    it[scanlator] = fetchedChapter.scanlator
+
+                    it[chapterIndex] = index + 1
                     it[manga] = mangaId
                 }
             }
         }
 
-        return@transaction chapterList.map {
+        // clear any orphaned chapters
+        val dbChapterCount = transaction { ChapterTable.selectAll().count() }
+        if (dbChapterCount > chapterCount) { // we got some clean up due
+            // TODO
+        }
+
+        return@transaction chapterList.mapIndexed { index, it ->
             ChapterDataClass(
                 ChapterTable.select { ChapterTable.url eq it.url }.firstOrNull()!![ChapterTable.id].value,
                 it.url,
@@ -51,16 +72,19 @@ fun getChapterList(mangaId: Int): List<ChapterDataClass> {
                 it.date_upload,
                 it.chapter_number,
                 it.scanlator,
-                mangaId
+                mangaId,
+                chapterCount - index,
+                chapterCount
             )
         }
     }
 }
 
-fun getChapter(chapterId: Int, mangaId: Int): ChapterDataClass {
+fun getChapter(chapterIndex: Int, mangaId: Int): ChapterDataClass {
     return transaction {
-        val chapterEntry = ChapterTable.select { ChapterTable.id eq chapterId }.firstOrNull()!!
-        assert(mangaId == chapterEntry[ChapterTable.manga].value) // sanity check
+        val chapterEntry = ChapterTable.select {
+            ChapterTable.chapterIndex eq chapterIndex and (ChapterTable.manga eq mangaId)
+        }.firstOrNull()!!
         val mangaEntry = MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!!
         val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
 
@@ -71,14 +95,20 @@ fun getChapter(chapterId: Int, mangaId: Int): ChapterDataClass {
             }
         ).toBlocking().first()
 
+        val chapterId = chapterEntry[ChapterTable.id].value
+        val chapterCount = transaction { ChapterTable.selectAll().count() }
+
         val chapter = ChapterDataClass(
-            chapterEntry[ChapterTable.id].value,
+            chapterId,
             chapterEntry[ChapterTable.url],
             chapterEntry[ChapterTable.name],
             chapterEntry[ChapterTable.date_upload],
             chapterEntry[ChapterTable.chapter_number],
             chapterEntry[ChapterTable.scanlator],
             mangaId,
+            chapterEntry[ChapterTable.chapterIndex],
+            chapterCount.toInt(),
+
             pageList.count()
         )
 

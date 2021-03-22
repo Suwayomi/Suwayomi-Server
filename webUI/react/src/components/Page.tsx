@@ -8,16 +8,17 @@ import CircularProgress from '@material-ui/core/CircularProgress';
 import { makeStyles } from '@material-ui/core/styles';
 import React, { useEffect, useRef, useState } from 'react';
 import LazyLoad from 'react-lazyload';
+import { IReaderSettings } from './ReaderNavBar';
 
-const useStyles = makeStyles({
+const useStyles = (settings: IReaderSettings) => makeStyles({
     loading: {
         margin: '100px auto',
         height: '100vh',
     },
     loadingImage: {
-        padding: 'calc(50vh - 40px) calc(50vw - 40px)',
+        padding: settings.staticNav ? 'calc(50vh - 40px) calc(50vw - 340px)' : 'calc(50vh - 40px) calc(50vw - 40px)',
         height: '100vh',
-        width: '100vw',
+        width: '200px',
         backgroundColor: '#525252',
         marginBottom: 10,
     },
@@ -27,11 +28,15 @@ interface IProps {
     src: string
     index: number
     setCurPage: React.Dispatch<React.SetStateAction<number>>
+    settings: IReaderSettings
 }
 
 function LazyImage(props: IProps) {
-    const classes = useStyles();
-    const { src, index, setCurPage } = props;
+    const {
+        src, index, setCurPage, settings,
+    } = props;
+
+    const classes = useStyles(settings)();
     const [imageSrc, setImagsrc] = useState<string>('');
     const ref = useRef<HTMLImageElement>(null);
 
@@ -57,7 +62,7 @@ function LazyImage(props: IProps) {
         img.src = src;
 
         img.onload = () => setImagsrc(src);
-    }, []);
+    }, [src]);
 
     if (imageSrc.length === 0) {
         return (
@@ -72,27 +77,33 @@ function LazyImage(props: IProps) {
             ref={ref}
             src={imageSrc}
             alt={`Page #${index}`}
-            style={{ maxWidth: '100%' }}
+            style={{ width: '100%' }}
         />
     );
 }
 
 export default function Page(props: IProps) {
-    const { src, index, setCurPage } = props;
-    const classes = useStyles();
+    const {
+        src, index, setCurPage, settings,
+    } = props;
+    const classes = useStyles(settings)();
 
     return (
         <div style={{ margin: '0 auto' }}>
             <LazyLoad
                 offset={window.innerHeight}
-                once
                 placeholder={(
                     <div className={classes.loading}>
                         <CircularProgress thickness={5} />
                     </div>
                 )}
             >
-                <LazyImage src={src} index={index} setCurPage={setCurPage} />
+                <LazyImage
+                    src={src}
+                    index={index}
+                    setCurPage={setCurPage}
+                    settings={settings}
+                />
             </LazyLoad>
         </div>
     );

@@ -7,16 +7,25 @@ import IconButton from '@material-ui/core/IconButton';
 import CloseIcon from '@material-ui/icons/Close';
 import KeyboardArrowLeftIcon from '@material-ui/icons/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
+import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
+import KeyboardArrowUpIcon from '@material-ui/icons/KeyboardArrowUp';
 import { makeStyles, Theme, useTheme } from '@material-ui/core/styles';
 import React, { useContext, useEffect, useState } from 'react';
 import Typography from '@material-ui/core/Typography';
-import { useHistory } from 'react-router-dom';
+import { useHistory, Link } from 'react-router-dom';
 import Slide from '@material-ui/core/Slide';
 import Fade from '@material-ui/core/Fade';
 import Zoom from '@material-ui/core/Zoom';
 import { Switch } from '@material-ui/core';
-import NavBarContext from '../context/NavbarContext';
+import List from '@material-ui/core/List';
+import ListItem from '@material-ui/core/ListItem';
+import ListItemIcon from '@material-ui/core/ListItemIcon';
+import ListItemText from '@material-ui/core/ListItemText';
+import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction';
+import Collapse from '@material-ui/core/Collapse';
+import Button from '@material-ui/core/Button';
 import DarkTheme from '../context/DarkTheme';
+import NavBarContext from '../context/NavbarContext';
 
 const useStyles = (settings: IReaderSettings) => makeStyles((theme: Theme) => ({
     // main container and root div need to change classes...
@@ -64,6 +73,49 @@ const useStyles = (settings: IReaderSettings) => makeStyles((theme: Theme) => ({
                 flexGrow: 1,
             },
         },
+        '& hr': {
+            margin: '0 16px',
+            height: '1px',
+            border: '0',
+            backgroundColor: 'rgb(38, 41, 43)',
+        },
+    },
+
+    navigation: {
+        margin: '0 16px',
+
+        '& > span:nth-child(1)': {
+            textAlign: 'center',
+            display: 'block',
+            marginTop: '16px',
+        },
+
+        '& $navigationChapters': {
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gridTemplateAreas: '"prev next"',
+            gridColumnGap: '5px',
+            margin: '10px 0',
+
+            '& a': {
+                flexGrow: 1,
+                textDecoration: 'none',
+
+                '& button': {
+                    width: '100%',
+                    padding: '5px 8px',
+                    textTransform: 'none',
+                },
+            },
+        },
+
+    },
+    navigationChapters: {}, // dummy rule
+
+    settingsCollapsseHeader: {
+        '& span': {
+            fontWeight: 'bold',
+        },
     },
 
     openDrawerButton: {
@@ -94,7 +146,9 @@ export const defaultReaderSettings = () => ({
 interface IProps {
     settings: IReaderSettings
     setSettings: React.Dispatch<React.SetStateAction<IReaderSettings>>
-    manga: IMangaCard | IManga
+    manga: IManga | IMangaCard
+    chapter: IChapter | IPartialChpter
+    curPage: number
 }
 
 export default function ReaderNavBar(props: IProps) {
@@ -103,11 +157,14 @@ export default function ReaderNavBar(props: IProps) {
 
     const history = useHistory();
 
-    const { settings, setSettings, manga } = props;
+    const {
+        settings, setSettings, manga, chapter, curPage,
+    } = props;
 
     const [drawerOpen, setDrawerOpen] = useState(false || settings.staticNav);
     const [hideOpenButton, setHideOpenButton] = useState(false);
     const [prevScrollPos, setPrevScrollPos] = useState(0);
+    const [settingsCollapseOpen, setSettingsCollapseOpen] = useState(false);
 
     const theme = useTheme();
     const classes = useStyles(settings)();
@@ -176,16 +233,92 @@ export default function ReaderNavBar(props: IProps) {
                             </IconButton>
                         ) }
                     </header>
-                    <h3>Static Navigation</h3>
-                    <Switch
-                        checked={settings.staticNav}
-                        onChange={(e) => setSettingValue('staticNav', e.target.checked)}
-                    />
-                    <h3>Show page number</h3>
-                    <Switch
-                        checked={settings.showPageNumber}
-                        onChange={(e) => setSettingValue('showPageNumber', e.target.checked)}
-                    />
+                    <ListItem ContainerComponent="div" className={classes.settingsCollapsseHeader}>
+                        <ListItemText primary="Reader Settings" />
+                        <ListItemSecondaryAction>
+                            <IconButton
+                                edge="start"
+                                color="inherit"
+                                aria-label="menu"
+                                disableRipple
+                                disableFocusRipple
+                                onClick={() => setSettingsCollapseOpen(!settingsCollapseOpen)}
+                            >
+                                {settingsCollapseOpen && <KeyboardArrowUpIcon />}
+                                {!settingsCollapseOpen && <KeyboardArrowDownIcon />}
+                            </IconButton>
+                        </ListItemSecondaryAction>
+                    </ListItem>
+                    <Collapse in={settingsCollapseOpen} timeout="auto" unmountOnExit>
+                        <List>
+                            <ListItem>
+                                <ListItemText primary="Static Navigation" />
+                                <ListItemSecondaryAction>
+                                    <Switch
+                                        edge="end"
+                                        checked={settings.staticNav}
+                                        onChange={(e) => setSettingValue('staticNav', e.target.checked)}
+                                    />
+                                </ListItemSecondaryAction>
+                            </ListItem>
+                            <ListItem>
+                                <ListItemText primary="Show page number" />
+                                <ListItemSecondaryAction>
+                                    <Switch
+                                        edge="end"
+                                        checked={settings.showPageNumber}
+                                        onChange={(e) => setSettingValue('showPageNumber', e.target.checked)}
+                                    />
+                                </ListItemSecondaryAction>
+                            </ListItem>
+                        </List>
+                    </Collapse>
+                    <hr />
+                    <div className={classes.navigation}>
+                        <span>
+                            Currently on page
+                            {' '}
+                            {curPage + 1}
+                            {' '}
+                            of
+                            {' '}
+                            {chapter.pageCount}
+                        </span>
+                        <div className={classes.navigationChapters}>
+                            {chapter.chapterIndex > 1
+                            && (
+                                <Link
+                                    style={{ gridArea: 'prev' }}
+                                    to={`/manga/${manga.id}/chapter/${chapter.chapterIndex - 1}`}
+                                >
+                                    <Button
+                                        variant="outlined"
+                                        startIcon={<KeyboardArrowLeftIcon />}
+                                    >
+                                        Chapter
+                                        {' '}
+                                        {chapter.chapterIndex - 1}
+                                    </Button>
+                                </Link>
+                            )}
+                            {chapter.chapterIndex < chapter.chapterCount
+                            && (
+                                <Link
+                                    style={{ gridArea: 'next' }}
+                                    to={`/manga/${manga.id}/chapter/${chapter.chapterIndex + 1}`}
+                                >
+                                    <Button
+                                        variant="outlined"
+                                        endIcon={<KeyboardArrowRightIcon />}
+                                    >
+                                        Chapter
+                                        {' '}
+                                        {chapter.chapterIndex + 1}
+                                    </Button>
+                                </Link>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </Slide>
             <Zoom in={!drawerOpen}>
