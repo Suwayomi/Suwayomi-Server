@@ -58,6 +58,21 @@ jobs:
             **/react/node_modules
           key: ${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
 
+      - name: Build no-webUI Jar
+        uses: eskatos/gradle-command-action@v1
+        with:
+          build-root-directory: master
+          wrapper-directory: master
+          arguments: :server:shadowJar -x :webUI:copyBuild --stacktrace
+          wrapper-cache-enabled: true
+          dependencies-cache-enabled: true
+          configuration-cache-enabled: true
+
+      - name: Rename the no-webUI Jar
+        run: |
+          cd master/serer/build
+          mv Tachidesk-*.jar $(ls *.jar | sed 's/\.jar/-no-webUI\.jar/g')
+
       - name: Build Jar and launch4j
         uses: eskatos/gradle-command-action@v1
         with:
