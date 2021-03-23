@@ -50,6 +50,7 @@ export default function SearchSingle() {
             } else {
                 setError(false);
                 setSearchTerm(value);
+                setMangas([]);
                 setMessage('');
             }
         }
@@ -86,12 +87,18 @@ export default function SearchSingle() {
 
     return (
         <>
-            <form className={classes.root} noValidate autoComplete="off">
-                <TextField inputRef={textInput} error={error} id="standard-basic" label="Search text.." />
+            <div className={classes.root}>
+                <TextField
+                    inputRef={textInput}
+                    error={error}
+                    id="standard-basic"
+                    label="Search text.."
+                    onKeyDown={(e) => e.key === 'Enter' && processInput()}
+                />
                 <Button variant="contained" color="primary" onClick={() => processInput()}>
                     Search
                 </Button>
-            </form>
+            </div>
             {mangaGrid}
         </>
     );
