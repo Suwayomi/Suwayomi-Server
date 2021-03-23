@@ -70,7 +70,7 @@ jobs:
 
       - name: Rename the no-webUI Jar
         run: |
-          cd master/serer/build
+          cd master/server/build
           mv Tachidesk-*.jar $(ls *.jar | sed 's/\.jar/-no-webUI\.jar/g')
 
       - name: Build Jar and launch4j
