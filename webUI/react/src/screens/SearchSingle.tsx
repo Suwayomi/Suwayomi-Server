@@ -51,7 +51,7 @@ export default function SearchSingle() {
                 setError(false);
                 setSearchTerm(value);
                 setMangas([]);
-                setMessage('');
+                setMessage('loading...');
             }
         }
     }
@@ -61,6 +61,7 @@ export default function SearchSingle() {
             client.get(`/api/v1/source/${sourceId}/search/${searchTerm}/${lastPageNum}`)
                 .then((response) => response.data)
                 .then((data: { mangaList: IManga[], hasNextPage: boolean }) => {
+                    setMessage('');
                     if (data.mangaList.length > 0) {
                         setMangas([
                             ...mangas,
