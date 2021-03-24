@@ -44,7 +44,11 @@ fun serverSetup() {
     makeDataBaseTables()
 
     // create system tray
-    systemTray
+    try {
+        systemTray
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
 
     // Load config API
     DI.global.addImport(ConfigKodeinModule().create())
