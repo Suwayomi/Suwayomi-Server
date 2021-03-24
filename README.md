@@ -73,8 +73,7 @@ Run `./gradlew shadowJar`, the resulting built jar file will be `server/build/Ta
 Run `./gradlew windowsPackage`, the resulting built zip package file will be `server/build/Tachidesk-vX.Y.Z-rxxx-win32.zip`.
 ## Running for development purposes
 ### `server` module
-Follow [Get Android stubs jar](#)
-Run `./gradlew :server:run -x :webUI:copyBuild --stacktrace` to run the server
+Follow [Get Android stubs jar](#prerequisite-get-android-stubs-jar) then run `./gradlew :server:run -x :webUI:copyBuild --stacktrace` to run the server
 ### `webUI` module
 How to do it is described in `webUI/react/README.md` but for short,
  first cd into `webUI/react` then run `yarn` to install the node modules(do this only once)
