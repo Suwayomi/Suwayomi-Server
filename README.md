@@ -67,8 +67,15 @@ This project has two components:
 Download [android.jar](https://raw.githubusercontent.com/Suwayomi/Tachidesk/android-jar/android.jar) and put it under `AndroidCompat/lib`.
 #### Automated download(needs `bash`, `curl`, `base64`, `zip` to work)
 Run `AndroidCompat/getAndroid.sh` from project's root directory to download and rebuild the jar file from Google's repository.
+### Prerequisite: Software dependencies
+You need this software packages installed in order to build this project:
+- Java Development Kit and Java Runtime Environment version 8 or newer(both Oracle JDK and OpenJDK works)
+- Nodejs LTS or latest
+- Yarn
 ### building the full-blown jar
-Run `./gradlew shadowJar`, the resulting built jar file will be `server/build/Tachidesk-vX.Y.Z-rxxx.jar`.
+Run `./gradlew server:shadowJar`, the resulting built jar file will be `server/build/Tachidesk-vX.Y.Z-rxxx.jar`.
+### building without `webUI` bundled
+Delete the `server/src/main/resources/react` directory if exists from previous runs, then run `./gradlew server:shadowJar -x :webUI:copyBuild`, the resulting built jar file will be `server/build/Tachidesk-vX.Y.Z-rxxx.jar`.
 ### building the Windows package
 Run `./gradlew windowsPackage`, the resulting built zip package file will be `server/build/Tachidesk-vX.Y.Z-rxxx-win32.zip`.
 ## Running for development purposes
