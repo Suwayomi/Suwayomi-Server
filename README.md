@@ -1,5 +1,5 @@
 
-![image](https://github.com/AriaMoradi/Tachidesk/raw/master/server/src/main/resources/icon/faviconlogo.png)
+![image](https://github.com/Suwayomi/Tachidesk/raw/master/server/src/main/resources/icon/faviconlogo.png)
 # Tachidesk
 A free and open source manga reader that runs extensions built for [Tachiyomi](https://tachiyomi.org/). 
 
@@ -18,18 +18,18 @@ Here is a list of current features:
 
 **Note:** Keep in mind that Tachidesk is alpha software and can break rarely and/or with each update, so you may have to delete your data to fix it. See [General troubleshooting](#general-troubleshooting) and [Support and help](#support-and-help) if it happens.
 
-Anyways, for more info checkout [finished milestone #1](https://github.com/AriaMoradi/Tachidesk/issues/2) and [milestone #2](https://github.com/AriaMoradi/Tachidesk/projects/1) to see what's implemented in more detail.
+Anyways, for more info checkout [finished milestone #1](https://github.com/Suwayomi/Tachidesk/issues/2) and [milestone #2](https://github.com/Suwayomi/Tachidesk/projects/1) to see what's implemented in more detail.
 
 ## Downloading and Running the app
 ### All Operating Systems
 You should have The Java Runtime Environment(JRE) 8 or newer and a modern browser installed. Also an internet connection is required as almost everything this app does is downloading stuff. 
 
-Download the latest jar release from [the releases section](https://github.com/AriaMoradi/Tachidesk/releases).
+Download the latest jar release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases).
 
 Double click on the jar file or run `java -jar Tachidesk-vX.Y.Z-rxxx.jar` from a Terminal/Command Prompt window to run the app which will open a new browser window automatically. Also the System Tray Icon is your friend if you need to open the browser window again or close Tachidesk.
 
 ### Windows
-Download the latest win32 release from [the releases section](https://github.com/AriaMoradi/Tachidesk/releases).
+Download the latest win32 release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases).
 
 The Windows specific build has java bundled inside, so you don't have to install java to use it. Unzip `Tachidesk-vX.Y.Z-rxxx-win32.zip` and run `server.exe`. The rest works like the previous section.
 
@@ -62,17 +62,18 @@ This project has two components:
 2. **webUI:** A react SPA project that works with the server to do the presentation.
 
 ## Building from source
-### Get Android stubs jar
+### Prerequisite: Get Android stubs jar
 #### Manual download
-Download [android.jar](https://raw.githubusercontent.com/AriaMoradi/Tachidesk/android-jar/android.jar) and put it under `AndroidCompat/lib`.
+Download [android.jar](https://raw.githubusercontent.com/Suwayomi/Tachidesk/android-jar/android.jar) and put it under `AndroidCompat/lib`.
 #### Automated download(needs `bash`, `curl`, `base64`, `zip` to work)
 Run `AndroidCompat/getAndroid.sh` from project's root directory to download and rebuild the jar file from Google's repository.
-### building the jar
+### building the full-blown jar
 Run `./gradlew shadowJar`, the resulting built jar file will be `server/build/Tachidesk-vX.Y.Z-rxxx.jar`.
 ### building the Windows package
 Run `./gradlew windowsPackage`, the resulting built zip package file will be `server/build/Tachidesk-vX.Y.Z-rxxx-win32.zip`.
 ## Running for development purposes
 ### `server` module
+Follow [Get Android stubs jar](#)
 Run `./gradlew :server:run -x :webUI:copyBuild --stacktrace` to run the server
 ### `webUI` module
 How to do it is described in `webUI/react/README.md` but for short,
