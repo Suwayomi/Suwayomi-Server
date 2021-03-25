@@ -4,7 +4,9 @@ package ir.armor.tachidesk.util
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import com.googlecode.dex2jar.tools.Dex2jarCmd
+import com.googlecode.d2j.dex.Dex2jar
+import com.googlecode.d2j.reader.MultiDexFileReader
+import com.googlecode.dex2jar.tools.BaksmaliBaseDexExceptionHandler
 import eu.kanade.tachiyomi.extension.api.ExtensionGithubApi
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
@@ -29,8 +31,42 @@ import java.io.File
 import java.io.InputStream
 import java.net.URL
 import java.net.URLClassLoader
+import java.nio.file.Files
+import java.nio.file.Path
 
 private val logger = KotlinLogging.logger {}
+
+private fun dex2jar(dexFile: String, jarFile: String, fileNameWithoutType: String) {
+    // adopted from com.googlecode.dex2jar.tools.Dex2jarCmd.doCommandLine
+    // source at: https://github.com/DexPatcher/dex2jar/tree/v2.1-20190905-lanchon/dex-tools/src/main/java/com/googlecode/dex2jar/tools/Dex2jarCmd.java
+
+    val jarFilePath = File(jarFile).toPath()
+    val reader = MultiDexFileReader.open(Files.readAllBytes(File(dexFile).toPath()))
+    val handler = BaksmaliBaseDexExceptionHandler()
+    Dex2jar
+        .from(reader)
+        .withExceptionHandler(handler)
+        .reUseReg(false)
+        .topoLogicalSort()
+        .skipDebug(true)
+        .optimizeSynchronized(false)
+        .printIR(false)
+        .noCode(false)
+        .skipExceptions(false)
+        .to(jarFilePath)
+    if (handler.hasException()) {
+        val errorFile: Path = File(applicationDirs.extensionsRoot).toPath().resolve("$fileNameWithoutType-error.txt")
+        logger.error(
+            "Detail Error Information in File $errorFile\n" +
+                "Please report this file to one of following link if possible (any one).\n" +
+                "    https://sourceforge.net/p/dex2jar/tickets/\n" +
+                "    https://bitbucket.org/pxb1988/dex2jar/issues\n" +
+                "    https://github.com/pxb1988/dex2jar/issues\n" +
+                "    dex2jar@googlegroups.com"
+        )
+        handler.dump(errorFile, emptyArray<String>())
+    }
+}
 
 fun installAPK(apkName: String): Int {
     logger.info("Installing $apkName")
@@ -55,7 +91,7 @@ fun installAPK(apkName: String): Int {
             val className: String = APKExtractor.extract_dex_and_read_className(apkFilePath, dexFilePath)
             logger.info(className)
             // dex -> jar
-            Dex2jarCmd.main(dexFilePath, "-o", jarFilePath, "--force")
+            dex2jar(dexFilePath, jarFilePath, fileNameWithoutType)
 
             // clean up
             File(apkFilePath).delete()
@@ -81,7 +117,7 @@ fun installAPK(apkName: String): Int {
                             it[extension] = extensionId
                         }
                     }
-                            logger.info("Installed source ${httpSource.name} with id:${httpSource.id}")
+                    logger.info("Installed source ${httpSource.name} with id {httpSource.id}")
                 }
             } else { // multi source
                 val sourceFactory = instance as SourceFactory

@@ -36,7 +36,6 @@ fun getHttpSource(sourceId: Long): HttpSource {
         return cachedResult.second
     }
 
-
     val result: HttpSource = transaction {
         val extensionId = sourceRecord.extension.id.value
         val extensionRecord = ExtensionEntity.findById(extensionId)!!
