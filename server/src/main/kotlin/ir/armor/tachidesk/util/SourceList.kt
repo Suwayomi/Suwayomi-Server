@@ -12,12 +12,15 @@ import ir.armor.tachidesk.database.entity.ExtensionEntity
 import ir.armor.tachidesk.database.entity.SourceEntity
 import ir.armor.tachidesk.database.table.ExtensionTable
 import ir.armor.tachidesk.database.table.SourceTable
+import mu.KotlinLogging
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.lang.NullPointerException
 import java.net.URL
 import java.net.URLClassLoader
+
+private val logger = KotlinLogging.logger {}
 
 private val sourceCache = mutableListOf<Pair<Long, HttpSource>>()
 private val extensionCache = mutableListOf<Pair<String, Any>>()
@@ -29,9 +32,10 @@ fun getHttpSource(sourceId: Long): HttpSource {
 
     val cachedResult: Pair<Long, HttpSource>? = sourceCache.firstOrNull { it.first == sourceId }
     if (cachedResult != null) {
-        println("used cached HttpSource: ${cachedResult.second.name}")
+        logger.info("used cached HttpSource: ${cachedResult.second.name}")
         return cachedResult.second
     }
+
 
     val result: HttpSource = transaction {
         val extensionId = sourceRecord.extension.id.value
@@ -41,17 +45,15 @@ fun getHttpSource(sourceId: Long): HttpSource {
         val jarName = apkName.substringBefore(".apk") + ".jar"
         val jarPath = "${applicationDirs.extensionsRoot}/$jarName"
 
-        println(jarName)
-
         val cachedExtensionPair = extensionCache.firstOrNull { it.first == jarPath }
         var usedCached = false
         val instance =
             if (cachedExtensionPair != null) {
                 usedCached = true
-                println("Used cached Extension")
+                logger.info("Used cached Extension")
                 cachedExtensionPair.second
             } else {
-                println("No Extension cache")
+                logger.info("No Extension cache")
                 val child = URLClassLoader(arrayOf<URL>(URL("file:$jarPath")), this::class.java.classLoader)
                 val classToLoad = Class.forName(className, true, child)
                 classToLoad.newInstance()

@@ -33,11 +33,14 @@ import ir.armor.tachidesk.util.sourceFilters
 import ir.armor.tachidesk.util.sourceGlobalSearch
 import ir.armor.tachidesk.util.sourceSearch
 import ir.armor.tachidesk.util.updateCategory
+import mu.KLogging
 
 class Main {
-    companion object {
+    companion object : KLogging() {
+
         @JvmStatic
         fun main(args: Array<String>) {
+
             serverSetup()
 
             var hasWebUiBundled: Boolean = false
@@ -49,7 +52,7 @@ class Main {
                     config.addStaticFiles("/react")
                     config.addSinglePageRoot("/", "/react/index.html")
                 } catch (e: RuntimeException) {
-                    println("Warning: react build files are missing.")
+                    logger.warn("react build files are missing.")
                     hasWebUiBundled = false
                 }
                 config.enableCorsForAllOrigins()
@@ -68,7 +71,6 @@ class Main {
 
             app.get("/api/v1/extension/install/:apkName") { ctx ->
                 val apkName = ctx.pathParam("apkName")
-                println("installing $apkName")
 
                 ctx.status(
                     installAPK(apkName)
@@ -77,7 +79,7 @@ class Main {
 
             app.get("/api/v1/extension/uninstall/:apkName") { ctx ->
                 val apkName = ctx.pathParam("apkName")
-                println("uninstalling $apkName")
+
                 removeExtension(apkName)
                 ctx.status(200)
             }

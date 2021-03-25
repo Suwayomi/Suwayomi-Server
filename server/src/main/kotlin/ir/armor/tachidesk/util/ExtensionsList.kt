@@ -9,11 +9,14 @@ import eu.kanade.tachiyomi.extension.model.Extension
 import ir.armor.tachidesk.database.dataclass.ExtensionDataClass
 import ir.armor.tachidesk.database.table.ExtensionTable
 import kotlinx.coroutines.runBlocking
+import mu.KotlinLogging
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+
+private val logger = KotlinLogging.logger {}
 
 private object Data {
     var lastExtensionCheck: Long = 0
@@ -28,7 +31,7 @@ private fun extensionDatabaseIsEmtpy(): Boolean {
 fun getExtensionList(offline: Boolean = false): List<ExtensionDataClass> {
     // update if 60 seconds has passed or requested offline and database is empty
     if (Data.lastExtensionCheck + 60 * 1000 < System.currentTimeMillis() || (offline && extensionDatabaseIsEmtpy())) {
-        println("Getting extensions list from the internet")
+        logger.info("Getting extensions list from the internet")
         Data.lastExtensionCheck = System.currentTimeMillis()
         var foundExtensions: List<Extension.Available>
         runBlocking {
@@ -66,7 +69,7 @@ fun getExtensionList(offline: Boolean = false): List<ExtensionDataClass> {
             }
         }
     } else {
-        println("used cached extension list")
+        logger.info("used cached extension list")
     }
 
     return transaction {

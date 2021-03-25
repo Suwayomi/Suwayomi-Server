@@ -15,6 +15,7 @@ import ir.armor.tachidesk.applicationDirs
 import ir.armor.tachidesk.database.table.ExtensionTable
 import ir.armor.tachidesk.database.table.SourceTable
 import kotlinx.coroutines.runBlocking
+import mu.KotlinLogging
 import okhttp3.Request
 import okio.buffer
 import okio.sink
@@ -29,7 +30,10 @@ import java.io.InputStream
 import java.net.URL
 import java.net.URLClassLoader
 
+private val logger = KotlinLogging.logger {}
+
 fun installAPK(apkName: String): Int {
+    logger.info("Installing $apkName")
     val extensionRecord = getExtensionList(true).first { it.apkName == apkName }
     val fileNameWithoutType = apkName.substringBefore(".apk")
     val dirPathWithoutType = "${applicationDirs.extensionsRoot}/$fileNameWithoutType"
@@ -49,7 +53,7 @@ fun installAPK(apkName: String): Int {
             downloadAPKFile(apkToDownload, apkFilePath)
 
             val className: String = APKExtractor.extract_dex_and_read_className(apkFilePath, dexFilePath)
-            println(className)
+            logger.info(className)
             // dex -> jar
             Dex2jarCmd.main(dexFilePath, "-o", jarFilePath, "--force")
 
@@ -69,11 +73,6 @@ fun installAPK(apkName: String): Int {
             if (instance is HttpSource) { // single source
                 val httpSource = instance as HttpSource
                 transaction {
-//                            SourceEntity.new  {
-//                                sourceId = httpSource.id
-//                                name = httpSource.name
-//                                this.extension =  ExtensionEntity.find { ExtensionsTable.name eq extension.name }.first().id
-//                            }
                     if (SourceTable.select { SourceTable.id eq httpSource.id }.count() == 0L) {
                         SourceTable.insert {
                             it[this.id] = httpSource.id
@@ -82,9 +81,7 @@ fun installAPK(apkName: String): Int {
                             it[extension] = extensionId
                         }
                     }
-//                            println(httpSource.id)
-//                            println(httpSource.name)
-//                            println()
+                            logger.info("Installed source ${httpSource.name} with id:${httpSource.id}")
                 }
             } else { // multi source
                 val sourceFactory = instance as SourceFactory
@@ -101,9 +98,7 @@ fun installAPK(apkName: String): Int {
                                 it[positionInFactorySource] = index
                             }
                         }
-//                                println(httpSource.id)
-//                                println(httpSource.name)
-//                                println()
+                        logger.info("Installed source ${httpSource.name} with id:${httpSource.id}")
                     }
                 }
             }
@@ -134,9 +129,11 @@ private fun downloadAPKFile(url: String, apkPath: String) {
     sink.close()
 }
 
-fun removeExtension(pkgName: String) {
-    val extensionRecord = getExtensionList(true).first { it.apkName == pkgName }
-    val fileNameWithoutType = pkgName.substringBefore(".apk")
+fun removeExtension(apkName: String) {
+    logger.info("Uninstalling $apkName")
+
+    val extensionRecord = getExtensionList(true).first { it.apkName == apkName }
+    val fileNameWithoutType = apkName.substringBefore(".apk")
     val jarPath = "${applicationDirs.extensionsRoot}/$fileNameWithoutType.jar"
     transaction {
         val extensionId = ExtensionTable.select { ExtensionTable.name eq extensionRecord.name }.first()[ExtensionTable.id]
@@ -158,9 +155,8 @@ fun getExtensionIcon(apkName: String): Pair<InputStream, String> {
     val iconUrl = transaction { ExtensionTable.select { ExtensionTable.apkName eq apkName }.firstOrNull()!! }[ExtensionTable.iconUrl]
 
     val saveDir = "${applicationDirs.extensionsRoot}/icon"
-    val fileName = apkName
 
-    return getCachedResponse(saveDir, fileName) {
+    return getCachedResponse(saveDir, apkName) {
         network.client.newCall(
             GET(iconUrl)
         ).execute()
