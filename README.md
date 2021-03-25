@@ -66,7 +66,7 @@ This project has two components:
 #### Manual download
 Download [android.jar](https://raw.githubusercontent.com/Suwayomi/Tachidesk/android-jar/android.jar) and put it under `AndroidCompat/lib`.
 #### Automated download(needs `bash`, `curl`, `base64`, `zip` to work)
-Run `AndroidCompat/getAndroid.sh` from project's root directory to download and rebuild the jar file from Google's repository.
+Run `AndroidCompat/getAndroid.sh`(MacOS/Linux) or `AndroidCompat/getAndroid.ps1`(Windows) from project's root directory to download and rebuild the jar file from Google's repository.
 ### Prerequisite: Software dependencies
 You need this software packages installed in order to build this project:
 - Java Development Kit and Java Runtime Environment version 8 or newer(both Oracle JDK and OpenJDK works)
