@@ -89,7 +89,7 @@ How to do it is described in `webUI/react/README.md` but for short,
  and supports HMR and all the other goodies you'll need.
 
 ## Credit
-This project is a spiritual descendant of [TachiWeb-Server](https://github.com/Tachiweb/TachiWeb-server) Many ideas and the ground work was done by this project.
+This project is a spiritual successor of [TachiWeb-Server](https://github.com/Tachiweb/TachiWeb-server), Many of the ideas and the groundwork adopted in this project comes from TachiWeb.
 
 The `AndroidCompat` module was originally developed by [@null-dev](https://github.com/null-dev) for [TachiWeb-Server](https://github.com/Tachiweb/TachiWeb-server) and is licensed under `Apache License Version 2.0`.
 
