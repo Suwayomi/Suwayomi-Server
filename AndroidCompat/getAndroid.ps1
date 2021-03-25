@@ -12,7 +12,7 @@ $android_jar = (Get-Location).Path + "\tmp\android.jar"
 
 [IO.File]::WriteAllBytes($android_jar, [Convert]::FromBase64String($androidEncoded))
 
-# We need to remove any stub classes that we might use
+# We need to remove any stub classes that we have implementations for
 Write-Output "Patching JAR..."
 
 function Remove-Files-Zip($zipfile, $path)
