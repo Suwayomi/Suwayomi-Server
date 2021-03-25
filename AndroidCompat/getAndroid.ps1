@@ -3,7 +3,7 @@ if ($(Split-Path -Path (Get-Location) -Leaf) -eq "AndroidCompat" ) {
 }
 
 Write-Output "Getting required Android.jar..."
-Remove-Item -Recurse -Force "tmp" | Out-Null
+Remove-Item -Recurse -Force "tmp" -ErrorAction SilentlyContinue | Out-Null
 New-Item -ItemType Directory -Force -Path "tmp" | Out-Null
 
 $androidEncoded = (Invoke-WebRequest -Uri "https://android.googlesource.com/platform/prebuilts/sdk/+/3b8a524d25fa6c3d795afb1eece3f24870c60988/27/public/android.jar?format=TEXT").content
