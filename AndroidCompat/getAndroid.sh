@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# This is a windows only powershell script to create android.jar stubs
+# This is a bash script to create android.jar stubs
 # foolproof against running from AndroidCompat dir instead of running from project root
 if [ "$(basename $(pwd))" = "AndroidCompat" ]; then
   cd ..
