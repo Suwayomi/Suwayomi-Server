@@ -18,9 +18,7 @@ repositories {
 
 dependencies {
     // Android stub library
-//    compileOnly( fileTree(File(rootProject.rootDir, "libs/android"), include: "*.jar")
     implementation(fileTree("lib/"))
-    implementation(fileTree("${rootProject.rootDir}/server/lib/dex2jar/"))
 
 
     // Android JAR libs
@@ -41,10 +39,10 @@ dependencies {
     compileOnly( group= "xmlpull", name= "xmlpull", version= "1.1.3.1")
 
     // Config API
-    implementation( project(":AndroidCompat:Config"))
+    implementation(project(":AndroidCompat:Config"))
 
-    // dex2jar
-//    compileOnly( "dex2jar:dex-translator")
+    // dex2jar: https://github.com/DexPatcher/dex2jar/releases/tag/v2.1-20190905-lanchon
+    compileOnly("com.github.DexPatcher.dex2jar:dex-tools:v2.1-20190905-lanchon")
 
     // APK parser
     compileOnly("net.dongliu:apk-parser:2.6.10")
