@@ -1,3 +1,5 @@
+# This is a windows only powershell script to create android.jar stubs
+# foolproof against running from AndroidCompat dir instead of running from project root
 if ($(Split-Path -Path (Get-Location) -Leaf) -eq "AndroidCompat" ) {
     Set-Location ..
 }
