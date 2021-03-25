@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# This is a windows only powershell script to create android.jar stubs
 # foolproof against running from AndroidCompat dir instead of running from project root
 if [ "$(basename $(pwd))" = "AndroidCompat" ]; then
   cd ..
@@ -13,7 +14,7 @@ pushd "tmp"
 
 curl "https://android.googlesource.com/platform/prebuilts/sdk/+/3b8a524d25fa6c3d795afb1eece3f24870c60988/27/public/android.jar?format=TEXT" | base64 --decode > android.jar
 
-# We need to remove any stub classes that we might use
+# We need to remove any stub classes that we have implementations for
 echo "Patching JAR..."
 
 echo "Removing org.json..."
