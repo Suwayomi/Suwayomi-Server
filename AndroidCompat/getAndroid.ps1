@@ -1,4 +1,10 @@
-# This is a windows only powershell script to create android.jar stubs
+# Copyright (C) Contributors to the Suwayomi project
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+# This is a windows only PowerShell script to create android.jar stubs
 
 # foolproof against running from AndroidCompat dir instead of running from project root
 if ($(Split-Path -Path (Get-Location) -Leaf) -eq "AndroidCompat" ) {

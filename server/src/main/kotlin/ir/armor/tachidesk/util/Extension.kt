@@ -1,6 +1,9 @@
 package ir.armor.tachidesk.util
 
-/* This Source Code Form is subject to the terms of the Mozilla Public
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ * 
+ * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
@@ -12,7 +15,6 @@ import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
-import ir.armor.tachidesk.APKExtractor
 import ir.armor.tachidesk.applicationDirs
 import ir.armor.tachidesk.database.table.ExtensionTable
 import ir.armor.tachidesk.database.table.SourceTable

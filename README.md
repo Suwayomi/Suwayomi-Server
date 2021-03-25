@@ -101,7 +101,7 @@ Changes to both codebases is licensed under `MPL v. 2.0` as the rest of this pro
 
 ## License
 
-    Copyright (C) 2020-2021 Aria Moradi and contributors
+    Copyright (C) Contributors to the Suwayomi project
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this

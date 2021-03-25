@@ -1,6 +1,9 @@
-package ir.armor.tachidesk;
+package ir.armor.tachidesk.util;
 
-/* This Source Code Form is subject to the terms of the Mozilla Public
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
@@ -16,7 +19,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import java.util.zip.ZipInputStream;
 
 public class APKExtractor {
     // decompressXML -- Parse the 'compressed' binary form of Android XML docs
