@@ -66,7 +66,7 @@ This project has two components:
 #### Manual download
 Download [android.jar](https://raw.githubusercontent.com/Suwayomi/Tachidesk/android-jar/android.jar) and put it under `AndroidCompat/lib`.
 #### Automated download(needs `bash`, `curl`, `base64`, `zip` to work)
-Run `AndroidCompat/getAndroid.sh` from project's root directory to download and rebuild the jar file from Google's repository.
+Run `AndroidCompat/getAndroid.sh`(MacOS/Linux) or `AndroidCompat/getAndroid.ps1`(Windows) from project's root directory to download and rebuild the jar file from Google's repository.
 ### Prerequisite: Software dependencies
 You need this software packages installed in order to build this project:
 - Java Development Kit and Java Runtime Environment version 8 or newer(both Oracle JDK and OpenJDK works)
@@ -89,6 +89,8 @@ How to do it is described in `webUI/react/README.md` but for short,
  and supports HMR and all the other goodies you'll need.
 
 ## Credit
+This project is a spiritual descendant of [TachiWeb-Server](https://github.com/Tachiweb/TachiWeb-server) Many ideas and the ground work was done by this project.
+
 The `AndroidCompat` module was originally developed by [@null-dev](https://github.com/null-dev) for [TachiWeb-Server](https://github.com/Tachiweb/TachiWeb-server) and is licensed under `Apache License Version 2.0`.
 
 Parts of [tachiyomi](https://github.com/tachiyomiorg/tachiyomi) is adopted into this codebase, also licensed under `Apache License Version 2.0`.
