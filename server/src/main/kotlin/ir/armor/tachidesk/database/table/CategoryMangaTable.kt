@@ -9,7 +9,6 @@ package ir.armor.tachidesk.database.table
 
 import org.jetbrains.exposed.dao.id.IntIdTable
 
-
 object CategoryMangaTable : IntIdTable() {
     val category = reference("category", CategoryTable)
     val manga = reference("manga", MangaTable)

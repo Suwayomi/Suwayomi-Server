@@ -18,7 +18,6 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 
-
 fun addMangaToLibrary(mangaId: Int) {
     val manga = getManga(mangaId)
     if (!manga.inLibrary) {
