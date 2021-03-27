@@ -13,6 +13,7 @@ import dorkbox.systemTray.SystemTray.TrayType
 import dorkbox.util.CacheUtil
 import dorkbox.util.Desktop
 import ir.armor.tachidesk.Main
+import ir.armor.tachidesk.server.serverConfig
 import java.awt.event.ActionListener
 import java.io.IOException
 
@@ -27,7 +28,7 @@ fun openInBrowser() {
 fun systemTray(): SystemTray? {
     try {
         // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
-        SystemTray.DEBUG = false
+        SystemTray.DEBUG = serverConfig.debugLogsEnabled
         if (System.getProperty("os.name").startsWith("Windows"))
             SystemTray.FORCE_TRAY_TYPE = TrayType.Swing
 

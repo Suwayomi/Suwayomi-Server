@@ -40,6 +40,12 @@ fun applicationSetup() {
         ServerConfig.register(GlobalConfigManager.config)
     )
 
+    // set application wide logging level
+    if (serverConfig.debugLogsEnabled) {
+//        (mu.KotlinLogging.logger("ir.armor.tachidesk").underlyingLogger as ch.qos.logback.classic.Logger).level = Level.DEBUG
+        (mu.KotlinLogging.logger(org.slf4j.Logger.ROOT_LOGGER_NAME).underlyingLogger as ch.qos.logback.classic.Logger).level = Level.DEBUG
+    }
+
     // make dirs we need
     listOf(
         applicationDirs.dataRoot,
@@ -83,11 +89,8 @@ fun applicationSetup() {
     // start app
     androidCompat.startApp(App())
 
-    // set application wide logging level
-    if (!serverConfig.debugLogsEnabled)
-        (mu.KotlinLogging.logger("ir.armor.tachidesk").underlyingLogger as ch.qos.logback.classic.Logger).level = Level.INFO
-
     // Disable jetty's logging
+    System.setProperty("org.eclipse.jetty.util.log.announce", "false")
     System.setProperty("org.eclipse.jetty.util.log.class", "org.eclipse.jetty.util.log.StdErrLog")
     System.setProperty("org.eclipse.jetty.LEVEL", "OFF")
 

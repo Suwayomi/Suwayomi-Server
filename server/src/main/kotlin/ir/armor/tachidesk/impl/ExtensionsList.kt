@@ -34,7 +34,7 @@ private fun extensionDatabaseIsEmtpy(): Boolean {
 fun getExtensionList(offline: Boolean = false): List<ExtensionDataClass> {
     // update if 60 seconds has passed or requested offline and database is empty
     if (Data.lastExtensionCheck + 60 * 1000 < System.currentTimeMillis() || (offline && extensionDatabaseIsEmtpy())) {
-        logger.info("Getting extensions list from the internet")
+        logger.debug("Getting extensions list from the internet")
         Data.lastExtensionCheck = System.currentTimeMillis()
         var foundExtensions: List<Extension.Available>
         runBlocking {
@@ -72,7 +72,7 @@ fun getExtensionList(offline: Boolean = false): List<ExtensionDataClass> {
             }
         }
     } else {
-        logger.info("used cached extension list")
+        logger.debug("used cached extension list")
     }
 
     return transaction {

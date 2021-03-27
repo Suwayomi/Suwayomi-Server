@@ -35,7 +35,7 @@ fun getHttpSource(sourceId: Long): HttpSource {
 
     val cachedResult: Pair<Long, HttpSource>? = sourceCache.firstOrNull { it.first == sourceId }
     if (cachedResult != null) {
-        logger.info("used cached HttpSource: ${cachedResult.second.name}")
+        logger.debug("used cached HttpSource: ${cachedResult.second.name}")
         return cachedResult.second
     }
 
@@ -52,10 +52,10 @@ fun getHttpSource(sourceId: Long): HttpSource {
         val instance =
             if (cachedExtensionPair != null) {
                 usedCached = true
-                logger.info("Used cached Extension")
+                logger.debug("Used cached Extension")
                 cachedExtensionPair.second
             } else {
-                logger.info("No Extension cache")
+                logger.debug("No Extension cache")
                 val child = URLClassLoader(arrayOf<URL>(URL("file:$jarPath")), this::class.java.classLoader)
                 val classToLoad = Class.forName(className, true, child)
                 classToLoad.newInstance()

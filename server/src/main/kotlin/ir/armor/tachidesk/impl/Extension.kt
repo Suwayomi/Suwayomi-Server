@@ -71,7 +71,7 @@ private fun dex2jar(dexFile: String, jarFile: String, fileNameWithoutType: Strin
 }
 
 fun installAPK(apkName: String): Int {
-    logger.info("Installing $apkName")
+    logger.debug("Installing $apkName")
     val extensionRecord = getExtensionList(true).first { it.apkName == apkName }
     val fileNameWithoutType = apkName.substringBefore(".apk")
     val dirPathWithoutType = "${applicationDirs.extensionsRoot}/$fileNameWithoutType"
@@ -91,7 +91,7 @@ fun installAPK(apkName: String): Int {
             downloadAPKFile(apkToDownload, apkFilePath)
 
             val className: String = APKExtractor.extract_dex_and_read_className(apkFilePath, dexFilePath)
-            logger.info(className)
+            logger.debug(className)
             // dex -> jar
             dex2jar(dexFilePath, jarFilePath, fileNameWithoutType)
 
@@ -119,7 +119,7 @@ fun installAPK(apkName: String): Int {
                             it[extension] = extensionId
                         }
                     }
-                    logger.info("Installed source ${httpSource.name} with id {httpSource.id}")
+                    logger.debug("Installed source ${httpSource.name} with id {httpSource.id}")
                 }
             } else { // multi source
                 val sourceFactory = instance as SourceFactory
@@ -136,7 +136,7 @@ fun installAPK(apkName: String): Int {
                                 it[positionInFactorySource] = index
                             }
                         }
-                        logger.info("Installed source ${httpSource.name} with id:${httpSource.id}")
+                        logger.debug("Installed source ${httpSource.name} with id:${httpSource.id}")
                     }
                 }
             }
@@ -168,7 +168,7 @@ private fun downloadAPKFile(url: String, apkPath: String) {
 }
 
 fun removeExtension(apkName: String) {
-    logger.info("Uninstalling $apkName")
+    logger.debug("Uninstalling $apkName")
 
     val extensionRecord = getExtensionList(true).first { it.apkName == apkName }
     val fileNameWithoutType = apkName.substringBefore(".apk")
