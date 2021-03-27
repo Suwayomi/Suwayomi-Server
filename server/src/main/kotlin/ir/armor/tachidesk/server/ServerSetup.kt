@@ -42,7 +42,6 @@ fun applicationSetup() {
 
     // set application wide logging level
     if (serverConfig.debugLogsEnabled) {
-//        (mu.KotlinLogging.logger("ir.armor.tachidesk").underlyingLogger as ch.qos.logback.classic.Logger).level = Level.DEBUG
         (mu.KotlinLogging.logger(org.slf4j.Logger.ROOT_LOGGER_NAME).underlyingLogger as ch.qos.logback.classic.Logger).level = Level.DEBUG
     }
 
