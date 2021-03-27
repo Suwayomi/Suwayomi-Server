@@ -69,7 +69,7 @@ export default function Manga() {
 
     const chapterCards = (
         <LoadingPlaceholder
-            shouldRender
+            shouldRender={chapters.length > 0}
         >
             <ol className={classes.chapters}>
                 {chapters.map((chapter) => (<ChapterCard chapter={chapter} />))}
