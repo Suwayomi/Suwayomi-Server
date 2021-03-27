@@ -60,7 +60,8 @@ fun javalinSetup() {
         openInBrowser()
     }
 
-    app.exception(NullPointerException::class.java) { _, ctx ->
+    app.exception(NullPointerException::class.java) { e, ctx ->
+        logger.error("NullPointerException while handling the request", e)
         ctx.status(404)
     }
 
@@ -179,11 +180,11 @@ fun javalinSetup() {
         ctx.json(getChapter(chapterIndex, mangaId))
     }
 
-    app.get("/api/v1/manga/:mangaId/chapter/:chapterId/page/:index") { ctx ->
-        val chapterId = ctx.pathParam("chapterId").toInt()
+    app.get("/api/v1/manga/:mangaId/chapter/:chapterIndex/page/:index") { ctx ->
         val mangaId = ctx.pathParam("mangaId").toInt()
+        val chapterIndex = ctx.pathParam("chapterIndex").toInt()
         val index = ctx.pathParam("index").toInt()
-        val result = getPageImage(mangaId, chapterId, index)
+        val result = getPageImage(mangaId, chapterIndex, index)
 
         ctx.result(result.first)
         ctx.header("content-type", result.second)

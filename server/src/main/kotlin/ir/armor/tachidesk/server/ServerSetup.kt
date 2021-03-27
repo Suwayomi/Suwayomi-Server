@@ -40,7 +40,7 @@ val androidCompat by lazy { AndroidCompat() }
 fun applicationSetup() {
     // register server config
     GlobalConfigManager.registerModule(
-            ServerConfig.register(GlobalConfigManager.config)
+        ServerConfig.register(GlobalConfigManager.config)
     )
 
     // set application wide logging level
@@ -50,10 +50,10 @@ fun applicationSetup() {
 
     // make dirs we need
     listOf(
-            applicationDirs.dataRoot,
-            applicationDirs.extensionsRoot,
-            "${applicationDirs.extensionsRoot}/icon",
-            applicationDirs.thumbnailsRoot
+        applicationDirs.dataRoot,
+        applicationDirs.extensionsRoot,
+        "${applicationDirs.extensionsRoot}/icon",
+        applicationDirs.thumbnailsRoot
     ).forEach {
         File(it).mkdirs()
     }

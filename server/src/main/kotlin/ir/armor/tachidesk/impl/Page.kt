@@ -28,10 +28,16 @@ fun getTrueImageUrl(page: Page, source: HttpSource): String {
     return page.imageUrl!!
 }
 
-fun getPageImage(mangaId: Int, chapterId: Int, index: Int): Pair<InputStream, String> {
+fun getPageImage(mangaId: Int, chapterIndex: Int, index: Int): Pair<InputStream, String> {
     val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
     val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
-    val chapterEntry = transaction { ChapterTable.select { ChapterTable.id eq chapterId }.firstOrNull()!! }
+    val chapterEntry = transaction {
+        ChapterTable.select {
+            (ChapterTable.chapterIndex eq chapterIndex) and (ChapterTable.manga eq mangaId)
+        }.firstOrNull()!!
+    }
+    val chapterId = chapterEntry[ChapterTable.id].value
+
     val pageEntry = transaction { PageTable.select { (PageTable.chapter eq chapterId) and (PageTable.index eq index) }.firstOrNull()!! }
 
     val tachiPage = Page(
