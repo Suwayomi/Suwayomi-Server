@@ -140,11 +140,13 @@ const useStyles = (settings: IReaderSettings) => makeStyles((theme: Theme) => ({
 export interface IReaderSettings{
     staticNav: boolean
     showPageNumber: boolean
+    continuesPageGap: boolean
 }
 
 export const defaultReaderSettings = () => ({
     staticNav: false,
     showPageNumber: true,
+    continuesPageGap: false,
 } as IReaderSettings);
 
 interface IProps {
@@ -276,6 +278,16 @@ export default function ReaderNavBar(props: IProps) {
                                             edge="end"
                                             checked={settings.showPageNumber}
                                             onChange={(e) => setSettingValue('showPageNumber', e.target.checked)}
+                                        />
+                                    </ListItemSecondaryAction>
+                                </ListItem>
+                                <ListItem>
+                                    <ListItemText primary="Continues Page gap" />
+                                    <ListItemSecondaryAction>
+                                        <Switch
+                                            edge="end"
+                                            checked={settings.continuesPageGap}
+                                            onChange={(e) => setSettingValue('continuesPageGap', e.target.checked)}
                                         />
                                     </ListItemSecondaryAction>
                                 </ListItem>

@@ -25,6 +25,10 @@ const useStyles = (settings: IReaderSettings) => makeStyles({
         backgroundColor: '#525252',
         marginBottom: 10,
     },
+    image: {
+        display: 'block',
+        marginBottom: settings.continuesPageGap ? '15px' : 0,
+    },
 });
 
 interface IProps {
@@ -77,6 +81,7 @@ function LazyImage(props: IProps) {
 
     return (
         <img
+            className={classes.image}
             ref={ref}
             src={imageSrc}
             alt={`Page #${index}`}
@@ -100,6 +105,7 @@ export default function Page(props: IProps) {
                         <CircularProgress thickness={5} />
                     </div>
                 )}
+                once
             >
                 <LazyImage
                     src={src}
