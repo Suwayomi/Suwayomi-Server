@@ -136,7 +136,7 @@ export default function MangaDetails(props: IProps) {
 
     const { manga } = props;
     const [inLibrary, setInLibrary] = useState<string>(
-        manga.inLibrary ? 'In Library' : 'Add to Library',
+        manga.inLibrary ? 'In Library' : 'Add To Library',
     );
 
     const [categoryDialogOpen, setCategoryDialogOpen] = useState<boolean>(false);
