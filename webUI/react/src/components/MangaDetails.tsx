@@ -22,8 +22,13 @@ const useStyles = (inLibrary: string) => makeStyles((theme: Theme) => ({
     root: {
         width: '100%',
         [theme.breakpoints.up('md')]: {
-            position: 'fixed',
+            position: 'sticky',
+            top: '64px',
+            left: '0px',
             width: '50vw',
+            height: 'calc(100vh - 64px)',
+            alignSelf: 'flex-start',
+            overflowY: 'auto',
         },
     },
     top: {

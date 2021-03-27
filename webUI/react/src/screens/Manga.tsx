@@ -14,6 +14,7 @@ import ChapterCard from '../components/ChapterCard';
 import MangaDetails from '../components/MangaDetails';
 import NavbarContext from '../context/NavbarContext';
 import client from '../util/client';
+import LoadingPlaceholder from '../components/LoadingPlaceholder';
 
 const useStyles = makeStyles((theme: Theme) => ({
     root: {
@@ -26,8 +27,10 @@ const useStyles = makeStyles((theme: Theme) => ({
         listStyle: 'none',
         padding: 0,
         [theme.breakpoints.up('md')]: {
-            width: '50%',
-            marginLeft: '50%',
+            width: '50vw',
+            height: 'calc(100vh - 64px)',
+            overflowY: 'auto',
+            margin: 0,
         },
     },
 
@@ -65,20 +68,23 @@ export default function Manga() {
     }, []);
 
     const chapterCards = (
-        <ol className={classes.chapters}>
-            {chapters.length === 0
-            && (
-                <div className={classes.loading}>
-                    <CircularProgress thickness={5} />
-                </div>
-            ) }
-            {chapters.map((chapter) => (<ChapterCard chapter={chapter} />))}
-        </ol>
+        <LoadingPlaceholder
+            shouldRender
+        >
+            <ol className={classes.chapters}>
+                {chapters.map((chapter) => (<ChapterCard chapter={chapter} />))}
+            </ol>
+        </LoadingPlaceholder>
+
     );
 
     return (
         <div className={classes.root}>
-            {manga && <MangaDetails manga={manga} />}
+            <LoadingPlaceholder
+                shouldRender={manga !== undefined}
+                component={MangaDetails}
+                componentProps={{ manga }}
+            />
             {chapterCards}
         </div>
     );
