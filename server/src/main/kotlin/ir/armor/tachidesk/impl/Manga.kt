@@ -93,7 +93,7 @@ fun getThumbnail(mangaId: Int): Pair<InputStream, String> {
     val saveDir = applicationDirs.thumbnailsRoot
     val fileName = mangaId.toString()
 
-    return getCachedResponse(saveDir, fileName) {
+    return getCachedImageResponse(saveDir, fileName) {
         val sourceId = mangaEntry[MangaTable.sourceReference]
         val source = getHttpSource(sourceId)
         var thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]

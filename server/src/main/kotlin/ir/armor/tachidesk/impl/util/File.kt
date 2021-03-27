@@ -55,7 +55,7 @@ private fun BufferedSource.saveTo(stream: OutputStream) {
     }
 }
 
-fun getCachedResponse(saveDir: String, fileName: String, fetcher: () -> Response): Pair<InputStream, String> {
+fun getCachedImageResponse(saveDir: String, fileName: String, fetcher: () -> Response): Pair<InputStream, String> {
     val cachedFile = findFileNameStartingWith(saveDir, fileName)
     val filePath = "$saveDir/$fileName"
     if (cachedFile != null) {

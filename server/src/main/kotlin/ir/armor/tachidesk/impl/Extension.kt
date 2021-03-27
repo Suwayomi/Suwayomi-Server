@@ -195,7 +195,7 @@ fun getExtensionIcon(apkName: String): Pair<InputStream, String> {
 
     val saveDir = "${applicationDirs.extensionsRoot}/icon"
 
-    return getCachedResponse(saveDir, apkName) {
+    return getCachedImageResponse(saveDir, apkName) {
         network.client.newCall(
             GET(iconUrl)
         ).execute()

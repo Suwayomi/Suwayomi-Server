@@ -58,7 +58,7 @@ fun getPageImage(mangaId: Int, chapterIndex: Int, index: Int): Pair<InputStream,
     File(saveDir).mkdirs()
     val fileName = index.toString()
 
-    return getCachedResponse(saveDir, fileName) {
+    return getCachedImageResponse(saveDir, fileName) {
         source.fetchImage(tachiPage).toBlocking().first()
     }
 }

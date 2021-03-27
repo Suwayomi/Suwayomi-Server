@@ -126,6 +126,13 @@ fun getChapter(chapterIndex: Int, mangaId: Int): ChapterDataClass {
                         it[this.chapter] = chapterId
                     }
                 }
+            } else {
+                transaction {
+                    PageTable.update({ (PageTable.chapter eq chapterId) and (PageTable.index eq page.index) }) {
+                        it[url] = page.url
+                        it[imageUrl] = page.imageUrl
+                    }
+                }
             }
         }
 
