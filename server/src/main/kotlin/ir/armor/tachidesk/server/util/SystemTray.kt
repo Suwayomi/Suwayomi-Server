@@ -1,4 +1,4 @@
-package ir.armor.tachidesk.util
+package ir.armor.tachidesk.server.util
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -27,7 +27,7 @@ fun openInBrowser() {
 fun systemTray(): SystemTray? {
     try {
         // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
-        SystemTray.DEBUG = true; // for test apps, we always want to run in debug mode
+        SystemTray.DEBUG = false
         if (System.getProperty("os.name").startsWith("Windows"))
             SystemTray.FORCE_TRAY_TYPE = TrayType.Swing
 

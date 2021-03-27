@@ -1,4 +1,4 @@
-package ir.armor.tachidesk.util
+package ir.armor.tachidesk.impl
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -15,9 +15,9 @@ import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
-import ir.armor.tachidesk.applicationDirs
 import ir.armor.tachidesk.database.table.ExtensionTable
 import ir.armor.tachidesk.database.table.SourceTable
+import ir.armor.tachidesk.server.applicationDirs
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
 import okhttp3.Request

@@ -1,4 +1,4 @@
-package ir.armor.tachidesk.util
+package ir.armor.tachidesk.impl
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -9,10 +9,10 @@ package ir.armor.tachidesk.util
 
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.model.SManga
-import ir.armor.tachidesk.applicationDirs
 import ir.armor.tachidesk.database.dataclass.MangaDataClass
 import ir.armor.tachidesk.database.table.MangaStatus
 import ir.armor.tachidesk.database.table.MangaTable
+import ir.armor.tachidesk.server.applicationDirs
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update

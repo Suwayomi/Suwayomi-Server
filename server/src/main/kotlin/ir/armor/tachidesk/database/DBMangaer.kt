@@ -7,7 +7,6 @@ package ir.armor.tachidesk.database
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import ir.armor.tachidesk.applicationDirs
 import ir.armor.tachidesk.database.table.CategoryMangaTable
 import ir.armor.tachidesk.database.table.CategoryTable
 import ir.armor.tachidesk.database.table.ChapterTable
@@ -15,6 +14,7 @@ import ir.armor.tachidesk.database.table.ExtensionTable
 import ir.armor.tachidesk.database.table.MangaTable
 import ir.armor.tachidesk.database.table.PageTable
 import ir.armor.tachidesk.database.table.SourceTable
+import ir.armor.tachidesk.server.applicationDirs
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction

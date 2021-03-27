@@ -1,4 +1,4 @@
-package ir.armor.tachidesk
+package ir.armor.tachidesk.server
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -7,9 +7,11 @@ package ir.armor.tachidesk
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import ch.qos.logback.classic.Level
 import eu.kanade.tachiyomi.App
+import ir.armor.tachidesk.Main
 import ir.armor.tachidesk.database.makeDataBaseTables
-import ir.armor.tachidesk.util.systemTray
+import ir.armor.tachidesk.server.util.systemTray
 import net.harawata.appdirs.AppDirsFactory
 import org.kodein.di.DI
 import org.kodein.di.conf.global
@@ -32,7 +34,7 @@ val systemTray by lazy { systemTray() }
 
 val androidCompat by lazy { AndroidCompat() }
 
-fun serverSetup() {
+fun applicationSetup() {
     // register server config
     GlobalConfigManager.registerModule(
         ServerConfig.register(GlobalConfigManager.config)
@@ -48,14 +50,31 @@ fun serverSetup() {
         File(it).mkdirs()
     }
 
+    // create conf file if doesn't exist
+    try {
+        val dataConfFile = File("${applicationDirs.dataRoot}/server.conf")
+        if (!dataConfFile.exists()) {
+            val inpStream = File(
+                Main::class.java.getResource("/server-reference.conf").toURI()
+            ).inputStream()
+            val outStream = dataConfFile.outputStream()
+
+            inpStream.copyTo(outStream)
+
+            inpStream.close()
+            outStream.close()
+        }
+    } catch (e: Exception) {}
+
     makeDataBaseTables()
 
     // create system tray
-    try {
-        systemTray
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
+    if (serverConfig.systemTrayEnabled)
+        try {
+            systemTray
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
     // Load config API
     DI.global.addImport(ConfigKodeinModule().create())
@@ -63,6 +82,14 @@ fun serverSetup() {
     AndroidCompatInitializer().init()
     // start app
     androidCompat.startApp(App())
+
+    // set application wide logging level
+    if (!serverConfig.debugLogsEnabled)
+        (mu.KotlinLogging.logger("ir.armor.tachidesk").underlyingLogger as ch.qos.logback.classic.Logger).level = Level.INFO
+
+    // Disable jetty's logging
+    System.setProperty("org.eclipse.jetty.util.log.class", "org.eclipse.jetty.util.log.StdErrLog")
+    System.setProperty("org.eclipse.jetty.LEVEL", "OFF")
 
     // socks proxy settings
     System.getProperties()["proxySet"] = serverConfig.socksProxy.toString()

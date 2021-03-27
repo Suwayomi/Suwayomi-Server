@@ -9,7 +9,7 @@ package ir.armor.tachidesk.database.table
 
 import eu.kanade.tachiyomi.source.model.SManga
 import ir.armor.tachidesk.database.dataclass.MangaDataClass
-import ir.armor.tachidesk.util.proxyThumbnailUrl
+import ir.armor.tachidesk.impl.proxyThumbnailUrl
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
 
