@@ -12,6 +12,7 @@ import eu.kanade.tachiyomi.App
 import ir.armor.tachidesk.Main
 import ir.armor.tachidesk.database.makeDataBaseTables
 import ir.armor.tachidesk.server.util.systemTray
+import mu.KotlinLogging
 import net.harawata.appdirs.AppDirsFactory
 import org.kodein.di.DI
 import org.kodein.di.conf.global
@@ -20,6 +21,8 @@ import xyz.nulldev.androidcompat.AndroidCompatInitializer
 import xyz.nulldev.ts.config.ConfigKodeinModule
 import xyz.nulldev.ts.config.GlobalConfigManager
 import java.io.File
+
+private val logger = KotlinLogging.logger {}
 
 object applicationDirs {
     val dataRoot = AppDirsFactory.getInstance().getUserDataDir("Tachidesk", null, null)!!
@@ -59,16 +62,14 @@ fun applicationSetup() {
     try {
         val dataConfFile = File("${applicationDirs.dataRoot}/server.conf")
         if (!dataConfFile.exists()) {
-            val inpStream = Main::class.java.getResourceAsStream("/server-reference.conf")
-            val outStream = dataConfFile.outputStream()
-
-            inpStream.copyTo(outStream)
-
-            inpStream.close()
-            outStream.close()
+            Main::class.java.getResourceAsStream("/server-reference.conf").use { input ->
+                dataConfFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
         }
     } catch (e: Exception) {
-        e.printStackTrace()
+        logger.error("Exception while creating initial server.conf:\n", e)
     }
 
     makeDataBaseTables()
