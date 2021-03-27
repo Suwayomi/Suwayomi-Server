@@ -53,7 +53,11 @@ dependencies {
     // AndroidX annotations
     compileOnly( "androidx.annotation:annotation:1.2.0-alpha01")
 
-//    compileOnly("io.reactivex:rxjava:1.3.8")
+    // substitute for duktape-android
+    // 'org.mozilla:rhino' includes some code that we don't need so use 'org.mozilla:rhino-runtime' instead
+    implementation("org.mozilla:rhino-runtime:1.7.13")
+    // 'org.mozilla:rhino-engine' provides the same interface as 'javax.script' a.k.a Nashorn
+    implementation("org.mozilla:rhino-engine:1.7.13")
 }
 
 //def fatJarTask = tasks.getByPath(':AndroidCompat:JVMPatch:fatJar')

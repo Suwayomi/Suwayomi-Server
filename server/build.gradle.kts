@@ -57,7 +57,6 @@ dependencies {
 
     implementation("org.jsoup:jsoup:1.13.1")
     implementation("com.github.salomonbrys.kotson:kotson:2.5.0")
-    implementation("com.squareup.duktape:duktape-android:1.3.0")
 
 
     val coroutinesVersion = "1.3.9"
@@ -86,9 +85,8 @@ dependencies {
     implementation(project(":AndroidCompat"))
     implementation(project(":AndroidCompat:Config"))
 
-
-//    testImplementation("org.jetbrains.kotlin:kotlin-test")
-//    testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
+    // uncomment to test extensions directly
+//    implementation(fileTree("lib/"))
 }
 
 val name = "ir.armor.tachidesk.Main"
