@@ -49,11 +49,17 @@ interface IProps {
 export default function ExtensionCard(props: IProps) {
     const {
         extension: {
-            name, lang, versionName, installed, pkgName, iconUrl,
+            name, lang, versionName, installed, hasUpdate, obsolete, pkgName, iconUrl,
         },
         notifyInstall,
     } = props;
-    const [installedState, setInstalledState] = useState<string>((installed ? 'uninstall' : 'install'));
+    const [installedState, setInstalledState] = useState<string>(
+        () => {
+            if (obsolete) { return 'obsolete'; }
+            if (hasUpdate) { return 'update'; }
+            return (installed ? 'uninstall' : 'install');
+        },
+    );
 
     const [serverAddress] = useLocalStorage<String>('serverBaseURL', '');
 
@@ -63,6 +69,15 @@ export default function ExtensionCard(props: IProps) {
     function install() {
         setInstalledState('installing');
         client.get(`/api/v1/extension/install/${pkgName}`)
+            .then(() => {
+                setInstalledState('uninstall');
+                notifyInstall();
+            });
+    }
+
+    function update() {
+        setInstalledState('updating');
+        client.get(`/api/v1/extension/update/${pkgName}`)
             .then(() => {
                 setInstalledState('uninstall');
                 notifyInstall();
@@ -79,10 +94,22 @@ export default function ExtensionCard(props: IProps) {
     }
 
     function handleButtonClick() {
-        if (installedState === 'install') {
-            install();
-        } else {
-            uninstall();
+        switch (installedState) {
+            case 'install':
+                install();
+                break;
+            case 'update':
+                update();
+                break;
+            case 'obsolete':
+                uninstall();
+                setTimeout(() => window.location.reload(), 3000);
+                break;
+            case 'uninstall':
+                uninstall();
+                break;
+            default:
+                break;
         }
     }
 
@@ -108,7 +135,14 @@ export default function ExtensionCard(props: IProps) {
                     </div>
                 </div>
 
-                <Button variant="outlined" onClick={() => handleButtonClick()}>{installedState}</Button>
+                <Button
+                    variant="outlined"
+                    style={{ color: installedState === 'obsolete' ? 'red' : 'inherit' }}
+                    onClick={() => handleButtonClick()}
+                >
+                    {installedState}
+
+                </Button>
             </CardContent>
         </Card>
     );

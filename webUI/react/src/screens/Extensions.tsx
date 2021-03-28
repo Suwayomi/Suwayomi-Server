@@ -17,7 +17,7 @@ const allLangs: string[] = [];
 
 function groupExtensions(extensions: IExtension[]) {
     allLangs.length = 0; // empty the array
-    const result = { installed: [] } as any;
+    const result = { installed: [], 'updates pending': [] } as any;
     extensions.sort((a, b) => ((a.apkName > b.apkName) ? 1 : -1));
 
     extensions.forEach((extension) => {
@@ -26,7 +26,11 @@ function groupExtensions(extensions: IExtension[]) {
             if (extension.lang !== 'all') { allLangs.push(extension.lang); }
         }
         if (extension.installed) {
-            result.installed.push(extension);
+            if (extension.hasUpdate) {
+                result['updates pending'].push(extension);
+            } else {
+                result.installed.push(extension);
+            }
         } else {
             result[extension.lang].push(extension);
         }
@@ -79,11 +83,12 @@ export default function Extensions() {
     if (Object.entries(extensions).length === 0) {
         return <h3>loading...</h3>;
     }
+    const groupsToShow = ['updates pending', 'installed', ...shownLangs];
     return (
         <>
             {
                 Object.entries(extensions).map(([lang, list]) => (
-                    ((['installed', ...shownLangs].indexOf(lang) !== -1 && (list as []).length > 0)
+                    ((groupsToShow.indexOf(lang) !== -1 && (list as []).length > 0)
                         && (
                             <React.Fragment key={lang}>
                                 <h1 key={lang} style={{ marginLeft: 25 }}>

@@ -168,19 +168,22 @@ private fun downloadAPKFile(url: String, apkPath: String) {
     sink.close()
 }
 
-fun removeExtension(pkgName: String) {
+fun uninstallExtension(pkgName: String) {
     logger.debug("Uninstalling $pkgName")
 
-    val extensionRecord = extensionTableAsDataClass().first { it.pkgName == pkgName }
-    val fileNameWithoutType = extensionRecord.apkName.substringBefore(".apk")
+    val extensionRecord = transaction { ExtensionTable.select { ExtensionTable.pkgName eq pkgName }.firstOrNull()!! }
+    val fileNameWithoutType = extensionRecord[ExtensionTable.apkName].substringBefore(".apk")
     val jarPath = "${applicationDirs.extensionsRoot}/$fileNameWithoutType.jar"
     transaction {
-        val extensionId = ExtensionTable.select { ExtensionTable.name eq extensionRecord.name }.first()[ExtensionTable.id]
+        val extensionId = extensionRecord[ExtensionTable.id].value
 
         SourceTable.deleteWhere { SourceTable.extension eq extensionId }
-        ExtensionTable.update({ ExtensionTable.name eq extensionRecord.name }) {
-            it[isInstalled] = false
-        }
+        if (extensionRecord[ExtensionTable.isObsolete])
+            ExtensionTable.deleteWhere { ExtensionTable.pkgName eq pkgName }
+        else
+            ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
+                it[isInstalled] = false
+            }
     }
 
     if (File(jarPath).exists()) {
@@ -190,7 +193,7 @@ fun removeExtension(pkgName: String) {
 
 fun updateExtension(pkgName: String): Int {
     val targetExtension = ExtensionListData.updateMap.remove(pkgName)!!
-    removeExtension(pkgName)
+    uninstallExtension(pkgName)
     transaction {
         ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
             it[name] = targetExtension.name

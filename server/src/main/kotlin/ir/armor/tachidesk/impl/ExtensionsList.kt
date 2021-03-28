@@ -28,9 +28,11 @@ object ExtensionListData {
     var updateMap = ConcurrentHashMap<String, Extension.Available>()
 }
 
+const val ExtensionUpdateDelayTime = 0 // 60 seconds
+
 fun getExtensionList(): List<ExtensionDataClass> {
-    // update if 60 seconds has passed or requested offline and database is empty
-    if (ExtensionListData.lastUpdateCheck + 60 * 1000 < System.currentTimeMillis()) {
+    // update if {ExtensionUpdateDelayTime} seconds has passed or requested offline and database is empty
+    if (ExtensionListData.lastUpdateCheck + ExtensionUpdateDelayTime < System.currentTimeMillis()) {
         logger.debug("Getting extensions list from the internet")
         ExtensionListData.lastUpdateCheck = System.currentTimeMillis()
         runBlocking {

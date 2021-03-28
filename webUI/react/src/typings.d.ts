@@ -14,9 +14,9 @@ interface IExtension {
     isNsfw: boolean
     apkName: string
     iconUrl: string
-    isInstalled: boolean
+    installed: boolean
     hasUpdate: boolean
-    isObsolete: boolean
+    obsolete: boolean
 }
 
 interface ISource {

@@ -8,6 +8,7 @@
 export const ISOLanguages = [
     { code: 'all', name: 'All', nativeName: 'All' },
     { code: 'installed', name: 'Installed', nativeName: 'Installed' },
+    { code: 'updates pending', name: 'Updates pending', nativeName: 'Updates pending' },
 
     // full list: https://github.com/meikidd/iso-639-1/blob/master/src/data.js
     { code: 'en', name: 'English', nativeName: 'English' },

@@ -16,7 +16,7 @@ data class ExtensionDataClass(
     val isNsfw: Boolean,
     val apkName: String,
     val iconUrl: String,
-    val isInstalled: Boolean,
+    val installed: Boolean,
     val hasUpdate: Boolean,
-    val isObsolete: Boolean,
+    val obsolete: Boolean,
 )

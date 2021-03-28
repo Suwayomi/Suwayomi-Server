@@ -21,13 +21,13 @@ import ir.armor.tachidesk.impl.getSourceList
 import ir.armor.tachidesk.impl.getThumbnail
 import ir.armor.tachidesk.impl.installExtension
 import ir.armor.tachidesk.impl.removeCategory
-import ir.armor.tachidesk.impl.removeExtension
 import ir.armor.tachidesk.impl.removeMangaFromCategory
 import ir.armor.tachidesk.impl.removeMangaFromLibrary
 import ir.armor.tachidesk.impl.reorderCategory
 import ir.armor.tachidesk.impl.sourceFilters
 import ir.armor.tachidesk.impl.sourceGlobalSearch
 import ir.armor.tachidesk.impl.sourceSearch
+import ir.armor.tachidesk.impl.uninstallExtension
 import ir.armor.tachidesk.impl.updateCategory
 import ir.armor.tachidesk.impl.updateExtension
 import ir.armor.tachidesk.server.util.openInBrowser
@@ -89,7 +89,7 @@ fun javalinSetup() {
     app.get("/api/v1/extension/uninstall/:pkgName") { ctx ->
         val pkgName = ctx.pathParam("pkgName")
 
-        removeExtension(pkgName)
+        uninstallExtension(pkgName)
         ctx.status(200)
     }
 
