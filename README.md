@@ -13,7 +13,7 @@ Here is a list of current features:
 - Installing and executing Tachiyomi's Extensions, So you'll get the same sources.
 - A library to save your mangas and categories to put them into.
 - Searching and browsing installed sources.
-- A minimal chapter reader.
+- A decent chapter reader.
 - Ability to download Mangas for offline read(This partially works)
 
 **Note:** Keep in mind that Tachidesk is alpha software and can break rarely and/or with each update, so you may have to delete your data to fix it. See [General troubleshooting](#general-troubleshooting) and [Support and help](#support-and-help) if it happens.
