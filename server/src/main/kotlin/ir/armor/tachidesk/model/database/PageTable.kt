@@ -1,4 +1,4 @@
-package ir.armor.tachidesk.database.table
+package ir.armor.tachidesk.model.database
 
 /*
  * Copyright (C) Contributors to the Suwayomi project

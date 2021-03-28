@@ -1,4 +1,4 @@
-package ir.armor.tachidesk.database.dataclass
+package ir.armor.tachidesk.model.dataclass
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -16,6 +16,7 @@ data class ExtensionDataClass(
     val isNsfw: Boolean,
     val apkName: String,
     val iconUrl: String,
-    val installed: Boolean,
-    val classFQName: String,
+    val isInstalled: Boolean,
+    val hasUpdate: Boolean,
+    val isObsolete: Boolean,
 )

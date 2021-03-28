@@ -9,17 +9,14 @@ package ir.armor.tachidesk.impl
 
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
-import ir.armor.tachidesk.database.dataclass.SourceDataClass
-import ir.armor.tachidesk.database.entity.ExtensionEntity
-import ir.armor.tachidesk.database.entity.SourceEntity
-import ir.armor.tachidesk.database.table.ExtensionTable
-import ir.armor.tachidesk.database.table.SourceTable
+import ir.armor.tachidesk.model.database.ExtensionTable
+import ir.armor.tachidesk.model.database.SourceTable
+import ir.armor.tachidesk.model.dataclass.SourceDataClass
 import ir.armor.tachidesk.server.applicationDirs
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.lang.NullPointerException
 import java.net.URL
 import java.net.URLClassLoader
 
@@ -30,8 +27,8 @@ private val extensionCache = mutableListOf<Pair<String, Any>>()
 
 fun getHttpSource(sourceId: Long): HttpSource {
     val sourceRecord = transaction {
-        SourceEntity.findById(sourceId)
-    } ?: throw NullPointerException("Source with id $sourceId is not installed")
+        SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!!
+    }
 
     val cachedResult: Pair<Long, HttpSource>? = sourceCache.firstOrNull { it.first == sourceId }
     if (cachedResult != null) {
@@ -40,10 +37,10 @@ fun getHttpSource(sourceId: Long): HttpSource {
     }
 
     val result: HttpSource = transaction {
-        val extensionId = sourceRecord.extension.id.value
-        val extensionRecord = ExtensionEntity.findById(extensionId)!!
-        val apkName = extensionRecord.apkName
-        val className = extensionRecord.classFQName
+        val extensionId = sourceRecord[SourceTable.extension]
+        val extensionRecord = ExtensionTable.select { ExtensionTable.id eq extensionId }.firstOrNull()!!
+        val apkName = extensionRecord[ExtensionTable.apkName]
+        val className = extensionRecord[ExtensionTable.classFQName]
         val jarName = apkName.substringBefore(".apk") + ".jar"
         val jarPath = "${applicationDirs.extensionsRoot}/$jarName"
 
@@ -60,13 +57,15 @@ fun getHttpSource(sourceId: Long): HttpSource {
                 val classToLoad = Class.forName(className, true, child)
                 classToLoad.newInstance()
             }
-        if (sourceRecord.partOfFactorySource) {
+        if (sourceRecord[SourceTable.partOfFactorySource]) {
+            val positionInFactorySource = sourceRecord[SourceTable.positionInFactorySource]!!
             return@transaction if (usedCached) {
-                (instance as List<HttpSource>)[sourceRecord.positionInFactorySource!!]
+                @Suppress("UNCHECKED_CAST")
+                (instance as List<HttpSource>)[positionInFactorySource]
             } else {
                 val list = (instance as SourceFactory).createSources()
                 extensionCache.add(Pair(jarPath, list))
-                list[sourceRecord.positionInFactorySource!!] as HttpSource
+                list[positionInFactorySource] as HttpSource
             }
         } else {
             if (!usedCached)

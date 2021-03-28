@@ -23,7 +23,7 @@ interface ExtensionGithubService {
                 .addNetworkInterceptor { chain ->
                     val originalResponse = chain.proceed(chain.request())
                     originalResponse.newBuilder()
-                        .header("Content-Encoding", "gzip")
+//                        .header("Content-Encoding", "gzip")
                         .header("Content-Type", "application/json")
                         .build()
                 }
@@ -41,6 +41,7 @@ interface ExtensionGithubService {
         }
     }
 
-    @GET("${ExtensionGithubApi.REPO_URL_PREFIX}/index.json.gz")
+//    @GET("${ExtensionGithubApi.REPO_URL_PREFIX}/index.json.gz")
+    @GET("${ExtensionGithubApi.REPO_URL_PREFIX}/index.json")
     suspend fun getRepo(): JsonArray
 }

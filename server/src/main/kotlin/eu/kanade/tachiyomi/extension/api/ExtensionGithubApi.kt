@@ -11,13 +11,14 @@ package eu.kanade.tachiyomi.extension.api
 // import eu.kanade.tachiyomi.data.preference.PreferencesHelper
 import eu.kanade.tachiyomi.extension.model.Extension
 import eu.kanade.tachiyomi.extension.util.ExtensionLoader
-import ir.armor.tachidesk.database.dataclass.ExtensionDataClass
+import ir.armor.tachidesk.model.dataclass.ExtensionDataClass
 // import kotlinx.coroutines.Dispatchers
 // import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+
 // import uy.kohesive.injekt.injectLazy
 
 internal class ExtensionGithubApi {
@@ -84,7 +85,9 @@ internal class ExtensionGithubApi {
     }
 
     companion object {
-        const val BASE_URL = "https://raw.githubusercontent.com/"
-        const val REPO_URL_PREFIX = "${BASE_URL}inorichi/tachiyomi-extensions/repo"
+//        const val BASE_URL = "https://raw.githubusercontent.com"
+//        const val REPO_URL_PREFIX = "${BASE_URL}/tachiyomiorg/tachiyomi-extensions/repo"
+        const val BASE_URL = "http://127.0.0.1:8000"
+        const val REPO_URL_PREFIX = "$BASE_URL/repo"
     }
 }

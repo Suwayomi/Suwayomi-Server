@@ -1,4 +1,4 @@
-package ir.armor.tachidesk.database.table
+package ir.armor.tachidesk.model.database
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -8,8 +8,8 @@ package ir.armor.tachidesk.database.table
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.SManga
-import ir.armor.tachidesk.database.dataclass.MangaDataClass
 import ir.armor.tachidesk.impl.proxyThumbnailUrl
+import ir.armor.tachidesk.model.dataclass.MangaDataClass
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
 

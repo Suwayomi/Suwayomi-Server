@@ -1,4 +1,4 @@
-package ir.armor.tachidesk.database.table
+package ir.armor.tachidesk.model.database
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -7,7 +7,7 @@ package ir.armor.tachidesk.database.table
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import ir.armor.tachidesk.database.dataclass.CategoryDataClass
+import ir.armor.tachidesk.model.dataclass.CategoryDataClass
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
 

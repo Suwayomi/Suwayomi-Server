@@ -8,10 +8,10 @@ package ir.armor.tachidesk.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.MangasPage
-import ir.armor.tachidesk.database.dataclass.MangaDataClass
-import ir.armor.tachidesk.database.dataclass.PagedMangaListDataClass
-import ir.armor.tachidesk.database.table.MangaStatus
-import ir.armor.tachidesk.database.table.MangaTable
+import ir.armor.tachidesk.model.database.MangaStatus
+import ir.armor.tachidesk.model.database.MangaTable
+import ir.armor.tachidesk.model.dataclass.MangaDataClass
+import ir.armor.tachidesk.model.dataclass.PagedMangaListDataClass
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction

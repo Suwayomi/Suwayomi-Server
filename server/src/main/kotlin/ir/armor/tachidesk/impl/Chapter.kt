@@ -9,10 +9,10 @@ package ir.armor.tachidesk.impl
 
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
-import ir.armor.tachidesk.database.dataclass.ChapterDataClass
-import ir.armor.tachidesk.database.table.ChapterTable
-import ir.armor.tachidesk.database.table.MangaTable
-import ir.armor.tachidesk.database.table.PageTable
+import ir.armor.tachidesk.model.database.ChapterTable
+import ir.armor.tachidesk.model.database.MangaTable
+import ir.armor.tachidesk.model.database.PageTable
+import ir.armor.tachidesk.model.dataclass.ChapterDataClass
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId

@@ -49,7 +49,7 @@ interface IProps {
 export default function ExtensionCard(props: IProps) {
     const {
         extension: {
-            name, lang, versionName, installed, apkName, iconUrl,
+            name, lang, versionName, installed, pkgName, iconUrl,
         },
         notifyInstall,
     } = props;
@@ -62,7 +62,7 @@ export default function ExtensionCard(props: IProps) {
 
     function install() {
         setInstalledState('installing');
-        client.get(`/api/v1/extension/install/${apkName}`)
+        client.get(`/api/v1/extension/install/${pkgName}`)
             .then(() => {
                 setInstalledState('uninstall');
                 notifyInstall();
@@ -71,7 +71,7 @@ export default function ExtensionCard(props: IProps) {
 
     function uninstall() {
         setInstalledState('uninstalling');
-        client.get(`/api/v1/extension/uninstall/${apkName}`)
+        client.get(`/api/v1/extension/uninstall/${pkgName}`)
             .then(() => {
                 // setInstalledState('install');
                 notifyInstall();

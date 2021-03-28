@@ -19,7 +19,7 @@ import ir.armor.tachidesk.impl.getPageImage
 import ir.armor.tachidesk.impl.getSource
 import ir.armor.tachidesk.impl.getSourceList
 import ir.armor.tachidesk.impl.getThumbnail
-import ir.armor.tachidesk.impl.installAPK
+import ir.armor.tachidesk.impl.installExtension
 import ir.armor.tachidesk.impl.removeCategory
 import ir.armor.tachidesk.impl.removeExtension
 import ir.armor.tachidesk.impl.removeMangaFromCategory
@@ -29,6 +29,7 @@ import ir.armor.tachidesk.impl.sourceFilters
 import ir.armor.tachidesk.impl.sourceGlobalSearch
 import ir.armor.tachidesk.impl.sourceSearch
 import ir.armor.tachidesk.impl.updateCategory
+import ir.armor.tachidesk.impl.updateExtension
 import ir.armor.tachidesk.server.util.openInBrowser
 import mu.KotlinLogging
 
@@ -69,18 +70,26 @@ fun javalinSetup() {
         ctx.json(getExtensionList())
     }
 
-    app.get("/api/v1/extension/install/:apkName") { ctx ->
-        val apkName = ctx.pathParam("apkName")
+    app.get("/api/v1/extension/install/:pkgName") { ctx ->
+        val pkgName = ctx.pathParam("pkgName")
 
         ctx.status(
-            installAPK(apkName)
+            installExtension(pkgName)
         )
     }
 
-    app.get("/api/v1/extension/uninstall/:apkName") { ctx ->
-        val apkName = ctx.pathParam("apkName")
+    app.get("/api/v1/extension/update/:pkgName") { ctx ->
+        val pkgName = ctx.pathParam("pkgName")
 
-        removeExtension(apkName)
+        ctx.status(
+            updateExtension(pkgName)
+        )
+    }
+
+    app.get("/api/v1/extension/uninstall/:pkgName") { ctx ->
+        val pkgName = ctx.pathParam("pkgName")
+
+        removeExtension(pkgName)
         ctx.status(200)
     }
 

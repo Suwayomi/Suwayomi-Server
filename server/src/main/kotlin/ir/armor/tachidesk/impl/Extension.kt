@@ -15,9 +15,9 @@ import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
-import ir.armor.tachidesk.database.table.ExtensionTable
-import ir.armor.tachidesk.database.table.SourceTable
 import ir.armor.tachidesk.impl.util.APKExtractor
+import ir.armor.tachidesk.model.database.ExtensionTable
+import ir.armor.tachidesk.model.database.SourceTable
 import ir.armor.tachidesk.server.applicationDirs
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
@@ -71,10 +71,10 @@ private fun dex2jar(dexFile: String, jarFile: String, fileNameWithoutType: Strin
     }
 }
 
-fun installAPK(apkName: String): Int {
-    logger.debug("Installing $apkName")
-    val extensionRecord = getExtensionList(true).first { it.apkName == apkName }
-    val fileNameWithoutType = apkName.substringBefore(".apk")
+fun installExtension(pkgName: String): Int {
+    logger.debug("Installing $pkgName")
+    val extensionRecord = extensionTableAsDataClass().first { it.pkgName == pkgName }
+    val fileNameWithoutType = extensionRecord.apkName.substringBefore(".apk")
     val dirPathWithoutType = "${applicationDirs.extensionsRoot}/$fileNameWithoutType"
 
     // check if we don't have the dex file already downloaded
@@ -145,7 +145,7 @@ fun installAPK(apkName: String): Int {
             // update extension info
             transaction {
                 ExtensionTable.update({ ExtensionTable.name eq extensionRecord.name }) {
-                    it[installed] = true
+                    it[isInstalled] = true
                     it[classFQName] = className
                 }
             }
@@ -168,24 +168,42 @@ private fun downloadAPKFile(url: String, apkPath: String) {
     sink.close()
 }
 
-fun removeExtension(apkName: String) {
-    logger.debug("Uninstalling $apkName")
+fun removeExtension(pkgName: String) {
+    logger.debug("Uninstalling $pkgName")
 
-    val extensionRecord = getExtensionList(true).first { it.apkName == apkName }
-    val fileNameWithoutType = apkName.substringBefore(".apk")
+    val extensionRecord = extensionTableAsDataClass().first { it.pkgName == pkgName }
+    val fileNameWithoutType = extensionRecord.apkName.substringBefore(".apk")
     val jarPath = "${applicationDirs.extensionsRoot}/$fileNameWithoutType.jar"
     transaction {
         val extensionId = ExtensionTable.select { ExtensionTable.name eq extensionRecord.name }.first()[ExtensionTable.id]
 
         SourceTable.deleteWhere { SourceTable.extension eq extensionId }
         ExtensionTable.update({ ExtensionTable.name eq extensionRecord.name }) {
-            it[ExtensionTable.installed] = false
+            it[isInstalled] = false
         }
     }
 
     if (File(jarPath).exists()) {
         File(jarPath).delete()
     }
+}
+
+fun updateExtension(pkgName: String): Int {
+    val targetExtension = ExtensionListData.updateMap.remove(pkgName)!!
+    removeExtension(pkgName)
+    transaction {
+        ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
+            it[name] = targetExtension.name
+            it[versionName] = targetExtension.versionName
+            it[versionCode] = targetExtension.versionCode
+            it[lang] = targetExtension.lang
+            it[isNsfw] = targetExtension.isNsfw
+            it[apkName] = targetExtension.apkName
+            it[iconUrl] = targetExtension.iconUrl
+            it[hasUpdate] = false
+        }
+    }
+    return installExtension(pkgName)
 }
 
 val network: NetworkHelper by injectLazy()

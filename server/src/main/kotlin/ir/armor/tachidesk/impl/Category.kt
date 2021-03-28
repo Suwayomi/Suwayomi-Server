@@ -7,10 +7,10 @@ package ir.armor.tachidesk.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import ir.armor.tachidesk.database.dataclass.CategoryDataClass
-import ir.armor.tachidesk.database.table.CategoryMangaTable
-import ir.armor.tachidesk.database.table.CategoryTable
-import ir.armor.tachidesk.database.table.toDataClass
+import ir.armor.tachidesk.model.database.CategoryMangaTable
+import ir.armor.tachidesk.model.database.CategoryTable
+import ir.armor.tachidesk.model.database.toDataClass
+import ir.armor.tachidesk.model.dataclass.CategoryDataClass
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert

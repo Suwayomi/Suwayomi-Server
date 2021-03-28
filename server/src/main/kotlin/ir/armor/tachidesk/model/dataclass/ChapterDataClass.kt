@@ -1,4 +1,4 @@
-package ir.armor.tachidesk.database.dataclass
+package ir.armor.tachidesk.model.dataclass
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -7,9 +7,15 @@ package ir.armor.tachidesk.database.dataclass
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-data class CategoryDataClass(
+data class ChapterDataClass(
     val id: Int,
-    val order: Int,
+    val url: String,
     val name: String,
-    val isLanding: Boolean
+    val date_upload: Long,
+    val chapter_number: Float,
+    val scanlator: String?,
+    val mangaId: Int,
+    val chapterIndex: Int,
+    val chapterCount: Int,
+    val pageCount: Int? = null,
 )

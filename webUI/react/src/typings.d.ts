@@ -7,12 +7,16 @@
 
 interface IExtension {
     name: string
-    lang: string
-    versionName: string
-    iconUrl: string
-    installed: boolean
-    apkName: string
     pkgName: string
+    versionName: string
+    versionCode: number
+    lang: string
+    isNsfw: boolean
+    apkName: string
+    iconUrl: string
+    isInstalled: boolean
+    hasUpdate: boolean
+    isObsolete: boolean
 }
 
 interface ISource {

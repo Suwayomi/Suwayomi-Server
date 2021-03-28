@@ -9,86 +9,122 @@ package ir.armor.tachidesk.impl
 
 import eu.kanade.tachiyomi.extension.api.ExtensionGithubApi
 import eu.kanade.tachiyomi.extension.model.Extension
-import ir.armor.tachidesk.database.dataclass.ExtensionDataClass
-import ir.armor.tachidesk.database.table.ExtensionTable
+import ir.armor.tachidesk.model.database.ExtensionTable
+import ir.armor.tachidesk.model.dataclass.ExtensionDataClass
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import java.util.concurrent.ConcurrentHashMap
 
 private val logger = KotlinLogging.logger {}
 
-private object Data {
-    var lastExtensionCheck: Long = 0
+object ExtensionListData {
+    var lastUpdateCheck: Long = 0
+    var updateMap = ConcurrentHashMap<String, Extension.Available>()
 }
 
-private fun extensionDatabaseIsEmtpy(): Boolean {
-    return transaction {
-        return@transaction ExtensionTable.selectAll().count() == 0L
-    }
-}
-
-fun getExtensionList(offline: Boolean = false): List<ExtensionDataClass> {
+fun getExtensionList(): List<ExtensionDataClass> {
     // update if 60 seconds has passed or requested offline and database is empty
-    if (Data.lastExtensionCheck + 60 * 1000 < System.currentTimeMillis() || (offline && extensionDatabaseIsEmtpy())) {
+    if (ExtensionListData.lastUpdateCheck + 60 * 1000 < System.currentTimeMillis()) {
         logger.debug("Getting extensions list from the internet")
-        Data.lastExtensionCheck = System.currentTimeMillis()
-        var foundExtensions: List<Extension.Available>
+        ExtensionListData.lastUpdateCheck = System.currentTimeMillis()
         runBlocking {
-            val api = ExtensionGithubApi()
-            foundExtensions = api.findExtensions()
-            transaction {
-                foundExtensions.forEach { foundExtension ->
-                    val extensionRecord = ExtensionTable.select { ExtensionTable.name eq foundExtension.name }.firstOrNull()
-                    if (extensionRecord != null) {
-                        // update the record
-                        ExtensionTable.update({ ExtensionTable.name eq foundExtension.name }) {
-                            it[name] = foundExtension.name
-                            it[pkgName] = foundExtension.pkgName
-                            it[versionName] = foundExtension.versionName
-                            it[versionCode] = foundExtension.versionCode
-                            it[lang] = foundExtension.lang
-                            it[isNsfw] = foundExtension.isNsfw
-                            it[apkName] = foundExtension.apkName
-                            it[iconUrl] = foundExtension.iconUrl
-                        }
-                    } else {
-                        // insert new record
-                        ExtensionTable.insert {
-                            it[name] = foundExtension.name
-                            it[pkgName] = foundExtension.pkgName
-                            it[versionName] = foundExtension.versionName
-                            it[versionCode] = foundExtension.versionCode
-                            it[lang] = foundExtension.lang
-                            it[isNsfw] = foundExtension.isNsfw
-                            it[apkName] = foundExtension.apkName
-                            it[iconUrl] = foundExtension.iconUrl
-                        }
-                    }
-                }
-            }
+            val foundExtensions = ExtensionGithubApi().findExtensions()
+            updateExtensionDatabase(foundExtensions)
         }
     } else {
         logger.debug("used cached extension list")
     }
 
-    return transaction {
-        return@transaction ExtensionTable.selectAll().map {
-            ExtensionDataClass(
-                it[ExtensionTable.name],
-                it[ExtensionTable.pkgName],
-                it[ExtensionTable.versionName],
-                it[ExtensionTable.versionCode],
-                it[ExtensionTable.lang],
-                it[ExtensionTable.isNsfw],
-                it[ExtensionTable.apkName],
-                getExtensionIconUrl(it[ExtensionTable.apkName]),
-                it[ExtensionTable.installed],
-                it[ExtensionTable.classFQName]
-            )
+    return extensionTableAsDataClass()
+}
+
+fun extensionTableAsDataClass() = transaction {
+    return@transaction ExtensionTable.selectAll().map {
+        ExtensionDataClass(
+            it[ExtensionTable.name],
+            it[ExtensionTable.pkgName],
+            it[ExtensionTable.versionName],
+            it[ExtensionTable.versionCode],
+            it[ExtensionTable.lang],
+            it[ExtensionTable.isNsfw],
+            it[ExtensionTable.apkName],
+            getExtensionIconUrl(it[ExtensionTable.apkName]),
+            it[ExtensionTable.isInstalled],
+            it[ExtensionTable.hasUpdate],
+            it[ExtensionTable.isObsolete],
+        )
+    }
+}
+
+private fun updateExtensionDatabase(foundExtensions: List<Extension.Available>) {
+    transaction {
+        foundExtensions.forEach { foundExtension ->
+            val extensionRecord = ExtensionTable.select { ExtensionTable.pkgName eq foundExtension.pkgName }.firstOrNull()
+            if (extensionRecord != null) {
+                if (extensionRecord[ExtensionTable.isInstalled]) {
+                    if (foundExtension.versionCode > extensionRecord[ExtensionTable.versionCode]) {
+                        // there is an update
+                        ExtensionTable.update({ ExtensionTable.pkgName eq foundExtension.pkgName }) {
+                            it[hasUpdate] = true
+                        }
+                        ExtensionListData.updateMap.putIfAbsent(foundExtension.pkgName, foundExtension)
+                    } else if (foundExtension.versionCode < extensionRecord[ExtensionTable.versionCode]) {
+                        // some how the user installed an invalid version
+                        ExtensionTable.update({ ExtensionTable.pkgName eq foundExtension.pkgName }) {
+                            it[isObsolete] = true
+                        }
+                    } else {
+                        // the two are equal
+                        // NOOP
+                    }
+                } else {
+                    // extension is not installed so we can overwrite the data without a care
+                    ExtensionTable.update({ ExtensionTable.pkgName eq foundExtension.pkgName }) {
+                        it[name] = foundExtension.name
+                        it[versionName] = foundExtension.versionName
+                        it[versionCode] = foundExtension.versionCode
+                        it[lang] = foundExtension.lang
+                        it[isNsfw] = foundExtension.isNsfw
+                        it[apkName] = foundExtension.apkName
+                        it[iconUrl] = foundExtension.iconUrl
+                    }
+                }
+            } else {
+                // insert new record
+                ExtensionTable.insert {
+                    it[name] = foundExtension.name
+                    it[pkgName] = foundExtension.pkgName
+                    it[versionName] = foundExtension.versionName
+                    it[versionCode] = foundExtension.versionCode
+                    it[lang] = foundExtension.lang
+                    it[isNsfw] = foundExtension.isNsfw
+                    it[apkName] = foundExtension.apkName
+                    it[iconUrl] = foundExtension.iconUrl
+                }
+            }
+        }
+
+        // deal with obsolete extensions
+        ExtensionTable.selectAll().forEach { extensionRecord ->
+            val foundExtension = foundExtensions.find { it.pkgName == extensionRecord[ExtensionTable.pkgName] }
+            if (foundExtension == null) {
+                // this extensions is obsolete
+                if (extensionRecord[ExtensionTable.isInstalled]) {
+                    // is installed so we should mark it as obsolete
+                    ExtensionTable.update({ ExtensionTable.pkgName eq extensionRecord[ExtensionTable.pkgName] }) {
+                        it[isObsolete] = true
+                    }
+                } else {
+                    // is not installed so we can remove the record without a care
+                    ExtensionTable.deleteWhere { ExtensionTable.pkgName eq extensionRecord[ExtensionTable.pkgName] }
+                }
+            }
         }
     }
 }

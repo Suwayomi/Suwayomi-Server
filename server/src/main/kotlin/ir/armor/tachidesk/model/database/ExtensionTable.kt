@@ -1,4 +1,4 @@
-package ir.armor.tachidesk.database.table
+package ir.armor.tachidesk.model.database
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -19,6 +19,8 @@ object ExtensionTable : IntIdTable() {
     val apkName = varchar("apk_name", 1024)
     val iconUrl = varchar("icon_url", 2048)
 
-    val installed = bool("installed").default(false)
+    val isInstalled = bool("is_installed").default(false)
+    val hasUpdate = bool("has_update").default(false)
+    val isObsolete = bool("is_obsolete").default(false)
     val classFQName = varchar("class_name", 256).default("") // fully qualified name
 }

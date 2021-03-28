@@ -10,7 +10,7 @@ package ir.armor.tachidesk.server
 import ch.qos.logback.classic.Level
 import eu.kanade.tachiyomi.App
 import ir.armor.tachidesk.Main
-import ir.armor.tachidesk.database.makeDataBaseTables
+import ir.armor.tachidesk.model.dataclass.makeDataBaseTables
 import ir.armor.tachidesk.server.util.systemTray
 import mu.KotlinLogging
 import net.harawata.appdirs.AppDirsFactory
@@ -40,7 +40,7 @@ val androidCompat by lazy { AndroidCompat() }
 fun applicationSetup() {
     // register server config
     GlobalConfigManager.registerModule(
-            ServerConfig.register(GlobalConfigManager.config)
+        ServerConfig.register(GlobalConfigManager.config)
     )
 
     // set application wide logging level
@@ -50,10 +50,10 @@ fun applicationSetup() {
 
     // make dirs we need
     listOf(
-            applicationDirs.dataRoot,
-            applicationDirs.extensionsRoot,
-            "${applicationDirs.extensionsRoot}/icon",
-            applicationDirs.thumbnailsRoot
+        applicationDirs.dataRoot,
+        applicationDirs.extensionsRoot,
+        "${applicationDirs.extensionsRoot}/icon",
+        applicationDirs.thumbnailsRoot
     ).forEach {
         File(it).mkdirs()
     }
@@ -99,5 +99,6 @@ fun applicationSetup() {
         System.getProperties()["proxySet"] = "true"
         System.getProperties()["socksProxyHost"] = serverConfig.socksProxyHost
         System.getProperties()["socksProxyPort"] = serverConfig.socksProxyPort
+        logger.info("Socks Proxy is enabled to ${serverConfig.socksProxyHost}:${serverConfig.socksProxyPort}")
     }
 }

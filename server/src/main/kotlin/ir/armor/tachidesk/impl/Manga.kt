@@ -9,9 +9,9 @@ package ir.armor.tachidesk.impl
 
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.model.SManga
-import ir.armor.tachidesk.database.dataclass.MangaDataClass
-import ir.armor.tachidesk.database.table.MangaStatus
-import ir.armor.tachidesk.database.table.MangaTable
+import ir.armor.tachidesk.model.database.MangaStatus
+import ir.armor.tachidesk.model.database.MangaTable
+import ir.armor.tachidesk.model.dataclass.MangaDataClass
 import ir.armor.tachidesk.server.applicationDirs
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction

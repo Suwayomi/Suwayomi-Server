@@ -1,4 +1,4 @@
-package ir.armor.tachidesk.database.dataclass
+package ir.armor.tachidesk.model.dataclass
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -7,10 +7,9 @@ package ir.armor.tachidesk.database.dataclass
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-data class SourceDataClass(
-    val id: String,
-    val name: String?,
-    val lang: String?,
-    val iconUrl: String?,
-    val supportsLatest: Boolean?
+data class CategoryDataClass(
+    val id: Int,
+    val order: Int,
+    val name: String,
+    val isLanding: Boolean
 )
