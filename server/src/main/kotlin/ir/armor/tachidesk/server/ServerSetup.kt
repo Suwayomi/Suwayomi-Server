@@ -40,7 +40,7 @@ val androidCompat by lazy { AndroidCompat() }
 fun applicationSetup() {
     // register server config
     GlobalConfigManager.registerModule(
-        ServerConfig.register(GlobalConfigManager.config)
+            ServerConfig.register(GlobalConfigManager.config)
     )
 
     // set application wide logging level
@@ -50,10 +50,10 @@ fun applicationSetup() {
 
     // make dirs we need
     listOf(
-        applicationDirs.dataRoot,
-        applicationDirs.extensionsRoot,
-        "${applicationDirs.extensionsRoot}/icon",
-        applicationDirs.thumbnailsRoot
+            applicationDirs.dataRoot,
+            applicationDirs.extensionsRoot,
+            "${applicationDirs.extensionsRoot}/icon",
+            applicationDirs.thumbnailsRoot
     ).forEach {
         File(it).mkdirs()
     }
@@ -95,7 +95,9 @@ fun applicationSetup() {
     System.setProperty("org.eclipse.jetty.LEVEL", "OFF")
 
     // socks proxy settings
-    System.getProperties()["proxySet"] = serverConfig.socksProxy.toString()
-    System.getProperties()["socksProxyHost"] = serverConfig.socksProxyHost
-    System.getProperties()["socksProxyPort"] = serverConfig.socksProxyPort
+    if (serverConfig.socksProxyEnabled) {
+        System.getProperties()["proxySet"] = "true"
+        System.getProperties()["socksProxyHost"] = serverConfig.socksProxyHost
+        System.getProperties()["socksProxyPort"] = serverConfig.socksProxyPort
+    }
 }

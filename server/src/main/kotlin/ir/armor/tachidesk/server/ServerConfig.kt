@@ -16,7 +16,7 @@ class ServerConfig(config: Config) : ConfigModule(config) {
     val port: Int by config
 
     // proxy
-    val socksProxy: Boolean by config
+    val socksProxyEnabled: Boolean by config
     val socksProxyHost: String by config
     val socksProxyPort: String by config
 
