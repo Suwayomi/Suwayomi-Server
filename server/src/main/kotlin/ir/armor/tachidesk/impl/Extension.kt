@@ -120,7 +120,7 @@ fun installAPK(apkName: String): Int {
                             it[extension] = extensionId
                         }
                     }
-                    logger.debug("Installed source ${httpSource.name} with id {httpSource.id}")
+                    logger.debug("Installed source ${httpSource.name} with id ${httpSource.id}")
                 }
             } else { // multi source
                 val sourceFactory = instance as SourceFactory
