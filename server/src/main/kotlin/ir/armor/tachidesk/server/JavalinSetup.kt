@@ -32,6 +32,7 @@ import ir.armor.tachidesk.impl.updateCategory
 import ir.armor.tachidesk.impl.updateExtension
 import ir.armor.tachidesk.server.util.openInBrowser
 import mu.KotlinLogging
+import java.io.IOException
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -64,6 +65,12 @@ fun javalinSetup() {
     app.exception(NullPointerException::class.java) { e, ctx ->
         logger.error("NullPointerException while handling the request", e)
         ctx.status(404)
+    }
+
+    app.exception(IOException::class.java) { e, ctx ->
+        logger.error("IOException while handling the request", e)
+        ctx.status(500)
+        ctx.result(e.message ?: "Internal Server Error")
     }
 
     app.get("/api/v1/extension/list") { ctx ->
@@ -263,6 +270,18 @@ fun javalinSetup() {
 
     // returns the manga list associated with a category
     app.get("/api/v1/category/:categoryId") { ctx ->
+        val categoryId = ctx.pathParam("categoryId").toInt()
+        ctx.json(getCategoryMangaList(categoryId))
+    }
+
+    // expects a Tachiyomi legacy backup file to be uploaded
+    app.get("/api/v1/backup/legacy/import") { ctx ->
+        val categoryId = ctx.pathParam("categoryId").toInt()
+        ctx.json(getCategoryMangaList(categoryId))
+    }
+
+    // returns a Tachiyomi legacy backup file created from the current database
+    app.get("/api/v1/backup/legacy/export") { ctx ->
         val categoryId = ctx.pathParam("categoryId").toInt()
         ctx.json(getCategoryMangaList(categoryId))
     }
