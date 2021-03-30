@@ -8,8 +8,8 @@ package ir.armor.tachidesk.model.database
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.SManga
-import ir.armor.tachidesk.impl.proxyThumbnailUrl
 import ir.armor.tachidesk.model.dataclass.MangaDataClass
+import ir.armor.tachidesk.impl.proxyThumbnailUrl
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
 

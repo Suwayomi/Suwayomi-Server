@@ -18,7 +18,7 @@ import ir.armor.tachidesk.impl.getMangaList
 import ir.armor.tachidesk.impl.getPageImage
 import ir.armor.tachidesk.impl.getSource
 import ir.armor.tachidesk.impl.getSourceList
-import ir.armor.tachidesk.impl.getThumbnail
+import ir.armor.tachidesk.impl.getMangaThumbnail
 import ir.armor.tachidesk.impl.installExtension
 import ir.armor.tachidesk.impl.removeCategory
 import ir.armor.tachidesk.impl.removeMangaFromCategory
@@ -143,7 +143,7 @@ fun javalinSetup() {
     // manga thumbnail
     app.get("api/v1/manga/:mangaId/thumbnail") { ctx ->
         val mangaId = ctx.pathParam("mangaId").toInt()
-        val result = getThumbnail(mangaId)
+        val result = getMangaThumbnail(mangaId)
 
         ctx.result(result.first)
         ctx.header("content-type", result.second)

@@ -19,6 +19,10 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 
+
+/**
+ * The new category will be placed at the end of the list
+ */
 fun createCategory(name: String) {
     transaction {
         val count = CategoryTable.selectAll().count()
@@ -39,6 +43,9 @@ fun updateCategory(categoryId: Int, name: String?, isLanding: Boolean?) {
     }
 }
 
+/**
+ * Move the category from position `from` to `to`
+ */
 fun reorderCategory(categoryId: Int, from: Int, to: Int) {
     transaction {
         val categories = CategoryTable.selectAll().orderBy(CategoryTable.order to SortOrder.ASC).toMutableList()

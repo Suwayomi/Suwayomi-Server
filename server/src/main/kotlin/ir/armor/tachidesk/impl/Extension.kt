@@ -15,9 +15,9 @@ import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
-import ir.armor.tachidesk.impl.util.APKExtractor
 import ir.armor.tachidesk.model.database.ExtensionTable
 import ir.armor.tachidesk.model.database.SourceTable
+import ir.armor.tachidesk.impl.util.APKExtractor
 import ir.armor.tachidesk.server.applicationDirs
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
@@ -114,41 +114,45 @@ fun installExtension(pkgName: String): Int {
             File(dexFilePath).delete()
 
             // update sources of the extension
-            val instance = loadExtensionInstance(jarFilePath,className)
+            val instance = loadExtensionInstance(jarFilePath, className)
 
             val extensionId = transaction {
-                return@transaction ExtensionTable.select { ExtensionTable.name eq extensionRecord.name }.first()[ExtensionTable.id]
+                ExtensionTable.select { ExtensionTable.name eq extensionRecord.name }.firstOrNull()!![ExtensionTable.id]
             }
 
-            if (instance is HttpSource) { // single source
-                val httpSource = instance as HttpSource
-                transaction {
-                    if (SourceTable.select { SourceTable.id eq httpSource.id }.count() == 0L) {
-                        SourceTable.insert {
-                            it[this.id] = httpSource.id
-                            it[name] = httpSource.name
-                            it[this.lang] = httpSource.lang
-                            it[extension] = extensionId
-                        }
-                    }
-                    logger.debug("Installed source ${httpSource.name} with id ${httpSource.id}")
-                }
-            } else { // multi source
-                val sourceFactory = instance as SourceFactory
-                transaction {
-                    sourceFactory.createSources().forEachIndexed { index, source ->
-                        val httpSource = source as HttpSource
-                        if (SourceTable.select { SourceTable.id eq httpSource.id }.count() == 0L) {
+            when (instance) {
+                is HttpSource -> { // single source
+                    transaction {
+                        if (SourceTable.select { SourceTable.id eq instance.id }.count() == 0L) {
                             SourceTable.insert {
-                                it[this.id] = httpSource.id
-                                it[name] = httpSource.name
-                                it[this.lang] = httpSource.lang
+                                it[this.id] = instance.id
+                                it[name] = instance.name
+                                it[this.lang] = instance.lang
                                 it[extension] = extensionId
-                                it[partOfFactorySource] = true
                             }
                         }
-                        logger.debug("Installed source ${httpSource.name} with id:${httpSource.id}")
+                        logger.debug("Installed source ${instance.name} with id ${instance.id}")
                     }
+                }
+                is SourceFactory -> { // theme source or multi lang
+                    transaction {
+                        instance.createSources().forEachIndexed { index, source ->
+                            val httpSource = source as HttpSource
+                            if (SourceTable.select { SourceTable.id eq httpSource.id }.count() == 0L) {
+                                SourceTable.insert {
+                                    it[this.id] = httpSource.id
+                                    it[name] = httpSource.name
+                                    it[this.lang] = httpSource.lang
+                                    it[extension] = extensionId
+                                    it[partOfFactorySource] = true
+                                }
+                            }
+                            logger.debug("Installed source ${httpSource.name} with id:${httpSource.id}")
+                        }
+                    }
+                }
+                else -> {
+                    throw RuntimeException("Extension content is unexpected")
                 }
             }
 

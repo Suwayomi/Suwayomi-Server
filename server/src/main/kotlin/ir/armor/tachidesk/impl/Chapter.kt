@@ -64,10 +64,10 @@ fun getChapterList(mangaId: Int): List<ChapterDataClass> {
         // clear any orphaned chapters
         val dbChapterCount = transaction { ChapterTable.selectAll().count() }
         if (dbChapterCount > chapterCount) { // we got some clean up due
-            // TODO
+            // TODO: delete orphan chapters
         }
 
-        return@transaction chapterList.mapIndexed { index, it ->
+        chapterList.mapIndexed { index, it ->
             ChapterDataClass(
                 ChapterTable.select { ChapterTable.url eq it.url }.firstOrNull()!![ChapterTable.id].value,
                 it.url,
@@ -136,6 +136,6 @@ fun getChapter(chapterIndex: Int, mangaId: Int): ChapterDataClass {
             }
         }
 
-        return@transaction chapter
+        chapter
     }
 }

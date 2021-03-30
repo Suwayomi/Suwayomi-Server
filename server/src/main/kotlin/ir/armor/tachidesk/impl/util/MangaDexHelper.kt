@@ -1,4 +1,4 @@
-package ir.armor.tachidesk.impl
+package ir.armor.tachidesk.impl.util
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -13,6 +13,7 @@ import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import java.net.URLEncoder
 
+// TODO: finish MangaDex support
 class MangaDexHelper(private val mangaDexSource: HttpSource) {
 
     private fun clientBuilder(): OkHttpClient = clientBuilder(0)

@@ -47,6 +47,10 @@ fun removeMangaFromCategory(mangaId: Int, categoryId: Int) {
     }
 }
 
+
+/**
+ * list of mangas that belong to a category
+ */
 fun getCategoryMangaList(categoryId: Int): List<MangaDataClass> {
     return transaction {
         CategoryMangaTable.innerJoin(MangaTable).select { CategoryMangaTable.category eq categoryId }.map {
@@ -55,6 +59,9 @@ fun getCategoryMangaList(categoryId: Int): List<MangaDataClass> {
     }
 }
 
+/**
+ * list of categories that a manga belongs to
+ */
 fun getMangaCategories(mangaId: Int): List<CategoryDataClass> {
     return transaction {
         CategoryMangaTable.innerJoin(CategoryTable).select { CategoryMangaTable.manga eq mangaId }.orderBy(CategoryTable.order to SortOrder.ASC).map {

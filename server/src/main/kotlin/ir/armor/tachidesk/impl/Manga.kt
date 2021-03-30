@@ -88,7 +88,7 @@ fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
     }
 }
 
-fun getThumbnail(mangaId: Int): Pair<InputStream, String> {
+fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
     val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
     val saveDir = applicationDirs.thumbnailsRoot
     val fileName = mangaId.toString()

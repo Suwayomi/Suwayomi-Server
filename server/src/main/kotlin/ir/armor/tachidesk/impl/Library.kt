@@ -17,6 +17,9 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 
+// TODO: `Category.isLanding` is to handle the default categories a new library manga gets,
+// ..implement that shit at some time...
+// ..also Consider to rename it to `isDefault`
 fun addMangaToLibrary(mangaId: Int) {
     val manga = getManga(mangaId)
     if (!manga.inLibrary) {

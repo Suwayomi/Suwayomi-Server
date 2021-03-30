@@ -21,6 +21,10 @@ import org.jetbrains.exposed.sql.update
 import java.io.File
 import java.io.InputStream
 
+/**
+ * A page might have a imageUrl ready from the get go, or we might need to
+ * go an extra step and call fetchImageUrl to get it.
+ */
 fun getTrueImageUrl(page: Page, source: HttpSource): String {
     if (page.imageUrl == null) {
         page.imageUrl = source.fetchImageUrl(page).toBlocking().first()!!
@@ -63,6 +67,7 @@ fun getPageImage(mangaId: Int, chapterIndex: Int, index: Int): Pair<InputStream,
     }
 }
 
+// TODO: rewrite this to match tachiyomi
 fun getChapterDir(mangaId: Int, chapterId: Int): String {
     val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
     val sourceId = mangaEntry[MangaTable.sourceReference]

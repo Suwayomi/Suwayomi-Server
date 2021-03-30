@@ -134,8 +134,8 @@ object APKExtractor {
                     // AttrValue StrInd
                     off += 5 * 4 // Skip over the 5 words of an attribute
                     val attrName = compXmlString(
-                            xml, sitOff, stOff,
-                            attrNameSi
+                        xml, sitOff, stOff,
+                        attrNameSi
                     )
                     val attrValue = if (attrValueSi != -1) compXmlString(xml, sitOff, stOff, attrValueSi)
                     else "resourceID 0x ${Integer.toHexString(attrResId)}"
@@ -151,21 +151,21 @@ object APKExtractor {
                 val name = compXmlString(xml, sitOff, stOff, nameSi)
                 finalXML.append("</$name>")
                 prtIndent(
-                        indent,
-                        "</" + name + "> (line " + startTagLineNo +
-                                "-" + lineNo + ")"
+                    indent,
+                    "</" + name + "> (line " + startTagLineNo +
+                        "-" + lineNo + ")"
                 )
                 // tr.parent(); // Step back up the NobTree
             } else if (tag0 == endDocTag) { // END OF XML DOC TAG
                 break
             } else {
                 logger.debug(
-                        "  Unrecognized  tag code '${Integer.toHexString(tag0)}'' at offset $off"
+                    "  Unrecognized  tag code '${Integer.toHexString(tag0)}'' at offset $off"
                 )
                 break
             }
         } // end of while loop scanning tags and attributes of XML tree
-        logger.debug("    end at offset $off");
+        logger.debug("    end at offset $off")
         return finalXML.toString()
     } // end of decompressXML
 
@@ -197,16 +197,16 @@ object APKExtractor {
     private fun LEW(arr: ByteArray, off: Int): Int {
 
         return (arr[off + 3].toInt() shl 24) and -0x1000000 or
-                (arr[off + 2].toInt() shl 16 and 0xff0000) or
-                (arr[off + 1].toInt() shl 8 and 0xff00) or
-                (arr[off].toInt() and 0xFF)
+            (arr[off + 2].toInt() shl 16 and 0xff0000) or
+            (arr[off + 1].toInt() shl 8 and 0xff00) or
+            (arr[off].toInt() and 0xFF)
     } // end of LEW
 
     @Throws(Exception::class)
     private fun loadXMLFromString(xml: String?): Document {
         return DocumentBuilderFactory.newInstance()
-                .newDocumentBuilder()
-                .parse(InputSource(StringReader(xml)))
+            .newDocumentBuilder()
+            .parse(InputSource(StringReader(xml)))
     }
 
     @Throws(IOException::class)

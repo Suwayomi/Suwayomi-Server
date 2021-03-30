@@ -48,7 +48,7 @@ fun getExtensionList(): List<ExtensionDataClass> {
 }
 
 fun extensionTableAsDataClass() = transaction {
-    return@transaction ExtensionTable.selectAll().map {
+    ExtensionTable.selectAll().map {
         ExtensionDataClass(
             it[ExtensionTable.name],
             it[ExtensionTable.pkgName],

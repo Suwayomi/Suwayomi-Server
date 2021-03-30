@@ -23,7 +23,6 @@ private val logger = KotlinLogging.logger {}
 
 private val sourceCache = ConcurrentHashMap<Long, HttpSource>()
 
-
 fun getHttpSource(sourceId: Long): HttpSource {
     val cachedResult: HttpSource? = sourceCache[sourceId]
     if (cachedResult != null) {
@@ -41,10 +40,10 @@ fun getHttpSource(sourceId: Long): HttpSource {
         val jarName = apkName.substringBefore(".apk") + ".jar"
         val jarPath = "${applicationDirs.extensionsRoot}/$jarName"
 
-        val extensionInstance = loadExtensionInstance(jarPath,className)
+        val extensionInstance = loadExtensionInstance(jarPath, className)
 
         if (sourceRecord[SourceTable.partOfFactorySource]) {
-            (extensionInstance as SourceFactory).createSources().forEach{
+            (extensionInstance as SourceFactory).createSources().forEach {
                 sourceCache[it.id] = it as HttpSource
             }
         } else {
@@ -58,7 +57,7 @@ fun getHttpSource(sourceId: Long): HttpSource {
 
 fun getSourceList(): List<SourceDataClass> {
     return transaction {
-        return@transaction SourceTable.selectAll().map {
+        SourceTable.selectAll().map {
             SourceDataClass(
                 it[SourceTable.id].value.toString(),
                 it[SourceTable.name],
@@ -74,7 +73,7 @@ fun getSource(sourceId: Long): SourceDataClass {
     return transaction {
         val source = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
 
-        return@transaction SourceDataClass(
+        SourceDataClass(
             sourceId.toString(),
             source?.get(SourceTable.name),
             source?.get(SourceTable.lang),
