@@ -10,7 +10,6 @@ import retrofit2.Retrofit
 import retrofit2.http.GET
 import uy.kohesive.injekt.injectLazy
 
-// import uy.kohesive.injekt.injectLazy
 
 /**
  * Used to get the extension repo listing from GitHub.
@@ -44,5 +43,5 @@ interface ExtensionGithubService {
     }
 
     @GET("${ExtensionGithubApi.REPO_URL_PREFIX}/index.json.gz")
-    suspend fun getRepo(): JsonArray
+    fun getRepo(): JsonArray
 }

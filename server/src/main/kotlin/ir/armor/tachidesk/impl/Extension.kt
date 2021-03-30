@@ -94,8 +94,7 @@ fun installExtension(pkgName: String): Int {
     val jarPath = "${applicationDirs.extensionsRoot}/$fileNameWithoutType.jar"
     if (!File(jarPath).exists()) {
         runBlocking {
-            val api = ExtensionGithubApi()
-            val apkToDownload = api.getApkUrl(extensionRecord)
+            val apkToDownload = ExtensionGithubApi.getApkUrl(extensionRecord)
 
             val apkFilePath = "$dirPathWithoutType.apk"
             val jarFilePath = "$dirPathWithoutType.jar"

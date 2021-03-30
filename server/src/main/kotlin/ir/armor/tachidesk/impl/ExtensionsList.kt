@@ -37,7 +37,7 @@ fun getExtensionList(): List<ExtensionDataClass> {
         logger.debug("Getting extensions list from the internet")
         ExtensionListData.lastUpdateCheck = System.currentTimeMillis()
         runBlocking {
-            val foundExtensions = ExtensionGithubApi().findExtensions()
+            val foundExtensions = ExtensionGithubApi.findExtensions()
             updateExtensionDatabase(foundExtensions)
         }
     } else {
