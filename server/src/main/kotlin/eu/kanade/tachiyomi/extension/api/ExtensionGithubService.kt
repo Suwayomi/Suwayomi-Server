@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.extension.api
 
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import eu.kanade.tachiyomi.network.NetworkHelper
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import okhttp3.MediaType.Companion.toMediaType
@@ -23,13 +24,14 @@ interface ExtensionGithubService {
                 .addNetworkInterceptor { chain ->
                     val originalResponse = chain.proceed(chain.request())
                     originalResponse.newBuilder()
-//                        .header("Content-Encoding", "gzip")
+                        .header("Content-Encoding", "gzip")
                         .header("Content-Type", "application/json")
                         .build()
                 }
                 .build()
         }
 
+        @ExperimentalSerializationApi
         fun create(): ExtensionGithubService {
             val adapter = Retrofit.Builder()
                 .baseUrl(ExtensionGithubApi.BASE_URL)
@@ -41,7 +43,6 @@ interface ExtensionGithubService {
         }
     }
 
-//    @GET("${ExtensionGithubApi.REPO_URL_PREFIX}/index.json.gz")
-    @GET("${ExtensionGithubApi.REPO_URL_PREFIX}/index.json")
+    @GET("${ExtensionGithubApi.REPO_URL_PREFIX}/index.json.gz")
     suspend fun getRepo(): JsonArray
 }
