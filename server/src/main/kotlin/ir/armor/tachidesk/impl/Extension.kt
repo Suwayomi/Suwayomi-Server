@@ -91,7 +91,7 @@ fun installExtension(pkgName: String): Int {
             // download apk file
             downloadAPKFile(apkToDownload, apkFilePath)
 
-            val className: String = APKExtractor.extract_dex_and_read_className(apkFilePath, dexFilePath)
+            val className: String = APKExtractor.extractDexAndReadClassname(apkFilePath, dexFilePath)
             logger.debug(className)
             // dex -> jar
             dex2jar(dexFilePath, jarFilePath, fileNameWithoutType)
@@ -134,7 +134,6 @@ fun installExtension(pkgName: String): Int {
                                 it[this.lang] = httpSource.lang
                                 it[extension] = extensionId
                                 it[partOfFactorySource] = true
-                                it[positionInFactorySource] = index
                             }
                         }
                         logger.debug("Installed source ${httpSource.name} with id:${httpSource.id}")

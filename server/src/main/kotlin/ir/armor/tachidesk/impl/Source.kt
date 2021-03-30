@@ -19,24 +19,22 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.net.URL
 import java.net.URLClassLoader
+import java.util.concurrent.ConcurrentHashMap
 
 private val logger = KotlinLogging.logger {}
 
-private val sourceCache = mutableListOf<Pair<Long, HttpSource>>()
-private val extensionCache = mutableListOf<Pair<String, Any>>()
+private val sourceCache = ConcurrentHashMap<Long, HttpSource>()
 
 fun getHttpSource(sourceId: Long): HttpSource {
-    val sourceRecord = transaction {
-        SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!!
-    }
-
-    val cachedResult: Pair<Long, HttpSource>? = sourceCache.firstOrNull { it.first == sourceId }
+    val cachedResult: HttpSource? = sourceCache[sourceId]
     if (cachedResult != null) {
-        logger.debug("used cached HttpSource: ${cachedResult.second.name}")
-        return cachedResult.second
+        logger.debug("used cached HttpSource: ${cachedResult.name}")
+        return cachedResult
     }
 
-    val result: HttpSource = transaction {
+    transaction {
+        val sourceRecord = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!!
+
         val extensionId = sourceRecord[SourceTable.extension]
         val extensionRecord = ExtensionTable.select { ExtensionTable.id eq extensionId }.firstOrNull()!!
         val apkName = extensionRecord[ExtensionTable.apkName]
@@ -44,37 +42,24 @@ fun getHttpSource(sourceId: Long): HttpSource {
         val jarName = apkName.substringBefore(".apk") + ".jar"
         val jarPath = "${applicationDirs.extensionsRoot}/$jarName"
 
-        val cachedExtensionPair = extensionCache.firstOrNull { it.first == jarPath }
-        var usedCached = false
-        val instance =
-            if (cachedExtensionPair != null) {
-                usedCached = true
-                logger.debug("Used cached Extension")
-                cachedExtensionPair.second
-            } else {
-                logger.debug("No Extension cache")
+        val extensionInstance =
+            {
                 val child = URLClassLoader(arrayOf<URL>(URL("file:$jarPath")), this::class.java.classLoader)
                 val classToLoad = Class.forName(className, true, child)
-                classToLoad.newInstance()
+                classToLoad.getDeclaredConstructor().newInstance()
             }
+
         if (sourceRecord[SourceTable.partOfFactorySource]) {
-            val positionInFactorySource = sourceRecord[SourceTable.positionInFactorySource]!!
-            return@transaction if (usedCached) {
-                @Suppress("UNCHECKED_CAST")
-                (instance as List<HttpSource>)[positionInFactorySource]
-            } else {
-                val list = (instance as SourceFactory).createSources()
-                extensionCache.add(Pair(jarPath, list))
-                list[positionInFactorySource] as HttpSource
+            (extensionInstance as SourceFactory).createSources().forEach{
+                sourceCache[it.id] = it as HttpSource
             }
         } else {
-            if (!usedCached)
-                extensionCache.add(Pair(jarPath, instance))
-            return@transaction instance as HttpSource
+            (extensionInstance as HttpSource).also {
+                sourceCache[it.id] = it
+            }
         }
     }
-    sourceCache.add(Pair(sourceId, result))
-    return result
+    return sourceCache[sourceId]!!
 }
 
 fun getSourceList(): List<SourceDataClass> {
