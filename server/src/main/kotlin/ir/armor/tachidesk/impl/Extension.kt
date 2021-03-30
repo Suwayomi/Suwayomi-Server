@@ -39,6 +39,9 @@ import java.nio.file.Path
 
 private val logger = KotlinLogging.logger {}
 
+/**
+ * Convert dex to jar, a wrapper for the dex2jar library
+ */
 private fun dex2jar(dexFile: String, jarFile: String, fileNameWithoutType: String) {
     // adopted from com.googlecode.dex2jar.tools.Dex2jarCmd.doCommandLine
     // source at: https://github.com/DexPatcher/dex2jar/tree/v2.1-20190905-lanchon/dex-tools/src/main/java/com/googlecode/dex2jar/tools/Dex2jarCmd.java
@@ -71,7 +74,11 @@ private fun dex2jar(dexFile: String, jarFile: String, fileNameWithoutType: Strin
     }
 }
 
-fun loadExtension(jarPath: String, className: String): Any {
+/**
+ * loads the extension main class called $className from the jar located at $jarPath
+ * It may return an instance of HttpSource or SourceFactory depending on the extension.
+ */
+fun loadExtensionInstance(jarPath: String, className: String): Any {
     val classLoader = URLClassLoader(arrayOf<URL>(URL("file:$jarPath")))
     val classToLoad = Class.forName(className, true, classLoader)
     return classToLoad.getDeclaredConstructor().newInstance()
@@ -107,7 +114,7 @@ fun installExtension(pkgName: String): Int {
             File(dexFilePath).delete()
 
             // update sources of the extension
-            val instance = loadExtension(jarFilePath,className)
+            val instance = loadExtensionInstance(jarFilePath,className)
 
             val extensionId = transaction {
                 return@transaction ExtensionTable.select { ExtensionTable.name eq extensionRecord.name }.first()[ExtensionTable.id]

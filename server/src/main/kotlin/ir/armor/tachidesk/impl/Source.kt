@@ -41,7 +41,7 @@ fun getHttpSource(sourceId: Long): HttpSource {
         val jarName = apkName.substringBefore(".apk") + ".jar"
         val jarPath = "${applicationDirs.extensionsRoot}/$jarName"
 
-        val extensionInstance = loadExtension(jarPath,className)
+        val extensionInstance = loadExtensionInstance(jarPath,className)
 
         if (sourceRecord[SourceTable.partOfFactorySource]) {
             (extensionInstance as SourceFactory).createSources().forEach{
