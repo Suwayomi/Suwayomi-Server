@@ -20,8 +20,8 @@ import java.io.IOException
 fun openInBrowser() {
     try {
         Desktop.browseURL("http://127.0.0.1:4567")
-    } catch (e1: IOException) {
-        e1.printStackTrace()
+    } catch (e: Exception) {
+        e.printStackTrace()
     }
 }
 

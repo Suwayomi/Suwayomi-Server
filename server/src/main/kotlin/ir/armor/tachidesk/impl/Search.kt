@@ -13,29 +13,29 @@ import ir.armor.tachidesk.model.dataclass.PagedMangaListDataClass
 
 object Search {
 // TODO
-fun sourceFilters(sourceId: Long) {
-    val source = getHttpSource(sourceId)
-    // source.getFilterList().toItems()
-}
+    fun sourceFilters(sourceId: Long) {
+        val source = getHttpSource(sourceId)
+        // source.getFilterList().toItems()
+    }
 
-fun sourceSearch(sourceId: Long, searchTerm: String, pageNum: Int): PagedMangaListDataClass {
-    val source = getHttpSource(sourceId)
-    val searchManga = source.fetchSearchManga(pageNum, searchTerm, source.getFilterList()).toBlocking().first()
-    return searchManga.processEntries(sourceId)
-}
+    fun sourceSearch(sourceId: Long, searchTerm: String, pageNum: Int): PagedMangaListDataClass {
+        val source = getHttpSource(sourceId)
+        val searchManga = source.fetchSearchManga(pageNum, searchTerm, source.getFilterList()).toBlocking().first()
+        return searchManga.processEntries(sourceId)
+    }
 
-fun sourceGlobalSearch(searchTerm: String) {
-    // TODO
-}
+    fun sourceGlobalSearch(searchTerm: String) {
+        // TODO
+    }
 
-data class FilterWrapper(
-    val type: String,
-    val filter: Any
-)
+    data class FilterWrapper(
+        val type: String,
+        val filter: Any
+    )
 
 /**
- * Note: Exhentai had a filter serializer (now in SY) that we might be able to steal
- */
+     * Note: Exhentai had a filter serializer (now in SY) that we might be able to steal
+     */
 // private fun FilterList.toFilterWrapper(): List<FilterWrapper> {
 //    return mapNotNull { filter ->
 //        when (filter) {

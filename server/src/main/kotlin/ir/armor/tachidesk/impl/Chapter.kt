@@ -29,10 +29,10 @@ object Chapter {
         val source = getHttpSource(mangaDetails.sourceId.toLong())
 
         val chapterList = source.fetchChapterList(
-                SManga.create().apply {
-                    title = mangaDetails.title
-                    url = mangaDetails.url
-                }
+            SManga.create().apply {
+                title = mangaDetails.title
+                url = mangaDetails.url
+            }
         ).toBlocking().first()
 
         val chapterCount = chapterList.count()
@@ -72,15 +72,15 @@ object Chapter {
 
             chapterList.mapIndexed { index, it ->
                 ChapterDataClass(
-                        ChapterTable.select { ChapterTable.url eq it.url }.firstOrNull()!![ChapterTable.id].value,
-                        it.url,
-                        it.name,
-                        it.date_upload,
-                        it.chapter_number,
-                        it.scanlator,
-                        mangaId,
-                        chapterCount - index,
-                        chapterCount
+                    ChapterTable.select { ChapterTable.url eq it.url }.firstOrNull()!![ChapterTable.id].value,
+                    it.url,
+                    it.name,
+                    it.date_upload,
+                    it.chapter_number,
+                    it.scanlator,
+                    mangaId,
+                    chapterCount - index,
+                    chapterCount
                 )
             }
         }
@@ -95,27 +95,27 @@ object Chapter {
             val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
 
             val pageList = source.fetchPageList(
-                    SChapter.create().apply {
-                        url = chapterEntry[ChapterTable.url]
-                        name = chapterEntry[ChapterTable.name]
-                    }
+                SChapter.create().apply {
+                    url = chapterEntry[ChapterTable.url]
+                    name = chapterEntry[ChapterTable.name]
+                }
             ).toBlocking().first()
 
             val chapterId = chapterEntry[ChapterTable.id].value
             val chapterCount = transaction { ChapterTable.selectAll().count() }
 
             val chapter = ChapterDataClass(
-                    chapterId,
-                    chapterEntry[ChapterTable.url],
-                    chapterEntry[ChapterTable.name],
-                    chapterEntry[ChapterTable.date_upload],
-                    chapterEntry[ChapterTable.chapter_number],
-                    chapterEntry[ChapterTable.scanlator],
-                    mangaId,
-                    chapterEntry[ChapterTable.chapterIndex],
-                    chapterCount.toInt(),
+                chapterId,
+                chapterEntry[ChapterTable.url],
+                chapterEntry[ChapterTable.name],
+                chapterEntry[ChapterTable.date_upload],
+                chapterEntry[ChapterTable.chapter_number],
+                chapterEntry[ChapterTable.scanlator],
+                mangaId,
+                chapterEntry[ChapterTable.chapterIndex],
+                chapterCount.toInt(),
 
-                    pageList.count()
+                pageList.count()
             )
 
             pageList.forEach { page ->

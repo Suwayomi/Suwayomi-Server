@@ -14,14 +14,14 @@ import ir.armor.tachidesk.model.database.ExtensionTable
 import ir.armor.tachidesk.model.database.MangaTable
 import ir.armor.tachidesk.model.database.PageTable
 import ir.armor.tachidesk.model.database.SourceTable
-import ir.armor.tachidesk.server.applicationDirs
+import ir.armor.tachidesk.server.ApplicationDirs
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 
 object DBMangaer {
     val db by lazy {
-        Database.connect("jdbc:h2:${applicationDirs.dataRoot}/database", "org.h2.Driver")
+        Database.connect("jdbc:h2:${ApplicationDirs.dataRoot}/database", "org.h2.Driver")
     }
 }
 

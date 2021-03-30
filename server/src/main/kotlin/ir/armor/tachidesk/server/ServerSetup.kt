@@ -24,7 +24,7 @@ import java.io.File
 
 private val logger = KotlinLogging.logger {}
 
-object applicationDirs {
+object ApplicationDirs {
     val dataRoot = AppDirsFactory.getInstance().getUserDataDir("Tachidesk", null, null)!!
     val extensionsRoot = "$dataRoot/extensions"
     val thumbnailsRoot = "$dataRoot/thumbnails"
@@ -50,17 +50,17 @@ fun applicationSetup() {
 
     // make dirs we need
     listOf(
-        applicationDirs.dataRoot,
-        applicationDirs.extensionsRoot,
-        "${applicationDirs.extensionsRoot}/icon",
-        applicationDirs.thumbnailsRoot
+        ApplicationDirs.dataRoot,
+        ApplicationDirs.extensionsRoot,
+        "${ApplicationDirs.extensionsRoot}/icon",
+        ApplicationDirs.thumbnailsRoot
     ).forEach {
         File(it).mkdirs()
     }
 
     // create conf file if doesn't exist
     try {
-        val dataConfFile = File("${applicationDirs.dataRoot}/server.conf")
+        val dataConfFile = File("${ApplicationDirs.dataRoot}/server.conf")
         if (!dataConfFile.exists()) {
             Main::class.java.getResourceAsStream("/server-reference.conf").use { input ->
                 dataConfFile.outputStream().use { output ->

@@ -45,34 +45,34 @@ object Category {
     }
 
 /**
- * Move the category from position `from` to `to`
- */
-fun reorderCategory(categoryId: Int, from: Int, to: Int) {
-    transaction {
-        val categories = CategoryTable.selectAll().orderBy(CategoryTable.order to SortOrder.ASC).toMutableList()
-        categories.add(to - 1, categories.removeAt(from - 1))
-        categories.forEachIndexed { index, cat ->
-            CategoryTable.update({ CategoryTable.id eq cat[CategoryTable.id].value }) {
-                it[CategoryTable.order] = index + 1
+     * Move the category from position `from` to `to`
+     */
+    fun reorderCategory(categoryId: Int, from: Int, to: Int) {
+        transaction {
+            val categories = CategoryTable.selectAll().orderBy(CategoryTable.order to SortOrder.ASC).toMutableList()
+            categories.add(to - 1, categories.removeAt(from - 1))
+            categories.forEachIndexed { index, cat ->
+                CategoryTable.update({ CategoryTable.id eq cat[CategoryTable.id].value }) {
+                    it[CategoryTable.order] = index + 1
+                }
             }
         }
     }
-}
 
-fun removeCategory(categoryId: Int) {
-    transaction {
-        CategoryMangaTable.select { CategoryMangaTable.category eq categoryId }.forEach {
-            removeMangaFromCategory(it[CategoryMangaTable.manga].value, categoryId)
-        }
-        CategoryTable.deleteWhere { CategoryTable.id eq categoryId }
-    }
-}
-
-fun getCategoryList(): List<CategoryDataClass> {
-    return transaction {
-        CategoryTable.selectAll().orderBy(CategoryTable.order to SortOrder.ASC).map {
-            CategoryTable.toDataClass(it)
+    fun removeCategory(categoryId: Int) {
+        transaction {
+            CategoryMangaTable.select { CategoryMangaTable.category eq categoryId }.forEach {
+                removeMangaFromCategory(it[CategoryMangaTable.manga].value, categoryId)
+            }
+            CategoryTable.deleteWhere { CategoryTable.id eq categoryId }
         }
     }
-}
+
+    fun getCategoryList(): List<CategoryDataClass> {
+        return transaction {
+            CategoryTable.selectAll().orderBy(CategoryTable.order to SortOrder.ASC).map {
+                CategoryTable.toDataClass(it)
+            }
+        }
+    }
 }

@@ -22,35 +22,35 @@ object Library {
 // TODO: `Category.isLanding` is to handle the default categories a new library manga gets,
 // ..implement that shit at some time...
 // ..also Consider to rename it to `isDefault`
-fun addMangaToLibrary(mangaId: Int) {
-    val manga = getManga(mangaId)
-    if (!manga.inLibrary) {
-        transaction {
-            MangaTable.update({ MangaTable.id eq manga.id }) {
-                it[inLibrary] = true
+    fun addMangaToLibrary(mangaId: Int) {
+        val manga = getManga(mangaId)
+        if (!manga.inLibrary) {
+            transaction {
+                MangaTable.update({ MangaTable.id eq manga.id }) {
+                    it[inLibrary] = true
+                }
             }
         }
     }
-}
 
-fun removeMangaFromLibrary(mangaId: Int) {
-    val manga = getManga(mangaId)
-    if (manga.inLibrary) {
-        transaction {
-            MangaTable.update({ MangaTable.id eq manga.id }) {
-                it[inLibrary] = false
-                it[defaultCategory] = true
+    fun removeMangaFromLibrary(mangaId: Int) {
+        val manga = getManga(mangaId)
+        if (manga.inLibrary) {
+            transaction {
+                MangaTable.update({ MangaTable.id eq manga.id }) {
+                    it[inLibrary] = false
+                    it[defaultCategory] = true
+                }
+                CategoryMangaTable.deleteWhere { CategoryMangaTable.manga eq mangaId }
             }
-            CategoryMangaTable.deleteWhere { CategoryMangaTable.manga eq mangaId }
         }
     }
-}
 
-fun getLibraryMangas(): List<MangaDataClass> {
-    return transaction {
-        MangaTable.select { (MangaTable.inLibrary eq true) and (MangaTable.defaultCategory eq true) }.map {
-            MangaTable.toDataClass(it)
+    fun getLibraryMangas(): List<MangaDataClass> {
+        return transaction {
+            MangaTable.select { (MangaTable.inLibrary eq true) and (MangaTable.defaultCategory eq true) }.map {
+                MangaTable.toDataClass(it)
+            }
         }
     }
-}
 }

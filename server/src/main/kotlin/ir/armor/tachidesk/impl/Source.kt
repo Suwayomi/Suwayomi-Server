@@ -14,7 +14,7 @@ import ir.armor.tachidesk.impl.Extension.loadExtensionInstance
 import ir.armor.tachidesk.model.database.ExtensionTable
 import ir.armor.tachidesk.model.database.SourceTable
 import ir.armor.tachidesk.model.dataclass.SourceDataClass
-import ir.armor.tachidesk.server.applicationDirs
+import ir.armor.tachidesk.server.ApplicationDirs
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
@@ -22,67 +22,67 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.concurrent.ConcurrentHashMap
 
 object Source {
-private val logger = KotlinLogging.logger {}
+    private val logger = KotlinLogging.logger {}
 
-private val sourceCache = ConcurrentHashMap<Long, HttpSource>()
+    private val sourceCache = ConcurrentHashMap<Long, HttpSource>()
 
-fun getHttpSource(sourceId: Long): HttpSource {
-    val cachedResult: HttpSource? = sourceCache[sourceId]
-    if (cachedResult != null) {
-        logger.debug("used cached HttpSource: ${cachedResult.name}")
-        return cachedResult
+    fun getHttpSource(sourceId: Long): HttpSource {
+        val cachedResult: HttpSource? = sourceCache[sourceId]
+        if (cachedResult != null) {
+            logger.debug("used cached HttpSource: ${cachedResult.name}")
+            return cachedResult
+        }
+
+        transaction {
+            val sourceRecord = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!!
+
+            val extensionId = sourceRecord[SourceTable.extension]
+            val extensionRecord = ExtensionTable.select { ExtensionTable.id eq extensionId }.firstOrNull()!!
+            val apkName = extensionRecord[ExtensionTable.apkName]
+            val className = extensionRecord[ExtensionTable.classFQName]
+            val jarName = apkName.substringBefore(".apk") + ".jar"
+            val jarPath = "${ApplicationDirs.extensionsRoot}/$jarName"
+
+            val extensionInstance = loadExtensionInstance(jarPath, className)
+
+            if (sourceRecord[SourceTable.partOfFactorySource]) {
+                (extensionInstance as SourceFactory).createSources().forEach {
+                    sourceCache[it.id] = it as HttpSource
+                }
+            } else {
+                (extensionInstance as HttpSource).also {
+                    sourceCache[it.id] = it
+                }
+            }
+        }
+        return sourceCache[sourceId]!!
     }
 
-    transaction {
-        val sourceRecord = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!!
-
-        val extensionId = sourceRecord[SourceTable.extension]
-        val extensionRecord = ExtensionTable.select { ExtensionTable.id eq extensionId }.firstOrNull()!!
-        val apkName = extensionRecord[ExtensionTable.apkName]
-        val className = extensionRecord[ExtensionTable.classFQName]
-        val jarName = apkName.substringBefore(".apk") + ".jar"
-        val jarPath = "${applicationDirs.extensionsRoot}/$jarName"
-
-        val extensionInstance = loadExtensionInstance(jarPath, className)
-
-        if (sourceRecord[SourceTable.partOfFactorySource]) {
-            (extensionInstance as SourceFactory).createSources().forEach {
-                sourceCache[it.id] = it as HttpSource
-            }
-        } else {
-            (extensionInstance as HttpSource).also {
-                sourceCache[it.id] = it
+    fun getSourceList(): List<SourceDataClass> {
+        return transaction {
+            SourceTable.selectAll().map {
+                SourceDataClass(
+                    it[SourceTable.id].value.toString(),
+                    it[SourceTable.name],
+                    it[SourceTable.lang],
+                    getExtensionIconUrl(ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }.first()[ExtensionTable.apkName]),
+                    getHttpSource(it[SourceTable.id].value).supportsLatest
+                )
             }
         }
     }
-    return sourceCache[sourceId]!!
-}
 
-fun getSourceList(): List<SourceDataClass> {
-    return transaction {
-        SourceTable.selectAll().map {
+    fun getSource(sourceId: Long): SourceDataClass {
+        return transaction {
+            val source = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
+
             SourceDataClass(
-                it[SourceTable.id].value.toString(),
-                it[SourceTable.name],
-                it[SourceTable.lang],
-                getExtensionIconUrl(ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }.first()[ExtensionTable.apkName]),
-                getHttpSource(it[SourceTable.id].value).supportsLatest
+                sourceId.toString(),
+                source?.get(SourceTable.name),
+                source?.get(SourceTable.lang),
+                source?.let { ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()[ExtensionTable.iconUrl] },
+                source?.let { getHttpSource(sourceId).supportsLatest }
             )
         }
     }
-}
-
-fun getSource(sourceId: Long): SourceDataClass {
-    return transaction {
-        val source = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
-
-        SourceDataClass(
-            sourceId.toString(),
-            source?.get(SourceTable.name),
-            source?.get(SourceTable.lang),
-            source?.let { ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()[ExtensionTable.iconUrl] },
-            source?.let { getHttpSource(sourceId).supportsLatest }
-        )
-    }
-}
 }

@@ -15,99 +15,99 @@ import ir.armor.tachidesk.impl.Source.getSource
 import ir.armor.tachidesk.model.database.MangaStatus
 import ir.armor.tachidesk.model.database.MangaTable
 import ir.armor.tachidesk.model.dataclass.MangaDataClass
-import ir.armor.tachidesk.server.applicationDirs
+import ir.armor.tachidesk.server.ApplicationDirs
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import java.io.InputStream
 
 object Manga {
-fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
-    var mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
+    fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
+        var mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
 
-    return if (mangaEntry[MangaTable.initialized]) {
-        MangaDataClass(
-            mangaId,
-            mangaEntry[MangaTable.sourceReference].toString(),
+        return if (mangaEntry[MangaTable.initialized]) {
+            MangaDataClass(
+                mangaId,
+                mangaEntry[MangaTable.sourceReference].toString(),
 
-            mangaEntry[MangaTable.url],
-            mangaEntry[MangaTable.title],
-            if (proxyThumbnail) proxyThumbnailUrl(mangaId) else mangaEntry[MangaTable.thumbnail_url],
+                mangaEntry[MangaTable.url],
+                mangaEntry[MangaTable.title],
+                if (proxyThumbnail) proxyThumbnailUrl(mangaId) else mangaEntry[MangaTable.thumbnail_url],
 
-            true,
+                true,
 
-            mangaEntry[MangaTable.artist],
-            mangaEntry[MangaTable.author],
-            mangaEntry[MangaTable.description],
-            mangaEntry[MangaTable.genre],
-            MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
-            mangaEntry[MangaTable.inLibrary],
-            getSource(mangaEntry[MangaTable.sourceReference])
-        )
-    } else { // initialize manga
-        val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
-        val fetchedManga = source.fetchMangaDetails(
-            SManga.create().apply {
-                url = mangaEntry[MangaTable.url]
-                title = mangaEntry[MangaTable.title]
+                mangaEntry[MangaTable.artist],
+                mangaEntry[MangaTable.author],
+                mangaEntry[MangaTable.description],
+                mangaEntry[MangaTable.genre],
+                MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
+                mangaEntry[MangaTable.inLibrary],
+                getSource(mangaEntry[MangaTable.sourceReference])
+            )
+        } else { // initialize manga
+            val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
+            val fetchedManga = source.fetchMangaDetails(
+                SManga.create().apply {
+                    url = mangaEntry[MangaTable.url]
+                    title = mangaEntry[MangaTable.title]
+                }
+            ).toBlocking().first()
+
+            transaction {
+                MangaTable.update({ MangaTable.id eq mangaId }) {
+
+                    it[MangaTable.initialized] = true
+
+                    it[MangaTable.artist] = fetchedManga.artist
+                    it[MangaTable.author] = fetchedManga.author
+                    it[MangaTable.description] = fetchedManga.description
+                    it[MangaTable.genre] = fetchedManga.genre
+                    it[MangaTable.status] = fetchedManga.status
+                    if (fetchedManga.thumbnail_url != null && fetchedManga.thumbnail_url!!.isNotEmpty())
+                        it[MangaTable.thumbnail_url] = fetchedManga.thumbnail_url
+                }
             }
-        ).toBlocking().first()
 
-        transaction {
-            MangaTable.update({ MangaTable.id eq mangaId }) {
+            mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
+            val newThumbnail = mangaEntry[MangaTable.thumbnail_url]
 
-                it[MangaTable.initialized] = true
+            MangaDataClass(
+                mangaId,
+                mangaEntry[MangaTable.sourceReference].toString(),
 
-                it[MangaTable.artist] = fetchedManga.artist
-                it[MangaTable.author] = fetchedManga.author
-                it[MangaTable.description] = fetchedManga.description
-                it[MangaTable.genre] = fetchedManga.genre
-                it[MangaTable.status] = fetchedManga.status
-                if (fetchedManga.thumbnail_url != null && fetchedManga.thumbnail_url!!.isNotEmpty())
-                    it[MangaTable.thumbnail_url] = fetchedManga.thumbnail_url
+                mangaEntry[MangaTable.url],
+                mangaEntry[MangaTable.title],
+                if (proxyThumbnail) proxyThumbnailUrl(mangaId) else newThumbnail,
+
+                true,
+
+                fetchedManga.artist,
+                fetchedManga.author,
+                fetchedManga.description,
+                fetchedManga.genre,
+                MangaStatus.valueOf(fetchedManga.status).name,
+                false,
+                getSource(mangaEntry[MangaTable.sourceReference])
+            )
+        }
+    }
+
+    fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
+        val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
+        val saveDir = ApplicationDirs.thumbnailsRoot
+        val fileName = mangaId.toString()
+
+        return getCachedImageResponse(saveDir, fileName) {
+            val sourceId = mangaEntry[MangaTable.sourceReference]
+            val source = getHttpSource(sourceId)
+            var thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
+            if (thumbnailUrl == null || thumbnailUrl.isEmpty()) {
+                thumbnailUrl = getManga(mangaId, proxyThumbnail = false).thumbnailUrl!!
             }
+
+            source.client.newCall(
+                GET(thumbnailUrl, source.headers)
+            ).execute()
         }
-
-        mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
-        val newThumbnail = mangaEntry[MangaTable.thumbnail_url]
-
-        MangaDataClass(
-            mangaId,
-            mangaEntry[MangaTable.sourceReference].toString(),
-
-            mangaEntry[MangaTable.url],
-            mangaEntry[MangaTable.title],
-            if (proxyThumbnail) proxyThumbnailUrl(mangaId) else newThumbnail,
-
-            true,
-
-            fetchedManga.artist,
-            fetchedManga.author,
-            fetchedManga.description,
-            fetchedManga.genre,
-            MangaStatus.valueOf(fetchedManga.status).name,
-            false,
-            getSource(mangaEntry[MangaTable.sourceReference])
-        )
     }
-}
-
-fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
-    val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
-    val saveDir = applicationDirs.thumbnailsRoot
-    val fileName = mangaId.toString()
-
-    return getCachedImageResponse(saveDir, fileName) {
-        val sourceId = mangaEntry[MangaTable.sourceReference]
-        val source = getHttpSource(sourceId)
-        var thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
-        if (thumbnailUrl == null || thumbnailUrl.isEmpty()) {
-            thumbnailUrl = getManga(mangaId, proxyThumbnail = false).thumbnailUrl!!
-        }
-
-        source.client.newCall(
-            GET(thumbnailUrl, source.headers)
-        ).execute()
-    }
-}
 }
