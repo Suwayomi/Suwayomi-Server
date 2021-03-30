@@ -17,13 +17,12 @@ import mu.KotlinLogging
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.net.URL
-import java.net.URLClassLoader
 import java.util.concurrent.ConcurrentHashMap
 
 private val logger = KotlinLogging.logger {}
 
 private val sourceCache = ConcurrentHashMap<Long, HttpSource>()
+
 
 fun getHttpSource(sourceId: Long): HttpSource {
     val cachedResult: HttpSource? = sourceCache[sourceId]
@@ -42,12 +41,7 @@ fun getHttpSource(sourceId: Long): HttpSource {
         val jarName = apkName.substringBefore(".apk") + ".jar"
         val jarPath = "${applicationDirs.extensionsRoot}/$jarName"
 
-        val extensionInstance =
-            {
-                val child = URLClassLoader(arrayOf<URL>(URL("file:$jarPath")), this::class.java.classLoader)
-                val classToLoad = Class.forName(className, true, child)
-                classToLoad.getDeclaredConstructor().newInstance()
-            }
+        val extensionInstance = loadExtension(jarPath,className)
 
         if (sourceRecord[SourceTable.partOfFactorySource]) {
             (extensionInstance as SourceFactory).createSources().forEach{

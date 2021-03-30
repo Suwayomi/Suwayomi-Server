@@ -71,6 +71,12 @@ private fun dex2jar(dexFile: String, jarFile: String, fileNameWithoutType: Strin
     }
 }
 
+fun loadExtension(jarPath: String, className: String): Any {
+    val classLoader = URLClassLoader(arrayOf<URL>(URL("file:$jarPath")))
+    val classToLoad = Class.forName(className, true, classLoader)
+    return classToLoad.getDeclaredConstructor().newInstance()
+}
+
 fun installExtension(pkgName: String): Int {
     logger.debug("Installing $pkgName")
     val extensionRecord = extensionTableAsDataClass().first { it.pkgName == pkgName }
@@ -101,9 +107,7 @@ fun installExtension(pkgName: String): Int {
             File(dexFilePath).delete()
 
             // update sources of the extension
-            val child = URLClassLoader(arrayOf<URL>(URL("file:$jarFilePath")), this::class.java.classLoader)
-            val classToLoad = Class.forName(className, true, child)
-            val instance = classToLoad.newInstance()
+            val instance = loadExtension(jarFilePath,className)
 
             val extensionId = transaction {
                 return@transaction ExtensionTable.select { ExtensionTable.name eq extensionRecord.name }.first()[ExtensionTable.id]

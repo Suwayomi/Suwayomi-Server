@@ -6,13 +6,14 @@ plugins {
 }
 
 allprojects {
-    group = "xyz.nulldev.ts"
+    group = "ir.armor.tachidesk"
 
     version = "1.0"
 
     repositories {
         jcenter()
         mavenCentral()
+        maven("https://maven.google.com/")
         maven("https://jitpack.io")
         maven("https://oss.sonatype.org/content/repositories/snapshots/")
         maven("https://dl.bintray.com/inorichi/maven")
