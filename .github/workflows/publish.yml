@@ -58,12 +58,12 @@ jobs:
             **/react/node_modules
           key: ${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
 
-      - name: Build Jar and launch4j
+      - name: Build and copy webUI, Build Jar and launch4j
         uses: eskatos/gradle-command-action@v1
         with:
           build-root-directory: master
           wrapper-directory: master
-          arguments: :server:windowsPackage --stacktrace
+          arguments: :webUI:copyBuild :server:windowsPackage --stacktrace
           wrapper-cache-enabled: true
           dependencies-cache-enabled: true
           configuration-cache-enabled: true

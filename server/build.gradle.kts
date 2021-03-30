@@ -196,11 +196,7 @@ tasks.register<de.undercouch.gradle.tasks.download.Download>("downloadJre") {
 
 tasks.withType<ShadowJar> {
     destinationDir = File("$rootDir/server/build")
-    dependsOn("lintKotlin")
-}
-
-tasks.named("processResources") {
-    dependsOn(":webUI:copyBuild")
+    dependsOn("formatKotlin", "lintKotlin")
 }
 
 tasks.named("run") {
