@@ -9,6 +9,8 @@ package ir.armor.tachidesk.impl
 
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
+import ir.armor.tachidesk.impl.Extension.getExtensionIconUrl
+import ir.armor.tachidesk.impl.Extension.loadExtensionInstance
 import ir.armor.tachidesk.model.database.ExtensionTable
 import ir.armor.tachidesk.model.database.SourceTable
 import ir.armor.tachidesk.model.dataclass.SourceDataClass
@@ -19,6 +21,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.concurrent.ConcurrentHashMap
 
+object Source {
 private val logger = KotlinLogging.logger {}
 
 private val sourceCache = ConcurrentHashMap<Long, HttpSource>()
@@ -81,4 +84,5 @@ fun getSource(sourceId: Long): SourceDataClass {
             source?.let { getHttpSource(sourceId).supportsLatest }
         )
     }
+}
 }

@@ -9,6 +9,7 @@ package ir.armor.tachidesk.impl
 
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
+import ir.armor.tachidesk.impl.Source.getHttpSource
 import ir.armor.tachidesk.model.database.ChapterTable
 import ir.armor.tachidesk.model.database.MangaTable
 import ir.armor.tachidesk.model.database.PageTable
@@ -21,6 +22,7 @@ import org.jetbrains.exposed.sql.update
 import java.io.File
 import java.io.InputStream
 
+object Page{
 /**
  * A page might have a imageUrl ready from the get go, or we might need to
  * go an extra step and call fetchImageUrl to get it.
@@ -87,4 +89,5 @@ fun getChapterDir(mangaId: Int, chapterId: Int): String {
     // make sure dirs exist
     File(mangaDir).mkdirs()
     return mangaDir
+}
 }

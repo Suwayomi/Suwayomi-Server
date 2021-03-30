@@ -2,34 +2,34 @@ package ir.armor.tachidesk.server
 
 import io.javalin.Javalin
 import ir.armor.tachidesk.Main
-import ir.armor.tachidesk.impl.addMangaToCategory
-import ir.armor.tachidesk.impl.addMangaToLibrary
-import ir.armor.tachidesk.impl.createCategory
-import ir.armor.tachidesk.impl.getCategoryList
-import ir.armor.tachidesk.impl.getCategoryMangaList
-import ir.armor.tachidesk.impl.getChapter
-import ir.armor.tachidesk.impl.getChapterList
-import ir.armor.tachidesk.impl.getExtensionIcon
-import ir.armor.tachidesk.impl.getExtensionList
-import ir.armor.tachidesk.impl.getLibraryMangas
-import ir.armor.tachidesk.impl.getManga
-import ir.armor.tachidesk.impl.getMangaCategories
-import ir.armor.tachidesk.impl.getMangaList
-import ir.armor.tachidesk.impl.getPageImage
-import ir.armor.tachidesk.impl.getSource
-import ir.armor.tachidesk.impl.getSourceList
-import ir.armor.tachidesk.impl.getMangaThumbnail
-import ir.armor.tachidesk.impl.installExtension
-import ir.armor.tachidesk.impl.removeCategory
-import ir.armor.tachidesk.impl.removeMangaFromCategory
-import ir.armor.tachidesk.impl.removeMangaFromLibrary
-import ir.armor.tachidesk.impl.reorderCategory
-import ir.armor.tachidesk.impl.sourceFilters
-import ir.armor.tachidesk.impl.sourceGlobalSearch
-import ir.armor.tachidesk.impl.sourceSearch
-import ir.armor.tachidesk.impl.uninstallExtension
-import ir.armor.tachidesk.impl.updateCategory
-import ir.armor.tachidesk.impl.updateExtension
+import ir.armor.tachidesk.impl.Category.createCategory
+import ir.armor.tachidesk.impl.Category.getCategoryList
+import ir.armor.tachidesk.impl.Category.removeCategory
+import ir.armor.tachidesk.impl.Category.reorderCategory
+import ir.armor.tachidesk.impl.Category.updateCategory
+import ir.armor.tachidesk.impl.CategoryManga.addMangaToCategory
+import ir.armor.tachidesk.impl.CategoryManga.getCategoryMangaList
+import ir.armor.tachidesk.impl.CategoryManga.getMangaCategories
+import ir.armor.tachidesk.impl.CategoryManga.removeMangaFromCategory
+import ir.armor.tachidesk.impl.Chapter.getChapter
+import ir.armor.tachidesk.impl.Chapter.getChapterList
+import ir.armor.tachidesk.impl.Extension.getExtensionIcon
+import ir.armor.tachidesk.impl.Extension.installExtension
+import ir.armor.tachidesk.impl.Extension.uninstallExtension
+import ir.armor.tachidesk.impl.Extension.updateExtension
+import ir.armor.tachidesk.impl.ExtensionsList.getExtensionList
+import ir.armor.tachidesk.impl.Library.addMangaToLibrary
+import ir.armor.tachidesk.impl.Library.getLibraryMangas
+import ir.armor.tachidesk.impl.Library.removeMangaFromLibrary
+import ir.armor.tachidesk.impl.Manga.getManga
+import ir.armor.tachidesk.impl.Manga.getMangaThumbnail
+import ir.armor.tachidesk.impl.MangaList.getMangaList
+import ir.armor.tachidesk.impl.Page.getPageImage
+import ir.armor.tachidesk.impl.Search.sourceFilters
+import ir.armor.tachidesk.impl.Search.sourceGlobalSearch
+import ir.armor.tachidesk.impl.Search.sourceSearch
+import ir.armor.tachidesk.impl.Source.getSource
+import ir.armor.tachidesk.impl.Source.getSourceList
 import ir.armor.tachidesk.server.util.openInBrowser
 import mu.KotlinLogging
 import java.io.IOException
@@ -81,7 +81,7 @@ fun javalinSetup() {
         val pkgName = ctx.pathParam("pkgName")
 
         ctx.status(
-            installExtension(pkgName)
+                installExtension(pkgName)
         )
     }
 
@@ -89,7 +89,7 @@ fun javalinSetup() {
         val pkgName = ctx.pathParam("pkgName")
 
         ctx.status(
-            updateExtension(pkgName)
+                updateExtension(pkgName)
         )
     }
 

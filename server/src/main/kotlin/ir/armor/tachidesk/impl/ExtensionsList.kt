@@ -9,6 +9,7 @@ package ir.armor.tachidesk.impl
 
 import eu.kanade.tachiyomi.extension.api.ExtensionGithubApi
 import eu.kanade.tachiyomi.extension.model.Extension
+import ir.armor.tachidesk.impl.Extension.getExtensionIconUrl
 import ir.armor.tachidesk.model.database.ExtensionTable
 import ir.armor.tachidesk.model.dataclass.ExtensionDataClass
 import kotlinx.coroutines.runBlocking
@@ -21,21 +22,22 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import java.util.concurrent.ConcurrentHashMap
 
+object ExtensionsList {
 private val logger = KotlinLogging.logger {}
 
-object ExtensionListData {
+
     var lastUpdateCheck: Long = 0
     var updateMap = ConcurrentHashMap<String, Extension.Available>()
-}
+
 
 // const val ExtensionUpdateDelayTime = 60 * 1000 // 60,000 milliseconds = 60 seconds
 const val ExtensionUpdateDelayTime = 0
 
 fun getExtensionList(): List<ExtensionDataClass> {
     // update if {ExtensionUpdateDelayTime} seconds has passed or requested offline and database is empty
-    if (ExtensionListData.lastUpdateCheck + ExtensionUpdateDelayTime < System.currentTimeMillis()) {
+    if (lastUpdateCheck + ExtensionUpdateDelayTime < System.currentTimeMillis()) {
         logger.debug("Getting extensions list from the internet")
-        ExtensionListData.lastUpdateCheck = System.currentTimeMillis()
+        lastUpdateCheck = System.currentTimeMillis()
         runBlocking {
             val foundExtensions = ExtensionGithubApi.findExtensions()
             updateExtensionDatabase(foundExtensions)
@@ -76,7 +78,7 @@ private fun updateExtensionDatabase(foundExtensions: List<Extension.Available>) 
                         ExtensionTable.update({ ExtensionTable.pkgName eq foundExtension.pkgName }) {
                             it[hasUpdate] = true
                         }
-                        ExtensionListData.updateMap.putIfAbsent(foundExtension.pkgName, foundExtension)
+                        updateMap.putIfAbsent(foundExtension.pkgName, foundExtension)
                     } else if (foundExtension.versionCode < extensionRecord[ExtensionTable.versionCode]) {
                         // some how the user installed an invalid version
                         ExtensionTable.update({ ExtensionTable.pkgName eq foundExtension.pkgName }) {
@@ -130,4 +132,5 @@ private fun updateExtensionDatabase(foundExtensions: List<Extension.Available>) 
             }
         }
     }
+}
 }

@@ -8,6 +8,7 @@ package ir.armor.tachidesk.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.MangasPage
+import ir.armor.tachidesk.impl.Source.getHttpSource
 import ir.armor.tachidesk.model.database.MangaStatus
 import ir.armor.tachidesk.model.database.MangaTable
 import ir.armor.tachidesk.model.dataclass.MangaDataClass
@@ -16,6 +17,7 @@ import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 
+object MangaList {
 fun proxyThumbnailUrl(mangaId: Int): String {
     return "/api/v1/manga/$mangaId/thumbnail"
 }
@@ -95,4 +97,5 @@ fun MangasPage.processEntries(sourceId: Long): PagedMangaListDataClass {
         mangaList,
         mangasPage.hasNextPage
     )
+}
 }

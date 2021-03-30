@@ -15,6 +15,7 @@ import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
+import ir.armor.tachidesk.impl.ExtensionsList.extensionTableAsDataClass
 import ir.armor.tachidesk.model.database.ExtensionTable
 import ir.armor.tachidesk.model.database.SourceTable
 import ir.armor.tachidesk.impl.util.APKExtractor
@@ -37,6 +38,7 @@ import java.net.URLClassLoader
 import java.nio.file.Files
 import java.nio.file.Path
 
+object Extension {
 private val logger = KotlinLogging.logger {}
 
 /**
@@ -205,7 +207,7 @@ fun uninstallExtension(pkgName: String) {
 }
 
 fun updateExtension(pkgName: String): Int {
-    val targetExtension = ExtensionListData.updateMap.remove(pkgName)!!
+    val targetExtension = ExtensionsList.updateMap.remove(pkgName)!!
     uninstallExtension(pkgName)
     transaction {
         ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
@@ -238,4 +240,5 @@ fun getExtensionIcon(apkName: String): Pair<InputStream, String> {
 
 fun getExtensionIconUrl(apkName: String): String {
     return "/api/v1/extension/icon/$apkName"
+}
 }

@@ -21,6 +21,7 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 
+object CategoryManga {
 fun addMangaToCategory(mangaId: Int, categoryId: Int) {
     transaction {
         if (CategoryMangaTable.select { (CategoryMangaTable.category eq categoryId) and (CategoryMangaTable.manga eq mangaId) }.firstOrNull() == null) {
@@ -68,4 +69,5 @@ fun getMangaCategories(mangaId: Int): List<CategoryDataClass> {
             CategoryTable.toDataClass(it)
         }
     }
+}
 }

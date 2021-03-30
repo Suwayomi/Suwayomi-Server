@@ -9,6 +9,9 @@ package ir.armor.tachidesk.impl
 
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.model.SManga
+import ir.armor.tachidesk.impl.MangaList.proxyThumbnailUrl
+import ir.armor.tachidesk.impl.Source.getHttpSource
+import ir.armor.tachidesk.impl.Source.getSource
 import ir.armor.tachidesk.model.database.MangaStatus
 import ir.armor.tachidesk.model.database.MangaTable
 import ir.armor.tachidesk.model.dataclass.MangaDataClass
@@ -18,6 +21,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import java.io.InputStream
 
+object Manga {
 fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
     var mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
 
@@ -105,4 +109,5 @@ fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
             GET(thumbnailUrl, source.headers)
         ).execute()
     }
+}
 }

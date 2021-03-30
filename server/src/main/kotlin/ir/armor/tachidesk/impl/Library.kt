@@ -7,6 +7,7 @@ package ir.armor.tachidesk.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import ir.armor.tachidesk.impl.Manga.getManga
 import ir.armor.tachidesk.model.database.CategoryMangaTable
 import ir.armor.tachidesk.model.database.MangaTable
 import ir.armor.tachidesk.model.database.toDataClass
@@ -17,6 +18,7 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 
+object Library {
 // TODO: `Category.isLanding` is to handle the default categories a new library manga gets,
 // ..implement that shit at some time...
 // ..also Consider to rename it to `isDefault`
@@ -50,4 +52,5 @@ fun getLibraryMangas(): List<MangaDataClass> {
             MangaTable.toDataClass(it)
         }
     }
+}
 }

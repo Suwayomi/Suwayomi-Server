@@ -7,6 +7,7 @@ package ir.armor.tachidesk.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import ir.armor.tachidesk.impl.CategoryManga.removeMangaFromCategory
 import ir.armor.tachidesk.model.database.CategoryMangaTable
 import ir.armor.tachidesk.model.database.CategoryTable
 import ir.armor.tachidesk.model.database.toDataClass
@@ -19,29 +20,29 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 
-
-/**
- * The new category will be placed at the end of the list
- */
-fun createCategory(name: String) {
-    transaction {
-        val count = CategoryTable.selectAll().count()
-        if (CategoryTable.select { CategoryTable.name eq name }.firstOrNull() == null)
-            CategoryTable.insert {
-                it[CategoryTable.name] = name
-                it[CategoryTable.order] = count.toInt() + 1
-            }
-    }
-}
-
-fun updateCategory(categoryId: Int, name: String?, isLanding: Boolean?) {
-    transaction {
-        CategoryTable.update({ CategoryTable.id eq categoryId }) {
-            if (name != null) it[CategoryTable.name] = name
-            if (isLanding != null) it[CategoryTable.isLanding] = isLanding
+object Category {
+    /**
+     * The new category will be placed at the end of the list
+     */
+    fun createCategory(name: String) {
+        transaction {
+            val count = CategoryTable.selectAll().count()
+            if (CategoryTable.select { CategoryTable.name eq name }.firstOrNull() == null)
+                CategoryTable.insert {
+                    it[CategoryTable.name] = name
+                    it[CategoryTable.order] = count.toInt() + 1
+                }
         }
     }
-}
+
+    fun updateCategory(categoryId: Int, name: String?, isLanding: Boolean?) {
+        transaction {
+            CategoryTable.update({ CategoryTable.id eq categoryId }) {
+                if (name != null) it[CategoryTable.name] = name
+                if (isLanding != null) it[CategoryTable.isLanding] = isLanding
+            }
+        }
+    }
 
 /**
  * Move the category from position `from` to `to`
@@ -73,4 +74,5 @@ fun getCategoryList(): List<CategoryDataClass> {
             CategoryTable.toDataClass(it)
         }
     }
+}
 }
