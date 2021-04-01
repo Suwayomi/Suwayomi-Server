@@ -118,7 +118,7 @@ object Extension {
                 val instance = loadExtensionInstance(jarFilePath, className)
 
                 val extensionId = transaction {
-                    ExtensionTable.select { ExtensionTable.name eq extensionRecord.name }.firstOrNull()!![ExtensionTable.id]
+                    ExtensionTable.select { ExtensionTable.pkgName eq extensionRecord.pkgName }.firstOrNull()!![ExtensionTable.id]
                 }
 
                 when (instance) {
@@ -159,7 +159,7 @@ object Extension {
 
                 // update extension info
                 transaction {
-                    ExtensionTable.update({ ExtensionTable.name eq extensionRecord.name }) {
+                    ExtensionTable.update({ ExtensionTable.pkgName eq extensionRecord.pkgName }) {
                         it[isInstalled] = true
                         it[classFQName] = className
                     }
