@@ -30,11 +30,6 @@ dependencies {
     // Javassist
     compileOnly( "org.javassist:javassist:3.27.0-GA")
 
-    // Coroutines
-    val kotlinx_coroutines_version = "1.4.2"
-    compileOnly( "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinx_coroutines_version")
-    compileOnly( "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:$kotlinx_coroutines_version")
-
     // XML
     compileOnly( group= "xmlpull", name= "xmlpull", version= "1.1.3.1")
 

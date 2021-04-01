@@ -21,13 +21,13 @@ allprojects {
     }
 }
 
-val javaProjects = listOf(
+val projects = listOf(
         project(":AndroidCompat"),
         project(":AndroidCompat:Config"),
         project(":server")
 )
 
-configure(javaProjects) {
+configure(projects) {
     apply(plugin = "java")
     apply(plugin = "org.jetbrains.kotlin.jvm")
 
@@ -46,17 +46,15 @@ configure(javaProjects) {
         // Kotlin
         implementation(kotlin("stdlib", KotlinCompilerVersion.VERSION))
         implementation(kotlin("stdlib", KotlinCompilerVersion.VERSION))
+        implementation(kotlin("reflect", version = "1.4.21"))
         testImplementation(kotlin("test", version = "1.4.21"))
-    }
-}
 
-configure(listOf(
-        project(":AndroidCompat"),
-        project(":server"),
-        project(":AndroidCompat:Config")
+        // coroutines
+        val coroutinesVersion = "1.4.2"
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:$coroutinesVersion")
 
-)) {
-    dependencies {
+
         // Dependency Injection
         implementation("org.kodein.di:kodein-di-conf-jvm:7.1.0")
 
@@ -72,13 +70,10 @@ configure(listOf(
         // JSoup
         implementation("org.jsoup:jsoup:1.13.1")
 
-        // Kotlin
-        implementation(kotlin("reflect", version = "1.4.21"))
 
         // dependency of :AndroidCompat:Config
         implementation("com.typesafe:config:1.4.0")
         implementation("io.github.config4k:config4k:0.4.2")
-
 
         // to get application content root
         implementation("net.harawata:appdirs:1.2.0")
