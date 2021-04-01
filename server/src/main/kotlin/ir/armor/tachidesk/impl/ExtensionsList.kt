@@ -29,7 +29,7 @@ object ExtensionsList {
     var updateMap = ConcurrentHashMap<String, Extension.Available>()
 
 // const val ExtensionUpdateDelayTime = 60 * 1000 // 60,000 milliseconds = 60 seconds
-    const val ExtensionUpdateDelayTime = 0
+    const val ExtensionUpdateDelayTime = 60 * 1000
 
     fun getExtensionList(): List<ExtensionDataClass> {
         // update if {ExtensionUpdateDelayTime} seconds has passed or requested offline and database is empty
