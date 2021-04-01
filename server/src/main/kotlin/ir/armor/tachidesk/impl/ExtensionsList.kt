@@ -27,8 +27,8 @@ object ExtensionsList {
     var lastUpdateCheck: Long = 0
     var updateMap = ConcurrentHashMap<String, Extension.Available>()
 
-// const val ExtensionUpdateDelayTime = 60 * 1000 // 60,000 milliseconds = 60 seconds
-    const val ExtensionUpdateDelayTime = 60 * 1000
+    /** 60,000 milliseconds = 60 seconds */
+    private const val ExtensionUpdateDelayTime = 60 * 1000
 
     suspend fun getExtensionList(): List<ExtensionDataClass> {
         // update if {ExtensionUpdateDelayTime} seconds has passed or requested offline and database is empty
@@ -69,20 +69,20 @@ object ExtensionsList {
                 val extensionRecord = ExtensionTable.select { ExtensionTable.pkgName eq foundExtension.pkgName }.firstOrNull()
                 if (extensionRecord != null) {
                     if (extensionRecord[ExtensionTable.isInstalled]) {
-                        if (foundExtension.versionCode > extensionRecord[ExtensionTable.versionCode]) {
-                            // there is an update
-                            ExtensionTable.update({ ExtensionTable.pkgName eq foundExtension.pkgName }) {
-                                it[hasUpdate] = true
+                        when {
+                            foundExtension.versionCode > extensionRecord[ExtensionTable.versionCode] -> {
+                                // there is an update
+                                ExtensionTable.update({ ExtensionTable.pkgName eq foundExtension.pkgName }) {
+                                    it[hasUpdate] = true
+                                }
+                                updateMap.putIfAbsent(foundExtension.pkgName, foundExtension)
                             }
-                            updateMap.putIfAbsent(foundExtension.pkgName, foundExtension)
-                        } else if (foundExtension.versionCode < extensionRecord[ExtensionTable.versionCode]) {
-                            // some how the user installed an invalid version
-                            ExtensionTable.update({ ExtensionTable.pkgName eq foundExtension.pkgName }) {
-                                it[isObsolete] = true
+                            foundExtension.versionCode < extensionRecord[ExtensionTable.versionCode] -> {
+                                // some how the user installed an invalid version
+                                ExtensionTable.update({ ExtensionTable.pkgName eq foundExtension.pkgName }) {
+                                    it[isObsolete] = true
+                                }
                             }
-                        } else {
-                            // the two are equal
-                            // NOOP
                         }
                     } else {
                         // extension is not installed so we can overwrite the data without a care
@@ -115,7 +115,7 @@ object ExtensionsList {
             ExtensionTable.selectAll().forEach { extensionRecord ->
                 val foundExtension = foundExtensions.find { it.pkgName == extensionRecord[ExtensionTable.pkgName] }
                 if (foundExtension == null) {
-                    // this extensions is obsolete
+                    // not in the repo, so this extensions is obsolete
                     if (extensionRecord[ExtensionTable.isInstalled]) {
                         // is installed so we should mark it as obsolete
                         ExtensionTable.update({ ExtensionTable.pkgName eq extensionRecord[ExtensionTable.pkgName] }) {
