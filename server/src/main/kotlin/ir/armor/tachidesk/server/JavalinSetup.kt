@@ -31,6 +31,11 @@ import ir.armor.tachidesk.impl.Search.sourceSearch
 import ir.armor.tachidesk.impl.Source.getSource
 import ir.armor.tachidesk.impl.Source.getSourceList
 import ir.armor.tachidesk.server.util.openInBrowser
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.future.future
 import mu.KotlinLogging
 import java.io.IOException
 
@@ -43,6 +48,7 @@ import java.io.IOException
 
 object JavalinSetup {
     private val logger = KotlinLogging.logger {}
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     fun javalinSetup() {
         var hasWebUiBundled = false
@@ -75,22 +81,24 @@ object JavalinSetup {
         }
 
         app.get("/api/v1/extension/list") { ctx ->
-            ctx.json(getExtensionList())
+            ctx.json(scope.future { getExtensionList() })
         }
 
         app.get("/api/v1/extension/install/:pkgName") { ctx ->
             val pkgName = ctx.pathParam("pkgName")
 
+            // TODO maybe replace with ctx.result(scope.future { installExtension(pkgName) })?
             ctx.status(
-                installExtension(pkgName)
+                scope.future { installExtension(pkgName) }.get()
             )
         }
 
         app.get("/api/v1/extension/update/:pkgName") { ctx ->
             val pkgName = ctx.pathParam("pkgName")
 
+            // TODO maybe replace with ctx.result(scope.future { updateExtension(pkgName) })?
             ctx.status(
-                updateExtension(pkgName)
+                scope.future { updateExtension(pkgName) }.get()
             )
         }
 
@@ -104,7 +112,8 @@ object JavalinSetup {
         // icon for extension named `apkName`
         app.get("/api/v1/extension/icon/:apkName") { ctx ->
             val apkName = ctx.pathParam("apkName")
-            val result = getExtensionIcon(apkName)
+            // TODO see if there is a better way
+            val result = scope.future { getExtensionIcon(apkName) }.get()
 
             ctx.result(result.first)
             ctx.header("content-type", result.second)
@@ -125,26 +134,27 @@ object JavalinSetup {
         app.get("/api/v1/source/:sourceId/popular/:pageNum") { ctx ->
             val sourceId = ctx.pathParam("sourceId").toLong()
             val pageNum = ctx.pathParam("pageNum").toInt()
-            ctx.json(getMangaList(sourceId, pageNum, popular = true))
+            ctx.json(scope.future { getMangaList(sourceId, pageNum, popular = true) })
         }
 
         // latest mangas from source with id `sourceId`
         app.get("/api/v1/source/:sourceId/latest/:pageNum") { ctx ->
             val sourceId = ctx.pathParam("sourceId").toLong()
             val pageNum = ctx.pathParam("pageNum").toInt()
-            ctx.json(getMangaList(sourceId, pageNum, popular = false))
+            ctx.json(scope.future { getMangaList(sourceId, pageNum, popular = false) })
         }
 
         // get manga info
         app.get("/api/v1/manga/:mangaId/") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
-            ctx.json(getManga(mangaId))
+            ctx.json(scope.future { getManga(mangaId) })
         }
 
         // manga thumbnail
         app.get("api/v1/manga/:mangaId/thumbnail") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
-            val result = getMangaThumbnail(mangaId)
+            // TODO see if there is a better way
+            val result = scope.future { getMangaThumbnail(mangaId) }.get()
 
             ctx.result(result.first)
             ctx.header("content-type", result.second)
@@ -153,14 +163,16 @@ object JavalinSetup {
         // adds the manga to library
         app.get("api/v1/manga/:mangaId/library") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
-            addMangaToLibrary(mangaId)
+            // TODO see if there is a better way
+            scope.future { addMangaToLibrary(mangaId) }.get()
             ctx.status(200)
         }
 
         // removes the manga from the library
         app.delete("api/v1/manga/:mangaId/library") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
-            removeMangaFromLibrary(mangaId)
+            // TODO see if there is a better way
+            scope.future { removeMangaFromLibrary(mangaId) }.get()
             ctx.status(200)
         }
 
@@ -188,20 +200,21 @@ object JavalinSetup {
 
         app.get("/api/v1/manga/:mangaId/chapters") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
-            ctx.json(getChapterList(mangaId))
+            ctx.json(scope.future { getChapterList(mangaId) })
         }
 
         app.get("/api/v1/manga/:mangaId/chapter/:chapterIndex") { ctx ->
             val chapterIndex = ctx.pathParam("chapterIndex").toInt()
             val mangaId = ctx.pathParam("mangaId").toInt()
-            ctx.json(getChapter(chapterIndex, mangaId))
+            ctx.json(scope.future { getChapter(chapterIndex, mangaId) })
         }
 
         app.get("/api/v1/manga/:mangaId/chapter/:chapterIndex/page/:index") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
             val chapterIndex = ctx.pathParam("chapterIndex").toInt()
             val index = ctx.pathParam("index").toInt()
-            val result = getPageImage(mangaId, chapterIndex, index)
+            // TODO see if there is a better way
+            val result = scope.future { getPageImage(mangaId, chapterIndex, index) }.get()
 
             ctx.result(result.first)
             ctx.header("content-type", result.second)
@@ -218,7 +231,7 @@ object JavalinSetup {
             val sourceId = ctx.pathParam("sourceId").toLong()
             val searchTerm = ctx.pathParam("searchTerm")
             val pageNum = ctx.pathParam("pageNum").toInt()
-            ctx.json(sourceSearch(sourceId, searchTerm, pageNum))
+            ctx.json(scope.future { sourceSearch(sourceId, searchTerm, pageNum) })
         }
 
         // source filter list

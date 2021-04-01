@@ -12,7 +12,6 @@ import eu.kanade.tachiyomi.extension.model.Extension
 import ir.armor.tachidesk.impl.Extension.getExtensionIconUrl
 import ir.armor.tachidesk.model.database.ExtensionTable
 import ir.armor.tachidesk.model.dataclass.ExtensionDataClass
-import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
@@ -31,15 +30,14 @@ object ExtensionsList {
 // const val ExtensionUpdateDelayTime = 60 * 1000 // 60,000 milliseconds = 60 seconds
     const val ExtensionUpdateDelayTime = 60 * 1000
 
-    fun getExtensionList(): List<ExtensionDataClass> {
+    suspend fun getExtensionList(): List<ExtensionDataClass> {
         // update if {ExtensionUpdateDelayTime} seconds has passed or requested offline and database is empty
         if (lastUpdateCheck + ExtensionUpdateDelayTime < System.currentTimeMillis()) {
             logger.debug("Getting extensions list from the internet")
             lastUpdateCheck = System.currentTimeMillis()
-            runBlocking {
-                val foundExtensions = ExtensionGithubApi.findExtensions()
-                updateExtensionDatabase(foundExtensions)
-            }
+
+            val foundExtensions = ExtensionGithubApi.findExtensions()
+            updateExtensionDatabase(foundExtensions)
         } else {
             logger.debug("used cached extension list")
         }

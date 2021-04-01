@@ -20,7 +20,7 @@ import ir.armor.tachidesk.impl.util.APKExtractor
 import ir.armor.tachidesk.model.database.ExtensionTable
 import ir.armor.tachidesk.model.database.SourceTable
 import ir.armor.tachidesk.server.ApplicationDirs
-import kotlinx.coroutines.runBlocking
+import ir.armor.tachidesk.util.await
 import mu.KotlinLogging
 import okhttp3.Request
 import okio.buffer
@@ -86,7 +86,7 @@ object Extension {
         return classToLoad.getDeclaredConstructor().newInstance()
     }
 
-    fun installExtension(pkgName: String): Int {
+    suspend fun installExtension(pkgName: String): Int {
         logger.debug("Installing $pkgName")
         val extensionRecord = extensionTableAsDataClass().first { it.pkgName == pkgName }
         val fileNameWithoutType = extensionRecord.apkName.substringBefore(".apk")
@@ -95,74 +95,72 @@ object Extension {
         // check if we don't have the dex file already downloaded
         val jarPath = "${ApplicationDirs.extensionsRoot}/$fileNameWithoutType.jar"
         if (!File(jarPath).exists()) {
-            runBlocking {
-                val apkToDownload = ExtensionGithubApi.getApkUrl(extensionRecord)
+            val apkToDownload = ExtensionGithubApi.getApkUrl(extensionRecord)
 
-                val apkFilePath = "$dirPathWithoutType.apk"
-                val jarFilePath = "$dirPathWithoutType.jar"
-                val dexFilePath = "$dirPathWithoutType.dex"
+            val apkFilePath = "$dirPathWithoutType.apk"
+            val jarFilePath = "$dirPathWithoutType.jar"
+            val dexFilePath = "$dirPathWithoutType.dex"
 
-                // download apk file
-                downloadAPKFile(apkToDownload, apkFilePath)
+            // download apk file
+            downloadAPKFile(apkToDownload, apkFilePath)
 
-                val className: String = APKExtractor.extractDexAndReadClassname(apkFilePath, dexFilePath)
-                logger.debug(className)
-                // dex -> jar
-                dex2jar(dexFilePath, jarFilePath, fileNameWithoutType)
+            val className: String = APKExtractor.extractDexAndReadClassname(apkFilePath, dexFilePath)
+            logger.debug(className)
+            // dex -> jar
+            dex2jar(dexFilePath, jarFilePath, fileNameWithoutType)
 
-                // clean up
-                File(apkFilePath).delete()
-                File(dexFilePath).delete()
+            // clean up
+            File(apkFilePath).delete()
+            File(dexFilePath).delete()
 
-                // update sources of the extension
-                val instance = loadExtensionInstance(jarFilePath, className)
+            // update sources of the extension
+            val instance = loadExtensionInstance(jarFilePath, className)
 
-                val extensionId = transaction {
-                    ExtensionTable.select { ExtensionTable.pkgName eq extensionRecord.pkgName }.firstOrNull()!![ExtensionTable.id]
+            val extensionId = transaction {
+                ExtensionTable.select { ExtensionTable.pkgName eq extensionRecord.pkgName }.firstOrNull()!![ExtensionTable.id]
+            }
+
+            when (instance) {
+                is HttpSource -> { // single source
+                    transaction {
+                        if (SourceTable.select { SourceTable.id eq instance.id }.count() == 0L) {
+                            SourceTable.insert {
+                                it[this.id] = instance.id
+                                it[name] = instance.name
+                                it[this.lang] = instance.lang
+                                it[extension] = extensionId
+                            }
+                        }
+                        logger.debug("Installed source ${instance.name} with id ${instance.id}")
+                    }
                 }
-
-                when (instance) {
-                    is HttpSource -> { // single source
-                        transaction {
-                            if (SourceTable.select { SourceTable.id eq instance.id }.count() == 0L) {
+                is SourceFactory -> { // theme source or multi lang
+                    transaction {
+                        instance.createSources().forEachIndexed { index, source ->
+                            val httpSource = source as HttpSource
+                            if (SourceTable.select { SourceTable.id eq httpSource.id }.count() == 0L) {
                                 SourceTable.insert {
-                                    it[this.id] = instance.id
-                                    it[name] = instance.name
-                                    it[this.lang] = instance.lang
+                                    it[this.id] = httpSource.id
+                                    it[name] = httpSource.name
+                                    it[this.lang] = httpSource.lang
                                     it[extension] = extensionId
+                                    it[partOfFactorySource] = true
                                 }
                             }
-                            logger.debug("Installed source ${instance.name} with id ${instance.id}")
+                            logger.debug("Installed source ${httpSource.name} with id:${httpSource.id}")
                         }
-                    }
-                    is SourceFactory -> { // theme source or multi lang
-                        transaction {
-                            instance.createSources().forEachIndexed { index, source ->
-                                val httpSource = source as HttpSource
-                                if (SourceTable.select { SourceTable.id eq httpSource.id }.count() == 0L) {
-                                    SourceTable.insert {
-                                        it[this.id] = httpSource.id
-                                        it[name] = httpSource.name
-                                        it[this.lang] = httpSource.lang
-                                        it[extension] = extensionId
-                                        it[partOfFactorySource] = true
-                                    }
-                                }
-                                logger.debug("Installed source ${httpSource.name} with id:${httpSource.id}")
-                            }
-                        }
-                    }
-                    else -> {
-                        throw RuntimeException("Extension content is unexpected")
                     }
                 }
+                else -> {
+                    throw RuntimeException("Extension content is unexpected")
+                }
+            }
 
-                // update extension info
-                transaction {
-                    ExtensionTable.update({ ExtensionTable.pkgName eq extensionRecord.pkgName }) {
-                        it[isInstalled] = true
-                        it[classFQName] = className
-                    }
+            // update extension info
+            transaction {
+                ExtensionTable.update({ ExtensionTable.pkgName eq extensionRecord.pkgName }) {
+                    it[isInstalled] = true
+                    it[classFQName] = className
                 }
             }
             return 201 // we downloaded successfully
@@ -171,16 +169,18 @@ object Extension {
         }
     }
 
-    val networkHelper: NetworkHelper by injectLazy()
+    private val network: NetworkHelper by injectLazy()
 
-    private fun downloadAPKFile(url: String, apkPath: String) {
+    private suspend fun downloadAPKFile(url: String, apkPath: String) {
         val request = Request.Builder().url(url).build()
-        val response = networkHelper.client.newCall(request).execute()
+        val response = network.client.newCall(request).await()
 
         val downloadedFile = File(apkPath)
-        val sink = downloadedFile.sink().buffer()
-        sink.writeAll(response.body!!.source())
-        sink.close()
+        downloadedFile.sink().buffer().use { sink ->
+            response.body!!.source().use { source ->
+                sink.writeAll(source)
+            }
+        }
     }
 
     fun uninstallExtension(pkgName: String) {
@@ -206,7 +206,7 @@ object Extension {
         }
     }
 
-    fun updateExtension(pkgName: String): Int {
+    suspend fun updateExtension(pkgName: String): Int {
         val targetExtension = ExtensionsList.updateMap.remove(pkgName)!!
         uninstallExtension(pkgName)
         transaction {
@@ -224,9 +224,7 @@ object Extension {
         return installExtension(pkgName)
     }
 
-    val network: NetworkHelper by injectLazy()
-
-    fun getExtensionIcon(apkName: String): Pair<InputStream, String> {
+    suspend fun getExtensionIcon(apkName: String): Pair<InputStream, String> {
         val iconUrl = transaction { ExtensionTable.select { ExtensionTable.apkName eq apkName }.firstOrNull()!! }[ExtensionTable.iconUrl]
 
         val saveDir = "${ApplicationDirs.extensionsRoot}/icon"
@@ -234,7 +232,7 @@ object Extension {
         return getCachedImageResponse(saveDir, apkName) {
             network.client.newCall(
                 GET(iconUrl)
-            ).execute()
+            ).await()
         }
     }
 

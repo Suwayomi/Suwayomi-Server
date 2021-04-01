@@ -8,6 +8,7 @@ package ir.armor.tachidesk.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.MangasPage
+import eu.kanade.tachiyomi.util.lang.awaitSingle
 import ir.armor.tachidesk.impl.Source.getHttpSource
 import ir.armor.tachidesk.model.database.MangaStatus
 import ir.armor.tachidesk.model.database.MangaTable
@@ -22,13 +23,13 @@ object MangaList {
         return "/api/v1/manga/$mangaId/thumbnail"
     }
 
-    fun getMangaList(sourceId: Long, pageNum: Int = 1, popular: Boolean): PagedMangaListDataClass {
-        val source = getHttpSource(sourceId.toLong())
+    suspend fun getMangaList(sourceId: Long, pageNum: Int = 1, popular: Boolean): PagedMangaListDataClass {
+        val source = getHttpSource(sourceId)
         val mangasPage = if (popular) {
-            source.fetchPopularManga(pageNum).toBlocking().first()
+            source.fetchPopularManga(pageNum).awaitSingle()
         } else {
             if (source.supportsLatest)
-                source.fetchLatestUpdates(pageNum).toBlocking().first()
+                source.fetchLatestUpdates(pageNum).awaitSingle()
             else
                 throw Exception("Source $source doesn't support latest")
         }

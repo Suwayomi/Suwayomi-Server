@@ -9,6 +9,7 @@ package ir.armor.tachidesk.impl
 
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.util.lang.awaitSingle
 import ir.armor.tachidesk.impl.MangaList.proxyThumbnailUrl
 import ir.armor.tachidesk.impl.Source.getHttpSource
 import ir.armor.tachidesk.impl.Source.getSource
@@ -16,13 +17,14 @@ import ir.armor.tachidesk.model.database.MangaStatus
 import ir.armor.tachidesk.model.database.MangaTable
 import ir.armor.tachidesk.model.dataclass.MangaDataClass
 import ir.armor.tachidesk.server.ApplicationDirs
+import ir.armor.tachidesk.util.await
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import java.io.InputStream
 
 object Manga {
-    fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
+    suspend fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
         var mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
 
         return if (mangaEntry[MangaTable.initialized]) {
@@ -51,7 +53,7 @@ object Manga {
                     url = mangaEntry[MangaTable.url]
                     title = mangaEntry[MangaTable.title]
                 }
-            ).toBlocking().first()
+            ).awaitSingle()
 
             transaction {
                 MangaTable.update({ MangaTable.id eq mangaId }) {
@@ -92,7 +94,7 @@ object Manga {
         }
     }
 
-    fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
+    suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
         val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
         val saveDir = ApplicationDirs.thumbnailsRoot
         val fileName = mangaId.toString()
@@ -107,7 +109,7 @@ object Manga {
 
             source.client.newCall(
                 GET(thumbnailUrl, source.headers)
-            ).execute()
+            ).await()
         }
     }
 }
