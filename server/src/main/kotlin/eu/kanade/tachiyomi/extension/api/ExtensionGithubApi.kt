@@ -40,7 +40,7 @@ object ExtensionGithubApi {
             }
     }
 
-    fun findExtensions(): List<Extension.Available> {
+    suspend fun findExtensions(): List<Extension.Available> {
         val service: ExtensionGithubService = ExtensionGithubService.create()
 
         val response = service.getRepo()
