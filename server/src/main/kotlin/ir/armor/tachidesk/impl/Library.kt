@@ -22,7 +22,7 @@ object Library {
 // TODO: `Category.isLanding` is to handle the default categories a new library manga gets,
 // ..implement that shit at some time...
 // ..also Consider to rename it to `isDefault`
-    fun addMangaToLibrary(mangaId: Int) {
+    suspend fun addMangaToLibrary(mangaId: Int) {
         val manga = getManga(mangaId)
         if (!manga.inLibrary) {
             transaction {
@@ -33,7 +33,7 @@ object Library {
         }
     }
 
-    fun removeMangaFromLibrary(mangaId: Int) {
+    suspend fun removeMangaFromLibrary(mangaId: Int) {
         val manga = getManga(mangaId)
         if (manga.inLibrary) {
             transaction {

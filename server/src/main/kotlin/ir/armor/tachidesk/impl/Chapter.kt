@@ -9,12 +9,15 @@ package ir.armor.tachidesk.impl
 
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.source.online.HttpSource
+import eu.kanade.tachiyomi.util.lang.awaitSingle
 import ir.armor.tachidesk.impl.Manga.getManga
 import ir.armor.tachidesk.impl.Source.getHttpSource
 import ir.armor.tachidesk.model.database.ChapterTable
 import ir.armor.tachidesk.model.database.MangaTable
 import ir.armor.tachidesk.model.database.PageTable
 import ir.armor.tachidesk.model.dataclass.ChapterDataClass
+import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
@@ -24,7 +27,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 
 object Chapter {
-    fun getChapterList(mangaId: Int): List<ChapterDataClass> {
+    suspend fun getChapterList(mangaId: Int): List<ChapterDataClass> {
         val mangaDetails = getManga(mangaId)
         val source = getHttpSource(mangaDetails.sourceId.toLong())
 
@@ -33,7 +36,7 @@ object Chapter {
                 title = mangaDetails.title
                 url = mangaDetails.url
             }
-        ).toBlocking().first()
+        ).awaitSingle()
 
         val chapterCount = chapterList.count()
 
@@ -86,33 +89,40 @@ object Chapter {
         }
     }
 
-    fun getChapter(chapterIndex: Int, mangaId: Int): ChapterDataClass {
-        return transaction {
-            val chapterEntry = ChapterTable.select {
+    suspend fun getChapter(chapterIndex: Int, mangaId: Int): ChapterDataClass {
+        var chapterEntry: ResultRow? = null
+        var source: HttpSource? = null
+        var sChapter: SChapter? = null
+        transaction {
+            chapterEntry = ChapterTable.select {
                 ChapterTable.chapterIndex eq chapterIndex and (ChapterTable.manga eq mangaId)
             }.firstOrNull()!!
             val mangaEntry = MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!!
-            val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
+            source = getHttpSource(mangaEntry[MangaTable.sourceReference])
+            sChapter = SChapter.create().apply {
+                url = chapterEntry!![ChapterTable.url]
+                name = chapterEntry!![ChapterTable.name]
+            }
+        }
+        val pageList = source!!.fetchPageList(
+            sChapter!!
+        ).awaitSingle()
 
-            val pageList = source.fetchPageList(
-                SChapter.create().apply {
-                    url = chapterEntry[ChapterTable.url]
-                    name = chapterEntry[ChapterTable.name]
-                }
-            ).toBlocking().first()
+        return transaction {
+            val chapterRow = chapterEntry!!
 
-            val chapterId = chapterEntry[ChapterTable.id].value
+            val chapterId = chapterRow[ChapterTable.id].value
             val chapterCount = transaction { ChapterTable.selectAll().count() }
 
             val chapter = ChapterDataClass(
                 chapterId,
-                chapterEntry[ChapterTable.url],
-                chapterEntry[ChapterTable.name],
-                chapterEntry[ChapterTable.date_upload],
-                chapterEntry[ChapterTable.chapter_number],
-                chapterEntry[ChapterTable.scanlator],
+                chapterRow[ChapterTable.url],
+                chapterRow[ChapterTable.name],
+                chapterRow[ChapterTable.date_upload],
+                chapterRow[ChapterTable.chapter_number],
+                chapterRow[ChapterTable.scanlator],
                 mangaId,
-                chapterEntry[ChapterTable.chapterIndex],
+                chapterRow[ChapterTable.chapterIndex],
                 chapterCount.toInt(),
 
                 pageList.count()

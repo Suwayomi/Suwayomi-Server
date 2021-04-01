@@ -61,6 +61,7 @@ dependencies {
 
     val coroutinesVersion = "1.3.9"
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:$coroutinesVersion")
 
     // dex2jar: https://github.com/DexPatcher/dex2jar/releases/tag/v2.1-20190905-lanchon
     implementation("com.github.DexPatcher.dex2jar:dex-tools:v2.1-20190905-lanchon")
@@ -135,6 +136,15 @@ tasks {
         archiveVersion.set(TachideskVersion)
         archiveClassifier.set(TachideskRevision)
     }
+    withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+        kotlinOptions {
+            freeCompilerArgs = listOf(
+                "-Xopt-in=kotlin.RequiresOptIn",
+                "-Xopt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+                "-Xopt-in=kotlinx.coroutines.InternalCoroutinesApi"
+            )
+        }
+    }
 }
 
 launch4j { //used for windows
@@ -195,7 +205,7 @@ tasks.register<de.undercouch.gradle.tasks.download.Download>("downloadJre") {
 }
 
 tasks.withType<ShadowJar> {
-    destinationDir = File("$rootDir/server/build")
+    destinationDirectory.set(File("$rootDir/server/build"))
     dependsOn("formatKotlin", "lintKotlin")
 }
 

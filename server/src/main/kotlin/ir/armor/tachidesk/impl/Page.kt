@@ -9,6 +9,7 @@ package ir.armor.tachidesk.impl
 
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
+import eu.kanade.tachiyomi.util.lang.awaitSingle
 import ir.armor.tachidesk.impl.Source.getHttpSource
 import ir.armor.tachidesk.model.database.ChapterTable
 import ir.armor.tachidesk.model.database.MangaTable
@@ -27,14 +28,14 @@ object Page {
      * A page might have a imageUrl ready from the get go, or we might need to
      * go an extra step and call fetchImageUrl to get it.
      */
-    fun getTrueImageUrl(page: Page, source: HttpSource): String {
+    suspend fun getTrueImageUrl(page: Page, source: HttpSource): String {
         if (page.imageUrl == null) {
-            page.imageUrl = source.fetchImageUrl(page).toBlocking().first()!!
+            page.imageUrl = source.fetchImageUrl(page).awaitSingle()
         }
         return page.imageUrl!!
     }
 
-    fun getPageImage(mangaId: Int, chapterIndex: Int, index: Int): Pair<InputStream, String> {
+    suspend fun getPageImage(mangaId: Int, chapterIndex: Int, index: Int): Pair<InputStream, String> {
         val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
         val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
         val chapterEntry = transaction {
@@ -53,9 +54,10 @@ object Page {
         )
 
         if (pageEntry[PageTable.imageUrl] == null) {
+            val trueImageUrl = getTrueImageUrl(tachiPage, source)
             transaction {
                 PageTable.update({ (PageTable.chapter eq chapterId) and (PageTable.index eq index) }) {
-                    it[imageUrl] = getTrueImageUrl(tachiPage, source)
+                    it[imageUrl] = trueImageUrl
                 }
             }
         }
@@ -65,7 +67,7 @@ object Page {
         val fileName = index.toString()
 
         return getCachedImageResponse(saveDir, fileName) {
-            source.fetchImage(tachiPage).toBlocking().first()
+            source.fetchImage(tachiPage).awaitSingle()
         }
     }
 
