@@ -8,14 +8,19 @@ package ir.armor.tachidesk.model.dataclass
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 data class ChapterDataClass(
-    val id: Int,
     val url: String,
     val name: String,
     val date_upload: Long,
     val chapter_number: Float,
     val scanlator: String?,
     val mangaId: Int,
-    val chapterIndex: Int,
-    val chapterCount: Int,
+
+    /** this chapter's index */
+    val chapterIndex: Int? = null,
+
+    /** total chapter count, used to calculate if there's a next and prev chapter */
+    val chapterCount: Int? = null,
+
+    /** used to construct pages in the front-end */
     val pageCount: Int? = null,
 )

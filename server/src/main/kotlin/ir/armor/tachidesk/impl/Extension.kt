@@ -17,10 +17,11 @@ import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
 import ir.armor.tachidesk.impl.ExtensionsList.extensionTableAsDataClass
 import ir.armor.tachidesk.impl.util.APKExtractor
+import ir.armor.tachidesk.impl.util.CachedImageResponse.getCachedImageResponse
+import ir.armor.tachidesk.impl.util.await
 import ir.armor.tachidesk.model.database.ExtensionTable
 import ir.armor.tachidesk.model.database.SourceTable
 import ir.armor.tachidesk.server.ApplicationDirs
-import ir.armor.tachidesk.util.await
 import mu.KotlinLogging
 import okhttp3.Request
 import okio.buffer
@@ -136,7 +137,7 @@ object Extension {
                 }
                 is SourceFactory -> { // theme source or multi lang
                     transaction {
-                        instance.createSources().forEachIndexed { index, source ->
+                        instance.createSources().forEach { source ->
                             val httpSource = source as HttpSource
                             if (SourceTable.select { SourceTable.id eq httpSource.id }.count() == 0L) {
                                 SourceTable.insert {

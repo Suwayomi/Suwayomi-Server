@@ -9,15 +9,16 @@ package ir.armor.tachidesk.impl
 
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.model.SManga
-import eu.kanade.tachiyomi.util.lang.awaitSingle
 import ir.armor.tachidesk.impl.MangaList.proxyThumbnailUrl
 import ir.armor.tachidesk.impl.Source.getHttpSource
 import ir.armor.tachidesk.impl.Source.getSource
+import ir.armor.tachidesk.impl.util.CachedImageResponse.getCachedImageResponse
+import ir.armor.tachidesk.impl.util.await
+import ir.armor.tachidesk.impl.util.awaitSingle
 import ir.armor.tachidesk.model.database.MangaStatus
 import ir.armor.tachidesk.model.database.MangaTable
 import ir.armor.tachidesk.model.dataclass.MangaDataClass
 import ir.armor.tachidesk.server.ApplicationDirs
-import ir.armor.tachidesk.util.await
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update

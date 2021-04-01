@@ -7,9 +7,9 @@ package ir.armor.tachidesk.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import eu.kanade.tachiyomi.util.lang.awaitSingle
 import ir.armor.tachidesk.impl.MangaList.processEntries
 import ir.armor.tachidesk.impl.Source.getHttpSource
+import ir.armor.tachidesk.impl.util.awaitSingle
 import ir.armor.tachidesk.model.dataclass.PagedMangaListDataClass
 
 object Search {

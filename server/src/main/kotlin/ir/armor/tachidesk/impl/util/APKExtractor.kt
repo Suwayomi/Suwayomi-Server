@@ -175,8 +175,8 @@ object APKExtractor {
         return compXmlStringAt(xml, strOff)
     }
 
-    var spaces = "                                             "
-    fun prtIndent(indent: Int, str: String) {
+    private var spaces = "                                             "
+    private fun prtIndent(indent: Int, str: String) {
         logger.debug(spaces.substring(0, Math.min(indent * 2, spaces.length)) + str)
     }
 

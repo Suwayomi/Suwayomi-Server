@@ -33,7 +33,6 @@ import ir.armor.tachidesk.impl.Source.getSourceList
 import ir.armor.tachidesk.server.util.openInBrowser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.future.future
 import mu.KotlinLogging
@@ -198,11 +197,13 @@ object JavalinSetup {
             ctx.status(200)
         }
 
+        // get chapter list when showing a manga
         app.get("/api/v1/manga/:mangaId/chapters") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
             ctx.json(scope.future { getChapterList(mangaId) })
         }
 
+        // used to display a chapter, get a chapter in order to show it's pages
         app.get("/api/v1/manga/:mangaId/chapter/:chapterIndex") { ctx ->
             val chapterIndex = ctx.pathParam("chapterIndex").toInt()
             val mangaId = ctx.pathParam("mangaId").toInt()
