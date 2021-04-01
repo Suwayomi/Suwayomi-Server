@@ -42,7 +42,7 @@ import java.nio.file.Path
 object Extension {
     private val logger = KotlinLogging.logger {}
 
-/**
+    /**
      * Convert dex to jar, a wrapper for the dex2jar library
      */
     private fun dex2jar(dexFile: String, jarFile: String, fileNameWithoutType: String) {
@@ -77,7 +77,7 @@ object Extension {
         }
     }
 
-/**
+    /**
      * loads the extension main class called $className from the jar located at $jarPath
      * It may return an instance of HttpSource or SourceFactory depending on the extension.
      */
@@ -106,8 +106,8 @@ object Extension {
             downloadAPKFile(apkToDownload, apkFilePath)
 
             val className: String = APKExtractor.extractDexAndReadClassname(apkFilePath, dexFilePath)
-            logger.debug(className)
-            // dex -> jar
+            logger.debug("Main class for extension is $className")
+
             dex2jar(dexFilePath, jarFilePath, fileNameWithoutType)
 
             // clean up
@@ -180,6 +180,7 @@ object Extension {
         downloadedFile.sink().buffer().use { sink ->
             response.body!!.source().use { source ->
                 sink.writeAll(source)
+                sink.flush()
             }
         }
     }
