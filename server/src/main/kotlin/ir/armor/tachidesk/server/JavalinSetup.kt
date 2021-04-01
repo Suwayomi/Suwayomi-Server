@@ -37,6 +37,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.future.future
 import mu.KotlinLogging
 import java.io.IOException
+import java.util.concurrent.CompletableFuture
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -48,6 +49,10 @@ import java.io.IOException
 object JavalinSetup {
     private val logger = KotlinLogging.logger {}
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    private fun <T> future(block: suspend CoroutineScope.() -> T): CompletableFuture<T> {
+        return scope.future(block = block)
+    }
 
     fun javalinSetup() {
         var hasWebUiBundled = false
@@ -80,15 +85,20 @@ object JavalinSetup {
         }
 
         app.get("/api/v1/extension/list") { ctx ->
-            ctx.json(scope.future { getExtensionList() })
+            ctx.json(
+                future {
+                    getExtensionList()
+                }
+            )
         }
 
         app.get("/api/v1/extension/install/:pkgName") { ctx ->
             val pkgName = ctx.pathParam("pkgName")
 
-            // TODO maybe replace with ctx.result(scope.future { installExtension(pkgName) })?
-            ctx.status(
-                scope.future { installExtension(pkgName) }.get()
+            ctx.json(
+                future {
+                    installExtension(pkgName)
+                }
             )
         }
 
@@ -96,8 +106,10 @@ object JavalinSetup {
             val pkgName = ctx.pathParam("pkgName")
 
             // TODO maybe replace with ctx.result(scope.future { updateExtension(pkgName) })?
-            ctx.status(
-                scope.future { updateExtension(pkgName) }.get()
+            ctx.json(
+                future {
+                    updateExtension(pkgName)
+                }
             )
         }
 
@@ -112,7 +124,7 @@ object JavalinSetup {
         app.get("/api/v1/extension/icon/:apkName") { ctx ->
             val apkName = ctx.pathParam("apkName")
             // TODO see if there is a better way
-            val result = scope.future { getExtensionIcon(apkName) }.get()
+            val result = future { getExtensionIcon(apkName) }.get()
 
             ctx.result(result.first)
             ctx.header("content-type", result.second)
@@ -133,27 +145,39 @@ object JavalinSetup {
         app.get("/api/v1/source/:sourceId/popular/:pageNum") { ctx ->
             val sourceId = ctx.pathParam("sourceId").toLong()
             val pageNum = ctx.pathParam("pageNum").toInt()
-            ctx.json(scope.future { getMangaList(sourceId, pageNum, popular = true) })
+            ctx.json(
+                future {
+                    getMangaList(sourceId, pageNum, popular = true)
+                }
+            )
         }
 
         // latest mangas from source with id `sourceId`
         app.get("/api/v1/source/:sourceId/latest/:pageNum") { ctx ->
             val sourceId = ctx.pathParam("sourceId").toLong()
             val pageNum = ctx.pathParam("pageNum").toInt()
-            ctx.json(scope.future { getMangaList(sourceId, pageNum, popular = false) })
+            ctx.json(
+                future {
+                    getMangaList(sourceId, pageNum, popular = false)
+                }
+            )
         }
 
         // get manga info
         app.get("/api/v1/manga/:mangaId/") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
-            ctx.json(scope.future { getManga(mangaId) })
+            ctx.json(
+                future {
+                    getManga(mangaId)
+                }
+            )
         }
 
         // manga thumbnail
         app.get("api/v1/manga/:mangaId/thumbnail") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
             // TODO see if there is a better way
-            val result = scope.future { getMangaThumbnail(mangaId) }.get()
+            val result = future { getMangaThumbnail(mangaId) }.get()
 
             ctx.result(result.first)
             ctx.header("content-type", result.second)
@@ -163,7 +187,7 @@ object JavalinSetup {
         app.get("api/v1/manga/:mangaId/library") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
             // TODO see if there is a better way
-            scope.future { addMangaToLibrary(mangaId) }.get()
+            future { addMangaToLibrary(mangaId) }.get()
             ctx.status(200)
         }
 
@@ -171,7 +195,7 @@ object JavalinSetup {
         app.delete("api/v1/manga/:mangaId/library") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
             // TODO see if there is a better way
-            scope.future { removeMangaFromLibrary(mangaId) }.get()
+            future { removeMangaFromLibrary(mangaId) }.get()
             ctx.status(200)
         }
 
@@ -200,14 +224,14 @@ object JavalinSetup {
         // get chapter list when showing a manga
         app.get("/api/v1/manga/:mangaId/chapters") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
-            ctx.json(scope.future { getChapterList(mangaId) })
+            ctx.json(future { getChapterList(mangaId) })
         }
 
         // used to display a chapter, get a chapter in order to show it's pages
         app.get("/api/v1/manga/:mangaId/chapter/:chapterIndex") { ctx ->
             val chapterIndex = ctx.pathParam("chapterIndex").toInt()
             val mangaId = ctx.pathParam("mangaId").toInt()
-            ctx.json(scope.future { getChapter(chapterIndex, mangaId) })
+            ctx.json(future { getChapter(chapterIndex, mangaId) })
         }
 
         app.get("/api/v1/manga/:mangaId/chapter/:chapterIndex/page/:index") { ctx ->
@@ -215,7 +239,7 @@ object JavalinSetup {
             val chapterIndex = ctx.pathParam("chapterIndex").toInt()
             val index = ctx.pathParam("index").toInt()
             // TODO see if there is a better way
-            val result = scope.future { getPageImage(mangaId, chapterIndex, index) }.get()
+            val result = future { getPageImage(mangaId, chapterIndex, index) }.get()
 
             ctx.result(result.first)
             ctx.header("content-type", result.second)
@@ -232,7 +256,7 @@ object JavalinSetup {
             val sourceId = ctx.pathParam("sourceId").toLong()
             val searchTerm = ctx.pathParam("searchTerm")
             val pageNum = ctx.pathParam("pageNum").toInt()
-            ctx.json(scope.future { sourceSearch(sourceId, searchTerm, pageNum) })
+            ctx.json(future { sourceSearch(sourceId, searchTerm, pageNum) })
         }
 
         // source filter list
