@@ -42,5 +42,5 @@ interface ExtensionGithubService {
     }
 
     @GET("${ExtensionGithubApi.REPO_URL_PREFIX}/index.json.gz")
-    fun getRepo(): JsonArray
+    suspend fun getRepo(): JsonArray
 }
