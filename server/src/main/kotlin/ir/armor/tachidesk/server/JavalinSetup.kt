@@ -105,7 +105,6 @@ object JavalinSetup {
         app.get("/api/v1/extension/update/:pkgName") { ctx ->
             val pkgName = ctx.pathParam("pkgName")
 
-            // TODO maybe replace with ctx.result(scope.future { updateExtension(pkgName) })?
             ctx.json(
                 future {
                     updateExtension(pkgName)
@@ -123,11 +122,14 @@ object JavalinSetup {
         // icon for extension named `apkName`
         app.get("/api/v1/extension/icon/:apkName") { ctx ->
             val apkName = ctx.pathParam("apkName")
-            // TODO see if there is a better way
-            val result = future { getExtensionIcon(apkName) }.get()
 
-            ctx.result(result.first)
-            ctx.header("content-type", result.second)
+            ctx.result(
+                future { getExtensionIcon(apkName) }
+                    .thenApply {
+                        ctx.header("content-type", it.second)
+                        it.first
+                    }
+            )
         }
 
         // list of sources
@@ -176,27 +178,32 @@ object JavalinSetup {
         // manga thumbnail
         app.get("api/v1/manga/:mangaId/thumbnail") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
-            // TODO see if there is a better way
-            val result = future { getMangaThumbnail(mangaId) }.get()
 
-            ctx.result(result.first)
-            ctx.header("content-type", result.second)
+            ctx.result(
+                future { getMangaThumbnail(mangaId) }
+                    .thenApply {
+                        ctx.header("content-type", it.second)
+                        it.first
+                    }
+            )
         }
 
         // adds the manga to library
         app.get("api/v1/manga/:mangaId/library") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
-            // TODO see if there is a better way
-            future { addMangaToLibrary(mangaId) }.get()
-            ctx.status(200)
+
+            ctx.result(
+                future { addMangaToLibrary(mangaId) }
+            )
         }
 
         // removes the manga from the library
         app.delete("api/v1/manga/:mangaId/library") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
-            // TODO see if there is a better way
-            future { removeMangaFromLibrary(mangaId) }.get()
-            ctx.status(200)
+
+            ctx.result(
+                future { removeMangaFromLibrary(mangaId) }
+            )
         }
 
         // list manga's categories
@@ -238,11 +245,14 @@ object JavalinSetup {
             val mangaId = ctx.pathParam("mangaId").toInt()
             val chapterIndex = ctx.pathParam("chapterIndex").toInt()
             val index = ctx.pathParam("index").toInt()
-            // TODO see if there is a better way
-            val result = future { getPageImage(mangaId, chapterIndex, index) }.get()
 
-            ctx.result(result.first)
-            ctx.header("content-type", result.second)
+            ctx.result(
+                future { getPageImage(mangaId, chapterIndex, index) }
+                    .thenApply {
+                        ctx.header("content-type", it.second)
+                        it.first
+                    }
+            )
         }
 
         // global search
