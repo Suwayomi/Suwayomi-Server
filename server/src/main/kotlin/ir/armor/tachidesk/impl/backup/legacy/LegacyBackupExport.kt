@@ -121,6 +121,8 @@ object LegacyBackupExport {
             }
         }
 
+        // TODO the rest
+
         return entry
     }
 
@@ -130,8 +132,8 @@ object LegacyBackupExport {
     }
 
     private fun backupExtensionInfo(root: JsonArray, extensions: Set<String>) { // TODO
-//        extensions.sorted().forEach {
-//            root.add(it)
-//        }
+        extensions.sorted().forEach {
+            root.add(it)
+        }
     }
 }
