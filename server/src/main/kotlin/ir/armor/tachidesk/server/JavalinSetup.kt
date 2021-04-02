@@ -327,27 +327,25 @@ object JavalinSetup {
 
         // expects a Tachiyomi legacy backup file to be uploaded
         app.get("/api/v1/backup/legacy/import") { ctx ->
-
-            ctx.contentType("application/json")
-            ctx.result(
-                future {
-                    createBackup(
-                        BackupFlags(
-                            includeManga = true,
-                            includeCategories = true,
-                            includeChapters = true,
-                            includeTracking = true,
-                            includeHistory = true,
-                        )
-                    )
-                }
-            )
+            // TODO
         }
 
         // returns a Tachiyomi legacy backup file created from the current database
         app.get("/api/v1/backup/legacy/export") { ctx ->
-            val categoryId = ctx.pathParam("categoryId").toInt()
-            ctx.json(getCategoryMangaList(categoryId))
+            ctx.contentType("application/json")
+            ctx.result(
+                    future {
+                        createBackup(
+                                BackupFlags(
+                                        includeManga = true,
+                                        includeCategories = true,
+                                        includeChapters = true,
+                                        includeTracking = true,
+                                        includeHistory = true,
+                                )
+                        )
+                    }
+            )
         }
     }
 }
