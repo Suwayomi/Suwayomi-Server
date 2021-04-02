@@ -7,58 +7,18 @@ package ir.armor.tachidesk.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import eu.kanade.tachiyomi.source.SourceFactory
-import eu.kanade.tachiyomi.source.online.HttpSource
 import ir.armor.tachidesk.impl.Extension.getExtensionIconUrl
-import ir.armor.tachidesk.impl.Extension.loadExtensionInstance
+import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
 import ir.armor.tachidesk.model.database.ExtensionTable
 import ir.armor.tachidesk.model.database.SourceTable
 import ir.armor.tachidesk.model.dataclass.SourceDataClass
-import ir.armor.tachidesk.server.ApplicationDirs
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.util.concurrent.ConcurrentHashMap
 
 object Source {
     private val logger = KotlinLogging.logger {}
-
-    private val sourceCache = ConcurrentHashMap<Long, HttpSource>()
-
-    fun getHttpSource(sourceId: Long): HttpSource {
-        val cachedResult: HttpSource? = sourceCache[sourceId]
-        if (cachedResult != null) {
-            return cachedResult
-        }
-
-        val sourceRecord = transaction {
-            SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!!
-        }
-
-        val extensionId = sourceRecord[SourceTable.extension]
-        val extensionRecord = transaction {
-            ExtensionTable.select { ExtensionTable.id eq extensionId }.firstOrNull()!!
-        }
-
-        val apkName = extensionRecord[ExtensionTable.apkName]
-        val className = extensionRecord[ExtensionTable.classFQName]
-        val jarName = apkName.substringBefore(".apk") + ".jar"
-        val jarPath = "${ApplicationDirs.extensionsRoot}/$jarName"
-
-        val extensionInstance = loadExtensionInstance(jarPath, className)
-
-        if (sourceRecord[SourceTable.partOfFactorySource]) {
-            (extensionInstance as SourceFactory).createSources().forEach {
-                sourceCache[it.id] = it as HttpSource
-            }
-        } else {
-            (extensionInstance as HttpSource).also {
-                sourceCache[it.id] = it
-            }
-        }
-        return sourceCache[sourceId]!!
-    }
 
     fun getSourceList(): List<SourceDataClass> {
         return transaction {

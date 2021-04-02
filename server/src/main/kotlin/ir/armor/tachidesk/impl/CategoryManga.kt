@@ -48,7 +48,7 @@ object CategoryManga {
         }
     }
 
-/**
+    /**
      * list of mangas that belong to a category
      */
     fun getCategoryMangaList(categoryId: Int): List<MangaDataClass> {
@@ -59,7 +59,7 @@ object CategoryManga {
         }
     }
 
-/**
+    /**
      * list of categories that a manga belongs to
      */
     fun getMangaCategories(mangaId: Int): List<CategoryDataClass> {

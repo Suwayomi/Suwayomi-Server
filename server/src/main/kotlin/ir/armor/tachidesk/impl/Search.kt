@@ -8,7 +8,7 @@ package ir.armor.tachidesk.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import ir.armor.tachidesk.impl.MangaList.processEntries
-import ir.armor.tachidesk.impl.Source.getHttpSource
+import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
 import ir.armor.tachidesk.impl.util.awaitSingle
 import ir.armor.tachidesk.model.dataclass.PagedMangaListDataClass
 

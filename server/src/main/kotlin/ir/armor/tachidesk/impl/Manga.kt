@@ -10,9 +10,9 @@ package ir.armor.tachidesk.impl
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.model.SManga
 import ir.armor.tachidesk.impl.MangaList.proxyThumbnailUrl
-import ir.armor.tachidesk.impl.Source.getHttpSource
 import ir.armor.tachidesk.impl.Source.getSource
 import ir.armor.tachidesk.impl.util.CachedImageResponse.getCachedImageResponse
+import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
 import ir.armor.tachidesk.impl.util.await
 import ir.armor.tachidesk.impl.util.awaitSingle
 import ir.armor.tachidesk.model.database.MangaStatus

@@ -9,8 +9,8 @@ package ir.armor.tachidesk.impl
 
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
-import ir.armor.tachidesk.impl.Source.getHttpSource
 import ir.armor.tachidesk.impl.util.CachedImageResponse.getCachedImageResponse
+import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
 import ir.armor.tachidesk.impl.util.awaitSingle
 import ir.armor.tachidesk.model.database.ChapterTable
 import ir.armor.tachidesk.model.database.MangaTable
