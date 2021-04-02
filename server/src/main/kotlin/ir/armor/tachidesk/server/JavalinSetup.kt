@@ -30,6 +30,8 @@ import ir.armor.tachidesk.impl.Search.sourceGlobalSearch
 import ir.armor.tachidesk.impl.Search.sourceSearch
 import ir.armor.tachidesk.impl.Source.getSource
 import ir.armor.tachidesk.impl.Source.getSourceList
+import ir.armor.tachidesk.impl.backup.BackupFlags
+import ir.armor.tachidesk.impl.backup.legacy.LegacyBackupExport.createBackup
 import ir.armor.tachidesk.server.util.openInBrowser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -325,8 +327,21 @@ object JavalinSetup {
 
         // expects a Tachiyomi legacy backup file to be uploaded
         app.get("/api/v1/backup/legacy/import") { ctx ->
-            val categoryId = ctx.pathParam("categoryId").toInt()
-            ctx.json(getCategoryMangaList(categoryId))
+
+            ctx.contentType("application/json")
+            ctx.result(
+                future {
+                    createBackup(
+                        BackupFlags(
+                            includeManga = true,
+                            includeCategories = true,
+                            includeChapters = true,
+                            includeTracking = true,
+                            includeHistory = true,
+                        )
+                    )
+                }
+            )
         }
 
         // returns a Tachiyomi legacy backup file created from the current database
