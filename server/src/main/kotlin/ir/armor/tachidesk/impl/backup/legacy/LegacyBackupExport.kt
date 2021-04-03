@@ -131,7 +131,7 @@ object LegacyBackupExport {
 //        categories.forEach { root.add(parser.toJsonTree(it)) }
     }
 
-    private fun backupExtensionInfo(root: JsonArray, extensions: Set<String>) { // TODO
+    private fun backupExtensionInfo(root: JsonArray, extensions: Set<String>) {
         extensions.sorted().forEach {
             root.add(it)
         }
