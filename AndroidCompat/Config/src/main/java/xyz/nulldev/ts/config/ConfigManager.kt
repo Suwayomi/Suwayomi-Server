@@ -11,7 +11,6 @@ import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import com.typesafe.config.ConfigRenderOptions
 import mu.KotlinLogging
-import net.harawata.appdirs.AppDirsFactory
 import java.io.File
 
 /**
@@ -47,7 +46,7 @@ open class ConfigManager {
 
         //Load user config
         val userConfig =
-            File(System.getProperty("ir.armor.tachidesk.rootDir"), "server.conf").let {
+            File(tachideskRootDir(), "server.conf").let {
                 ConfigFactory.parseFile(it)
             }
 

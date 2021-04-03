@@ -44,6 +44,7 @@ class TestExtensions {
         System.setProperty("ir.armor.tachidesk.rootDir", dataRoot)
         applicationSetup()
         setLoggingEnabled(false)
+
         runBlocking {
             extensions = getExtensionList()
             extensions.forEach {
