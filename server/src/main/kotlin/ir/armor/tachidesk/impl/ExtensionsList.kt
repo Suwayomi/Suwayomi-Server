@@ -48,14 +48,14 @@ object ExtensionsList {
     fun extensionTableAsDataClass() = transaction {
         ExtensionTable.selectAll().map {
             ExtensionDataClass(
+                it[ExtensionTable.apkName],
+                getExtensionIconUrl(it[ExtensionTable.apkName]),
                 it[ExtensionTable.name],
                 it[ExtensionTable.pkgName],
                 it[ExtensionTable.versionName],
                 it[ExtensionTable.versionCode],
                 it[ExtensionTable.lang],
                 it[ExtensionTable.isNsfw],
-                it[ExtensionTable.apkName],
-                getExtensionIconUrl(it[ExtensionTable.apkName]),
                 it[ExtensionTable.isInstalled],
                 it[ExtensionTable.hasUpdate],
                 it[ExtensionTable.isObsolete],

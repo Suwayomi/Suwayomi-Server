@@ -7,6 +7,7 @@ package ir.armor.tachidesk.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.net.Uri
 import com.googlecode.d2j.dex.Dex2jar
 import com.googlecode.d2j.reader.MultiDexFileReader
 import com.googlecode.dex2jar.tools.BaksmaliBaseDexExceptionHandler
@@ -26,6 +27,7 @@ import mu.KotlinLogging
 import okhttp3.Request
 import okio.buffer
 import okio.sink
+import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
@@ -87,23 +89,50 @@ object Extension {
         return classToLoad.getDeclaredConstructor().newInstance()
     }
 
+    data class InstallableAPK(
+        val apkFilePath: String,
+        val pkgName: String
+    )
+
     suspend fun installExtension(pkgName: String): Int {
         logger.debug("Installing $pkgName")
         val extensionRecord = extensionTableAsDataClass().first { it.pkgName == pkgName }
-        val fileNameWithoutType = extensionRecord.apkName.substringBefore(".apk")
-        val dirPathWithoutType = "${ApplicationDirs.extensionsRoot}/$fileNameWithoutType"
 
-        // check if we don't have the dex file already downloaded
-        val jarPath = "${ApplicationDirs.extensionsRoot}/$fileNameWithoutType.jar"
-        if (!File(jarPath).exists()) {
-            val apkToDownload = ExtensionGithubApi.getApkUrl(extensionRecord)
+        return installAPK {
+            val apkURL = ExtensionGithubApi.getApkUrl(extensionRecord)
+            val apkName = Uri.parse(apkURL).lastPathSegment!!
+            val apkSavePath = "${ApplicationDirs.extensionsRoot}/$apkName"
+            // download apk file
+            downloadAPKFile(apkURL, apkSavePath)
 
-            val apkFilePath = "$dirPathWithoutType.apk"
+            apkSavePath
+        }
+    }
+
+    suspend fun installAPK(fetcher: suspend () -> String): Int {
+        val apkFilePath = fetcher()
+        val apkName = Uri.parse(apkFilePath).lastPathSegment!!
+
+        // TODO: handle the whole apk signature, and trusting bossiness
+
+        val extensionRecord: ResultRow = transaction {
+            ExtensionTable.select { ExtensionTable.apkName eq apkName }.firstOrNull()
+        } ?: {
+            ExtensionTable.insert {
+                it[this.apkName] = apkName
+            }
+            ExtensionTable.select { ExtensionTable.apkName eq apkName }.firstOrNull()!!
+        }()
+
+        val extensionId = extensionRecord[ExtensionTable.id]
+
+        // check if we don't have the extension already installed
+        if (!extensionRecord[ExtensionTable.isInstalled]) {
+            val fileNameWithoutType = apkName.substringBefore(".apk")
+
+            val dirPathWithoutType = "${ApplicationDirs.extensionsRoot}/$fileNameWithoutType"
             val jarFilePath = "$dirPathWithoutType.jar"
             val dexFilePath = "$dirPathWithoutType.dex"
-
-            // download apk file
-            downloadAPKFile(apkToDownload, apkFilePath)
 
             val className: String = APKExtractor.extractDexAndReadClassname(apkFilePath, dexFilePath)
             logger.debug("Main class for extension is $className")
@@ -117,18 +146,14 @@ object Extension {
             // update sources of the extension
             val instance = loadExtensionInstance(jarFilePath, className)
 
-            val extensionId = transaction {
-                ExtensionTable.select { ExtensionTable.pkgName eq extensionRecord.pkgName }.firstOrNull()!![ExtensionTable.id]
-            }
-
             when (instance) {
                 is HttpSource -> { // single source
                     transaction {
                         if (SourceTable.select { SourceTable.id eq instance.id }.count() == 0L) {
                             SourceTable.insert {
-                                it[this.id] = instance.id
+                                it[id] = instance.id
                                 it[name] = instance.name
-                                it[this.lang] = instance.lang
+                                it[lang] = instance.lang
                                 it[extension] = extensionId
                             }
                         }
@@ -141,9 +166,9 @@ object Extension {
                             val httpSource = source as HttpSource
                             if (SourceTable.select { SourceTable.id eq httpSource.id }.count() == 0L) {
                                 SourceTable.insert {
-                                    it[this.id] = httpSource.id
+                                    it[id] = httpSource.id
                                     it[name] = httpSource.name
-                                    it[this.lang] = httpSource.lang
+                                    it[lang] = httpSource.lang
                                     it[extension] = extensionId
                                     it[partOfFactorySource] = true
                                 }
@@ -159,24 +184,24 @@ object Extension {
 
             // update extension info
             transaction {
-                ExtensionTable.update({ ExtensionTable.pkgName eq extensionRecord.pkgName }) {
+                ExtensionTable.update({ ExtensionTable.apkName eq apkName }) {
                     it[isInstalled] = true
                     it[classFQName] = className
                 }
             }
-            return 201 // we downloaded successfully
+            return 201 // we installed successfully
         } else {
-            return 302
+            return 302 // extension was already installed
         }
     }
 
     private val network: NetworkHelper by injectLazy()
 
-    private suspend fun downloadAPKFile(url: String, apkPath: String) {
+    private suspend fun downloadAPKFile(url: String, savePath: String) {
         val request = Request.Builder().url(url).build()
         val response = network.client.newCall(request).await()
 
-        val downloadedFile = File(apkPath)
+        val downloadedFile = File(savePath)
         downloadedFile.sink().buffer().use { sink ->
             response.body!!.source().use { source ->
                 sink.writeAll(source)
