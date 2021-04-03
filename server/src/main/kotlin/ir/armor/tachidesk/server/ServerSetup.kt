@@ -37,18 +37,20 @@ class ApplicationDirs(
     val mangaRoot = "$dataRoot/manga"
 }
 
-val serverConfig: ServerConfig by DI.global.instance()
+val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
 val systemTray by lazy { systemTray() }
 
 val androidCompat by lazy { AndroidCompat() }
 
-fun applicationSetup(rootDir: String? = null, config: Config = GlobalConfigManager.config) {
+fun applicationSetup(rootDir: String? = null) {
     val dirs = if (rootDir != null) {
         ApplicationDirs(rootDir)
     } else {
         ApplicationDirs()
     }
+
+    System.setProperty("ir.armor.tachidesk.rootDir", dirs.dataRoot)
 
     // make dirs we need
     listOf(
@@ -60,10 +62,13 @@ fun applicationSetup(rootDir: String? = null, config: Config = GlobalConfigManag
         File(it).mkdirs()
     }
 
+    GlobalConfigManager.registerModule(
+        ServerConfig.register(GlobalConfigManager.config)
+    )
+
     // Application dirs
     DI.global.addImport(DI.Module("Server") {
         bind<ApplicationDirs>() with singleton { dirs }
-        bind<ServerConfig>() with singleton { ServerConfig.register(config) }
     })
     // Load config API
     DI.global.addImport(ConfigKodeinModule().create())

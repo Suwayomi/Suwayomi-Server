@@ -41,7 +41,7 @@ class TestExtensions {
     @BeforeAll
     fun setup() {
         val dataRoot = File("tmp/TestDesk").absolutePath
-        applicationSetup(dataRoot, loadConfigs(dataRoot))
+        applicationSetup(dataRoot)
         setLoggingEnabled(false)
         runBlocking {
             extensions = getExtensionList()
