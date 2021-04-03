@@ -113,7 +113,7 @@ object Extension {
         val apkFilePath = fetcher()
         val apkName = Uri.parse(apkFilePath).lastPathSegment!!
 
-        // TODO: handle the whole apk signature, and trusting bossiness
+        // TODO: handle the whole apk signature, and trusting business
 
         val extensionRecord: ResultRow = transaction {
             ExtensionTable.select { ExtensionTable.apkName eq apkName }.firstOrNull()
