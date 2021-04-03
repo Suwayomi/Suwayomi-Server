@@ -41,7 +41,8 @@ class TestExtensions {
     @BeforeAll
     fun setup() {
         val dataRoot = File("tmp/TestDesk").absolutePath
-        applicationSetup(dataRoot)
+        System.setProperty("ir.armor.tachidesk.rootDir", dataRoot)
+        applicationSetup()
         setLoggingEnabled(false)
         runBlocking {
             extensions = getExtensionList()

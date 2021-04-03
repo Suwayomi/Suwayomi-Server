@@ -43,14 +43,15 @@ val systemTray by lazy { systemTray() }
 
 val androidCompat by lazy { AndroidCompat() }
 
-fun applicationSetup(rootDir: String? = null) {
+fun applicationSetup() {
+    val rootDir: String? = System.getProperty("ir.armor.tachidesk.rootDir")
     val dirs = if (rootDir != null) {
         ApplicationDirs(rootDir)
     } else {
-        ApplicationDirs()
+        ApplicationDirs().also {
+            System.setProperty("ir.armor.tachidesk.rootDir", it.dataRoot)
+        }
     }
-
-    System.setProperty("ir.armor.tachidesk.rootDir", dirs.dataRoot)
 
     // make dirs we need
     listOf(
