@@ -9,7 +9,7 @@ package ir.armor.tachidesk.impl.util
 
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
-import ir.armor.tachidesk.impl.Extension
+import ir.armor.tachidesk.impl.util.PackageTools.loadExtensionSources
 import ir.armor.tachidesk.model.database.ExtensionTable
 import ir.armor.tachidesk.model.database.SourceTable
 import ir.armor.tachidesk.server.ApplicationDirs
@@ -40,7 +40,7 @@ object GetHttpSource {
         val jarName = apkName.substringBefore(".apk") + ".jar"
         val jarPath = "${ApplicationDirs.extensionsRoot}/$jarName"
 
-        val extensionInstance = Extension.loadExtensionInstance(jarPath, className)
+        val extensionInstance = loadExtensionSources(jarPath, className)
 
         if (sourceRecord[SourceTable.partOfFactorySource]) {
             (extensionInstance as SourceFactory).createSources().forEach {

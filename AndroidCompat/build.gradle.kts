@@ -36,12 +36,6 @@ dependencies {
     // Config API
     implementation(project(":AndroidCompat:Config"))
 
-    // dex2jar: https://github.com/DexPatcher/dex2jar/releases/tag/v2.1-20190905-lanchon
-    compileOnly("com.github.DexPatcher.dex2jar:dex-tools:v2.1-20190905-lanchon")
-
-    // APK parser
-    compileOnly("net.dongliu:apk-parser:2.6.10")
-
     // APK sig verifier
     compileOnly("com.android.tools.build:apksig:4.2.0-alpha13")
 

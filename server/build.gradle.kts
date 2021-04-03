@@ -58,9 +58,6 @@ dependencies {
     implementation("org.jsoup:jsoup:1.13.1")
     implementation("com.github.salomonbrys.kotson:kotson:2.5.0")
 
-    // dex2jar: https://github.com/DexPatcher/dex2jar/releases/tag/v2.1-20190905-lanchon
-    implementation("com.github.DexPatcher.dex2jar:dex-tools:v2.1-20190905-lanchon")
-
 
     // api
     implementation("io.javalin:javalin:3.12.0")

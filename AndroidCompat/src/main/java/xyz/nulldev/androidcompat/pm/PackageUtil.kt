@@ -6,7 +6,7 @@ import android.content.pm.PackageInfo
 import net.dongliu.apk.parser.bean.ApkMeta
 import java.io.File
 
-fun ApkMeta.toPackageInfo(root: File, apk: File): PackageInfo {
+fun ApkMeta.toPackageInfo(apk: File): PackageInfo {
     return PackageInfo().also {
         it.packageName = packageName
         it.versionCode = versionCode.toInt()

@@ -22,7 +22,7 @@ data class InstalledPackage(val root: File) {
     val icon = File(root, "icon.png")
 
     val info: PackageInfo
-        get() = ApkParsers.getMetaInfo(apk).toPackageInfo(root, apk).also {
+        get() = ApkParsers.getMetaInfo(apk).toPackageInfo(apk).also {
             val parsed = ApkFile(apk)
             val dbFactory = DocumentBuilderFactory.newInstance()
             val dBuilder = dbFactory.newDocumentBuilder()
@@ -82,12 +82,14 @@ data class InstalledPackage(val root: File) {
         }
     }
 
-    private fun NodeList.toList(): List<Node> {
-        val out = mutableListOf<Node>()
+    companion object {
+        fun NodeList.toList(): List<Node> {
+            val out = mutableListOf<Node>()
 
-        for(i in 0 until length)
-            out += item(i)
+            for (i in 0 until length)
+                out += item(i)
 
-        return out
+            return out
+        }
     }
 }
