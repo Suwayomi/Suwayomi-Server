@@ -8,7 +8,7 @@ package ir.armor.tachidesk.model.dataclass
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 data class SourceDataClass(
-    val id: String,
+    val id: Long,
     val name: String?,
     val lang: String?,
     val iconUrl: String?,

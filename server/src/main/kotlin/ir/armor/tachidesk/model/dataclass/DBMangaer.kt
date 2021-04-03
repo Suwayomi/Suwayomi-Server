@@ -18,10 +18,14 @@ import ir.armor.tachidesk.server.ApplicationDirs
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.kodein.di.DI
+import org.kodein.di.conf.global
+import org.kodein.di.instance
 
 object DBMangaer {
     val db by lazy {
-        Database.connect("jdbc:h2:${ApplicationDirs.dataRoot}/database", "org.h2.Driver")
+        val dirs by DI.global.instance<ApplicationDirs>()
+        Database.connect("jdbc:h2:${dirs.dataRoot}/database", "org.h2.Driver")
     }
 }
 

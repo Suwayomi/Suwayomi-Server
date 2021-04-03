@@ -16,10 +16,14 @@ import ir.armor.tachidesk.model.database.SourceTable
 import ir.armor.tachidesk.server.ApplicationDirs
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.kodein.di.DI
+import org.kodein.di.conf.global
+import org.kodein.di.instance
 import java.util.concurrent.ConcurrentHashMap
 
 object GetHttpSource {
     private val sourceCache = ConcurrentHashMap<Long, HttpSource>()
+    private val dirs by DI.global.instance<ApplicationDirs>()
 
     fun getHttpSource(sourceId: Long): HttpSource {
         val cachedResult: HttpSource? = sourceCache[sourceId]
@@ -39,7 +43,7 @@ object GetHttpSource {
         val apkName = extensionRecord[ExtensionTable.apkName]
         val className = extensionRecord[ExtensionTable.classFQName]
         val jarName = apkName.substringBefore(".apk") + ".jar"
-        val jarPath = "${ApplicationDirs.extensionsRoot}/$jarName"
+        val jarPath = "${dirs.extensionsRoot}/$jarName"
 
         when (val instance = loadExtensionSources(jarPath, className)) {
             is Source -> listOf(instance)

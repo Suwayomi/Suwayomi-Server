@@ -7,3 +7,5 @@ gradle.properties
 build
 
 server/src/main/resources/react
+server/tmp/
+server/tachiserver-data/

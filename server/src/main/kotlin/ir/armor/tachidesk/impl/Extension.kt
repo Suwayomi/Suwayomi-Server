@@ -39,12 +39,17 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import org.kodein.di.DI
+import org.kodein.di.conf.global
+import org.kodein.di.instance
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.InputStream
 
 object Extension {
     private val logger = KotlinLogging.logger {}
+    private val dirs by DI.global.instance<ApplicationDirs>()
+
 
     data class InstallableAPK(
             val apkFilePath: String,
@@ -58,7 +63,7 @@ object Extension {
         return installAPK {
             val apkURL = ExtensionGithubApi.getApkUrl(extensionRecord)
             val apkName = Uri.parse(apkURL).lastPathSegment!!
-            val apkSavePath = "${ApplicationDirs.extensionsRoot}/$apkName"
+            val apkSavePath = "${dirs.extensionsRoot}/$apkName"
             // download apk file
             downloadAPKFile(apkURL, apkSavePath)
 
@@ -79,7 +84,7 @@ object Extension {
         if (!isInstalled) {
             val fileNameWithoutType = apkName.substringBefore(".apk")
 
-            val dirPathWithoutType = "${ApplicationDirs.extensionsRoot}/$fileNameWithoutType"
+            val dirPathWithoutType = "${dirs.extensionsRoot}/$fileNameWithoutType"
             val jarFilePath = "$dirPathWithoutType.jar"
             val dexFilePath = "$dirPathWithoutType.dex"
 
@@ -193,7 +198,7 @@ object Extension {
 
         val extensionRecord = transaction { ExtensionTable.select { ExtensionTable.pkgName eq pkgName }.firstOrNull()!! }
         val fileNameWithoutType = extensionRecord[ExtensionTable.apkName].substringBefore(".apk")
-        val jarPath = "${ApplicationDirs.extensionsRoot}/$fileNameWithoutType.jar"
+        val jarPath = "${dirs.extensionsRoot}/$fileNameWithoutType.jar"
         transaction {
             val extensionId = extensionRecord[ExtensionTable.id].value
 
@@ -232,7 +237,7 @@ object Extension {
     suspend fun getExtensionIcon(apkName: String): Pair<InputStream, String> {
         val iconUrl = transaction { ExtensionTable.select { ExtensionTable.apkName eq apkName }.firstOrNull()!! }[ExtensionTable.iconUrl]
 
-        val saveDir = "${ApplicationDirs.extensionsRoot}/icon"
+        val saveDir = "${dirs.extensionsRoot}/icon"
 
         return getCachedImageResponse(saveDir, apkName) {
             network.client.newCall(

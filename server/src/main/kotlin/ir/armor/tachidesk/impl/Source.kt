@@ -24,7 +24,7 @@ object Source {
         return transaction {
             SourceTable.selectAll().map {
                 SourceDataClass(
-                    it[SourceTable.id].value.toString(),
+                    it[SourceTable.id].value,
                     it[SourceTable.name],
                     it[SourceTable.lang],
                     getExtensionIconUrl(ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }.first()[ExtensionTable.apkName]),
@@ -39,7 +39,7 @@ object Source {
             val source = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
 
             SourceDataClass(
-                sourceId.toString(),
+                sourceId,
                 source?.get(SourceTable.name),
                 source?.get(SourceTable.lang),
                 source?.let { ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()[ExtensionTable.iconUrl] },

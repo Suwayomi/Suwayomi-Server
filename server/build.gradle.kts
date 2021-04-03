@@ -80,6 +80,9 @@ dependencies {
 
     // uncomment to test extensions directly
 //    implementation(fileTree("lib/"))
+
+    // Testing
+    testImplementation(kotlin("test-junit5"))
 }
 
 val name = "ir.armor.tachidesk.Main"
@@ -136,6 +139,9 @@ tasks {
                 "-Xopt-in=kotlinx.coroutines.InternalCoroutinesApi"
             )
         }
+    }
+    test {
+        useJUnit()
     }
 }
 
