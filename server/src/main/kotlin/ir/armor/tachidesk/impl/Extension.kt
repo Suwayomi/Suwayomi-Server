@@ -68,7 +68,7 @@ object Extension {
 
     suspend fun installAPK(fetcher: suspend () -> String): Int {
         val apkFilePath = fetcher()
-        val apkName = Uri.parse(apkFilePath).lastPathSegment!!
+        val apkName = File(apkFilePath).name
 
         // check if we don't have the extension already installed
         // if it's installed and we want to update, it first has to be uninstalled
