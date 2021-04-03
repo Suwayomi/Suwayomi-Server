@@ -24,8 +24,8 @@ import org.kodein.di.instance
 
 object DBMangaer {
     val db by lazy {
-        val dirs by DI.global.instance<ApplicationDirs>()
-        Database.connect("jdbc:h2:${dirs.dataRoot}/database", "org.h2.Driver")
+        val applicationDirs by DI.global.instance<ApplicationDirs>()
+        Database.connect("jdbc:h2:${applicationDirs.dataRoot}/database", "org.h2.Driver")
     }
 }
 

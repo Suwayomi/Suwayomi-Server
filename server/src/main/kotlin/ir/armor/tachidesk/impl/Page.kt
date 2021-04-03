@@ -76,7 +76,7 @@ object Page {
     }
 
 // TODO: rewrite this to match tachiyomi
-    private val dirs by DI.global.instance<ApplicationDirs>()
+    private val applicationDirs by DI.global.instance<ApplicationDirs>()
     fun getChapterDir(mangaId: Int, chapterId: Int): String {
         val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
         val sourceId = mangaEntry[MangaTable.sourceReference]
@@ -92,7 +92,7 @@ object Page {
         val mangaTitle = mangaEntry[MangaTable.title]
         val sourceName = source.toString()
 
-        val mangaDir = "${dirs.mangaRoot}/$sourceName/$mangaTitle/$chapterDir"
+        val mangaDir = "${applicationDirs.mangaRoot}/$sourceName/$mangaTitle/$chapterDir"
         // make sure dirs exist
         File(mangaDir).mkdirs()
         return mangaDir

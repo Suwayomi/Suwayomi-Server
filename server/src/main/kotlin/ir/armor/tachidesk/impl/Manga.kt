@@ -98,10 +98,10 @@ object Manga {
         }
     }
 
-    private val dirs by DI.global.instance<ApplicationDirs>()
+    private val applicationDirs by DI.global.instance<ApplicationDirs>()
     suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
         val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
-        val saveDir = dirs.thumbnailsRoot
+        val saveDir = applicationDirs.thumbnailsRoot
         val fileName = mangaId.toString()
 
         return getCachedImageResponse(saveDir, fileName) {

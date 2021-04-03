@@ -34,7 +34,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 object PackageTools {
     private val logger = KotlinLogging.logger {}
-    private val dirs by DI.global.instance<ApplicationDirs>()
+    private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
     const val EXTENSION_FEATURE = "tachiyomi.extension"
     const val METADATA_SOURCE_CLASS = "tachiyomi.extension.class"
@@ -69,7 +69,7 @@ object PackageTools {
             .skipExceptions(false)
             .to(jarFilePath)
         if (handler.hasException()) {
-            val errorFile: Path = File(dirs.extensionsRoot).toPath().resolve("$fileNameWithoutType-error.txt")
+            val errorFile: Path = File(applicationDirs.extensionsRoot).toPath().resolve("$fileNameWithoutType-error.txt")
             logger.error(
                 "Detail Error Information in File $errorFile\n" +
                     "Please report this file to one of following link if possible (any one).\n" +

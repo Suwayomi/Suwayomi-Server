@@ -48,7 +48,7 @@ import java.io.InputStream
 
 object Extension {
     private val logger = KotlinLogging.logger {}
-    private val dirs by DI.global.instance<ApplicationDirs>()
+    private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
 
     data class InstallableAPK(
@@ -63,7 +63,7 @@ object Extension {
         return installAPK {
             val apkURL = ExtensionGithubApi.getApkUrl(extensionRecord)
             val apkName = Uri.parse(apkURL).lastPathSegment!!
-            val apkSavePath = "${dirs.extensionsRoot}/$apkName"
+            val apkSavePath = "${applicationDirs.extensionsRoot}/$apkName"
             // download apk file
             downloadAPKFile(apkURL, apkSavePath)
 
@@ -84,7 +84,7 @@ object Extension {
         if (!isInstalled) {
             val fileNameWithoutType = apkName.substringBefore(".apk")
 
-            val dirPathWithoutType = "${dirs.extensionsRoot}/$fileNameWithoutType"
+            val dirPathWithoutType = "${applicationDirs.extensionsRoot}/$fileNameWithoutType"
             val jarFilePath = "$dirPathWithoutType.jar"
             val dexFilePath = "$dirPathWithoutType.dex"
 
@@ -198,7 +198,7 @@ object Extension {
 
         val extensionRecord = transaction { ExtensionTable.select { ExtensionTable.pkgName eq pkgName }.firstOrNull()!! }
         val fileNameWithoutType = extensionRecord[ExtensionTable.apkName].substringBefore(".apk")
-        val jarPath = "${dirs.extensionsRoot}/$fileNameWithoutType.jar"
+        val jarPath = "${applicationDirs.extensionsRoot}/$fileNameWithoutType.jar"
         transaction {
             val extensionId = extensionRecord[ExtensionTable.id].value
 
@@ -237,7 +237,7 @@ object Extension {
     suspend fun getExtensionIcon(apkName: String): Pair<InputStream, String> {
         val iconUrl = transaction { ExtensionTable.select { ExtensionTable.apkName eq apkName }.firstOrNull()!! }[ExtensionTable.iconUrl]
 
-        val saveDir = "${dirs.extensionsRoot}/icon"
+        val saveDir = "${applicationDirs.extensionsRoot}/icon"
 
         return getCachedImageResponse(saveDir, apkName) {
             network.client.newCall(
