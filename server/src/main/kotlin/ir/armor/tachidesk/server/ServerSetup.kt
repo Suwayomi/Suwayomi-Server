@@ -20,15 +20,15 @@ import org.kodein.di.singleton
 import org.slf4j.Logger
 import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
+import xyz.nulldev.ts.config.ApplicationRootDir
 import xyz.nulldev.ts.config.ConfigKodeinModule
 import xyz.nulldev.ts.config.GlobalConfigManager
-import xyz.nulldev.ts.config.tachideskRootDir
 import java.io.File
 
 private val logger = KotlinLogging.logger {}
 
 class ApplicationDirs(
-    val dataRoot: String = tachideskRootDir()
+    val dataRoot: String = ApplicationRootDir
 ) {
     val extensionsRoot = "$dataRoot/extensions"
     val thumbnailsRoot = "$dataRoot/thumbnails"
@@ -44,9 +44,11 @@ val androidCompat by lazy { AndroidCompat() }
 fun applicationSetup() {
     // Application dirs
     val applicationDirs = ApplicationDirs()
-    DI.global.addImport(DI.Module("Server") {
-        bind<ApplicationDirs>() with singleton { applicationDirs }
-    })
+    DI.global.addImport(
+        DI.Module("Server") {
+            bind<ApplicationDirs>() with singleton { applicationDirs }
+        }
+    )
 
     // make dirs we need
     listOf(
@@ -58,6 +60,7 @@ fun applicationSetup() {
         File(it).mkdirs()
     }
 
+    // register Tachidesk's config which is dubbed "ServerConfig"
     GlobalConfigManager.registerModule(
         ServerConfig.register(GlobalConfigManager.config)
     )

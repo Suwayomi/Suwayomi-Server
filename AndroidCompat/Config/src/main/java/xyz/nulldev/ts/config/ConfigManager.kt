@@ -46,7 +46,7 @@ open class ConfigManager {
 
         //Load user config
         val userConfig =
-            File(tachideskRootDir(), "server.conf").let {
+            File(ApplicationRootDir, "server.conf").let {
                 ConfigFactory.parseFile(it)
             }
 

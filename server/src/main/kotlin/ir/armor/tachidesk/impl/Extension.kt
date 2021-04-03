@@ -50,10 +50,9 @@ object Extension {
     private val logger = KotlinLogging.logger {}
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
-
     data class InstallableAPK(
-            val apkFilePath: String,
-            val pkgName: String
+        val apkFilePath: String,
+        val pkgName: String
     )
 
     suspend fun installExtension(pkgName: String): Int {
@@ -99,8 +98,8 @@ object Extension {
             val libVersion = packageInfo.versionName.substringBeforeLast('.').toDouble()
             if (libVersion < LIB_VERSION_MIN || libVersion > LIB_VERSION_MAX) {
                 throw Exception(
-                        "Lib version is $libVersion, while only versions " +
-                                "$LIB_VERSION_MIN to $LIB_VERSION_MAX are allowed"
+                    "Lib version is $libVersion, while only versions " +
+                        "$LIB_VERSION_MIN to $LIB_VERSION_MAX are allowed"
                 )
             }
 
@@ -241,7 +240,7 @@ object Extension {
 
         return getCachedImageResponse(saveDir, apkName) {
             network.client.newCall(
-                    GET(iconUrl)
+                GET(iconUrl)
             ).await()
         }
     }

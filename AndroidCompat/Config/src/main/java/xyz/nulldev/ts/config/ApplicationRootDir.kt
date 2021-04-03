@@ -9,9 +9,10 @@ import net.harawata.appdirs.AppDirsFactory
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-fun tachideskRootDir(): String {
-    return System.getProperty(
-            "ir.armor.tachidesk.rootDir",
-            AppDirsFactory.getInstance().getUserDataDir("Tachidesk", null, null)
-    )
-}
+val ApplicationRootDir: String
+    get(): String {
+        return System.getProperty(
+                "ir.armor.tachidesk.rootDir",
+                AppDirsFactory.getInstance().getUserDataDir("Tachidesk", null, null)
+        )
+    }

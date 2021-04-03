@@ -75,9 +75,11 @@ class TestExtensions {
                     semaphore.withPermit {
                         logger.info { "$index - Now fetching popular manga from $source" }
                         try {
-                            mangaToFetch += source to (source.fetchPopularManga(1)
-                                .awaitSingleRepeat().mangas.firstOrNull()
-                                ?: throw Exception("Source returned no manga"))
+                            mangaToFetch += source to (
+                                source.fetchPopularManga(1)
+                                    .awaitSingleRepeat().mangas.firstOrNull()
+                                    ?: throw Exception("Source returned no manga")
+                                )
                         } catch (e: Exception) {
                             logger.warn { "Failed to fetch popular manga from $source: ${e.message}" }
                             failedToFetch += source to e
