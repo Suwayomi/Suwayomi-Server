@@ -58,7 +58,7 @@ class TestExtensions {
                     }
                 }
             }
-            sources = getSourceList().map { getHttpSource(it.id) }
+            sources = getSourceList().map { getHttpSource(it.id.toLong()) }
         }
         setLoggingEnabled(true)
         File("tmp/TestDesk/sources.txt").writeText(sources.joinToString("\n") { "${it.name} - ${it.lang.toUpperCase()} - ${it.id}" })
