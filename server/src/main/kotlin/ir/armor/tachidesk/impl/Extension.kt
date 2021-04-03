@@ -55,25 +55,25 @@ object Extension {
         val reader = MultiDexFileReader.open(Files.readAllBytes(File(dexFile).toPath()))
         val handler = BaksmaliBaseDexExceptionHandler()
         Dex2jar
-                .from(reader)
-                .withExceptionHandler(handler)
-                .reUseReg(false)
-                .topoLogicalSort()
-                .skipDebug(true)
-                .optimizeSynchronized(false)
-                .printIR(false)
-                .noCode(false)
-                .skipExceptions(false)
-                .to(jarFilePath)
+            .from(reader)
+            .withExceptionHandler(handler)
+            .reUseReg(false)
+            .topoLogicalSort()
+            .skipDebug(true)
+            .optimizeSynchronized(false)
+            .printIR(false)
+            .noCode(false)
+            .skipExceptions(false)
+            .to(jarFilePath)
         if (handler.hasException()) {
             val errorFile: Path = File(ApplicationDirs.extensionsRoot).toPath().resolve("$fileNameWithoutType-error.txt")
             logger.error(
-                    "Detail Error Information in File $errorFile\n" +
-                            "Please report this file to one of following link if possible (any one).\n" +
-                            "    https://sourceforge.net/p/dex2jar/tickets/\n" +
-                            "    https://bitbucket.org/pxb1988/dex2jar/issues\n" +
-                            "    https://github.com/pxb1988/dex2jar/issues\n" +
-                            "    dex2jar@googlegroups.com"
+                "Detail Error Information in File $errorFile\n" +
+                    "Please report this file to one of following link if possible (any one).\n" +
+                    "    https://sourceforge.net/p/dex2jar/tickets/\n" +
+                    "    https://bitbucket.org/pxb1988/dex2jar/issues\n" +
+                    "    https://github.com/pxb1988/dex2jar/issues\n" +
+                    "    dex2jar@googlegroups.com"
             )
             handler.dump(errorFile, emptyArray<String>())
         }
@@ -90,8 +90,8 @@ object Extension {
     }
 
     data class InstallableAPK(
-            val apkFilePath: String,
-            val pkgName: String
+        val apkFilePath: String,
+        val pkgName: String
     )
 
     suspend fun installExtension(pkgName: String): Int {
@@ -260,7 +260,7 @@ object Extension {
 
         return getCachedImageResponse(saveDir, apkName) {
             network.client.newCall(
-                    GET(iconUrl)
+                GET(iconUrl)
             ).await()
         }
     }
