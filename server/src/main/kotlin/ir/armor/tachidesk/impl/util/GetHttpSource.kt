@@ -7,6 +7,7 @@ package ir.armor.tachidesk.impl.util
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
 import ir.armor.tachidesk.impl.util.PackageTools.loadExtensionSources
@@ -40,16 +41,12 @@ object GetHttpSource {
         val jarName = apkName.substringBefore(".apk") + ".jar"
         val jarPath = "${ApplicationDirs.extensionsRoot}/$jarName"
 
-        val extensionInstance = loadExtensionSources(jarPath, className)
-
-        if (sourceRecord[SourceTable.partOfFactorySource]) {
-            (extensionInstance as SourceFactory).createSources().forEach {
-                sourceCache[it.id] = it as HttpSource
-            }
-        } else {
-            (extensionInstance as HttpSource).also {
-                sourceCache[it.id] = it
-            }
+        when (val instance = loadExtensionSources(jarPath, className)) {
+            is Source -> listOf(instance)
+            is SourceFactory -> instance.createSources()
+            else -> throw Exception("Unknown source class type! ${instance.javaClass}")
+        }.forEach {
+            sourceCache[it.id] = it as HttpSource
         }
         return sourceCache[sourceId]!!
     }
