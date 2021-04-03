@@ -87,7 +87,7 @@ object Extension {
             val pkgName = packageInfo.packageName
 
             if (!packageInfo.reqFeatures.orEmpty().any { it.name == EXTENSION_FEATURE }) {
-                throw Exception("This apk is not a tachiyomi extension")
+                throw Exception("This apk is not a Tachiyomi extension")
             }
 
             // Validate lib version
