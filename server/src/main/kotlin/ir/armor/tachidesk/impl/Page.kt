@@ -21,6 +21,9 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import org.kodein.di.DI
+import org.kodein.di.conf.global
+import org.kodein.di.instance
 import java.io.File
 import java.io.InputStream
 
@@ -73,6 +76,7 @@ object Page {
     }
 
 // TODO: rewrite this to match tachiyomi
+    private val applicationDirs by DI.global.instance<ApplicationDirs>()
     fun getChapterDir(mangaId: Int, chapterId: Int): String {
         val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
         val sourceId = mangaEntry[MangaTable.sourceReference]
@@ -88,7 +92,7 @@ object Page {
         val mangaTitle = mangaEntry[MangaTable.title]
         val sourceName = source.toString()
 
-        val mangaDir = "${ApplicationDirs.mangaRoot}/$sourceName/$mangaTitle/$chapterDir"
+        val mangaDir = "${applicationDirs.mangaRoot}/$sourceName/$mangaTitle/$chapterDir"
         // make sure dirs exist
         File(mangaDir).mkdirs()
         return mangaDir

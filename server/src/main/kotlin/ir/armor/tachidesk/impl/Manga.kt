@@ -22,6 +22,9 @@ import ir.armor.tachidesk.server.ApplicationDirs
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import org.kodein.di.DI
+import org.kodein.di.conf.global
+import org.kodein.di.instance
 import java.io.InputStream
 
 object Manga {
@@ -95,9 +98,10 @@ object Manga {
         }
     }
 
+    private val applicationDirs by DI.global.instance<ApplicationDirs>()
     suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
         val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
-        val saveDir = ApplicationDirs.thumbnailsRoot
+        val saveDir = applicationDirs.thumbnailsRoot
         val fileName = mangaId.toString()
 
         return getCachedImageResponse(saveDir, fileName) {

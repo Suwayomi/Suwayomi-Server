@@ -18,16 +18,12 @@ import java.io.File
  * Manages app config.
  */
 open class ConfigManager {
-    private val dataRoot by lazy { AppDirsFactory.getInstance().getUserDataDir("Tachidesk", null, null)!! }
-
     private val generatedModules = mutableMapOf<Class<out ConfigModule>, ConfigModule>()
     val config by lazy { loadConfigs() }
 
     //Public read-only view of modules
     val loadedModules: Map<Class<out ConfigModule>, ConfigModule>
         get() = generatedModules
-
-    open val appConfigFile: String = "$dataRoot/server.conf"
 
     val logger = KotlinLogging.logger {}
 
@@ -51,8 +47,8 @@ open class ConfigManager {
 
         //Load user config
         val userConfig =
-            File(appConfigFile).let{
-                    ConfigFactory.parseFile(it)
+            File(System.getProperty("ir.armor.tachidesk.rootDir"), "server.conf").let {
+                ConfigFactory.parseFile(it)
             }
 
         val config = ConfigFactory.empty()
@@ -69,7 +65,7 @@ open class ConfigManager {
     }
 
     fun registerModule(module: ConfigModule) {
-        generatedModules.put(module.javaClass, module)
+        generatedModules[module.javaClass] = module
     }
 
     fun registerModules(vararg modules: ConfigModule) {
