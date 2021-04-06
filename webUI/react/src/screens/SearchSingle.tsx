@@ -73,7 +73,7 @@ export default function SearchSingle() {
                             }))]);
                         setHasNextPage(data.hasNextPage);
                     } else {
-                        setMessage('search qeury returned nothing.');
+                        setMessage('search query returned nothing.');
                     }
                 });
         }
