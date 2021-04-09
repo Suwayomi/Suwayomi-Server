@@ -7,11 +7,7 @@ package ir.armor.tachidesk.impl.backup.legacy
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import com.github.salomonbrys.kotson.registerTypeAdapter
-import com.github.salomonbrys.kotson.registerTypeHierarchyAdapter
 import com.github.salomonbrys.kotson.set
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
@@ -19,38 +15,18 @@ import eu.kanade.tachiyomi.source.LocalSource
 import ir.armor.tachidesk.impl.backup.BackupFlags
 import ir.armor.tachidesk.impl.backup.legacy.models.Backup
 import ir.armor.tachidesk.impl.backup.legacy.models.Backup.CURRENT_VERSION
-import ir.armor.tachidesk.impl.backup.legacy.models.DHistory
-import ir.armor.tachidesk.impl.backup.legacy.serializer.CategoryTypeAdapter
-import ir.armor.tachidesk.impl.backup.legacy.serializer.ChapterTypeAdapter
-import ir.armor.tachidesk.impl.backup.legacy.serializer.HistoryTypeAdapter
-import ir.armor.tachidesk.impl.backup.legacy.serializer.MangaTypeAdapter
-import ir.armor.tachidesk.impl.backup.legacy.serializer.TrackTypeAdapter
-import ir.armor.tachidesk.impl.backup.models.CategoryImpl
 import ir.armor.tachidesk.impl.backup.models.ChapterImpl
 import ir.armor.tachidesk.impl.backup.models.Manga
 import ir.armor.tachidesk.impl.backup.models.MangaImpl
-import ir.armor.tachidesk.impl.backup.models.TrackImpl
 import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
 import ir.armor.tachidesk.model.database.ChapterTable
 import ir.armor.tachidesk.model.database.MangaTable
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 
-object LegacyBackupExport {
-    const val version = 2
+object LegacyBackupExport : LegacyBackupBase() {
 
-    private val parser: Gson = when (version) {
-        2 -> GsonBuilder()
-            .registerTypeAdapter<MangaImpl>(MangaTypeAdapter.build())
-            .registerTypeHierarchyAdapter<ChapterImpl>(ChapterTypeAdapter.build())
-            .registerTypeAdapter<CategoryImpl>(CategoryTypeAdapter.build())
-            .registerTypeAdapter<DHistory>(HistoryTypeAdapter.build())
-            .registerTypeHierarchyAdapter<TrackImpl>(TrackTypeAdapter.build())
-            .create()
-        else -> throw Exception("Unknown backup version")
-    }
-
-    suspend fun createBackup(flags: BackupFlags): String? {
+    suspend fun createLegacyBackup(flags: BackupFlags): String? {
         // Create root object
         val root = JsonObject()
 
