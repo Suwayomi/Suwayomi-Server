@@ -327,8 +327,12 @@ object JavalinSetup {
         }
 
         // expects a Tachiyomi legacy backup json to be uploaded
-        app.get("/api/v1/backup/legacy/import") { ctx ->
-            restoreLegacyBackup(ctx.bodyAsInputStream())
+        app.post("/api/v1/backup/legacy/import") { ctx ->
+            ctx.result(
+                future {
+                    restoreLegacyBackup(ctx.bodyAsInputStream())
+                }
+            )
         }
 
         // returns a Tachiyomi legacy backup json created from the current database

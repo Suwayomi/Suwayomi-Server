@@ -21,9 +21,10 @@ import ir.armor.tachidesk.impl.backup.models.CategoryImpl
 import ir.armor.tachidesk.impl.backup.models.ChapterImpl
 import ir.armor.tachidesk.impl.backup.models.MangaImpl
 import ir.armor.tachidesk.impl.backup.models.TrackImpl
+import java.util.Date
 
 open class LegacyBackupBase {
-    internal val parser: Gson = when (version) {
+    protected val parser: Gson = when (version) {
         2 -> GsonBuilder()
             .registerTypeAdapter<MangaImpl>(MangaTypeAdapter.build())
             .registerTypeHierarchyAdapter<ChapterImpl>(ChapterTypeAdapter.build())
@@ -33,6 +34,10 @@ open class LegacyBackupBase {
             .create()
         else -> throw Exception("Unknown backup version")
     }
+
+    protected var sourceMapping: Map<Long, String> = emptyMap()
+
+    protected val errors = mutableListOf<Pair<Date, String>>()
 
     companion object {
         internal const val version = 2
