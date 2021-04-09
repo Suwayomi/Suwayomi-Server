@@ -40,6 +40,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.future.future
 import mu.KotlinLogging
 import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.concurrent.CompletableFuture
 
 /*
@@ -326,7 +328,7 @@ object JavalinSetup {
             ctx.json(getCategoryMangaList(categoryId))
         }
 
-        // expects a Tachiyomi legacy backup json to be uploaded
+        // expects a Tachiyomi legacy backup json in the body
         app.post("/api/v1/backup/legacy/import") { ctx ->
             ctx.result(
                 future {
@@ -335,9 +337,40 @@ object JavalinSetup {
             )
         }
 
-        // returns a Tachiyomi legacy backup json created from the current database
+        // expects a Tachiyomi legacy backup json as a file upload, the file must be named "backup.json"
+        app.post("/api/v1/backup/legacy/import/file") { ctx ->
+            ctx.result(
+                future {
+                    restoreLegacyBackup(ctx.uploadedFile("backup.json")!!.content)
+                }
+            )
+        }
+
+        // returns a Tachiyomi legacy backup json created from the current database as a json body
         app.get("/api/v1/backup/legacy/export") { ctx ->
             ctx.contentType("application/json")
+            ctx.result(
+                future {
+                    createLegacyBackup(
+                        BackupFlags(
+                            includeManga = true,
+                            includeCategories = true,
+                            includeChapters = true,
+                            includeTracking = true,
+                            includeHistory = true,
+                        )
+                    )
+                }
+            )
+        }
+
+        // returns a Tachiyomi legacy backup json created from the current database as a file
+        app.get("/api/v1/backup/legacy/export/file") { ctx ->
+            ctx.contentType("application/json")
+            val sdf = SimpleDateFormat("yyyy-MM-dd_HH-mm")
+            val currentDate = sdf.format(Date())
+
+            ctx.header("Content-Disposition", "attachment; filename=\"tachidesk_$currentDate.json\"")
             ctx.result(
                 future {
                     createLegacyBackup(

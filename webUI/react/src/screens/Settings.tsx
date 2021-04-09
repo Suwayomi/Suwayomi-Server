@@ -16,15 +16,11 @@ import {
     DialogContentText, IconButton, ListItemSecondaryAction, Switch, TextField,
     ListItemIcon, ListItemText,
 } from '@material-ui/core';
-import ListItem, { ListItemProps } from '@material-ui/core/ListItem';
+import ListItem from '@material-ui/core/ListItem';
 import NavbarContext from '../context/NavbarContext';
 import DarkTheme from '../context/DarkTheme';
 import useLocalStorage from '../util/useLocalStorage';
-
-function ListItemLink(props: ListItemProps<'a', { button?: true }>) {
-    // eslint-disable-next-line react/jsx-props-no-spreading
-    return <ListItem button component="a" {...props} />;
-}
+import ListItemLink from '../util/ListItemLink';
 
 export default function Settings() {
     const { setTitle, setAction } = useContext(NavbarContext);
@@ -57,6 +53,12 @@ export default function Settings() {
                         <InboxIcon />
                     </ListItemIcon>
                     <ListItemText primary="Categories" />
+                </ListItemLink>
+                <ListItemLink href="/settings/backup">
+                    <ListItemIcon>
+                        <InboxIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Backup" />
                 </ListItemLink>
                 <ListItem>
                     <ListItemIcon>

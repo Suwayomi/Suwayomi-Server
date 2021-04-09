@@ -10,6 +10,7 @@
     "@testing-library/user-event": "^12.1.10",
     "@types/react-lazyload": "^3.1.0",
     "axios": "^0.21.1",
+    "file-selector": "^0.2.4",
     "fontsource-roboto": "^4.0.0",
     "react": "^17.0.1",
     "react-beautiful-dnd": "^13.0.0",

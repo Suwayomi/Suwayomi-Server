@@ -25,6 +25,7 @@ import DarkTheme from './context/DarkTheme';
 import Library from './screens/Library';
 import Settings from './screens/Settings';
 import Categories from './screens/settings/Categories';
+import Backup from './screens/settings/Backup';
 import useLocalStorage from './util/useLocalStorage';
 
 export default function App() {
@@ -102,6 +103,9 @@ export default function App() {
                             </Route>
                             <Route path="/settings/categories">
                                 <Categories />
+                            </Route>
+                            <Route path="/settings/backup">
+                                <Backup />
                             </Route>
                             <Route path="/settings">
                                 <DarkTheme.Provider value={darkThemeContext}>
