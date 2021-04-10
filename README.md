@@ -25,9 +25,9 @@ Anyways, for more info checkout [finished milestone #1](https://github.com/Suway
 ### All Operating Systems
 You should have The Java Runtime Environment(JRE) 8 or newer and a modern browser installed. Also an internet connection is required as almost everything this app does is downloading stuff. 
 
-Download the latest jar release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases).
+Download the latest "Stable" jar release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases) or a preview jar build from [the preview branch](https://github.com/Suwayomi/Tachidesk/tree/preview).
 
-Double click on the jar file or run `java -jar Tachidesk-vX.Y.Z-rxxx.jar` from a Terminal/Command Prompt window to run the app which will open a new browser window automatically. Also the System Tray Icon is your friend if you need to open the browser window again or close Tachidesk.
+Double click on the jar file or run `java -jar Tachidesk-vX.Y.Z-rxxx.jar` (or `java -jar Tachidesk-latest.jar` if you have the latest preview) from a Terminal/Command Prompt window to run the app which will open a new browser window automatically. Also the System Tray Icon is your friend if you need to open the browser window again or close Tachidesk.
 
 ### Windows
 Download the latest win32 release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases).
@@ -66,7 +66,7 @@ This project has two components:
 ### Prerequisite: Get Android stubs jar
 #### Manual download
 Download [android.jar](https://raw.githubusercontent.com/Suwayomi/Tachidesk/android-jar/android.jar) and put it under `AndroidCompat/lib`.
-#### Automated download(needs `bash`, `curl`, `base64`, `zip` to work)
+#### Automated download
 Run `AndroidCompat/getAndroid.sh`(MacOS/Linux) or `AndroidCompat/getAndroid.ps1`(Windows) from project's root directory to download and rebuild the jar file from Google's repository.
 ### Prerequisite: Software dependencies
 You need this software packages installed in order to build this project:
