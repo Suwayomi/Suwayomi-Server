@@ -70,14 +70,12 @@ jobs:
           dependencies-cache-enabled: true
           configuration-cache-enabled: true
 
-      - name: Checkout repo branch
-        if: github.repository == 'tachiyomiorg/tachiyomi-extensions'
+      - name: Checkout preview branch
         uses: actions/checkout@v2
         with:
-          ref: repo
-          path: repo
+          ref: preview
+          path: preview
 
-      - name: Deploy repo
-        if: github.repository == 'tachiyomiorg/tachiyomi-extensions'
+      - name: Deploy preview
         run: |
           ./master/.github/scripts/commit-repo.sh

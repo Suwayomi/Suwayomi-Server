@@ -1,7 +1,7 @@
 #!/bin/bash
 
-cp master/server/build/Tachidesk-*.jar repo
-cd repo
+cp master/server/build/Tachidesk-*.jar preview
+cd preview
 
 new_jar_build=$(ls *.jar| tail -1)
 echo "last jar build file name: $new_jar_build"
@@ -13,7 +13,7 @@ git config --global user.name "github-actions[bot]"
 git status
 if [ -n "$(git status --porcelain)" ]; then
     git add .
-    git commit -m "Update repo"
+    git commit -m "Update preview repository"
     git push
 else
     echo "No changes to commit"
