@@ -1,4 +1,4 @@
-name: CI
+name: CI build master
 
 on:
   push:
