@@ -27,7 +27,7 @@ You should have The Java Runtime Environment(JRE) 8 or newer and a modern browse
 
 Download the latest "Stable" jar release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases) or a preview jar build from [the preview branch](https://github.com/Suwayomi/Tachidesk/tree/preview).
 
-Double click on the jar file or run `java -jar Tachidesk-vX.Y.Z-rxxx.jar` or `java -jar Tachidesk-latest.jar` from a Terminal/Command Prompt window to run the app which will open a new browser window automatically. Also the System Tray Icon is your friend if you need to open the browser window again or close Tachidesk.
+Double click on the jar file or run `java -jar Tachidesk-vX.Y.Z-rxxx.jar` (or `java -jar Tachidesk-latest.jar` if you have the latest preview) from a Terminal/Command Prompt window to run the app which will open a new browser window automatically. Also the System Tray Icon is your friend if you need to open the browser window again or close Tachidesk.
 
 ### Windows
 Download the latest win32 release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases).
