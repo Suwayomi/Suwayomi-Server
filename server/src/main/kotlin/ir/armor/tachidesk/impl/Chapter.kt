@@ -71,7 +71,7 @@ object Chapter {
                 // TODO: delete orphan chapters
             }
 
-            chapterList.map { it ->
+            chapterList.mapIndexed { index, it ->
                 ChapterDataClass(
                     it.url,
                     it.name,
@@ -79,6 +79,7 @@ object Chapter {
                     it.chapter_number,
                     it.scanlator,
                     mangaId,
+                    chapterCount - index,
                 )
             }
         }
