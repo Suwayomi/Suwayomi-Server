@@ -211,5 +211,9 @@ tasks.named("run") {
     dependsOn("formatKotlin", "lintKotlin")
 }
 
+tasks.named("processResources") {
+    mustRunAfter(":webUI:copyBuild")
+}
+
 
 
