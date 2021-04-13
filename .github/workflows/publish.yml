@@ -68,18 +68,12 @@ jobs:
           dependencies-cache-enabled: true
           configuration-cache-enabled: true
 
-
-      - name: Create repo artifacts
-        run: |
-          cd master
-          ./.github/scripts/create-repo.sh
-
       - name: Upload Release
         uses: xresloader/upload-to-github-release@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "master/repo/*"
+          file: "master/server/build/*.jar;master/server/build/*-win32.zip"
           tags: true
           draft: true
           verbose: true

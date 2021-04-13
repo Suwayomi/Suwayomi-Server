@@ -135,6 +135,9 @@ export default function MangaDetails(props: IProps) {
     const { setAction } = useContext(NavbarContext);
 
     const { manga } = props;
+    if (manga.genre == null) {
+        manga.genre = '';
+    }
     const [inLibrary, setInLibrary] = useState<string>(
         manga.inLibrary ? 'In Library' : 'Add To Library',
     );
