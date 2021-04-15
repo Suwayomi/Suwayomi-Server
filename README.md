@@ -44,7 +44,7 @@ yay -S tachidesk
 Check [arbuilder's repo](https://github.com/arbuilder/Tachidesk-docker) out for more details and the dockerfile.
 
 ## General troubleshooting
-If the app breaks try deleting the directory below and re-running the app (**This will delete all your data!**) and if the problem persists open an issue. 
+If the app breaks, make sure that it's not running(right click on tray icon and quit or kill it through the way your Operating System provides), delete the directory below and re-run the app (**This procedure will delete all your data!**) and if the problem persists open an issue or ask for help on discord. 
 
 On Mac OS X : `/Users/<Account>/Library/Application Support/Tachidesk`
 
@@ -55,7 +55,7 @@ On Windows 7 and later : `C:\Users\<Account>\AppData\Local\Tachidesk`
 On Unix/Linux : `/home/<account>/.local/share/Tachidesk`
 
 ## Support and help
-Join Tachidesk's [discord server](https://discord.gg/WdPS74cz) to hang out with the community and receive support and help.
+Join Tachidesk's [discord server](https://discord.gg/WdPS74cz) to hang out with the community and to receive support and help.
 
 ## How does it work?
 This project has two components: 
