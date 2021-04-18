@@ -137,7 +137,7 @@ object LegacyBackupExport : LegacyBackupBase() {
     }
 
     private fun backupCategories(root: JsonArray) {
-        val categories = getCategoryList().map{
+        val categories = getCategoryList().map {
             CategoryImpl().apply {
                 name = it.name
                 order = it.order
