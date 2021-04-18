@@ -1,13 +1,6 @@
 package com.squareup.duktape;
 
-/*
- * Copyright (C) Contributors to the Suwayomi project
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
-// part of tachiyomi-extensions which was originally licensed under Apache License Version 2.0
-
+/* part of tachiyomi-extensions which is licensed under Apache License Version 2.0 */
 
 import java.io.Closeable;
 import java.io.IOException;

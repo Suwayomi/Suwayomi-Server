@@ -1,11 +1,20 @@
-package com.squareup.duktape;
-
 /*
- * Copyright (C) Contributors to the Suwayomi project
+ * Copyright (C) 2015 Square, Inc.
  *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.squareup.duktape;
 
 import kotlin.NotImplementedError;
 
@@ -64,18 +73,18 @@ public final class Duktape implements Closeable, AutoCloseable {
         throw new NotImplementedError("Not implemented!");
     }
 
-//    /**
-//   * Attaches to a global JavaScript object called {@code name} that implements {@code type}.
-//   * {@code type} defines the interface implemented in JavaScript that will be accessible to Java.
-//   * {@code type} must be an interface that does not extend any other interfaces, and cannot define
-//   * any overloaded methods.
-//   * <p>Methods of the interface may return {@code void} or any of the following supported argument
-//   * types: {@code boolean}, {@link Boolean}, {@code int}, {@link Integer}, {@code double},
-//   * {@link Double}, {@link String}.
-//   */
-//    public synchronized <T> T get(final String name, final Class<T> type) {
-//        throw new NotImplementedError("Not implemented!");
-//    }
+    /**
+   * Attaches to a global JavaScript object called {@code name} that implements {@code type}.
+   * {@code type} defines the interface implemented in JavaScript that will be accessible to Java.
+   * {@code type} must be an interface that does not extend any other interfaces, and cannot define
+   * any overloaded methods.
+   * <p>Methods of the interface may return {@code void} or any of the following supported argument
+   * types: {@code boolean}, {@link Boolean}, {@code int}, {@link Integer}, {@code double},
+   * {@link Double}, {@link String}.
+   */
+    public synchronized <T> T get(final String name, final Class<T> type) {
+        throw new NotImplementedError("Not implemented!");
+    }
 
     /**
    * Release the native resources associated with this object. You <strong>must</strong> call this
