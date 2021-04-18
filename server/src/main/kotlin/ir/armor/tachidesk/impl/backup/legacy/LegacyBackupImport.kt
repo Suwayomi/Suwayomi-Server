@@ -7,10 +7,13 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.SManga
+import ir.armor.tachidesk.impl.Category.createCategory
+import ir.armor.tachidesk.impl.Category.getCategoryList
 import ir.armor.tachidesk.impl.backup.legacy.LegacyBackupRestoreValidator.ValidationResult
 import ir.armor.tachidesk.impl.backup.legacy.LegacyBackupRestoreValidator.validate
 import ir.armor.tachidesk.impl.backup.legacy.models.Backup
 import ir.armor.tachidesk.impl.backup.legacy.models.DHistory
+import ir.armor.tachidesk.impl.backup.models.CategoryImpl
 import ir.armor.tachidesk.impl.backup.models.Chapter
 import ir.armor.tachidesk.impl.backup.models.ChapterImpl
 import ir.armor.tachidesk.impl.backup.models.Manga
@@ -62,9 +65,9 @@ object LegacyBackupImport : LegacyBackupBase() {
             """
                 Restore Errors:
                 ${
-            errors.map {
-                "${it.first} - ${it.second}"
-            }.joinToString("\n")
+                errors.map {
+                    "${it.first} - ${it.second}"
+                }.joinToString("\n")
             }
                 Restore Summary:
                 - Missing Sources:
@@ -77,36 +80,39 @@ object LegacyBackupImport : LegacyBackupBase() {
         return validationResult
     }
 
-    private fun restoreCategories(categoriesJson: JsonElement) { // TODO
-//        db.inTransaction {
-//            backupManager.restoreCategories(categoriesJson.asJsonArray)
-//        }
-//
-//        restoreProgress += 1
-//        showRestoreProgress(restoreProgress, restoreAmount, context.getString(R.string.categories))
+    private fun restoreCategories(jsonCategories: JsonElement) { // TODO
+        val backupCategories = parser.fromJson<List<CategoryImpl>>(jsonCategories)
+        val dbCategories = getCategoryList()
+
+        // Iterate over them
+        backupCategories.forEach { category ->
+            if (dbCategories.none { it.name == category.name }) {
+                createCategory(category.name)
+            }
+        }
     }
 
     private suspend fun restoreManga(mangaJson: JsonObject) {
         val manga = parser.fromJson<MangaImpl>(
-            mangaJson.get(
-                Backup.MANGA
-            )
+                mangaJson.get(
+                        Backup.MANGA
+                )
         )
         val chapters = parser.fromJson<List<ChapterImpl>>(
-            mangaJson.get(Backup.CHAPTERS)
-                ?: JsonArray()
+                mangaJson.get(Backup.CHAPTERS)
+                        ?: JsonArray()
         )
         val categories = parser.fromJson<List<String>>(
-            mangaJson.get(Backup.CATEGORIES)
-                ?: JsonArray()
+                mangaJson.get(Backup.CATEGORIES)
+                        ?: JsonArray()
         )
         val history = parser.fromJson<List<DHistory>>(
-            mangaJson.get(Backup.HISTORY)
-                ?: JsonArray()
+                mangaJson.get(Backup.HISTORY)
+                        ?: JsonArray()
         )
         val tracks = parser.fromJson<List<TrackImpl>>(
-            mangaJson.get(Backup.TRACK)
-                ?: JsonArray()
+                mangaJson.get(Backup.TRACK)
+                        ?: JsonArray()
         )
 
         val source = try {
@@ -138,17 +144,18 @@ object LegacyBackupImport : LegacyBackupBase() {
      * @param tracks tracking data from json
      */
     private suspend fun restoreMangaData(
-        manga: Manga,
-        source: Source,
-        chapters: List<Chapter>,
-        categories: List<String>,
-        history: List<DHistory>,
-        tracks: List<Track>
+            manga: Manga,
+            source: Source,
+            chapters: List<Chapter>,
+            categories: List<String>,
+            history: List<DHistory>,
+            tracks: List<Track>
     ) {
-        fetchManga(source, manga)
+        val fetchedManga = fetchManga(source, manga)
 
-//        updateChapters(source, fetchedManga, chapters)
+        updateChapters(source, fetchedManga, chapters)
 
+        // TODO
 //        backupManager.restoreCategoriesForManga(manga, categories)
 
 //        backupManager.restoreHistoryForManga(history)
@@ -166,6 +173,7 @@ object LegacyBackupImport : LegacyBackupBase() {
      * @return Updated manga.
      */
     private suspend fun fetchManga(source: Source, manga: Manga): SManga {
+        // make sure we have the manga record in library
         transaction {
             if (MangaTable.select { (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq manga.source) }.firstOrNull() == null) {
                 MangaTable.insert {
@@ -180,8 +188,8 @@ object LegacyBackupImport : LegacyBackupBase() {
             }
         }
 
+        // update manga details
         val fetchedManga = source.fetchMangaDetails(manga).awaitSingle()
-
         transaction {
             MangaTable.update({ (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq manga.source) }) {
 
@@ -196,5 +204,9 @@ object LegacyBackupImport : LegacyBackupBase() {
         }
 
         return fetchedManga
+    }
+
+    private fun updateChapters(source: Source, fetchedManga: SManga, chapters: List<Chapter>) {
+        // TODO("Not yet implemented")
     }
 }
