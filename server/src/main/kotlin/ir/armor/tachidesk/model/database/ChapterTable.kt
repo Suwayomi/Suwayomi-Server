@@ -16,6 +16,10 @@ object ChapterTable : IntIdTable() {
     val chapter_number = float("chapter_number").default(-1f)
     val scanlator = varchar("scanlator", 128).nullable()
 
+    val isRead = bool("read").default(false)
+    val isBookmarked = bool("bookmark").default(false)
+    val lastPageRead = integer("last_page_read").default(0)
+
     val chapterIndex = integer("number_in_list")
 
     val manga = reference("manga", MangaTable)

@@ -12,9 +12,12 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import eu.kanade.tachiyomi.source.LocalSource
+import ir.armor.tachidesk.impl.Category.getCategoryList
+import ir.armor.tachidesk.impl.CategoryManga.getMangaCategories
 import ir.armor.tachidesk.impl.backup.BackupFlags
 import ir.armor.tachidesk.impl.backup.legacy.models.Backup
 import ir.armor.tachidesk.impl.backup.legacy.models.Backup.CURRENT_VERSION
+import ir.armor.tachidesk.impl.backup.models.CategoryImpl
 import ir.armor.tachidesk.impl.backup.models.ChapterImpl
 import ir.armor.tachidesk.impl.backup.models.Manga
 import ir.armor.tachidesk.impl.backup.models.MangaImpl
@@ -83,11 +86,11 @@ object LegacyBackupExport : LegacyBackupBase() {
 
         // Backup manga fields
         entry[Backup.MANGA] = parser.toJsonTree(manga)
+        val mangaId = manga.id!!.toInt()
 
         // Check if user wants chapter information in backup
-        if (options.includeChapters && false) { // TODO
+        if (options.includeChapters) {
             // Backup all the chapters
-            val mangaId = manga.id!!.toInt()
             val chapters = ChapterTable.select { ChapterTable.manga eq mangaId }.map { ChapterImpl.fromQuery(it) }
             if (chapters.count() > 0) {
                 val chaptersJson = parser.toJsonTree(chapters)
@@ -97,14 +100,50 @@ object LegacyBackupExport : LegacyBackupBase() {
             }
         }
 
-        // TODO the rest
+        // Check if user wants category information in backup
+        if (options.includeCategories) {
+            // Backup categories for this manga
+            val categoriesForManga = getMangaCategories(mangaId)
+            if (categoriesForManga.isNotEmpty()) {
+                val categoriesNames = categoriesForManga.map { it.name }
+                entry[Backup.CATEGORIES] = parser.toJsonTree(categoriesNames)
+            }
+        }
+
+        // Check if user wants track information in backup
+        if (options.includeTracking) { // TODO
+//            val tracks = databaseHelper.getTracks(manga).executeAsBlocking()
+//            if (tracks.isNotEmpty()) {
+//                entry[TRACK] = parser.toJsonTree(tracks)
+//            }
+        }
+//
+//        // Check if user wants history information in backup
+        if (options.includeHistory) { // TODO
+//            val historyForManga = databaseHelper.getHistoryByMangaId(manga.id!!).executeAsBlocking()
+//            if (historyForManga.isNotEmpty()) {
+//                val historyData = historyForManga.mapNotNull { history ->
+//                    val url = databaseHelper.getChapter(history.chapter_id).executeAsBlocking()?.url
+//                    url?.let { DHistory(url, history.last_read) }
+//                }
+//                val historyJson = parser.toJsonTree(historyData)
+//                if (historyJson.asJsonArray.size() > 0) {
+//                    entry[HISTORY] = historyJson
+//                }
+//            }
+        }
 
         return entry
     }
 
-    private fun backupCategories(root: JsonArray) { // TODO
-//        val categories = databaseHelper.getCategories().executeAsBlocking()
-//        categories.forEach { root.add(parser.toJsonTree(it)) }
+    private fun backupCategories(root: JsonArray) {
+        val categories = getCategoryList().map{
+            CategoryImpl().apply {
+                name = it.name
+                order = it.order
+            }
+        }
+        categories.forEach { root.add(parser.toJsonTree(it)) }
     }
 
     private fun backupExtensionInfo(root: JsonArray, extensions: Set<String>) {

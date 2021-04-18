@@ -1,5 +1,6 @@
 package ir.armor.tachidesk.impl.backup.models
 
+import ir.armor.tachidesk.model.database.ChapterTable
 import org.jetbrains.exposed.sql.ResultRow
 
 class ChapterImpl : Chapter {
@@ -45,7 +46,10 @@ class ChapterImpl : Chapter {
     companion object {
         fun fromQuery(chapterRecord: ResultRow): ChapterImpl {
             return ChapterImpl().apply {
-                // TODO
+                url = chapterRecord[ChapterTable.url]
+                read = chapterRecord[ChapterTable.isRead]
+                bookmark = chapterRecord[ChapterTable.isBookmarked]
+                last_page_read = chapterRecord[ChapterTable.lastPageRead]
             }
         }
     }
