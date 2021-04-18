@@ -59,7 +59,7 @@ On Windows 7 and later : `C:\Users\<Account>\AppData\Local\Tachidesk`
 On Unix/Linux : `/home/<account>/.local/share/Tachidesk`
 
 ## Support and help
-Join Tachidesk's [discord server](https://discord.gg/WdPS74cz) to hang out with the community and to receive support and help.
+Join Tachidesk's [discord server](https://discord.gg/sukb7D7GHh) to hang out with the community and to receive support and help.
 
 ## How does it work?
 This project has two components: 
