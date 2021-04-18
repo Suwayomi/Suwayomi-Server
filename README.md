@@ -1,7 +1,7 @@
 
 | Build | Stable | Preview | Support Server |
 |-------|----------|---------|---------|
-| ![CI](https://github.com/Suwayomi/Tachidesk/actions/workflows/build_push.yml/badge.svg) | [![stable release](https://img.shields.io/github/release/Suwayomi/Tachidesk.svg?maxAge=3600&label=download)](https://github.com/Suwayomi/Tachidesk/releases) | [![latest preview](https://img.shields.io/badge/dynamic/json?url=https://github.com/Suwayomi/Tachidesk/raw/preview/index.json&label=Preview&query=$.latest&color=blue)](https://github.com/Suwayomi/Tachidesk/raw/preview/Tachidesk-latest.jar) | [![Discord](https://img.shields.io/discord/801021177333940224.svg?label=discord&labelColor=7289da&color=2c2f33&style=flat)](https://discord.gg/sukb7D7GHh) |
+| ![CI](https://github.com/Suwayomi/Tachidesk/actions/workflows/build_push.yml/badge.svg) | [![stable release](https://img.shields.io/github/release/Suwayomi/Tachidesk.svg?maxAge=3600&label=download)](https://github.com/Suwayomi/Tachidesk/releases) | [![latest preview](https://img.shields.io/badge/dynamic/json?url=https://github.com/Suwayomi/Tachidesk/raw/preview/index.json&label=Preview&query=$.latest&color=blue)](https://github.com/Suwayomi/Tachidesk/raw/preview/Tachidesk-latest.jar) | [![Discord](https://img.shields.io/discord/801021177333940224.svg?label=discord&labelColor=7289da&color=2c2f33&style=flat)](https://discord.gg/DDZdqZWaHA) |
 
 <!-- ![image](https://github.com/Suwayomi/Tachidesk/raw/master/server/src/main/resources/icon/faviconlogo.png) -->
 # Tachidesk
@@ -59,7 +59,7 @@ On Windows 7 and later : `C:\Users\<Account>\AppData\Local\Tachidesk`
 On Unix/Linux : `/home/<account>/.local/share/Tachidesk`
 
 ## Support and help
-Join Tachidesk's [discord server](https://discord.gg/sukb7D7GHh) to hang out with the community and to receive support and help.
+Join Tachidesk's [discord server](https://discord.gg/DDZdqZWaHA) to hang out with the community and to receive support and help.
 
 ## How does it work?
 This project has two components: 
