@@ -20,7 +20,7 @@ object MangaTable : IntIdTable() {
 
     val artist = varchar("artist", 64).nullable()
     val author = varchar("author", 64).nullable()
-    val description = varchar("description", 4096).nullable()
+    val description = varchar("description", 8192).nullable()
     val genre = varchar("genre", 1024).nullable()
 
     //    val status = enumeration("status", MangaStatus::class).default(MangaStatus.UNKNOWN)
