@@ -66,7 +66,7 @@ object Manga {
 
                     it[MangaTable.artist] = fetchedManga.artist
                     it[MangaTable.author] = fetchedManga.author
-                    it[MangaTable.description] = fetchedManga.description
+                    it[MangaTable.description] = if (fetchedManga.description?.length ?: 0 > 4096) fetchedManga.description?.substring(0, 4096) else fetchedManga.description
                     it[MangaTable.genre] = fetchedManga.genre
                     it[MangaTable.status] = fetchedManga.status
                     if (fetchedManga.thumbnail_url != null && fetchedManga.thumbnail_url!!.isNotEmpty())
