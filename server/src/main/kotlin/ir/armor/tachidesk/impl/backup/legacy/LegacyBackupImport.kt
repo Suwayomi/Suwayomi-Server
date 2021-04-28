@@ -65,9 +65,9 @@ object LegacyBackupImport : LegacyBackupBase() {
             """
                 Restore Errors:
                 ${
-                errors.map {
-                    "${it.first} - ${it.second}"
-                }.joinToString("\n")
+            errors.map {
+                "${it.first} - ${it.second}"
+            }.joinToString("\n")
             }
                 Restore Summary:
                 - Missing Sources:
@@ -94,25 +94,25 @@ object LegacyBackupImport : LegacyBackupBase() {
 
     private suspend fun restoreManga(mangaJson: JsonObject) {
         val manga = parser.fromJson<MangaImpl>(
-                mangaJson.get(
-                        Backup.MANGA
-                )
+            mangaJson.get(
+                Backup.MANGA
+            )
         )
         val chapters = parser.fromJson<List<ChapterImpl>>(
-                mangaJson.get(Backup.CHAPTERS)
-                        ?: JsonArray()
+            mangaJson.get(Backup.CHAPTERS)
+                ?: JsonArray()
         )
         val categories = parser.fromJson<List<String>>(
-                mangaJson.get(Backup.CATEGORIES)
-                        ?: JsonArray()
+            mangaJson.get(Backup.CATEGORIES)
+                ?: JsonArray()
         )
         val history = parser.fromJson<List<DHistory>>(
-                mangaJson.get(Backup.HISTORY)
-                        ?: JsonArray()
+            mangaJson.get(Backup.HISTORY)
+                ?: JsonArray()
         )
         val tracks = parser.fromJson<List<TrackImpl>>(
-                mangaJson.get(Backup.TRACK)
-                        ?: JsonArray()
+            mangaJson.get(Backup.TRACK)
+                ?: JsonArray()
         )
 
         val source = try {
@@ -144,12 +144,12 @@ object LegacyBackupImport : LegacyBackupBase() {
      * @param tracks tracking data from json
      */
     private suspend fun restoreMangaData(
-            manga: Manga,
-            source: Source,
-            chapters: List<Chapter>,
-            categories: List<String>,
-            history: List<DHistory>,
-            tracks: List<Track>
+        manga: Manga,
+        source: Source,
+        chapters: List<Chapter>,
+        categories: List<String>,
+        history: List<DHistory>,
+        tracks: List<Track>
     ) {
         val fetchedManga = fetchManga(source, manga)
 

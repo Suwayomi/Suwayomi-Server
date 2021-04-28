@@ -28,6 +28,13 @@ import org.kodein.di.instance
 import java.io.InputStream
 
 object Manga {
+    private fun truncate(text: String?, maxLength: Int): String? {
+        return if (text?.length ?: 0 > maxLength)
+            text?.take(maxLength - 3) + "..."
+        else
+            text
+    }
+
     suspend fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
         var mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
 
@@ -66,7 +73,7 @@ object Manga {
 
                     it[MangaTable.artist] = fetchedManga.artist
                     it[MangaTable.author] = fetchedManga.author
-                    it[MangaTable.description] = if (fetchedManga.description?.length ?: 0 > 4096) fetchedManga.description?.substring(0, 4096) else fetchedManga.description
+                    it[MangaTable.description] = truncate(fetchedManga.description, 4096)
                     it[MangaTable.genre] = fetchedManga.genre
                     it[MangaTable.status] = fetchedManga.status
                     if (fetchedManga.thumbnail_url != null && fetchedManga.thumbnail_url!!.isNotEmpty())
