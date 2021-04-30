@@ -33,6 +33,7 @@ import ir.armor.tachidesk.impl.Source.getSourceList
 import ir.armor.tachidesk.impl.backup.BackupFlags
 import ir.armor.tachidesk.impl.backup.legacy.LegacyBackupExport.createLegacyBackup
 import ir.armor.tachidesk.impl.backup.legacy.LegacyBackupImport.restoreLegacyBackup
+import ir.armor.tachidesk.impl.getVersion
 import ir.armor.tachidesk.server.util.openInBrowser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -295,6 +296,11 @@ object JavalinSetup {
             val name = ctx.formParam("name")!!
             createCategory(name)
             ctx.status(200)
+        }
+
+        // returns version of the app
+        app.get("/api/v1/version/") { ctx ->
+            ctx.json(getVersion())
         }
 
         // category modification
