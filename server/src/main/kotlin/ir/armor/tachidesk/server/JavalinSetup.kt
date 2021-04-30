@@ -33,7 +33,7 @@ import ir.armor.tachidesk.impl.Source.getSourceList
 import ir.armor.tachidesk.impl.backup.BackupFlags
 import ir.armor.tachidesk.impl.backup.legacy.LegacyBackupExport.createLegacyBackup
 import ir.armor.tachidesk.impl.backup.legacy.LegacyBackupImport.restoreLegacyBackup
-import ir.armor.tachidesk.impl.getVersion
+import ir.armor.tachidesk.server.internal.About.getAbout
 import ir.armor.tachidesk.server.util.openInBrowser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -298,9 +298,9 @@ object JavalinSetup {
             ctx.status(200)
         }
 
-        // returns version of the app
-        app.get("/api/v1/version/") { ctx ->
-            ctx.json(getVersion())
+        // returns some static info of the current app build
+        app.get("/api/v1/about/") { ctx ->
+            ctx.json(getAbout())
         }
 
         // category modification

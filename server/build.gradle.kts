@@ -10,9 +10,7 @@ plugins {
     id("de.fuerstenau.buildconfig") version "1.1.8"
 }
 
-val group = "ir.armor.tachidesk"
 val TachideskVersion = "v0.3.0"
-
 
 repositories {
     mavenCentral()
@@ -219,9 +217,11 @@ tasks.named("processResources") {
 
 buildConfig {
     version = TachideskVersion
+    buildConfigField("String", "version", TachideskVersion)
+    buildConfigField("String", "revision", TachideskRevision)
 
     clsName = "BuildConfig"
-    packageName = group.toString()
+    packageName = "ir.armor.tachidesk.server"
 
     buildConfigField("boolean", "DEBUG", project.hasProperty("debugApp").toString())
 }
