@@ -205,6 +205,10 @@ tasks {
         dependsOn("createExe")
     }
 
+    named("createExe") {
+        dependsOn("shadowJar")
+    }
+
     register<de.undercouch.gradle.tasks.download.Download>("downloadJre") {
         src("https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u282-b08/OpenJDK8U-jre_x86-32_windows_hotspot_8u282b08.zip")
         dest("$buildDir/OpenJDK8U-jre_x86-32_windows_hotspot_8u282b08.zip")
@@ -222,7 +226,7 @@ tasks {
     }
 
     named<Copy>("processResources") {
-        duplicatesStrategy = DuplicatesStrategy.WARN
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
         mustRunAfter(":webUI:copyBuild")
     }
 
