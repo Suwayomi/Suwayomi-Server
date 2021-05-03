@@ -140,9 +140,12 @@ tasks {
         manifest {
             attributes(
                     mapOf(
-                            "Main-Class" to MainClass, //will make your jar (produced by jar task) runnable
+                            "Main-Class" to MainClass,
                             "Implementation-Title" to rootProject.name,
-                            "Implementation-Version" to "$tachideskVersion-$tachideskRevision")
+                            "Implementation-Vendor" to "The Suwayomi Project",
+                            "Specification-Version" to tachideskVersion,
+                            "Implementation-Version" to tachideskRevision
+                    )
             )
         }
     }
@@ -155,9 +158,9 @@ tasks {
     withType<KotlinCompile> {
         kotlinOptions {
             freeCompilerArgs = listOf(
-                "-Xopt-in=kotlin.RequiresOptIn",
-                "-Xopt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-                "-Xopt-in=kotlinx.coroutines.InternalCoroutinesApi"
+                    "-Xopt-in=kotlin.RequiresOptIn",
+                    "-Xopt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+                    "-Xopt-in=kotlinx.coroutines.InternalCoroutinesApi"
             )
         }
     }
@@ -174,10 +177,10 @@ tasks {
 
     register<Delete>("windowsPackageWorkaround2") {
         delete(
-            "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32/jre",
-            "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32/lib",
-            "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32/server.exe",
-            "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32/Tachidesk-$tachideskVersion-$tachideskRevision-win32/Tachidesk-$tachideskVersion-$tachideskRevision-win32"
+                "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32/jre",
+                "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32/lib",
+                "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32/server.exe",
+                "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32/Tachidesk-$tachideskVersion-$tachideskRevision-win32/Tachidesk-$tachideskVersion-$tachideskRevision-win32"
         )
         dependsOn("windowsPackageWorkaround")
     }
@@ -190,7 +193,7 @@ tasks {
 
     register<Delete>("deleteUnwantedJreDir") {
         delete(
-            "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32/jdk8u282-b08-jre"
+                "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32/jdk8u282-b08-jre"
         )
         dependsOn("addJreToDistributable")
     }
@@ -199,7 +202,7 @@ tasks {
         from(zipTree("$buildDir/OpenJDK8U-jre_x86-32_windows_hotspot_8u282b08.zip"))
         into("$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32")
         eachFile {
-            path = path.replace(".*-jre".toRegex(),"jre")
+            path = path.replace(".*-jre".toRegex(), "jre")
         }
         dependsOn("downloadJre")
         dependsOn("createExe")
