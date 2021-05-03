@@ -9,8 +9,8 @@ import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.SManga
 import ir.armor.tachidesk.impl.Category.createCategory
 import ir.armor.tachidesk.impl.Category.getCategoryList
-import ir.armor.tachidesk.impl.backup.legacy.LegacyBackupRestoreValidator.ValidationResult
-import ir.armor.tachidesk.impl.backup.legacy.LegacyBackupRestoreValidator.validate
+import ir.armor.tachidesk.impl.backup.legacy.LegacyBackupValidator.ValidationResult
+import ir.armor.tachidesk.impl.backup.legacy.LegacyBackupValidator.validate
 import ir.armor.tachidesk.impl.backup.legacy.models.Backup
 import ir.armor.tachidesk.impl.backup.legacy.models.DHistory
 import ir.armor.tachidesk.impl.backup.models.CategoryImpl
@@ -54,7 +54,7 @@ object LegacyBackupImport : LegacyBackupBase() {
         json.get(Backup.CATEGORIES)?.let { restoreCategories(it) }
 
         // Store source mapping for error messages
-        sourceMapping = LegacyBackupRestoreValidator.getSourceMapping(json)
+        sourceMapping = LegacyBackupValidator.getSourceMapping(json)
 
         // Restore individual manga
         mangasJson.forEach {
