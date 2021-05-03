@@ -70,6 +70,7 @@ dependencies {
 
     // tray icon
     implementation("com.dorkbox:SystemTray:4.1")
+    implementation("com.dorkbox:Utilities:1.9")
 
 
     // AndroidCompat
@@ -108,6 +109,19 @@ val TachideskRevision = Runtime
             "r" + output.trim()
 
         }
+
+buildConfig {
+    appName = rootProject.name
+    clsName = "BuildConfig"
+    packageName = "ir.armor.tachidesk.server"
+    version = TachideskVersion
+
+
+    buildConfigField("String", "name", rootProject.name)
+    buildConfigField("String", "version", TachideskVersion)
+    buildConfigField("String", "revision", TachideskRevision)
+    buildConfigField("boolean", "debug", project.hasProperty("debugApp").toString())
+}
 
 launch4j { //used for windows
     mainClassName = MainClass
@@ -219,13 +233,3 @@ tasks {
     }
 }
 
-buildConfig {
-    version = TachideskVersion
-    buildConfigField("String", "version", TachideskVersion)
-    buildConfigField("String", "revision", TachideskRevision)
-
-    clsName = "BuildConfig"
-    packageName = "ir.armor.tachidesk.server"
-
-    buildConfigField("boolean", "DEBUG", project.hasProperty("debugApp").toString())
-}

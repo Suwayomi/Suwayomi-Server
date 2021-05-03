@@ -10,17 +10,16 @@ package ir.armor.tachidesk.server.util
 import dorkbox.systemTray.MenuItem
 import dorkbox.systemTray.SystemTray
 import dorkbox.systemTray.SystemTray.TrayType
+import dorkbox.util.CacheUtil
+import dorkbox.util.Desktop
 import ir.armor.tachidesk.Main
+import ir.armor.tachidesk.server.BuildConfig
 import ir.armor.tachidesk.server.serverConfig
-import java.awt.Desktop
-import java.net.URI
 import kotlin.system.exitProcess
 
 fun openInBrowser() {
     try {
-        if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-            Desktop.getDesktop().browse(URI("http://127.0.0.1:4567"))
-        }
+        Desktop.browseURL("http://127.0.0.1:4567")
     } catch (e: Exception) {
         e.printStackTrace()
     }
@@ -33,7 +32,9 @@ fun systemTray(): SystemTray? {
         if (System.getProperty("os.name").startsWith("Windows"))
             SystemTray.FORCE_TRAY_TYPE = TrayType.Swing
 
-        val systemTray = SystemTray.get() ?: return null
+        CacheUtil.clear(BuildConfig.name)
+
+        val systemTray = SystemTray.get(BuildConfig.name) ?: return null
         val mainMenu = systemTray.menu
 
         mainMenu.add(
@@ -56,6 +57,8 @@ fun systemTray(): SystemTray? {
                 exitProcess(0)
             }
         )
+
+        systemTray.installShutdownHook()
 
         return systemTray
     } catch (e: Exception) {
