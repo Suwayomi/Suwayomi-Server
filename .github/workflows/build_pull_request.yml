@@ -30,7 +30,7 @@ jobs:
       - name: Checkout master branch
         uses: actions/checkout@v2
         with:
-          ref: master
+          ref: ${{ github.event.pull_request.head.sha }}
           path: master
           fetch-depth: 0
 
