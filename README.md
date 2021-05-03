@@ -78,6 +78,7 @@ You need this software packages installed in order to build this project:
 - Java Development Kit and Java Runtime Environment version 8 or newer(both Oracle JDK and OpenJDK works)
 - Nodejs LTS or latest
 - Yarn
+- Git
 ### building the full-blown jar
 Run `./gradlew :webUI:copyBuild server:shadowJar`, the resulting built jar file will be `server/build/Tachidesk-vX.Y.Z-rxxx.jar`.
 ### building without `webUI` bundled(server only)
