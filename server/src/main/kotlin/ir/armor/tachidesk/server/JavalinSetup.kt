@@ -66,7 +66,10 @@ object JavalinSetup {
 
         val app = Javalin.create { config ->
             try {
+                // if the bellow line throws an exception then webUI is not bundled
                 Main::class.java.getResource("/react/index.html")
+
+                // no exception so we can tell javalin to serve webUI
                 hasWebUiBundled = true
                 config.addStaticFiles("/react")
                 config.addSinglePageRoot("/", "/react/index.html")
@@ -77,10 +80,11 @@ object JavalinSetup {
             config.enableCorsForAllOrigins()
         }.start(serverConfig.ip, serverConfig.port)
 
+        // when JVM is prompted to shutdown, stop javalin gracefully
         Runtime.getRuntime().addShutdownHook(
-            thread(start = false) {
-                app.stop()
-            }
+                thread(start = false) {
+                    app.stop()
+                }
         )
 
         if (hasWebUiBundled && serverConfig.initialOpenInBrowserEnabled) {
