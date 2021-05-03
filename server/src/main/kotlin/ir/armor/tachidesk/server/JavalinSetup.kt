@@ -82,9 +82,9 @@ object JavalinSetup {
 
         // when JVM is prompted to shutdown, stop javalin gracefully
         Runtime.getRuntime().addShutdownHook(
-                thread(start = false) {
-                    app.stop()
-                }
+            thread(start = false) {
+                app.stop()
+            }
         )
 
         if (hasWebUiBundled && serverConfig.initialOpenInBrowserEnabled) {

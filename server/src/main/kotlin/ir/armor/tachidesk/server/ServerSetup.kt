@@ -10,7 +10,7 @@ package ir.armor.tachidesk.server
 import ch.qos.logback.classic.Level
 import eu.kanade.tachiyomi.App
 import ir.armor.tachidesk.Main
-import ir.armor.tachidesk.model.dataclass.makeDataBaseTables
+import ir.armor.tachidesk.model.database.makeDataBaseTables
 import ir.armor.tachidesk.server.util.systemTray
 import mu.KotlinLogging
 import org.kodein.di.DI
