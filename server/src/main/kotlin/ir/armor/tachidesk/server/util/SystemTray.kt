@@ -13,9 +13,9 @@ import dorkbox.systemTray.SystemTray.TrayType
 import dorkbox.util.CacheUtil
 import dorkbox.util.Desktop
 import ir.armor.tachidesk.Main
+import ir.armor.tachidesk.server.BuildConfig
 import ir.armor.tachidesk.server.serverConfig
-import java.awt.event.ActionListener
-import java.io.IOException
+import kotlin.system.exitProcess
 
 fun openInBrowser() {
     try {
@@ -32,22 +32,17 @@ fun systemTray(): SystemTray? {
         if (System.getProperty("os.name").startsWith("Windows"))
             SystemTray.FORCE_TRAY_TYPE = TrayType.Swing
 
-        CacheUtil.clear()
+        CacheUtil.clear(BuildConfig.name)
 
-        val systemTray = SystemTray.get() ?: return null
+        val systemTray = SystemTray.get(BuildConfig.name) ?: return null
         val mainMenu = systemTray.menu
 
         mainMenu.add(
             MenuItem(
-                "Open Tachidesk",
-                ActionListener {
-                    try {
-                        Desktop.browseURL("http://127.0.0.1:4567")
-                    } catch (e: IOException) {
-                        e.printStackTrace()
-                    }
-                }
-            )
+                "Open Tachidesk"
+            ) {
+                openInBrowser()
+            }
         )
 
         val icon = Main::class.java.getResource("/icon/faviconlogo.png")
@@ -56,12 +51,14 @@ fun systemTray(): SystemTray? {
         systemTray.setImage(icon)
 //    systemTray.status = "No Mail"
 
-        systemTray.getMenu().add(
+        mainMenu.add(
             MenuItem("Quit") {
                 systemTray.shutdown()
-                System.exit(0)
+                exitProcess(0)
             }
         )
+
+        systemTray.installShutdownHook()
 
         return systemTray
     } catch (e: Exception) {

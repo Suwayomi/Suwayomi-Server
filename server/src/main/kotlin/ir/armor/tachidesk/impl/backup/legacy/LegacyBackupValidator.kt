@@ -13,7 +13,7 @@ import ir.armor.tachidesk.model.database.SourceTable
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 
-object LegacyBackupRestoreValidator {
+object LegacyBackupValidator {
     data class ValidationResult(val missingSources: List<String>, val missingTrackers: List<String>)
 
     /**
