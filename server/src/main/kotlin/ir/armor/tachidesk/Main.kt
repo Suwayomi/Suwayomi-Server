@@ -17,6 +17,7 @@ class Main {
         fun main(args: Array<String>) {
             applicationSetup()
             javalinSetup()
+            THIS SHOULD FAIL THE BUILD
         }
     }
 }
