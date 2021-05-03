@@ -44,6 +44,7 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.concurrent.CompletableFuture
+import kotlin.concurrent.thread
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -75,6 +76,13 @@ object JavalinSetup {
             }
             config.enableCorsForAllOrigins()
         }.start(serverConfig.ip, serverConfig.port)
+
+        Runtime.getRuntime().addShutdownHook(
+            thread(start = false) {
+                app.stop()
+            }
+        )
+
         if (hasWebUiBundled && serverConfig.initialOpenInBrowserEnabled) {
             openInBrowser()
         }
