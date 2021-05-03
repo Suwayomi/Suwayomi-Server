@@ -12,8 +12,6 @@ plugins {
     id("de.fuerstenau.buildconfig") version "1.1.8"
 }
 
-val TachideskVersion = "v0.3.0"
-
 repositories {
     mavenCentral()
     maven {
@@ -97,7 +95,11 @@ sourceSets {
     }
 }
 
-val TachideskRevision = Runtime
+// should be bumped with each stable release
+val tachideskVersion = "v0.3.0"
+
+// counts commit count on master
+val tachideskRevision = Runtime
         .getRuntime()
         .exec("git rev-list master --count")
         .let { process ->
@@ -114,12 +116,12 @@ buildConfig {
     appName = rootProject.name
     clsName = "BuildConfig"
     packageName = "ir.armor.tachidesk.server"
-    version = TachideskVersion
+    version = tachideskVersion
 
 
-    buildConfigField("String", "name", rootProject.name)
-    buildConfigField("String", "version", TachideskVersion)
-    buildConfigField("String", "revision", TachideskRevision)
+    buildConfigField("String", "name", rootProject.name) // alias for BuildConfig.NAME
+    buildConfigField("String", "version", tachideskVersion) // alias for BuildConfig.VERSION
+    buildConfigField("String", "revision", tachideskRevision)
     buildConfigField("boolean", "debug", project.hasProperty("debugApp").toString())
 }
 
@@ -128,9 +130,9 @@ launch4j { //used for windows
     bundledJrePath = "jre"
     bundledJre64Bit = true
     jreMinVersion = "8"
-    outputDir = "${rootProject.name}-$TachideskVersion-$TachideskRevision-win32"
+    outputDir = "${rootProject.name}-$tachideskVersion-$tachideskRevision-win32"
     icon = "${projectDir}/src/main/resources/icon/faviconlogo.ico"
-    jar = "${projectDir}/build/${rootProject.name}-$TachideskVersion-$TachideskRevision.jar"
+    jar = "${projectDir}/build/${rootProject.name}-$tachideskVersion-$tachideskRevision.jar"
 }
 
 tasks {
@@ -140,15 +142,15 @@ tasks {
                     mapOf(
                             "Main-Class" to MainClass, //will make your jar (produced by jar task) runnable
                             "Implementation-Title" to rootProject.name,
-                            "Implementation-Version" to "$TachideskVersion-$TachideskRevision")
+                            "Implementation-Version" to "$tachideskVersion-$tachideskRevision")
             )
         }
     }
     shadowJar {
         manifest.inheritFrom(jar.get().manifest) //will make your shadowJar (produced by jar task) runnable
         archiveBaseName.set(rootProject.name)
-        archiveVersion.set(TachideskVersion)
-        archiveClassifier.set(TachideskRevision)
+        archiveVersion.set(tachideskVersion)
+        archiveClassifier.set(tachideskRevision)
     }
     withType<KotlinCompile> {
         kotlinOptions {
@@ -164,38 +166,38 @@ tasks {
     }
 
     register<Zip>("windowsPackage") {
-        from(fileTree("$buildDir/${rootProject.name}-$TachideskVersion-$TachideskRevision-win32"))
+        from(fileTree("$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32"))
         destinationDirectory.set(File("$buildDir"))
-        archiveFileName.set("${rootProject.name}-$TachideskVersion-$TachideskRevision-win32.zip")
+        archiveFileName.set("${rootProject.name}-$tachideskVersion-$tachideskRevision-win32.zip")
         dependsOn("windowsPackageWorkaround2")
     }
 
     register<Delete>("windowsPackageWorkaround2") {
         delete(
-            "$buildDir/${rootProject.name}-$TachideskVersion-$TachideskRevision-win32/jre",
-            "$buildDir/${rootProject.name}-$TachideskVersion-$TachideskRevision-win32/lib",
-            "$buildDir/${rootProject.name}-$TachideskVersion-$TachideskRevision-win32/server.exe",
-            "$buildDir/${rootProject.name}-$TachideskVersion-$TachideskRevision-win32/Tachidesk-$TachideskVersion-$TachideskRevision-win32/Tachidesk-$TachideskVersion-$TachideskRevision-win32"
+            "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32/jre",
+            "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32/lib",
+            "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32/server.exe",
+            "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32/Tachidesk-$tachideskVersion-$tachideskRevision-win32/Tachidesk-$tachideskVersion-$tachideskRevision-win32"
         )
         dependsOn("windowsPackageWorkaround")
     }
 
     register<Copy>("windowsPackageWorkaround") {
-        from("$buildDir/${rootProject.name}-$TachideskVersion-$TachideskRevision-win32")
-        into("$buildDir/${rootProject.name}-$TachideskVersion-$TachideskRevision-win32/${rootProject.name}-$TachideskVersion-$TachideskRevision-win32")
+        from("$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32")
+        into("$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32")
         dependsOn("deleteUnwantedJreDir")
     }
 
     register<Delete>("deleteUnwantedJreDir") {
         delete(
-            "$buildDir/${rootProject.name}-$TachideskVersion-$TachideskRevision-win32/jdk8u282-b08-jre"
+            "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32/jdk8u282-b08-jre"
         )
         dependsOn("addJreToDistributable")
     }
 
     register<Copy>("addJreToDistributable") {
         from(zipTree("$buildDir/OpenJDK8U-jre_x86-32_windows_hotspot_8u282b08.zip"))
-        into("$buildDir/${rootProject.name}-$TachideskVersion-$TachideskRevision-win32")
+        into("$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win32")
         eachFile {
             path = path.replace(".*-jre".toRegex(),"jre")
         }
