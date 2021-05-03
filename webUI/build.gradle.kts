@@ -1,14 +1,13 @@
 plugins {
-    id("com.moowork.node") version "1.3.1"
+    id("com.github.node-gradle.node") version "3.0.1"
 }
 
 node {
-    workDir = file("${project.projectDir}/react/")
-    nodeModulesDir = file("${project.projectDir}/react/")
+    nodeProjectDir.set(file("${project.projectDir}/react/"))
 }
 
 tasks.named("yarn_build") {
-    dependsOn("yarn") // install node_moduels
+    dependsOn("yarn") // install node_modules
 }
 
 tasks.register<Copy>("copyBuild") {
