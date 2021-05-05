@@ -8,7 +8,7 @@
 
 A free and open source manga reader that runs extensions built for [Tachiyomi](https://tachiyomi.org/). 
 
-Tachidesk is an independent Tachiyomi compatible software, **not a Fork** of Tachiyomi.
+Tachidesk is an independent Tachiyomi compatible software made by @AriaMoradi AKA ArMor and contributors and is **not a Fork of** Tachiyomi.
 
 Tachidesk is as multi-platform as you can get. Any platform that runs java and/or has a modern browser can run it. 
 
