@@ -64,7 +64,12 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
+
+    // current database driver
     implementation("com.h2database:h2:1.4.200")
+
+    // database migrations
+    implementation("com.improve_future:harmonica:2.0.0")
 
     // tray icon
     implementation("com.dorkbox:SystemTray:4.1")
