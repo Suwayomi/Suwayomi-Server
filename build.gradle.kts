@@ -40,7 +40,7 @@ configure(projects) {
 
     dependencies {
         // Kotlin
-        implementation(kotlin("stdlib"))
+        implementation(kotlin("stdlib-jdk8"))
         implementation(kotlin("reflect"))
         testImplementation(kotlin("test"))
 
