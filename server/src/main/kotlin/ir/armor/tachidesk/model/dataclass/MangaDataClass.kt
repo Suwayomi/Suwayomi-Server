@@ -7,7 +7,7 @@ package ir.armor.tachidesk.model.dataclass
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import ir.armor.tachidesk.model.database.MangaStatus
+import ir.armor.tachidesk.model.database.table.MangaStatus
 
 data class MangaDataClass(
     val id: Int,

@@ -1,4 +1,4 @@
-package ir.armor.tachidesk.model.database
+package ir.armor.tachidesk.model.database.table
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -39,18 +39,18 @@ fun MangaTable.toDataClass(mangaEntry: ResultRow) =
         mangaEntry[MangaTable.id].value,
         mangaEntry[sourceReference].toString(),
 
-        mangaEntry[MangaTable.url],
-        mangaEntry[MangaTable.title],
+        mangaEntry[url],
+        mangaEntry[title],
         proxyThumbnailUrl(mangaEntry[MangaTable.id].value),
 
-        mangaEntry[MangaTable.initialized],
+        mangaEntry[initialized],
 
-        mangaEntry[MangaTable.artist],
-        mangaEntry[MangaTable.author],
-        mangaEntry[MangaTable.description],
-        mangaEntry[MangaTable.genre],
-        MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
-        mangaEntry[MangaTable.inLibrary]
+        mangaEntry[artist],
+        mangaEntry[author],
+        mangaEntry[description],
+        mangaEntry[genre],
+        MangaStatus.valueOf(mangaEntry[status]).name,
+        mangaEntry[inLibrary]
     )
 
 enum class MangaStatus(val status: Int) {

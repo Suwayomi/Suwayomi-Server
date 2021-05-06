@@ -11,8 +11,8 @@ import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
 import ir.armor.tachidesk.impl.util.PackageTools.loadExtensionSources
-import ir.armor.tachidesk.model.database.ExtensionTable
-import ir.armor.tachidesk.model.database.SourceTable
+import ir.armor.tachidesk.model.database.table.ExtensionTable
+import ir.armor.tachidesk.model.database.table.SourceTable
 import ir.armor.tachidesk.server.ApplicationDirs
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction

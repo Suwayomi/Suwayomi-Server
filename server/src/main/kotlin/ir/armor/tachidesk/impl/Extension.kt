@@ -27,8 +27,8 @@ import ir.armor.tachidesk.impl.util.PackageTools.getSignatureHash
 import ir.armor.tachidesk.impl.util.PackageTools.loadExtensionSources
 import ir.armor.tachidesk.impl.util.PackageTools.trustedSignatures
 import ir.armor.tachidesk.impl.util.await
-import ir.armor.tachidesk.model.database.ExtensionTable
-import ir.armor.tachidesk.model.database.SourceTable
+import ir.armor.tachidesk.model.database.table.ExtensionTable
+import ir.armor.tachidesk.model.database.table.SourceTable
 import ir.armor.tachidesk.server.ApplicationDirs
 import mu.KotlinLogging
 import okhttp3.Request

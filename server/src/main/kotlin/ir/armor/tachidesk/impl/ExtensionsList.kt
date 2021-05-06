@@ -10,7 +10,7 @@ package ir.armor.tachidesk.impl
 import eu.kanade.tachiyomi.extension.api.ExtensionGithubApi
 import eu.kanade.tachiyomi.extension.model.Extension
 import ir.armor.tachidesk.impl.Extension.getExtensionIconUrl
-import ir.armor.tachidesk.model.database.ExtensionTable
+import ir.armor.tachidesk.model.database.table.ExtensionTable
 import ir.armor.tachidesk.model.dataclass.ExtensionDataClass
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.deleteWhere

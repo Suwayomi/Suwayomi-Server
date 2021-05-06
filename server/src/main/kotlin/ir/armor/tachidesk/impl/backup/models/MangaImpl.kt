@@ -1,6 +1,6 @@
 package ir.armor.tachidesk.impl.backup.models
 
-import ir.armor.tachidesk.model.database.MangaTable
+import ir.armor.tachidesk.model.database.table.MangaTable
 import org.jetbrains.exposed.sql.ResultRow
 
 open class MangaImpl : Manga {
