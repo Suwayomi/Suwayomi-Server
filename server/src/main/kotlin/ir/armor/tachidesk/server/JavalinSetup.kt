@@ -102,6 +102,7 @@ object JavalinSetup {
             ctx.result(e.message ?: "Internal Server Error")
         }
 
+        // list all extensions
         app.get("/api/v1/extension/list") { ctx ->
             ctx.json(
                 future {
@@ -110,6 +111,7 @@ object JavalinSetup {
             )
         }
 
+        // install extension identified with "pkgName"
         app.get("/api/v1/extension/install/:pkgName") { ctx ->
             val pkgName = ctx.pathParam("pkgName")
 
@@ -120,6 +122,7 @@ object JavalinSetup {
             )
         }
 
+        // update extension identified with "pkgName"
         app.get("/api/v1/extension/update/:pkgName") { ctx ->
             val pkgName = ctx.pathParam("pkgName")
 
@@ -130,6 +133,7 @@ object JavalinSetup {
             )
         }
 
+        // uninstall extension identified with "pkgName"
         app.get("/api/v1/extension/uninstall/:pkgName") { ctx ->
             val pkgName = ctx.pathParam("pkgName")
 
@@ -273,7 +277,7 @@ object JavalinSetup {
             )
         }
 
-        // global search
+        // global search, Not implemented yet
         app.get("/api/v1/search/:searchTerm") { ctx ->
             val searchTerm = ctx.pathParam("searchTerm")
             ctx.json(sourceGlobalSearch(searchTerm))
