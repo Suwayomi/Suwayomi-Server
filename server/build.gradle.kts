@@ -42,8 +42,6 @@ extensions.extraProperties["migrationPackage"] = "ir.armor.tachidesk.model.datab
 
 
 dependencies {
-    implementation(kotlin("stdlib-jdk8"))
-
     // Source models and interfaces from Tachiyomi 1.x
     // using source class from tachiyomi commit 9493577de27c40ce8b2b6122cc447d025e34c477 to not depend on tachiyomi.sourceapi
 //    implementation("tachiyomi.sourceapi:source-api:1.1")
