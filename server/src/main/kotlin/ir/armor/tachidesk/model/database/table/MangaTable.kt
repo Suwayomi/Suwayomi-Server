@@ -37,20 +37,20 @@ object MangaTable : IntIdTable() {
 fun MangaTable.toDataClass(mangaEntry: ResultRow) =
     MangaDataClass(
         mangaEntry[MangaTable.id].value,
-        mangaEntry[sourceReference].toString(),
+        mangaEntry[MangaTable.sourceReference].toString(),
 
-        mangaEntry[url],
-        mangaEntry[title],
+        mangaEntry[MangaTable.url],
+        mangaEntry[MangaTable.title],
         proxyThumbnailUrl(mangaEntry[MangaTable.id].value),
 
-        mangaEntry[initialized],
+        mangaEntry[MangaTable.initialized],
 
-        mangaEntry[artist],
-        mangaEntry[author],
-        mangaEntry[description],
-        mangaEntry[genre],
+        mangaEntry[MangaTable.artist],
+        mangaEntry[MangaTable.author],
+        mangaEntry[MangaTable.description],
+        mangaEntry[MangaTable.genre],
         MangaStatus.valueOf(mangaEntry[status]).name,
-        mangaEntry[inLibrary]
+        mangaEntry[MangaTable.inLibrary]
     )
 
 enum class MangaStatus(val status: Int) {
