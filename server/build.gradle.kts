@@ -19,7 +19,7 @@ repositories {
     }
 }
 
-
+// harmonica -->
 // TODO convert to new way of doing gradle plugins? https://github.com/jitpack/jitpack.io/issues/1459#issuecomment-773543488
 buildscript {
     repositories {
@@ -36,6 +36,9 @@ buildscript {
 }
 
 apply(plugin = "jarmonica")
+
+extensions.extraProperties["migrationPackage"] = "ir.armor.tachidesk.model.database.harmonica"
+// harmonica <--
 
 
 dependencies {
