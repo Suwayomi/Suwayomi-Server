@@ -49,7 +49,7 @@ fun MangaTable.toDataClass(mangaEntry: ResultRow) =
         mangaEntry[MangaTable.author],
         mangaEntry[MangaTable.description],
         mangaEntry[MangaTable.genre],
-        MangaStatus.valueOf(mangaEntry[status]).name,
+        MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
         mangaEntry[MangaTable.inLibrary]
     )
 
