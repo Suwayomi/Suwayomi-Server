@@ -12,10 +12,10 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import ir.armor.tachidesk.impl.util.CachedImageResponse.getCachedImageResponse
 import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
 import ir.armor.tachidesk.impl.util.awaitSingle
-import ir.armor.tachidesk.model.database.ChapterTable
-import ir.armor.tachidesk.model.database.MangaTable
-import ir.armor.tachidesk.model.database.PageTable
-import ir.armor.tachidesk.model.database.SourceTable
+import ir.armor.tachidesk.model.database.table.ChapterTable
+import ir.armor.tachidesk.model.database.table.MangaTable
+import ir.armor.tachidesk.model.database.table.PageTable
+import ir.armor.tachidesk.model.database.table.SourceTable
 import ir.armor.tachidesk.server.ApplicationDirs
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select

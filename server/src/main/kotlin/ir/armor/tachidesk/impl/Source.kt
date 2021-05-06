@@ -9,8 +9,8 @@ package ir.armor.tachidesk.impl
 
 import ir.armor.tachidesk.impl.Extension.getExtensionIconUrl
 import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
-import ir.armor.tachidesk.model.database.ExtensionTable
-import ir.armor.tachidesk.model.database.SourceTable
+import ir.armor.tachidesk.model.database.table.ExtensionTable
+import ir.armor.tachidesk.model.database.table.SourceTable
 import ir.armor.tachidesk.model.dataclass.SourceDataClass
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.select

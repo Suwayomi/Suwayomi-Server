@@ -20,9 +20,6 @@ repositories {
 }
 
 dependencies {
-//    implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
-    implementation(kotlin("stdlib-jdk8"))
-
     // Source models and interfaces from Tachiyomi 1.x
     // using source class from tachiyomi commit 9493577de27c40ce8b2b6122cc447d025e34c477 to not depend on tachiyomi.sourceapi
 //    implementation("tachiyomi.sourceapi:source-api:1.1")
@@ -47,7 +44,7 @@ dependencies {
     // Reactivex
     implementation("io.reactivex:rxjava:1.3.8")
 
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.2.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.1.0")
     implementation("com.google.code.gson:gson:2.8.6")
     implementation("com.github.salomonbrys.kotson:kotson:2.5.0")
 
@@ -64,12 +61,16 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
+    implementation("org.jetbrains.exposed:exposed-java-time:$exposedVersion")
+
+    // current database driver
     implementation("com.h2database:h2:1.4.200")
 
     // tray icon
     implementation("com.dorkbox:SystemTray:4.1")
     implementation("com.dorkbox:Utilities:1.9")
 
+    implementation("com.google.guava:guava:30.1.1-jre")
 
     // AndroidCompat
     implementation(project(":AndroidCompat"))

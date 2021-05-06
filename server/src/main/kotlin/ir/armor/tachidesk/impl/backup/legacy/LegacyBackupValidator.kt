@@ -9,7 +9,7 @@ package ir.armor.tachidesk.impl.backup.legacy
 
 import com.google.gson.JsonObject
 import ir.armor.tachidesk.impl.backup.legacy.models.Backup
-import ir.armor.tachidesk.model.database.SourceTable
+import ir.armor.tachidesk.model.database.table.SourceTable
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 

@@ -1,6 +1,6 @@
 package ir.armor.tachidesk.impl.backup.models
 
-import ir.armor.tachidesk.model.database.ChapterTable
+import ir.armor.tachidesk.model.database.table.ChapterTable
 import org.jetbrains.exposed.sql.ResultRow
 
 class ChapterImpl : Chapter {

@@ -1,4 +1,4 @@
-package ir.armor.tachidesk.model.database
+package ir.armor.tachidesk.model.database.table
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -37,7 +37,7 @@ object MangaTable : IntIdTable() {
 fun MangaTable.toDataClass(mangaEntry: ResultRow) =
     MangaDataClass(
         mangaEntry[MangaTable.id].value,
-        mangaEntry[sourceReference].toString(),
+        mangaEntry[MangaTable.sourceReference].toString(),
 
         mangaEntry[MangaTable.url],
         mangaEntry[MangaTable.title],

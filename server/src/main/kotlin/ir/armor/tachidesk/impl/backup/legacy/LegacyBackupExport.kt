@@ -22,8 +22,8 @@ import ir.armor.tachidesk.impl.backup.models.ChapterImpl
 import ir.armor.tachidesk.impl.backup.models.Manga
 import ir.armor.tachidesk.impl.backup.models.MangaImpl
 import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
-import ir.armor.tachidesk.model.database.ChapterTable
-import ir.armor.tachidesk.model.database.MangaTable
+import ir.armor.tachidesk.model.database.table.ChapterTable
+import ir.armor.tachidesk.model.database.table.MangaTable
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 
