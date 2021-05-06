@@ -19,8 +19,26 @@ repositories {
     }
 }
 
+
+// TODO convert to new way of doing gradle plugins? https://github.com/jitpack/jitpack.io/issues/1459#issuecomment-773543488
+buildscript {
+    repositories {
+        mavenCentral()
+        maven {
+            url = uri("https://jitpack.io")
+        }
+    }
+
+    dependencies {
+        classpath(kotlin("script-util", "1.4.32"))
+        classpath("com.github.KenjiOhtsuka.harmonica:harmonica:2.0.0")
+    }
+}
+
+apply(plugin = "jarmonica")
+
+
 dependencies {
-//    implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
     implementation(kotlin("stdlib-jdk8"))
 
     // Source models and interfaces from Tachiyomi 1.x
@@ -69,7 +87,7 @@ dependencies {
     implementation("com.h2database:h2:1.4.200")
 
     // database migrations
-    implementation("com.improve_future:harmonica:2.0.0")
+    implementation("com.github.KenjiOhtsuka.harmonica:harmonica:2.0.0")
 
     // tray icon
     implementation("com.dorkbox:SystemTray:4.1")
