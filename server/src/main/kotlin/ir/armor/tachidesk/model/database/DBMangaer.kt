@@ -7,17 +7,10 @@ package ir.armor.tachidesk.model.database
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import ir.armor.tachidesk.model.database.table.CategoryMangaTable
-import ir.armor.tachidesk.model.database.table.CategoryTable
-import ir.armor.tachidesk.model.database.table.ChapterTable
-import ir.armor.tachidesk.model.database.table.ExtensionTable
-import ir.armor.tachidesk.model.database.table.MangaTable
-import ir.armor.tachidesk.model.database.table.PageTable
-import ir.armor.tachidesk.model.database.table.SourceTable
+import ir.armor.tachidesk.model.database.migration.lib.loadMigrationsFrom
+import ir.armor.tachidesk.model.database.migration.lib.runMigrations
 import ir.armor.tachidesk.server.ApplicationDirs
 import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
@@ -29,20 +22,15 @@ object DBMangaer {
     }
 }
 
-fun makeDataBaseTables() {
+private fun createDB() {
     // must mention db object so the lazy block executes
     val db = DBMangaer.db
     db.useNestedTransactions = true
+}
 
-    transaction {
-        SchemaUtils.createMissingTablesAndColumns(
-            ExtensionTable,
-            SourceTable,
-            MangaTable,
-            ChapterTable,
-            PageTable,
-            CategoryTable,
-            CategoryMangaTable,
-        )
-    }
+fun databaseUp() {
+    createDB()
+
+    val migrations = loadMigrationsFrom("ir.armor.tachidesk.model.database.migration")
+    runMigrations(migrations)
 }

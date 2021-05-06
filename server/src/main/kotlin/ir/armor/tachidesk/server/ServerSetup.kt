@@ -10,7 +10,7 @@ package ir.armor.tachidesk.server
 import ch.qos.logback.classic.Level
 import eu.kanade.tachiyomi.App
 import ir.armor.tachidesk.Main
-import ir.armor.tachidesk.model.database.makeDataBaseTables
+import ir.armor.tachidesk.model.database.databaseUp
 import ir.armor.tachidesk.server.util.systemTray
 import mu.KotlinLogging
 import org.kodein.di.DI
@@ -91,7 +91,7 @@ fun applicationSetup() {
         logger.error("Exception while creating initial server.conf:\n", e)
     }
 
-    makeDataBaseTables()
+    databaseUp()
 
     // create system tray
     if (serverConfig.systemTrayEnabled) {
