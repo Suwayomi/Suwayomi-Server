@@ -22,14 +22,10 @@ object DBMangaer {
     }
 }
 
-private fun createDB() {
+fun databaseUp() {
     // must mention db object so the lazy block executes
     val db = DBMangaer.db
     db.useNestedTransactions = true
-}
-
-fun databaseUp() {
-    createDB()
 
     val migrations = loadMigrationsFrom("ir.armor.tachidesk.model.database.migration")
     runMigrations(migrations)
