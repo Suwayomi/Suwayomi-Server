@@ -18,14 +18,6 @@ allprojects {
     }
 }
 
-configurations.all {
-    resolutionStrategy.eachDependency {
-        if (requested.group == "org.jetbrains.kotlin") {
-            useVersion("1.4.32")
-        }
-    }
-}
-
 val projects = listOf(
         project(":AndroidCompat"),
         project(":AndroidCompat:Config"),
