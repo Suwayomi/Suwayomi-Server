@@ -14,7 +14,6 @@ allprojects {
         maven("https://maven.google.com/")
         maven("https://jitpack.io")
         maven("https://oss.sonatype.org/content/repositories/snapshots/")
-        maven("https://dl.bintray.com/inorichi/maven")
         maven("https://dl.google.com/dl/android/maven2/")
     }
 }
