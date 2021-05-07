@@ -1,6 +1,6 @@
 # Contributing
 ## Where should I start?
-Checkout [This Kanban Board](https://github.com/Suwayomi/Tachidesk/projects/1) to see the rough development roadmap, one of the columns is reseved for potential
+Checkout [This Kanban Board](https://github.com/Suwayomi/Tachidesk/projects/1) to see the rough development roadmap, one of the columns is reseved for potential contributors, althogh you are free to take on any task you want to.
 
 ## How does Tachidesk work?
 This project has two components: 
@@ -8,13 +8,6 @@ This project has two components:
 2. **webUI:** A react SPA(`create-react-app`) project that works with the server to do the presentation.
 
 This structure is chosen to achieve the maximum multi-platform-ness and to eaise development of alternative user intefaces for Tachidesk.
-
-## Alternative User Interfaces for Tachidesk server
-Currently there are three known interfaces for Tachidesk:
-1. [webUI](https://github.com/Suwayomi/Tachidesk/tree/master/webUI/react): The react SPA that Tachidesk is traditionally shipped with.
-2. [TachideskJUI](https://github.com/Suwayomi/TachideskJUI): A Jetbrains Compose Native app, re-uses components made for the upcoming Tachiyomi 1.x
-3. [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js, in super early stages of development.
-
 
 ## Building from source
 ### Prerequisite: Get Android stubs jar
