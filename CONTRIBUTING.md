@@ -7,7 +7,17 @@ This project has two components:
 1. **server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run apk extensions. All this concludes to serving a REST API to `webUI`.
 2. **webUI:** A react SPA(`create-react-app`) project that works with the server to do the presentation.
 
-This structure is chosen to achieve the maximum multi-platform-ness and to eaise development of alternative user intefaces for Tachidesk.
+## Why a web app?
+This structure is chosen to
+- Achieve the maximum multi-platform-ness
+- Gives the ability to acces Tachidesk from a remote web browser e.g. your phone, tablet or smart TV
+- Eaise development of alternative user intefaces for Tachidesk
+
+## User Interfaces for Tachidesk server
+Currently there are three known interfaces for Tachidesk:
+1. [webUI](https://github.com/Suwayomi/Tachidesk/tree/master/webUI/react): The react SPA that Tachidesk is traditionally shipped with.
+2. [TachideskJUI](https://github.com/Suwayomi/TachideskJUI): A Jetbrains Compose Native app, re-uses components made for the upcoming Tachiyomi 1.x
+3. [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js, in super early stages of development.
 
 ## Building from source
 ### Prerequisite: Get Android stubs jar
