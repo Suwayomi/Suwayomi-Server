@@ -55,19 +55,8 @@ Check [arbuilder's repo](https://github.com/arbuilder/Tachidesk-docker) out for 
 ### Using Tachidesk Remotely
 You can run Tachidesk on your computer or a server and use it remotely trough the web interface with a web browser on any remote device including a mobile or tablet or even your smart TV!, this method of using Tachidesk is only recommended if you are a power user and know what you are doing.
 
-## General troubleshooting
-If the app breaks, make sure that it's not running(right click on tray icon and quit or kill it through the way your Operating System provides), delete the directory below and re-run the app (**This procedure will delete all your data!**) and if the problem persists open an issue or ask for help on discord. 
-
-On Mac OS X : `/Users/<Account>/Library/Application Support/Tachidesk`
-
-On Windows XP : `C:\Documents and Settings\<Account>\Application Data\Local Settings\Tachidesk`
-
-On Windows 7 and later : `C:\Users\<Account>\AppData\Local\Tachidesk`
-
-On Unix/Linux : `/home/<account>/.local/share/Tachidesk`
-
-## Support and help
-Join Tachidesk's [discord server](https://discord.gg/DDZdqZWaHA) to hang out with the community and to receive support and help.
+## Troubleshooting and Support
+See [this troubleshooting wiki page](https://github.com/Suwayomi/Tachidesk/wiki/Troubleshooting).
 
 ## User Interfaces for Tachidesk server
 Currently there are three known interfaces for Tachidesk:
