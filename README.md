@@ -26,8 +26,6 @@ Here is a list of current features:
 
 **Note:** Keep in mind that Tachidesk is alpha software and can break rarely and/or with each update, so you may have to delete your data to fix it. See [General troubleshooting](#general-troubleshooting) and [Support and help](#support-and-help) if it happens.
 
-Anyways, for more info checkout [finished milestone #1](https://github.com/Suwayomi/Tachidesk/issues/2) and [milestone #2](https://github.com/Suwayomi/Tachidesk/projects/1) to see what's implemented in more detail.
-
 ## Downloading and Running the app
 ### All Operating Systems
 You should have The Java Runtime Environment(JRE) 8 or newer and a modern browser installed(get assitance from Google search!). Also an internet connection is required as almost everything this app does is downloading stuff. 
@@ -71,38 +69,8 @@ On Unix/Linux : `/home/<account>/.local/share/Tachidesk`
 ## Support and help
 Join Tachidesk's [discord server](https://discord.gg/DDZdqZWaHA) to hang out with the community and to receive support and help.
 
-## How does it work?
-This project has two components: 
-1. **server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run apk extensions. All this concludes to serving a REST API to `webUI`.
-2. **webUI:** A react SPA project that works with the server to do the presentation.
-
-## Building from source
-### Prerequisite: Get Android stubs jar
-#### Manual download
-Download [android.jar](https://raw.githubusercontent.com/Suwayomi/Tachidesk/android-jar/android.jar) and put it under `AndroidCompat/lib`.
-#### Automated download
-Run `AndroidCompat/getAndroid.sh`(MacOS/Linux) or `AndroidCompat/getAndroid.ps1`(Windows) from project's root directory to download and rebuild the jar file from Google's repository.
-### Prerequisite: Software dependencies
-You need this software packages installed in order to build this project:
-- Java Development Kit and Java Runtime Environment version 8 or newer(both Oracle JDK and OpenJDK works)
-- Nodejs LTS or latest
-- Yarn
-- Git
-### building the full-blown jar
-Run `./gradlew :webUI:copyBuild server:shadowJar`, the resulting built jar file will be `server/build/Tachidesk-vX.Y.Z-rxxx.jar`.
-### building without `webUI` bundled(server only)
-Delete the `server/src/main/resources/react` directory if exists from previous runs, then run `./gradlew server:shadowJar`, the resulting built jar file will be `server/build/Tachidesk-vX.Y.Z-rxxx.jar`.
-### building the Windows package
-Run `./gradlew :server:windowsPackage` to build a server only bundle and `./gradlew :webUI:copyBuild :server:windowsPackage` to get a full bundle , the resulting built zip package file will be `server/build/Tachidesk-vX.Y.Z-rxxx-win32.zip`.
-## Running for development purposes
-### `server` module
-Follow [Get Android stubs jar](#prerequisite-get-android-stubs-jar) then run `./gradlew :server:run --stacktrace` to run the server
-### `webUI` module
-How to do it is described in `webUI/react/README.md` but for short,
- first cd into `webUI/react` then run `yarn` to install the node modules(do this only once)
- then `yarn start` to start the development server, if a new browser window doesn't get opned automatically,
- then open `http://127.0.0.1:3000` in a modern browser. This is a `create-react-app` project
- and supports HMR and all the other goodies you'll need.
+## Contributing and Technical info
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Credit
 This project is a spiritual successor of [TachiWeb-Server](https://github.com/Tachiweb/TachiWeb-server), Many of the ideas and the groundwork adopted in this project comes from TachiWeb.
