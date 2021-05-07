@@ -10,7 +10,7 @@ A free and open source manga reader that runs extensions built for [Tachiyomi](h
 
 Tachidesk is an independent Tachiyomi compatible software and is **not a Fork of** Tachiyomi.
 
-Tachidesk is as multi-platform as you can get. Any platform that runs java and/or has a modern browser can run it. This obviously includes Windows, Linux, macOS, BSD, etc. Follow [Downloading and Running the app](#downloading-and-running-the-app) for installation instructions.
+Tachidesk is as multi-platform as you can get. Any platform that runs java and/or has a modern browser can run it. This obviously includes Windows, Linux, macOS, chromeOS, etc. Follow [Downloading and Running the app](#downloading-and-running-the-app) for installation instructions.
 
 Ability to read and write Tachiyomi compatible backups and syncing is a planned feature.
 
@@ -30,7 +30,7 @@ Anyways, for more info checkout [finished milestone #1](https://github.com/Suway
 
 ## Downloading and Running the app
 ### All Operating Systems
-You should have The Java Runtime Environment(JRE) 8 or newer and a modern browser installed. Also an internet connection is required as almost everything this app does is downloading stuff. 
+You should have The Java Runtime Environment(JRE) 8 or newer and a modern browser installed(get assitance from Google search!). Also an internet connection is required as almost everything this app does is downloading stuff. 
 
 Download the latest "Stable" jar release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases) or a preview jar build from [the preview branch](https://github.com/Suwayomi/Tachidesk/tree/preview).
 
