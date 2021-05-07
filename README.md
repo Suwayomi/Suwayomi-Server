@@ -69,6 +69,12 @@ On Unix/Linux : `/home/<account>/.local/share/Tachidesk`
 ## Support and help
 Join Tachidesk's [discord server](https://discord.gg/DDZdqZWaHA) to hang out with the community and to receive support and help.
 
+## Alternative User Interfaces for Tachidesk server
+Currently there are three known interfaces for Tachidesk:
+1. [webUI](https://github.com/Suwayomi/Tachidesk/tree/master/webUI/react): The react SPA that Tachidesk is traditionally shipped with.
+2. [TachideskJUI](https://github.com/Suwayomi/TachideskJUI): A Jetbrains Compose Native app, re-uses components made for the upcoming Tachiyomi 1.x
+3. [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js, in super early stages of development.
+
 ## Contributing and Technical info
 See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
