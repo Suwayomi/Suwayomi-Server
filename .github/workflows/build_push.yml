@@ -77,4 +77,4 @@ jobs:
 
       - name: Deploy preview
         run: |
-          ./master/.github/scripts/commit-repo.sh
+          ./master/.github/scripts/commit-preview.sh

@@ -11,7 +11,7 @@ cp -f $new_jar_build Tachidesk-latest.jar
 rm -rf latest_pointer/*
 cp $new_jar_build latest_pointer
 
-latest=$(ls *.jar | tail -n1 | cut -d"-" -f3 | cut -d"." -f1)
+latest=$(ls *.jar | tail -n1 | sed -n -e's/Tachidesk-v\|.jar//g;s/-/./gp')
 echo "{ \"latest\": \"$latest\" }" > index.json
 
 git config --global user.email "github-actions[bot]@users.noreply.github.com"
