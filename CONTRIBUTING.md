@@ -1,6 +1,8 @@
 # Contributing
 ## Where should I start?
-Checkout [This Kanban Board](https://github.com/Suwayomi/Tachidesk/projects/1) to see the rough development roadmap, one of the columns is reseved for potential contributors, although you are free to take on any task you want to.
+Checkout [This Kanban Board](https://github.com/Suwayomi/Tachidesk/projects/1) to see the rough development roadmap.
+
+**Note to potential contributors:** Notify Aria Moradi (`@ArMor`) on Suwayomi discord or open a WIP pull request before starting if you decide to take on working on anything from/not from the roadmap in order to avoid parallel efforts on the same issue/feature.
 
 ## How does Tachidesk work?
 This project has two components: 
