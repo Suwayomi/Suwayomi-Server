@@ -58,12 +58,6 @@ You can run Tachidesk on your computer or a server and use it remotely trough th
 ## Troubleshooting and Support
 See [this troubleshooting wiki page](https://github.com/Suwayomi/Tachidesk/wiki/Troubleshooting).
 
-## User Interfaces for Tachidesk server
-Currently there are three known interfaces for Tachidesk:
-1. [webUI](https://github.com/Suwayomi/Tachidesk/tree/master/webUI/react): The react SPA that Tachidesk is traditionally shipped with.
-2. [TachideskJUI](https://github.com/Suwayomi/TachideskJUI): A Jetbrains Compose Native app, re-uses components made for the upcoming Tachiyomi 1.x
-3. [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js, in super early stages of development.
-
 ## Contributing and Technical info
 See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
