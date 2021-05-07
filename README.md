@@ -28,7 +28,7 @@ Here is a list of current features:
 
 ## Downloading and Running the app
 ### All Operating Systems
-You should have The Java Runtime Environment(JRE) 8 or newer and a modern browser installed(get assitance from Google search!). Also an internet connection is required as almost everything this app does is downloading stuff. 
+You should have The Java Runtime Environment(JRE) 8 or newer and a modern browser installed(Google is your friend for seeking assitance). Also an internet connection is required as almost everything this app does is downloading stuff. 
 
 Download the latest "Stable" jar release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases) or a preview jar build from [the preview branch](https://github.com/Suwayomi/Tachidesk/tree/preview).
 
