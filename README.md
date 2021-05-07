@@ -10,7 +10,7 @@ A free and open source manga reader that runs extensions built for [Tachiyomi](h
 
 Tachidesk is an independent Tachiyomi compatible software and is **not a Fork of** Tachiyomi.
 
-Tachidesk is as multi-platform as you can get. Any platform that runs java and/or has a modern browser can run it. This obviously includes Windows, Linux, macOS, BSD, etc. Follow [Downloading and Running the app](#downloading-and-running-the-app) for installation instructions. You can also run Tachidesk on your computer/a server and use it remotely trough the web interface with a web browser on any remote device including a mobile or tablet or even your smart TV!, this method of using Tachidesk is only recommended if you are a power user and know what you are doing.
+Tachidesk is as multi-platform as you can get. Any platform that runs java and/or has a modern browser can run it. This obviously includes Windows, Linux, macOS, BSD, etc. Follow [Downloading and Running the app](#downloading-and-running-the-app) for installation instructions.
 
 Ability to read and write Tachiyomi compatible backups and syncing is a planned feature.
 
@@ -46,9 +46,16 @@ You can install Tachidesk from the AUR
 ```
 yay -S tachidesk
 ```
+Or the latest preview version
+```
+yay -S tachidesk-preview
+```
 
 ### Docker
 Check [arbuilder's repo](https://github.com/arbuilder/Tachidesk-docker) out for more details and the dockerfile.
+
+### Using Tachidesk Remotely
+You can run Tachidesk on your computer or a server and use it remotely trough the web interface with a web browser on any remote device including a mobile or tablet or even your smart TV!, this method of using Tachidesk is only recommended if you are a power user and know what you are doing.
 
 ## General troubleshooting
 If the app breaks, make sure that it's not running(right click on tray icon and quit or kill it through the way your Operating System provides), delete the directory below and re-run the app (**This procedure will delete all your data!**) and if the problem persists open an issue or ask for help on discord. 
