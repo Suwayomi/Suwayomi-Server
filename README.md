@@ -53,7 +53,7 @@ yay -S tachidesk-preview
 Check [arbuilder's repo](https://github.com/arbuilder/Tachidesk-docker) out for more details and the dockerfile.
 
 ### Using Tachidesk Remotely
-You can run Tachidesk on your computer or a server and use it remotely trough the web interface with a web browser on any remote device including a mobile or tablet or even your smart TV!, this method of using Tachidesk is only recommended if you are a power user and know what you are doing.
+You can run Tachidesk on your computer or a server and connect to it remotely through the web interface with a web browser on any device including a mobile or tablet or even your smart TV!, this method of using Tachidesk is only recommended if you are a power user and know what you are doing.
 
 ## Troubleshooting and Support
 See [this troubleshooting wiki page](https://github.com/Suwayomi/Tachidesk/wiki/Troubleshooting).
