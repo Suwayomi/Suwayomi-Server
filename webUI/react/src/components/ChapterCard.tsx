@@ -49,7 +49,7 @@ export default function ChapterCard(props: IProps) {
     const history = useHistory();
     const { chapter } = props;
 
-    const dateStr = chapter.date_upload && new Date(chapter.date_upload).toISOString().slice(0, 10);
+    const dateStr = chapter.uploadDate && new Date(chapter.uploadDate).toISOString().slice(0, 10);
 
     return (
         <>
@@ -60,7 +60,7 @@ export default function ChapterCard(props: IProps) {
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 <Typography variant="h5" component="h2">
                                     {chapter.name}
-                                    {chapter.chapter_number > 0 && ` : ${chapter.chapter_number}`}
+                                    {chapter.chapterNumber > 0 && ` : ${chapter.chapterNumber}`}
                                 </Typography>
                                 <Typography variant="caption" display="block" gutterBottom>
                                     {chapter.scanlator}

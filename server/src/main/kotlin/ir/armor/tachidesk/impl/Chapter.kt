@@ -17,6 +17,7 @@ import ir.armor.tachidesk.model.database.table.MangaTable
 import ir.armor.tachidesk.model.database.table.PageTable
 import ir.armor.tachidesk.model.dataclass.ChapterDataClass
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
@@ -69,16 +70,22 @@ object Chapter {
             val dbChapterCount = transaction { ChapterTable.selectAll().count() }
             if (dbChapterCount > chapterCount) { // we got some clean up due
                 // TODO: delete orphan chapters
-                val dbChapterList = transaction { ChapterTable.selectAll().orderBy() }
+                val dbChapterList = transaction { ChapterTable.selectAll() }
 
+                dbChapterList.forEach {
+                    (it[ChapterTable.chapterIndex] >= chapterList.size
+                            || chapterList[it[ChapterTable.chapterIndex]].url != it[ChapterTable.url])
+
+                    ChapterTable.deleteWhere { ChapterTable.id eq it[ChapterTable.id] }
+                }
             }
 
-            val dbChapters = transaction { ChapterTable.selectAll() }
+            val dbChapterMap = transaction { ChapterTable.selectAll() }
                     .associateBy({ it[ChapterTable.url] }, { it })
 
             chapterList.mapIndexed { index, it ->
 
-                val dbChapter = dbChapters.getValue(it.url)
+                val dbChapter = dbChapterMap.getValue(it.url)
 
                 ChapterDataClass(
                         it.url,
@@ -137,7 +144,6 @@ object Chapter {
                 }
             }
         }
-
 
         return ChapterDataClass(
                 chapterEntry[ChapterTable.url],
