@@ -80,11 +80,11 @@ object LegacyBackupImport : LegacyBackupBase() {
         return validationResult
     }
 
-    private fun restoreCategories(jsonCategories: JsonElement) { // TODO
+    private fun restoreCategories(jsonCategories: JsonElement) {
         val backupCategories = parser.fromJson<List<CategoryImpl>>(jsonCategories)
         val dbCategories = getCategoryList()
 
-        // Iterate over them
+        // Iterate over them and create missing categories
         backupCategories.forEach { category ->
             if (dbCategories.none { it.name == category.name }) {
                 createCategory(category.name)
