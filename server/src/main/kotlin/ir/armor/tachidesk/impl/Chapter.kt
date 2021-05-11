@@ -31,10 +31,10 @@ object Chapter {
         val source = getHttpSource(mangaDetails.sourceId.toLong())
 
         val chapterList = source.fetchChapterList(
-                SManga.create().apply {
-                    title = mangaDetails.title
-                    url = mangaDetails.url
-                }
+            SManga.create().apply {
+                title = mangaDetails.title
+                url = mangaDetails.url
+            }
         ).awaitSingle()
 
         val chapterCount = chapterList.count()
@@ -73,33 +73,35 @@ object Chapter {
                 val dbChapterList = transaction { ChapterTable.selectAll() }
 
                 dbChapterList.forEach {
-                    (it[ChapterTable.chapterIndex] >= chapterList.size
-                            || chapterList[it[ChapterTable.chapterIndex]].url != it[ChapterTable.url])
+                    (
+                        it[ChapterTable.chapterIndex] >= chapterList.size ||
+                            chapterList[it[ChapterTable.chapterIndex]].url != it[ChapterTable.url]
+                        )
 
                     ChapterTable.deleteWhere { ChapterTable.id eq it[ChapterTable.id] }
                 }
             }
 
             val dbChapterMap = transaction { ChapterTable.selectAll() }
-                    .associateBy({ it[ChapterTable.url] }, { it })
+                .associateBy({ it[ChapterTable.url] }, { it })
 
             chapterList.mapIndexed { index, it ->
 
                 val dbChapter = dbChapterMap.getValue(it.url)
 
                 ChapterDataClass(
-                        it.url,
-                        it.name,
-                        it.date_upload,
-                        it.chapter_number,
-                        it.scanlator,
-                        mangaId,
+                    it.url,
+                    it.name,
+                    it.date_upload,
+                    it.chapter_number,
+                    it.scanlator,
+                    mangaId,
 
-                        dbChapter[ChapterTable.isRead],
-                        dbChapter[ChapterTable.isBookmarked],
-                        dbChapter[ChapterTable.lastPageRead],
+                    dbChapter[ChapterTable.isRead],
+                    dbChapter[ChapterTable.isBookmarked],
+                    dbChapter[ChapterTable.lastPageRead],
 
-                        chapterCount - index,
+                    chapterCount - index,
                 )
             }
         }
@@ -116,10 +118,10 @@ object Chapter {
         val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
 
         val pageList = source.fetchPageList(
-                SChapter.create().apply {
-                    url = chapterEntry[ChapterTable.url]
-                    name = chapterEntry[ChapterTable.name]
-                }
+            SChapter.create().apply {
+                url = chapterEntry[ChapterTable.url]
+                name = chapterEntry[ChapterTable.name]
+            }
         ).awaitSingle()
 
         val chapterId = chapterEntry[ChapterTable.id].value
@@ -146,19 +148,19 @@ object Chapter {
         }
 
         return ChapterDataClass(
-                chapterEntry[ChapterTable.url],
-                chapterEntry[ChapterTable.name],
-                chapterEntry[ChapterTable.date_upload],
-                chapterEntry[ChapterTable.chapter_number],
-                chapterEntry[ChapterTable.scanlator],
-                mangaId,
-                chapterEntry[ChapterTable.isRead],
-                chapterEntry[ChapterTable.isBookmarked],
-                chapterEntry[ChapterTable.lastPageRead],
+            chapterEntry[ChapterTable.url],
+            chapterEntry[ChapterTable.name],
+            chapterEntry[ChapterTable.date_upload],
+            chapterEntry[ChapterTable.chapter_number],
+            chapterEntry[ChapterTable.scanlator],
+            mangaId,
+            chapterEntry[ChapterTable.isRead],
+            chapterEntry[ChapterTable.isBookmarked],
+            chapterEntry[ChapterTable.lastPageRead],
 
-                chapterEntry[ChapterTable.chapterIndex],
-                chapterCount.toInt(),
-                pageList.count()
+            chapterEntry[ChapterTable.chapterIndex],
+            chapterCount.toInt(),
+            pageList.count()
         )
     }
 }
