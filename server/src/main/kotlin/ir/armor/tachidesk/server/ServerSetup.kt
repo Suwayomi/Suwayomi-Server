@@ -109,7 +109,6 @@ fun applicationSetup() {
 
     // socks proxy settings
     if (serverConfig.socksProxyEnabled) {
-//        System.getProperties()["proxySet"] = "true"
         System.getProperties()["socksProxyHost"] = serverConfig.socksProxyHost
         System.getProperties()["socksProxyPort"] = serverConfig.socksProxyPort
         logger.info("Socks Proxy is enabled to ${serverConfig.socksProxyHost}:${serverConfig.socksProxyPort}")
