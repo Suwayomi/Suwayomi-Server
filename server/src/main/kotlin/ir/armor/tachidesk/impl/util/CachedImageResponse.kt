@@ -24,7 +24,7 @@ object CachedImageResponse {
 
     private fun findFileNameStartingWith(directoryPath: String, fileName: String): String? {
         File(directoryPath).listFiles().forEach { file ->
-            if (file.name.startsWith(fileName))
+            if (file.name.startsWith("$fileName."))
                 return "$directoryPath/${file.name}"
         }
         return null
