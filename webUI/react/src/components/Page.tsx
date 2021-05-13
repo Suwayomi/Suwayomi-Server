@@ -85,7 +85,7 @@ function LazyImage(props: IProps) {
             ref={ref}
             src={imageSrc}
             alt={`Page #${index}`}
-            style={{ width: '100%' }}
+            style={{ width: '100%', maxWidth: '95vw' }}
         />
     );
 }
