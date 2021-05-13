@@ -26,6 +26,8 @@ const useStyles = makeStyles((theme: Theme) => ({
     chapters: {
         listStyle: 'none',
         padding: 0,
+        width: '100vw',
+        minHeight: '200px',
         [theme.breakpoints.up('md')]: {
             width: '50vw',
             height: 'calc(100vh - 64px)',
@@ -85,9 +87,6 @@ export default function Manga() {
             <LoadingPlaceholder
                 shouldRender={chapters.length > 0}
             >
-                {/* <ol >
-                    {chapters.map((chapter) => ())}
-                </ol> */}
                 <Virtuoso
                     style={{ // override Virtuoso default values and set them with class
                         height: 'undefined',
