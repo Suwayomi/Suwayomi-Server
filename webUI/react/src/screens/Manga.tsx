@@ -7,9 +7,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import React, { useEffect, useState, useContext } from 'react';
-import { makeStyles, Theme } from '@material-ui/core/styles';
+import { makeStyles, Theme, useTheme } from '@material-ui/core/styles';
 import { useParams } from 'react-router-dom';
-import CircularProgress from '@material-ui/core/CircularProgress';
+import { Virtuoso } from 'react-virtuoso';
 import ChapterCard from '../components/ChapterCard';
 import MangaDetails from '../components/MangaDetails';
 import NavbarContext from '../context/NavbarContext';
@@ -41,13 +41,26 @@ const useStyles = makeStyles((theme: Theme) => ({
     },
 }));
 
+const InnerItem = React.memo(({ chapters, index }: any) => {
+    React.useEffect(() => {
+        console.log('inner mounting', index);
+        return () => {
+            console.log('inner unmounting', index);
+        };
+    }, [index]);
+    return (
+        <ChapterCard chapter={chapters[index]} />
+    );
+});
+
 export default function Manga() {
     const classes = useStyles();
+    const theme = useTheme();
 
     const { setTitle } = useContext(NavbarContext);
     useEffect(() => { setTitle('Manga'); }, []); // delegate setting topbar action to MangaDetails
 
-    const { id } = useParams<{id: string}>();
+    const { id } = useParams<{ id: string }>();
 
     const [manga, setManga] = useState<IManga>();
     const [chapters, setChapters] = useState<IChapter[]>([]);
@@ -67,16 +80,10 @@ export default function Manga() {
             .then((data) => setChapters(data));
     }, []);
 
-    const chapterCards = (
-        <LoadingPlaceholder
-            shouldRender={chapters.length > 0}
-        >
-            <ol className={classes.chapters}>
-                {chapters.map((chapter) => (<ChapterCard chapter={chapter} />))}
-            </ol>
-        </LoadingPlaceholder>
-
-    );
+    const itemContent = (index:any) => {
+        console.log('providing content', index);
+        return <InnerItem chapters={chapters} index={index} />;
+    };
 
     return (
         <div className={classes.root}>
@@ -85,7 +92,32 @@ export default function Manga() {
                 component={MangaDetails}
                 componentProps={{ manga }}
             />
-            {chapterCards}
+
+            <LoadingPlaceholder
+                shouldRender={chapters.length > 0}
+            >
+                {/* <ol >
+                    {chapters.map((chapter) => ())}
+                </ol> */}
+                <Virtuoso
+                    style={
+                        {
+                            width: '100vw',
+                            height: '100%',
+                            [theme.breakpoints.up('md')]: {
+                                height: 'calc(100vh - 64px)',
+                                width: '50vw',
+                            },
+                        }
+                    }
+                    className={classes.chapters}
+                    totalCount={chapters.length}
+                    itemContent={itemContent}
+                    useWindowScroll={window.innerWidth < 960}
+                    overscan={window.innerHeight * 0.5}
+                />
+            </LoadingPlaceholder>
+
         </div>
     );
 }

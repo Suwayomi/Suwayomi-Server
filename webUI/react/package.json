@@ -14,7 +14,7 @@
     "react-lazyload": "^3.2.0",
     "react-router-dom": "^5.2.0",
     "react-scripts": "4.0.3",
-    "react-window": "^1.8.6",
+    "react-virtuoso": "^1.8.6",
     "web-vitals": "^0.2.4"
   },
   "scripts": {
@@ -40,7 +40,6 @@
     "@types/react-dom": "^17.0.2",
     "@types/react-lazyload": "^3.1.0",
     "@types/react-router-dom": "^5.1.7",
-    "@types/react-window": "^1.8.3",
     "@typescript-eslint/eslint-plugin": "4.23.0",
     "@typescript-eslint/parser": "4.23.0",
     "eslint": "^7.26.0",
