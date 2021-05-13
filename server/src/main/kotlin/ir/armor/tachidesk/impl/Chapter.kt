@@ -67,18 +67,20 @@ object Chapter {
             }
 
             // clear any orphaned chapters that are in the db but not in `chapterList`
-            val dbChapterCount = transaction { ChapterTable.selectAll().count() }
+            val dbChapterCount = transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.count() }
             if (dbChapterCount > chapterCount) { // we got some clean up due
                 // TODO: delete orphan chapters
-                val dbChapterList = transaction { ChapterTable.selectAll() }
+                val dbChapterList = transaction { ChapterTable.select { ChapterTable.manga eq mangaId } }
 
                 dbChapterList.forEach {
-                    (
-                        it[ChapterTable.chapterIndex] >= chapterList.size ||
-                            chapterList[it[ChapterTable.chapterIndex]].url != it[ChapterTable.url]
-                        )
-
-                    ChapterTable.deleteWhere { ChapterTable.id eq it[ChapterTable.id] }
+                    if (it[ChapterTable.chapterIndex] >= chapterList.size ||
+                        chapterList[it[ChapterTable.chapterIndex] - 1].url != it[ChapterTable.url]
+                    ) {
+                        transaction {
+                            PageTable.deleteWhere { PageTable.chapter eq it[ChapterTable.id] }
+                            ChapterTable.deleteWhere { ChapterTable.id eq it[ChapterTable.id] }
+                        }
+                    }
                 }
             }
 

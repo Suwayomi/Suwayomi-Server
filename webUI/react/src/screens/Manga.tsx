@@ -89,16 +89,9 @@ export default function Manga() {
                     {chapters.map((chapter) => ())}
                 </ol> */}
                 <Virtuoso
-                    style={
-                        {
-                            width: '100vw',
-                            height: '100%',
-                            [theme.breakpoints.up('md')]: {
-                                height: 'calc(100vh - 64px)',
-                                width: '50vw',
-                            },
-                        }
-                    }
+                    style={{ // override Virtuoso default values and set them with class
+                        height: 'undefined',
+                    }}
                     className={classes.chapters}
                     totalCount={chapters.length}
                     itemContent={itemContent}
