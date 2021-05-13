@@ -41,17 +41,9 @@ const useStyles = makeStyles((theme: Theme) => ({
     },
 }));
 
-const InnerItem = React.memo(({ chapters, index }: any) => {
-    React.useEffect(() => {
-        console.log('inner mounting', index);
-        return () => {
-            console.log('inner unmounting', index);
-        };
-    }, [index]);
-    return (
-        <ChapterCard chapter={chapters[index]} />
-    );
-});
+const InnerItem = React.memo(({ chapters, index }: any) => (
+    <ChapterCard chapter={chapters[index]} />
+));
 
 export default function Manga() {
     const classes = useStyles();
@@ -80,10 +72,7 @@ export default function Manga() {
             .then((data) => setChapters(data));
     }, []);
 
-    const itemContent = (index:any) => {
-        console.log('providing content', index);
-        return <InnerItem chapters={chapters} index={index} />;
-    };
+    const itemContent = (index:any) => <InnerItem chapters={chapters} index={index} />;
 
     return (
         <div className={classes.root}>
