@@ -50,7 +50,7 @@ export default function Reader() {
 
     const [serverAddress] = useLocalStorage<String>('serverBaseURL', '');
 
-    const { chapterIndex, mangaId } = useParams<{chapterIndex: string, mangaId: string}>();
+    const { chapterIndex, mangaId } = useParams<{ chapterIndex: string, mangaId: string }>();
     const [manga, setManga] = useState<IMangaCard | IManga>({ id: +mangaId, title: '', thumbnailUrl: '' });
     const [chapter, setChapter] = useState<IChapter | IPartialChpter>(initialChapter());
     const [curPage, setCurPage] = useState<number>(0);

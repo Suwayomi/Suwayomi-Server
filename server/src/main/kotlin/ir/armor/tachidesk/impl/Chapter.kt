@@ -17,6 +17,7 @@ import ir.armor.tachidesk.model.database.table.MangaTable
 import ir.armor.tachidesk.model.database.table.PageTable
 import ir.armor.tachidesk.model.dataclass.ChapterDataClass
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
@@ -66,12 +67,29 @@ object Chapter {
             }
 
             // clear any orphaned chapters that are in the db but not in `chapterList`
-            val dbChapterCount = transaction { ChapterTable.selectAll().count() }
+            val dbChapterCount = transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.count() }
             if (dbChapterCount > chapterCount) { // we got some clean up due
-                // TODO: delete orphan chapters
+                val dbChapterList = transaction { ChapterTable.select { ChapterTable.manga eq mangaId } }
+
+                dbChapterList.forEach {
+                    if (it[ChapterTable.chapterIndex] >= chapterList.size ||
+                        chapterList[it[ChapterTable.chapterIndex] - 1].url != it[ChapterTable.url]
+                    ) {
+                        transaction {
+                            PageTable.deleteWhere { PageTable.chapter eq it[ChapterTable.id] }
+                            ChapterTable.deleteWhere { ChapterTable.id eq it[ChapterTable.id] }
+                        }
+                    }
+                }
             }
 
+            val dbChapterMap = transaction { ChapterTable.selectAll() }
+                .associateBy({ it[ChapterTable.url] }, { it })
+
             chapterList.mapIndexed { index, it ->
+
+                val dbChapter = dbChapterMap.getValue(it.url)
+
                 ChapterDataClass(
                     it.url,
                     it.name,
@@ -79,6 +97,11 @@ object Chapter {
                     it.chapter_number,
                     it.scanlator,
                     mangaId,
+
+                    dbChapter[ChapterTable.isRead],
+                    dbChapter[ChapterTable.isBookmarked],
+                    dbChapter[ChapterTable.lastPageRead],
+
                     chapterCount - index,
                 )
             }
@@ -132,6 +155,10 @@ object Chapter {
             chapterEntry[ChapterTable.chapter_number],
             chapterEntry[ChapterTable.scanlator],
             mangaId,
+            chapterEntry[ChapterTable.isRead],
+            chapterEntry[ChapterTable.isBookmarked],
+            chapterEntry[ChapterTable.lastPageRead],
+
             chapterEntry[ChapterTable.chapterIndex],
             chapterCount.toInt(),
             pageList.count()

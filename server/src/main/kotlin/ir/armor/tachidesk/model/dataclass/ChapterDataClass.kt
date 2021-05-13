@@ -10,12 +10,21 @@ package ir.armor.tachidesk.model.dataclass
 data class ChapterDataClass(
     val url: String,
     val name: String,
-    val date_upload: Long,
-    val chapter_number: Float,
+    val uploadDate: Long,
+    val chapterNumber: Float,
     val scanlator: String?,
     val mangaId: Int,
 
-    /** this chapter's index */
+    /** chapter is read */
+    val read: Boolean,
+
+    /** chapter is bookmarked */
+    val bookmarked: Boolean,
+
+    /** last read page, zero means not read/no data */
+    val lastPageRead: Int,
+
+    /** this chapter's index, starts with 1 */
     val chapterIndex: Int? = null,
 
     /** total chapter count, used to calculate if there's a next and prev chapter */

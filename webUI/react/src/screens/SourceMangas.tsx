@@ -15,7 +15,7 @@ export default function SourceMangas(props: { popular: boolean }) {
     const { setTitle, setAction } = useContext(NavbarContext);
     useEffect(() => { setTitle('Source'); setAction(<></>); }, []);
 
-    const { sourceId } = useParams<{sourceId: string}>();
+    const { sourceId } = useParams<{ sourceId: string }>();
     const [mangas, setMangas] = useState<IMangaCard[]>([]);
     const [hasNextPage, setHasNextPage] = useState<boolean>(false);
     const [lastPageNum, setLastPageNum] = useState<number>(1);

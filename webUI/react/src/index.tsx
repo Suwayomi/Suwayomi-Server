@@ -10,7 +10,7 @@ import ReactDOM from 'react-dom';
 import App from './App';
 import './index.css';
 // roboto font
-import 'fontsource-roboto';
+import '@fontsource/roboto';
 
 ReactDOM.render(
     <React.StrictMode>

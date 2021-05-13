@@ -27,7 +27,7 @@ export default function SearchSingle() {
     const { setTitle, setAction } = useContext(NavbarContext);
     useEffect(() => { setTitle('Search'); setAction(<></>); }, []);
 
-    const { sourceId } = useParams<{sourceId: string}>();
+    const { sourceId } = useParams<{ sourceId: string }>();
     const classes = useStyles();
     const [error, setError] = useState<boolean>(false);
     const [mangas, setMangas] = useState<IMangaCard[]>([]);

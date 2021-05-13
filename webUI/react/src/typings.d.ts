@@ -56,10 +56,13 @@ interface IChapter {
     id: number
     url: string
     name: string
-    date_upload: number
-    chapter_number: number
+    uploadDate: number
+    chapterNumber: number
     scanlator: String
     mangaId: number
+    read: boolean
+    bookmarked: boolean
+    lastPageRead: number
     chapterIndex: number
     chapterCount: number
     pageCount: number
