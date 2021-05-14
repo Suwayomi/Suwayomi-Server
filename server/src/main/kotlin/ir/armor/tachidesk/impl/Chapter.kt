@@ -167,15 +167,17 @@ object Chapter {
 
     fun modifyChapter(mangaId: Int, chapterIndex: Int, isRead: Boolean?, isBookmarked: Boolean?, markPrevRead: Boolean?, lastPageRead: Int?) {
         transaction {
-            ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex eq chapterIndex) }) { update ->
-                isRead?.also {
-                    update[ChapterTable.isRead] = it
-                }
-                isBookmarked?.also {
-                    update[ChapterTable.isBookmarked] = it
-                }
-                lastPageRead?.also {
-                    update[ChapterTable.lastPageRead] = it
+            if (listOf(isRead, isBookmarked, lastPageRead).any { it != null }) {
+                ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex eq chapterIndex) }) { update ->
+                    isRead?.also {
+                        update[ChapterTable.isRead] = it
+                    }
+                    isBookmarked?.also {
+                        update[ChapterTable.isBookmarked] = it
+                    }
+                    lastPageRead?.also {
+                        update[ChapterTable.lastPageRead] = it
+                    }
                 }
             }
 

@@ -16,6 +16,7 @@ import Typography from '@material-ui/core/Typography';
 import { Link, useHistory } from 'react-router-dom';
 import Menu from '@material-ui/core/Menu';
 import MenuItem from '@material-ui/core/MenuItem';
+import BookmarkIcon from '@material-ui/icons/Bookmark';
 import client from '../util/client';
 
 const useStyles = makeStyles((theme) => ({
@@ -24,6 +25,9 @@ const useStyles = makeStyles((theme) => ({
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 16,
+    },
+    read: {
+        backgroundColor: theme.palette.type === 'dark' ? '#353535' : '#f0f0f0',
     },
     bullet: {
         display: 'inline-block',
@@ -73,15 +77,13 @@ export default function ChapterCard(props: IProps) {
         const formData = new FormData();
         formData.append(key, value);
         client.patch(`/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}`, formData);
-        // .finally(() => triggerUpdate()
-        // );
     };
 
     return (
         <>
             <li>
                 <Card>
-                    <CardContent className={classes.root}>
+                    <CardContent className={`${classes.root} ${chapter.read && classes.read}`}>
                         <Link
                             to={`/manga/${chapter.mangaId}/chapter/${chapter.index}`}
                             style={{
@@ -91,8 +93,10 @@ export default function ChapterCard(props: IProps) {
                         >
                             <div style={{ display: 'flex' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-
                                     <Typography variant="h5" component="h2">
+                                        <span style={{ color: theme.palette.primary.dark }}>
+                                            {chapter.bookmarked && <BookmarkIcon />}
+                                        </span>
                                         {chapter.name}
                                         {chapter.chapterNumber > 0 && ` : ${chapter.chapterNumber}`}
                                     </Typography>
