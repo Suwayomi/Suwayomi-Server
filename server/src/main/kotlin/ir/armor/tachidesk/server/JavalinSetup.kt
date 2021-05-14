@@ -13,6 +13,7 @@ import ir.armor.tachidesk.impl.CategoryManga.getMangaCategories
 import ir.armor.tachidesk.impl.CategoryManga.removeMangaFromCategory
 import ir.armor.tachidesk.impl.Chapter.getChapter
 import ir.armor.tachidesk.impl.Chapter.getChapterList
+import ir.armor.tachidesk.impl.Chapter.modifyChapter
 import ir.armor.tachidesk.impl.Extension.getExtensionIcon
 import ir.armor.tachidesk.impl.Extension.installExtension
 import ir.armor.tachidesk.impl.Extension.uninstallExtension
@@ -142,7 +143,7 @@ object JavalinSetup {
         }
 
         // icon for extension named `apkName`
-        app.get("/api/v1/extension/icon/:apkName") { ctx ->
+        app.get("/api/v1/extension/icon/:apkName") { ctx -> // TODO: move to pkgName
             val apkName = ctx.pathParam("apkName")
 
             ctx.result(
@@ -263,6 +264,22 @@ object JavalinSetup {
             ctx.json(future { getChapter(chapterIndex, mangaId) })
         }
 
+        // used to modify a chapter's parameters
+        app.patch("/api/v1/manga/:mangaId/chapter/:chapterIndex") { ctx ->
+            val chapterIndex = ctx.pathParam("chapterIndex").toInt()
+            val mangaId = ctx.pathParam("mangaId").toInt()
+
+            val read = ctx.formParam("read")?.toBoolean()
+            val bookmarked = ctx.formParam("bookmarked")?.toBoolean()
+            val markPrevRead = ctx.formParam("markPrevRead")?.toBoolean()
+            val lastPageRead = ctx.formParam("lastPageRead")?.toInt()
+
+            modifyChapter(mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead)
+
+            ctx.status(200)
+        }
+
+        // get page at index "index"
         app.get("/api/v1/manga/:mangaId/chapter/:chapterIndex/page/:index") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
             val chapterIndex = ctx.pathParam("chapterIndex").toInt()

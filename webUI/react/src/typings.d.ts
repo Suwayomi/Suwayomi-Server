@@ -63,14 +63,14 @@ interface IChapter {
     read: boolean
     bookmarked: boolean
     lastPageRead: number
-    chapterIndex: number
+    index: number
     chapterCount: number
     pageCount: number
 }
 
 interface IPartialChpter {
     pageCount: number
-    chapterIndex: number
+    index: number
     chapterCount: number
 }
 

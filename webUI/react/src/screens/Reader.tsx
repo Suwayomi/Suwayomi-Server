@@ -41,7 +41,7 @@ const useStyles = (settings: IReaderSettings) => makeStyles({
 });
 
 const range = (n:number) => Array.from({ length: n }, (value, key) => key);
-const initialChapter = () => ({ pageCount: -1, chapterIndex: -1, chapterCount: 0 });
+const initialChapter = () => ({ pageCount: -1, index: -1, chapterCount: 0 });
 
 export default function Reader() {
     const [settings, setSettings] = useLocalStorage<IReaderSettings>('readerSettings', defaultReaderSettings);

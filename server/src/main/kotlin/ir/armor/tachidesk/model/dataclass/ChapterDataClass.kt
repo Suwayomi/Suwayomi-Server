@@ -25,7 +25,7 @@ data class ChapterDataClass(
     val lastPageRead: Int,
 
     /** this chapter's index, starts with 1 */
-    val chapterIndex: Int? = null,
+    val index: Int? = null,
 
     /** total chapter count, used to calculate if there's a next and prev chapter */
     val chapterCount: Int? = null,

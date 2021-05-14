@@ -20,7 +20,8 @@ object ChapterTable : IntIdTable() {
     val isBookmarked = bool("bookmark").default(false)
     val lastPageRead = integer("last_page_read").default(0)
 
-    val chapterIndex = integer("number_in_list")
+    // index is reserved by a function
+    val chapterIndex = integer("index")
 
     val manga = reference("manga", MangaTable)
 }

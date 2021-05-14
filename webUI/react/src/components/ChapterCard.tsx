@@ -16,6 +16,7 @@ import Typography from '@material-ui/core/Typography';
 import { Link, useHistory } from 'react-router-dom';
 import Menu from '@material-ui/core/Menu';
 import MenuItem from '@material-ui/core/MenuItem';
+import client from '../util/client';
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -65,13 +66,24 @@ export default function ChapterCard(props: IProps) {
         setAnchorEl(null);
     };
 
+    const sendChange = (key: string, value: any) => {
+        console.log(`${key} -> ${value}`);
+        handleClose();
+
+        const formData = new FormData();
+        formData.append(key, value);
+        client.patch(`/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}`, formData);
+        // .finally(() => triggerUpdate()
+        // );
+    };
+
     return (
         <>
             <li>
                 <Card>
                     <CardContent className={classes.root}>
                         <Link
-                            to={`/manga/${chapter.mangaId}/chapter/${chapter.chapterIndex}`}
+                            to={`/manga/${chapter.mangaId}/chapter/${chapter.index}`}
                             style={{
                                 textDecoration: 'none',
                                 color: theme.palette.text.primary,
@@ -103,9 +115,19 @@ export default function ChapterCard(props: IProps) {
                             onClose={handleClose}
                         >
                             {/* <MenuItem onClick={handleClose}>Download</MenuItem> */}
-                            <MenuItem onClick={handleClose}>Bookmark</MenuItem>
-                            <MenuItem onClick={handleClose}>Mark as Read</MenuItem>
-                            <MenuItem onClick={handleClose}>Mark previous as Read</MenuItem>
+                            <MenuItem onClick={() => sendChange('bookmarked', !chapter.bookmarked)}>
+                                {chapter.bookmarked && 'Remove bookmark'}
+                                {!chapter.bookmarked && 'Bookmark'}
+                            </MenuItem>
+                            <MenuItem onClick={() => sendChange('read', !chapter.read)}>
+                                Mark as
+                                {' '}
+                                {chapter.read && 'unread'}
+                                {!chapter.read && 'read'}
+                            </MenuItem>
+                            <MenuItem onClick={() => sendChange('markPrevRead', true)}>
+                                Mark previous as Read
+                            </MenuItem>
                         </Menu>
                     </CardContent>
                 </Card>

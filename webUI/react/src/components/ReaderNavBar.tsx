@@ -305,11 +305,11 @@ export default function ReaderNavBar(props: IProps) {
                                 {chapter.pageCount}
                             </span>
                             <div className={classes.navigationChapters}>
-                                {chapter.chapterIndex > 1
+                                {chapter.index > 1
                             && (
                                 <Link
                                     style={{ gridArea: 'prev' }}
-                                    to={`/manga/${manga.id}/chapter/${chapter.chapterIndex - 1}`}
+                                    to={`/manga/${manga.id}/chapter/${chapter.index - 1}`}
                                 >
                                     <Button
                                         variant="outlined"
@@ -317,15 +317,15 @@ export default function ReaderNavBar(props: IProps) {
                                     >
                                         Chapter
                                         {' '}
-                                        {chapter.chapterIndex - 1}
+                                        {chapter.index - 1}
                                     </Button>
                                 </Link>
                             )}
-                                {chapter.chapterIndex < chapter.chapterCount
+                                {chapter.index < chapter.chapterCount
                             && (
                                 <Link
                                     style={{ gridArea: 'next' }}
-                                    to={`/manga/${manga.id}/chapter/${chapter.chapterIndex + 1}`}
+                                    to={`/manga/${manga.id}/chapter/${chapter.index + 1}`}
                                 >
                                     <Button
                                         variant="outlined"
@@ -333,7 +333,7 @@ export default function ReaderNavBar(props: IProps) {
                                     >
                                         Chapter
                                         {' '}
-                                        {chapter.chapterIndex + 1}
+                                        {chapter.index + 1}
                                     </Button>
                                 </Link>
                             )}

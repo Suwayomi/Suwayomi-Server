@@ -1,18 +1,18 @@
 package ir.armor.tachidesk.model.database.migration
 
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
 import eu.kanade.tachiyomi.source.model.SManga
 import ir.armor.tachidesk.model.database.migration.lib.Migration
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
-
-/*
- * Copyright (C) Contributors to the Suwayomi project
- * 
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 class M0001_Initial : Migration() {
     private object ExtensionTable : IntIdTable() {
@@ -100,6 +100,7 @@ class M0001_Initial : Migration() {
         val manga = reference("manga", ir.armor.tachidesk.model.database.table.MangaTable)
     }
 
+    /** initial migration, create all tables */
     override fun run() {
         transaction {
             SchemaUtils.create(
