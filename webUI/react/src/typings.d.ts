@@ -88,13 +88,29 @@ interface INavbarOverride {
     value: any
 }
 
+type ReaderType =
+'ContinuesVertical'|
+'Webtoon' |
+'SingleVertical' |
+'SingleRTL' |
+'SingleLTR' |
+'ContinuesHorizontal';
+
 interface IReaderSettings{
     staticNav: boolean
     showPageNumber: boolean
-    continuesPageGap: boolean
+    readerType: ReaderType
 }
 
 interface IReaderPage {
     index: number
     src: string
+}
+
+interface IReaderProps {
+    pages: Array<IReaderPage>
+    pageCount: number
+    setCurPage: React.Dispatch<React.SetStateAction<number>>
+    curPage: number
+    settings: IReaderSettings
 }

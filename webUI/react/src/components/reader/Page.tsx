@@ -27,7 +27,7 @@ const useStyles = (settings: IReaderSettings) => makeStyles({
     },
     image: {
         display: 'block',
-        marginBottom: settings.continuesPageGap ? '15px' : 0,
+        marginBottom: settings.readerType === 'ContinuesVertical' ? '15px' : 0,
         minWidth: '50vw',
         width: '100%',
         maxWidth: '100%',

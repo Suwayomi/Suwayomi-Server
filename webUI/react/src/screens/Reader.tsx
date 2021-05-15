@@ -13,7 +13,7 @@ import { useParams } from 'react-router-dom';
 import HorizontalReader from '../components/reader/HorizontalReader';
 import Page from '../components/reader/Page';
 import PageNumber from '../components/reader/PageNumber';
-import SinglePageReader from '../components/reader/SinglePageReader';
+import PagedReader from '../components/reader/PagedReader';
 import VerticalReader from '../components/reader/VerticalReader';
 import ReaderNavBar, { defaultReaderSettings } from '../components/ReaderNavBar';
 import NavbarContext from '../context/NavbarContext';
@@ -29,6 +29,31 @@ const useStyles = (settings: IReaderSettings) => makeStyles({
         margin: '50px auto',
     },
 });
+
+const getReaderComponent = (readerType: ReaderType) => {
+    switch (readerType) {
+        case 'ContinuesVertical':
+            return VerticalReader;
+            break;
+        case 'Webtoon':
+            return VerticalReader;
+            break;
+        case 'SingleVertical':
+            return PagedReader;
+            break;
+        case 'SingleRTL':
+            return PagedReader;
+            break;
+        case 'SingleLTR':
+            return PagedReader;
+            break;
+        case 'ContinuesHorizontal':
+            return HorizontalReader;
+        default:
+            return VerticalReader;
+            break;
+    }
+};
 
 const range = (n:number) => Array.from({ length: n }, (value, key) => key);
 const initialChapter = () => ({ pageCount: -1, index: -1, chapterCount: 0 });
@@ -98,6 +123,8 @@ export default function Reader() {
         src: `${serverAddress}/api/v1/manga/${mangaId}/chapter/${chapterIndex}/page/${index}`,
     }));
 
+    const ReaderComponent = getReaderComponent(settings.readerType);
+
     return (
         <div className={classes.root}>
             <PageNumber
@@ -105,18 +132,9 @@ export default function Reader() {
                 curPage={curPage}
                 pageCount={chapter.pageCount}
             />
-            {/* <VerticalReader
+            <ReaderComponent
                 pages={pages}
-                setCurPage={setCurPage}
-                settings={settings}
-            /> */}
-            {/* <HorizontalReader
-                pages={pages}
-                setCurPage={setCurPage}
-                settings={settings}
-            /> */}
-            <SinglePageReader
-                pages={pages}
+                pageCount={chapter.pageCount}
                 setCurPage={setCurPage}
                 curPage={curPage}
                 settings={settings}

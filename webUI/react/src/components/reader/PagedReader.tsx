@@ -14,14 +14,7 @@ const useStyles = makeStyles({
     },
 });
 
-interface IProps {
-    pages: Array<IReaderPage>
-    setCurPage: React.Dispatch<React.SetStateAction<number>>
-    curPage: number
-    settings: IReaderSettings
-}
-
-export default function SinglePageReader(props: IProps) {
+export default function PagedReader(props: IReaderProps) {
     const {
         pages, settings, setCurPage, curPage,
     } = props;

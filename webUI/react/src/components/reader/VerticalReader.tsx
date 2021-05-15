@@ -13,13 +13,7 @@ const useStyles = makeStyles({
     },
 });
 
-interface IProps {
-    pages: Array<IReaderPage>
-    setCurPage: React.Dispatch<React.SetStateAction<number>>
-    settings: IReaderSettings
-}
-
-export default function VerticalReader(props: IProps) {
+export default function VerticalReader(props: IReaderProps) {
     const { pages, settings, setCurPage } = props;
 
     const classes = useStyles();
