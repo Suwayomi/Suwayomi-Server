@@ -137,12 +137,6 @@ const useStyles = (settings: IReaderSettings) => makeStyles((theme: Theme) => ({
     },
 }));
 
-export interface IReaderSettings{
-    staticNav: boolean
-    showPageNumber: boolean
-    continuesPageGap: boolean
-}
-
 export const defaultReaderSettings = () => ({
     staticNav: false,
     showPageNumber: true,

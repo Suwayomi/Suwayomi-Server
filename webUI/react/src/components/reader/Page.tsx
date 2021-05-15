@@ -11,17 +11,17 @@ import CircularProgress from '@material-ui/core/CircularProgress';
 import { makeStyles } from '@material-ui/core/styles';
 import React, { useEffect, useRef, useState } from 'react';
 import LazyLoad from 'react-lazyload';
-import { IReaderSettings } from './ReaderNavBar';
 
 const useStyles = (settings: IReaderSettings) => makeStyles({
     loading: {
         margin: '100px auto',
         height: '100vh',
+        width: '100vw',
     },
     loadingImage: {
-        padding: settings.staticNav ? 'calc(50vh - 40px) calc(50vw - 340px)' : 'calc(50vh - 40px) calc(50vw - 40px)',
         height: '100vh',
-        width: '200px',
+        width: '70vw',
+        padding: '50px calc(50% - 20px)',
         backgroundColor: '#525252',
         marginBottom: 10,
     },
@@ -73,7 +73,7 @@ function LazyImage(props: IProps) {
 
     if (imageSrc.length === 0) {
         return (
-            <div className={classes.loadingImage}>
+            <div className={`${classes.image} ${classes.loadingImage}`}>
                 <CircularProgress thickness={5} />
             </div>
         );
@@ -101,7 +101,7 @@ export default function Page(props: IProps) {
             <LazyLoad
                 offset={window.innerHeight}
                 placeholder={(
-                    <div className={classes.loading}>
+                    <div className={classes.loadingImage}>
                         <CircularProgress thickness={5} />
                     </div>
                 )}

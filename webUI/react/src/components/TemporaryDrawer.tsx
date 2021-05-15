@@ -24,7 +24,7 @@ const useStyles = makeStyles({
 interface IProps {
     drawerOpen: boolean
 
-    setDrawerOpen(state: boolean): void
+    setDrawerOpen: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 export default function TemporaryDrawer({ drawerOpen, setDrawerOpen }: IProps) {

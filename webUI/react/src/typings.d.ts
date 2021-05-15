@@ -87,3 +87,14 @@ interface INavbarOverride {
     status: boolean
     value: any
 }
+
+interface IReaderSettings{
+    staticNav: boolean
+    showPageNumber: boolean
+    continuesPageGap: boolean
+}
+
+interface IReaderPage {
+    index: number
+    src: string
+}

@@ -10,33 +10,21 @@ import CircularProgress from '@material-ui/core/CircularProgress';
 import { makeStyles } from '@material-ui/core/styles';
 import React, { useContext, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import Page from '../components/Page';
-import ReaderNavBar, { defaultReaderSettings, IReaderSettings } from '../components/ReaderNavBar';
+import Page from '../components/reader/Page';
+import PageNumber from '../components/reader/PageNumber';
+import VerticalReader from '../components/reader/VerticalReader';
+import ReaderNavBar, { defaultReaderSettings } from '../components/ReaderNavBar';
 import NavbarContext from '../context/NavbarContext';
 import client from '../util/client';
 import useLocalStorage from '../util/useLocalStorage';
 
 const useStyles = (settings: IReaderSettings) => makeStyles({
-    reader: {
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        margin: '0 auto',
+    root: {
+        width: settings.staticNav ? 'calc(100vw - 300px)' : '100vw',
     },
 
     loading: {
         margin: '50px auto',
-    },
-
-    pageNumber: {
-        display: settings.showPageNumber ? 'block' : 'none',
-        position: 'fixed',
-        bottom: '50px',
-        right: settings.staticNav ? 'calc((100vw - 325px)/2)' : 'calc((100vw - 25px)/2)',
-        width: '50px',
-        textAlign: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-        borderRadius: '10px',
     },
 });
 
@@ -102,20 +90,24 @@ export default function Reader() {
             </div>
         );
     }
+
+    const pages = range(chapter.pageCount).map((index) => ({
+        index,
+        src: `${serverAddress}/api/v1/manga/${mangaId}/chapter/${chapterIndex}/page/${index}`,
+    }));
+
     return (
-        <div className={classes.reader}>
-            <div className={classes.pageNumber}>
-                {`${curPage + 1} / ${chapter.pageCount}`}
-            </div>
-            {range(chapter.pageCount).map((index) => (
-                <Page
-                    key={index}
-                    index={index}
-                    src={`${serverAddress}/api/v1/manga/${mangaId}/chapter/${chapterIndex}/page/${index}`}
-                    setCurPage={setCurPage}
-                    settings={settings}
-                />
-            ))}
+        <div className={classes.root}>
+            <PageNumber
+                settings={settings}
+                curPage={curPage}
+                pageCount={chapter.pageCount}
+            />
+            <VerticalReader
+                pages={pages}
+                setCurPage={setCurPage}
+                settings={settings}
+            />
         </div>
     );
 }
