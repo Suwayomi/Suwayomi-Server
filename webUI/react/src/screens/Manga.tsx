@@ -44,10 +44,6 @@ const useStyles = makeStyles((theme: Theme) => ({
     },
 }));
 
-// const InnerItem = React.memo(({ chapters, index }: any) => (
-//     <ChapterCard chapter={chapters[index]} />
-// ));
-
 export default function Manga() {
     const classes = useStyles();
     const theme = useTheme();
@@ -60,6 +56,7 @@ export default function Manga() {
     const [manga, setManga] = useState<IManga>();
     const [chapters, setChapters] = useState<IChapter[]>([]);
     const [fetchedChapters, setFetchedChapters] = useState(false);
+    const [noChaptersFound, setNoChaptersFound] = useState(false);
     const [chapterUpdateTriggerer, setChapterUpdateTriggerer] = useState(0);
 
     function triggerChaptersUpdate() {
@@ -84,19 +81,12 @@ export default function Manga() {
             .then((data) => {
                 if (data.length === 0 && fetchedChapters) {
                     makeToast('No chapters found', 'warning');
+                    setNoChaptersFound(true);
                 }
                 setChapters(data);
             })
             .then(() => setFetchedChapters(true));
     }, [chapters.length, fetchedChapters, chapterUpdateTriggerer]);
-
-    // const itemContent = (index:any) => <InnerItem chapters={chapters} index={index} />;
-    const itemContent = (index:any) => (
-        <ChapterCard
-            chapter={chapters[index]}
-            triggerChaptersUpdate={triggerChaptersUpdate}
-        />
-    );
 
     return (
         <div className={classes.root}>
@@ -107,7 +97,7 @@ export default function Manga() {
             />
 
             <LoadingPlaceholder
-                shouldRender={chapters.length > 0 || fetchedChapters}
+                shouldRender={chapters.length > 0 || noChaptersFound}
             >
                 <Virtuoso
                     style={{ // override Virtuoso default values and set them with class
@@ -115,7 +105,12 @@ export default function Manga() {
                     }}
                     className={classes.chapters}
                     totalCount={chapters.length}
-                    itemContent={itemContent}
+                    itemContent={(index:number) => (
+                        <ChapterCard
+                            chapter={chapters[index]}
+                            triggerChaptersUpdate={triggerChaptersUpdate}
+                        />
+                    )}
                     useWindowScroll={window.innerWidth < 960}
                     overscan={window.innerHeight * 0.5}
                 />
