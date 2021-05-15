@@ -100,22 +100,12 @@ export default function Page(props: IProps) {
 
     return (
         <div style={{ margin: '0 auto' }}>
-            <LazyLoad
-                offset={window.innerHeight}
-                placeholder={(
-                    <div className={classes.loadingImage}>
-                        <CircularProgress thickness={5} />
-                    </div>
-                )}
-                once
-            >
-                <LazyImage
-                    src={src}
-                    index={index}
-                    setCurPage={setCurPage}
-                    settings={settings}
-                />
-            </LazyLoad>
+            <LazyImage
+                src={src}
+                index={index}
+                setCurPage={setCurPage}
+                settings={settings}
+            />
         </div>
     );
 }
