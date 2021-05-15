@@ -15,6 +15,7 @@ import MangaDetails from '../components/MangaDetails';
 import NavbarContext from '../context/NavbarContext';
 import client from '../util/client';
 import LoadingPlaceholder from '../components/LoadingPlaceholder';
+import makeToast from '../components/Toast';
 
 const useStyles = makeStyles((theme: Theme) => ({
     root: {
@@ -77,12 +78,17 @@ export default function Manga() {
     }, [manga]);
 
     useEffect(() => {
-        const shouldFetchOnline = chapters.length > 0 && chapterUpdateTriggerer === 0;
+        const shouldFetchOnline = fetchedChapters && chapterUpdateTriggerer === 0;
         client.get(`/api/v1/manga/${id}/chapters?onlineFetch=${shouldFetchOnline}`)
             .then((response) => response.data)
-            .then((data) => setChapters(data))
+            .then((data) => {
+                if (data.length === 0 && fetchedChapters) {
+                    makeToast('No chapters found', 'warning');
+                }
+                setChapters(data);
+            })
             .then(() => setFetchedChapters(true));
-    }, [chapters.length, chapterUpdateTriggerer]);
+    }, [chapters.length, fetchedChapters, chapterUpdateTriggerer]);
 
     // const itemContent = (index:any) => <InnerItem chapters={chapters} index={index} />;
     const itemContent = (index:any) => (
