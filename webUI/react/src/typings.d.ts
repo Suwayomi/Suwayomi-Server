@@ -50,6 +50,8 @@ interface IManga {
 
     inLibrary: boolean
     source: ISource
+
+    freshData: boolean
 }
 
 interface IChapter {

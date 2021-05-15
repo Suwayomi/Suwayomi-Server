@@ -43,9 +43,9 @@ const useStyles = makeStyles((theme: Theme) => ({
     },
 }));
 
-const InnerItem = React.memo(({ chapters, index }: any) => (
-    <ChapterCard chapter={chapters[index]} />
-));
+// const InnerItem = React.memo(({ chapters, index }: any) => (
+//     <ChapterCard chapter={chapters[index]} />
+// ));
 
 export default function Manga() {
     const classes = useStyles();
@@ -58,23 +58,37 @@ export default function Manga() {
 
     const [manga, setManga] = useState<IManga>();
     const [chapters, setChapters] = useState<IChapter[]>([]);
+    const [chapterUpdateTriggerer, setChapterUpdateTriggerer] = useState(0);
+
+    function triggerChaptersUpdate() {
+        setChapterUpdateTriggerer(chapterUpdateTriggerer + 1);
+    }
 
     useEffect(() => {
-        client.get(`/api/v1/manga/${id}/`)
-            .then((response) => response.data)
-            .then((data: IManga) => {
-                setManga(data);
-                setTitle(data.title);
-            });
-    }, []);
+        if (manga === undefined || !manga.freshData) {
+            client.get(`/api/v1/manga/${id}/?onlineFetch=${manga !== undefined}`)
+                .then((response) => response.data)
+                .then((data: IManga) => {
+                    setManga(data);
+                    setTitle(data.title);
+                });
+        }
+    }, [manga]);
 
     useEffect(() => {
-        client.get(`/api/v1/manga/${id}/chapters`)
+        const shouldFetchOnline = chapters.length > 0 && chapterUpdateTriggerer === 0;
+        client.get(`/api/v1/manga/${id}/chapters?onlineFetch=${shouldFetchOnline}`)
             .then((response) => response.data)
             .then((data) => setChapters(data));
-    }, []);
+    }, [chapters.length, chapterUpdateTriggerer]);
 
-    const itemContent = (index:any) => <InnerItem chapters={chapters} index={index} />;
+    // const itemContent = (index:any) => <InnerItem chapters={chapters} index={index} />;
+    const itemContent = (index:any) => (
+        <ChapterCard
+            chapter={chapters[index]}
+            triggerChaptersUpdate={triggerChaptersUpdate}
+        />
+    );
 
     return (
         <div className={classes.root}>

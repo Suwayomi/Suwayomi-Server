@@ -64,4 +64,11 @@ object CachedImageResponse {
             throw Exception("request error! ${response.code}")
         }
     }
+
+    suspend fun clearCachedImage(saveDir: String, fileName: String) {
+        val cachedFile = findFileNameStartingWith(saveDir, fileName)
+        cachedFile?.also {
+            File(it).delete()
+        }
+    }
 }

@@ -191,9 +191,11 @@ object JavalinSetup {
         // get manga info
         app.get("/api/v1/manga/:mangaId/") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
+            val onlineFetch = ctx.queryParam("onlineFetch", "false").toBoolean()
+
             ctx.json(
                 future {
-                    getManga(mangaId)
+                    getManga(mangaId, onlineFetch)
                 }
             )
         }
@@ -254,7 +256,10 @@ object JavalinSetup {
         // get chapter list when showing a manga
         app.get("/api/v1/manga/:mangaId/chapters") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
-            ctx.json(future { getChapterList(mangaId) })
+
+            val onlineFetch = ctx.queryParam("onlineFetch", "false").toBoolean()
+
+            ctx.json(future { getChapterList(mangaId, onlineFetch) })
         }
 
         // used to display a chapter, get a chapter in order to show it's pages

@@ -7,7 +7,9 @@ package ir.armor.tachidesk.model.database.table
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import ir.armor.tachidesk.model.dataclass.ChapterDataClass
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.ResultRow
 
 object ChapterTable : IntIdTable() {
     val url = varchar("url", 2048)
@@ -25,3 +27,17 @@ object ChapterTable : IntIdTable() {
 
     val manga = reference("manga", MangaTable)
 }
+
+fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
+    ChapterDataClass(
+        chapterEntry[ChapterTable.url],
+        chapterEntry[ChapterTable.name],
+        chapterEntry[ChapterTable.date_upload],
+        chapterEntry[ChapterTable.chapter_number],
+        chapterEntry[ChapterTable.scanlator],
+        chapterEntry[ChapterTable.manga].value,
+        chapterEntry[ChapterTable.isRead],
+        chapterEntry[ChapterTable.isBookmarked],
+        chapterEntry[ChapterTable.lastPageRead],
+        chapterEntry[ChapterTable.chapterIndex],
+    )

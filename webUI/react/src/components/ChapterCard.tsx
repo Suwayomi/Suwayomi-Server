@@ -50,13 +50,14 @@ const useStyles = makeStyles((theme) => ({
 
 interface IProps{
     chapter: IChapter
+    triggerChaptersUpdate: () => void
 }
 
 export default function ChapterCard(props: IProps) {
     const classes = useStyles();
     const history = useHistory();
     const theme = useTheme();
-    const { chapter } = props;
+    const { chapter, triggerChaptersUpdate } = props;
 
     const dateStr = chapter.uploadDate && new Date(chapter.uploadDate).toISOString().slice(0, 10);
 
@@ -71,12 +72,12 @@ export default function ChapterCard(props: IProps) {
     };
 
     const sendChange = (key: string, value: any) => {
-        console.log(`${key} -> ${value}`);
         handleClose();
 
         const formData = new FormData();
         formData.append(key, value);
-        client.patch(`/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}`, formData);
+        client.patch(`/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}`, formData)
+            .then(() => triggerChaptersUpdate());
     };
 
     return (

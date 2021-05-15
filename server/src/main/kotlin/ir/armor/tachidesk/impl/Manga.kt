@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.model.SManga
 import ir.armor.tachidesk.impl.MangaList.proxyThumbnailUrl
 import ir.armor.tachidesk.impl.Source.getSource
+import ir.armor.tachidesk.impl.util.CachedImageResponse.clearCachedImage
 import ir.armor.tachidesk.impl.util.CachedImageResponse.getCachedImageResponse
 import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
 import ir.armor.tachidesk.impl.util.await
@@ -35,17 +36,17 @@ object Manga {
             text
     }
 
-    suspend fun getManga(mangaId: Int, proxyThumbnail: Boolean = true): MangaDataClass {
+    suspend fun getManga(mangaId: Int, onlineFetch: Boolean = false): MangaDataClass {
         var mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
 
-        return if (mangaEntry[MangaTable.initialized]) {
+        return if (mangaEntry[MangaTable.initialized] && !onlineFetch) {
             MangaDataClass(
                 mangaId,
                 mangaEntry[MangaTable.sourceReference].toString(),
 
                 mangaEntry[MangaTable.url],
                 mangaEntry[MangaTable.title],
-                if (proxyThumbnail) proxyThumbnailUrl(mangaId) else mangaEntry[MangaTable.thumbnail_url],
+                proxyThumbnailUrl(mangaId),
 
                 true,
 
@@ -55,7 +56,8 @@ object Manga {
                 mangaEntry[MangaTable.genre],
                 MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
                 mangaEntry[MangaTable.inLibrary],
-                getSource(mangaEntry[MangaTable.sourceReference])
+                getSource(mangaEntry[MangaTable.sourceReference]),
+                false
             )
         } else { // initialize manga
             val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
@@ -81,8 +83,9 @@ object Manga {
                 }
             }
 
+            clearMangaThumbnail(mangaId)
+
             mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
-            val newThumbnail = mangaEntry[MangaTable.thumbnail_url]
 
             MangaDataClass(
                 mangaId,
@@ -90,7 +93,7 @@ object Manga {
 
                 mangaEntry[MangaTable.url],
                 mangaEntry[MangaTable.title],
-                if (proxyThumbnail) proxyThumbnailUrl(mangaId) else newThumbnail,
+                proxyThumbnailUrl(mangaId),
 
                 true,
 
@@ -100,28 +103,37 @@ object Manga {
                 fetchedManga.genre,
                 MangaStatus.valueOf(fetchedManga.status).name,
                 false,
-                getSource(mangaEntry[MangaTable.sourceReference])
+                getSource(mangaEntry[MangaTable.sourceReference]),
+                true
             )
         }
     }
 
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
     suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
-        val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
         val saveDir = applicationDirs.thumbnailsRoot
         val fileName = mangaId.toString()
 
         return getCachedImageResponse(saveDir, fileName) {
+            getManga(mangaId) // make sure is initialized
+
+            val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
+
             val sourceId = mangaEntry[MangaTable.sourceReference]
             val source = getHttpSource(sourceId)
-            var thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
-            if (thumbnailUrl == null || thumbnailUrl.isEmpty()) {
-                thumbnailUrl = getManga(mangaId, proxyThumbnail = false).thumbnailUrl!!
-            }
+
+            val thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]!!
 
             source.client.newCall(
                 GET(thumbnailUrl, source.headers)
             ).await()
         }
+    }
+
+    suspend fun clearMangaThumbnail(mangaId: Int) {
+        val saveDir = applicationDirs.thumbnailsRoot
+        val fileName = mangaId.toString()
+
+        clearCachedImage(saveDir, fileName)
     }
 }
