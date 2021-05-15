@@ -58,6 +58,7 @@ export default function Manga() {
 
     const [manga, setManga] = useState<IManga>();
     const [chapters, setChapters] = useState<IChapter[]>([]);
+    const [fetchedChapters, setFetchedChapters] = useState(false);
     const [chapterUpdateTriggerer, setChapterUpdateTriggerer] = useState(0);
 
     function triggerChaptersUpdate() {
@@ -79,7 +80,8 @@ export default function Manga() {
         const shouldFetchOnline = chapters.length > 0 && chapterUpdateTriggerer === 0;
         client.get(`/api/v1/manga/${id}/chapters?onlineFetch=${shouldFetchOnline}`)
             .then((response) => response.data)
-            .then((data) => setChapters(data));
+            .then((data) => setChapters(data))
+            .then(() => setFetchedChapters(true));
     }, [chapters.length, chapterUpdateTriggerer]);
 
     // const itemContent = (index:any) => <InnerItem chapters={chapters} index={index} />;
@@ -99,7 +101,7 @@ export default function Manga() {
             />
 
             <LoadingPlaceholder
-                shouldRender={chapters.length > 0}
+                shouldRender={chapters.length > 0 || fetchedChapters}
             >
                 <Virtuoso
                     style={{ // override Virtuoso default values and set them with class
