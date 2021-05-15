@@ -10,8 +10,10 @@ import CircularProgress from '@material-ui/core/CircularProgress';
 import { makeStyles } from '@material-ui/core/styles';
 import React, { useContext, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import HorizontalReader from '../components/reader/HorizontalReader';
 import Page from '../components/reader/Page';
 import PageNumber from '../components/reader/PageNumber';
+import SinglePageReader from '../components/reader/SinglePageReader';
 import VerticalReader from '../components/reader/VerticalReader';
 import ReaderNavBar, { defaultReaderSettings } from '../components/ReaderNavBar';
 import NavbarContext from '../context/NavbarContext';
@@ -103,9 +105,20 @@ export default function Reader() {
                 curPage={curPage}
                 pageCount={chapter.pageCount}
             />
-            <VerticalReader
+            {/* <VerticalReader
                 pages={pages}
                 setCurPage={setCurPage}
+                settings={settings}
+            /> */}
+            {/* <HorizontalReader
+                pages={pages}
+                setCurPage={setCurPage}
+                settings={settings}
+            /> */}
+            <SinglePageReader
+                pages={pages}
+                setCurPage={setCurPage}
+                curPage={curPage}
                 settings={settings}
             />
         </div>

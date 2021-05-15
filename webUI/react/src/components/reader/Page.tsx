@@ -28,6 +28,9 @@ const useStyles = (settings: IReaderSettings) => makeStyles({
     image: {
         display: 'block',
         marginBottom: settings.continuesPageGap ? '15px' : 0,
+        minWidth: '50vw',
+        width: '100%',
+        maxWidth: '100%',
     },
 });
 
@@ -85,7 +88,6 @@ function LazyImage(props: IProps) {
             ref={ref}
             src={imageSrc}
             alt={`Page #${index}`}
-            style={{ width: '100%', maxWidth: '95vw' }}
         />
     );
 }
