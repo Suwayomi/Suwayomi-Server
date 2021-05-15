@@ -24,7 +24,7 @@ Here is a list of current features:
 - Ability to download Mangas for offline read(This partially works)
 - Backup and restore support powered by Tachiyomi Legacy Backups
 
-**Note:** Keep in mind that Tachidesk is alpha software and can break rarely and/or with each update, so you may have to delete your data to fix it. See [General troubleshooting](#general-troubleshooting) and [Support and help](#support-and-help) if it happens.
+**Note:** Keep in mind that Tachidesk is alpha software and can break rarely and/or with each update. See [General troubleshooting](#general-troubleshooting) and [Support and help](#support-and-help) if it happens.
 
 ## Downloading and Running the app
 ### All Operating Systems
