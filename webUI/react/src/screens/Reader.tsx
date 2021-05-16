@@ -10,15 +10,16 @@ import CircularProgress from '@material-ui/core/CircularProgress';
 import { makeStyles } from '@material-ui/core/styles';
 import React, { useContext, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import HorizontalReader from '../components/reader/HorizontalReader';
+import HorizontalPager from '../components/reader/pager/HorizontalPager';
 import Page from '../components/reader/Page';
 import PageNumber from '../components/reader/PageNumber';
-import PagedReader from '../components/reader/PagedReader';
-import VerticalReader from '../components/reader/VerticalReader';
-import ReaderNavBar, { defaultReaderSettings } from '../components/ReaderNavBar';
+import WebtoonPager from '../components/reader/pager/PagedPager';
+import VerticalPager from '../components/reader/pager/VerticalPager';
+import ReaderNavBar, { defaultReaderSettings } from '../components/navbar/ReaderNavBar';
 import NavbarContext from '../context/NavbarContext';
 import client from '../util/client';
 import useLocalStorage from '../util/useLocalStorage';
+import cloneObject from '../util/cloneObject';
 
 const useStyles = (settings: IReaderSettings) => makeStyles({
     root: {
@@ -33,24 +34,24 @@ const useStyles = (settings: IReaderSettings) => makeStyles({
 const getReaderComponent = (readerType: ReaderType) => {
     switch (readerType) {
         case 'ContinuesVertical':
-            return VerticalReader;
+            return VerticalPager;
             break;
         case 'Webtoon':
-            return VerticalReader;
+            return VerticalPager;
             break;
         case 'SingleVertical':
-            return PagedReader;
+            return WebtoonPager;
             break;
         case 'SingleRTL':
-            return PagedReader;
+            return WebtoonPager;
             break;
         case 'SingleLTR':
-            return PagedReader;
+            return WebtoonPager;
             break;
         case 'ContinuesHorizontal':
-            return HorizontalReader;
+            return HorizontalPager;
         default:
-            return VerticalReader;
+            return VerticalPager;
             break;
     }
 };
@@ -72,6 +73,20 @@ export default function Reader() {
 
     const { setOverride, setTitle } = useContext(NavbarContext);
     useEffect(() => {
+        // make sure settings has all the keys
+        const settingsClone = cloneObject(settings) as any;
+        const defualtSettings = defaultReaderSettings();
+        let shouldUpdateSettings = false;
+        Object.keys(defualtSettings).forEach((key) => {
+            const keyOf = key as keyof IReaderSettings;
+            if (settings[keyOf] === undefined) {
+                settingsClone[keyOf] = defualtSettings[keyOf];
+                shouldUpdateSettings = true;
+            }
+        });
+        if (shouldUpdateSettings) { setSettings(settingsClone); }
+
+        // set the custom navbar
         setOverride(
             {
                 status: true,

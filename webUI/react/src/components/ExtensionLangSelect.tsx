@@ -18,6 +18,7 @@ import FilterListIcon from '@material-ui/icons/FilterList';
 import { List, ListItemSecondaryAction, ListItemText } from '@material-ui/core';
 import ListItem from '@material-ui/core/ListItem';
 import { langCodeToName } from '../util/language';
+import cloneObject from '../util/cloneObject';
 
 const useStyles = makeStyles(() => createStyles({
     paper: {
@@ -54,7 +55,7 @@ export default function ExtensionLangSelect(props: IProps) {
         if (checked) {
             setMShownLangs([...mShownLangs, lang]);
         } else {
-            const clone = JSON.parse(JSON.stringify(mShownLangs));
+            const clone = cloneObject(mShownLangs);
             clone.splice(clone.indexOf(lang), 1);
             setMShownLangs(clone);
         }

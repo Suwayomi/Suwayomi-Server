@@ -10,6 +10,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import MangaGrid from '../components/MangaGrid';
 import NavbarContext from '../context/NavbarContext';
 import client from '../util/client';
+import cloneObject from '../util/cloneObject';
 
 interface IMangaCategory {
     category: ICategory
@@ -98,7 +99,7 @@ export default function Library() {
                 client.get(`/api/v1/category/${tab.category.id}`)
                     .then((response) => response.data)
                     .then((data: IManga[]) => {
-                        const tabsClone = JSON.parse(JSON.stringify(tabs));
+                        const tabsClone = cloneObject(tabs);
                         tabsClone[index].mangas = data;
                         tabsClone[index].isFetched = true;
 
