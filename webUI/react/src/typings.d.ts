@@ -114,4 +114,6 @@ interface IReaderProps {
     setCurPage: React.Dispatch<React.SetStateAction<number>>
     curPage: number
     settings: IReaderSettings
+    manga: IMangaCard | IManga
+    chapter: IChapter | IPartialChpter
 }
