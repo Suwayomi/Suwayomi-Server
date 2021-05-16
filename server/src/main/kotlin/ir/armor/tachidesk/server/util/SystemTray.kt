@@ -12,8 +12,8 @@ import dorkbox.systemTray.SystemTray
 import dorkbox.systemTray.SystemTray.TrayType
 import dorkbox.util.CacheUtil
 import dorkbox.util.Desktop
-import ir.armor.tachidesk.Main
 import ir.armor.tachidesk.server.BuildConfig
+import ir.armor.tachidesk.server.ServerConfig
 import ir.armor.tachidesk.server.serverConfig
 import kotlin.system.exitProcess
 
@@ -45,11 +45,11 @@ fun systemTray(): SystemTray? {
             }
         )
 
-        val icon = Main::class.java.getResource("/icon/faviconlogo.png")
+        val icon = ServerConfig::class.java.getResource("/icon/faviconlogo.png")
 
-//    systemTray.setTooltip("Tachidesk")
+        // systemTray.setTooltip("Tachidesk")
         systemTray.setImage(icon)
-//    systemTray.status = "No Mail"
+        // systemTray.status = "No Mail"
 
         mainMenu.add(
             MenuItem("Quit") {

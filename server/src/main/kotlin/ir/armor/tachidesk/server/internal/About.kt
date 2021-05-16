@@ -14,11 +14,9 @@ data class AboutDataClass(
     val revision: String,
 )
 
-object About {
-    fun getAbout(): AboutDataClass {
-        return AboutDataClass(
-            BuildConfig.version,
-            BuildConfig.revision,
-        )
-    }
+fun getAbout(): AboutDataClass {
+    return AboutDataClass(
+        BuildConfig.version,
+        BuildConfig.revision,
+    )
 }

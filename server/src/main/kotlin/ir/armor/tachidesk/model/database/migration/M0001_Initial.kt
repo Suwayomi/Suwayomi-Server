@@ -14,104 +14,121 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 
+@Suppress("ClassName", "unused")
 class M0001_Initial : Migration() {
-    private object ExtensionTable : IntIdTable() {
-        val apkName = varchar("apk_name", 1024)
+    private class ExtensionTable : IntIdTable() {
+        init {
+            varchar("apk_name", 1024)
+            // default is the local source icon from tachiyomi
+            varchar("icon_url", 2048)
+                .default("https://raw.githubusercontent.com/tachiyomiorg/tachiyomi/64ba127e7d43b1d7e6d58a6f5c9b2bd5fe0543f7/app/src/main/res/mipmap-xxxhdpi/ic_local_source.webp")
+            varchar("name", 128)
+            varchar("pkg_name", 128)
+            varchar("version_name", 16)
+            integer("version_code")
+            varchar("lang", 10)
+            bool("is_nsfw")
 
-        // default is the local source icon from tachiyomi
-        val iconUrl = varchar("icon_url", 2048)
-            .default("https://raw.githubusercontent.com/tachiyomiorg/tachiyomi/64ba127e7d43b1d7e6d58a6f5c9b2bd5fe0543f7/app/src/main/res/mipmap-xxxhdpi/ic_local_source.webp")
+            bool("is_installed").default(false)
+            bool("has_update").default(false)
+            bool("is_obsolete").default(false)
 
-        val name = varchar("name", 128)
-        val pkgName = varchar("pkg_name", 128)
-        val versionName = varchar("version_name", 16)
-        val versionCode = integer("version_code")
-        val lang = varchar("lang", 10)
-        val isNsfw = bool("is_nsfw")
-
-        val isInstalled = bool("is_installed").default(false)
-        val hasUpdate = bool("has_update").default(false)
-        val isObsolete = bool("is_obsolete").default(false)
-
-        val classFQName = varchar("class_name", 1024).default("") // fully qualified name
+            varchar("class_name", 1024).default("") // fully qualified name
+        }
     }
 
-    private object SourceTable : IdTable<Long>() {
+    private class SourceTable(extensionTable: ExtensionTable) : IdTable<Long>() {
         override val id = long("id").entityId()
-        val name = varchar("name", 128)
-        val lang = varchar("lang", 10)
-        val extension = reference("extension", ExtensionTable)
-        val partOfFactorySource = bool("part_of_factory_source").default(false)
+        init {
+            varchar("name", 128)
+            varchar("lang", 10)
+            reference("extension", extensionTable)
+            bool("part_of_factory_source").default(false)
+        }
     }
 
-    private object MangaTable : IntIdTable() {
-        val url = varchar("url", 2048)
-        val title = varchar("title", 512)
-        val initialized = bool("initialized").default(false)
+    private class MangaTable : IntIdTable() {
+        init {
+            varchar("url", 2048)
+            varchar("title", 512)
+            bool("initialized").default(false)
 
-        val artist = varchar("artist", 64).nullable()
-        val author = varchar("author", 64).nullable()
-        val description = varchar("description", 4096).nullable()
-        val genre = varchar("genre", 1024).nullable()
+            varchar("artist", 64).nullable()
+            varchar("author", 64).nullable()
+            varchar("description", 4096).nullable()
+            varchar("genre", 1024).nullable()
 
-        //    val status = enumeration("status", MangaStatus::class).default(MangaStatus.UNKNOWN)
-        val status = integer("status").default(SManga.UNKNOWN)
-        val thumbnail_url = varchar("thumbnail_url", 2048).nullable()
+            // val status = enumeration("status", MangaStatus::class).default(MangaStatus.UNKNOWN)
+            integer("status").default(SManga.UNKNOWN)
+            varchar("thumbnail_url", 2048).nullable()
 
-        val inLibrary = bool("in_library").default(false)
-        val defaultCategory = bool("default_category").default(true)
+            bool("in_library").default(false)
+            bool("default_category").default(true)
 
-        // source is used by some ancestor of IntIdTable
-        val sourceReference = long("source")
+            // source is used by some ancestor of IntIdTable
+            long("source")
+        }
     }
 
-    private object ChapterTable : IntIdTable() {
-        val url = varchar("url", 2048)
-        val name = varchar("name", 512)
-        val date_upload = long("date_upload").default(0)
-        val chapter_number = float("chapter_number").default(-1f)
-        val scanlator = varchar("scanlator", 128).nullable()
+    private class ChapterTable(mangaTable: MangaTable) : IntIdTable() {
+        init {
+            varchar("url", 2048)
+            varchar("name", 512)
+            long("date_upload").default(0)
+            float("chapter_number").default(-1f)
+            varchar("scanlator", 128).nullable()
 
-        val isRead = bool("read").default(false)
-        val isBookmarked = bool("bookmark").default(false)
-        val lastPageRead = integer("last_page_read").default(0)
+            bool("read").default(false)
+            bool("bookmark").default(false)
+            integer("last_page_read").default(0)
 
-        val chapterIndex = integer("number_in_list")
-
-        val manga = reference("manga", MangaTable)
+            integer("number_in_list")
+            reference("manga", mangaTable)
+        }
     }
 
-    private object PageTable : IntIdTable() {
-        val index = integer("index")
-        val url = varchar("url", 2048)
-        val imageUrl = varchar("imageUrl", 2048).nullable()
-
-        val chapter = reference("chapter", ChapterTable)
+    private class PageTable(chapterTable: ChapterTable) : IntIdTable() {
+        init {
+            integer("index")
+            varchar("url", 2048)
+            varchar("imageUrl", 2048).nullable()
+            reference("chapter", chapterTable)
+        }
     }
 
-    private object CategoryTable : IntIdTable() {
-        val name = varchar("name", 64)
-        val isLanding = bool("is_landing").default(false)
-        val order = integer("order").default(0)
+    private class CategoryTable : IntIdTable() {
+        init {
+            varchar("name", 64)
+            bool("is_landing").default(false)
+            integer("order").default(0)
+        }
     }
 
-    private object CategoryMangaTable : IntIdTable() {
-        val category = reference("category", ir.armor.tachidesk.model.database.table.CategoryTable)
-        val manga = reference("manga", ir.armor.tachidesk.model.database.table.MangaTable)
+    private class CategoryMangaTable : IntIdTable() {
+        init {
+            reference("category", ir.armor.tachidesk.model.database.table.CategoryTable)
+            reference("manga", ir.armor.tachidesk.model.database.table.MangaTable)
+        }
     }
 
     /** initial migration, create all tables */
     override fun run() {
         transaction {
+            val extensionTable = ExtensionTable()
+            val sourceTable = SourceTable(extensionTable)
+            val mangaTable = MangaTable()
+            val chapterTable = ChapterTable(mangaTable)
+            val pageTable = PageTable(chapterTable)
+            val categoryTable = CategoryTable()
+            val categoryMangaTable = CategoryMangaTable()
             SchemaUtils.create(
-                ExtensionTable,
-                ExtensionTable,
-                SourceTable,
-                MangaTable,
-                ChapterTable,
-                PageTable,
-                CategoryTable,
-                CategoryMangaTable,
+                extensionTable,
+                sourceTable,
+                mangaTable,
+                chapterTable,
+                pageTable,
+                categoryTable,
+                categoryMangaTable,
             )
         }
     }

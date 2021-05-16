@@ -83,7 +83,7 @@ dependencies {
     testImplementation(kotlin("test-junit5"))
 }
 
-val MainClass = "ir.armor.tachidesk.Main"
+val MainClass = "ir.armor.tachidesk.MainKt"
 application {
     mainClass.set(MainClass)
 }

@@ -9,7 +9,6 @@ package ir.armor.tachidesk.server
 
 import ch.qos.logback.classic.Level
 import eu.kanade.tachiyomi.App
-import ir.armor.tachidesk.Main
 import ir.armor.tachidesk.model.database.databaseUp
 import ir.armor.tachidesk.server.util.systemTray
 import mu.KotlinLogging
@@ -25,8 +24,6 @@ import xyz.nulldev.ts.config.ConfigKodeinModule
 import xyz.nulldev.ts.config.GlobalConfigManager
 import java.io.File
 
-private val logger = KotlinLogging.logger {}
-
 class ApplicationDirs(
     val dataRoot: String = ApplicationRootDir
 ) {
@@ -37,11 +34,9 @@ class ApplicationDirs(
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
-val systemTray by lazy { systemTray() }
-
-val androidCompat by lazy { AndroidCompat() }
-
 fun applicationSetup() {
+    val logger = KotlinLogging.logger {}
+
     // Application dirs
     val applicationDirs = ApplicationDirs()
     DI.global.addImport(
@@ -70,7 +65,7 @@ fun applicationSetup() {
     // Load Android compatibility dependencies
     AndroidCompatInitializer().init()
     // start app
-    androidCompat.startApp(App())
+    AndroidCompat().startApp(App())
 
     // set application wide logging level
     if (serverConfig.debugLogsEnabled) {
@@ -81,7 +76,7 @@ fun applicationSetup() {
     try {
         val dataConfFile = File("${applicationDirs.dataRoot}/server.conf")
         if (!dataConfFile.exists()) {
-            Main::class.java.getResourceAsStream("/server-reference.conf").use { input ->
+            JavalinSetup::class.java.getResourceAsStream("/server-reference.conf").use { input ->
                 dataConfFile.outputStream().use { output ->
                     input.copyTo(output)
                 }
@@ -96,7 +91,7 @@ fun applicationSetup() {
     // create system tray
     if (serverConfig.systemTrayEnabled) {
         try {
-            systemTray
+            systemTray()
         } catch (e: Exception) {
             e.printStackTrace()
         }

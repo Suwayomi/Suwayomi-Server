@@ -54,6 +54,7 @@ fun runMigrations(migrations: List<Migration>, database: Database = TransactionM
     logger.info { "Migrations finished successfully" }
 }
 
+@Suppress("UnstableApiUsage")
 fun loadMigrationsFrom(classPath: String): List<Migration> {
     return ClassPath.from(Thread.currentThread().contextClassLoader)
         .getTopLevelClasses(classPath)
