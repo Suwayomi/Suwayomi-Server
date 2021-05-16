@@ -26,18 +26,18 @@ object ChapterTable : IntIdTable() {
     val chapterIndex = integer("index")
 
     val manga = reference("manga", MangaTable)
-}
 
-fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
-    ChapterDataClass(
-        chapterEntry[ChapterTable.url],
-        chapterEntry[ChapterTable.name],
-        chapterEntry[ChapterTable.date_upload],
-        chapterEntry[ChapterTable.chapter_number],
-        chapterEntry[ChapterTable.scanlator],
-        chapterEntry[ChapterTable.manga].value,
-        chapterEntry[ChapterTable.isRead],
-        chapterEntry[ChapterTable.isBookmarked],
-        chapterEntry[ChapterTable.lastPageRead],
-        chapterEntry[ChapterTable.chapterIndex],
-    )
+    fun toDataClass(chapterEntry: ResultRow) =
+        ChapterDataClass(
+            chapterEntry[url],
+            chapterEntry[name],
+            chapterEntry[date_upload],
+            chapterEntry[chapter_number],
+            chapterEntry[scanlator],
+            chapterEntry[manga].value,
+            chapterEntry[isRead],
+            chapterEntry[isBookmarked],
+            chapterEntry[lastPageRead],
+            chapterEntry[chapterIndex],
+        )
+}

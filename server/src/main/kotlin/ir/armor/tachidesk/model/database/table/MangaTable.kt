@@ -10,6 +10,7 @@ package ir.armor.tachidesk.model.database.table
 import eu.kanade.tachiyomi.source.model.SManga
 import ir.armor.tachidesk.impl.MangaList.proxyThumbnailUrl
 import ir.armor.tachidesk.model.dataclass.MangaDataClass
+import ir.armor.tachidesk.model.dataclass.MangaStatus
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
 
@@ -32,34 +33,23 @@ object MangaTable : IntIdTable() {
 
     // source is used by some ancestor of IntIdTable
     val sourceReference = long("source")
-}
 
-fun MangaTable.toDataClass(mangaEntry: ResultRow) =
-    MangaDataClass(
-        mangaEntry[MangaTable.id].value,
-        mangaEntry[MangaTable.sourceReference].toString(),
+    fun toDataClass(mangaEntry: ResultRow) =
+        MangaDataClass(
+            mangaEntry[id].value,
+            mangaEntry[sourceReference].toString(),
 
-        mangaEntry[MangaTable.url],
-        mangaEntry[MangaTable.title],
-        proxyThumbnailUrl(mangaEntry[MangaTable.id].value),
+            mangaEntry[url],
+            mangaEntry[title],
+            proxyThumbnailUrl(mangaEntry[id].value),
 
-        mangaEntry[MangaTable.initialized],
+            mangaEntry[initialized],
 
-        mangaEntry[MangaTable.artist],
-        mangaEntry[MangaTable.author],
-        mangaEntry[MangaTable.description],
-        mangaEntry[MangaTable.genre],
-        MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
-        mangaEntry[MangaTable.inLibrary]
-    )
-
-enum class MangaStatus(val status: Int) {
-    UNKNOWN(0),
-    ONGOING(1),
-    COMPLETED(2),
-    LICENSED(3);
-
-    companion object {
-        fun valueOf(value: Int): MangaStatus = values().find { it.status == value } ?: UNKNOWN
-    }
+            mangaEntry[artist],
+            mangaEntry[author],
+            mangaEntry[description],
+            mangaEntry[genre],
+            MangaStatus.valueOf(mangaEntry[status]).name,
+            mangaEntry[inLibrary]
+        )
 }

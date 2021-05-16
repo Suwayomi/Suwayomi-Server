@@ -10,9 +10,9 @@ package ir.armor.tachidesk.impl
 import eu.kanade.tachiyomi.source.model.MangasPage
 import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
 import ir.armor.tachidesk.impl.util.awaitSingle
-import ir.armor.tachidesk.model.database.table.MangaStatus
 import ir.armor.tachidesk.model.database.table.MangaTable
 import ir.armor.tachidesk.model.dataclass.MangaDataClass
+import ir.armor.tachidesk.model.dataclass.MangaStatus
 import ir.armor.tachidesk.model.dataclass.PagedMangaListDataClass
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select

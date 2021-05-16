@@ -7,8 +7,6 @@ package ir.armor.tachidesk.model.dataclass
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import ir.armor.tachidesk.model.database.table.MangaStatus
-
 data class MangaDataClass(
     val id: Int,
     val sourceId: String,
@@ -34,3 +32,14 @@ data class PagedMangaListDataClass(
     val mangaList: List<MangaDataClass>,
     val hasNextPage: Boolean
 )
+
+enum class MangaStatus(val status: Int) {
+    UNKNOWN(0),
+    ONGOING(1),
+    COMPLETED(2),
+    LICENSED(3);
+
+    companion object {
+        fun valueOf(value: Int): MangaStatus = values().find { it.status == value } ?: UNKNOWN
+    }
+}

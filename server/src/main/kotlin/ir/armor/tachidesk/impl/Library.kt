@@ -10,7 +10,6 @@ package ir.armor.tachidesk.impl
 import ir.armor.tachidesk.impl.Manga.getManga
 import ir.armor.tachidesk.model.database.table.CategoryMangaTable
 import ir.armor.tachidesk.model.database.table.MangaTable
-import ir.armor.tachidesk.model.database.table.toDataClass
 import ir.armor.tachidesk.model.dataclass.MangaDataClass
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
