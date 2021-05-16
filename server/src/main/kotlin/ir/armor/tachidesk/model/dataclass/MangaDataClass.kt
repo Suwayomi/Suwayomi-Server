@@ -1,5 +1,7 @@
 package ir.armor.tachidesk.model.dataclass
 
+import ir.armor.tachidesk.model.database.table.MangaStatus
+
 /*
  * Copyright (C) Contributors to the Suwayomi project
  * 
@@ -32,14 +34,3 @@ data class PagedMangaListDataClass(
     val mangaList: List<MangaDataClass>,
     val hasNextPage: Boolean
 )
-
-enum class MangaStatus(val status: Int) {
-    UNKNOWN(0),
-    ONGOING(1),
-    COMPLETED(2),
-    LICENSED(3);
-
-    companion object {
-        fun valueOf(value: Int): MangaStatus = values().find { it.status == value } ?: UNKNOWN
-    }
-}

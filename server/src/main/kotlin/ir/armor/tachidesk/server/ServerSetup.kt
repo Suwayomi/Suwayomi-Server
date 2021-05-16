@@ -34,6 +34,8 @@ class ApplicationDirs(
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
+val androidCompat by lazy { AndroidCompat() }
+
 fun applicationSetup() {
     val logger = KotlinLogging.logger {}
 
@@ -65,7 +67,7 @@ fun applicationSetup() {
     // Load Android compatibility dependencies
     AndroidCompatInitializer().init()
     // start app
-    AndroidCompat().startApp(App())
+    androidCompat.startApp(App())
 
     // set application wide logging level
     if (serverConfig.debugLogsEnabled) {

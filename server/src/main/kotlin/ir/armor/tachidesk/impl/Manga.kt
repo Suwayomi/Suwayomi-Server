@@ -16,9 +16,9 @@ import ir.armor.tachidesk.impl.util.CachedImageResponse.getCachedImageResponse
 import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
 import ir.armor.tachidesk.impl.util.await
 import ir.armor.tachidesk.impl.util.awaitSingle
+import ir.armor.tachidesk.model.database.table.MangaStatus
 import ir.armor.tachidesk.model.database.table.MangaTable
 import ir.armor.tachidesk.model.dataclass.MangaDataClass
-import ir.armor.tachidesk.model.dataclass.MangaStatus
 import ir.armor.tachidesk.server.ApplicationDirs
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction

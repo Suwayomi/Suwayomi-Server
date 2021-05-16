@@ -15,11 +15,11 @@ object CategoryTable : IntIdTable() {
     val name = varchar("name", 64)
     val isLanding = bool("is_landing").default(false)
     val order = integer("order").default(0)
-
-    fun toDataClass(categoryEntry: ResultRow) = CategoryDataClass(
-        categoryEntry[id].value,
-        categoryEntry[order],
-        categoryEntry[name],
-        categoryEntry[isLanding],
-    )
 }
+
+fun CategoryTable.toDataClass(categoryEntry: ResultRow) = CategoryDataClass(
+    categoryEntry[this.id].value,
+    categoryEntry[this.order],
+    categoryEntry[this.name],
+    categoryEntry[this.isLanding],
+)
