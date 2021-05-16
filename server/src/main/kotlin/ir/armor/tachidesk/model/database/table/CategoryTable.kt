@@ -18,8 +18,8 @@ object CategoryTable : IntIdTable() {
 }
 
 fun CategoryTable.toDataClass(categoryEntry: ResultRow) = CategoryDataClass(
-    categoryEntry[CategoryTable.id].value,
-    categoryEntry[CategoryTable.order],
-    categoryEntry[CategoryTable.name],
-    categoryEntry[CategoryTable.isLanding],
+    categoryEntry[this.id].value,
+    categoryEntry[this.order],
+    categoryEntry[this.name],
+    categoryEntry[this.isLanding],
 )

@@ -11,6 +11,7 @@ import ir.armor.tachidesk.model.database.migration.lib.Migration
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.vendors.currentDialect
 
+@Suppress("ClassName", "unused")
 class M0002_ChapterTableIndexRename : Migration() {
     /** this migration renamed ChapterTable.NUMBER_IN_LIST to ChapterTable.INDEX */
     override fun run() {

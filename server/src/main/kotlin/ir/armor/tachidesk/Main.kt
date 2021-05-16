@@ -10,13 +10,7 @@ package ir.armor.tachidesk
 import ir.armor.tachidesk.server.JavalinSetup.javalinSetup
 import ir.armor.tachidesk.server.applicationSetup
 
-class Main {
-    companion object {
-
-        @JvmStatic
-        fun main(args: Array<String>) {
-            applicationSetup()
-            javalinSetup()
-        }
-    }
+fun main() {
+    applicationSetup()
+    javalinSetup()
 }

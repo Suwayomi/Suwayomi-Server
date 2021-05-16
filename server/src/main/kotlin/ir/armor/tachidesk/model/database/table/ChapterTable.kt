@@ -30,14 +30,14 @@ object ChapterTable : IntIdTable() {
 
 fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
     ChapterDataClass(
-        chapterEntry[ChapterTable.url],
-        chapterEntry[ChapterTable.name],
-        chapterEntry[ChapterTable.date_upload],
-        chapterEntry[ChapterTable.chapter_number],
-        chapterEntry[ChapterTable.scanlator],
-        chapterEntry[ChapterTable.manga].value,
-        chapterEntry[ChapterTable.isRead],
-        chapterEntry[ChapterTable.isBookmarked],
-        chapterEntry[ChapterTable.lastPageRead],
-        chapterEntry[ChapterTable.chapterIndex],
+        chapterEntry[this.url],
+        chapterEntry[this.name],
+        chapterEntry[this.date_upload],
+        chapterEntry[this.chapter_number],
+        chapterEntry[this.scanlator],
+        chapterEntry[this.manga].value,
+        chapterEntry[this.isRead],
+        chapterEntry[this.isBookmarked],
+        chapterEntry[this.lastPageRead],
+        chapterEntry[this.chapterIndex],
     )
