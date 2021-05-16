@@ -143,6 +143,7 @@ export const defaultReaderSettings = () => ({
     staticNav: false,
     showPageNumber: true,
     continuesPageGap: false,
+    loadNextonEnding: false,
     readerType: 'ContinuesVertical',
 } as IReaderSettings);
 
@@ -181,6 +182,11 @@ export default function ReaderNavBar(props: IProps) {
         if (Math.abs(currentScrollPos - prevScrollPos) > 20) {
             setHideOpenButton(currentScrollPos > prevScrollPos);
             setPrevScrollPos(currentScrollPos);
+        }
+        if (settings.loadNextonEnding && (settings.readerType === 'ContinuesVertical' || settings.readerType === 'Webtoon')) {
+            if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
+                window.location.href = `/manga/${manga.id}/chapter/${chapter.index + 1}`;
+            }
         }
     };
 
@@ -274,6 +280,16 @@ export default function ReaderNavBar(props: IProps) {
                                         edge="end"
                                         checked={settings.showPageNumber}
                                         onChange={(e) => setSettingValue('showPageNumber', e.target.checked)}
+                                    />
+                                </ListItemSecondaryAction>
+                            </ListItem>
+                            <ListItem>
+                                <ListItemText primary="Load next chapter at ending" />
+                                <ListItemSecondaryAction>
+                                    <Switch
+                                        edge="end"
+                                        checked={settings.loadNextonEnding}
+                                        onChange={(e) => setSettingValue('loadNextonEnding', e.target.checked)}
                                     />
                                 </ListItemSecondaryAction>
                             </ListItem>
