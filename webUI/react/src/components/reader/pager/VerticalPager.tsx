@@ -8,7 +8,7 @@
 
 import { makeStyles } from '@material-ui/core/styles';
 import React, { useEffect } from 'react';
-import Page from './Page';
+import Page from '../Page';
 
 const useStyles = makeStyles({
     reader: {
