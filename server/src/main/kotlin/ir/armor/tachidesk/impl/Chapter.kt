@@ -15,6 +15,7 @@ import ir.armor.tachidesk.impl.util.awaitSingle
 import ir.armor.tachidesk.model.database.table.ChapterTable
 import ir.armor.tachidesk.model.database.table.MangaTable
 import ir.armor.tachidesk.model.database.table.PageTable
+import ir.armor.tachidesk.model.database.table.toDataClass
 import ir.armor.tachidesk.model.dataclass.ChapterDataClass
 import org.jetbrains.exposed.sql.SortOrder.DESC
 import org.jetbrains.exposed.sql.and

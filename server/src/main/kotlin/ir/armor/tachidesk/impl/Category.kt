@@ -10,6 +10,7 @@ package ir.armor.tachidesk.impl
 import ir.armor.tachidesk.impl.CategoryManga.removeMangaFromCategory
 import ir.armor.tachidesk.model.database.table.CategoryMangaTable
 import ir.armor.tachidesk.model.database.table.CategoryTable
+import ir.armor.tachidesk.model.database.table.toDataClass
 import ir.armor.tachidesk.model.dataclass.CategoryDataClass
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.deleteWhere
