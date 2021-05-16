@@ -30,8 +30,8 @@ import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction';
 import Collapse from '@material-ui/core/Collapse';
 import Button from '@material-ui/core/Button';
 import ClickAwayListener from '@material-ui/core/ClickAwayListener';
-import DarkTheme from '../context/DarkTheme';
-import NavBarContext from '../context/NavbarContext';
+import DarkTheme from '../../context/DarkTheme';
+import NavBarContext from '../../context/NavbarContext';
 
 const useStyles = (settings: IReaderSettings) => makeStyles((theme: Theme) => ({
     // main container and root div need to change classes...

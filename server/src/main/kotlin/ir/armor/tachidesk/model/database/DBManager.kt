@@ -15,7 +15,7 @@ import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
 
-object DBMangaer {
+object DBManager {
     val db by lazy {
         val applicationDirs by DI.global.instance<ApplicationDirs>()
         Database.connect("jdbc:h2:${applicationDirs.dataRoot}/database", "org.h2.Driver")
@@ -24,7 +24,7 @@ object DBMangaer {
 
 fun databaseUp() {
     // must mention db object so the lazy block executes
-    val db = DBMangaer.db
+    val db = DBManager.db
     db.useNestedTransactions = true
 
     val migrations = loadMigrationsFrom("ir.armor.tachidesk.model.database.migration")

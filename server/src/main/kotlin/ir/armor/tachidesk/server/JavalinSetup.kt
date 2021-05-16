@@ -1,7 +1,6 @@
 package ir.armor.tachidesk.server
 
 import io.javalin.Javalin
-import ir.armor.tachidesk.Main
 import ir.armor.tachidesk.impl.Category.createCategory
 import ir.armor.tachidesk.impl.Category.getCategoryList
 import ir.armor.tachidesk.impl.Category.removeCategory
@@ -68,7 +67,7 @@ object JavalinSetup {
         val app = Javalin.create { config ->
             try {
                 // if the bellow line throws an exception then webUI is not bundled
-                Main::class.java.getResource("/react/index.html")
+                this::class.java.getResource("/react/index.html")
 
                 // no exception so we can tell javalin to serve webUI
                 hasWebUiBundled = true

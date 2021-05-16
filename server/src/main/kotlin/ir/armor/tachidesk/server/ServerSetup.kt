@@ -9,7 +9,6 @@ package ir.armor.tachidesk.server
 
 import ch.qos.logback.classic.Level
 import eu.kanade.tachiyomi.App
-import ir.armor.tachidesk.Main
 import ir.armor.tachidesk.model.database.databaseUp
 import ir.armor.tachidesk.server.util.systemTray
 import mu.KotlinLogging
@@ -81,7 +80,7 @@ fun applicationSetup() {
     try {
         val dataConfFile = File("${applicationDirs.dataRoot}/server.conf")
         if (!dataConfFile.exists()) {
-            Main::class.java.getResourceAsStream("/server-reference.conf").use { input ->
+            JavalinSetup::class.java.getResourceAsStream("/server-reference.conf").use { input ->
                 dataConfFile.outputStream().use { output ->
                     input.copyTo(output)
                 }
@@ -97,7 +96,7 @@ fun applicationSetup() {
     if (serverConfig.systemTrayEnabled) {
         try {
             systemTray
-        } catch (e: Exception) {
+        } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
             e.printStackTrace()
         }
     }
