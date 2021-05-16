@@ -97,7 +97,7 @@ fun applicationSetup() {
     if (serverConfig.systemTrayEnabled) {
         try {
             systemTray
-        } catch (e: Exception) {
+        } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
             e.printStackTrace()
         }
     }

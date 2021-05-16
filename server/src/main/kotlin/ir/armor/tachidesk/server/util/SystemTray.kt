@@ -20,7 +20,7 @@ import kotlin.system.exitProcess
 fun openInBrowser() {
     try {
         Desktop.browseURL("http://127.0.0.1:4567")
-    } catch (e: Exception) {
+    } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
         e.printStackTrace()
     }
 }
