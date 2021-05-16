@@ -183,11 +183,6 @@ export default function ReaderNavBar(props: IProps) {
             setHideOpenButton(currentScrollPos > prevScrollPos);
             setPrevScrollPos(currentScrollPos);
         }
-        if (settings.loadNextonEnding && (settings.readerType === 'ContinuesVertical' || settings.readerType === 'Webtoon')) {
-            if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
-                window.location.href = `/manga/${manga.id}/chapter/${chapter.index + 1}`;
-            }
-        }
     };
 
     useEffect(() => {
