@@ -69,7 +69,6 @@ export default function Reader() {
     const [manga, setManga] = useState<IMangaCard | IManga>({ id: +mangaId, title: '', thumbnailUrl: '' });
     const [chapter, setChapter] = useState<IChapter | IPartialChpter>(initialChapter());
     const [curPage, setCurPage] = useState<number>(0);
-
     const { setOverride, setTitle } = useContext(NavbarContext);
     useEffect(() => {
         setOverride(
@@ -138,6 +137,8 @@ export default function Reader() {
                 setCurPage={setCurPage}
                 curPage={curPage}
                 settings={settings}
+                manga={manga}
+                chapter={chapter}
             />
         </div>
     );

@@ -16,13 +16,17 @@ const useStyles = makeStyles({
 
 export default function PagedReader(props: IReaderProps) {
     const {
-        pages, settings, setCurPage, curPage,
+        pages, settings, setCurPage, curPage, manga, chapter,
     } = props;
 
     const classes = useStyles();
 
     function nextPage() {
-        if (curPage < pages.length - 1) { setCurPage(curPage + 1); }
+        if (curPage < pages.length - 1) {
+            setCurPage(curPage + 1);
+        } else if (settings.loadNextonEnding) {
+            window.location.href = `/manga/${manga.id}/chapter/${chapter.index + 1}`;
+        }
     }
 
     function prevPage() {
