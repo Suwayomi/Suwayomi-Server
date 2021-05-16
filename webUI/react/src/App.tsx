@@ -13,7 +13,7 @@ import { Container } from '@material-ui/core';
 import CssBaseline from '@material-ui/core/CssBaseline';
 import { createMuiTheme, ThemeProvider } from '@material-ui/core/styles';
 
-import NavBar from './components/NavBar';
+import NavBar from './components/navbar/NavBar';
 import Sources from './screens/Sources';
 import Extensions from './screens/Extensions';
 import SourceMangas from './screens/SourceMangas';
