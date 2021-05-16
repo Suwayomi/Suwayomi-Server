@@ -36,6 +36,8 @@ class ApplicationDirs(
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
+val systemTray by lazy { systemTray() }
+
 val androidCompat by lazy { AndroidCompat() }
 
 fun applicationSetup() {
@@ -93,7 +95,7 @@ fun applicationSetup() {
     // create system tray
     if (serverConfig.systemTrayEnabled) {
         try {
-            systemTray()
+            systemTray
         } catch (e: Exception) {
             e.printStackTrace()
         }
