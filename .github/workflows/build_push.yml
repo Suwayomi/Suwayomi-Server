@@ -70,16 +70,16 @@ jobs:
           dependencies-cache-enabled: true
           configuration-cache-enabled: true
 
+      - name: make windows package
+        run: |
+          cd master/scripts
+          ./windows-bundler.sh
+
       - name: Checkout preview branch
         uses: actions/checkout@v2
         with:
           ref: preview
           path: preview
-
-      - name: make windows package
-        run: |
-          cd master/scripts
-          ./windows-bundler.sh
 
       - name: Deploy preview
         run: |
