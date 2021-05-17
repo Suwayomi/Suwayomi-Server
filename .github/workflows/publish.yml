@@ -56,14 +56,14 @@ jobs:
         with:
           path: |
             **/react/node_modules
-          key: ${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
+          key: ${{ runner.os }}-${{ hashFiles('**/react/yarn.lock') }}
 
-      - name: Build and copy webUI, Build Jar and launch4j
+      - name: Build and copy webUI, Build Jar
         uses: eskatos/gradle-command-action@v1
         with:
           build-root-directory: master
           wrapper-directory: master
-          arguments: :webUI:copyBuild :server:windowsPackage --stacktrace
+          arguments: :webUI:copyBuild :server:shadowJar --stacktrace
           wrapper-cache-enabled: true
           dependencies-cache-enabled: true
           configuration-cache-enabled: true
@@ -73,37 +73,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "master/server/build/*.jar;master/server/build/*-win32.zip"
+          file: "master/server/build/*.jar"
           tags: true
           draft: true
           verbose: true
-
-#      - name: Create Release
-#        id: create_release
-#        uses: actions/create-release@v1
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        with:
-#          tag_name: ${{ github.ref }}
-#          release_name: Release ${{ github.ref }}
-#          body: |
-#                  Release body
-#          draft: false
-#          prerelease: true
-#
-#      - name: Get the Ref
-#        id: get-ref
-#        uses: ankitvgupta/ref-to-tag-action@master
-#        with:
-#          ref: ${{ github.ref }}
-#          head_ref: ${{ github.head_ref }}
-#
-#      - name: Get the tag
-#        run: echo "The tag was ${{ steps.get-ref.outputs.tag }}"
-#
-#      - name: Upload Release
-#        uses: AButler/upload-release-assets@v2.0
-#        with:
-#          files: 'master/repo/*'
-#          repo-token: ${{ secrets.GITHUB_TOKEN }}
-#          release-tag: ${{ steps.get-ref.outputs.tag }}

@@ -59,15 +59,21 @@ jobs:
             **/react/node_modules
           key: ${{ runner.os }}-${{ hashFiles('**/react/yarn.lock') }}
 
-      - name: Build and copy webUI, Build Jar and launch4j
+      - name: Build and copy webUI, Build Jar
         uses: eskatos/gradle-command-action@v1
         with:
           build-root-directory: master
           wrapper-directory: master
-          arguments: :webUI:copyBuild :server:windowsPackage --stacktrace
+#          arguments: :webUI:copyBuild :server:shadowJar --stacktrace
+          arguments: :server:shadowJar --stacktrace
           wrapper-cache-enabled: true
           dependencies-cache-enabled: true
           configuration-cache-enabled: true
+
+      - name: make windows package
+        run: |
+          cd master/scripts
+          ./windows-bundler.sh
 
       - name: Checkout preview branch
         uses: actions/checkout@v2
