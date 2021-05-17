@@ -8,6 +8,7 @@
 
 import { makeStyles } from '@material-ui/core/styles';
 import React, { useEffect } from 'react';
+import { useHistory } from 'react-router-dom';
 import Page from '../Page';
 
 const useStyles = makeStyles({
@@ -22,20 +23,23 @@ const useStyles = makeStyles({
 
 export default function VerticalReader(props: IReaderProps) {
     const {
-        pages, settings, setCurPage, manga, chapter,
+        pages, settings, setCurPage, curPage, manga, chapter,
     } = props;
 
     const classes = useStyles();
-    const handleScroll = () => {
+    const history = useHistory();
+
+    const handleLoadNextonEnding = () => {
         if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
-            window.location.href = `/manga/${manga.id}/chapter/${chapter.index + 1}`;
+            setCurPage(0);
+            history.push(`/manga/${manga.id}/chapter/${chapter.index + 1}`);
         }
     };
     useEffect(() => {
-        window.addEventListener('scroll', handleScroll);
+        if (settings.loadNextonEnding) { window.addEventListener('scroll', handleLoadNextonEnding); }
 
         return () => {
-            window.removeEventListener('scroll', handleScroll);
+            window.removeEventListener('scroll', handleLoadNextonEnding);
         };
     }, []);
 

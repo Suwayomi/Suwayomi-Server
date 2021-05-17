@@ -8,6 +8,7 @@
 
 import { makeStyles } from '@material-ui/core/styles';
 import React, { useEffect } from 'react';
+import { useHistory } from 'react-router-dom';
 import Page from '../Page';
 
 const useStyles = makeStyles({
@@ -27,12 +28,14 @@ export default function PagedReader(props: IReaderProps) {
     } = props;
 
     const classes = useStyles();
+    const history = useHistory();
 
     function nextPage() {
         if (curPage < pages.length - 1) {
             setCurPage(curPage + 1);
         } else if (settings.loadNextonEnding) {
-            window.location.href = `/manga/${manga.id}/chapter/${chapter.index + 1}`;
+            setCurPage(0);
+            history.push(`/manga/${manga.id}/chapter/${chapter.index + 1}`);
         }
     }
 
