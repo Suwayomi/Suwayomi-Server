@@ -20,7 +20,7 @@ echo "creating windows bundle"
 
 jar=$(ls ../server/build/Tachidesk-*.jar)
 jar_name=$(echo $jar | cut -d'/' -f4)
-release_name=$(echo $jar_name | cut -d'.' -f4 --complement)
+release_name=$(echo $jar_name | cut -d'.' -f4 --complement)-win64
 
 cp $jar "Tachidesk.jar"
 
@@ -29,15 +29,13 @@ java -jar $packr \
      --jdk $jre \
      --executable Tachidesk \
      --classpath Tachidesk.jar \
-     --mainclass ir.armor.tachidesk.Main \
+     --mainclass ir.armor.tachidesk.MainKt \
      --vmargs Xmx4G \
      --output $release_name
 
 cp resources/Tachidesk-debug.bat $release_name
 
-zip_name="$release_name-win64.zip"
+zip_name=$release_name.zip
 zip -9 -r $zip_name $release_name
 
 cp $zip_name ../server/build/
-
-
