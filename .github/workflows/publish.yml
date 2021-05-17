@@ -73,7 +73,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "master/server/build/*.jar"
+          file: "master/server/build/*.jar;master/server/build/*.zip"
           tags: true
           draft: true
           verbose: true
