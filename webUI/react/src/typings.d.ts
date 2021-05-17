@@ -99,6 +99,7 @@ type ReaderType =
 interface IReaderSettings{
     staticNav: boolean
     showPageNumber: boolean
+    loadNextonEnding: boolean
     readerType: ReaderType
 }
 
@@ -113,4 +114,6 @@ interface IReaderProps {
     setCurPage: React.Dispatch<React.SetStateAction<number>>
     curPage: number
     settings: IReaderSettings
+    manga: IMangaCard | IManga
+    chapter: IChapter | IPartialChpter
 }

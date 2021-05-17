@@ -7,7 +7,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import { makeStyles } from '@material-ui/core/styles';
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useHistory } from 'react-router-dom';
 import Page from '../Page';
 
 const useStyles = makeStyles({
@@ -20,10 +21,27 @@ const useStyles = makeStyles({
     },
 });
 
-export default function VerticalPager(props: IReaderProps) {
-    const { pages, settings, setCurPage } = props;
+export default function VerticalReader(props: IReaderProps) {
+    const {
+        pages, settings, setCurPage, curPage, manga, chapter,
+    } = props;
 
     const classes = useStyles();
+    const history = useHistory();
+
+    const handleLoadNextonEnding = () => {
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
+            setCurPage(0);
+            history.push(`/manga/${manga.id}/chapter/${chapter.index + 1}`);
+        }
+    };
+    useEffect(() => {
+        if (settings.loadNextonEnding) { window.addEventListener('scroll', handleLoadNextonEnding); }
+
+        return () => {
+            window.removeEventListener('scroll', handleLoadNextonEnding);
+        };
+    }, []);
 
     return (
         <div className={classes.reader}>

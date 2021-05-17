@@ -143,6 +143,7 @@ export const defaultReaderSettings = () => ({
     staticNav: false,
     showPageNumber: true,
     continuesPageGap: false,
+    loadNextonEnding: false,
     readerType: 'ContinuesVertical',
 } as IReaderSettings);
 
@@ -274,6 +275,16 @@ export default function ReaderNavBar(props: IProps) {
                                         edge="end"
                                         checked={settings.showPageNumber}
                                         onChange={(e) => setSettingValue('showPageNumber', e.target.checked)}
+                                    />
+                                </ListItemSecondaryAction>
+                            </ListItem>
+                            <ListItem>
+                                <ListItemText primary="Load next chapter at ending" />
+                                <ListItemSecondaryAction>
+                                    <Switch
+                                        edge="end"
+                                        checked={settings.loadNextonEnding}
+                                        onChange={(e) => setSettingValue('loadNextonEnding', e.target.checked)}
                                     />
                                 </ListItemSecondaryAction>
                             </ListItem>
