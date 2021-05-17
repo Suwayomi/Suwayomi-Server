@@ -29,7 +29,7 @@ java -jar $packr \
      --jdk $jre \
      --executable Tachidesk \
      --classpath Tachidesk.jar \
-     --mainclass ir.armor.tachidesk.Main \
+     --mainclass ir.armor.tachidesk.MainKt \
      --vmargs Xmx4G \
      --output $release_name
 
