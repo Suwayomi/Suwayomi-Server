@@ -22,7 +22,6 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
-import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 
@@ -139,7 +138,7 @@ object Chapter {
         ).awaitSingle()
 
         val chapterId = chapterEntry[ChapterTable.id].value
-        val chapterCount = transaction { ChapterTable.selectAll().count() }
+        val chapterCount = transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.count() }
 
         // update page list for this chapter
         transaction {

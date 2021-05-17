@@ -23,7 +23,7 @@ const useStyles = makeStyles({
 
 export default function VerticalReader(props: IReaderProps) {
     const {
-        pages, settings, setCurPage, curPage, manga, chapter,
+        pages, settings, setCurPage, curPage, manga, chapter, nextChapter,
     } = props;
 
     const classes = useStyles();
@@ -31,8 +31,7 @@ export default function VerticalReader(props: IReaderProps) {
 
     const handleLoadNextonEnding = () => {
         if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
-            setCurPage(0);
-            history.push(`/manga/${manga.id}/chapter/${chapter.index + 1}`);
+            nextChapter();
         }
     };
     useEffect(() => {

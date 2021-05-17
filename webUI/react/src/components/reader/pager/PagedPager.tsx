@@ -24,7 +24,7 @@ const useStyles = makeStyles({
 
 export default function PagedReader(props: IReaderProps) {
     const {
-        pages, settings, setCurPage, curPage, manga, chapter,
+        pages, settings, setCurPage, curPage, manga, chapter, nextChapter,
     } = props;
 
     const classes = useStyles();
@@ -36,7 +36,7 @@ export default function PagedReader(props: IReaderProps) {
         if (curPage < pages.length - 1) {
             setCurPage(curPage + 1);
         } else if (settings.loadNextonEnding) {
-            history.push(`/manga/${manga.id}/chapter/${chapter.index + 1}`);
+            nextChapter();
         }
     }
 
