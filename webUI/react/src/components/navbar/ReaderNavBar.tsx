@@ -46,7 +46,7 @@ const useStyles = (settings: IReaderSettings) => makeStyles((theme: Theme) => ({
         position: settings.staticNav ? 'sticky' : 'fixed',
         top: 0,
         left: 0,
-        minWidth: '300px',
+        width: '300px',
         height: '100vh',
         overflowY: 'auto',
         backgroundColor: '#0a0b0b',

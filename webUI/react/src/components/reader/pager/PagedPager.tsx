@@ -7,7 +7,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import { makeStyles } from '@material-ui/core/styles';
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useHistory } from 'react-router-dom';
 import Page from '../Page';
 
@@ -30,11 +30,12 @@ export default function PagedReader(props: IReaderProps) {
     const classes = useStyles();
     const history = useHistory();
 
+    const pageRef = useRef<HTMLDivElement>(null);
+
     function nextPage() {
         if (curPage < pages.length - 1) {
             setCurPage(curPage + 1);
         } else if (settings.loadNextonEnding) {
-            setCurPage(0);
             history.push(`/manga/${manga.id}/chapter/${chapter.index + 1}`);
         }
     }
@@ -66,16 +67,16 @@ export default function PagedReader(props: IReaderProps) {
 
     useEffect(() => {
         document.addEventListener('keyup', keyboardControl, false);
-        document.addEventListener('click', clickControl);
+        pageRef.current?.addEventListener('click', clickControl);
 
         return () => {
             document.removeEventListener('keyup', keyboardControl);
-            document.removeEventListener('click', clickControl);
+            pageRef.current?.removeEventListener('click', clickControl);
         };
-    }, [curPage]);
+    }, [curPage, pageRef]);
 
     return (
-        <div className={classes.reader}>
+        <div ref={pageRef} className={classes.reader}>
             <Page
                 key={curPage}
                 index={curPage}

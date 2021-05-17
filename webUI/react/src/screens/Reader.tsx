@@ -117,6 +117,7 @@ export default function Reader() {
 
     useEffect(() => {
         setChapter(initialChapter);
+        setCurPage(0);
         client.get(`/api/v1/manga/${mangaId}/chapter/${chapterIndex}`)
             .then((response) => response.data)
             .then((data:IChapter) => {
