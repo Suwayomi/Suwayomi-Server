@@ -39,5 +39,3 @@ zip_name="$release_name-win64.zip"
 zip -9 -r $zip_name $release_name
 
 cp $zip_name ../server/build/
-
-
