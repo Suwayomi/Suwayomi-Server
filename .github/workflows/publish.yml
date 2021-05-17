@@ -68,6 +68,11 @@ jobs:
           dependencies-cache-enabled: true
           configuration-cache-enabled: true
 
+      - name: make windows package
+        run: |
+          cd master/scripts
+          ./windows-bundler.sh
+
       - name: Upload Release
         uses: xresloader/upload-to-github-release@master
         env:
