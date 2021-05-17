@@ -21,7 +21,7 @@ class ServerConfig(config: Config) : ConfigModule(config) {
     val socksProxyPort: String by config
 
     // misc
-    val debugLogsEnabled: Boolean by config
+    val debugLogsEnabled: Boolean = System.getProperty("ir.armor.tachidesk.debugLogsEnabled", config.getString("debugLogsEnabled")).toBoolean()
     val systemTrayEnabled: Boolean by config
     val initialOpenInBrowserEnabled: Boolean by config
 

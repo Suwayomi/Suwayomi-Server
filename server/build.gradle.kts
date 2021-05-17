@@ -168,58 +168,8 @@ tasks {
     test {
         useJUnit()
     }
-
-    register<Zip>("windowsPackage") {
-        from(fileTree("$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win64"))
-        destinationDirectory.set(File("$buildDir"))
-        archiveFileName.set("${rootProject.name}-$tachideskVersion-$tachideskRevision-win64.zip")
-        dependsOn("windowsPackageWorkaround2")
-    }
-
-    register<Delete>("windowsPackageWorkaround2") {
-        delete(
-                "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win64/jre",
-                "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win64/lib",
-                "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win64/server.exe",
-                "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win64/Tachidesk-$tachideskVersion-$tachideskRevision-win64/Tachidesk-$tachideskVersion-$tachideskRevision-win64"
-        )
-        dependsOn("windowsPackageWorkaround")
-    }
-
-    register<Copy>("windowsPackageWorkaround") {
-        from("$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win64")
-        into("$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win64/${rootProject.name}-$tachideskVersion-$tachideskRevision-win64")
-        dependsOn("deleteUnwantedJreDir")
-    }
-
-    register<Delete>("deleteUnwantedJreDir") {
-        delete(
-                "$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win64/jdk8u292-b10-jre"
-        )
-        dependsOn("addJreToDistributable")
-    }
-
-    register<Copy>("addJreToDistributable") {
-        from(zipTree("$buildDir/OpenJDK8U-jre_x64_windows_hotspot_8u292b10.zip"))
-        into("$buildDir/${rootProject.name}-$tachideskVersion-$tachideskRevision-win64")
-        eachFile {
-            path = path.replace(".*-jre".toRegex(), "jre")
-        }
-        dependsOn("downloadJre")
-        dependsOn("createExe")
-    }
-
-    named("createExe") {
-        dependsOn("shadowJar")
-    }
-
-    register<de.undercouch.gradle.tasks.download.Download>("downloadJre") {
-        src("https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u292-b10/OpenJDK8U-jre_x64_windows_hotspot_8u292b10.zip")
-        dest("$buildDir/OpenJDK8U-jre_x64_windows_hotspot_8u292b10.zip")
-        overwrite(false)
-        onlyIfModified(true)
-    }
-
+    
+    
     withType<ShadowJar> {
         destinationDirectory.set(File("$rootDir/server/build"))
         dependsOn("formatKotlin", "lintKotlin")

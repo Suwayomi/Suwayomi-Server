@@ -10,6 +10,7 @@ cp -f $new_jar_build Tachidesk-latest.jar
 
 rm -rf latest_pointer/*
 cp $new_jar_build latest_pointer
+cp master/server/build/Tachidesk-*.zip latest_pointer
 
 latest=$(ls *.jar | tail -n1 | sed -e's/Tachidesk-\|.jar//g')
 echo "{ \"latest\": \"$latest\" }" > index.json
