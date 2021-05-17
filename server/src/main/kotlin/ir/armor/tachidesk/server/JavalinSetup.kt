@@ -36,13 +36,14 @@ import ir.armor.tachidesk.impl.backup.legacy.LegacyBackupImport.restoreLegacyBac
 import ir.armor.tachidesk.server.internal.About.getAbout
 import ir.armor.tachidesk.server.util.openInBrowser
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.future.future
-import kotlinx.coroutines.newFixedThreadPoolContext
 import mu.KotlinLogging
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
 import kotlin.concurrent.thread
 
 /*
@@ -55,8 +56,7 @@ import kotlin.concurrent.thread
 object JavalinSetup {
     private val logger = KotlinLogging.logger {}
 
-    @kotlinx.coroutines.ObsoleteCoroutinesApi
-    private val scope = CoroutineScope(newFixedThreadPoolContext(200, "javalin-future"))
+    private val scope = CoroutineScope(Executors.newFixedThreadPool(200).asCoroutineDispatcher())
 
     private fun <T> future(block: suspend CoroutineScope.() -> T): CompletableFuture<T> {
         return scope.future(block = block)
