@@ -60,11 +60,13 @@ function LazyImage(props: IProps) {
     };
 
     useEffect(() => {
-        window.addEventListener('scroll', handleScroll);
+        if (settings.readerType === 'Webtoon' || settings.readerType === 'ContinuesVertical') {
+            window.addEventListener('scroll', handleScroll);
 
-        return () => {
-            window.removeEventListener('scroll', handleScroll);
-        };
+            return () => {
+                window.removeEventListener('scroll', handleScroll);
+            };
+        } return () => {};
     }, [handleScroll]);
 
     useEffect(() => {
@@ -92,14 +94,14 @@ function LazyImage(props: IProps) {
     );
 }
 
-export default function Page(props: IProps) {
+const Page = React.forwardRef((props: IProps, ref: any) => {
     const {
         src, index, setCurPage, settings,
     } = props;
     const classes = useStyles(settings)();
 
     return (
-        <div style={{ margin: '0 auto' }}>
+        <div ref={ref} style={{ margin: '0 auto' }}>
             <LazyImage
                 src={src}
                 index={index}
@@ -108,4 +110,6 @@ export default function Page(props: IProps) {
             />
         </div>
     );
-}
+});
+
+export default Page;

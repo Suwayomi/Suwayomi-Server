@@ -118,13 +118,27 @@ export default function Reader() {
 
     useEffect(() => {
         setChapter(initialChapter);
-        setCurPage(0);
         client.get(`/api/v1/manga/${mangaId}/chapter/${chapterIndex}`)
             .then((response) => response.data)
             .then((data:IChapter) => {
                 setChapter(data);
+                setCurPage(data.lastPageRead);
             });
     }, [chapterIndex]);
+
+    useEffect(() => {
+        if (curPage !== -1) {
+            const formData = new FormData();
+            formData.append('lastPageRead', curPage.toString());
+            client.patch(`/api/v1/manga/${manga.id}/chapter/${chapter.index}`, formData);
+        }
+
+        if (curPage === chapter.pageCount - 1) {
+            const formDataRead = new FormData();
+            formDataRead.append('read', 'true');
+            client.patch(`/api/v1/manga/${manga.id}/chapter/${chapter.index}`, formDataRead);
+        }
+    }, [curPage]);
 
     if (chapter.pageCount === -1) {
         return (
@@ -136,6 +150,11 @@ export default function Reader() {
 
     const nextChapter = () => {
         if (chapter.index < chapter.chapterCount) {
+            const formData = new FormData();
+            formData.append('lastPageRead', `${chapter.pageCount - 1}`);
+            formData.append('read', 'true');
+            client.patch(`/api/v1/manga/${manga.id}/chapter/${chapter.index}`, formData);
+
             history.push(`/manga/${manga.id}/chapter/${chapter.index + 1}`);
         }
     };
