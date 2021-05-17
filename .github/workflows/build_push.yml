@@ -18,7 +18,7 @@ jobs:
         uses: gradle/wrapper-validation-action@v1
 
   build:
-    name: Build FatJar
+    name: Build artifacts and deploy preview
     needs: check_wrapper
     if: "!startsWith(github.event.head_commit.message, '[SKIP CI]')"
     runs-on: ubuntu-latest
