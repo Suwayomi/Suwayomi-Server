@@ -20,6 +20,8 @@ release_name=$(echo $jar_name | cut -d'.' -f4 --complement)-win64
 # make release dir
 mkdir $release_name
 
+unzip $jre
+
 # move jre
 mv jdk8u292-b10-jre $release_name/jre
 
