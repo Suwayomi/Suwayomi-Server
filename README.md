@@ -46,10 +46,6 @@ You can install Tachidesk from the AUR
 ```
 yay -S tachidesk
 ```
-Or the latest preview version
-```
-yay -S tachidesk-preview
-```
 
 ### Docker
 Check [arbuilder's repo](https://github.com/arbuilder/Tachidesk-docker) out for more details and the dockerfile.
