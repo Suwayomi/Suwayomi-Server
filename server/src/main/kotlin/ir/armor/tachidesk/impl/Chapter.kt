@@ -38,7 +38,7 @@ object Chapter {
                     }
             }.ifEmpty {
                 // If it was explicitly set to offline dont grab chapters
-                if (onlineFetch != null) {
+                if (onlineFetch == null) {
                     getSourceChapters(mangaId)
                 } else emptyList()
             }
