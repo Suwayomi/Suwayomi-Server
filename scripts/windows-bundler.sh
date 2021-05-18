@@ -27,10 +27,11 @@ mv jdk8u292-b10-jre $release_name/jre
 
 cp $jar $release_name/Tachidesk.jar
 
-cp resources/Tachidesk.bat $release_name
-cp resources/Tachidesk-debug.bat $release_name
+cp "resources/Tachidesk Launcher.exe" $release_name
+cp "resources/Tachidesk Launcher.bat" $release_name
+cp "resources/Tachidesk Debug Launcher.bat" $release_name
 
 zip_name=$release_name.zip
 zip -9 -r $zip_name $release_name
 
-cp $zip_name ../server/build/
+mv $zip_name ../server/build/

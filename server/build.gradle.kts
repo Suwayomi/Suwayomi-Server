@@ -126,18 +126,8 @@ buildConfig {
     buildConfigField("boolean", "debug", project.hasProperty("debugApp").toString())
 }
 
-launch4j { //used for windows
-    mainClassName = MainClass
-    bundledJrePath = "jre"
-    bundledJre64Bit = true
-    jreMinVersion = "8"
-    outputDir = "${rootProject.name}-$tachideskVersion-$tachideskRevision-win64"
-    icon = "${projectDir}/src/main/resources/icon/faviconlogo.ico"
-    jar = "${projectDir}/build/${rootProject.name}-$tachideskVersion-$tachideskRevision.jar"
-}
-
 tasks {
-    jar {
+    shadowJar {
         manifest {
             attributes(
                     mapOf(
@@ -149,9 +139,6 @@ tasks {
                     )
             )
         }
-    }
-    shadowJar {
-        manifest.inheritFrom(jar.get().manifest) //will make your shadowJar (produced by jar task) runnable
         archiveBaseName.set(rootProject.name)
         archiveVersion.set(tachideskVersion)
         archiveClassifier.set(tachideskRevision)
@@ -168,8 +155,8 @@ tasks {
     test {
         useJUnit()
     }
-    
-    
+
+
     withType<ShadowJar> {
         destinationDirectory.set(File("$rootDir/server/build"))
         dependsOn("formatKotlin", "lintKotlin")
@@ -192,4 +179,17 @@ tasks {
         source(files("src"))
     }
 }
+
+launch4j { //used for windows
+    mainClassName = MainClass
+    bundledJrePath = "jre"
+    bundledJre64Bit = true
+    dontWrapJar = true
+    outputDir = "${rootProject.name}-$tachideskVersion-$tachideskRevision-win64"
+    icon = "${projectDir}/src/main/resources/icon/faviconlogo.ico"
+    jar = "Tachidesk.jar"
+    libraryDir = ""
+    copyConfigurable = "false"
+}
+
 
