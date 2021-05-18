@@ -8,7 +8,6 @@ plugins {
     application
     id("com.github.johnrengelman.shadow") version "7.0.0"
     id("org.jmailen.kotlinter") version "3.4.3"
-    id("edu.sc.seis.launch4j") version "2.5.0"
     id("de.fuerstenau.buildconfig") version "1.1.8"
 }
 
@@ -179,17 +178,3 @@ tasks {
         source(files("src"))
     }
 }
-
-launch4j { //used for windows
-    mainClassName = MainClass
-    bundledJrePath = "jre"
-    bundledJre64Bit = true
-    dontWrapJar = true
-    outputDir = "${rootProject.name}-$tachideskVersion-$tachideskRevision-win64"
-    icon = "${projectDir}/src/main/resources/icon/faviconlogo.ico"
-    jar = "Tachidesk.jar"
-    libraryDir = ""
-    copyConfigurable = "false"
-}
-
-

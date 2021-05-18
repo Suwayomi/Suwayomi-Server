@@ -9,7 +9,9 @@
 echo "Downloading jre..."
 
 jre="OpenJDK8U-jre_x64_windows_hotspot_8u292b10.zip"
-curl -L "https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u292-b10/OpenJDK8U-jre_x64_windows_hotspot_8u292b10.zip" -o $jre
+if [ ! -f $jre ]; then
+  curl -L "https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u292-b10/OpenJDK8U-jre_x64_windows_hotspot_8u292b10.zip" -o $jre
+fi
 
 echo "creating windows bundle"
 
@@ -33,5 +35,7 @@ cp "resources/Tachidesk Debug Launcher.bat" $release_name
 
 zip_name=$release_name.zip
 zip -9 -r $zip_name $release_name
+
+rm -rf $release_name
 
 mv $zip_name ../server/build/

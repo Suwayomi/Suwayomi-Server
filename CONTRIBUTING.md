@@ -38,7 +38,7 @@ Run `./gradlew :webUI:copyBuild server:shadowJar`, the resulting built jar file 
 ### building without `webUI` bundled(server only)
 Delete the `server/src/main/resources/react` directory if exists from previous runs, then run `./gradlew server:shadowJar`, the resulting built jar file will be `server/build/Tachidesk-vX.Y.Z-rxxx.jar`.
 ### building the Windows package
-Run `./gradlew :server:windowsPackage` to build a server only bundle and `./gradlew :webUI:copyBuild :server:windowsPackage` to get a full bundle , the resulting built zip package file will be `server/build/Tachidesk-vX.Y.Z-rxxx-win32.zip`.
+First Build the jar, then cd into the `scripts` directory and run `./windows-bundler.sh`, the resulting built zip package file will be `server/build/Tachidesk-vX.Y.Z-rxxx-win64.zip`.
 ## Running in development mode
 First satistify [the prerequisites](#prerequisites)
 ### server
