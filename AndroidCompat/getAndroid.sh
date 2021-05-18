@@ -20,7 +20,7 @@ fi
 
 
 # foolproof against running from AndroidCompat dir instead of running from project root
-if [ "$(basename $(pwd))" = "AndroidCompat" ]; then
+if [ "$(basename "$(pwd)")" = "AndroidCompat" ]; then
   cd ..
 fi
 
@@ -28,7 +28,7 @@ fi
 echo "Getting required Android.jar..."
 rm -rf "tmp"
 mkdir -p "tmp"
-pushd "tmp"
+pushd "tmp" || exit
 
 curl "https://android.googlesource.com/platform/prebuilts/sdk/+/3b8a524d25fa6c3d795afb1eece3f24870c60988/27/public/android.jar?format=TEXT" | base64 --decode > android.jar
 
@@ -59,36 +59,33 @@ zip --delete android.jar javax/*
 echo "Removing java..."
 zip --delete android.jar java/*
 
-echo "Removing overriden classes..."
+echo "Removing overridden classes..."
 zip --delete android.jar android/app/Application.class
 zip --delete android.jar android/app/Service.class
 zip --delete android.jar android/net/Uri.class
-zip --delete android.jar 'android/net/Uri$Builder.class'
+zip --delete android.jar "android/net/Uri\$Builder.class"
 zip --delete android.jar android/os/Environment.class
 zip --delete android.jar android/text/format/Formatter.class
 zip --delete android.jar android/text/Html.class
 
-# Dedup overriden Android classes
+# Dedup overridden Android classes
 ABS_JAR="$(realpath android.jar)"
 function dedup() {
-    pushd "$1"
-    CLASSES="$(find * -type f)"
-    echo "$CLASSES" | while read class
+    pushd "$1" || exit
+    CLASSES="$(find ./* -type f)"
+    echo "$CLASSES" | while read -r class
     do
         NAME="${class%.*}"
         echo "Processing class: $NAME"
         zip --delete "$ABS_JAR" "$NAME.class" "$NAME\$*.class" "${NAME}Kt.class" "${NAME}Kt\$*.class" > /dev/null
     done
-    popd
+    popd || exit
 }
 
-pushd ..
+popd || exit
 dedup AndroidCompat/src/main/java
-dedup server/src/main/java
 dedup server/src/main/kotlin
-popd
 
-popd
 echo "Copying Android.jar to library folder..."
 mv tmp/android.jar AndroidCompat/lib
 
