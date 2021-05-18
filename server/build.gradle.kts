@@ -151,10 +151,10 @@ tasks {
             )
         }
     }
+
     test {
         useJUnit()
     }
-
 
     withType<ShadowJar> {
         destinationDirectory.set(File("$rootDir/server/build"))
