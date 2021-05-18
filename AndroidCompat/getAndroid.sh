@@ -71,7 +71,7 @@ zip --delete android.jar android/text/Html.class
 # Dedup overridden Android classes
 ABS_JAR="$(realpath android.jar)"
 function dedup() {
-    pushd "$1" || exit
+    pushd "$1"
     CLASSES="$(find ./* -type f)"
     echo "$CLASSES" | while read -r class
     do
