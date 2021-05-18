@@ -69,10 +69,11 @@ jobs:
           dependencies-cache-enabled: true
           configuration-cache-enabled: true
 
-      - name: make windows package
+      - name: make windows packages
         run: |
           cd master/scripts
-          ./windows-bundler.sh
+          ./windows32-bundler.sh
+          ./windows64-bundler.sh
 
       - name: Checkout preview branch
         uses: actions/checkout@v2
