@@ -37,7 +37,7 @@ Double click on the jar file or run `java -jar Tachidesk-vX.Y.Z-rxxx.jar` (or `j
 ### Windows
 Download the latest win32 release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases).
 
-The Windows specific build has java bundled inside, so you don't have to install java to use it. Unzip `Tachidesk-vX.Y.Z-rxxx-win64.zip` and run `Tachidesk.bat`. The rest works like the previous section.
+The Windows specific build has java bundled inside, so you don't have to install java to use it. Unzip `Tachidesk-vX.Y.Z-rxxx-win64.zip` and run `Tachidesk Launcher.exe` or `Tachidesk Launcher.bat`. The rest works like the previous section.
 
 ### Arch Linux
 You can install Tachidesk from the AUR
