@@ -96,7 +96,10 @@ object JavalinSetup {
             logger.error("NullPointerException while handling the request", e)
             ctx.status(404)
         }
-
+        app.exception(NoSuchElementException::class.java) { e, ctx ->
+            logger.error("NoSuchElementException while handling the request", e)
+            ctx.status(404)
+        }
         app.exception(IOException::class.java) { e, ctx ->
             logger.error("IOException while handling the request", e)
             ctx.status(500)
@@ -257,7 +260,7 @@ object JavalinSetup {
         app.get("/api/v1/manga/:mangaId/chapters") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
 
-            val onlineFetch = ctx.queryParam("onlineFetch", "false").toBoolean()
+            val onlineFetch = ctx.queryParam("onlineFetch")?.toBoolean()
 
             ctx.json(future { getChapterList(mangaId, onlineFetch) })
         }

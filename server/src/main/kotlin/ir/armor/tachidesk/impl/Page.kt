@@ -40,16 +40,16 @@ object Page {
     }
 
     suspend fun getPageImage(mangaId: Int, chapterIndex: Int, index: Int): Pair<InputStream, String> {
-        val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
+        val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
         val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
         val chapterEntry = transaction {
             ChapterTable.select {
                 (ChapterTable.chapterIndex eq chapterIndex) and (ChapterTable.manga eq mangaId)
-            }.firstOrNull()!!
+            }.first()
         }
         val chapterId = chapterEntry[ChapterTable.id].value
 
-        val pageEntry = transaction { PageTable.select { (PageTable.chapter eq chapterId) and (PageTable.index eq index) }.firstOrNull()!! }
+        val pageEntry = transaction { PageTable.select { (PageTable.chapter eq chapterId) and (PageTable.index eq index) }.first() }
 
         val tachiPage = Page(
             pageEntry[PageTable.index],
@@ -78,11 +78,11 @@ object Page {
 // TODO: rewrite this to match tachiyomi
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
     fun getChapterDir(mangaId: Int, chapterId: Int): String {
-        val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
+        val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
         val sourceId = mangaEntry[MangaTable.sourceReference]
         val source = getHttpSource(sourceId)
-        val sourceEntry = transaction { SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!! }
-        val chapterEntry = transaction { ChapterTable.select { ChapterTable.id eq chapterId }.firstOrNull()!! }
+        val sourceEntry = transaction { SourceTable.select { SourceTable.id eq sourceId }.first() }
+        val chapterEntry = transaction { ChapterTable.select { ChapterTable.id eq chapterId }.first() }
 
         val chapterDir = when {
             chapterEntry[ChapterTable.scanlator] != null -> "${chapterEntry[ChapterTable.scanlator]}_${chapterEntry[ChapterTable.name]}"

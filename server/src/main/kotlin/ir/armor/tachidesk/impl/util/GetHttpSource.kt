@@ -32,12 +32,12 @@ object GetHttpSource {
         }
 
         val sourceRecord = transaction {
-            SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!!
+            SourceTable.select { SourceTable.id eq sourceId }.first()
         }
 
         val extensionId = sourceRecord[SourceTable.extension]
         val extensionRecord = transaction {
-            ExtensionTable.select { ExtensionTable.id eq extensionId }.firstOrNull()!!
+            ExtensionTable.select { ExtensionTable.id eq extensionId }.first()
         }
 
         val apkName = extensionRecord[ExtensionTable.apkName]
