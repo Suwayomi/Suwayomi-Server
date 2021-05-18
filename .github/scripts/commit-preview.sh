@@ -1,6 +1,7 @@
 #!/bin/bash
 
-rm -rf preview/*
+rm -rf preview/*.jar preview/*.zip
+
 cp master/server/build/Tachidesk-*.jar preview
 cp master/server/build/Tachidesk-*.zip preview
 

@@ -78,7 +78,8 @@ jobs:
       - name: Checkout preview branch
         uses: actions/checkout@v2
         with:
-          ref: preview
+          repository: 'Suwayomi/Tachidesk-preview'
+          ref: main
           path: preview
 
       - name: Deploy preview
