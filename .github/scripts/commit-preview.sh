@@ -1,18 +1,15 @@
 #!/bin/bash
 
+rm -rf preview/*
 cp master/server/build/Tachidesk-*.jar preview
+cp master/server/build/Tachidesk-*.zip preview
+
 cd preview
 
-new_jar_build=$(ls *.jar| tail -1)
+new_jar_build=$(ls Tachidesk-*.jar)
 echo "last jar build file name: $new_jar_build"
 
-cp -f $new_jar_build Tachidesk-latest.jar
-
-rm -rf latest_pointer/*
-cp $new_jar_build latest_pointer
-cp ../master/server/build/Tachidesk-*.zip latest_pointer
-
-latest=$(ls *.jar | tail -n1 | sed -e's/Tachidesk-\|.jar//g')
+latest=$(echo $new_jar_build | sed -e's/Tachidesk-\|.jar//g')
 echo "{ \"latest\": \"$latest\" }" > index.json
 
 git config --global user.email "github-actions[bot]@users.noreply.github.com"
