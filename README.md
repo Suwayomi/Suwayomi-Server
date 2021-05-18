@@ -14,6 +14,8 @@ Tachidesk is as multi-platform as you can get. Any platform that runs java and/o
 
 Ability to read and write Tachiyomi compatible backups and syncing is a planned feature.
 
+**Tachidesk needs serious front-end dev help for it's reader and other parts, if you are interested please don't hesitate to contribute some code!**
+
 ## Is this application usable? Should I test it?
 Here is a list of current features:
 
