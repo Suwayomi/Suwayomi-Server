@@ -28,7 +28,7 @@ fi
 echo "Getting required Android.jar..."
 rm -rf "tmp"
 mkdir -p "tmp"
-pushd "tmp" || exit
+pushd "tmp"
 
 curl "https://android.googlesource.com/platform/prebuilts/sdk/+/3b8a524d25fa6c3d795afb1eece3f24870c60988/27/public/android.jar?format=TEXT" | base64 --decode > android.jar
 
@@ -79,10 +79,10 @@ function dedup() {
         echo "Processing class: $NAME"
         zip --delete "$ABS_JAR" "$NAME.class" "$NAME\$*.class" "${NAME}Kt.class" "${NAME}Kt\$*.class" > /dev/null
     done
-    popd || exit
+    popd
 }
 
-popd || exit
+popd
 dedup AndroidCompat/src/main/java
 dedup server/src/main/kotlin
 
