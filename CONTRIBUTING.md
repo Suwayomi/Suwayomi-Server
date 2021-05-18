@@ -16,7 +16,7 @@ This structure is chosen to
 - Eaise development of alternative user intefaces for Tachidesk
 
 ## User Interfaces for Tachidesk server
-Currently there are three known interfaces for Tachidesk:
+Currently ,there are three known interfaces for Tachidesk:
 1. [webUI](https://github.com/Suwayomi/Tachidesk/tree/master/webUI/react): The react SPA that Tachidesk is traditionally shipped with.
 2. [TachideskJUI](https://github.com/Suwayomi/TachideskJUI): A Jetbrains Compose Native app, re-uses components made for the upcoming Tachiyomi 1.x
 3. [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js, in super early stages of development.
@@ -28,7 +28,7 @@ You need these software packages installed in order to build the project
 - Java Development Kit and Java Runtime Environment version 8 or newer(both Oracle JDK and OpenJDK works)
 - Android stubs jar
     - Manual download: Download [android.jar](https://raw.githubusercontent.com/Suwayomi/Tachidesk/android-jar/android.jar) and put it under `AndroidCompat/lib`.
-    -  Automated download: Run `AndroidCompat/getAndroid.sh`(MacOS/Linux) or `AndroidCompat/getAndroid.ps1`(Windows) from project's root directory to download and rebuild the jar file from Google's repository.
+    - Automated download: Run `AndroidCompat/getAndroid.sh`(MacOS/Linux) or `AndroidCompat/getAndroid.ps1`(Windows) from project's root directory to download and rebuild the jar file from Google's repository.
 ### webUI
 - Nodejs LTS or latest
 - Yarn
