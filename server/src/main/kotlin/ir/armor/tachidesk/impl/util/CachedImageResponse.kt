@@ -10,7 +10,6 @@ package ir.armor.tachidesk.impl.util
 import okhttp3.Response
 import okio.buffer
 import okio.sink
-import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
@@ -19,12 +18,12 @@ import java.nio.file.Paths
 
 object CachedImageResponse {
     private fun pathToInputStream(path: String): InputStream {
-        return BufferedInputStream(FileInputStream(path))
+        return FileInputStream(path).buffered()
     }
 
     private fun findFileNameStartingWith(directoryPath: String, fileName: String): String? {
         val target = "$fileName."
-        File(directoryPath).listFiles().forEach { file ->
+        File(directoryPath).listFiles().orEmpty().forEach { file ->
             if (file.name.startsWith(target))
                 return "$directoryPath/${file.name}"
         }
@@ -57,16 +56,13 @@ object CachedImageResponse {
                     }
                 }
             }
-            return Pair(
-                pathToInputStream(fullPath),
-                contentType
-            )
+            return pathToInputStream(fullPath) to contentType
         } else {
             throw Exception("request error! ${response.code}")
         }
     }
 
-    suspend fun clearCachedImage(saveDir: String, fileName: String) {
+    fun clearCachedImage(saveDir: String, fileName: String) {
         val cachedFile = findFileNameStartingWith(saveDir, fileName)
         cachedFile?.also {
             File(it).delete()

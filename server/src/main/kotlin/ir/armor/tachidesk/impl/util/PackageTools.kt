@@ -71,12 +71,14 @@ object PackageTools {
         if (handler.hasException()) {
             val errorFile: Path = File(applicationDirs.extensionsRoot).toPath().resolve("$fileNameWithoutType-error.txt")
             logger.error(
-                "Detail Error Information in File $errorFile\n" +
-                    "Please report this file to one of following link if possible (any one).\n" +
-                    "    https://sourceforge.net/p/dex2jar/tickets/\n" +
-                    "    https://bitbucket.org/pxb1988/dex2jar/issues\n" +
-                    "    https://github.com/pxb1988/dex2jar/issues\n" +
-                    "    dex2jar@googlegroups.com"
+                """
+                Detail Error Information in File $errorFile
+                Please report this file to one of following link if possible (any one).
+                https://sourceforge.net/p/dex2jar/tickets/
+                https://bitbucket.org/pxb1988/dex2jar/issues
+                https://github.com/pxb1988/dex2jar/issues
+                dex2jar@googlegroups.com
+                """.trimIndent()
             )
             handler.dump(errorFile, emptyArray<String>())
         }
@@ -98,18 +100,21 @@ object PackageTools {
             applicationInfo.metaData = Bundle().apply {
                 val appTag = doc.getElementsByTagName("application").item(0)
 
-                appTag?.childNodes?.toList()?.filter {
-                    it.nodeType == Node.ELEMENT_NODE
-                }?.map {
-                    it as Element
-                }?.filter {
-                    it.tagName == "meta-data"
-                }?.map {
-                    putString(
-                        it.attributes.getNamedItem("android:name").nodeValue,
-                        it.attributes.getNamedItem("android:value").nodeValue
-                    )
-                }
+                appTag?.childNodes?.toList()
+                    .orEmpty()
+                    .asSequence()
+                    .filter {
+                        it.nodeType == Node.ELEMENT_NODE
+                    }.map {
+                        it as Element
+                    }.filter {
+                        it.tagName == "meta-data"
+                    }.forEach {
+                        putString(
+                            it.attributes.getNamedItem("android:name").nodeValue,
+                            it.attributes.getNamedItem("android:value").nodeValue
+                        )
+                    }
             }
 
             signatures = (

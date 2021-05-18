@@ -37,7 +37,7 @@ object Manga {
     }
 
     suspend fun getManga(mangaId: Int, onlineFetch: Boolean = false): MangaDataClass {
-        var mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
+        var mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
 
         return if (mangaEntry[MangaTable.initialized] && !onlineFetch) {
             MangaDataClass(
@@ -78,14 +78,14 @@ object Manga {
                     it[MangaTable.description] = truncate(fetchedManga.description, 4096)
                     it[MangaTable.genre] = fetchedManga.genre
                     it[MangaTable.status] = fetchedManga.status
-                    if (fetchedManga.thumbnail_url != null && fetchedManga.thumbnail_url!!.isNotEmpty())
+                    if (fetchedManga.thumbnail_url != null && fetchedManga.thumbnail_url.orEmpty().isNotEmpty())
                         it[MangaTable.thumbnail_url] = fetchedManga.thumbnail_url
                 }
             }
 
             clearMangaThumbnail(mangaId)
 
-            mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
+            mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
 
             MangaDataClass(
                 mangaId,
@@ -117,7 +117,7 @@ object Manga {
         return getCachedImageResponse(saveDir, fileName) {
             getManga(mangaId) // make sure is initialized
 
-            val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull()!! }
+            val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
 
             val sourceId = mangaEntry[MangaTable.sourceReference]
             val source = getHttpSource(sourceId)
@@ -130,7 +130,7 @@ object Manga {
         }
     }
 
-    suspend fun clearMangaThumbnail(mangaId: Int) {
+    private fun clearMangaThumbnail(mangaId: Int) {
         val saveDir = applicationDirs.thumbnailsRoot
         val fileName = mangaId.toString()
 

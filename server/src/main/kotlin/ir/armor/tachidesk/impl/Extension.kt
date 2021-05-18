@@ -159,7 +159,7 @@ object Extension {
                     it[this.classFQName] = className
                 }
 
-                val extensionId = ExtensionTable.select { ExtensionTable.pkgName eq pkgName }.firstOrNull()!![ExtensionTable.id].value
+                val extensionId = ExtensionTable.select { ExtensionTable.pkgName eq pkgName }.first()[ExtensionTable.id].value
 
                 sources.forEach { httpSource ->
                     SourceTable.insert {
@@ -195,7 +195,7 @@ object Extension {
     fun uninstallExtension(pkgName: String) {
         logger.debug("Uninstalling $pkgName")
 
-        val extensionRecord = transaction { ExtensionTable.select { ExtensionTable.pkgName eq pkgName }.firstOrNull()!! }
+        val extensionRecord = transaction { ExtensionTable.select { ExtensionTable.pkgName eq pkgName }.first() }
         val fileNameWithoutType = extensionRecord[ExtensionTable.apkName].substringBefore(".apk")
         val jarPath = "${applicationDirs.extensionsRoot}/$fileNameWithoutType.jar"
         transaction {
@@ -234,7 +234,7 @@ object Extension {
     }
 
     suspend fun getExtensionIcon(apkName: String): Pair<InputStream, String> {
-        val iconUrl = transaction { ExtensionTable.select { ExtensionTable.apkName eq apkName }.firstOrNull()!! }[ExtensionTable.iconUrl]
+        val iconUrl = transaction { ExtensionTable.select { ExtensionTable.apkName eq apkName }.first() }[ExtensionTable.iconUrl]
 
         val saveDir = "${applicationDirs.extensionsRoot}/icon"
 

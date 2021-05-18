@@ -198,7 +198,7 @@ object LegacyBackupImport : LegacyBackupBase() {
                 it[description] = fetchedManga.description
                 it[genre] = fetchedManga.genre
                 it[status] = fetchedManga.status
-                if (fetchedManga.thumbnail_url != null && fetchedManga.thumbnail_url!!.isNotEmpty())
+                if (fetchedManga.thumbnail_url != null && fetchedManga.thumbnail_url.orEmpty().isNotEmpty())
                     it[MangaTable.thumbnail_url] = fetchedManga.thumbnail_url
             }
         }
