@@ -96,7 +96,7 @@ sourceSets {
 }
 
 // should be bumped with each stable release
-val tachideskVersion = "v0.3.6"
+val tachideskVersion = "v0.3.7"
 
 // counts commit count on master
 val tachideskRevision = Runtime
