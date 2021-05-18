@@ -25,3 +25,4 @@
 *.pyc binary
 *.swp binary
 *.pdf binary
+*.exe binary
