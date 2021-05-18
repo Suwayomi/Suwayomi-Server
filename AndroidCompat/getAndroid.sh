@@ -20,7 +20,7 @@ fi
 
 
 # foolproof against running from AndroidCompat dir instead of running from project root
-if [ "$(basename $(pwd))" = "AndroidCompat" ]; then
+if [ "$(basename "$(pwd)")" = "AndroidCompat" ]; then
   cd ..
 fi
 
@@ -59,7 +59,7 @@ zip --delete android.jar javax/*
 echo "Removing java..."
 zip --delete android.jar java/*
 
-echo "Removing overriden classes..."
+echo "Removing overridden classes..."
 zip --delete android.jar android/app/Application.class
 zip --delete android.jar android/app/Service.class
 zip --delete android.jar android/net/Uri.class
@@ -68,12 +68,12 @@ zip --delete android.jar android/os/Environment.class
 zip --delete android.jar android/text/format/Formatter.class
 zip --delete android.jar android/text/Html.class
 
-# Dedup overriden Android classes
+# Dedup overridden Android classes
 ABS_JAR="$(realpath android.jar)"
 function dedup() {
     pushd "$1"
-    CLASSES="$(find * -type f)"
-    echo "$CLASSES" | while read class
+    CLASSES="$(find ./* -type f)"
+    echo "$CLASSES" | while read -r class
     do
         NAME="${class%.*}"
         echo "Processing class: $NAME"
@@ -82,13 +82,10 @@ function dedup() {
     popd
 }
 
-pushd ..
+popd
 dedup AndroidCompat/src/main/java
-dedup server/src/main/java
 dedup server/src/main/kotlin
-popd
 
-popd
 echo "Copying Android.jar to library folder..."
 mv tmp/android.jar AndroidCompat/lib
 
