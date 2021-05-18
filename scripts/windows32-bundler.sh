@@ -8,16 +8,16 @@
 
 echo "Downloading jre..."
 
-jre="OpenJDK8U-jre_x64_windows_hotspot_8u292b10.zip"
+jre="OpenJDK8U-jre_x86-32_windows_hotspot_8u292b10.zip"
 if [ ! -f $jre ]; then
-  curl -L "https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u292-b10/OpenJDK8U-jre_x64_windows_hotspot_8u292b10.zip" -o $jre
+  curl -L "https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u292-b10/OpenJDK8U-jre_x86-32_windows_hotspot_8u292b10.zip" -o $jre
 fi
 
 echo "creating windows bundle"
 
 jar=$(ls ../server/build/Tachidesk-*.jar)
 jar_name=$(echo $jar | cut -d'/' -f4)
-release_name=$(echo $jar_name | cut -d'.' -f4 --complement)-win64
+release_name=$(echo $jar_name | cut -d'.' -f4 --complement)-win32
 
 # make release dir
 mkdir $release_name
@@ -29,7 +29,7 @@ mv jdk8u292-b10-jre $release_name/jre
 
 cp $jar $release_name/Tachidesk.jar
 
-cp "resources/Tachidesk Launcher.exe" $release_name
+cp "resources/Tachidesk Launcher-win32.exe" "$release_name/Tachidesk Launcher.exe"
 cp "resources/Tachidesk Launcher.bat" $release_name
 cp "resources/Tachidesk Debug Launcher.bat" $release_name
 
