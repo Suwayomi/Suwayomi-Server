@@ -31,7 +31,7 @@ jobs:
       - name: Checkout master branch
         uses: actions/checkout@v2
         with:
-          ref: master
+          ref: ${{ github.ref }}
           path: master
           fetch-depth: 0
 
