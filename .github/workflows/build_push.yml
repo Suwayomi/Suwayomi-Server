@@ -81,6 +81,7 @@ jobs:
           repository: 'Suwayomi/Tachidesk-preview'
           ref: main
           path: preview
+          token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
 
       - name: Deploy preview
         run: |

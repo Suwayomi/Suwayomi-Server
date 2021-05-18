@@ -46,7 +46,7 @@ run `./gradlew :server:run --stacktrace` to run the server
 ### webUI
 How to do it is described in `webUI/react/README.md` but for short,
  first cd into `webUI/react` then run `yarn` to install the node modules(do this only once)
- then `yarn start` to start the development server, if a new browser window doesn't get opned automatically,
+ then `yarn start` to start the development server, if a new browser window doesn't get opened automatically,
  then open `http://127.0.0.1:3000` in a modern browser. This is a `create-react-app` project
  and supports HMR and all the other goodies you'll need.
 
