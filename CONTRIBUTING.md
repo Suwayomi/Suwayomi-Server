@@ -40,7 +40,7 @@ Delete the `server/src/main/resources/react` directory if exists from previous r
 ### building the Windows package
 First Build the jar, then cd into the `scripts` directory and run `./windows<bits>-bundler.sh` (or `./windows<bits>-bundler.ps1` if you are on windows), the resulting built zip package file will be `server/build/Tachidesk-vX.Y.Z-rxxx-win64.zip`.
 ## Running in development mode
-First satistify [the prerequisites](#prerequisites)
+First satisfy [the prerequisites](#prerequisites)
 ### server
 run `./gradlew :server:run --stacktrace` to run the server
 ### webUI
