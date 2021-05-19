@@ -1,4 +1,4 @@
-package ir.armor.tachidesk.server.internal
+package ir.armor.tachidesk.server.impl_internal
 
 /*
  * Copyright (C) Contributors to the Suwayomi project

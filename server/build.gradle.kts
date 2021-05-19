@@ -12,7 +12,9 @@ plugins {
 }
 
 repositories {
-    mavenCentral()
+    maven {
+        url = uri("https://repo1.maven.org/maven2/")
+    }
     maven {
         url = uri("https://jitpack.io")
     }
@@ -53,7 +55,9 @@ dependencies {
 
     // api
     implementation("io.javalin:javalin:3.13.6")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.12.3")
+    // jackson version is tied to javalin, ref: `io.javalin.core.util.OptionalDependency`
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.10.3")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.10.3")
 
     // Exposed ORM
     val exposedVersion = "0.31.1"

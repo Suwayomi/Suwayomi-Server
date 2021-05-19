@@ -15,7 +15,7 @@ import dorkbox.util.Desktop
 import ir.armor.tachidesk.server.BuildConfig
 import ir.armor.tachidesk.server.ServerConfig
 import ir.armor.tachidesk.server.serverConfig
-import kotlin.system.exitProcess
+import ir.armor.tachidesk.server.util.ExitCode.Success
 
 fun openInBrowser() {
     try {
@@ -53,8 +53,7 @@ fun systemTray(): SystemTray? {
 
         mainMenu.add(
             MenuItem("Quit") {
-                systemTray.shutdown()
-                exitProcess(0)
+                shutdownApp(Success)
             }
         )
 

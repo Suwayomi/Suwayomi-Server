@@ -10,6 +10,7 @@ package ir.armor.tachidesk.server
 import ch.qos.logback.classic.Level
 import eu.kanade.tachiyomi.App
 import ir.armor.tachidesk.model.database.databaseUp
+import ir.armor.tachidesk.server.util.AppMutex.handleAppMutex
 import ir.armor.tachidesk.server.util.systemTray
 import mu.KotlinLogging
 import org.kodein.di.DI
@@ -36,7 +37,7 @@ class ApplicationDirs(
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
-val systemTray by lazy { systemTray() }
+val systemTrayInstance by lazy { systemTray() }
 
 val androidCompat by lazy { AndroidCompat() }
 
@@ -65,6 +66,8 @@ fun applicationSetup() {
     GlobalConfigManager.registerModule(
         ServerConfig.register(GlobalConfigManager.config)
     )
+
+    handleAppMutex()
 
     // Load config API
     DI.global.addImport(ConfigKodeinModule().create())
@@ -97,7 +100,7 @@ fun applicationSetup() {
     // create system tray
     if (serverConfig.systemTrayEnabled) {
         try {
-            systemTray
+            systemTrayInstance
         } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
             e.printStackTrace()
         }
