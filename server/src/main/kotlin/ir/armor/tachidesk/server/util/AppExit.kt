@@ -1,6 +1,9 @@
 package ir.armor.tachidesk.server.util
 
+import mu.KotlinLogging
 import kotlin.system.exitProcess
+
+private val logger = KotlinLogging.logger {}
 
 enum class ExitCode(val code: Int) {
     Success(0),
@@ -9,5 +12,7 @@ enum class ExitCode(val code: Int) {
 }
 
 fun shutdownApp(exitCode: ExitCode) {
+    logger.info("Shutting Down Tachidesk. Goodbye!")
+
     exitProcess(exitCode.code)
 }

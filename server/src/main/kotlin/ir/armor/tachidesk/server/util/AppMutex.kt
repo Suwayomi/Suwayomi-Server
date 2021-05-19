@@ -59,11 +59,17 @@ object AppMutex {
                 logger.info("Mutex status is clear, Resuming startup.")
             }
             TachideskInstanceRunning -> {
-                logger.info("Another instance of Tachidesk is running on $appIP:${serverConfig.port}, Aborting.")
+                logger.info("Another instance of Tachidesk is running on $appIP:${serverConfig.port}")
+
+                logger.info("Probably user thought tachidesk is closed so, opening webUI in browser again.")
+                openInBrowser()
+
+                logger.info("Aborting startup.")
+
                 shutdownApp(ExitCode.MutexCheckFailedTachideskRunning)
             }
             OtherApplicationRunning -> {
-                logger.error("A non Tachidesk application is running on $appIP:${serverConfig.port}, Aborting.")
+                logger.error("A non Tachidesk application is running on $appIP:${serverConfig.port}, aborting startup.")
                 shutdownApp(ExitCode.MutexCheckFailedAnotherAppRunning)
             }
         }
