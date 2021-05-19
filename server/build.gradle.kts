@@ -175,10 +175,10 @@ tasks {
     }
 
     withType<LintTask> {
-        source(files("src"))
+        source(files("src/kotlin"))
     }
 
     withType<FormatTask> {
-        source(files("src"))
+        source(files("src/kotlin"))
     }
 }
