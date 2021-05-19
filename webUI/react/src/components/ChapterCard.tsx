@@ -26,9 +26,6 @@ const useStyles = makeStyles((theme) => ({
         alignItems: 'center',
         padding: 16,
     },
-    read: {
-        backgroundColor: theme.palette.type === 'dark' ? '#353535' : '#f0f0f0',
-    },
     bullet: {
         display: 'inline-block',
         margin: '0 2px',
@@ -80,16 +77,17 @@ export default function ChapterCard(props: IProps) {
             .then(() => triggerChaptersUpdate());
     };
 
+    const readChapterColor = theme.palette.type === 'dark' ? '#acacac' : '#b0b0b0';
     return (
         <>
             <li>
                 <Card>
-                    <CardContent className={`${classes.root} ${chapter.read && classes.read}`}>
+                    <CardContent className={classes.root}>
                         <Link
                             to={`/manga/${chapter.mangaId}/chapter/${chapter.index}`}
                             style={{
                                 textDecoration: 'none',
-                                color: theme.palette.text.primary,
+                                color: chapter.read ? readChapterColor : theme.palette.text.primary,
                             }}
                         >
                             <div style={{ display: 'flex' }}>
