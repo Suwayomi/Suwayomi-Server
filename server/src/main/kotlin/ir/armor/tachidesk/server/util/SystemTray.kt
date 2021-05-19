@@ -18,8 +18,9 @@ import ir.armor.tachidesk.server.serverConfig
 import ir.armor.tachidesk.server.util.ExitCode.Success
 
 fun openInBrowser() {
+    val appIP = if (serverConfig.ip == "0.0.0.0") "127.0.0.1" else serverConfig.ip
     try {
-        Desktop.browseURL("http://${serverConfig.ip}:${serverConfig.port}")
+        Desktop.browseURL("http://${appIP}:${serverConfig.port}")
     } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
         e.printStackTrace()
     }
