@@ -12,7 +12,7 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
 import ir.armor.tachidesk.impl.util.awaitSingle
 import ir.armor.tachidesk.impl.util.storage.CachedImageResponse.getCachedImageResponse
-import ir.armor.tachidesk.impl.util.storage.DiskUtil
+import ir.armor.tachidesk.impl.util.storage.SafePath
 import ir.armor.tachidesk.model.database.table.ChapterTable
 import ir.armor.tachidesk.model.database.table.MangaTable
 import ir.armor.tachidesk.model.database.table.PageTable
@@ -82,8 +82,8 @@ object Page {
         val chapterEntry = transaction { ChapterTable.select { ChapterTable.id eq chapterId }.first() }
 
         val sourceDir = source.toString()
-        val mangaDir = DiskUtil.buildValidFilename(mangaEntry[MangaTable.title])
-        val chapterDir = DiskUtil.buildValidFilename(
+        val mangaDir = SafePath.buildValidFilename(mangaEntry[MangaTable.title])
+        val chapterDir = SafePath.buildValidFilename(
                 when {
                     chapterEntry[ChapterTable.scanlator] != null -> "${chapterEntry[ChapterTable.scanlator]}_${chapterEntry[ChapterTable.name]}"
                     else -> chapterEntry[ChapterTable.name]

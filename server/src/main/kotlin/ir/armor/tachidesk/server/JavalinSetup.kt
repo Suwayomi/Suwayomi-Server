@@ -302,6 +302,16 @@ object JavalinSetup {
             )
         }
 
+        // submit a chapter for download
+        app.put("/api/v1/manga/:mangaId/chapter/:chapterIndex/download") { ctx ->
+            // TODO
+        }
+
+        // cancel a chapter download
+        app.delete("/api/v1/manga/:mangaId/chapter/:chapterIndex/download") { ctx ->
+            // TODO
+        }
+
         // global search, Not implemented yet
         app.get("/api/v1/search/:searchTerm") { ctx ->
             val searchTerm = ctx.pathParam("searchTerm")
@@ -431,6 +441,20 @@ object JavalinSetup {
                     )
                 }
             )
+        }
+
+        // Download queue stats
+        app.ws("/api/v1/downloads") { ws ->
+            ws.onConnect { ctx ->
+                // TODO: send current stat
+                // TODO: add to downlad subscribers
+            }
+            ws.onMessage {
+                // TODO: send current stat
+            }
+            ws.onClose { ctx ->
+                // TODO: remove from subscribers
+            }
         }
     }
 }

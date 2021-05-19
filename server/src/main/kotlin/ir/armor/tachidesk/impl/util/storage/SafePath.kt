@@ -8,7 +8,7 @@ package ir.armor.tachidesk.impl.util.storage
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 // adopted from: https://github.com/tachiyomiorg/tachiyomi/blob/4cefbce7c34e724b409b6ba127f3c6c5c346ad8d/app/src/main/java/eu/kanade/tachiyomi/util/storage/DiskUtil.kt
-object DiskUtil {
+object SafePath {
     /**
      * Mutate the given filename to make it valid for a FAT filesystem,
      * replacing any invalid characters with "_". This method doesn't allow hidden files (starting

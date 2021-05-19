@@ -8,13 +8,9 @@ package ir.armor.tachidesk.impl.util.storage
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import okhttp3.Response
-import okio.buffer
-import okio.sink
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
-import java.nio.file.Files
-import java.nio.file.Paths
 
 object CachedImageResponse {
     private fun pathToInputStream(path: String): InputStream {
@@ -45,18 +41,19 @@ object CachedImageResponse {
         val response = fetcher()
 
         if (response.code == 200) {
-            val contentType = response.headers["content-type"]!!
-            val fullPath = filePath + "." + contentType.substringAfter("image/")
+            val fullPath = "$filePath.tmp"
+            val saveFile = File(fullPath)
+            response.body!!.source().saveTo(saveFile)
 
-            Files.newOutputStream(Paths.get(fullPath)).use { output ->
-                response.body!!.source().use { input ->
-                    output.sink().buffer().use {
-                        it.writeAll(input)
-                        it.flush()
-                    }
-                }
-            }
-            return pathToInputStream(fullPath) to contentType
+            // find image type
+            val imageType = response.headers["content-type"]
+                ?: ImageUtil.findImageType { saveFile.inputStream() }?.mime
+                ?: "image/jpeg"
+                    .substringAfter("image/")
+
+            saveFile.renameTo(File("$filePath.$imageType"))
+
+            return pathToInputStream(fullPath) to imageType
         } else {
             throw Exception("request error! ${response.code}")
         }
