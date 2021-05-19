@@ -1,4 +1,4 @@
-package ir.armor.tachidesk.impl.util
+package ir.armor.tachidesk.impl.util.storage
 
 /*
  * Copyright (C) Contributors to the Suwayomi project

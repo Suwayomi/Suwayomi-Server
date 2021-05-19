@@ -15,7 +15,7 @@ import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
 import ir.armor.tachidesk.impl.ExtensionsList.extensionTableAsDataClass
-import ir.armor.tachidesk.impl.util.CachedImageResponse.getCachedImageResponse
+import ir.armor.tachidesk.impl.util.storage.CachedImageResponse.getCachedImageResponse
 import ir.armor.tachidesk.impl.util.PackageTools.EXTENSION_FEATURE
 import ir.armor.tachidesk.impl.util.PackageTools.LIB_VERSION_MAX
 import ir.armor.tachidesk.impl.util.PackageTools.LIB_VERSION_MIN
