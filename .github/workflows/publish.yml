@@ -28,7 +28,7 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
-      - name: Checkout master branch
+      - name: Checkout ${{ github.ref }}
         uses: actions/checkout@v2
         with:
           ref: ${{ github.ref }}

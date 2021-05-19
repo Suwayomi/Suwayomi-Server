@@ -27,7 +27,7 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
-      - name: Checkout master branch
+      - name: Checkout pull request
         uses: actions/checkout@v2
         with:
           ref: ${{ github.event.pull_request.head.sha }}
