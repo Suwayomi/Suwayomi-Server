@@ -64,11 +64,7 @@ object LegacyBackupImport : LegacyBackupBase() {
         logger.info {
             """
                 Restore Errors:
-                ${
-            errors.map {
-                "${it.first} - ${it.second}"
-            }.joinToString("\n")
-            }
+                ${ errors.joinToString("\n") { "${it.first} - ${it.second}" } }
                 Restore Summary:
                 - Missing Sources:
                 ${validationResult.missingSources.joinToString("\n")}
@@ -118,6 +114,8 @@ object LegacyBackupImport : LegacyBackupBase() {
         val source = try {
             getHttpSource(manga.source)
         } catch (e: NullPointerException) {
+            null
+        } catch (e: NoSuchElementException) {
             null
         }
         val sourceName = sourceMapping[manga.source] ?: manga.source.toString()
