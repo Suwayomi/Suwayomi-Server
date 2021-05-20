@@ -1,4 +1,4 @@
-package ir.armor.tachidesk.impl
+package ir.armor.tachidesk.impl.extension
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -7,9 +7,9 @@ package ir.armor.tachidesk.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import eu.kanade.tachiyomi.extension.api.ExtensionGithubApi
-import eu.kanade.tachiyomi.extension.model.Extension
-import ir.armor.tachidesk.impl.Extension.getExtensionIconUrl
+import ir.armor.tachidesk.impl.extension.Extension.getExtensionIconUrl
+import ir.armor.tachidesk.impl.extension.github.ExtensionGithubApi
+import ir.armor.tachidesk.impl.extension.github.OnlineExtension
 import ir.armor.tachidesk.model.database.table.ExtensionTable
 import ir.armor.tachidesk.model.dataclass.ExtensionDataClass
 import mu.KotlinLogging
@@ -25,7 +25,7 @@ object ExtensionsList {
     private val logger = KotlinLogging.logger {}
 
     var lastUpdateCheck: Long = 0
-    var updateMap = ConcurrentHashMap<String, Extension.Available>()
+    var updateMap = ConcurrentHashMap<String, OnlineExtension>()
 
     /** 60,000 milliseconds = 60 seconds */
     private const val ExtensionUpdateDelayTime = 60 * 1000
@@ -63,7 +63,7 @@ object ExtensionsList {
         }
     }
 
-    private fun updateExtensionDatabase(foundExtensions: List<Extension.Available>) {
+    private fun updateExtensionDatabase(foundExtensions: List<OnlineExtension>) {
         transaction {
             foundExtensions.forEach { foundExtension ->
                 val extensionRecord = ExtensionTable.select { ExtensionTable.pkgName eq foundExtension.pkgName }.firstOrNull()

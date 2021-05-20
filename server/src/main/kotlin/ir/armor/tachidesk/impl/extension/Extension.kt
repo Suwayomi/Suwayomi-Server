@@ -1,4 +1,4 @@
-package ir.armor.tachidesk.impl
+package ir.armor.tachidesk.impl.extension
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -8,13 +8,13 @@ package ir.armor.tachidesk.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import android.net.Uri
-import eu.kanade.tachiyomi.extension.api.ExtensionGithubApi
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
-import ir.armor.tachidesk.impl.ExtensionsList.extensionTableAsDataClass
+import ir.armor.tachidesk.impl.extension.ExtensionsList.extensionTableAsDataClass
+import ir.armor.tachidesk.impl.extension.github.ExtensionGithubApi
 import ir.armor.tachidesk.impl.util.PackageTools.EXTENSION_FEATURE
 import ir.armor.tachidesk.impl.util.PackageTools.LIB_VERSION_MAX
 import ir.armor.tachidesk.impl.util.PackageTools.LIB_VERSION_MIN

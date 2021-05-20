@@ -7,7 +7,7 @@ package ir.armor.tachidesk.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import ir.armor.tachidesk.impl.Extension.getExtensionIconUrl
+import ir.armor.tachidesk.impl.extension.Extension.getExtensionIconUrl
 import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
 import ir.armor.tachidesk.model.database.table.ExtensionTable
 import ir.armor.tachidesk.model.database.table.SourceTable

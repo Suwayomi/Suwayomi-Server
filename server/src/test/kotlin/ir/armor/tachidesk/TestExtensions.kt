@@ -10,11 +10,11 @@ package ir.armor.tachidesk
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
-import ir.armor.tachidesk.impl.Extension.installExtension
-import ir.armor.tachidesk.impl.Extension.uninstallExtension
-import ir.armor.tachidesk.impl.Extension.updateExtension
-import ir.armor.tachidesk.impl.ExtensionsList.getExtensionList
 import ir.armor.tachidesk.impl.Source.getSourceList
+import ir.armor.tachidesk.impl.extension.Extension.installExtension
+import ir.armor.tachidesk.impl.extension.Extension.uninstallExtension
+import ir.armor.tachidesk.impl.extension.Extension.updateExtension
+import ir.armor.tachidesk.impl.extension.ExtensionsList.getExtensionList
 import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
 import ir.armor.tachidesk.impl.util.lang.awaitSingle
 import ir.armor.tachidesk.model.dataclass.ExtensionDataClass

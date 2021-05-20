@@ -13,11 +13,6 @@ import ir.armor.tachidesk.impl.CategoryManga.removeMangaFromCategory
 import ir.armor.tachidesk.impl.Chapter.getChapter
 import ir.armor.tachidesk.impl.Chapter.getChapterList
 import ir.armor.tachidesk.impl.Chapter.modifyChapter
-import ir.armor.tachidesk.impl.Extension.getExtensionIcon
-import ir.armor.tachidesk.impl.Extension.installExtension
-import ir.armor.tachidesk.impl.Extension.uninstallExtension
-import ir.armor.tachidesk.impl.Extension.updateExtension
-import ir.armor.tachidesk.impl.ExtensionsList.getExtensionList
 import ir.armor.tachidesk.impl.Library.addMangaToLibrary
 import ir.armor.tachidesk.impl.Library.getLibraryMangas
 import ir.armor.tachidesk.impl.Library.removeMangaFromLibrary
@@ -33,6 +28,11 @@ import ir.armor.tachidesk.impl.Source.getSourceList
 import ir.armor.tachidesk.impl.backup.BackupFlags
 import ir.armor.tachidesk.impl.backup.legacy.LegacyBackupExport.createLegacyBackup
 import ir.armor.tachidesk.impl.backup.legacy.LegacyBackupImport.restoreLegacyBackup
+import ir.armor.tachidesk.impl.extension.Extension.getExtensionIcon
+import ir.armor.tachidesk.impl.extension.Extension.installExtension
+import ir.armor.tachidesk.impl.extension.Extension.uninstallExtension
+import ir.armor.tachidesk.impl.extension.Extension.updateExtension
+import ir.armor.tachidesk.impl.extension.ExtensionsList.getExtensionList
 import ir.armor.tachidesk.server.impl_internal.About.getAbout
 import ir.armor.tachidesk.server.util.openInBrowser
 import kotlinx.coroutines.CoroutineScope
