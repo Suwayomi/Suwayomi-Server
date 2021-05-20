@@ -41,6 +41,7 @@ object ExtensionGithubService {
     }
 }
 
+// ref: https://stackoverflow.com/questions/51901333/okhttp-3-how-to-decompress-gzip-deflate-response-manually-using-java-android
 private class UnzippingInterceptor : Interceptor {
     @Throws(IOException::class)
     override fun intercept(chain: Chain): Response {
@@ -48,7 +49,6 @@ private class UnzippingInterceptor : Interceptor {
         return unzip(response)
     }
 
-    // ref: https://stackoverflow.com/questions/51901333/okhttp-3-how-to-decompress-gzip-deflate-response-manually-using-java-android
     @Throws(IOException::class)
     private fun unzip(response: Response): Response {
         if (response.body == null) {
