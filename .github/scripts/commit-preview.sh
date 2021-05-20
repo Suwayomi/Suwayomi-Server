@@ -18,7 +18,7 @@ git config --global user.name "github-actions[bot]"
 git status
 if [ -n "$(git status --porcelain)" ]; then
     git add .
-    git commit -m "Update preview repository"
+    git commit -m "Updated to $latest"
     git push
 else
     echo "No changes to commit"
