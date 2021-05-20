@@ -28,13 +28,6 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp-dnsoverhttps:$okhttpVersion")
     implementation("com.squareup.okio:okio:2.10.0")
 
-    // Retrofit, used in `ExtensionGithubService`
-    val retrofitVersion = "2.9.0"
-    implementation("com.squareup.retrofit2:retrofit:$retrofitVersion")
-    implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:0.8.0")
-    implementation("com.squareup.retrofit2:converter-gson:$retrofitVersion")
-    implementation("com.squareup.retrofit2:adapter-rxjava:$retrofitVersion")
-
     // Javalin api
     implementation("io.javalin:javalin:3.13.6")
     // jackson version is tied to javalin, ref: `io.javalin.core.util.OptionalDependency`
@@ -53,9 +46,6 @@ dependencies {
     // tray icon
     implementation("com.dorkbox:SystemTray:4.1")
     implementation("com.dorkbox:Utilities:1.9")
-
-    // misc
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.1.0")
 
 
     // dependencies of Tachiyomi extensions, some are duplicate, keeping it here for reference
