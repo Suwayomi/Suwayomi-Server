@@ -9,7 +9,7 @@
 # Gradle wrapper
 *.jar binary
 
-# Images
+# Binary files types
 *.webp binary
 *.png binary
 *.jpg binary
