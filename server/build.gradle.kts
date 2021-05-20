@@ -55,7 +55,6 @@ dependencies {
     implementation("com.dorkbox:Utilities:1.9")
 
     // misc
-    implementation("com.google.guava:guava:30.1.1-jre")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.1.0")
 
 

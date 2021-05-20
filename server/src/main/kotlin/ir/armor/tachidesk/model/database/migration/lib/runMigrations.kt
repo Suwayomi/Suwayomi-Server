@@ -10,7 +10,7 @@ package ir.armor.tachidesk.model.database.migration.lib
 // originally licenced under MIT by Andreas Mausch, Changes are licenced under Mozilla Public License, v. 2.0.
 // adopted from: https://gitlab.com/andreas-mausch/exposed-migrations/-/tree/4bf853c18a24d0170eda896ddbb899cb01233595
 
-import com.google.common.reflect.ClassPath
+import ir.armor.tachidesk.server.ServerConfig
 import mu.KotlinLogging
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Database
@@ -18,8 +18,15 @@ import org.jetbrains.exposed.sql.SchemaUtils.create
 import org.jetbrains.exposed.sql.exists
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.nio.file.FileSystems
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.time.Clock
 import java.time.Instant.now
+import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.isDirectory
+import kotlin.io.path.name
+import kotlin.streams.toList
 
 private val logger = KotlinLogging.logger {}
 
@@ -54,13 +61,31 @@ fun runMigrations(migrations: List<Migration>, database: Database = TransactionM
     logger.info { "Migrations finished successfully" }
 }
 
+@OptIn(ExperimentalPathApi::class)
+private fun getTopLevelClasses(packageName: String): List<Class<*>> {
+    ServerConfig::class.java.getResource("/" + "ir.armor.tachidesk.model.database.migration".replace('.', '/'))
+    val path = "/" + packageName.replace('.', '/')
+    val uri = ServerConfig::class.java.getResource(path).toURI()
+
+    return when (uri.scheme) {
+        "jar" -> {
+            val fileSystem = FileSystems.newFileSystem(uri, emptyMap<String, Any>())
+            fileSystem.getPath(path)
+        }
+        else -> Paths.get(uri)
+    }.let { Files.walk(it, 1) }
+        .toList()
+        .filterNot { it.isDirectory() || it.name.contains('$') } // '$' means it's not a top level class
+        .filter { it.name.endsWith(".class") }
+        .map { Class.forName("$packageName.${it.name.substringBefore(".class")}") }
+}
+
 @Suppress("UnstableApiUsage")
-fun loadMigrationsFrom(classPath: String): List<Migration> {
-    return ClassPath.from(Thread.currentThread().contextClassLoader)
-        .getTopLevelClasses(classPath)
+fun loadMigrationsFrom(packageName: String): List<Migration> {
+    return getTopLevelClasses(packageName)
         .map {
             logger.debug("found Migration class ${it.name}")
-            val clazz = it.load().getDeclaredConstructor().newInstance()
+            val clazz = it.getDeclaredConstructor().newInstance()
             if (clazz is Migration)
                 clazz
             else
