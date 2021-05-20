@@ -7,7 +7,6 @@ package ir.armor.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import ch.qos.logback.classic.Level
 import eu.kanade.tachiyomi.App
 import ir.armor.tachidesk.model.database.databaseUp
 import ir.armor.tachidesk.server.util.AppMutex.handleAppMutex
@@ -17,7 +16,6 @@ import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.conf.global
 import org.kodein.di.singleton
-import org.slf4j.Logger
 import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
 import xyz.nulldev.ts.config.ApplicationRootDir
@@ -67,6 +65,7 @@ fun applicationSetup() {
         ServerConfig.register(GlobalConfigManager.config)
     )
 
+    // Make sure only one instance of the app is running
     handleAppMutex()
 
     // Load config API
@@ -75,11 +74,6 @@ fun applicationSetup() {
     AndroidCompatInitializer().init()
     // start app
     androidCompat.startApp(App())
-
-    // set application wide logging level
-    if (serverConfig.debugLogsEnabled) {
-        (KotlinLogging.logger(Logger.ROOT_LOGGER_NAME).underlyingLogger as ch.qos.logback.classic.Logger).level = Level.DEBUG
-    }
 
     // create conf file if doesn't exist
     try {

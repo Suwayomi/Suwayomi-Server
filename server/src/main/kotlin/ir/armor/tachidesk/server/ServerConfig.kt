@@ -10,6 +10,8 @@ package ir.armor.tachidesk.server
 import com.typesafe.config.Config
 import io.github.config4k.getValue
 import xyz.nulldev.ts.config.ConfigModule
+import xyz.nulldev.ts.config.GlobalConfigManager
+import xyz.nulldev.ts.config.debugLogsEnabled
 
 class ServerConfig(config: Config) : ConfigModule(config) {
     val ip: String by config
@@ -21,7 +23,7 @@ class ServerConfig(config: Config) : ConfigModule(config) {
     val socksProxyPort: String by config
 
     // misc
-    val debugLogsEnabled: Boolean = System.getProperty("ir.armor.tachidesk.debugLogsEnabled", config.getString("debugLogsEnabled")).toBoolean()
+    val debugLogsEnabled: Boolean = debugLogsEnabled(GlobalConfigManager.config)
     val systemTrayEnabled: Boolean by config
     val initialOpenInBrowserEnabled: Boolean by config
 

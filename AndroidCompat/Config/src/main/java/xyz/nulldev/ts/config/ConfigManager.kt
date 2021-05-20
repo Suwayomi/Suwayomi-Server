@@ -7,6 +7,7 @@ package xyz.nulldev.ts.config
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import ch.qos.logback.classic.Level
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import com.typesafe.config.ConfigRenderOptions
@@ -41,20 +42,33 @@ open class ConfigManager {
      */
     fun loadConfigs(): Config {
         //Load reference configs
-        val compatConfig =  ConfigFactory.parseResources("compat-reference.conf")
+        val compatConfig = ConfigFactory.parseResources("compat-reference.conf")
         val serverConfig = ConfigFactory.parseResources("server-reference.conf")
+        val baseConfig =
+                ConfigFactory.parseMap(
+                        mapOf(
+                                "ts.server.rootDir" to ApplicationRootDir
+                        )
+                )
 
         //Load user config
         val userConfig =
-            File(ApplicationRootDir, "server.conf").let {
-                ConfigFactory.parseFile(it)
-            }
+                File(ApplicationRootDir, "server.conf").let {
+                    ConfigFactory.parseFile(it)
+                }
+
 
         val config = ConfigFactory.empty()
+                .withFallback(baseConfig)
                 .withFallback(userConfig)
                 .withFallback(compatConfig)
                 .withFallback(serverConfig)
                 .resolve()
+
+        // set log level early
+        if (debugLogsEnabled(config)) {
+            setLogLevel(Level.DEBUG)
+        }
 
         logger.debug {
             "Loaded config:\n" + config.root().render(ConfigRenderOptions.concise().setFormatted(true))
