@@ -11,7 +11,7 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import ir.armor.tachidesk.impl.Manga.getManga
 import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
-import ir.armor.tachidesk.impl.util.awaitSingle
+import ir.armor.tachidesk.impl.util.lang.awaitSingle
 import ir.armor.tachidesk.model.database.table.ChapterTable
 import ir.armor.tachidesk.model.database.table.MangaTable
 import ir.armor.tachidesk.model.database.table.PageTable

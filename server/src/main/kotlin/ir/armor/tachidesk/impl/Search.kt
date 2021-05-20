@@ -9,7 +9,7 @@ package ir.armor.tachidesk.impl
 
 import ir.armor.tachidesk.impl.MangaList.processEntries
 import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
-import ir.armor.tachidesk.impl.util.awaitSingle
+import ir.armor.tachidesk.impl.util.lang.awaitSingle
 import ir.armor.tachidesk.model.dataclass.PagedMangaListDataClass
 
 object Search {

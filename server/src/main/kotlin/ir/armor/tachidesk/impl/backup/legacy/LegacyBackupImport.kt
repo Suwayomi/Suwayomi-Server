@@ -21,7 +21,7 @@ import ir.armor.tachidesk.impl.backup.models.MangaImpl
 import ir.armor.tachidesk.impl.backup.models.Track
 import ir.armor.tachidesk.impl.backup.models.TrackImpl
 import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
-import ir.armor.tachidesk.impl.util.awaitSingle
+import ir.armor.tachidesk.impl.util.lang.awaitSingle
 import ir.armor.tachidesk.model.database.table.MangaTable
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.and

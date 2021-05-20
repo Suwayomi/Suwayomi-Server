@@ -9,7 +9,7 @@ package ir.armor.tachidesk.impl
 
 import eu.kanade.tachiyomi.source.model.MangasPage
 import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
-import ir.armor.tachidesk.impl.util.awaitSingle
+import ir.armor.tachidesk.impl.util.lang.awaitSingle
 import ir.armor.tachidesk.model.database.table.MangaStatus
 import ir.armor.tachidesk.model.database.table.MangaTable
 import ir.armor.tachidesk.model.dataclass.MangaDataClass

@@ -13,7 +13,7 @@ import ir.armor.tachidesk.impl.MangaList.proxyThumbnailUrl
 import ir.armor.tachidesk.impl.Source.getSource
 import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
 import ir.armor.tachidesk.impl.util.await
-import ir.armor.tachidesk.impl.util.awaitSingle
+import ir.armor.tachidesk.impl.util.lang.awaitSingle
 import ir.armor.tachidesk.impl.util.storage.CachedImageResponse.clearCachedImage
 import ir.armor.tachidesk.impl.util.storage.CachedImageResponse.getCachedImageResponse
 import ir.armor.tachidesk.model.database.table.MangaStatus

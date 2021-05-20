@@ -10,7 +10,7 @@ package ir.armor.tachidesk.impl
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
 import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
-import ir.armor.tachidesk.impl.util.awaitSingle
+import ir.armor.tachidesk.impl.util.lang.awaitSingle
 import ir.armor.tachidesk.impl.util.storage.CachedImageResponse.getCachedImageResponse
 import ir.armor.tachidesk.impl.util.storage.SafePath
 import ir.armor.tachidesk.model.database.table.ChapterTable

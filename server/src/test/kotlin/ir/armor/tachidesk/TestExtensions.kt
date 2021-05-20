@@ -16,7 +16,7 @@ import ir.armor.tachidesk.impl.Extension.updateExtension
 import ir.armor.tachidesk.impl.ExtensionsList.getExtensionList
 import ir.armor.tachidesk.impl.Source.getSourceList
 import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
-import ir.armor.tachidesk.impl.util.awaitSingle
+import ir.armor.tachidesk.impl.util.lang.awaitSingle
 import ir.armor.tachidesk.model.dataclass.ExtensionDataClass
 import ir.armor.tachidesk.server.applicationSetup
 import kotlinx.coroutines.Dispatchers
