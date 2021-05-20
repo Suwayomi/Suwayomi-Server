@@ -31,7 +31,7 @@ interface ExtensionGithubService {
 
         @ExperimentalSerializationApi
         fun create(): ExtensionGithubService {
-            val adapter = Retrofit.Builder()
+            val adapter = Retrofit.Builder() // TODO: rewrite in order to not depend on retrofit2
                 .baseUrl(ExtensionGithubApi.BASE_URL)
                 .addConverterFactory(Json.asConverterFactory("application/json".toMediaType()))
                 .client(client)

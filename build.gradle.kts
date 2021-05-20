@@ -59,13 +59,13 @@ configure(projects) {
         implementation("ch.qos.logback:logback-classic:1.2.3")
         implementation("io.github.microutils:kotlin-logging:2.0.6")
 
-        // RxJava
+        // ReactiveX
         implementation("io.reactivex:rxjava:1.3.8")
         implementation("io.reactivex:rxkotlin:1.0.0")
+        implementation("com.jakewharton.rxrelay:rxrelay:1.2.0")
 
         // JSoup
         implementation("org.jsoup:jsoup:1.13.1")
-
 
         // dependency of :AndroidCompat:Config
         implementation("com.typesafe:config:1.4.1")

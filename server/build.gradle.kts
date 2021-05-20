@@ -21,39 +21,21 @@ repositories {
 }
 
 dependencies {
-    // Source models and interfaces from Tachiyomi 1.x
-    // using source class from tachiyomi commit 9493577de27c40ce8b2b6122cc447d025e34c477 to not depend on tachiyomi.sourceapi
-//    implementation("tachiyomi.sourceapi:source-api:1.1")
-
-    implementation("com.github.inorichi.injekt:injekt-core:65b0440")
-
-    val okhttpVersion = "4.10.0-RC1"
+    // okhttp
+    val okhttpVersion = "4.9.1" // version is locked by extensions
     implementation("com.squareup.okhttp3:okhttp:$okhttpVersion")
     implementation("com.squareup.okhttp3:logging-interceptor:$okhttpVersion")
     implementation("com.squareup.okhttp3:okhttp-dnsoverhttps:$okhttpVersion")
     implementation("com.squareup.okio:okio:2.10.0")
 
-
-    // Retrofit
+    // Retrofit, used in `ExtensionGithubService`
     val retrofitVersion = "2.9.0"
     implementation("com.squareup.retrofit2:retrofit:$retrofitVersion")
     implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:0.8.0")
     implementation("com.squareup.retrofit2:converter-gson:$retrofitVersion")
     implementation("com.squareup.retrofit2:adapter-rxjava:$retrofitVersion")
 
-
-    // Reactivex
-    implementation("io.reactivex:rxjava:1.3.8")
-
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.1.0")
-    implementation("com.google.code.gson:gson:2.8.6")
-    implementation("com.github.salomonbrys.kotson:kotson:2.5.0")
-
-    implementation("org.jsoup:jsoup:1.13.1")
-    implementation("com.github.salomonbrys.kotson:kotson:2.5.0")
-
-
-    // api
+    // Javalin api
     implementation("io.javalin:javalin:3.13.6")
     // jackson version is tied to javalin, ref: `io.javalin.core.util.OptionalDependency`
     implementation("com.fasterxml.jackson.core:jackson-databind:2.10.3")
@@ -65,7 +47,6 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-java-time:$exposedVersion")
-
     // current database driver
     implementation("com.h2database:h2:1.4.200")
 
@@ -73,7 +54,23 @@ dependencies {
     implementation("com.dorkbox:SystemTray:4.1")
     implementation("com.dorkbox:Utilities:1.9")
 
+    // misc
     implementation("com.google.guava:guava:30.1.1-jre")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.1.0")
+
+
+    // dependencies of Tachiyomi extensions, some are duplicate, keeping it here for reference
+    implementation("com.github.inorichi.injekt:injekt-core:65b0440")
+    implementation("com.squareup.okhttp3:okhttp:4.9.1")
+    implementation("io.reactivex:rxjava:1.3.8")
+    implementation("org.jsoup:jsoup:1.13.1")
+    implementation("com.google.code.gson:gson:2.8.6")
+    implementation("com.github.salomonbrys.kotson:kotson:2.5.0")
+
+
+    // Source models and interfaces from Tachiyomi 1.x
+    // using source class from tachiyomi commit 9493577de27c40ce8b2b6122cc447d025e34c477 to not depend on tachiyomi.sourceapi
+//    implementation("tachiyomi.sourceapi:source-api:1.1")
 
     // AndroidCompat
     implementation(project(":AndroidCompat"))
