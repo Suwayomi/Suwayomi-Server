@@ -52,9 +52,9 @@ object Page {
         val pageEntry = transaction { PageTable.select { (PageTable.chapter eq chapterId) and (PageTable.index eq index) }.first() }
 
         val tachiPage = Page(
-                pageEntry[PageTable.index],
-                pageEntry[PageTable.url],
-                pageEntry[PageTable.imageUrl]
+            pageEntry[PageTable.index],
+            pageEntry[PageTable.url],
+            pageEntry[PageTable.imageUrl]
         )
 
         if (pageEntry[PageTable.imageUrl] == null) {
@@ -84,10 +84,10 @@ object Page {
         val sourceDir = source.toString()
         val mangaDir = SafePath.buildValidFilename(mangaEntry[MangaTable.title])
         val chapterDir = SafePath.buildValidFilename(
-                when {
-                    chapterEntry[ChapterTable.scanlator] != null -> "${chapterEntry[ChapterTable.scanlator]}_${chapterEntry[ChapterTable.name]}"
-                    else -> chapterEntry[ChapterTable.name]
-                }
+            when {
+                chapterEntry[ChapterTable.scanlator] != null -> "${chapterEntry[ChapterTable.scanlator]}_${chapterEntry[ChapterTable.name]}"
+                else -> chapterEntry[ChapterTable.name]
+            }
         )
 
         return "${applicationDirs.mangaRoot}/$sourceDir/$mangaDir/$chapterDir"
