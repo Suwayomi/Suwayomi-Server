@@ -2,13 +2,14 @@ plugins {
     id("com.github.node-gradle.node") version "3.0.1"
 }
 
+val nodeRoot = "${project.projectDir}/react"
 node {
-    nodeProjectDir.set(file("${project.projectDir}/react/"))
+    nodeProjectDir.set(file(nodeRoot))
 }
 
 tasks {
     register<Copy>("copyBuild") {
-        from(file("${node.nodeProjectDir}/build"))
+        from(file("$nodeRoot/build"))
         into(file("$rootDir/server/src/main/resources/react"))
 
         dependsOn("yarn_build")

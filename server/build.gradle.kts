@@ -22,7 +22,7 @@ repositories {
 
 dependencies {
     // okhttp
-    val okhttpVersion = "4.9.1" // version is locked by extensions
+    val okhttpVersion = "4.9.1" // version is locked by Tachiyomi extensions
     implementation("com.squareup.okhttp3:okhttp:$okhttpVersion")
     implementation("com.squareup.okhttp3:logging-interceptor:$okhttpVersion")
     implementation("com.squareup.okhttp3:okhttp-dnsoverhttps:$okhttpVersion")
