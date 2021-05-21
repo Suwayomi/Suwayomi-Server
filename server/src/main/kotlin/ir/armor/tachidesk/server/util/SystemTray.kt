@@ -29,8 +29,6 @@ fun systemTray(): SystemTray? {
     try {
         // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
         SystemTray.DEBUG = serverConfig.debugLogsEnabled
-//        if (System.getProperty("os.name").startsWith("Windows"))
-//            SystemTray.FORCE_TRAY_TYPE = TrayType.Swing
 
         CacheUtil.clear(BuildConfig.name)
 
