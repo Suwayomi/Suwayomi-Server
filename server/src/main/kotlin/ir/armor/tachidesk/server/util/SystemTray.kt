@@ -9,7 +9,6 @@ package ir.armor.tachidesk.server.util
 
 import dorkbox.systemTray.MenuItem
 import dorkbox.systemTray.SystemTray
-import dorkbox.systemTray.SystemTray.TrayType
 import dorkbox.util.CacheUtil
 import dorkbox.util.Desktop
 import ir.armor.tachidesk.server.BuildConfig
@@ -30,8 +29,8 @@ fun systemTray(): SystemTray? {
     try {
         // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
         SystemTray.DEBUG = serverConfig.debugLogsEnabled
-        if (System.getProperty("os.name").startsWith("Windows"))
-            SystemTray.FORCE_TRAY_TYPE = TrayType.Swing
+//        if (System.getProperty("os.name").startsWith("Windows"))
+//            SystemTray.FORCE_TRAY_TYPE = TrayType.Swing
 
         CacheUtil.clear(BuildConfig.name)
 
