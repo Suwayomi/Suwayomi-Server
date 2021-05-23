@@ -33,7 +33,7 @@ import ir.armor.tachidesk.impl.extension.Extension.uninstallExtension
 import ir.armor.tachidesk.impl.extension.Extension.updateExtension
 import ir.armor.tachidesk.impl.extension.ExtensionsList.getExtensionList
 import ir.armor.tachidesk.server.impl_internal.About.getAbout
-import ir.armor.tachidesk.server.util.Browser.openInBrowser
+import ir.armor.tachidesk.server.util.Browser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -78,6 +78,13 @@ object JavalinSetup {
                 hasWebUiBundled = false
             }
             config.enableCorsForAllOrigins()
+        }.events { event ->
+            event.serverStarted {
+                println("started")
+                if (hasWebUiBundled && serverConfig.initialOpenInBrowserEnabled) {
+                    Browser.openInBrowser()
+                }
+            }
         }.start(serverConfig.ip, serverConfig.port)
 
         // when JVM is prompted to shutdown, stop javalin gracefully
@@ -86,14 +93,6 @@ object JavalinSetup {
                 app.stop()
             }
         )
-
-        app.events { event ->
-            event.serverStarted {
-                if (hasWebUiBundled && serverConfig.initialOpenInBrowserEnabled) {
-                    openInBrowser()
-                }
-            }
-        }
 
         app.exception(NullPointerException::class.java) { e, ctx ->
             logger.error("NullPointerException while handling the request", e)

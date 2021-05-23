@@ -78,6 +78,7 @@ dependencies {
 val MainClass = "ir.armor.tachidesk.MainKt"
 application {
     mainClass.set(MainClass)
+    applicationDefaultJvmArgs = listOf("-Dir.armor.tachidesk.openInWebview=true")
 }
 
 sourceSets {
