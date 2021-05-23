@@ -13,7 +13,7 @@ import ir.armor.tachidesk.impl.util.lang.awaitSingle
 import ir.armor.tachidesk.model.dataclass.PagedMangaListDataClass
 
 object Search {
-// TODO
+    // TODO
     fun sourceFilters(sourceId: Long) {
         val source = getHttpSource(sourceId)
         // source.getFilterList().toItems()
@@ -34,7 +34,7 @@ object Search {
         val filter: Any
     )
 
-/**
+    /**
      * Note: Exhentai had a filter serializer (now in SY) that we might be able to steal
      */
 // private fun FilterList.toFilterWrapper(): List<FilterWrapper> {

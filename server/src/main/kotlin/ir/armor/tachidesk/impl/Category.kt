@@ -35,16 +35,16 @@ object Category {
         }
     }
 
-    fun updateCategory(categoryId: Int, name: String?, isLanding: Boolean?) {
+    fun updateCategory(categoryId: Int, name: String?, isDefault: Boolean?) {
         transaction {
             CategoryTable.update({ CategoryTable.id eq categoryId }) {
                 if (name != null) it[CategoryTable.name] = name
-                if (isLanding != null) it[CategoryTable.isLanding] = isLanding
+                if (isDefault != null) it[CategoryTable.isDefault] = isDefault
             }
         }
     }
 
-/**
+    /**
      * Move the category from position `from` to `to`
      */
     fun reorderCategory(categoryId: Int, from: Int, to: Int) {

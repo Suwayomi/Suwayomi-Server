@@ -28,8 +28,9 @@ import TextField from '@material-ui/core/TextField';
 import Dialog from '@material-ui/core/Dialog';
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
-import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
+import Checkbox from '@material-ui/core/Checkbox';
+import FormControlLabel from '@material-ui/core/FormControlLabel';
 import NavbarContext from '../../context/NavbarContext';
 import client from '../../util/client';
 
@@ -49,7 +50,8 @@ export default function Categories() {
     const [categories, setCategories] = useState([]);
     const [categoryToEdit, setCategoryToEdit] = useState(-1); // -1 means new category
     const [dialogOpen, setDialogOpen] = useState(false);
-    const [dialogValue, setDialogValue] = useState('');
+    const [dialogName, setDialogName] = useState('');
+    const [dialogDefault, setDialogDefault] = useState(false);
     const theme = useTheme();
 
     const [updateTriggerHolder, setUpdateTriggerHolder] = useState(0); // just a hack
@@ -93,12 +95,20 @@ export default function Categories() {
     };
 
     const resetDialog = () => {
-        setDialogValue('');
+        setDialogName('');
+        setDialogDefault(false);
         setCategoryToEdit(-1);
     };
 
     const handleDialogOpen = () => {
         resetDialog();
+        setDialogOpen(true);
+    };
+
+    const handleEditDialogOpen = (index) => {
+        setDialogName(categories[index].name);
+        setDialogDefault(categories[index].default);
+        setCategoryToEdit(index);
         setDialogOpen(true);
     };
 
@@ -110,7 +120,8 @@ export default function Categories() {
         setDialogOpen(false);
 
         const formData = new FormData();
-        formData.append('name', dialogValue);
+        formData.append('name', dialogName);
+        formData.append('default', dialogDefault);
 
         if (categoryToEdit === -1) {
             client.post('/api/v1/category/', formData)
@@ -161,8 +172,7 @@ export default function Categories() {
                                             />
                                             <IconButton
                                                 onClick={() => {
-                                                    handleDialogOpen();
-                                                    setCategoryToEdit(index);
+                                                    handleEditDialogOpen(index);
                                                 }}
                                             >
                                                 <EditIcon />
@@ -197,12 +207,9 @@ export default function Categories() {
             </Fab>
             <Dialog open={dialogOpen} onClose={handleDialogCancel}>
                 <DialogTitle id="form-dialog-title">
-                    {categoryToEdit === -1 ? 'New Catalog' : `Rename: ${categories[categoryToEdit].name}`}
+                    {categoryToEdit === -1 ? 'New Catalog' : 'Edit Catalog'}
                 </DialogTitle>
                 <DialogContent>
-                    <DialogContentText>
-                        Enter new category name.
-                    </DialogContentText>
                     <TextField
                         autoFocus
                         margin="dense"
@@ -210,8 +217,18 @@ export default function Categories() {
                         label="Category Name"
                         type="text"
                         fullWidth
-                        value={dialogValue}
-                        onChange={(e) => setDialogValue(e.target.value)}
+                        value={dialogName}
+                        onChange={(e) => setDialogName(e.target.value)}
+                    />
+                    <FormControlLabel
+                        control={(
+                            <Checkbox
+                                checked={dialogDefault}
+                                onChange={(e) => setDialogDefault(e.target.checked)}
+                                color="default"
+                            />
+                        )}
+                        label="Default category when adding new manga to library"
                     />
                 </DialogContent>
                 <DialogActions>

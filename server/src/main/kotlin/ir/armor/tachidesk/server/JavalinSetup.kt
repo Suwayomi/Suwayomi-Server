@@ -13,9 +13,8 @@ import ir.armor.tachidesk.impl.CategoryManga.removeMangaFromCategory
 import ir.armor.tachidesk.impl.Chapter.getChapter
 import ir.armor.tachidesk.impl.Chapter.getChapterList
 import ir.armor.tachidesk.impl.Chapter.modifyChapter
-import ir.armor.tachidesk.impl.Library.addMangaToLibrary
+import ir.armor.tachidesk.impl.Library
 import ir.armor.tachidesk.impl.Library.getLibraryMangas
-import ir.armor.tachidesk.impl.Library.removeMangaFromLibrary
 import ir.armor.tachidesk.impl.Manga.getManga
 import ir.armor.tachidesk.impl.Manga.getMangaThumbnail
 import ir.armor.tachidesk.impl.MangaList.getMangaList
@@ -216,24 +215,6 @@ object JavalinSetup {
             )
         }
 
-        // adds the manga to library
-        app.get("api/v1/manga/:mangaId/library") { ctx ->
-            val mangaId = ctx.pathParam("mangaId").toInt()
-
-            ctx.result(
-                future { addMangaToLibrary(mangaId) }
-            )
-        }
-
-        // removes the manga from the library
-        app.delete("api/v1/manga/:mangaId/library") { ctx ->
-            val mangaId = ctx.pathParam("mangaId").toInt()
-
-            ctx.result(
-                future { removeMangaFromLibrary(mangaId) }
-            )
-        }
-
         // list manga's categories
         app.get("api/v1/manga/:mangaId/category/") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
@@ -332,6 +313,24 @@ object JavalinSetup {
             ctx.json(sourceFilters(sourceId))
         }
 
+        // adds the manga to library
+        app.get("api/v1/manga/:mangaId/library") { ctx ->
+            val mangaId = ctx.pathParam("mangaId").toInt()
+
+            ctx.result(
+                future { Library.addMangaToLibrary(mangaId) }
+            )
+        }
+
+        // removes the manga from the library
+        app.delete("api/v1/manga/:mangaId/library") { ctx ->
+            val mangaId = ctx.pathParam("mangaId").toInt()
+
+            ctx.result(
+                future { Library.removeMangaFromLibrary(mangaId) }
+            )
+        }
+
         // lists mangas that have no category assigned
         app.get("/api/v1/library/") { ctx ->
             ctx.json(getLibraryMangas())
@@ -358,8 +357,8 @@ object JavalinSetup {
         app.patch("/api/v1/category/:categoryId") { ctx ->
             val categoryId = ctx.pathParam("categoryId").toInt()
             val name = ctx.formParam("name")
-            val isLanding = if (ctx.formParam("isLanding") != null) ctx.formParam("isLanding")?.toBoolean() else null
-            updateCategory(categoryId, name, isLanding)
+            val isDefault = ctx.formParam("default")?.toBoolean()
+            updateCategory(categoryId, name, isDefault)
             ctx.status(200)
         }
 

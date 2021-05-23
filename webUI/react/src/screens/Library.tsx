@@ -72,7 +72,7 @@ export default function Library() {
                         const defaultCategoryTab = {
                             category: {
                                 name: 'Default',
-                                isLanding: true,
+                                default: true,
                                 order: 0,
                                 id: -1,
                             },

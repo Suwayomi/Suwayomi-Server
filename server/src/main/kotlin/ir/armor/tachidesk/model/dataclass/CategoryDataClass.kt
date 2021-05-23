@@ -11,5 +11,5 @@ data class CategoryDataClass(
     val id: Int,
     val order: Int,
     val name: String,
-    val isLanding: Boolean
+    val default: Boolean
 )

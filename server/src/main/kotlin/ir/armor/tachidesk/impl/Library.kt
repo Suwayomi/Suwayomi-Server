@@ -9,25 +9,37 @@ package ir.armor.tachidesk.impl
 
 import ir.armor.tachidesk.impl.Manga.getManga
 import ir.armor.tachidesk.model.database.table.CategoryMangaTable
+import ir.armor.tachidesk.model.database.table.CategoryTable
 import ir.armor.tachidesk.model.database.table.MangaTable
 import ir.armor.tachidesk.model.database.table.toDataClass
 import ir.armor.tachidesk.model.dataclass.MangaDataClass
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 
 object Library {
-// TODO: `Category.isLanding` is to handle the default categories a new library manga gets,
+    // TODO: `Category.isLanding` is to handle the default categories a new library manga gets,
 // ..implement that shit at some time...
 // ..also Consider to rename it to `isDefault`
     suspend fun addMangaToLibrary(mangaId: Int) {
         val manga = getManga(mangaId)
         if (!manga.inLibrary) {
             transaction {
+                val defaultCategories = CategoryTable.select { CategoryTable.isDefault eq true }.toList()
+
                 MangaTable.update({ MangaTable.id eq manga.id }) {
-                    it[inLibrary] = true
+                    it[MangaTable.inLibrary] = true
+                    it[MangaTable.defaultCategory] = defaultCategories.isEmpty()
+                }
+
+                defaultCategories.forEach { category ->
+                    CategoryMangaTable.insert {
+                        it[CategoryMangaTable.category] = category[CategoryTable.id].value
+                        it[CategoryMangaTable.manga] = mangaId
+                    }
                 }
             }
         }

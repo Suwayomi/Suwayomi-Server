@@ -7,7 +7,8 @@
 
 import React, { useContext, useEffect, useState } from 'react';
 import List from '@material-ui/core/List';
-import InboxIcon from '@material-ui/icons/Inbox';
+import ListAltIcon from '@material-ui/icons/ListAlt';
+import BackupIcon from '@material-ui/icons/Backup';
 import Brightness6Icon from '@material-ui/icons/Brightness6';
 import DnsIcon from '@material-ui/icons/Dns';
 import EditIcon from '@material-ui/icons/Edit';
@@ -50,13 +51,13 @@ export default function Settings() {
             <List style={{ padding: 0 }}>
                 <ListItemLink href="/settings/categories">
                     <ListItemIcon>
-                        <InboxIcon />
+                        <ListAltIcon />
                     </ListItemIcon>
                     <ListItemText primary="Categories" />
                 </ListItemLink>
                 <ListItemLink href="/settings/backup">
                     <ListItemIcon>
-                        <InboxIcon />
+                        <BackupIcon />
                     </ListItemIcon>
                     <ListItemText primary="Backup" />
                 </ListItemLink>

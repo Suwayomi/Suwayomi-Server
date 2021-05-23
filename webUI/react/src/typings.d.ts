@@ -80,7 +80,7 @@ interface ICategory {
     id: number
     order: number
     name: String
-    isLanding: boolean
+    default: boolean
 }
 
 interface INavbarOverride {
