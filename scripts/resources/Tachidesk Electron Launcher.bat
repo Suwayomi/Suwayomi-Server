@@ -1,1 +1,1 @@
-jre\bin\java -Dir.armor.tachidesk.openInWebview=true -jar  Tachidesk.jar
+electron\electron.exe "http://127.0.0.1:4567"

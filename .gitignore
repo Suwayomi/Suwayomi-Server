@@ -10,5 +10,6 @@ server/src/main/resources/react
 server/tmp/
 server/tachiserver-data/
 
-# OpenJDK downlaods
-OpenJDK*
+# bundle asset downlaods
+OpenJDK*.zip
+electron-*.zip

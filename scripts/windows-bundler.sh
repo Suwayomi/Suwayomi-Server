@@ -9,9 +9,11 @@
 if [ $1 = "win32" ]; then
   jre="OpenJDK8U-jre_x86-32_windows_hotspot_8u292b10.zip"
   arch="win32"
+  electron="electron-v12.0.9-win32-ia32.zip"
 else
   jre="OpenJDK8U-jre_x64_windows_hotspot_8u292b10.zip"
   arch="win64"
+  electron="electron-v12.0.9-win32-x64.zip"
 fi
 
 jre_dir="jdk8u292-b10-jre"
@@ -26,25 +28,36 @@ release_name=$(echo $jar_name | cut -d'.' -f4 --complement)-$arch
 # make release dir
 mkdir $release_name
 
-echo "Dealing with jre..."
 
+echo "Dealing with jre..."
 if [ ! -f $jre ]; then
   curl -L "https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u292-b10/$jre" -o $jre
 fi
 unzip $jre
 mv $jre_dir $release_name/jre
 
+echo "Dealing with electron"
+if [ ! -f $electron ]; then
+  curl -L "https://github.com/electron/electron/releases/download/v12.0.9/$electron" -o $electron
+fi
+unzip $electron -d $release_name/electron
+
 # copy artifacts
 cp $jar $release_name/Tachidesk.jar
-
 cp "resources/Tachidesk Launcher-$arch.exe" "$release_name/Tachidesk Launcher.exe"
 cp "resources/Tachidesk Launcher.bat" $release_name
 cp "resources/Tachidesk Debug Launcher.bat" $release_name
-cp "resources/Tachidesk Webview Launcher.bat" $release_name
+cp "resources/Tachidesk Electron Launcher.bat" $release_name
 
 zip_name=$release_name.zip
-zip -9 -r $zip_name $release_name
+zip -9 -s90 -r $zip_name $release_name
 
 rm -rf $release_name
 
-mv $zip_name ../server/build/
+
+# clean up from possible previous runs
+if [ -f ../server/build/$zip_name ]; then
+  rm ../server/build/$release_name.z*
+fi
+
+mv $release_name.z* ../server/build/
