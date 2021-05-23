@@ -11,8 +11,11 @@ import Drawer from '@material-ui/core/Drawer';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
+import CollectionsBookmarkIcon from '@material-ui/icons/CollectionsBookmark';
+import ExploreIcon from '@material-ui/icons/Explore';
+import ExtensionIcon from '@material-ui/icons/Extension';
 import ListItemText from '@material-ui/core/ListItemText';
-import InboxIcon from '@material-ui/icons/MoveToInbox';
+import SettingsIcon from '@material-ui/icons/Settings';
 import { Link } from 'react-router-dom';
 
 const useStyles = makeStyles({
@@ -47,7 +50,7 @@ export default function TemporaryDrawer({ drawerOpen, setDrawerOpen }: IProps) {
                         <Link to="/library" style={{ color: 'inherit', textDecoration: 'none' }}>
                             <ListItem button key="Library">
                                 <ListItemIcon>
-                                    <InboxIcon />
+                                    <CollectionsBookmarkIcon />
                                 </ListItemIcon>
                                 <ListItemText primary="Library" />
                             </ListItem>
@@ -55,7 +58,7 @@ export default function TemporaryDrawer({ drawerOpen, setDrawerOpen }: IProps) {
                         <Link to="/extensions" style={{ color: 'inherit', textDecoration: 'none' }}>
                             <ListItem button key="Extensions">
                                 <ListItemIcon>
-                                    <InboxIcon />
+                                    <ExtensionIcon />
                                 </ListItemIcon>
                                 <ListItemText primary="Extensions" />
                             </ListItem>
@@ -63,7 +66,7 @@ export default function TemporaryDrawer({ drawerOpen, setDrawerOpen }: IProps) {
                         <Link to="/sources" style={{ color: 'inherit', textDecoration: 'none' }}>
                             <ListItem button key="Sources">
                                 <ListItemIcon>
-                                    <InboxIcon />
+                                    <ExploreIcon />
                                 </ListItemIcon>
                                 <ListItemText primary="Sources" />
                             </ListItem>
@@ -71,7 +74,7 @@ export default function TemporaryDrawer({ drawerOpen, setDrawerOpen }: IProps) {
                         <Link to="/settings" style={{ color: 'inherit', textDecoration: 'none' }}>
                             <ListItem button key="settings">
                                 <ListItemIcon>
-                                    <InboxIcon />
+                                    <SettingsIcon />
                                 </ListItemIcon>
                                 <ListItemText primary="Settings" />
                             </ListItem>
