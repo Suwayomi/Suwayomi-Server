@@ -1,9 +1,9 @@
 #!/bin/bash
 
-rm -rf preview/*.jar preview/*.zip
+rm -rf preview/*.jar preview/*.z*
 
 cp master/server/build/Tachidesk-*.jar preview
-cp master/server/build/Tachidesk-*.zip preview
+cp master/server/build/Tachidesk-*.z* preview
 
 cd preview
 
