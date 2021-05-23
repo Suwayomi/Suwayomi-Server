@@ -91,7 +91,7 @@ val tachideskVersion = "v0.3.8"
 // counts commit count on master
 val tachideskRevision = Runtime
         .getRuntime()
-        .exec("git rev-list master --count")
+        .exec("git rev-list HEAD --count")
         .let { process ->
             process.waitFor()
             val output = process.inputStream.use {
