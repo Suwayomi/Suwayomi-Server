@@ -7,7 +7,6 @@ package ir.armor.tachidesk.server.util
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import ca.weblite.webview.WebViewCLIClient
 import dorkbox.util.Desktop
 import ir.armor.tachidesk.server.serverConfig
 
@@ -17,26 +16,13 @@ object Browser {
 
     private val webViewInstances = mutableListOf<Any>()
 
-    private fun createWebView() =
-        WebViewCLIClient.Builder()
-            .size(800, 600)
-            .title("Tachidesk")
-            .resizable(true)
-            .url(appBaseUrl)
-            .build()
-            .also {
-                webViewInstances.add(it)
-            }
-
     fun openInBrowser() {
 
         val openInWebView = System.getProperty("ir.armor.tachidesk.openInWebview")?.toBoolean()
 
         if (openInWebView == true) {
             try {
-                Thread {
-                    createWebView()
-                }.start()
+                // TODO
             } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
                 e.printStackTrace()
             }

@@ -65,9 +65,6 @@ dependencies {
     implementation(project(":AndroidCompat"))
     implementation(project(":AndroidCompat:Config"))
 
-    // webview
-    implementation(files("lib/WebView.jar"))
-
     // uncomment to test extensions directly
 //    implementation(fileTree("lib/"))
 
@@ -78,7 +75,7 @@ dependencies {
 val MainClass = "ir.armor.tachidesk.MainKt"
 application {
     mainClass.set(MainClass)
-    applicationDefaultJvmArgs = listOf("-Dir.armor.tachidesk.openInWebview=true")
+//    applicationDefaultJvmArgs = listOf("-Dir.armor.tachidesk.openInWebview=true")
 }
 
 sourceSets {

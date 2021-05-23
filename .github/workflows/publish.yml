@@ -71,8 +71,8 @@ jobs:
       - name: make windows packages
         run: |
           cd master/scripts
-          ./windows32-bundler.sh
-          ./windows64-bundler.sh
+          ./windows-bundler.sh win32
+          ./windows-bundler.sh win64
 
       - name: Upload Release
         uses: xresloader/upload-to-github-release@master

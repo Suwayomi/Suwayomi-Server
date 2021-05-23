@@ -80,7 +80,6 @@ object JavalinSetup {
             config.enableCorsForAllOrigins()
         }.events { event ->
             event.serverStarted {
-                println("started")
                 if (hasWebUiBundled && serverConfig.initialOpenInBrowserEnabled) {
                     Browser.openInBrowser()
                 }
