@@ -10,56 +10,49 @@ package ir.armor.tachidesk.server.util
 import dorkbox.systemTray.MenuItem
 import dorkbox.systemTray.SystemTray
 import dorkbox.util.CacheUtil
-import dorkbox.util.Desktop
 import ir.armor.tachidesk.server.BuildConfig
 import ir.armor.tachidesk.server.ServerConfig
 import ir.armor.tachidesk.server.serverConfig
+import ir.armor.tachidesk.server.util.Browser.openInBrowser
 import ir.armor.tachidesk.server.util.ExitCode.Success
 
-fun openInBrowser() {
-    val appIP = if (serverConfig.ip == "0.0.0.0") "127.0.0.1" else serverConfig.ip
-    try {
-        Desktop.browseURL("http://$appIP:${serverConfig.port}")
-    } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
-        e.printStackTrace()
-    }
-}
+object SystemTray {
+    fun systemTray(): SystemTray? {
+        try {
+            // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
+            SystemTray.DEBUG = serverConfig.debugLogsEnabled
 
-fun systemTray(): SystemTray? {
-    try {
-        // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
-        SystemTray.DEBUG = serverConfig.debugLogsEnabled
+            CacheUtil.clear(BuildConfig.name)
 
-        CacheUtil.clear(BuildConfig.name)
+            val systemTray = SystemTray.get(BuildConfig.name) ?: return null
+            val mainMenu = systemTray.menu
 
-        val systemTray = SystemTray.get(BuildConfig.name) ?: return null
-        val mainMenu = systemTray.menu
+            mainMenu.add(
+                MenuItem(
+                    "Open Tachidesk"
+                ) {
+                    openInBrowser()
+                }
+            )
 
-        mainMenu.add(
-            MenuItem(
-                "Open Tachidesk"
-            ) {
-                openInBrowser()
-            }
-        )
+            val icon = ServerConfig::class.java.getResource("/icon/faviconlogo.png")
 
-        val icon = ServerConfig::class.java.getResource("/icon/faviconlogo.png")
+            // systemTray.setTooltip("Tachidesk")
+            systemTray.setImage(icon)
+            // systemTray.status = "No Mail"
 
-        // systemTray.setTooltip("Tachidesk")
-        systemTray.setImage(icon)
-        // systemTray.status = "No Mail"
+            mainMenu.add(
+                MenuItem("Quit") {
+                    shutdownApp(Success)
+                }
+            )
 
-        mainMenu.add(
-            MenuItem("Quit") {
-                shutdownApp(Success)
-            }
-        )
+            systemTray.installShutdownHook()
 
-        systemTray.installShutdownHook()
-
-        return systemTray
-    } catch (e: Exception) {
-        e.printStackTrace()
-        return null
+            return systemTray
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return null
+        }
     }
 }

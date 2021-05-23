@@ -10,7 +10,7 @@ package ir.armor.tachidesk.server
 import eu.kanade.tachiyomi.App
 import ir.armor.tachidesk.model.database.databaseUp
 import ir.armor.tachidesk.server.util.AppMutex.handleAppMutex
-import ir.armor.tachidesk.server.util.systemTray
+import ir.armor.tachidesk.server.util.SystemTray.systemTray
 import mu.KotlinLogging
 import org.kodein.di.DI
 import org.kodein.di.bind

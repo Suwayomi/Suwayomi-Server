@@ -33,7 +33,7 @@ import ir.armor.tachidesk.impl.extension.Extension.uninstallExtension
 import ir.armor.tachidesk.impl.extension.Extension.updateExtension
 import ir.armor.tachidesk.impl.extension.ExtensionsList.getExtensionList
 import ir.armor.tachidesk.server.impl_internal.About.getAbout
-import ir.armor.tachidesk.server.util.openInBrowser
+import ir.armor.tachidesk.server.util.Browser.openInBrowser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -87,8 +87,12 @@ object JavalinSetup {
             }
         )
 
-        if (hasWebUiBundled && serverConfig.initialOpenInBrowserEnabled) {
-            openInBrowser()
+        app.events { event ->
+            event.serverStarted {
+                if (hasWebUiBundled && serverConfig.initialOpenInBrowserEnabled) {
+                    openInBrowser()
+                }
+            }
         }
 
         app.exception(NullPointerException::class.java) { e, ctx ->

@@ -32,6 +32,7 @@ cp $jar $release_name/Tachidesk.jar
 cp "resources/Tachidesk Launcher-win32.exe" "$release_name/Tachidesk Launcher.exe"
 cp "resources/Tachidesk Launcher.bat" $release_name
 cp "resources/Tachidesk Debug Launcher.bat" $release_name
+cp "resources/Tachidesk Webview Launcher.bat" $release_name
 
 zip_name=$release_name.zip
 zip -9 -r $zip_name $release_name

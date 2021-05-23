@@ -13,6 +13,7 @@ import ir.armor.tachidesk.server.serverConfig
 import ir.armor.tachidesk.server.util.AppMutex.AppMutexStat.Clear
 import ir.armor.tachidesk.server.util.AppMutex.AppMutexStat.OtherApplicationRunning
 import ir.armor.tachidesk.server.util.AppMutex.AppMutexStat.TachideskInstanceRunning
+import ir.armor.tachidesk.server.util.Browser.openInBrowser
 import mu.KotlinLogging
 import okhttp3.OkHttpClient
 import okhttp3.Request.Builder

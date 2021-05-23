@@ -29,6 +29,7 @@ Copy-Item $jar.FullName "$release_name/Tachidesk.jar"
 Copy-Item "resources/Tachidesk Launcher-win32.exe" $release_name
 Copy-Item "resources/Tachidesk Launcher.bat" $release_name
 Copy-Item "resources/Tachidesk Debug Launcher.bat" $release_name
+Copy-Item "resources/Tachidesk Webview Launcher.bat" $release_name
 
 $zip_name="$release_name.zip"
 Compress-Archive -CompressionLevel Optimal -DestinationPath $zip_name -Path $release_name -Force -ErrorAction SilentlyContinue

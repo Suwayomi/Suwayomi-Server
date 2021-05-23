@@ -65,6 +65,9 @@ dependencies {
     implementation(project(":AndroidCompat"))
     implementation(project(":AndroidCompat:Config"))
 
+    // webview
+    implementation(files("lib/WebView.jar"))
+
     // uncomment to test extensions directly
 //    implementation(fileTree("lib/"))
 
