@@ -57,8 +57,8 @@ export default function VerticalReader(props: IReaderProps) {
     }
 
     function keyboardControl(e:KeyboardEvent) {
-        switch (e.key) {
-            case ' ':
+        switch (e.code) {
+            case 'Space':
                 e.preventDefault();
                 nextPage();
                 break;
