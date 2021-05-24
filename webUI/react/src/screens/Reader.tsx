@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /*
  * Copyright (C) Contributors to the Suwayomi project
  *
@@ -11,7 +10,6 @@ import { makeStyles } from '@material-ui/core/styles';
 import React, { useContext, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import HorizontalPager from '../components/reader/pager/HorizontalPager';
-import Page from '../components/reader/Page';
 import PageNumber from '../components/reader/PageNumber';
 import WebtoonPager from '../components/reader/pager/PagedPager';
 import VerticalPager from '../components/reader/pager/VerticalPager';
@@ -72,6 +70,7 @@ export default function Reader() {
     const [chapter, setChapter] = useState<IChapter | IPartialChpter>(initialChapter());
     const [curPage, setCurPage] = useState<number>(0);
     const { setOverride, setTitle } = useContext(NavbarContext);
+
     useEffect(() => {
         // make sure settings has all the keys
         const settingsClone = cloneObject(settings) as any;

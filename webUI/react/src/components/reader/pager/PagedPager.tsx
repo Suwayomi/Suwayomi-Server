@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /*
  * Copyright (C) Contributors to the Suwayomi project
  *
@@ -8,7 +7,6 @@
 
 import { makeStyles } from '@material-ui/core/styles';
 import React, { useEffect, useRef } from 'react';
-import { useHistory } from 'react-router-dom';
 import Page from '../Page';
 
 const useStyles = makeStyles({
@@ -24,13 +22,12 @@ const useStyles = makeStyles({
 
 export default function PagedReader(props: IReaderProps) {
     const {
-        pages, settings, setCurPage, curPage, manga, chapter, nextChapter,
+        pages, settings, setCurPage, curPage, nextChapter,
     } = props;
 
     const classes = useStyles();
-    const history = useHistory();
 
-    const pageRef = useRef<HTMLDivElement>(null);
+    const selfRef = useRef<HTMLDivElement>(null);
 
     function nextPage() {
         if (curPage < pages.length - 1) {
@@ -45,7 +42,11 @@ export default function PagedReader(props: IReaderProps) {
     }
 
     function keyboardControl(e:KeyboardEvent) {
-        switch (e.key) {
+        switch (e.code) {
+            case 'Space':
+                e.preventDefault();
+                nextPage();
+                break;
             case 'ArrowRight':
                 nextPage();
                 break;
@@ -66,17 +67,17 @@ export default function PagedReader(props: IReaderProps) {
     }
 
     useEffect(() => {
-        document.addEventListener('keyup', keyboardControl, false);
-        pageRef.current?.addEventListener('click', clickControl);
+        document.addEventListener('keydown', keyboardControl);
+        selfRef.current?.addEventListener('click', clickControl);
 
         return () => {
-            document.removeEventListener('keyup', keyboardControl);
-            pageRef.current?.removeEventListener('click', clickControl);
+            document.removeEventListener('keydown', keyboardControl);
+            selfRef.current?.removeEventListener('click', clickControl);
         };
-    }, [curPage, pageRef]);
+    }, [selfRef, curPage]);
 
     return (
-        <div ref={pageRef} className={classes.reader}>
+        <div ref={selfRef} className={classes.reader}>
             <Page
                 key={curPage}
                 index={curPage}
