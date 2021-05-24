@@ -112,7 +112,7 @@ interface IReaderProps {
     pages: Array<IReaderPage>
     pageCount: number
     setCurPage: React.Dispatch<React.SetStateAction<number>>
-    curPage: number
+    curPageRef: MutableRefObject<number>
     settings: IReaderSettings
     manga: IMangaCard | IManga
     chapter: IChapter | IPartialChpter

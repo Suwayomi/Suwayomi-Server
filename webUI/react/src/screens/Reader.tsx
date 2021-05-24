@@ -8,7 +8,9 @@
 
 import CircularProgress from '@material-ui/core/CircularProgress';
 import { makeStyles } from '@material-ui/core/styles';
-import React, { useContext, useEffect, useState } from 'react';
+import React, {
+    useContext, useEffect, useRef, useState,
+} from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import HorizontalPager from '../components/reader/pager/HorizontalPager';
 import Page from '../components/reader/Page';
@@ -71,6 +73,8 @@ export default function Reader() {
     const [manga, setManga] = useState<IMangaCard | IManga>({ id: +mangaId, title: '', thumbnailUrl: '' });
     const [chapter, setChapter] = useState<IChapter | IPartialChpter>(initialChapter());
     const [curPage, setCurPage] = useState<number>(0);
+    const curPageRef = useRef(0);
+    curPageRef.current = curPage;
     const { setOverride, setTitle } = useContext(NavbarContext);
     useEffect(() => {
         // make sure settings has all the keys
@@ -177,7 +181,7 @@ export default function Reader() {
                 pages={pages}
                 pageCount={chapter.pageCount}
                 setCurPage={setCurPage}
-                curPage={curPage}
+                curPageRef={curPageRef}
                 settings={settings}
                 manga={manga}
                 chapter={chapter}
