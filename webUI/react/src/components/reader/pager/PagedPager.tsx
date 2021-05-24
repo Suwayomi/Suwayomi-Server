@@ -24,24 +24,25 @@ const useStyles = makeStyles({
 
 export default function PagedReader(props: IReaderProps) {
     const {
-        pages, settings, setCurPage, curPageRef, manga, chapter, nextChapter,
+        pages, settings, setCurPage, curPage, manga, chapter, nextChapter,
     } = props;
 
     const classes = useStyles();
     const history = useHistory();
 
-    const pageRef = useRef<HTMLDivElement>(null);
+    const selfRef = useRef<HTMLDivElement>(null);
 
     function nextPage() {
-        if (curPageRef.current < pages.length - 1) {
-            setCurPage(curPageRef.current + 1);
+        console.log(curPage);
+        if (curPage < pages.length - 1) {
+            setCurPage(curPage + 1);
         } else if (settings.loadNextonEnding) {
             nextChapter();
         }
     }
 
     function prevPage() {
-        if (curPageRef.current > 0) { setCurPage(curPageRef.current - 1); }
+        if (curPage > 0) { setCurPage(curPage - 1); }
     }
 
     function keyboardControl(e:KeyboardEvent) {
@@ -71,20 +72,20 @@ export default function PagedReader(props: IReaderProps) {
 
     useEffect(() => {
         document.addEventListener('keydown', keyboardControl);
-        pageRef.current?.addEventListener('click', clickControl);
+        selfRef.current?.addEventListener('click', clickControl);
 
         return () => {
             document.removeEventListener('keydown', keyboardControl);
-            pageRef.current?.removeEventListener('click', clickControl);
+            selfRef.current?.removeEventListener('click', clickControl);
         };
-    }, [pageRef]);
+    }, [selfRef]);
 
     return (
-        <div ref={pageRef} className={classes.reader}>
+        <div ref={selfRef} className={classes.reader}>
             <Page
-                key={curPageRef.current}
-                index={curPageRef.current}
-                src={pages[curPageRef.current].src}
+                key={curPage}
+                index={curPage}
+                src={pages[curPage].src}
                 setCurPage={setCurPage}
                 settings={settings}
             />

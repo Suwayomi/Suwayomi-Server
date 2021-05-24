@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /*
  * Copyright (C) Contributors to the Suwayomi project
  *
@@ -7,8 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import { makeStyles } from '@material-ui/core/styles';
-import React, { useEffect, useRef, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import React, { useEffect, useRef } from 'react';
 import Page from '../Page';
 
 const useStyles = makeStyles({
@@ -23,32 +21,31 @@ const useStyles = makeStyles({
 
 export default function VerticalReader(props: IReaderProps) {
     const {
-        pages, settings, setCurPage, curPageRef, manga, chapter, nextChapter,
+        pages, settings, setCurPage, curPage, chapter, nextChapter,
     } = props;
 
     const classes = useStyles();
-    const history = useHistory();
 
-    const pageRef = useRef<HTMLDivElement>(null);
+    const selfRef = useRef<HTMLDivElement>(null);
     const pagesRef = useRef<HTMLDivElement[]>([]);
 
     function nextPage() {
-        if (curPageRef.current < pages.length - 1) {
+        if (curPage < pages.length - 1) {
+            pagesRef.current[curPage + 1]?.scrollIntoView();
             setCurPage((page) => page + 1);
         } else if (settings.loadNextonEnding) {
             nextChapter();
         }
-        pagesRef.current[curPageRef.current]?.scrollIntoView();
     }
 
     function prevPage() {
-        if (curPageRef.current > 0) {
-            setCurPage((page) => {
-                const rect = pagesRef.current[page].getBoundingClientRect();
-                return (rect.y < 0 && rect.y + rect.height > 0) ? page : page - 1;
-            });
+        if (curPage > 0) {
+            const rect = pagesRef.current[curPage].getBoundingClientRect();
+            if (rect.y < 0 && rect.y + rect.height > 0) {
+                setCurPage(curPage - 1);
+                pagesRef.current[curPage - 1]?.scrollIntoView();
+            }
         }
-        pagesRef.current[curPageRef.current]?.scrollIntoView();
     }
 
     function keyboardControl(e:KeyboardEvent) {
@@ -85,29 +82,28 @@ export default function VerticalReader(props: IReaderProps) {
     useEffect(() => {
         if (settings.loadNextonEnding) { window.addEventListener('scroll', handleLoadNextonEnding); }
         document.addEventListener('keydown', keyboardControl, false);
-        pageRef.current?.addEventListener('click', clickControl);
+        selfRef.current?.addEventListener('click', clickControl);
 
         return () => {
             document.removeEventListener('scroll', handleLoadNextonEnding);
             document.removeEventListener('keydown', keyboardControl);
-            pageRef.current?.removeEventListener('click', clickControl);
+            selfRef.current?.removeEventListener('click', clickControl);
         };
-    }, [pageRef]);
+    }, [selfRef]);
 
     useEffect(() => {
+        // scroll last read page into view
         let initialPage = (chapter as IChapter).lastPageRead;
         if (initialPage > pages.length - 1) {
             initialPage = pages.length - 1;
         }
         if (initialPage > -1) {
             pagesRef.current[initialPage].scrollIntoView();
-            curPageRef.current = initialPage;
-            pagesRef.current[curPageRef.current].scrollIntoView();
         }
     }, []);
 
     return (
-        <div ref={pageRef} className={classes.reader}>
+        <div ref={selfRef} className={classes.reader}>
             {
                 pages.map((page) => (
                     <Page
@@ -116,7 +112,7 @@ export default function VerticalReader(props: IReaderProps) {
                         src={page.src}
                         setCurPage={setCurPage}
                         settings={settings}
-                        ref={(e:HTMLDivElement) => pagesRef.current.push(e)}
+                        ref={(e:HTMLDivElement) => { pagesRef.current[page.index] = e; }}
                     />
                 ))
             }

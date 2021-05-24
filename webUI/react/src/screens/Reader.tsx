@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /*
  * Copyright (C) Contributors to the Suwayomi project
  *
@@ -8,12 +7,9 @@
 
 import CircularProgress from '@material-ui/core/CircularProgress';
 import { makeStyles } from '@material-ui/core/styles';
-import React, {
-    useContext, useEffect, useRef, useState,
-} from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import HorizontalPager from '../components/reader/pager/HorizontalPager';
-import Page from '../components/reader/Page';
 import PageNumber from '../components/reader/PageNumber';
 import WebtoonPager from '../components/reader/pager/PagedPager';
 import VerticalPager from '../components/reader/pager/VerticalPager';
@@ -73,9 +69,8 @@ export default function Reader() {
     const [manga, setManga] = useState<IMangaCard | IManga>({ id: +mangaId, title: '', thumbnailUrl: '' });
     const [chapter, setChapter] = useState<IChapter | IPartialChpter>(initialChapter());
     const [curPage, setCurPage] = useState<number>(0);
-    const curPageRef = useRef(0);
-    curPageRef.current = curPage;
     const { setOverride, setTitle } = useContext(NavbarContext);
+
     useEffect(() => {
         // make sure settings has all the keys
         const settingsClone = cloneObject(settings) as any;
@@ -181,7 +176,7 @@ export default function Reader() {
                 pages={pages}
                 pageCount={chapter.pageCount}
                 setCurPage={setCurPage}
-                curPageRef={curPageRef}
+                curPage={curPage}
                 settings={settings}
                 manga={manga}
                 chapter={chapter}
