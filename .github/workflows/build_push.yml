@@ -71,6 +71,7 @@ jobs:
 
       - name: Mock Build and copy webUI, Build Jar
         run: |
+          mkdir -p master/server/build
           cd master/server/build
           touch Tachidesk-v0.3.8-r580.jar
 
