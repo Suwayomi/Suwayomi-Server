@@ -45,7 +45,11 @@ export default function PagedReader(props: IReaderProps) {
     }
 
     function keyboardControl(e:KeyboardEvent) {
-        switch (e.key) {
+        switch (e.code) {
+            case 'Space':
+                e.preventDefault();
+                nextPage();
+                break;
             case 'ArrowRight':
                 nextPage();
                 break;
@@ -66,11 +70,11 @@ export default function PagedReader(props: IReaderProps) {
     }
 
     useEffect(() => {
-        document.addEventListener('keyup', keyboardControl, false);
+        document.addEventListener('keydown', keyboardControl);
         pageRef.current?.addEventListener('click', clickControl);
 
         return () => {
-            document.removeEventListener('keyup', keyboardControl);
+            document.removeEventListener('keydown', keyboardControl);
             pageRef.current?.removeEventListener('click', clickControl);
         };
     }, [pageRef]);
