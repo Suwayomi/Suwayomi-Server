@@ -14,15 +14,16 @@ object Browser {
     private val appIP = if (serverConfig.ip == "0.0.0.0") "127.0.0.1" else serverConfig.ip
     private val appBaseUrl = "http://$appIP:${serverConfig.port}"
 
-    private val webViewInstances = mutableListOf<Any>()
+    private val electronInstances = mutableListOf<Any>()
 
     fun openInBrowser() {
 
-        val openInWebView = System.getProperty("ir.armor.tachidesk.openInWebview")?.toBoolean()
+        val openInElectron = System.getProperty("ir.armor.tachidesk.webInterface")?.equals("electron")
 
-        if (openInWebView == true) {
+        if (openInElectron == true) {
             try {
-                // TODO
+                val electronPath = System.getProperty("ir.armor.tachidesk.electronPath")!!
+                electronInstances.add(ProcessBuilder(electronPath, appBaseUrl).start())
             } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
                 e.printStackTrace()
             }

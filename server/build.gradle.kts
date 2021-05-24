@@ -75,7 +75,12 @@ dependencies {
 val MainClass = "ir.armor.tachidesk.MainKt"
 application {
     mainClass.set(MainClass)
-//    applicationDefaultJvmArgs = listOf("-Dir.armor.tachidesk.openInWebview=true")
+
+    // for testing electron
+//    applicationDefaultJvmArgs = listOf(
+//            "-Dir.armor.tachidesk.webInterface=electron",
+//            "-Dir.armor.tachidesk.electronPath=/home/armor/programming/Suwayomi/Tachidesk/scripts/electron-v12.0.9-linux-x64/electron"
+//    )
 }
 
 sourceSets {

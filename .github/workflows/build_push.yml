@@ -75,14 +75,29 @@ jobs:
           ./windows-bundler.sh win32
           ./windows-bundler.sh win64
 
-      - name: Checkout preview branch
-        uses: actions/checkout@v2
-        with:
-          repository: 'Suwayomi/Tachidesk-preview'
-          ref: main
-          path: preview
-          token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
+#      - name: Checkout preview branch
+#        uses: actions/checkout@v2
+#        with:
+#          repository: 'Suwayomi/Tachidesk-preview'
+#          ref: main
+#          path: preview
+#          token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
 
-      - name: Deploy preview
-        run: |
-          ./master/.github/scripts/commit-preview.sh
+      - name: Upload Release
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
+          artifacts: "master/server/build/*.jar,master/server/build/*.zip"
+          draft: true
+          owner: "Suwayomi"
+          repo: "Tachidesk-preview"
+
+
+#      - name: Upload Release
+#        uses: xresloader/upload-to-github-release@v1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          file: "master/server/build/*.jar;master/server/build/*.zip"
+#          draft: false
+#          verbose: true

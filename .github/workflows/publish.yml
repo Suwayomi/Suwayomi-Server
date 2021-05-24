@@ -75,11 +75,11 @@ jobs:
           ./windows-bundler.sh win64
 
       - name: Upload Release
-        uses: xresloader/upload-to-github-release@master
+        uses: xresloader/upload-to-github-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "master/server/build/*.jar;master/server/build/*.z*"
+          file: "master/server/build/*.jar;master/server/build/*.zip"
           tags: true
           draft: true
           verbose: true

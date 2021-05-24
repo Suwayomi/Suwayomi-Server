@@ -13,3 +13,4 @@ server/tachiserver-data/
 # bundle asset downlaods
 OpenJDK*.zip
 electron-*.zip
+rcedit-*
