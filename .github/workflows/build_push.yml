@@ -59,21 +59,21 @@ jobs:
             **/react/node_modules
           key: ${{ runner.os }}-${{ hashFiles('**/react/yarn.lock') }}
 
-#      - name: Build and copy webUI, Build Jar
-#        uses: eskatos/gradle-command-action@v1
-#        with:
-#          build-root-directory: master
-#          wrapper-directory: master
-#          arguments: :webUI:copyBuild :server:shadowJar --stacktrace
-#          wrapper-cache-enabled: true
-#          dependencies-cache-enabled: true
-#          configuration-cache-enabled: true
+      - name: Build and copy webUI, Build Jar
+        uses: eskatos/gradle-command-action@v1
+        with:
+          build-root-directory: master
+          wrapper-directory: master
+          arguments: :webUI:copyBuild :server:shadowJar --stacktrace
+          wrapper-cache-enabled: true
+          dependencies-cache-enabled: true
+          configuration-cache-enabled: true
 
-      - name: Mock Build and copy webUI, Build Jar
-        run: |
-          mkdir -p master/server/build
-          cd master/server/build
-          echo "test" > Tachidesk-v0.3.8-r583.jar
+#      - name: Mock Build and copy webUI, Build Jar
+#        run: |
+#          mkdir -p master/server/build
+#          cd master/server/build
+#          echo "test" > Tachidesk-v0.3.8-r583.jar
 
       - name: Generate Tag Name
         id: GenTagName
@@ -83,31 +83,16 @@ jobs:
           echo "$genTag"
           echo "::set-output name=value::$genTag"
 
-#      - name: Create tag
-#        uses: actions/github-script@v3
-#        env:
-#          TAG: ${{ steps.GenTagName.value }}
-#        with:
-#          github-token: ${{ github.DEPLOY_PREVIEW_TOKEN }}
-#          script: |
-#            const { TAG } = process.env
-#
-#            github.git.createTag({
-#              owner: "Suwayomi",
-#              repo: "Tachidesk",
-#              tag: TAG,
-#            })
-
-#      - name: make windows packages
-#        run: |
-#          cd master/scripts
-#          ./windows-bundler.sh win32
-#          ./windows-bundler.sh win64
-
-      - name: Mock make windows packages
+      - name: make windows packages
         run: |
-           cd master/server/build
-           echo test > Tachidesk-v0.3.8-r580.zip
+          cd master/scripts
+          ./windows-bundler.sh win32
+          ./windows-bundler.sh win64
+
+#      - name: Mock make windows packages
+#        run: |
+#           cd master/server/build
+#           echo test > Tachidesk-v0.3.8-r580-win32.zip
 
       - name: Checkout preview branch
         uses: actions/checkout@v2
@@ -140,13 +125,3 @@ jobs:
           owner: "Suwayomi"
           repo: "Tachidesk-preview"
           tag: ${{ steps.GenTagName.outputs.value }}
-
-
-#      - name: Upload Release
-#        uses: xresloader/upload-to-github-release@v1
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        with:
-#          file: "master/server/build/*.jar;master/server/build/*.zip"
-#          draft: false
-#          verbose: true
