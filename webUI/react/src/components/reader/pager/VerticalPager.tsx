@@ -29,8 +29,8 @@ export default function VerticalReader(props: IReaderProps) {
     const classes = useStyles();
     const history = useHistory();
 
+    const pageRef = useRef<HTMLDivElement>(null);
     const pagesRef = useRef<HTMLDivElement[]>([]);
-
     let readerCurPage = curPage;
 
     function nextPage() {
@@ -90,14 +90,14 @@ export default function VerticalReader(props: IReaderProps) {
     useEffect(() => {
         if (settings.loadNextonEnding) { window.addEventListener('scroll', handleLoadNextonEnding); }
         document.addEventListener('keydown', keyboardControl, false);
-        document.addEventListener('click', clickControl);
+        pageRef.current?.addEventListener('click', clickControl);
 
         return () => {
             document.removeEventListener('scroll', handleLoadNextonEnding);
             document.removeEventListener('keydown', keyboardControl);
-            document.removeEventListener('click', clickControl);
+            pageRef.current?.removeEventListener('click', clickControl);
         };
-    }, []);
+    }, [pageRef]);
 
     useEffect(() => {
         const initialPage = (chapter as IChapter).lastPageRead;
@@ -109,7 +109,7 @@ export default function VerticalReader(props: IReaderProps) {
     }, []);
 
     return (
-        <div className={classes.reader}>
+        <div ref={pageRef} className={classes.reader}>
             {
                 pages.map((page) => (
                     <Page
