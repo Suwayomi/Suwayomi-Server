@@ -19,7 +19,7 @@ Ability to read and write Tachiyomi compatible backups and syncing is a planned 
 ## Is this application usable? Should I test it?
 Here is a list of current features:
 
-- Installing and executing Tachiyomi's Extensions, So you'll get the same sources.
+- Installing and executing Tachiyomi's Extensions, So you'll get the samei sources.
 - A library to save your mangas and categories to put them into.
 - Searching and browsing installed sources.
 - A decent chapter reader.
@@ -43,7 +43,7 @@ The Windows specific build has java bundled inside, so you don't have to install
 #### Windows Launchers
 - `Tachidesk Electron Launcher.bat`: Launches Tachidesk inside Electron as a desktop applicaton
 - `Tachidesk Browser Launcher.bat`: Launches Tachidesk in a browser window
-- `Tachidesk Debug Launcher.bat`: Launches Tachidesk with debug logs attached. If tachidesk doesn't work for you, running this can give you insight into why.
+- `Tachidesk Debug Launcher.bat`: Launches Tachidesk with debug logs attached. If Tachidesk doesn't work for you, running this can give you insight into why.
 
 ### Arch Linux
 You can install Tachidesk from the AUR
