@@ -19,7 +19,7 @@ Ability to read and write Tachiyomi compatible backups and syncing is a planned 
 ## Is this application usable? Should I test it?
 Here is a list of current features:
 
-- Installing and executing Tachiyomi's Extensions, So you'll get the samei sources.
+- Installing and executing Tachiyomi's Extensions, So you'll get the same sources.
 - A library to save your mangas and categories to put them into.
 - Searching and browsing installed sources.
 - A decent chapter reader.
