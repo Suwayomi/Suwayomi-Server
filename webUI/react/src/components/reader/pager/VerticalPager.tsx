@@ -29,33 +29,84 @@ export default function VerticalReader(props: IReaderProps) {
     const classes = useStyles();
     const history = useHistory();
 
-    const [initialScroll, setInitialScroll] = useState(-1);
-    const initialPageRef = useRef<HTMLDivElement>(null);
+    const pagesRef = useRef<HTMLDivElement[]>([]);
+
+    let readerCurPage = curPage;
+
+    function nextPage() {
+        if (curPage < pages.length - 1) {
+            setCurPage((x) => {
+                readerCurPage = x + 1;
+                return readerCurPage;
+            });
+            pagesRef.current[readerCurPage].scrollIntoView();
+        } else if (settings.loadNextonEnding) {
+            nextChapter();
+        }
+    }
+
+    function prevPage() {
+        if (readerCurPage > 0) {
+            setCurPage((page) => {
+                const rect = pagesRef.current[page].getBoundingClientRect();
+                readerCurPage = (rect.y < 0 && rect.y + rect.height > 0) ? page : page - 1;
+                return readerCurPage;
+            });
+        }
+        pagesRef.current[readerCurPage].scrollIntoView();
+    }
+
+    function keyboardControl(e:KeyboardEvent) {
+        switch (e.key) {
+            case ' ':
+                e.preventDefault();
+                nextPage();
+                break;
+            case 'ArrowRight':
+                nextPage();
+                break;
+            case 'ArrowLeft':
+                prevPage();
+                break;
+            default:
+                break;
+        }
+    }
+
+    function clickControl(e:MouseEvent) {
+        if (e.clientX > window.innerWidth / 2) {
+            nextPage();
+        } else {
+            prevPage();
+        }
+    }
 
     const handleLoadNextonEnding = () => {
         if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
             nextChapter();
         }
     };
+
     useEffect(() => {
         if (settings.loadNextonEnding) { window.addEventListener('scroll', handleLoadNextonEnding); }
+        document.addEventListener('keydown', keyboardControl, false);
+        document.addEventListener('click', clickControl);
 
         return () => {
-            window.removeEventListener('scroll', handleLoadNextonEnding);
+            document.removeEventListener('scroll', handleLoadNextonEnding);
+            document.removeEventListener('keydown', keyboardControl);
+            document.removeEventListener('click', clickControl);
         };
     }, []);
 
     useEffect(() => {
-        if ((chapter as IChapter).lastPageRead > -1) {
-            setInitialScroll((chapter as IChapter).lastPageRead);
+        const initialPage = (chapter as IChapter).lastPageRead;
+        if (initialPage > -1) {
+            pagesRef.current[initialPage].scrollIntoView();
+            readerCurPage = initialPage;
+            pagesRef.current[readerCurPage].scrollIntoView();
         }
     }, []);
-
-    useEffect(() => {
-        if (initialScroll > -1) {
-            initialPageRef.current?.scrollIntoView();
-        }
-    }, [initialScroll, initialPageRef.current]);
 
     return (
         <div className={classes.reader}>
@@ -67,7 +118,7 @@ export default function VerticalReader(props: IReaderProps) {
                         src={page.src}
                         setCurPage={setCurPage}
                         settings={settings}
-                        ref={page.index === initialScroll ? initialPageRef : null}
+                        ref={(e:HTMLDivElement) => pagesRef.current.push(e)}
                     />
                 ))
             }
