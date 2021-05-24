@@ -23,7 +23,7 @@ const useStyles = makeStyles({
 
 export default function VerticalReader(props: IReaderProps) {
     const {
-        pages, settings, setCurPage, curPage, manga, chapter, nextChapter,
+        pages, settings, setCurPage, curPageRef, manga, chapter, nextChapter,
     } = props;
 
     const classes = useStyles();
@@ -31,29 +31,24 @@ export default function VerticalReader(props: IReaderProps) {
 
     const pageRef = useRef<HTMLDivElement>(null);
     const pagesRef = useRef<HTMLDivElement[]>([]);
-    let readerCurPage = curPage;
 
     function nextPage() {
-        if (curPage < pages.length - 1) {
-            setCurPage((x) => {
-                readerCurPage = x + 1;
-                return readerCurPage;
-            });
-            pagesRef.current[readerCurPage].scrollIntoView();
+        if (curPageRef.current < pages.length - 1) {
+            setCurPage((page) => page + 1);
         } else if (settings.loadNextonEnding) {
             nextChapter();
         }
+        pagesRef.current[curPageRef.current]?.scrollIntoView();
     }
 
     function prevPage() {
-        if (readerCurPage > 0) {
+        if (curPageRef.current > 0) {
             setCurPage((page) => {
                 const rect = pagesRef.current[page].getBoundingClientRect();
-                readerCurPage = (rect.y < 0 && rect.y + rect.height > 0) ? page : page - 1;
-                return readerCurPage;
+                return (rect.y < 0 && rect.y + rect.height > 0) ? page : page - 1;
             });
         }
-        pagesRef.current[readerCurPage].scrollIntoView();
+        pagesRef.current[curPageRef.current]?.scrollIntoView();
     }
 
     function keyboardControl(e:KeyboardEvent) {
@@ -100,11 +95,14 @@ export default function VerticalReader(props: IReaderProps) {
     }, [pageRef]);
 
     useEffect(() => {
-        const initialPage = (chapter as IChapter).lastPageRead;
+        let initialPage = (chapter as IChapter).lastPageRead;
+        if (initialPage > pages.length - 1) {
+            initialPage = pages.length - 1;
+        }
         if (initialPage > -1) {
             pagesRef.current[initialPage].scrollIntoView();
-            readerCurPage = initialPage;
-            pagesRef.current[readerCurPage].scrollIntoView();
+            curPageRef.current = initialPage;
+            pagesRef.current[curPageRef.current].scrollIntoView();
         }
     }, []);
 

@@ -24,7 +24,7 @@ const useStyles = makeStyles({
 
 export default function PagedReader(props: IReaderProps) {
     const {
-        pages, settings, setCurPage, curPage, manga, chapter, nextChapter,
+        pages, settings, setCurPage, curPageRef, manga, chapter, nextChapter,
     } = props;
 
     const classes = useStyles();
@@ -33,15 +33,15 @@ export default function PagedReader(props: IReaderProps) {
     const pageRef = useRef<HTMLDivElement>(null);
 
     function nextPage() {
-        if (curPage < pages.length - 1) {
-            setCurPage(curPage + 1);
+        if (curPageRef.current < pages.length - 1) {
+            setCurPage(curPageRef.current + 1);
         } else if (settings.loadNextonEnding) {
             nextChapter();
         }
     }
 
     function prevPage() {
-        if (curPage > 0) { setCurPage(curPage - 1); }
+        if (curPageRef.current > 0) { setCurPage(curPageRef.current - 1); }
     }
 
     function keyboardControl(e:KeyboardEvent) {
@@ -73,14 +73,14 @@ export default function PagedReader(props: IReaderProps) {
             document.removeEventListener('keyup', keyboardControl);
             pageRef.current?.removeEventListener('click', clickControl);
         };
-    }, [curPage, pageRef]);
+    }, [pageRef]);
 
     return (
         <div ref={pageRef} className={classes.reader}>
             <Page
-                key={curPage}
-                index={curPage}
-                src={pages[curPage].src}
+                key={curPageRef.current}
+                index={curPageRef.current}
+                src={pages[curPageRef.current].src}
                 setCurPage={setCurPage}
                 settings={settings}
             />
