@@ -27,12 +27,10 @@ const useStyles = makeStyles((theme: Theme) => ({
     chapters: {
         listStyle: 'none',
         padding: 0,
-        width: '100vw',
-        minHeight: '200px',
+        minHeight: '50vh',
         [theme.breakpoints.up('md')]: {
             width: '50vw',
             height: 'calc(100vh - 64px)',
-            overflowY: 'auto',
             margin: 0,
         },
     },
@@ -102,6 +100,7 @@ export default function Manga() {
                 <Virtuoso
                     style={{ // override Virtuoso default values and set them with class
                         height: 'undefined',
+                        overflowY: 'visible',
                     }}
                     className={classes.chapters}
                     totalCount={chapters.length}
