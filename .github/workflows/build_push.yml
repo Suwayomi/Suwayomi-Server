@@ -70,9 +70,9 @@ jobs:
 #          configuration-cache-enabled: true
 
       - name: Mock Build and copy webUI, Build Jar
-      run: |
-        cd master/server/build
-        touch Tachidesk-v0.3.8-r580.jar
+        run: |
+          cd master/server/build
+          touch Tachidesk-v0.3.8-r580.jar
 
       - name: Generate Tag Name
         id: GenTagName
