@@ -73,13 +73,13 @@ jobs:
         run: |
           mkdir -p master/server/build
           cd master/server/build
-          touch Tachidesk-v0.3.8-r580.jar
+          echo "test" > Tachidesk-v0.3.8-r581.jar
 
       - name: Generate Tag Name
         id: GenTagName
         run: |
           cd master/server/build
-          genTag=$(ls *.jar | sed -e's/Tachidesk-v\|.jar//g')
+          genTag=$(ls *.jar | sed -e's/Tachidesk-\|.jar//g')
           echo "$genTag"
           echo "::set-output name=value::$genTag"
 
@@ -107,7 +107,7 @@ jobs:
       - name: Mock make windows packages
         run: |
            cd master/server/build
-           touch Tachidesk-v0.3.8-r580.zip
+           echo test > Tachidesk-v0.3.8-r580.zip
 
       - name: Checkout preview branch
         uses: actions/checkout@v2
