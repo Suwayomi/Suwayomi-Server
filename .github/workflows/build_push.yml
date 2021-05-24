@@ -59,31 +59,67 @@ jobs:
             **/react/node_modules
           key: ${{ runner.os }}-${{ hashFiles('**/react/yarn.lock') }}
 
-      - name: Build and copy webUI, Build Jar
-        uses: eskatos/gradle-command-action@v1
-        with:
-          build-root-directory: master
-          wrapper-directory: master
-          arguments: :webUI:copyBuild :server:shadowJar --stacktrace
-          wrapper-cache-enabled: true
-          dependencies-cache-enabled: true
-          configuration-cache-enabled: true
+#      - name: Build and copy webUI, Build Jar
+#        uses: eskatos/gradle-command-action@v1
+#        with:
+#          build-root-directory: master
+#          wrapper-directory: master
+#          arguments: :webUI:copyBuild :server:shadowJar --stacktrace
+#          wrapper-cache-enabled: true
+#          dependencies-cache-enabled: true
+#          configuration-cache-enabled: true
+
+      - name: Mock Build and copy webUI, Build Jar
+      run: |
+        cd master/server/build
+        touch Tachidesk-v0.3.8-r580.jar
+
+      - name: Generate Tag Name
+        id: GenTagName
+        run: |
+          cd master/server/build
+          echo "::set-output name=value::$(ls *.jar | sed -e's/Tachidesk-v\|.jar//g')"
+
+#      - name: Create tag
+#        uses: actions/github-script@v3
+#        env:
+#          TAG: ${{ steps.GenTagName.value }}
+#        with:
+#          github-token: ${{ github.DEPLOY_PREVIEW_TOKEN }}
+#          script: |
+#            const { TAG } = process.env
+#
+#            github.git.createTag({
+#              owner: "Suwayomi",
+#              repo: "Tachidesk",
+#              tag: TAG,
+#            })
 
       - name: make windows packages
         run: |
-          cd master/scripts
-          ./windows-bundler.sh win32
-          ./windows-bundler.sh win64
+#          cd master/scripts
+#          ./windows-bundler.sh win32
+#          ./windows-bundler.sh win64
+           cd master/server/build
+           touch Tachidesk-v0.3.8-r580.zip
 
-#      - name: Checkout preview branch
-#        uses: actions/checkout@v2
-#        with:
-#          repository: 'Suwayomi/Tachidesk-preview'
-#          ref: main
-#          path: preview
-#          token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
+      - name: Checkout preview branch
+        uses: actions/checkout@v2
+        with:
+          repository: 'Suwayomi/Tachidesk-preview'
+          ref: main
+          path: preview
+          token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
 
-      - name: Upload Release
+      - name: Create Tag
+        env:
+          TAG: ${{ steps.GenTagName.value }}
+        run: |
+          cd preview
+          git tag $TAG
+          git push origin main $TAG
+
+      - name: Upload Preview Release
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
@@ -91,6 +127,7 @@ jobs:
           draft: true
           owner: "Suwayomi"
           repo: "Tachidesk-preview"
+          tag: ${{ steps.GenTagName.value }}
 
 
 #      - name: Upload Release
