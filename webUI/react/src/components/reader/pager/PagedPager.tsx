@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /*
  * Copyright (C) Contributors to the Suwayomi project
  *
@@ -8,7 +7,6 @@
 
 import { makeStyles } from '@material-ui/core/styles';
 import React, { useEffect, useRef } from 'react';
-import { useHistory } from 'react-router-dom';
 import Page from '../Page';
 
 const useStyles = makeStyles({
@@ -24,16 +22,14 @@ const useStyles = makeStyles({
 
 export default function PagedReader(props: IReaderProps) {
     const {
-        pages, settings, setCurPage, curPage, manga, chapter, nextChapter,
+        pages, settings, setCurPage, curPage, nextChapter,
     } = props;
 
     const classes = useStyles();
-    const history = useHistory();
 
     const selfRef = useRef<HTMLDivElement>(null);
 
     function nextPage() {
-        console.log(curPage);
         if (curPage < pages.length - 1) {
             setCurPage(curPage + 1);
         } else if (settings.loadNextonEnding) {
@@ -78,7 +74,7 @@ export default function PagedReader(props: IReaderProps) {
             document.removeEventListener('keydown', keyboardControl);
             selfRef.current?.removeEventListener('click', clickControl);
         };
-    }, [selfRef]);
+    }, [selfRef, curPage]);
 
     return (
         <div ref={selfRef} className={classes.reader}>

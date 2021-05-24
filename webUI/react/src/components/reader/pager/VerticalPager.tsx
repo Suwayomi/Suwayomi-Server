@@ -40,11 +40,8 @@ export default function VerticalReader(props: IReaderProps) {
 
     function prevPage() {
         if (curPage > 0) {
-            const rect = pagesRef.current[curPage].getBoundingClientRect();
-            if (rect.y < 0 && rect.y + rect.height > 0) {
-                setCurPage(curPage - 1);
-                pagesRef.current[curPage - 1]?.scrollIntoView();
-            }
+            pagesRef.current[curPage - 1]?.scrollIntoView();
+            setCurPage(curPage - 1);
         }
     }
 
@@ -89,7 +86,7 @@ export default function VerticalReader(props: IReaderProps) {
             document.removeEventListener('keydown', keyboardControl);
             selfRef.current?.removeEventListener('click', clickControl);
         };
-    }, [selfRef]);
+    }, [selfRef, curPage]);
 
     useEffect(() => {
         // scroll last read page into view
