@@ -73,7 +73,7 @@ jobs:
         run: |
           mkdir -p master/server/build
           cd master/server/build
-          echo "test" > Tachidesk-v0.3.8-r582.jar
+          echo "test" > Tachidesk-v0.3.8-r583.jar
 
       - name: Generate Tag Name
         id: GenTagName
@@ -122,8 +122,13 @@ jobs:
           TAG="${{ steps.GenTagName.outputs.value }}"
           echo "tag: $TAG"
           cd preview
+          echo "{ \"latest\": \"$TAG\" }" > index.json
+          git add index.json
+          git commit -m "Updated to $TAG"
+          git push origin main
+
           git tag $TAG
-          git push origin main $TAG
+          git push origin $TAG
 
       - name: Upload Preview Release
         uses: ncipollo/release-action@v1
