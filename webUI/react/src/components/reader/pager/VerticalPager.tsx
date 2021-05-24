@@ -40,8 +40,13 @@ export default function VerticalReader(props: IReaderProps) {
 
     function prevPage() {
         if (curPage > 0) {
-            pagesRef.current[curPage - 1]?.scrollIntoView();
-            setCurPage(curPage - 1);
+            const rect = pagesRef.current[curPage].getBoundingClientRect();
+            if (rect.y < 0 && rect.y + rect.height > 0) {
+                pagesRef.current[curPage]?.scrollIntoView();
+            } else {
+                pagesRef.current[curPage - 1]?.scrollIntoView();
+                setCurPage(curPage - 1);
+            }
         }
     }
 
