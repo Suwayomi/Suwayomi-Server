@@ -79,8 +79,9 @@ jobs:
         id: GenTagName
         run: |
           cd master/server/build
-          echo "$(ls *.jar | sed -e's/Tachidesk-v\|.jar//g')"
-          echo "::set-output name=value::$(ls *.jar | sed -e's/Tachidesk-v\|.jar//g')"
+          genTag=$(ls *.jar | sed -e's/Tachidesk-v\|.jar//g')
+          echo "$genTag"
+          echo "::set-output name=value::$genTag"
 
 #      - name: Create tag
 #        uses: actions/github-script@v3
@@ -117,9 +118,9 @@ jobs:
           token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
 
       - name: Create Tag
-        env:
-          TAG: ${{ steps.GenTagName.value }}
         run: |
+          TAG="${{ steps.GenTagName.outputs.value }}"
+          echo "tag: $TAG"
           cd preview
           git tag $TAG
           git push origin main $TAG
@@ -132,7 +133,7 @@ jobs:
           draft: true
           owner: "Suwayomi"
           repo: "Tachidesk-preview"
-          tag: ${{ steps.GenTagName.value }}
+          tag: ${{ steps.GenTagName.outputs.value }}
 
 
 #      - name: Upload Release
