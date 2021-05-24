@@ -32,14 +32,18 @@ Here is a list of current features:
 ### All Operating Systems
 You should have The Java Runtime Environment(JRE) 8 or newer and a modern browser installed(Google is your friend for seeking assitance). Also an internet connection is required as almost everything this app does is downloading stuff. 
 
-Download the latest "Stable" jar release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases) or a preview jar build from [the preview branch](https://github.com/Suwayomi/Tachidesk/tree/preview).
+Download the latest "Stable" jar release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases) or a preview jar build from [the preview repository](https://github.com/Suwayomi/Tachidesk-preview/releases).
 
 Double click on the jar file or run `java -jar Tachidesk-vX.Y.Z-rxxx.jar` (or `java -jar Tachidesk-latest.jar` if you have the latest preview) from a Terminal/Command Prompt window to run the app which will open a new browser window automatically. Also the System Tray Icon is your friend if you need to open the browser window again or close Tachidesk.
 
 ### Windows
-Download the latest win32 or win64 (depending on your system, usually you want win64) release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases).
+Download the latest "Stable" win32 or win64 (depending on your system, usually you want win64) release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases) or a preview one from [the preview repository](https://github.com/Suwayomi/Tachidesk-preview/releases).
 
-The Windows specific build has java bundled inside, so you don't have to install java to use it. Unzip `Tachidesk-vX.Y.Z-rxxx-win64.zip` and run `Tachidesk Launcher.exe` or `Tachidesk Launcher.bat`. The rest works like the previous section.
+The Windows specific build has java bundled inside, so you don't have to install java to use it. Unzip `Tachidesk-vX.Y.Z-rxxx-win64.zip` and run one of the Launcher files depending on what you want(see bellow). The rest works like the previous section.
+#### Windows Launchers
+- `Tachidesk Electron Launcher.bat`: Launches Tachidesk inside Electron as a desktop applicaton
+- `Tachidesk Browser Launcher.bat`: Launches Tachidesk in a browser window
+- `Tachidesk Debug Launcher.bat`: Launches Tachidesk with debug logs attached. If tachidesk doesn't work for you, running this can give you insight into why.
 
 ### Arch Linux
 You can install Tachidesk from the AUR
