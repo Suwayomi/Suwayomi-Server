@@ -95,11 +95,14 @@ jobs:
 #              tag: TAG,
 #            })
 
-      - name: make windows packages
-        run: |
+#      - name: make windows packages
+#        run: |
 #          cd master/scripts
 #          ./windows-bundler.sh win32
 #          ./windows-bundler.sh win64
+
+      - name: Mock make windows packages
+        run: |
            cd master/server/build
            touch Tachidesk-v0.3.8-r580.zip
 
