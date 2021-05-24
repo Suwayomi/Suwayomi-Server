@@ -73,7 +73,7 @@ jobs:
         run: |
           mkdir -p master/server/build
           cd master/server/build
-          echo "test" > Tachidesk-v0.3.8-r581.jar
+          echo "test" > Tachidesk-v0.3.8-r582.jar
 
       - name: Generate Tag Name
         id: GenTagName
@@ -130,7 +130,6 @@ jobs:
         with:
           token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
           artifacts: "master/server/build/*.jar,master/server/build/*.zip"
-          draft: true
           owner: "Suwayomi"
           repo: "Tachidesk-preview"
           tag: ${{ steps.GenTagName.outputs.value }}
