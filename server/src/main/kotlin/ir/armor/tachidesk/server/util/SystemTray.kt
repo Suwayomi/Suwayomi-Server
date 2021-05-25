@@ -22,9 +22,9 @@ object SystemTray {
             // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
             SystemTray.DEBUG = serverConfig.debugLogsEnabled
 
-            CacheUtil.clear(BuildConfig.name)
+            CacheUtil.clear(BuildConfig.NAME)
 
-            val systemTray = SystemTray.get(BuildConfig.name) ?: return null
+            val systemTray = SystemTray.get(BuildConfig.NAME) ?: return null
             val mainMenu = systemTray.menu
 
             mainMenu.add(

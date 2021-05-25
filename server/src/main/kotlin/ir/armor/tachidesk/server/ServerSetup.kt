@@ -40,7 +40,7 @@ val systemTrayInstance by lazy { systemTray() }
 val androidCompat by lazy { AndroidCompat() }
 
 fun applicationSetup() {
-    logger.info("Running Tachidesk ${BuildConfig.version} revision ${BuildConfig.revision}")
+    logger.info("Running Tachidesk ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")
 
     // Application dirs
     val applicationDirs = ApplicationDirs()

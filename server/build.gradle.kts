@@ -109,16 +109,14 @@ val tachideskRevision = Runtime
         }
 
 buildConfig {
-    appName = rootProject.name
     clsName = "BuildConfig"
     packageName = "ir.armor.tachidesk.server"
-    version = tachideskVersion
 
 
-    buildConfigField("String", "name", rootProject.name) // alias for BuildConfig.NAME
-    buildConfigField("String", "version", tachideskVersion) // alias for BuildConfig.VERSION
-    buildConfigField("String", "revision", tachideskRevision)
-    buildConfigField("boolean", "debug", project.hasProperty("debugApp").toString())
+    buildConfigField("String", "NAME", rootProject.name)
+    buildConfigField("String", "VERSION", tachideskVersion)
+    buildConfigField("String", "REVISION", tachideskRevision)
+    buildConfigField("String", "BUILD_TYPE", if (System.getenv("TachideskBuildType") == "Stable") "Stable" else "Preview")
 }
 
 tasks {

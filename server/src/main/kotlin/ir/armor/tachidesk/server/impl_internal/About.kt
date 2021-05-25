@@ -12,13 +12,15 @@ import ir.armor.tachidesk.server.BuildConfig
 data class AboutDataClass(
     val version: String,
     val revision: String,
+    val buildType: String,
 )
 
 object About {
     fun getAbout(): AboutDataClass {
         return AboutDataClass(
-            BuildConfig.version,
-            BuildConfig.revision,
+            BuildConfig.VERSION,
+            BuildConfig.REVISION,
+            BuildConfig.BUILD_TYPE,
         )
     }
 }
