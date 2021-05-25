@@ -84,7 +84,7 @@ export default function VerticalReader(props: IReaderProps) {
     };
 
     useEffect(() => {
-        if (settings.loadNextonEnding) { window.addEventListener('scroll', handleLoadNextonEnding); }
+        if (settings.loadNextonEnding) { document.addEventListener('scroll', handleLoadNextonEnding); }
         document.addEventListener('keydown', keyboardControl, false);
         selfRef.current?.addEventListener('click', clickControl);
 
