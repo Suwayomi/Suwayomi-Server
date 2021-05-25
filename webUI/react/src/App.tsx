@@ -122,9 +122,11 @@ export default function App() {
                         </Switch>
                     </Container>
                     <Switch>
-                        <Route path="/manga/:mangaId/chapter/:chapterIndex">
-                            <Reader />
-                        </Route>
+                        <Route
+                            path="/manga/:mangaId/chapter/:chapterIndex"
+                            // passing a key re-mounts the reader when changing chapters
+                            render={(props:any) => <Reader key={props.match.params.chapterIndex} />}
+                        />
                     </Switch>
                 </NavbarContext.Provider>
             </ThemeProvider>
