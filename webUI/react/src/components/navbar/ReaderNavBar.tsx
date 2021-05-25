@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /*
  * Copyright (C) Contributors to the Suwayomi project
  *
@@ -12,7 +11,7 @@ import KeyboardArrowLeftIcon from '@material-ui/icons/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
 import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@material-ui/icons/KeyboardArrowUp';
-import { makeStyles, Theme, useTheme } from '@material-ui/core/styles';
+import { makeStyles } from '@material-ui/core/styles';
 import React, { useContext, useEffect, useState } from 'react';
 import Typography from '@material-ui/core/Typography';
 import { useHistory, Link } from 'react-router-dom';
@@ -22,18 +21,15 @@ import Zoom from '@material-ui/core/Zoom';
 import { Switch } from '@material-ui/core';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
-import ListItemIcon from '@material-ui/core/ListItemIcon';
 import MenuItem from '@material-ui/core/MenuItem';
 import Select from '@material-ui/core/Select';
 import ListItemText from '@material-ui/core/ListItemText';
 import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction';
 import Collapse from '@material-ui/core/Collapse';
 import Button from '@material-ui/core/Button';
-import ClickAwayListener from '@material-ui/core/ClickAwayListener';
-import DarkTheme from '../../context/DarkTheme';
 import NavBarContext from '../../context/NavbarContext';
 
-const useStyles = (settings: IReaderSettings) => makeStyles((theme: Theme) => ({
+const useStyles = (settings: IReaderSettings) => makeStyles({
     // main container and root div need to change classes...
     AppMainContainer: {
         display: 'none',
@@ -137,7 +133,7 @@ const useStyles = (settings: IReaderSettings) => makeStyles((theme: Theme) => ({
             backgroundColor: 'black',
         },
     },
-}));
+});
 
 export const defaultReaderSettings = () => ({
     staticNav: false,
@@ -157,7 +153,6 @@ interface IProps {
 
 export default function ReaderNavBar(props: IProps) {
     const { title } = useContext(NavBarContext);
-    const { darkTheme } = useContext(DarkTheme);
 
     const history = useHistory();
 
@@ -166,12 +161,10 @@ export default function ReaderNavBar(props: IProps) {
     } = props;
 
     const [drawerOpen, setDrawerOpen] = useState(false || settings.staticNav);
-    const [drawerVisible, setDrawerVisible] = useState(false || settings.staticNav);
     const [hideOpenButton, setHideOpenButton] = useState(false);
     const [prevScrollPos, setPrevScrollPos] = useState(0);
     const [settingsCollapseOpen, setSettingsCollapseOpen] = useState(true);
 
-    const theme = useTheme();
     const classes = useStyles(settings)();
 
     const setSettingValue = (key: string, value: any) => setSettings({ ...settings, [key]: value });
@@ -210,8 +203,6 @@ export default function ReaderNavBar(props: IProps) {
                 appear={false}
                 mountOnEnter
                 unmountOnExit
-                onEntered={() => setDrawerVisible(true)}
-                onExited={() => setDrawerVisible(false)}
             >
                 <div className={classes.root}>
                     <header>

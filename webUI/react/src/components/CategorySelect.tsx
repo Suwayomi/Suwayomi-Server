@@ -70,7 +70,6 @@ export default function CategorySelect(props: IProps) {
         setOpen(false);
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleChange = (event: React.ChangeEvent<HTMLInputElement>, categoryId: number) => {
         const { checked } = event.target as HTMLInputElement;
 

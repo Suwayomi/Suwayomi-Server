@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /*
  * Copyright (C) Contributors to the Suwayomi project
  *
@@ -13,7 +12,7 @@ import CardContent from '@material-ui/core/CardContent';
 import IconButton from '@material-ui/core/IconButton';
 import MoreVertIcon from '@material-ui/icons/MoreVert';
 import Typography from '@material-ui/core/Typography';
-import { Link, useHistory } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import Menu from '@material-ui/core/Menu';
 import MenuItem from '@material-ui/core/MenuItem';
 import BookmarkIcon from '@material-ui/icons/Bookmark';
@@ -52,7 +51,6 @@ interface IProps{
 
 export default function ChapterCard(props: IProps) {
     const classes = useStyles();
-    const history = useHistory();
     const theme = useTheme();
     const { chapter, triggerChaptersUpdate } = props;
 

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /*
  * Copyright (C) Contributors to the Suwayomi project
  *
@@ -10,7 +9,7 @@ import ReactDOM from 'react-dom';
 import React from 'react';
 import Slide, { SlideProps } from '@material-ui/core/Slide';
 import Snackbar from '@material-ui/core/Snackbar';
-import MuiAlert, { AlertProps, Color as Severity } from '@material-ui/lab/Alert';
+import MuiAlert, { Color as Severity } from '@material-ui/lab/Alert';
 
 function removeToast(id: string) {
     const container = document.querySelector(`#${id}`)!!;
@@ -21,11 +20,6 @@ function removeToast(id: string) {
 function Transition(props: SlideProps) {
     // eslint-disable-next-line react/jsx-props-no-spreading
     return <Slide {...props} direction="up" />;
-}
-
-function Alert(props: AlertProps) {
-    // eslint-disable-next-line react/jsx-props-no-spreading
-    return <MuiAlert elevation={6} variant="filled" {...props} />;
 }
 
 interface IToastProps{

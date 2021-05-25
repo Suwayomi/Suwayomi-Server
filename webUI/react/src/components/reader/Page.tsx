@@ -1,5 +1,3 @@
-/* eslint-disable react/no-unused-prop-types */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /*
  * Copyright (C) Contributors to the Suwayomi project
  *
@@ -10,7 +8,6 @@
 import CircularProgress from '@material-ui/core/CircularProgress';
 import { makeStyles } from '@material-ui/core/styles';
 import React, { useEffect, useRef, useState } from 'react';
-import LazyLoad from 'react-lazyload';
 
 const useStyles = (settings: IReaderSettings) => makeStyles({
     loading: {
@@ -98,7 +95,6 @@ const Page = React.forwardRef((props: IProps, ref: any) => {
     const {
         src, index, setCurPage, settings,
     } = props;
-    const classes = useStyles(settings)();
 
     return (
         <div ref={ref} style={{ margin: '0 auto' }}>

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /*
  * Copyright (C) Contributors to the Suwayomi project
  *
@@ -7,7 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import React, { useEffect, useState, useContext } from 'react';
-import { makeStyles, Theme, useTheme } from '@material-ui/core/styles';
+import { makeStyles, Theme } from '@material-ui/core/styles';
 import { useParams } from 'react-router-dom';
 import { Virtuoso } from 'react-virtuoso';
 import ChapterCard from '../components/ChapterCard';
@@ -44,7 +43,6 @@ const useStyles = makeStyles((theme: Theme) => ({
 
 export default function Manga() {
     const classes = useStyles();
-    const theme = useTheme();
 
     const { setTitle } = useContext(NavbarContext);
     useEffect(() => { setTitle('Manga'); }, []); // delegate setting topbar action to MangaDetails
