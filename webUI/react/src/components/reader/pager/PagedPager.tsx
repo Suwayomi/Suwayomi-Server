@@ -22,7 +22,7 @@ const useStyles = makeStyles({
 
 export default function PagedReader(props: IReaderProps) {
     const {
-        pages, settings, setCurPage, curPage, nextChapter,
+        pages, settings, setCurPage, curPage, nextChapter, prevChapter,
     } = props;
 
     const classes = useStyles();
@@ -38,7 +38,7 @@ export default function PagedReader(props: IReaderProps) {
     }
 
     function prevPage() {
-        if (curPage > 0) { setCurPage(curPage - 1); }
+        if (curPage > 0) { setCurPage(curPage - 1); } else if (curPage === 0) { prevChapter(); }
     }
 
     function keyboardControl(e:KeyboardEvent) {

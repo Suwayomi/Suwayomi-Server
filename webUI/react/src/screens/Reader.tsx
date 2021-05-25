@@ -139,6 +139,7 @@ export default function Reader() {
         }
     }, [curPage]);
 
+    // return spinner while chpater data is loading
     if (chapter.pageCount === -1) {
         return (
             <div className={classes.loading}>
@@ -155,6 +156,12 @@ export default function Reader() {
             client.patch(`/api/v1/manga/${manga.id}/chapter/${chapter.index}`, formData);
 
             history.push(`/manga/${manga.id}/chapter/${chapter.index + 1}`);
+        }
+    };
+
+    const prevChapter = () => {
+        if (chapter.index > 1) {
+            history.push(`/manga/${manga.id}/chapter/${chapter.index - 1}`);
         }
     };
 
@@ -181,6 +188,7 @@ export default function Reader() {
                 manga={manga}
                 chapter={chapter}
                 nextChapter={nextChapter}
+                prevChapter={prevChapter}
             />
         </div>
     );

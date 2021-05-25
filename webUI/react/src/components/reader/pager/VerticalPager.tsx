@@ -21,7 +21,7 @@ const useStyles = makeStyles({
 
 export default function VerticalReader(props: IReaderProps) {
     const {
-        pages, settings, setCurPage, curPage, chapter, nextChapter,
+        pages, settings, setCurPage, curPage, chapter, nextChapter, prevChapter,
     } = props;
 
     const classes = useStyles();
@@ -47,6 +47,8 @@ export default function VerticalReader(props: IReaderProps) {
                 pagesRef.current[curPage - 1]?.scrollIntoView();
                 setCurPage(curPage - 1);
             }
+        } else if (curPage === 0) {
+            prevChapter();
         }
     }
 

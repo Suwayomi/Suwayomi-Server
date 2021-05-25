@@ -117,4 +117,5 @@ interface IReaderProps {
     manga: IMangaCard | IManga
     chapter: IChapter | IPartialChpter
     nextChapter: () => void
+    prevChapter: () => void
 }
