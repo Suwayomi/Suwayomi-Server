@@ -294,12 +294,30 @@ export default function ReaderNavBar(props: IProps) {
                                     value={settings.readerType}
                                     onChange={(e) => setSettingValue('readerType', e.target.value)}
                                 >
-                                    <MenuItem value="SingleLTR">Left to right</MenuItem>
-                                    <MenuItem value="SingleRTL">Right to left(WIP)</MenuItem>
-                                    <MenuItem value="SingleVertical">Vertical(WIP)</MenuItem>
-                                    <MenuItem value="Webtoon">Webtoon</MenuItem>
-                                    <MenuItem value="ContinuesVertical">Continues Vertical</MenuItem>
-                                    <MenuItem value="ContinuesHorizontal">Horizontal(WIP)</MenuItem>
+                                    <MenuItem value="SingleLTR">
+                                        Left to right
+
+                                    </MenuItem>
+                                    {/* <MenuItem value="SingleRTL">
+                                        Right to left(WIP)
+
+                                    </MenuItem> */}
+                                    {/* <MenuItem value="SingleVertical">
+                                        Vertical(WIP)
+
+                                    </MenuItem> */}
+                                    <MenuItem value="Webtoon">
+                                        Webtoon
+
+                                    </MenuItem>
+                                    <MenuItem value="ContinuesVertical">
+                                        Continues Vertical
+
+                                    </MenuItem>
+                                    {/* <MenuItem value="ContinuesHorizontal">
+                                        Horizontal(WIP)
+
+                                    </MenuItem> */}
                                 </Select>
                             </ListItem>
                         </List>
