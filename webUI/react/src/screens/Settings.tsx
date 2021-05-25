@@ -12,12 +12,19 @@ import BackupIcon from '@material-ui/icons/Backup';
 import Brightness6Icon from '@material-ui/icons/Brightness6';
 import DnsIcon from '@material-ui/icons/Dns';
 import EditIcon from '@material-ui/icons/Edit';
-import {
-    Button, Dialog, DialogActions, DialogContent,
-    DialogContentText, IconButton, ListItemSecondaryAction, Switch, TextField,
-    ListItemIcon, ListItemText,
-} from '@material-ui/core';
+import InfoIcon from '@material-ui/icons/Info';
 import ListItem from '@material-ui/core/ListItem';
+import ListItemIcon from '@material-ui/core/ListItemIcon';
+import ListItemText from '@material-ui/core/ListItemText';
+import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction';
+import Switch from '@material-ui/core/Switch';
+import Button from '@material-ui/core/Button';
+import IconButton from '@material-ui/core/IconButton';
+import Dialog from '@material-ui/core/Dialog';
+import DialogActions from '@material-ui/core/DialogActions';
+import DialogContent from '@material-ui/core/DialogContent';
+import DialogContentText from '@material-ui/core/DialogContentText';
+import TextField from '@material-ui/core/TextField';
 import NavbarContext from '../context/NavbarContext';
 import DarkTheme from '../context/DarkTheme';
 import useLocalStorage from '../util/useLocalStorage';
@@ -87,9 +94,14 @@ export default function Settings() {
                         >
                             <EditIcon />
                         </IconButton>
-
                     </ListItemSecondaryAction>
                 </ListItem>
+                <ListItemLink href="/settings/about">
+                    <ListItemIcon>
+                        <InfoIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="About" />
+                </ListItemLink>
             </List>
 
             <Dialog open={dialogOpen} onClose={handleDialogCancel}>

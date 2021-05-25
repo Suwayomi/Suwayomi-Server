@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jmailen.gradle.kotlinter.tasks.FormatTask
 import org.jmailen.gradle.kotlinter.tasks.LintTask
 import java.io.BufferedReader
+import java.time.Instant
 
 plugins {
     application
@@ -117,6 +118,10 @@ buildConfig {
     buildConfigField("String", "VERSION", tachideskVersion)
     buildConfigField("String", "REVISION", tachideskRevision)
     buildConfigField("String", "BUILD_TYPE", if (System.getenv("TachideskBuildType") == "Stable") "Stable" else "Preview")
+    buildConfigField("long", "BUILD_TIME", Instant.now().epochSecond.toString())
+
+    buildConfigField("String", "GITHUB", "https://github.com/Suwayomi/Tachidesk")
+    buildConfigField("String", "DISCORD", "https://discord.gg/DDZdqZWaHA")
 }
 
 tasks {

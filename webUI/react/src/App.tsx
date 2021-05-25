@@ -27,6 +27,7 @@ import Settings from './screens/Settings';
 import Categories from './screens/settings/Categories';
 import Backup from './screens/settings/Backup';
 import useLocalStorage from './util/useLocalStorage';
+import About from './screens/settings/About';
 
 export default function App() {
     const [title, setTitle] = useState<string>('Tachidesk');
@@ -100,6 +101,9 @@ export default function App() {
                             </Route>
                             <Route path="/library">
                                 <Library />
+                            </Route>
+                            <Route path="/settings/about">
+                                <About />
                             </Route>
                             <Route path="/settings/categories">
                                 <Categories />

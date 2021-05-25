@@ -10,17 +10,25 @@ package ir.armor.tachidesk.server.impl_internal
 import ir.armor.tachidesk.server.BuildConfig
 
 data class AboutDataClass(
+    val name: String,
     val version: String,
     val revision: String,
     val buildType: String,
+    val buildTime: Long,
+    val github: String,
+    val discord: String,
 )
 
 object About {
     fun getAbout(): AboutDataClass {
         return AboutDataClass(
+            BuildConfig.NAME,
             BuildConfig.VERSION,
             BuildConfig.REVISION,
             BuildConfig.BUILD_TYPE,
+            BuildConfig.BUILD_TIME,
+            BuildConfig.GITHUB,
+            BuildConfig.DISCORD,
         )
     }
 }
