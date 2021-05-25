@@ -1,7 +1,7 @@
 
 | Build | Stable | Preview | Support Server |
 |-------|----------|---------|---------|
-| ![CI](https://github.com/Suwayomi/Tachidesk/actions/workflows/build_push.yml/badge.svg) | [![stable release](https://img.shields.io/github/release/Suwayomi/Tachidesk.svg?maxAge=3600&label=download)](https://github.com/Suwayomi/Tachidesk/releases) | [![preview](https://img.shields.io/badge/dynamic/json?url=https://github.com/Suwayomi/Tachidesk-preview/raw/main/index.json&label=download&query=$.latest&color=blue)](https://github.com/Suwayomi/Tachidesk-preview/releases/latest) | [![Discord](https://img.shields.io/discord/801021177333940224.svg?label=discord&labelColor=7289da&color=2c2f33&style=flat)](https://discord.gg/DDZdqZWaHA) |
+| ![CI](https://github.com/Suwayomi/Tachidesk/actions/workflows/build_push.yml/badge.svg) | [![stable release](https://img.shields.io/github/release/Suwayomi/Tachidesk.svg?maxAge=3600&label=download)](https://github.com/Suwayomi/Tachidesk/releases) | [![preview](https://img.shields.io/badge/dynamic/json?url=https://github.com/Suwayomi/Tachidesk-preview/raw/main/index.json&label=download&query=$.latest&color=blue)](https://github.com/Suwayomi/Tachidesk-preview/releases/latest) | [![Discord](https://img.shields.io/discord/801021177333940224.svg?label=discord&labelColor=7289da&color=2c2f33&style=flat)](https://discord.gg/DDZdqZWaHA) | 
 
 # Tachidesk
 <img src="https://github.com/Suwayomi/Tachidesk/raw/master/server/src/main/resources/icon/faviconlogo.png" alt="drawing" width="200"/>
@@ -52,7 +52,16 @@ yay -S tachidesk
 ```
 
 ### Docker
-Check this [github package](https://github.com/orgs/Suwayomi/packages/container/package/tachidesk) or our [dockerhub](https://hub.docker.com/repository/docker/suwayomi/tachidesk) for installation. Source code for containers is available at [this repository](https://github.com/Suwayomi/docker-tachidesk).
+Check our Offical Docker release [Tachidesk Container](https://github.com/orgs/Suwayomi/packages/container/package/tachidesk) or use [arbuilder's](https://github.com/arbuilder/Tachidesk-docker) tachidesk docker repo for installation. Source code for our container is available at [docker-tachidesk](https://github.com/Suwayomi/docker-tachidesk). By Default the server will be running on http://localhost:4567 open this url in your browser.
+
+Install from the command line:
+```
+    $ docker pull ghcr.io/suwayomi/tachidesk
+```
+Run Container from the command line:
+```
+    $ docker run -p 4567:4567 ghcr.io/suwayomi/tachidesk
+```
 
 ### Using Tachidesk Remotely
 You can run Tachidesk on your computer or a server and connect to it remotely through the web interface with a web browser on any device including a mobile or tablet or even your smart TV!, this method of using Tachidesk is only recommended if you are a power user and know what you are doing.
