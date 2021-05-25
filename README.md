@@ -52,7 +52,7 @@ yay -S tachidesk
 ```
 
 ### Docker
-Check our Offical Docker release [Tachidesk Container](https://github.com/orgs/Suwayomi/packages/container/package/tachidesk) or use [arbuilder's](https://github.com/arbuilder/Tachidesk-docker) tachidesk docker repo for installation. Source code for our container is available at [docker-tachidesk](https://github.com/Suwayomi/docker-tachidesk). By Default the server will be running on http://localhost:4567 open this url in your browser.
+Check our Offical Docker release [Tachidesk Container](https://github.com/orgs/Suwayomi/packages/container/package/tachidesk) or use [arbuilder's](https://github.com/arbuilder/Tachidesk-docker) tachidesk docker repo for installation. Source code for our container is available at [docker-tachidesk](https://github.com/Suwayomi/docker-tachidesk). By default the server will be running on http://localhost:4567 open this url in your browser.
 
 Install from the command line:
 ```
