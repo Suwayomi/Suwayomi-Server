@@ -96,7 +96,8 @@ sourceSets {
 val tachideskVersion = "v0.3.9"
 
 // counts commit count on master
-val tachideskRevision = Runtime
+val tachideskRevision = runCatching {
+    Runtime
         .getRuntime()
         .exec("git rev-list HEAD --count")
         .let { process ->
@@ -108,6 +109,7 @@ val tachideskRevision = Runtime
             "r" + output.trim()
 
         }
+}.getOrDefault("r0")
 
 buildConfig {
     clsName = "BuildConfig"
