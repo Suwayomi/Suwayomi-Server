@@ -52,6 +52,22 @@ export default function VerticalReader(props: IReaderProps) {
         }
     }
 
+    function goLeft() {
+        if (settings.readerDirection === 'LeftToRight') {
+            prevPage();
+        } else {
+            nextPage();
+        }
+    }
+
+    function goRight() {
+        if (settings.readerDirection === 'LeftToRight') {
+            nextPage();
+        } else {
+            prevPage();
+        }
+    }
+
     function keyboardControl(e:KeyboardEvent) {
         switch (e.code) {
             case 'Space':
@@ -59,10 +75,10 @@ export default function VerticalReader(props: IReaderProps) {
                 nextPage();
                 break;
             case 'ArrowRight':
-                nextPage();
+                goRight();
                 break;
             case 'ArrowLeft':
-                prevPage();
+                goLeft();
                 break;
             default:
                 break;
@@ -71,9 +87,9 @@ export default function VerticalReader(props: IReaderProps) {
 
     function clickControl(e:MouseEvent) {
         if (e.clientX > window.innerWidth / 2) {
-            nextPage();
+            goRight();
         } else {
-            prevPage();
+            goLeft();
         }
     }
 
@@ -93,7 +109,7 @@ export default function VerticalReader(props: IReaderProps) {
             document.removeEventListener('keydown', keyboardControl);
             selfRef.current?.removeEventListener('click', clickControl);
         };
-    }, [selfRef, curPage]);
+    }, [selfRef, curPage, settings.readerDirection]);
 
     useEffect(() => {
         // scroll last read page into view
