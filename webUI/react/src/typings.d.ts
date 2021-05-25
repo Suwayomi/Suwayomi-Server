@@ -91,16 +91,19 @@ interface INavbarOverride {
 type ReaderType =
 'ContinuesVertical'|
 'Webtoon' |
-'SingleVertical' |
-'SingleRTL' |
-'SingleLTR' |
+'SinglePage' |
 'ContinuesHorizontal';
+
+type ReaderDirection =
+'LeftToRight'|
+'RightToLeft';
 
 interface IReaderSettings{
     staticNav: boolean
     showPageNumber: boolean
     loadNextonEnding: boolean
     readerType: ReaderType
+    readerDirection: ReaderDirection
 }
 
 interface IReaderPage {

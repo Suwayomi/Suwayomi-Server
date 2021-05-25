@@ -11,7 +11,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import HorizontalPager from '../components/reader/pager/HorizontalPager';
 import PageNumber from '../components/reader/PageNumber';
-import WebtoonPager from '../components/reader/pager/PagedPager';
+import PagedPager from '../components/reader/pager/PagedPager';
 import VerticalPager from '../components/reader/pager/VerticalPager';
 import ReaderNavBar, { defaultReaderSettings } from '../components/navbar/ReaderNavBar';
 import NavbarContext from '../context/NavbarContext';
@@ -37,14 +37,8 @@ const getReaderComponent = (readerType: ReaderType) => {
         case 'Webtoon':
             return VerticalPager;
             break;
-        case 'SingleVertical':
-            return WebtoonPager;
-            break;
-        case 'SingleRTL':
-            return WebtoonPager;
-            break;
-        case 'SingleLTR':
-            return WebtoonPager;
+        case 'SinglePage':
+            return PagedPager;
             break;
         case 'ContinuesHorizontal':
             return HorizontalPager;

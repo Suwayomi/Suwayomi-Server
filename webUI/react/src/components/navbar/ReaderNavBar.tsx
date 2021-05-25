@@ -141,6 +141,7 @@ export const defaultReaderSettings = () => ({
     continuesPageGap: false,
     loadNextonEnding: false,
     readerType: 'ContinuesVertical',
+    readerDirection: 'LeftToRight',
 } as IReaderSettings);
 
 interface IProps {
@@ -285,18 +286,10 @@ export default function ReaderNavBar(props: IProps) {
                                     value={settings.readerType}
                                     onChange={(e) => setSettingValue('readerType', e.target.value)}
                                 >
-                                    <MenuItem value="SingleLTR">
-                                        Left to right
+                                    <MenuItem value="SinglePage">
+                                        Single Page
 
                                     </MenuItem>
-                                    {/* <MenuItem value="SingleRTL">
-                                        Right to left(WIP)
-
-                                    </MenuItem> */}
-                                    {/* <MenuItem value="SingleVertical">
-                                        Vertical(WIP)
-
-                                    </MenuItem> */}
                                     <MenuItem value="Webtoon">
                                         Webtoon
 
@@ -309,6 +302,22 @@ export default function ReaderNavBar(props: IProps) {
                                         Horizontal(WIP)
 
                                     </MenuItem> */}
+                                </Select>
+                            </ListItem>
+                            <ListItem>
+                                <ListItemText primary="Reading Direction" />
+                                <Select
+                                    value={settings.readerDirection}
+                                    onChange={(e) => setSettingValue('readerDirection', e.target.value)}
+                                >
+                                    <MenuItem value="LeftToRight">
+                                        Left to right
+
+                                    </MenuItem>
+                                    <MenuItem value="RightToLeft">
+                                        Right to left
+
+                                    </MenuItem>
                                 </Select>
                             </ListItem>
                         </List>
