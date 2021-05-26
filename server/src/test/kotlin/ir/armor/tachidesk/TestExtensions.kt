@@ -18,7 +18,6 @@ import ir.armor.tachidesk.impl.extension.ExtensionsList.getExtensionList
 import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
 import ir.armor.tachidesk.impl.util.lang.awaitSingle
 import ir.armor.tachidesk.model.dataclass.ExtensionDataClass
-import ir.armor.tachidesk.server.applicationSetup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -30,6 +29,7 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import rx.Observable
+import suwayomi.server.applicationSetup
 import java.io.File
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

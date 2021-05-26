@@ -73,14 +73,14 @@ dependencies {
     testImplementation(kotlin("test-junit5"))
 }
 
-val MainClass = "ir.armor.tachidesk.MainKt"
+val MainClass = "suwayomi.MainKt"
 application {
     mainClass.set(MainClass)
 
     // for testing electron
 //    applicationDefaultJvmArgs = listOf(
-//            "-Dir.armor.tachidesk.webInterface=electron",
-//            "-Dir.armor.tachidesk.electronPath=/usr/bin/electron"
+//            "-Dsuwayomi.tachidesk.webInterface=electron",
+//            "-Dsuwayomi.tachidesk.electronPath=/usr/bin/electron"
 //    )
 }
 
@@ -113,7 +113,7 @@ val tachideskRevision = runCatching {
 
 buildConfig {
     clsName = "BuildConfig"
-    packageName = "ir.armor.tachidesk.server"
+    packageName = "suwayomi.server"
 
 
     buildConfigField("String", "NAME", rootProject.name)
