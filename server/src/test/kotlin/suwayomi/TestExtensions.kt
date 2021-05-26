@@ -1,4 +1,4 @@
-package ir.armor.tachidesk
+package suwayomi
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -10,14 +10,6 @@ package ir.armor.tachidesk
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
-import ir.armor.tachidesk.impl.Source.getSourceList
-import ir.armor.tachidesk.impl.extension.Extension.installExtension
-import ir.armor.tachidesk.impl.extension.Extension.uninstallExtension
-import ir.armor.tachidesk.impl.extension.Extension.updateExtension
-import ir.armor.tachidesk.impl.extension.ExtensionsList.getExtensionList
-import ir.armor.tachidesk.impl.util.GetHttpSource.getHttpSource
-import ir.armor.tachidesk.impl.util.lang.awaitSingle
-import ir.armor.tachidesk.model.dataclass.ExtensionDataClass
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -30,6 +22,14 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import rx.Observable
 import suwayomi.server.applicationSetup
+import suwayomi.tachidesk.impl.Source.getSourceList
+import suwayomi.tachidesk.impl.extension.Extension.installExtension
+import suwayomi.tachidesk.impl.extension.Extension.uninstallExtension
+import suwayomi.tachidesk.impl.extension.Extension.updateExtension
+import suwayomi.tachidesk.impl.extension.ExtensionsList.getExtensionList
+import suwayomi.tachidesk.impl.util.GetHttpSource.getHttpSource
+import suwayomi.tachidesk.impl.util.lang.awaitSingle
+import suwayomi.tachidesk.model.dataclass.ExtensionDataClass
 import java.io.File
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
