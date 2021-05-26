@@ -14,11 +14,11 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.impl.Manga.getManga
+import suwayomi.tachidesk.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.model.table.CategoryMangaTable
 import suwayomi.tachidesk.model.table.CategoryTable
 import suwayomi.tachidesk.model.table.MangaTable
 import suwayomi.tachidesk.model.table.toDataClass
-import suwayomi.tachidesk.model.dataclass.MangaDataClass
 
 object Library {
     // TODO: `Category.isLanding` is to handle the default categories a new library manga gets,

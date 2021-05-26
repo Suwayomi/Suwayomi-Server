@@ -11,8 +11,8 @@ import eu.kanade.tachiyomi.source.model.SManga
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.impl.MangaList.proxyThumbnailUrl
-import suwayomi.tachidesk.model.table.MangaStatus.Companion
 import suwayomi.tachidesk.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.model.table.MangaStatus.Companion
 
 object MangaTable : IntIdTable() {
     val url = varchar("url", 2048)

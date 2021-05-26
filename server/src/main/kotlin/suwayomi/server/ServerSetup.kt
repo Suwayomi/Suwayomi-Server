@@ -13,9 +13,9 @@ import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.conf.global
 import org.kodein.di.singleton
+import suwayomi.server.database.databaseUp
 import suwayomi.server.util.AppMutex.handleAppMutex
 import suwayomi.server.util.SystemTray.systemTray
-import suwayomi.tachidesk.model.database.databaseUp
 import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
 import xyz.nulldev.ts.config.ApplicationRootDir

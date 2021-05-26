@@ -23,9 +23,9 @@ import suwayomi.tachidesk.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.impl.util.network.await
 import suwayomi.tachidesk.impl.util.storage.CachedImageResponse.clearCachedImage
 import suwayomi.tachidesk.impl.util.storage.CachedImageResponse.getCachedImageResponse
+import suwayomi.tachidesk.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.model.table.MangaStatus
 import suwayomi.tachidesk.model.table.MangaTable
-import suwayomi.tachidesk.model.dataclass.MangaDataClass
 import java.io.InputStream
 
 object Manga {

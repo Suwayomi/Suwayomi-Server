@@ -14,12 +14,12 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import suwayomi.tachidesk.model.dataclass.CategoryDataClass
+import suwayomi.tachidesk.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.model.table.CategoryMangaTable
 import suwayomi.tachidesk.model.table.CategoryTable
 import suwayomi.tachidesk.model.table.MangaTable
 import suwayomi.tachidesk.model.table.toDataClass
-import suwayomi.tachidesk.model.dataclass.CategoryDataClass
-import suwayomi.tachidesk.model.dataclass.MangaDataClass
 
 object CategoryManga {
     fun addMangaToCategory(mangaId: Int, categoryId: Int) {
