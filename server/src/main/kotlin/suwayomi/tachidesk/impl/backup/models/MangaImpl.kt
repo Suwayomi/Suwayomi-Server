@@ -1,7 +1,7 @@
 package suwayomi.tachidesk.impl.backup.models
 
 import org.jetbrains.exposed.sql.ResultRow
-import suwayomi.tachidesk.model.database.table.MangaTable
+import suwayomi.tachidesk.model.table.MangaTable
 
 open class MangaImpl : Manga {
 

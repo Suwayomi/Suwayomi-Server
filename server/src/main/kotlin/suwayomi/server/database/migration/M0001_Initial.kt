@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.model.database.migration
+package suwayomi.server.database.migration
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -12,7 +12,7 @@ import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.model.database.migration.lib.Migration
+import suwayomi.server.database.migration.lib.Migration
 
 @Suppress("ClassName", "unused")
 class M0001_Initial : Migration() {

@@ -7,7 +7,7 @@ package suwayomi.tachidesk.model.dataclass
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import suwayomi.tachidesk.model.database.table.MangaStatus
+import suwayomi.tachidesk.model.table.MangaStatus
 
 data class MangaDataClass(
     val id: Int,

@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.model.database.migration.lib
+package suwayomi.server.database.migration.lib
 
 /*
  * Copyright (C) Contributors to the Suwayomi project

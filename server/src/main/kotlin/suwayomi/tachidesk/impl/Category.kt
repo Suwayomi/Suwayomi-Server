@@ -15,9 +15,9 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.impl.CategoryManga.removeMangaFromCategory
-import suwayomi.tachidesk.model.database.table.CategoryMangaTable
-import suwayomi.tachidesk.model.database.table.CategoryTable
-import suwayomi.tachidesk.model.database.table.toDataClass
+import suwayomi.tachidesk.model.table.CategoryMangaTable
+import suwayomi.tachidesk.model.table.CategoryTable
+import suwayomi.tachidesk.model.table.toDataClass
 import suwayomi.tachidesk.model.dataclass.CategoryDataClass
 
 object Category {

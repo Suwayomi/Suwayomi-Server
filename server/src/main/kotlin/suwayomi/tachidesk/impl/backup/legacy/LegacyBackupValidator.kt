@@ -11,7 +11,7 @@ import com.google.gson.JsonObject
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.impl.backup.legacy.models.Backup
-import suwayomi.tachidesk.model.database.table.SourceTable
+import suwayomi.tachidesk.model.table.SourceTable
 
 object LegacyBackupValidator {
     data class ValidationResult(val missingSources: List<String>, val missingTrackers: List<String>)

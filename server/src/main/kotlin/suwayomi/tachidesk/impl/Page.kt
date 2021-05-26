@@ -21,9 +21,9 @@ import suwayomi.tachidesk.impl.util.GetHttpSource.getHttpSource
 import suwayomi.tachidesk.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.impl.util.storage.CachedImageResponse.getCachedImageResponse
 import suwayomi.tachidesk.impl.util.storage.SafePath
-import suwayomi.tachidesk.model.database.table.ChapterTable
-import suwayomi.tachidesk.model.database.table.MangaTable
-import suwayomi.tachidesk.model.database.table.PageTable
+import suwayomi.tachidesk.model.table.ChapterTable
+import suwayomi.tachidesk.model.table.MangaTable
+import suwayomi.tachidesk.model.table.PageTable
 import java.io.File
 import java.io.InputStream
 

@@ -13,8 +13,8 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.impl.util.GetHttpSource.getHttpSource
 import suwayomi.tachidesk.impl.util.lang.awaitSingle
-import suwayomi.tachidesk.model.database.table.MangaStatus
-import suwayomi.tachidesk.model.database.table.MangaTable
+import suwayomi.tachidesk.model.table.MangaStatus
+import suwayomi.tachidesk.model.table.MangaTable
 import suwayomi.tachidesk.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.model.dataclass.PagedMangaListDataClass
 

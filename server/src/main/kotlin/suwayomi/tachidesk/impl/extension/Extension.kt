@@ -40,8 +40,8 @@ import suwayomi.tachidesk.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.impl.util.PackageTools.trustedSignatures
 import suwayomi.tachidesk.impl.util.network.await
 import suwayomi.tachidesk.impl.util.storage.CachedImageResponse.getCachedImageResponse
-import suwayomi.tachidesk.model.database.table.ExtensionTable
-import suwayomi.tachidesk.model.database.table.SourceTable
+import suwayomi.tachidesk.model.table.ExtensionTable
+import suwayomi.tachidesk.model.table.SourceTable
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.InputStream

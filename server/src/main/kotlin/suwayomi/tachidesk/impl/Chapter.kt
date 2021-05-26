@@ -19,10 +19,10 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.impl.Manga.getManga
 import suwayomi.tachidesk.impl.util.GetHttpSource.getHttpSource
 import suwayomi.tachidesk.impl.util.lang.awaitSingle
-import suwayomi.tachidesk.model.database.table.ChapterTable
-import suwayomi.tachidesk.model.database.table.MangaTable
-import suwayomi.tachidesk.model.database.table.PageTable
-import suwayomi.tachidesk.model.database.table.toDataClass
+import suwayomi.tachidesk.model.table.ChapterTable
+import suwayomi.tachidesk.model.table.MangaTable
+import suwayomi.tachidesk.model.table.PageTable
+import suwayomi.tachidesk.model.table.toDataClass
 import suwayomi.tachidesk.model.dataclass.ChapterDataClass
 
 object Chapter {

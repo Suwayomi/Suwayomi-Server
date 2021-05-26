@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.model.database.table
+package suwayomi.tachidesk.model.table
 
 /*
  * Copyright (C) Contributors to the Suwayomi project

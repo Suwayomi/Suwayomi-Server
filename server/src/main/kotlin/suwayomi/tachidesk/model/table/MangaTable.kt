@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.model.database.table
+package suwayomi.tachidesk.model.table
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -11,7 +11,7 @@ import eu.kanade.tachiyomi.source.model.SManga
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.impl.MangaList.proxyThumbnailUrl
-import suwayomi.tachidesk.model.database.table.MangaStatus.Companion
+import suwayomi.tachidesk.model.table.MangaStatus.Companion
 import suwayomi.tachidesk.model.dataclass.MangaDataClass
 
 object MangaTable : IntIdTable() {

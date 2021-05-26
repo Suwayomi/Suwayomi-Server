@@ -28,7 +28,7 @@ import suwayomi.tachidesk.impl.backup.models.Track
 import suwayomi.tachidesk.impl.backup.models.TrackImpl
 import suwayomi.tachidesk.impl.util.GetHttpSource.getHttpSource
 import suwayomi.tachidesk.impl.util.lang.awaitSingle
-import suwayomi.tachidesk.model.database.table.MangaTable
+import suwayomi.tachidesk.model.table.MangaTable
 import java.io.InputStream
 import java.util.Date
 

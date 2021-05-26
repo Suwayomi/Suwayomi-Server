@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.model.database.migration
+package suwayomi.server.database.migration
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -9,14 +9,14 @@ package suwayomi.tachidesk.model.database.migration
 
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.vendors.currentDialect
-import suwayomi.tachidesk.model.database.migration.lib.Migration
+import suwayomi.server.database.migration.lib.Migration
 
 @Suppress("ClassName", "unused")
-class M0003_DefaultCategory : Migration() {
-    /** this migration renamed CategoryTable.IS_LANDING to ChapterTable.IS_DEFAULT */
+class M0002_ChapterTableIndexRename : Migration() {
+    /** this migration renamed ChapterTable.NUMBER_IN_LIST to ChapterTable.INDEX */
     override fun run() {
         with(TransactionManager.current()) {
-            exec("ALTER TABLE CATEGORY ALTER COLUMN IS_LANDING RENAME TO IS_DEFAULT")
+            exec("ALTER TABLE CHAPTER ALTER COLUMN NUMBER_IN_LIST RENAME TO INDEX")
             commit()
             currentDialect.resetCaches()
         }

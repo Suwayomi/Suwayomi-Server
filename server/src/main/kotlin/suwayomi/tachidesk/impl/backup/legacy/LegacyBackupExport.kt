@@ -24,8 +24,8 @@ import suwayomi.tachidesk.impl.backup.models.ChapterImpl
 import suwayomi.tachidesk.impl.backup.models.Manga
 import suwayomi.tachidesk.impl.backup.models.MangaImpl
 import suwayomi.tachidesk.impl.util.GetHttpSource.getHttpSource
-import suwayomi.tachidesk.model.database.table.ChapterTable
-import suwayomi.tachidesk.model.database.table.MangaTable
+import suwayomi.tachidesk.model.table.ChapterTable
+import suwayomi.tachidesk.model.table.MangaTable
 
 object LegacyBackupExport : LegacyBackupBase() {
 

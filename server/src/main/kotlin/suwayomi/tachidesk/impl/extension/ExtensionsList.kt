@@ -17,7 +17,7 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.impl.extension.Extension.getExtensionIconUrl
 import suwayomi.tachidesk.impl.extension.github.ExtensionGithubApi
 import suwayomi.tachidesk.impl.extension.github.OnlineExtension
-import suwayomi.tachidesk.model.database.table.ExtensionTable
+import suwayomi.tachidesk.model.table.ExtensionTable
 import suwayomi.tachidesk.model.dataclass.ExtensionDataClass
 import java.util.concurrent.ConcurrentHashMap
 

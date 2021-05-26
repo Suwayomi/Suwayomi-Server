@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.model.database.migration.lib
+package suwayomi.server.database.migration.lib
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -63,7 +63,7 @@ fun runMigrations(migrations: List<Migration>, database: Database = TransactionM
 
 @OptIn(ExperimentalPathApi::class)
 private fun getTopLevelClasses(packageName: String): List<Class<*>> {
-    ServerConfig::class.java.getResource("/" + "suwayomi.tachidesk.model.database.migration".replace('.', '/'))
+    ServerConfig::class.java.getResource("/" + "suwayomi.server.database.migration".replace('.', '/'))
     val path = "/" + packageName.replace('.', '/')
     val uri = ServerConfig::class.java.getResource(path).toURI()
 

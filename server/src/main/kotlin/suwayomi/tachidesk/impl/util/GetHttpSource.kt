@@ -17,8 +17,8 @@ import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.server.ApplicationDirs
 import suwayomi.tachidesk.impl.util.PackageTools.loadExtensionSources
-import suwayomi.tachidesk.model.database.table.ExtensionTable
-import suwayomi.tachidesk.model.database.table.SourceTable
+import suwayomi.tachidesk.model.table.ExtensionTable
+import suwayomi.tachidesk.model.table.SourceTable
 import java.util.concurrent.ConcurrentHashMap
 
 object GetHttpSource {
