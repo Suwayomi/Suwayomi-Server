@@ -1,0 +1,38 @@
+ARG BASE_IMAGE=none
+
+FROM $BASE_IMAGE
+
+ARG BASE_IMAGE
+ARG BUILD_DATE
+ARG IMAGE_VERSION
+ARG IMAGE_TYPE
+ARG TACHIDESK_GIT_COMMIT
+ARG TACHIDESK_RELEASE_TAG
+ARG TACHIDESK_FILENAME
+ARG TACHIDESK_RELEASE_DOWNLOAD_URL
+ARG STARTUP_SCRIPT_URL
+
+RUN if echo "$BASE_IMAGE" | grep -q "alpine"; then apk --update add curl openjdk8-jre-base tzdata && addgroup -g 1000 -S arbuilder && adduser -u 1000 -S arbuilder -G arbuilder; \
+	elif echo "$BASE_IMAGE" | grep -q "openjdk"; then useradd -ms /bin/sh arbuilder; else echo "wrong base image"; fi
+
+LABEL maintainer="https://github.com/arbuilder"
+LABEL maintainer_url="https://github.com/Suwayomi/docker-tachidesk"
+LABEL description="This image is used to start tachidesk jar executable in a container"
+LABEL base_image=$BASE_IMAGE
+LABEL build_date=$BUILD_DATE
+LABEL image_version=$IMAGE_VERSION
+LABEL image_type=$IMAGE_TYPE
+LABEL "tachidesk.git_commit"=$TACHIDESK_GIT_COMMIT
+LABEL "tachidesk.release_tag"=$TACHIDESK_RELEASE_TAG
+LABEL "tachidesk.filename"=$TACHIDESK_FILENAME
+LABEL download_url=$TACHIDESK_RELEASE_DOWNLOAD_URL
+
+RUN mkdir -p /home/arbuilder && chown -R arbuilder:arbuilder /home/arbuilder
+USER arbuilder
+WORKDIR /home/arbuilder
+RUN echo $TACHIDESK_FILENAME
+RUN curl -s --create-dirs -L $TACHIDESK_RELEASE_DOWNLOAD_URL -o /home/arbuilder/startup/tachidesk_latest.jar
+RUN curl -s --create-dirs -L $STARTUP_SCRIPT_URL -o /home/arbuilder/startup/startup_script.sh
+
+EXPOSE 4567
+CMD ["/bin/sh", "/home/arbuilder/startup/startup_script.sh"]

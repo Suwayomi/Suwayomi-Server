@@ -1,0 +1,95 @@
+name: Build Docker Image
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  build_owner: 'suwayomi'
+  build_repo_docker: 'tachidesk'
+  startup_script_stable_url: 'https://raw.githubusercontent.com/suwayomi/tachidesk/main/docker/startup_script.sh'
+  build_base_image_alpine: 'alpine:latest'
+  build_base_image_alpine_platform: 'linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64/v8,linux/ppc64le,linux/s390x'
+  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: "!startsWith(github.event.head_commit.message, '[SKIP CI]')"
+    steps:
+      - name: Cancel previous runs
+        uses: styfle/cancel-workflow-action@0.5.0
+        with:
+          access_token: ${{ github.token }}
+    
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: main
+          path: main
+          fetch-depth: 0
+          
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1 
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1 
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: get latest release metadata
+        id: get_latest_release_metadata
+        run: |
+          cd main
+          stable_tag=$(curl -s https://api.github.com/repos/Suwayomi/Tachidesk/releases/latest | egrep -o "tag_name.*.v[0-9]+.[0-9]+.[0-9]+" | egrep -o "v[0-9]+.[0-9]+.[0-9]+")
+          stable_url=$(curl -s https://api.github.com/repos/Suwayomi/Tachidesk/releases/latest | egrep -o "https://.*.download/$stable_tag/Tachidesk-$stable_tag-r[0-9]+.jar")
+          stable_var=$(echo $stable_url | egrep -o "Tachidesk-$stable_tag-r[0-9]+.jar" | egrep -o "$stable_tag-r[0-9]+")
+          stable_commit=$(echo $stable_var | cut -f2 -d"r")
+          stable_filename=Tachidesk-${stable_var}.jar
+          stable_version=$(echo $stable_tag | cut -c2-)
+          echo "::set-output name=stable_url::$stable_url"
+          echo "::set-output name=stable_commit::$stable_commit"
+          echo "::set-output name=stable_tag::$stable_tag"
+          echo "::set-output name=stable_filename::$stable_filename"
+          echo "::set-output name=stable_version::$stable_version"
+          echo "::set-output name=stable_var::$stable_var"
+          build_date=$(date "+%F")
+          echo "::set-output name=build_date::$build_date"
+          
+      - name: Build and push stable alpine
+        if: steps.release_stable_check.outputs.value == 'true'
+        id: docker_build_stable_alpine
+        uses: docker/build-push-action@v2
+        with:
+          file: scripts/dockerfiles/Git_Actions-Dockerfile
+          platforms: ${{ env.build_base_image_alpine_platform }}
+          push: true
+          build-args: |
+            BASE_IMAGE=${{ env.build_base_image_alpine }}
+            BUILD_DATE=${{ steps.get_latest_release_metadata.outputs.build_date }}
+            IMAGE_VERSION=${{ steps.get_latest_release_metadata.outputs.stable_version }}
+            IMAGE_TYPE=stable-alpine
+            TACHIDESK_GIT_COMMIT=${{ steps.get_latest_release_metadata.outputs.stable_commit }}
+            TACHIDESK_RELEASE_TAG=${{ steps.get_latest_release_metadata.outputs.stable_tag }}
+            TACHIDESK_RELEASE_DOWNLOAD_URL=${{ steps.get_latest_release_metadata.outputs.stable_url }}
+            TACHIDESK_FILENAME=${{ steps.get_latest_release_metadata.outputs.stable_filename }}
+            STARTUP_SCRIPT_URL=${{  env.startup_script_stable_url }}
+          tags: |
+            ghcr.io/${{ env.build_owner }}/${{ env.build_repo_docker }}:latest
+            ghcr.io/${{ env.build_owner }}/${{ env.build_repo_docker }}:${{ steps.get_latest_release_metadata.outputs.stable_tag }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+ 
