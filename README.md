@@ -52,7 +52,16 @@ yay -S tachidesk
 ```
 
 ### Docker
-Check [arbuilder's repo](https://github.com/arbuilder/Tachidesk-docker) out for more details and the dockerfile.
+Check our Offical Docker release [Tachidesk Container](https://github.com/orgs/Suwayomi/packages/container/package/tachidesk) or use [arbuilder's](https://github.com/arbuilder/Tachidesk-docker) tachidesk docker repo for installation. Source code for our container is available at [docker-tachidesk](https://github.com/Suwayomi/docker-tachidesk). By default the server will be running on http://localhost:4567 open this url in your browser.
+
+Install from the command line:
+```
+    $ docker pull ghcr.io/suwayomi/tachidesk
+```
+Run Container from the command line:
+```
+    $ docker run -p 4567:4567 ghcr.io/suwayomi/tachidesk
+```
 
 ### Using Tachidesk Remotely
 You can run Tachidesk on your computer or a server and connect to it remotely through the web interface with a web browser on any device including a mobile or tablet or even your smart TV!, this method of using Tachidesk is only recommended if you are a power user and know what you are doing.

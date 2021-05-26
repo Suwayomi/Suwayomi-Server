@@ -1,1 +1,1 @@
-jre\bin\java -Dir.armor.tachidesk.debugLogsEnabled=true -jar  Tachidesk.jar
+jre\bin\java -Dsuwayomi.server.debugLogsEnabled=true -jar  Tachidesk.jar

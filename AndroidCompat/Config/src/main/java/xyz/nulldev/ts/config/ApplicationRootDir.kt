@@ -12,7 +12,7 @@ import net.harawata.appdirs.AppDirsFactory
 val ApplicationRootDir: String
     get(): String {
         return System.getProperty(
-                "ir.armor.tachidesk.rootDir",
+                "suwayomi.server.rootDir",
                 AppDirsFactory.getInstance().getUserDataDir("Tachidesk", null, null)
         )
     }
