@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.impl.extension.github
+package suwayomi.anime.impl.extension.github
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -13,11 +13,11 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonParser
 import eu.kanade.tachiyomi.network.NetworkHelper
 import okhttp3.Request
+import suwayomi.anime.model.dataclass.AnimeExtensionDataClass
 import suwayomi.tachidesk.impl.util.network.UnzippingInterceptor
-import suwayomi.tachidesk.model.dataclass.ExtensionDataClass
 import uy.kohesive.injekt.injectLazy
 
-object AnimeExtensionGithubApi {
+object ExtensionGithubApi {
     const val BASE_URL = "https://raw.githubusercontent.com"
     const val REPO_URL_PREFIX = "$BASE_URL/jmir1/tachiyomi-extensions/repo"
 
@@ -51,7 +51,7 @@ object AnimeExtensionGithubApi {
         return parseResponse(response)
     }
 
-    fun getApkUrl(extension: ExtensionDataClass): String {
+    fun getApkUrl(extension: AnimeExtensionDataClass): String {
         return "$REPO_URL_PREFIX/apk/${extension.apkName}"
     }
 

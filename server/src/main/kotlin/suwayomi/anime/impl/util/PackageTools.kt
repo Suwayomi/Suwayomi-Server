@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.impl.util
+package suwayomi.anime.impl.util
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -41,12 +41,11 @@ object PackageTools {
     const val METADATA_SOURCE_CLASS = "tachiyomi.extension.class"
     const val METADATA_SOURCE_FACTORY = "tachiyomi.extension.factory"
     const val METADATA_NSFW = "tachiyomi.extension.nsfw"
-    const val LIB_VERSION_MIN = 1.2
-    const val LIB_VERSION_MAX = 1.2
+    const val LIB_VERSION_MIN = 1.3
+    const val LIB_VERSION_MAX = 1.3
 
-    private const val officialSignature = "7ce04da7773d41b489f4693a366c36bcd0a11fc39b547168553c285bd7348e23" // inorichi's key
-    private const val unofficialSignature = "64feb21075ba97ebc9cc981243645b331595c111cef1b0d084236a0403b00581" // ArMor's key
-    var trustedSignatures = mutableSetOf<String>() + officialSignature + unofficialSignature
+    private const val officialSignature = "50ab1d1e3a20d204d0ad6d334c7691c632e41b98dfa132bf385695fdfa63839c" // jmir1's key
+    var trustedSignatures = mutableSetOf<String>() + officialSignature
 
     /**
      * Convert dex to jar, a wrapper for the dex2jar library
@@ -59,20 +58,20 @@ object PackageTools {
         val reader = MultiDexFileReader.open(Files.readAllBytes(File(dexFile).toPath()))
         val handler = BaksmaliBaseDexExceptionHandler()
         Dex2jar
-            .from(reader)
-            .withExceptionHandler(handler)
-            .reUseReg(false)
-            .topoLogicalSort()
-            .skipDebug(true)
-            .optimizeSynchronized(false)
-            .printIR(false)
-            .noCode(false)
-            .skipExceptions(false)
-            .to(jarFilePath)
+                .from(reader)
+                .withExceptionHandler(handler)
+                .reUseReg(false)
+                .topoLogicalSort()
+                .skipDebug(true)
+                .optimizeSynchronized(false)
+                .printIR(false)
+                .noCode(false)
+                .skipExceptions(false)
+                .to(jarFilePath)
         if (handler.hasException()) {
             val errorFile: Path = File(applicationDirs.extensionsRoot).toPath().resolve("$fileNameWithoutType-error.txt")
             logger.error(
-                """
+                    """
                 Detail Error Information in File $errorFile
                 Please report this file to one of following link if possible (any one).
                 https://sourceforge.net/p/dex2jar/tickets/
@@ -102,27 +101,27 @@ object PackageTools {
                 val appTag = doc.getElementsByTagName("application").item(0)
 
                 appTag?.childNodes?.toList()
-                    .orEmpty()
-                    .asSequence()
-                    .filter {
-                        it.nodeType == Node.ELEMENT_NODE
-                    }.map {
-                        it as Element
-                    }.filter {
-                        it.tagName == "meta-data"
-                    }.forEach {
-                        putString(
-                            it.attributes.getNamedItem("android:name").nodeValue,
-                            it.attributes.getNamedItem("android:value").nodeValue
-                        )
-                    }
+                        .orEmpty()
+                        .asSequence()
+                        .filter {
+                            it.nodeType == Node.ELEMENT_NODE
+                        }.map {
+                            it as Element
+                        }.filter {
+                            it.tagName == "meta-data"
+                        }.forEach {
+                            putString(
+                                    it.attributes.getNamedItem("android:name").nodeValue,
+                                    it.attributes.getNamedItem("android:value").nodeValue
+                            )
+                        }
             }
 
             signatures = (
-                parsed.apkSingers.flatMap { it.certificateMetas }
-                /*+ parsed.apkV2Singers.flatMap { it.certificateMetas }*/
-                ) // Blocked by: https://github.com/hsiafan/apk-parser/issues/72
-                .map { Signature(it.data) }.toTypedArray()
+                    parsed.apkSingers.flatMap { it.certificateMetas }
+                    /*+ parsed.apkV2Singers.flatMap { it.certificateMetas }*/
+                    ) // Blocked by: https://github.com/hsiafan/apk-parser/issues/72
+                    .map { Signature(it.data) }.toTypedArray()
         }
     }
 
