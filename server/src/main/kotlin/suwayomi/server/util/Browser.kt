@@ -18,11 +18,11 @@ object Browser {
 
     fun openInBrowser() {
 
-        val openInElectron = System.getProperty("suwayomi.tachidesk.webInterface")?.equals("electron")
+        val openInElectron = System.getProperty("suwayomi.server.webInterface")?.equals("electron")
 
         if (openInElectron == true) {
             try {
-                val electronPath = System.getProperty("suwayomi.tachidesk.electronPath")!!
+                val electronPath = System.getProperty("suwayomi.server.electronPath")!!
                 electronInstances.add(ProcessBuilder(electronPath, appBaseUrl).start())
             } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
                 e.printStackTrace()
