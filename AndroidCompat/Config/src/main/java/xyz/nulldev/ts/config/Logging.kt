@@ -17,4 +17,4 @@ fun setLogLevel(level: Level) {
 }
 
 fun debugLogsEnabled(config: Config)
-    = System.getProperty("ir.armor.tachidesk.debugLogsEnabled", config.getString("server.debugLogsEnabled")).toBoolean()
+    = System.getProperty("suwayomi.tachidesk.debugLogsEnabled", config.getString("server.debugLogsEnabled")).toBoolean()

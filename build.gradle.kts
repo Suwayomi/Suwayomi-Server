@@ -5,7 +5,7 @@ plugins {
 }
 
 allprojects {
-    group = "ir.armor.tachidesk"
+    group = "suwayomi"
 
     version = "1.0"
 

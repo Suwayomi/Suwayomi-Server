@@ -63,7 +63,7 @@ fun runMigrations(migrations: List<Migration>, database: Database = TransactionM
 
 @OptIn(ExperimentalPathApi::class)
 private fun getTopLevelClasses(packageName: String): List<Class<*>> {
-    ServerConfig::class.java.getResource("/" + "ir.armor.tachidesk.model.database.migration".replace('.', '/'))
+    ServerConfig::class.java.getResource("/" + "suwayomi.tachidesk.model.database.migration".replace('.', '/'))
     val path = "/" + packageName.replace('.', '/')
     val uri = ServerConfig::class.java.getResource(path).toURI()
 

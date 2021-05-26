@@ -48,7 +48,7 @@ class TestExtensions {
     @BeforeAll
     fun setup() {
         val dataRoot = File("tmp/TestDesk").absolutePath
-        System.setProperty("ir.armor.tachidesk.rootDir", dataRoot)
+        System.setProperty("suwayomi.tachidesk.rootDir", dataRoot)
         applicationSetup()
         setLoggingEnabled(false)
 
