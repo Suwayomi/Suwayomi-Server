@@ -38,10 +38,10 @@ import suwayomi.anime.impl.util.PackageTools.getSignatureHash
 import suwayomi.anime.impl.util.PackageTools.loadExtensionSources
 import suwayomi.anime.impl.util.PackageTools.trustedSignatures
 import suwayomi.anime.model.table.AnimeExtensionTable
+import suwayomi.anime.model.table.AnimeSourceTable
 import suwayomi.server.ApplicationDirs
 import suwayomi.tachidesk.impl.util.network.await
 import suwayomi.tachidesk.impl.util.storage.CachedImageResponse.getCachedImageResponse
-import suwayomi.tachidesk.model.table.SourceTable
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.InputStream
@@ -162,7 +162,7 @@ object Extension {
                 val extensionId = AnimeExtensionTable.select { AnimeExtensionTable.pkgName eq pkgName }.first()[AnimeExtensionTable.id].value
 
                 sources.forEach { httpSource ->
-                    SourceTable.insert {
+                    AnimeSourceTable.insert {
                         it[id] = httpSource.id
                         it[name] = httpSource.name
                         it[lang] = httpSource.lang
@@ -201,7 +201,7 @@ object Extension {
         transaction {
             val extensionId = extensionRecord[AnimeExtensionTable.id].value
 
-            SourceTable.deleteWhere { SourceTable.extension eq extensionId }
+            AnimeSourceTable.deleteWhere { AnimeSourceTable.extension eq extensionId }
             if (extensionRecord[AnimeExtensionTable.isObsolete])
                 AnimeExtensionTable.deleteWhere { AnimeExtensionTable.pkgName eq pkgName }
             else
