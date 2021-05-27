@@ -18,7 +18,8 @@ import NavBar from 'components/navbar/NavBar';
 import NavbarContext from 'context/NavbarContext';
 import DarkTheme from 'context/DarkTheme';
 import useLocalStorage from 'util/useLocalStorage';
-import Sources from 'screens/manga/Sources';
+import MangaSources from 'screens/manga/MangaSources';
+import AnimeSources from 'screens/anime/AnimeSources';
 import Settings from 'screens/Settings';
 import About from 'screens/settings/About';
 import Categories from 'screens/settings/Categories';
@@ -26,8 +27,10 @@ import Backup from 'screens/settings/Backup';
 import Library from 'screens/manga/Library';
 import SearchSingle from 'screens/manga/SearchSingle';
 import Manga from 'screens/manga/Manga';
+import Anime from 'screens/anime/Anime';
 import MangaExtensions from 'screens/manga/MangaExtensions';
 import SourceMangas from 'screens/manga/SourceMangas';
+import SourceAnimes from 'screens/anime/SourceAnimes';
 import Reader from 'screens/manga/Reader';
 import AnimeExtensions from 'screens/anime/AnimeExtensions';
 
@@ -118,8 +121,8 @@ export default function App() {
                             <Route path="/sources/:sourceId/latest/">
                                 <SourceMangas popular={false} />
                             </Route>
-                            <Route path="/sources">
-                                <Sources />
+                            <Route path="/manga/sources">
+                                <MangaSources />
                             </Route>
                             <Route path="/manga/:mangaId/chapter/:chapterNum">
                                 <></>
@@ -141,6 +144,18 @@ export default function App() {
                             {/* Anime Routes */}
                             <Route path="/anime/extensions">
                                 <AnimeExtensions />
+                            </Route>
+                            <Route path="/anime/sources/:sourceId/popular/">
+                                <SourceAnimes popular />
+                            </Route>
+                            <Route path="/anime/sources/:sourceId/latest/">
+                                <SourceMangas popular={false} />
+                            </Route>
+                            <Route path="/anime/sources">
+                                <AnimeSources />
+                            </Route>
+                            <Route path="/anime/:id">
+                                <Anime />
                             </Route>
                         </Switch>
                     </Container>

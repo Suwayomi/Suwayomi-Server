@@ -29,7 +29,8 @@ class ApplicationDirs(
     val dataRoot: String = ApplicationRootDir
 ) {
     val extensionsRoot = "$dataRoot/extensions"
-    val thumbnailsRoot = "$dataRoot/thumbnails"
+    val mangaThumbnailsRoot = "$dataRoot/manga-thumbnails"
+    val animeThumbnailsRoot = "$dataRoot/anime-thumbnails"
     val mangaRoot = "$dataRoot/manga"
 }
 
@@ -55,7 +56,8 @@ fun applicationSetup() {
         applicationDirs.dataRoot,
         applicationDirs.extensionsRoot,
         applicationDirs.extensionsRoot + "/icon",
-        applicationDirs.thumbnailsRoot
+        applicationDirs.mangaThumbnailsRoot,
+        applicationDirs.animeThumbnailsRoot,
     ).forEach {
         File(it).mkdirs()
     }

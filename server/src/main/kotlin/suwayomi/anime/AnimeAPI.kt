@@ -8,6 +8,14 @@ package suwayomi.anime
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.javalin.Javalin
+import suwayomi.anime.impl.Anime.getAnime
+import suwayomi.anime.impl.Anime.getAnimeThumbnail
+import suwayomi.anime.impl.AnimeList.getAnimeList
+import suwayomi.anime.impl.Episode.getEpisode
+import suwayomi.anime.impl.Episode.getEpisodeList
+import suwayomi.anime.impl.Episode.modifyEpisode
+import suwayomi.anime.impl.Source.getAnimeSource
+import suwayomi.anime.impl.Source.getSourceList
 import suwayomi.anime.impl.extension.Extension.getExtensionIcon
 import suwayomi.anime.impl.extension.Extension.installExtension
 import suwayomi.anime.impl.extension.Extension.uninstallExtension
@@ -70,63 +78,63 @@ object AnimeAPI {
             )
         }
 
-//        // list of sources
-//        app.get("/api/v1/source/list") { ctx ->
-//            ctx.json(getSourceList())
-//        }
-//
-//        // fetch source with id `sourceId`
-//        app.get("/api/v1/source/:sourceId") { ctx ->
-//            val sourceId = ctx.pathParam("sourceId").toLong()
-//            ctx.json(getSource(sourceId))
-//        }
-//
-//        // popular mangas from source with id `sourceId`
-//        app.get("/api/v1/source/:sourceId/popular/:pageNum") { ctx ->
-//            val sourceId = ctx.pathParam("sourceId").toLong()
-//            val pageNum = ctx.pathParam("pageNum").toInt()
-//            ctx.json(
-//                JavalinSetup.future {
-//                    getMangaList(sourceId, pageNum, popular = true)
-//                }
-//            )
-//        }
-//
-//        // latest mangas from source with id `sourceId`
-//        app.get("/api/v1/source/:sourceId/latest/:pageNum") { ctx ->
-//            val sourceId = ctx.pathParam("sourceId").toLong()
-//            val pageNum = ctx.pathParam("pageNum").toInt()
-//            ctx.json(
-//                JavalinSetup.future {
-//                    getMangaList(sourceId, pageNum, popular = false)
-//                }
-//            )
-//        }
-//
-//        // get manga info
-//        app.get("/api/v1/manga/:mangaId/") { ctx ->
-//            val mangaId = ctx.pathParam("mangaId").toInt()
-//            val onlineFetch = ctx.queryParam("onlineFetch", "false").toBoolean()
-//
-//            ctx.json(
-//                JavalinSetup.future {
-//                    getManga(mangaId, onlineFetch)
-//                }
-//            )
-//        }
-//
-//        // manga thumbnail
-//        app.get("api/v1/manga/:mangaId/thumbnail") { ctx ->
-//            val mangaId = ctx.pathParam("mangaId").toInt()
-//
-//            ctx.result(
-//                JavalinSetup.future { getMangaThumbnail(mangaId) }
-//                    .thenApply {
-//                        ctx.header("content-type", it.second)
-//                        it.first
-//                    }
-//            )
-//        }
+        // list of sources
+        app.get("/api/v1/anime/source/list") { ctx ->
+            ctx.json(getSourceList())
+        }
+
+        // fetch source with id `sourceId`
+        app.get("/api/v1/anime/source/:sourceId") { ctx ->
+            val sourceId = ctx.pathParam("sourceId").toLong()
+            ctx.json(getAnimeSource(sourceId))
+        }
+
+        // popular animes from source with id `sourceId`
+        app.get("/api/v1/anime/source/:sourceId/popular/:pageNum") { ctx ->
+            val sourceId = ctx.pathParam("sourceId").toLong()
+            val pageNum = ctx.pathParam("pageNum").toInt()
+            ctx.json(
+                JavalinSetup.future {
+                    getAnimeList(sourceId, pageNum, popular = true)
+                }
+            )
+        }
+
+        // latest animes from source with id `sourceId`
+        app.get("/api/v1/anime/source/:sourceId/latest/:pageNum") { ctx ->
+            val sourceId = ctx.pathParam("sourceId").toLong()
+            val pageNum = ctx.pathParam("pageNum").toInt()
+            ctx.json(
+                JavalinSetup.future {
+                    getAnimeList(sourceId, pageNum, popular = false)
+                }
+            )
+        }
+
+        // get anime info
+        app.get("/api/v1/anime/anime/:animeId/") { ctx ->
+            val animeId = ctx.pathParam("animeId").toInt()
+            val onlineFetch = ctx.queryParam("onlineFetch", "false").toBoolean()
+
+            ctx.json(
+                JavalinSetup.future {
+                    getAnime(animeId, onlineFetch)
+                }
+            )
+        }
+
+        // anime thumbnail
+        app.get("api/v1/anime/anime/:animeId/thumbnail") { ctx ->
+            val animeId = ctx.pathParam("animeId").toInt()
+
+            ctx.result(
+                JavalinSetup.future { getAnimeThumbnail(animeId) }
+                    .thenApply {
+                        ctx.header("content-type", it.second)
+                        it.first
+                    }
+            )
+        }
 //
 //        // list manga's categories
 //        app.get("api/v1/manga/:mangaId/category/") { ctx ->
@@ -150,36 +158,36 @@ object AnimeAPI {
 //            ctx.status(200)
 //        }
 //
-//        // get chapter list when showing a manga
-//        app.get("/api/v1/manga/:mangaId/chapters") { ctx ->
-//            val mangaId = ctx.pathParam("mangaId").toInt()
-//
-//            val onlineFetch = ctx.queryParam("onlineFetch")?.toBoolean()
-//
-//            ctx.json(JavalinSetup.future { getChapterList(mangaId, onlineFetch) })
-//        }
-//
-//        // used to display a chapter, get a chapter in order to show it's pages
-//        app.get("/api/v1/manga/:mangaId/chapter/:chapterIndex") { ctx ->
-//            val chapterIndex = ctx.pathParam("chapterIndex").toInt()
-//            val mangaId = ctx.pathParam("mangaId").toInt()
-//            ctx.json(JavalinSetup.future { getChapter(chapterIndex, mangaId) })
-//        }
-//
-//        // used to modify a chapter's parameters
-//        app.patch("/api/v1/manga/:mangaId/chapter/:chapterIndex") { ctx ->
-//            val chapterIndex = ctx.pathParam("chapterIndex").toInt()
-//            val mangaId = ctx.pathParam("mangaId").toInt()
-//
-//            val read = ctx.formParam("read")?.toBoolean()
-//            val bookmarked = ctx.formParam("bookmarked")?.toBoolean()
-//            val markPrevRead = ctx.formParam("markPrevRead")?.toBoolean()
-//            val lastPageRead = ctx.formParam("lastPageRead")?.toInt()
-//
-//            modifyChapter(mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead)
-//
-//            ctx.status(200)
-//        }
+        // get episode list when showing a anime
+        app.get("/api/v1/anime/anime/:animeId/episodes") { ctx ->
+            val animeId = ctx.pathParam("animeId").toInt()
+
+            val onlineFetch = ctx.queryParam("onlineFetch")?.toBoolean()
+
+            ctx.json(JavalinSetup.future { getEpisodeList(animeId, onlineFetch) })
+        }
+
+        // used to display a episode, get a episode in order to show it's <Quality pending>
+        app.get("/api/v1/anime/anime/:animeId/episode/:episodeIndex") { ctx ->
+            val episodeIndex = ctx.pathParam("episodeIndex").toInt()
+            val animeId = ctx.pathParam("animeId").toInt()
+            ctx.json(JavalinSetup.future { getEpisode(episodeIndex, animeId) })
+        }
+
+        // used to modify a episode's parameters
+        app.patch("/api/v1/anime/anime/:animeId/episode/:episodeIndex") { ctx ->
+            val episodeIndex = ctx.pathParam("episodeIndex").toInt()
+            val animeId = ctx.pathParam("animeId").toInt()
+
+            val read = ctx.formParam("read")?.toBoolean()
+            val bookmarked = ctx.formParam("bookmarked")?.toBoolean()
+            val markPrevRead = ctx.formParam("markPrevRead")?.toBoolean()
+            val lastPageRead = ctx.formParam("lastPageRead")?.toInt()
+
+            modifyEpisode(animeId, episodeIndex, read, bookmarked, markPrevRead, lastPageRead)
+
+            ctx.status(200)
+        }
 //
 //        // get page at index "index"
 //        app.get("/api/v1/manga/:mangaId/chapter/:chapterIndex/page/:index") { ctx ->

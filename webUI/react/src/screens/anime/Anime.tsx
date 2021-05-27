@@ -9,8 +9,8 @@ import React, { useEffect, useState, useContext } from 'react';
 import { makeStyles, Theme } from '@material-ui/core/styles';
 import { useParams } from 'react-router-dom';
 import { Virtuoso } from 'react-virtuoso';
-import ChapterCard from 'components/manga/ChapterCard';
-import MangaDetails from 'components/manga/MangaDetails';
+import EpisodeCard from 'components/anime/EpisodeCard';
+import AnimeDetails from 'components/anime/AnimeDetails';
 import NavbarContext from 'context/NavbarContext';
 import client from 'util/client';
 import LoadingPlaceholder from 'components/LoadingPlaceholder';
@@ -41,27 +41,27 @@ const useStyles = makeStyles((theme: Theme) => ({
     },
 }));
 
-export default function Manga() {
+export default function Anime() {
     const classes = useStyles();
 
     const { setTitle } = useContext(NavbarContext);
-    useEffect(() => { setTitle('Manga'); }, []); // delegate setting topbar action to MangaDetails
+    useEffect(() => { setTitle('Anime'); }, []); // delegate setting topbar action to MangaDetails
 
     const { id } = useParams<{ id: string }>();
 
     const [manga, setManga] = useState<IManga>();
-    const [chapters, setChapters] = useState<IChapter[]>([]);
-    const [fetchedChapters, setFetchedChapters] = useState(false);
-    const [noChaptersFound, setNoChaptersFound] = useState(false);
-    const [chapterUpdateTriggerer, setChapterUpdateTriggerer] = useState(0);
+    const [episodes, setEpisodes] = useState<IEpisode[]>([]);
+    const [fetchedEpisodes, setFetchedEpisodes] = useState(false);
+    const [noEpisodesFound, setNoEpisodesFound] = useState(false);
+    const [episodeUpdateTriggerer, setEpisodeUpdateTriggerer] = useState(0);
 
-    function triggerChaptersUpdate() {
-        setChapterUpdateTriggerer(chapterUpdateTriggerer + 1);
+    function triggerEpisodesUpdate() {
+        setEpisodeUpdateTriggerer(episodeUpdateTriggerer + 1);
     }
 
     useEffect(() => {
         if (manga === undefined || !manga.freshData) {
-            client.get(`/api/v1/manga/${id}/?onlineFetch=${manga !== undefined}`)
+            client.get(`/api/v1/anime/anime/${id}/?onlineFetch=${manga !== undefined}`)
                 .then((response) => response.data)
                 .then((data: IManga) => {
                     setManga(data);
@@ -71,29 +71,29 @@ export default function Manga() {
     }, [manga]);
 
     useEffect(() => {
-        const shouldFetchOnline = fetchedChapters && chapterUpdateTriggerer === 0;
-        client.get(`/api/v1/manga/${id}/chapters?onlineFetch=${shouldFetchOnline}`)
+        const shouldFetchOnline = fetchedEpisodes && episodeUpdateTriggerer === 0;
+        client.get(`/api/v1/anime/anime/${id}/episodes?onlineFetch=${shouldFetchOnline}`)
             .then((response) => response.data)
             .then((data) => {
-                if (data.length === 0 && fetchedChapters) {
-                    makeToast('No chapters found', 'warning');
-                    setNoChaptersFound(true);
+                if (data.length === 0 && fetchedEpisodes) {
+                    makeToast('No episodes found', 'warning');
+                    setNoEpisodesFound(true);
                 }
-                setChapters(data);
+                setEpisodes(data);
             })
-            .then(() => setFetchedChapters(true));
-    }, [chapters.length, fetchedChapters, chapterUpdateTriggerer]);
+            .then(() => setFetchedEpisodes(true));
+    }, [episodes.length, fetchedEpisodes, episodeUpdateTriggerer]);
 
     return (
         <div className={classes.root}>
             <LoadingPlaceholder
                 shouldRender={manga !== undefined}
-                component={MangaDetails}
+                component={AnimeDetails}
                 componentProps={{ manga }}
             />
 
             <LoadingPlaceholder
-                shouldRender={chapters.length > 0 || noChaptersFound}
+                shouldRender={episodes.length > 0 || noEpisodesFound}
             >
                 <Virtuoso
                     style={{ // override Virtuoso default values and set them with class
@@ -101,11 +101,11 @@ export default function Manga() {
                         overflowY: window.innerWidth < 960 ? 'visible' : 'auto',
                     }}
                     className={classes.chapters}
-                    totalCount={chapters.length}
+                    totalCount={episodes.length}
                     itemContent={(index:number) => (
-                        <ChapterCard
-                            chapter={chapters[index]}
-                            triggerChaptersUpdate={triggerChaptersUpdate}
+                        <EpisodeCard
+                            episode={episodes[index]}
+                            triggerEpisodesUpdate={triggerEpisodesUpdate}
                         />
                     )}
                     useWindowScroll={window.innerWidth < 960}

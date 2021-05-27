@@ -70,6 +70,22 @@ interface IChapter {
     pageCount: number
 }
 
+interface IEpisode {
+    id: number
+    url: string
+    name: string
+    uploadDate: number
+    episodeNumber: number
+    scanlator: String
+    animeId: number
+    read: boolean
+    bookmarked: boolean
+    lastPageRead: number
+    index: number
+    episodeCount: number
+    pageCount: number
+}
+
 interface IPartialChpter {
     pageCount: number
     index: number

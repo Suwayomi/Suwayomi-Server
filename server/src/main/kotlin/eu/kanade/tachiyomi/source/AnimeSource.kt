@@ -24,7 +24,7 @@ interface AnimeSource {
      *
      * @param anime the anime to update.
      */
-    @Deprecated("Use getAnimeDetails instead")
+//    @Deprecated("Use getAnimeDetails instead")
     fun fetchAnimeDetails(anime: SAnime): Observable<SAnime>
 
     /**
@@ -32,7 +32,7 @@ interface AnimeSource {
      *
      * @param anime the anime to update.
      */
-    @Deprecated("Use getEpisodeList instead")
+//    @Deprecated("Use getEpisodeList instead")
     fun fetchEpisodeList(anime: SAnime): Observable<List<SEpisode>>
 
     /**
@@ -40,7 +40,7 @@ interface AnimeSource {
      *
      * @param episode the episode to get the link for.
      */
-    @Deprecated("Use getEpisodeList instead")
+//    @Deprecated("Use getEpisodeList instead")
     fun fetchEpisodeLink(episode: SEpisode): Observable<String>
 
 //    /**

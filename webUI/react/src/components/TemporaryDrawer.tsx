@@ -71,12 +71,20 @@ export default function TemporaryDrawer({ drawerOpen, setDrawerOpen }: IProps) {
                                 <ListItemText primary="Anime Extensions" />
                             </ListItem>
                         </Link>
-                        <Link to="/sources" style={{ color: 'inherit', textDecoration: 'none' }}>
+                        <Link to="/manga/sources" style={{ color: 'inherit', textDecoration: 'none' }}>
                             <ListItem button key="Sources">
                                 <ListItemIcon>
                                     <ExploreIcon />
                                 </ListItemIcon>
-                                <ListItemText primary="Sources" />
+                                <ListItemText primary="Manga Sources" />
+                            </ListItem>
+                        </Link>
+                        <Link to="/anime/sources" style={{ color: 'inherit', textDecoration: 'none' }}>
+                            <ListItem button key="Sources">
+                                <ListItemIcon>
+                                    <ExploreIcon />
+                                </ListItemIcon>
+                                <ListItemText primary="Anime Sources" />
                             </ListItem>
                         </Link>
                         <Link to="/settings" style={{ color: 'inherit', textDecoration: 'none' }}>

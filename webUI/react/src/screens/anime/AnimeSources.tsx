@@ -7,7 +7,7 @@
 
 import React, { useContext, useEffect, useState } from 'react';
 import ExtensionLangSelect from 'components/manga/ExtensionLangSelect';
-import SourceCard from 'components/manga/SourceCard';
+import SourceCard from 'components/anime/SourceCard';
 import NavbarContext from 'context/NavbarContext';
 import client from 'util/client';
 import { defualtLangs, langCodeToName, langSortCmp } from 'util/language';
@@ -34,7 +34,7 @@ function groupByLang(sources: ISource[]) {
     return result;
 }
 
-export default function Sources() {
+export default function AnimeSources() {
     const { setTitle, setAction } = useContext(NavbarContext);
 
     const [shownLangs, setShownLangs] = useLocalStorage<string[]>('shownSourceLangs', defualtLangs());
@@ -54,7 +54,7 @@ export default function Sources() {
     }, [shownLangs, sources]);
 
     useEffect(() => {
-        client.get('/api/v1/source/list')
+        client.get('/api/v1/anime/source/list')
             .then((response) => response.data)
             .then((data) => { setSources(data); setFetched(true); });
     }, []);
