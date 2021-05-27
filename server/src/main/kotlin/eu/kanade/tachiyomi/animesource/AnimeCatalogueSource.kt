@@ -1,7 +1,7 @@
 package eu.kanade.tachiyomi.animesource
 
+import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
-import eu.kanade.tachiyomi.source.model.FilterList
 import rx.Observable
 
 interface AnimeCatalogueSource : AnimeSource {
@@ -30,7 +30,7 @@ interface AnimeCatalogueSource : AnimeSource {
      * @param query the search query.
      * @param filters the list of filters to apply.
      */
-    fun fetchSearchAnime(page: Int, query: String, filters: FilterList): Observable<AnimesPage>
+    fun fetchSearchAnime(page: Int, query: String, filters: AnimeFilterList): Observable<AnimesPage>
 
     /**
      * Returns an observable containing a page with a list of latest anime updates.
@@ -42,5 +42,5 @@ interface AnimeCatalogueSource : AnimeSource {
     /**
      * Returns the list of filters for the source.
      */
-    fun getFilterList(): FilterList
+    fun getFilterList(): AnimeFilterList
 }
