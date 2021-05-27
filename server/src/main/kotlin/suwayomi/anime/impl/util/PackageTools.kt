@@ -40,8 +40,8 @@ object PackageTools {
     const val METADATA_SOURCE_CLASS = "tachiyomi.animeextension.class"
     const val METADATA_SOURCE_FACTORY = "tachiyomi.animeextension.factory"
     const val METADATA_NSFW = "tachiyomi.animeextension.nsfw"
-    const val LIB_VERSION_MIN = 1.3
-    const val LIB_VERSION_MAX = 1.3
+    const val LIB_VERSION_MIN = 10
+    const val LIB_VERSION_MAX = 10
 
     private const val officialSignature = "50ab1d1e3a20d204d0ad6d334c7691c632e41b98dfa132bf385695fdfa63839c" // jmir1's key
     var trustedSignatures = mutableSetOf<String>() + officialSignature

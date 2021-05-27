@@ -1,6 +1,6 @@
-package eu.kanade.tachiyomi.source
+package eu.kanade.tachiyomi.animesource
 
-import eu.kanade.tachiyomi.source.model.AnimesPage
+import eu.kanade.tachiyomi.animesource.model.AnimesPage
 import eu.kanade.tachiyomi.source.model.FilterList
 import rx.Observable
 

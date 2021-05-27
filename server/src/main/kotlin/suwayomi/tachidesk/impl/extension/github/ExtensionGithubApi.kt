@@ -13,6 +13,8 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonParser
 import eu.kanade.tachiyomi.network.NetworkHelper
 import okhttp3.Request
+import suwayomi.tachidesk.impl.util.PackageTools.LIB_VERSION_MAX
+import suwayomi.tachidesk.impl.util.PackageTools.LIB_VERSION_MIN
 import suwayomi.tachidesk.impl.util.network.UnzippingInterceptor
 import suwayomi.tachidesk.model.dataclass.ExtensionDataClass
 import uy.kohesive.injekt.injectLazy
@@ -20,9 +22,6 @@ import uy.kohesive.injekt.injectLazy
 object ExtensionGithubApi {
     const val BASE_URL = "https://raw.githubusercontent.com"
     const val REPO_URL_PREFIX = "$BASE_URL/tachiyomiorg/tachiyomi-extensions/repo"
-
-    private const val LIB_VERSION_MIN = 1.2
-    private const val LIB_VERSION_MAX = 1.2
 
     private fun parseResponse(json: JsonArray): List<OnlineExtension> {
         return json

@@ -13,6 +13,8 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonParser
 import eu.kanade.tachiyomi.network.NetworkHelper
 import okhttp3.Request
+import suwayomi.anime.impl.util.PackageTools.LIB_VERSION_MAX
+import suwayomi.anime.impl.util.PackageTools.LIB_VERSION_MIN
 import suwayomi.anime.model.dataclass.AnimeExtensionDataClass
 import suwayomi.tachidesk.impl.util.network.UnzippingInterceptor
 import uy.kohesive.injekt.injectLazy
@@ -21,15 +23,12 @@ object ExtensionGithubApi {
     const val BASE_URL = "https://raw.githubusercontent.com"
     const val REPO_URL_PREFIX = "$BASE_URL/jmir1/tachiyomi-extensions/repo"
 
-    private const val LIB_VERSION_MIN = 1.3
-    private const val LIB_VERSION_MAX = 1.3
-
     private fun parseResponse(json: JsonArray): List<OnlineExtension> {
         return json
             .map { it.asJsonObject }
             .filter { element ->
                 val versionName = element["version"].string
-                val libVersion = versionName.substringBeforeLast('.').toDouble()
+                val libVersion = versionName.substringBeforeLast('.').toInt()
                 libVersion in LIB_VERSION_MIN..LIB_VERSION_MAX
             }
             .map { element ->

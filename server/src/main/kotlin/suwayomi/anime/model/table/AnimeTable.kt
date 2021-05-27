@@ -7,7 +7,7 @@ package suwayomi.anime.model.table
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import eu.kanade.tachiyomi.source.model.SAnime
+import eu.kanade.tachiyomi.animesource.model.SAnime
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.impl.MangaList.proxyThumbnailUrl

@@ -1,4 +1,4 @@
-package eu.kanade.tachiyomi.source
+package eu.kanade.tachiyomi.animesource
 
 /**
  * A factory for creating sources at runtime.

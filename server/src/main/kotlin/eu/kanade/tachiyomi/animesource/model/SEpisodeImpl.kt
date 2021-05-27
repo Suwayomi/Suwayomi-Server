@@ -1,4 +1,6 @@
-package eu.kanade.tachiyomi.source.model
+package eu.kanade.tachiyomi.animesource.model
+
+import eu.kanade.tachiyomi.animesource.model.SEpisode
 
 class SEpisodeImpl : SEpisode {
 
