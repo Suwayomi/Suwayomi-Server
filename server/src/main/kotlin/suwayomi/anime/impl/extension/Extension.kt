@@ -8,11 +8,11 @@ package suwayomi.anime.impl.extension
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import android.net.Uri
-import eu.kanade.tachiyomi.network.GET
-import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.animesource.AnimeCatalogueSource
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.AnimeSourceFactory
+import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.NetworkHelper
 import mu.KotlinLogging
 import okhttp3.Request
 import okio.buffer
