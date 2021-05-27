@@ -32,6 +32,7 @@ import MangaExtensions from 'screens/manga/MangaExtensions';
 import SourceMangas from 'screens/manga/SourceMangas';
 import SourceAnimes from 'screens/anime/SourceAnimes';
 import Reader from 'screens/manga/Reader';
+import Player from 'screens/anime/Player';
 import AnimeExtensions from 'screens/anime/AnimeExtensions';
 
 export default function App() {
@@ -133,13 +134,6 @@ export default function App() {
                             <Route path="/library">
                                 <Library />
                             </Route>
-                            <Route
-                                path="/manga/:mangaId/chapter/:chapterIndex"
-                                // passing a key re-mounts the reader when changing chapters
-                                render={
-                                    (props:any) => <Reader key={props.match.params.chapterIndex} />
-                                }
-                            />
 
                             {/* Anime Routes */}
                             <Route path="/anime/extensions">
@@ -154,11 +148,21 @@ export default function App() {
                             <Route path="/anime/sources">
                                 <AnimeSources />
                             </Route>
+                            <Route path="/anime/:animeId/episode/:episodeIndex">
+                                <Player />
+                            </Route>
                             <Route path="/anime/:id">
                                 <Anime />
                             </Route>
                         </Switch>
                     </Container>
+                    <Switch>
+                        <Route
+                            path="/manga/:mangaId/chapter/:chapterIndex"
+                            // passing a key re-mounts the reader when changing chapters
+                            render={(props:any) => <Reader key={props.match.params.chapterIndex} />}
+                        />
+                    </Switch>
                 </NavbarContext.Provider>
             </ThemeProvider>
         </Router>

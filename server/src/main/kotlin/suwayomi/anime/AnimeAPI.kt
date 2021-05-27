@@ -21,7 +21,6 @@ import suwayomi.anime.impl.extension.Extension.installExtension
 import suwayomi.anime.impl.extension.Extension.uninstallExtension
 import suwayomi.anime.impl.extension.Extension.updateExtension
 import suwayomi.anime.impl.extension.ExtensionsList.getExtensionList
-import suwayomi.server.JavalinSetup
 import suwayomi.server.JavalinSetup.future
 
 object AnimeAPI {
@@ -40,7 +39,7 @@ object AnimeAPI {
             val pkgName = ctx.pathParam("pkgName")
 
             ctx.json(
-                JavalinSetup.future {
+                future {
                     installExtension(pkgName)
                 }
             )
@@ -51,7 +50,7 @@ object AnimeAPI {
             val pkgName = ctx.pathParam("pkgName")
 
             ctx.json(
-                JavalinSetup.future {
+                future {
                     updateExtension(pkgName)
                 }
             )
@@ -70,7 +69,7 @@ object AnimeAPI {
             val apkName = ctx.pathParam("apkName")
 
             ctx.result(
-                JavalinSetup.future { getExtensionIcon(apkName) }
+                future { getExtensionIcon(apkName) }
                     .thenApply {
                         ctx.header("content-type", it.second)
                         it.first
@@ -94,7 +93,7 @@ object AnimeAPI {
             val sourceId = ctx.pathParam("sourceId").toLong()
             val pageNum = ctx.pathParam("pageNum").toInt()
             ctx.json(
-                JavalinSetup.future {
+                future {
                     getAnimeList(sourceId, pageNum, popular = true)
                 }
             )
@@ -105,7 +104,7 @@ object AnimeAPI {
             val sourceId = ctx.pathParam("sourceId").toLong()
             val pageNum = ctx.pathParam("pageNum").toInt()
             ctx.json(
-                JavalinSetup.future {
+                future {
                     getAnimeList(sourceId, pageNum, popular = false)
                 }
             )
@@ -117,7 +116,7 @@ object AnimeAPI {
             val onlineFetch = ctx.queryParam("onlineFetch", "false").toBoolean()
 
             ctx.json(
-                JavalinSetup.future {
+                future {
                     getAnime(animeId, onlineFetch)
                 }
             )
@@ -128,7 +127,7 @@ object AnimeAPI {
             val animeId = ctx.pathParam("animeId").toInt()
 
             ctx.result(
-                JavalinSetup.future { getAnimeThumbnail(animeId) }
+                future { getAnimeThumbnail(animeId) }
                     .thenApply {
                         ctx.header("content-type", it.second)
                         it.first
@@ -164,14 +163,14 @@ object AnimeAPI {
 
             val onlineFetch = ctx.queryParam("onlineFetch")?.toBoolean()
 
-            ctx.json(JavalinSetup.future { getEpisodeList(animeId, onlineFetch) })
+            ctx.json(future { getEpisodeList(animeId, onlineFetch) })
         }
 
         // used to display a episode, get a episode in order to show it's <Quality pending>
         app.get("/api/v1/anime/anime/:animeId/episode/:episodeIndex") { ctx ->
             val episodeIndex = ctx.pathParam("episodeIndex").toInt()
             val animeId = ctx.pathParam("animeId").toInt()
-            ctx.json(JavalinSetup.future { getEpisode(episodeIndex, animeId) })
+            ctx.json(future { getEpisode(episodeIndex, animeId) })
         }
 
         // used to modify a episode's parameters

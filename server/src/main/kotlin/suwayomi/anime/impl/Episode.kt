@@ -8,6 +8,7 @@ package suwayomi.anime.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.SAnime
+import eu.kanade.tachiyomi.source.model.SEpisode
 import org.jetbrains.exposed.sql.SortOrder.DESC
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
@@ -18,6 +19,7 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.anime.impl.Anime.getAnime
 import suwayomi.anime.impl.util.GetAnimeHttpSource.getAnimeHttpSource
 import suwayomi.anime.model.dataclass.EpisodeDataClass
+import suwayomi.anime.model.table.AnimeTable
 import suwayomi.anime.model.table.EpisodeTable
 import suwayomi.anime.model.table.toDataClass
 import suwayomi.tachidesk.impl.util.lang.awaitSingle
@@ -59,7 +61,7 @@ object Episode {
                 val episodeEntry = EpisodeTable.select { EpisodeTable.url eq fetchedEpisode.url }.firstOrNull()
                 if (episodeEntry == null) {
                     EpisodeTable.insert {
-                        it[url] = source.
+                        it[url] = fetchedEpisode.url
                         it[name] = fetchedEpisode.name
                         it[date_upload] = fetchedEpisode.date_upload
                         it[episode_number] = fetchedEpisode.episode_number
@@ -128,7 +130,32 @@ object Episode {
 
     /** used to display a episode, get a episode in order to show it's video */
     suspend fun getEpisode(episodeIndex: Int, animeId: Int): EpisodeDataClass {
-        return getEpisodeList(animeId, true).first { it.index == episodeIndex }
+        val episode = getEpisodeList(animeId, false)
+            .first { it.index == episodeIndex }
+
+        val animeEntry = transaction { AnimeTable.select { AnimeTable.id eq animeId }.first() }
+        val source = getAnimeHttpSource(animeEntry[AnimeTable.sourceReference])
+        val fetchedLinkUrl = source.fetchEpisodeLink(
+            SEpisode.create().also {
+                it.url = episode.url
+                it.name = episode.name
+            }
+        ).awaitSingle()
+
+        return EpisodeDataClass(
+            episode.url,
+            episode.name,
+            episode.uploadDate,
+            episode.episodeNumber,
+            episode.scanlator,
+            animeId,
+            episode.read,
+            episode.bookmarked,
+            episode.lastPageRead,
+            episode.index,
+            episode.episodeCount,
+            fetchedLinkUrl
+        )
     }
 
 //    /** used to display a episode, get a episode in order to show it's pages */

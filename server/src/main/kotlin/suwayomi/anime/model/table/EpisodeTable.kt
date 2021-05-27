@@ -9,6 +9,8 @@ package suwayomi.anime.model.table
 
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.anime.model.dataclass.EpisodeDataClass
 
 object EpisodeTable : IntIdTable() {
@@ -40,4 +42,5 @@ fun EpisodeTable.toDataClass(episodeEntry: ResultRow) =
         episodeEntry[isBookmarked],
         episodeEntry[lastPageRead],
         episodeEntry[episodeIndex],
+        transaction { EpisodeTable.select { anime eq episodeEntry[anime] }.count().toInt() }
     )

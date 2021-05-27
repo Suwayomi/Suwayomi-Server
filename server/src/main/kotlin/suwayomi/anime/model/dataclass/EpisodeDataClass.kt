@@ -27,9 +27,9 @@ data class EpisodeDataClass(
     /** this chapter's index, starts with 1 */
     val index: Int,
 
-    /** total chapter count, used to calculate if there's a next and prev chapter */
-    val chapterCount: Int? = null,
+    /** total episode count, used to calculate if there's a next and prev episode */
+    val episodeCount: Int? = null,
 
     /** used to construct pages in the front-end */
-    val pageCount: Int? = null,
+    val linkUrl: String? = null,
 )

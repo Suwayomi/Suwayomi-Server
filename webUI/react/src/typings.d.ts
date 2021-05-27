@@ -55,7 +55,6 @@ interface IManga {
 }
 
 interface IChapter {
-    id: number
     url: string
     name: string
     uploadDate: number
@@ -71,7 +70,6 @@ interface IChapter {
 }
 
 interface IEpisode {
-    id: number
     url: string
     name: string
     uploadDate: number
@@ -83,13 +81,19 @@ interface IEpisode {
     lastPageRead: number
     index: number
     episodeCount: number
-    pageCount: number
+    linkUrl: string
 }
 
 interface IPartialChpter {
     pageCount: number
     index: number
     chapterCount: number
+}
+
+interface IPartialEpisode {
+    linkUrl: string
+    index: number
+    episodeCount: number
 }
 
 interface ICategory {
