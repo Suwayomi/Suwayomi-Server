@@ -16,7 +16,7 @@ import { Link } from 'react-router-dom';
 import Menu from '@material-ui/core/Menu';
 import MenuItem from '@material-ui/core/MenuItem';
 import BookmarkIcon from '@material-ui/icons/Bookmark';
-import client from '../util/client';
+import client from 'util/client';
 
 const useStyles = makeStyles((theme) => ({
     root: {

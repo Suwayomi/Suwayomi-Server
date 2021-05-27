@@ -10,9 +10,9 @@ package suwayomi.anime.impl.extension
 import android.net.Uri
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
-import eu.kanade.tachiyomi.source.CatalogueSource
-import eu.kanade.tachiyomi.source.Source
-import eu.kanade.tachiyomi.source.SourceFactory
+import eu.kanade.tachiyomi.source.AnimeCatalogueSource
+import eu.kanade.tachiyomi.source.AnimeSource
+import eu.kanade.tachiyomi.source.AnimeSourceFactory
 import mu.KotlinLogging
 import okhttp3.Request
 import okio.buffer
@@ -125,11 +125,11 @@ object Extension {
             File(dexFilePath).delete()
 
             // collect sources from the extension
-            val sources: List<CatalogueSource> = when (val instance = loadExtensionSources(jarFilePath, className)) {
-                is Source -> listOf(instance)
-                is SourceFactory -> instance.createSources()
+            val sources: List<AnimeCatalogueSource> = when (val instance = loadExtensionSources(jarFilePath, className)) {
+                is AnimeSource -> listOf(instance)
+                is AnimeSourceFactory -> instance.createSources()
                 else -> throw RuntimeException("Unknown source class type! ${instance.javaClass}")
-            }.map { it as CatalogueSource }
+            }.map { it as AnimeCatalogueSource }
 
             val langs = sources.map { it.lang }.toSet()
             val extensionLang = when (langs.size) {
@@ -246,6 +246,6 @@ object Extension {
     }
 
     fun getExtensionIconUrl(apkName: String): String {
-        return "/api/v1/extension/icon/$apkName"
+        return "/api/v1/anime/extension/icon/$apkName"
     }
 }

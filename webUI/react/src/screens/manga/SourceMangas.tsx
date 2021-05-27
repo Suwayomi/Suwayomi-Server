@@ -7,9 +7,9 @@
 
 import React, { useContext, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import MangaGrid from '../components/MangaGrid';
-import NavbarContext from '../context/NavbarContext';
-import client from '../util/client';
+import MangaGrid from 'components/manga/MangaGrid';
+import NavbarContext from 'context/NavbarContext';
+import client from 'util/client';
 
 export default function SourceMangas(props: { popular: boolean }) {
     const { setTitle, setAction } = useContext(NavbarContext);

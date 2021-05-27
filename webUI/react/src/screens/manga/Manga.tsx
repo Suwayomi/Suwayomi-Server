@@ -9,12 +9,12 @@ import React, { useEffect, useState, useContext } from 'react';
 import { makeStyles, Theme } from '@material-ui/core/styles';
 import { useParams } from 'react-router-dom';
 import { Virtuoso } from 'react-virtuoso';
-import ChapterCard from '../components/ChapterCard';
-import MangaDetails from '../components/MangaDetails';
-import NavbarContext from '../context/NavbarContext';
-import client from '../util/client';
-import LoadingPlaceholder from '../components/LoadingPlaceholder';
-import makeToast from '../components/Toast';
+import ChapterCard from 'components/manga/ChapterCard';
+import MangaDetails from 'components/manga/MangaDetails';
+import NavbarContext from 'context/NavbarContext';
+import client from 'util/client';
+import LoadingPlaceholder from 'components/LoadingPlaceholder';
+import makeToast from 'components/Toast';
 
 const useStyles = makeStyles((theme: Theme) => ({
     root: {

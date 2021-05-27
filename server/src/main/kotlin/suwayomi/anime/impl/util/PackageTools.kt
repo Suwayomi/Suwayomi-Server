@@ -32,15 +32,14 @@ import java.nio.file.Files
 import java.nio.file.Path
 import javax.xml.parsers.DocumentBuilderFactory
 
-
 object PackageTools {
     private val logger = KotlinLogging.logger {}
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
-    const val EXTENSION_FEATURE = "tachiyomi.extension"
-    const val METADATA_SOURCE_CLASS = "tachiyomi.extension.class"
-    const val METADATA_SOURCE_FACTORY = "tachiyomi.extension.factory"
-    const val METADATA_NSFW = "tachiyomi.extension.nsfw"
+    const val EXTENSION_FEATURE = "tachiyomi.animeextension"
+    const val METADATA_SOURCE_CLASS = "tachiyomi.animeextension.class"
+    const val METADATA_SOURCE_FACTORY = "tachiyomi.animeextension.factory"
+    const val METADATA_NSFW = "tachiyomi.animeextension.nsfw"
     const val LIB_VERSION_MIN = 1.3
     const val LIB_VERSION_MAX = 1.3
 
@@ -58,20 +57,20 @@ object PackageTools {
         val reader = MultiDexFileReader.open(Files.readAllBytes(File(dexFile).toPath()))
         val handler = BaksmaliBaseDexExceptionHandler()
         Dex2jar
-                .from(reader)
-                .withExceptionHandler(handler)
-                .reUseReg(false)
-                .topoLogicalSort()
-                .skipDebug(true)
-                .optimizeSynchronized(false)
-                .printIR(false)
-                .noCode(false)
-                .skipExceptions(false)
-                .to(jarFilePath)
+            .from(reader)
+            .withExceptionHandler(handler)
+            .reUseReg(false)
+            .topoLogicalSort()
+            .skipDebug(true)
+            .optimizeSynchronized(false)
+            .printIR(false)
+            .noCode(false)
+            .skipExceptions(false)
+            .to(jarFilePath)
         if (handler.hasException()) {
             val errorFile: Path = File(applicationDirs.extensionsRoot).toPath().resolve("$fileNameWithoutType-error.txt")
             logger.error(
-                    """
+                """
                 Detail Error Information in File $errorFile
                 Please report this file to one of following link if possible (any one).
                 https://sourceforge.net/p/dex2jar/tickets/
@@ -101,27 +100,27 @@ object PackageTools {
                 val appTag = doc.getElementsByTagName("application").item(0)
 
                 appTag?.childNodes?.toList()
-                        .orEmpty()
-                        .asSequence()
-                        .filter {
-                            it.nodeType == Node.ELEMENT_NODE
-                        }.map {
-                            it as Element
-                        }.filter {
-                            it.tagName == "meta-data"
-                        }.forEach {
-                            putString(
-                                    it.attributes.getNamedItem("android:name").nodeValue,
-                                    it.attributes.getNamedItem("android:value").nodeValue
-                            )
-                        }
+                    .orEmpty()
+                    .asSequence()
+                    .filter {
+                        it.nodeType == Node.ELEMENT_NODE
+                    }.map {
+                        it as Element
+                    }.filter {
+                        it.tagName == "meta-data"
+                    }.forEach {
+                        putString(
+                            it.attributes.getNamedItem("android:name").nodeValue,
+                            it.attributes.getNamedItem("android:value").nodeValue
+                        )
+                    }
             }
 
             signatures = (
-                    parsed.apkSingers.flatMap { it.certificateMetas }
-                    /*+ parsed.apkV2Singers.flatMap { it.certificateMetas }*/
-                    ) // Blocked by: https://github.com/hsiafan/apk-parser/issues/72
-                    .map { Signature(it.data) }.toTypedArray()
+                parsed.apkSingers.flatMap { it.certificateMetas }
+                /*+ parsed.apkV2Singers.flatMap { it.certificateMetas }*/
+                ) // Blocked by: https://github.com/hsiafan/apk-parser/issues/72
+                .map { Signature(it.data) }.toTypedArray()
         }
     }
 

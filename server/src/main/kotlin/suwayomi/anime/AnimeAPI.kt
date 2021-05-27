@@ -8,62 +8,67 @@ package suwayomi.anime
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.javalin.Javalin
-import suwayomi.server.JavalinSetup
+import suwayomi.anime.impl.extension.Extension.getExtensionIcon
+import suwayomi.anime.impl.extension.Extension.installExtension
+import suwayomi.anime.impl.extension.Extension.uninstallExtension
+import suwayomi.anime.impl.extension.Extension.updateExtension
 import suwayomi.anime.impl.extension.ExtensionsList.getExtensionList
+import suwayomi.server.JavalinSetup
+import suwayomi.server.JavalinSetup.future
 
 object AnimeAPI {
     fun defineEndpoints(app: Javalin) {
         // list all extensions
-        app.get("/api/v1/extension/list") { ctx ->
+        app.get("/api/v1/anime/extension/list") { ctx ->
             ctx.json(
-                JavalinSetup.future {
+                future {
                     getExtensionList()
                 }
             )
         }
 
-//        // install extension identified with "pkgName"
-//        app.get("/api/v1/extension/install/:pkgName") { ctx ->
-//            val pkgName = ctx.pathParam("pkgName")
-//
-//            ctx.json(
-//                JavalinSetup.future {
-//                    installExtension(pkgName)
-//                }
-//            )
-//        }
-//
-//        // update extension identified with "pkgName"
-//        app.get("/api/v1/extension/update/:pkgName") { ctx ->
-//            val pkgName = ctx.pathParam("pkgName")
-//
-//            ctx.json(
-//                JavalinSetup.future {
-//                    updateExtension(pkgName)
-//                }
-//            )
-//        }
-//
-//        // uninstall extension identified with "pkgName"
-//        app.get("/api/v1/extension/uninstall/:pkgName") { ctx ->
-//            val pkgName = ctx.pathParam("pkgName")
-//
-//            uninstallExtension(pkgName)
-//            ctx.status(200)
-//        }
-//
-//        // icon for extension named `apkName`
-//        app.get("/api/v1/extension/icon/:apkName") { ctx -> // TODO: move to pkgName
-//            val apkName = ctx.pathParam("apkName")
-//
-//            ctx.result(
-//                JavalinSetup.future { getExtensionIcon(apkName) }
-//                    .thenApply {
-//                        ctx.header("content-type", it.second)
-//                        it.first
-//                    }
-//            )
-//        }
+        // install extension identified with "pkgName"
+        app.get("/api/v1/anime/extension/install/:pkgName") { ctx ->
+            val pkgName = ctx.pathParam("pkgName")
+
+            ctx.json(
+                JavalinSetup.future {
+                    installExtension(pkgName)
+                }
+            )
+        }
+
+        // update extension identified with "pkgName"
+        app.get("/api/v1/anime/extension/update/:pkgName") { ctx ->
+            val pkgName = ctx.pathParam("pkgName")
+
+            ctx.json(
+                JavalinSetup.future {
+                    updateExtension(pkgName)
+                }
+            )
+        }
+
+        // uninstall extension identified with "pkgName"
+        app.get("/api/v1/anime/extension/uninstall/:pkgName") { ctx ->
+            val pkgName = ctx.pathParam("pkgName")
+
+            uninstallExtension(pkgName)
+            ctx.status(200)
+        }
+
+        // icon for extension named `apkName`
+        app.get("/api/v1/anime/extension/icon/:apkName") { ctx -> // TODO: move to pkgName
+            val apkName = ctx.pathParam("apkName")
+
+            ctx.result(
+                JavalinSetup.future { getExtensionIcon(apkName) }
+                    .thenApply {
+                        ctx.header("content-type", it.second)
+                        it.first
+                    }
+            )
+        }
 
 //        // list of sources
 //        app.get("/api/v1/source/list") { ctx ->

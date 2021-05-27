@@ -13,9 +13,9 @@ import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder';
 import FilterListIcon from '@material-ui/icons/FilterList';
 import PublicIcon from '@material-ui/icons/Public';
 import React, { useContext, useEffect, useState } from 'react';
-import NavbarContext from '../context/NavbarContext';
-import client from '../util/client';
-import useLocalStorage from '../util/useLocalStorage';
+import NavbarContext from 'context/NavbarContext';
+import client from 'util/client';
+import useLocalStorage from 'util/useLocalStorage';
 import CategorySelect from './CategorySelect';
 
 const useStyles = (inLibrary: string) => makeStyles((theme: Theme) => ({

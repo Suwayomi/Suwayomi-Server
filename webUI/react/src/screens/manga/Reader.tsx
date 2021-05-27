@@ -9,15 +9,15 @@ import CircularProgress from '@material-ui/core/CircularProgress';
 import { makeStyles } from '@material-ui/core/styles';
 import React, { useContext, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import HorizontalPager from '../components/reader/pager/HorizontalPager';
-import PageNumber from '../components/reader/PageNumber';
-import WebtoonPager from '../components/reader/pager/PagedPager';
-import VerticalPager from '../components/reader/pager/VerticalPager';
-import ReaderNavBar, { defaultReaderSettings } from '../components/navbar/ReaderNavBar';
-import NavbarContext from '../context/NavbarContext';
-import client from '../util/client';
-import useLocalStorage from '../util/useLocalStorage';
-import cloneObject from '../util/cloneObject';
+import HorizontalPager from 'components/manga/reader/pager/HorizontalPager';
+import PageNumber from 'components/manga/reader/PageNumber';
+import WebtoonPager from 'components/manga/reader/pager/PagedPager';
+import VerticalPager from 'components/manga/reader/pager/VerticalPager';
+import ReaderNavBar, { defaultReaderSettings } from 'components/navbar/ReaderNavBar';
+import NavbarContext from 'context/NavbarContext';
+import client from 'util/client';
+import useLocalStorage from 'util/useLocalStorage';
+import cloneObject from 'util/cloneObject';
 
 const useStyles = (settings: IReaderSettings) => makeStyles({
     root: {

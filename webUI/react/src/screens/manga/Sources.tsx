@@ -6,12 +6,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import React, { useContext, useEffect, useState } from 'react';
-import ExtensionLangSelect from '../components/ExtensionLangSelect';
-import SourceCard from '../components/SourceCard';
-import NavbarContext from '../context/NavbarContext';
-import client from '../util/client';
-import { defualtLangs, langCodeToName, langSortCmp } from '../util/language';
-import useLocalStorage from '../util/useLocalStorage';
+import ExtensionLangSelect from 'components/manga/ExtensionLangSelect';
+import SourceCard from 'components/manga/SourceCard';
+import NavbarContext from 'context/NavbarContext';
+import client from 'util/client';
+import { defualtLangs, langCodeToName, langSortCmp } from 'util/language';
+import useLocalStorage from 'util/useLocalStorage';
 
 function sourceToLangList(sources: ISource[]) {
     const result: string[] = [];

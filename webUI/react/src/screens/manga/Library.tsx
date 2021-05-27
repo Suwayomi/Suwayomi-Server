@@ -7,10 +7,10 @@
 
 import { Tab, Tabs } from '@material-ui/core';
 import React, { useContext, useEffect, useState } from 'react';
-import MangaGrid from '../components/MangaGrid';
-import NavbarContext from '../context/NavbarContext';
-import client from '../util/client';
-import cloneObject from '../util/cloneObject';
+import MangaGrid from 'components/manga/MangaGrid';
+import NavbarContext from 'context/NavbarContext';
+import client from 'util/client';
+import cloneObject from 'util/cloneObject';
 
 interface IMangaCategory {
     category: ICategory

@@ -8,7 +8,6 @@ package suwayomi.tachidesk
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.javalin.Javalin
-import suwayomi.server.JavalinSetup
 import suwayomi.server.JavalinSetup.future
 import suwayomi.server.impl.About
 import suwayomi.tachidesk.impl.Category
@@ -47,7 +46,7 @@ object TachideskAPI {
         // list all extensions
         app.get("/api/v1/extension/list") { ctx ->
             ctx.json(
-                JavalinSetup.future {
+                future {
                     getExtensionList()
                 }
             )
@@ -58,7 +57,7 @@ object TachideskAPI {
             val pkgName = ctx.pathParam("pkgName")
 
             ctx.json(
-                JavalinSetup.future {
+                future {
                     installExtension(pkgName)
                 }
             )
@@ -69,7 +68,7 @@ object TachideskAPI {
             val pkgName = ctx.pathParam("pkgName")
 
             ctx.json(
-                JavalinSetup.future {
+                future {
                     updateExtension(pkgName)
                 }
             )
@@ -88,7 +87,7 @@ object TachideskAPI {
             val apkName = ctx.pathParam("apkName")
 
             ctx.result(
-                JavalinSetup.future { getExtensionIcon(apkName) }
+                future { getExtensionIcon(apkName) }
                     .thenApply {
                         ctx.header("content-type", it.second)
                         it.first
@@ -112,7 +111,7 @@ object TachideskAPI {
             val sourceId = ctx.pathParam("sourceId").toLong()
             val pageNum = ctx.pathParam("pageNum").toInt()
             ctx.json(
-                JavalinSetup.future {
+                future {
                     getMangaList(sourceId, pageNum, popular = true)
                 }
             )
@@ -123,7 +122,7 @@ object TachideskAPI {
             val sourceId = ctx.pathParam("sourceId").toLong()
             val pageNum = ctx.pathParam("pageNum").toInt()
             ctx.json(
-                JavalinSetup.future {
+                future {
                     getMangaList(sourceId, pageNum, popular = false)
                 }
             )
@@ -135,7 +134,7 @@ object TachideskAPI {
             val onlineFetch = ctx.queryParam("onlineFetch", "false").toBoolean()
 
             ctx.json(
-                JavalinSetup.future {
+                future {
                     getManga(mangaId, onlineFetch)
                 }
             )
@@ -146,7 +145,7 @@ object TachideskAPI {
             val mangaId = ctx.pathParam("mangaId").toInt()
 
             ctx.result(
-                JavalinSetup.future { getMangaThumbnail(mangaId) }
+                future { getMangaThumbnail(mangaId) }
                     .thenApply {
                         ctx.header("content-type", it.second)
                         it.first
@@ -182,14 +181,14 @@ object TachideskAPI {
 
             val onlineFetch = ctx.queryParam("onlineFetch")?.toBoolean()
 
-            ctx.json(JavalinSetup.future { getChapterList(mangaId, onlineFetch) })
+            ctx.json(future { getChapterList(mangaId, onlineFetch) })
         }
 
         // used to display a chapter, get a chapter in order to show it's pages
         app.get("/api/v1/manga/:mangaId/chapter/:chapterIndex") { ctx ->
             val chapterIndex = ctx.pathParam("chapterIndex").toInt()
             val mangaId = ctx.pathParam("mangaId").toInt()
-            ctx.json(JavalinSetup.future { getChapter(chapterIndex, mangaId) })
+            ctx.json(future { getChapter(chapterIndex, mangaId) })
         }
 
         // used to modify a chapter's parameters
@@ -214,7 +213,7 @@ object TachideskAPI {
             val index = ctx.pathParam("index").toInt()
 
             ctx.result(
-                JavalinSetup.future { getPageImage(mangaId, chapterIndex, index) }
+                future { getPageImage(mangaId, chapterIndex, index) }
                     .thenApply {
                         ctx.header("content-type", it.second)
                         it.first
@@ -243,7 +242,7 @@ object TachideskAPI {
             val sourceId = ctx.pathParam("sourceId").toLong()
             val searchTerm = ctx.pathParam("searchTerm")
             val pageNum = ctx.pathParam("pageNum").toInt()
-            ctx.json(JavalinSetup.future { sourceSearch(sourceId, searchTerm, pageNum) })
+            ctx.json(future { sourceSearch(sourceId, searchTerm, pageNum) })
         }
 
         // source filter list
@@ -257,7 +256,7 @@ object TachideskAPI {
             val mangaId = ctx.pathParam("mangaId").toInt()
 
             ctx.result(
-                JavalinSetup.future { addMangaToLibrary(mangaId) }
+                future { addMangaToLibrary(mangaId) }
             )
         }
 
@@ -266,7 +265,7 @@ object TachideskAPI {
             val mangaId = ctx.pathParam("mangaId").toInt()
 
             ctx.result(
-                JavalinSetup.future { removeMangaFromLibrary(mangaId) }
+                future { removeMangaFromLibrary(mangaId) }
             )
         }
 
@@ -335,7 +334,7 @@ object TachideskAPI {
         // expects a Tachiyomi legacy backup json as a file upload, the file must be named "backup.json"
         app.post("/api/v1/backup/legacy/import/file") { ctx ->
             ctx.result(
-                JavalinSetup.future {
+                future {
                     restoreLegacyBackup(ctx.uploadedFile("backup.json")!!.content)
                 }
             )
@@ -345,7 +344,7 @@ object TachideskAPI {
         app.get("/api/v1/backup/legacy/export") { ctx ->
             ctx.contentType("application/json")
             ctx.result(
-                JavalinSetup.future {
+                future {
                     createLegacyBackup(
                         BackupFlags(
                             includeManga = true,
@@ -367,7 +366,7 @@ object TachideskAPI {
 
             ctx.header("Content-Disposition", "attachment; filename=\"tachidesk_$currentDate.json\"")
             ctx.result(
-                JavalinSetup.future {
+                future {
                     createLegacyBackup(
                         BackupFlags(
                             includeManga = true,

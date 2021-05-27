@@ -15,8 +15,8 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
-import suwayomi.tachidesk.impl.util.PackageTools.loadExtensionSources
 import suwayomi.server.ApplicationDirs
+import suwayomi.tachidesk.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.model.table.ExtensionTable
 import suwayomi.tachidesk.model.table.SourceTable
 import java.util.concurrent.ConcurrentHashMap

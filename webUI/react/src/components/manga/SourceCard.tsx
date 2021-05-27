@@ -12,8 +12,8 @@ import CardContent from '@material-ui/core/CardContent';
 import Button from '@material-ui/core/Button';
 import Avatar from '@material-ui/core/Avatar';
 import Typography from '@material-ui/core/Typography';
-import useLocalStorage from '../util/useLocalStorage';
-import { langCodeToName } from '../util/language';
+import useLocalStorage from 'util/useLocalStorage';
+import { langCodeToName } from 'util/language';
 
 const useStyles = makeStyles((theme) => ({
     root: {

@@ -12,8 +12,8 @@ import CardContent from '@material-ui/core/CardContent';
 import Button from '@material-ui/core/Button';
 import Avatar from '@material-ui/core/Avatar';
 import Typography from '@material-ui/core/Typography';
-import client from '../util/client';
-import useLocalStorage from '../util/useLocalStorage';
+import client from 'util/client';
+import useLocalStorage from 'util/useLocalStorage';
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -68,7 +68,7 @@ export default function ExtensionCard(props: IProps) {
 
     function install() {
         setInstalledState('installing');
-        client.get(`/api/v1/extension/install/${pkgName}`)
+        client.get(`/api/v1/anime/extension/install/${pkgName}`)
             .then(() => {
                 setInstalledState('uninstall');
                 notifyInstall();
@@ -77,7 +77,7 @@ export default function ExtensionCard(props: IProps) {
 
     function update() {
         setInstalledState('updating');
-        client.get(`/api/v1/extension/update/${pkgName}`)
+        client.get(`/api/v1/anime/extension/update/${pkgName}`)
             .then(() => {
                 setInstalledState('uninstall');
                 notifyInstall();
@@ -86,7 +86,7 @@ export default function ExtensionCard(props: IProps) {
 
     function uninstall() {
         setInstalledState('uninstalling');
-        client.get(`/api/v1/extension/uninstall/${pkgName}`)
+        client.get(`/api/v1/anime/extension/uninstall/${pkgName}`)
             .then(() => {
                 // setInstalledState('install');
                 notifyInstall();

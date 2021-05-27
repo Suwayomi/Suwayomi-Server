@@ -6,12 +6,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import React, { useContext, useEffect, useState } from 'react';
-import ExtensionCard from '../components/ExtensionCard';
-import NavbarContext from '../context/NavbarContext';
-import client from '../util/client';
-import useLocalStorage from '../util/useLocalStorage';
-import ExtensionLangSelect from '../components/ExtensionLangSelect';
-import { defualtLangs, langCodeToName, langSortCmp } from '../util/language';
+import ExtensionCard from 'components/anime/ExtensionCard';
+import NavbarContext from 'context/NavbarContext';
+import client from 'util/client';
+import useLocalStorage from 'util/useLocalStorage';
+import ExtensionLangSelect from 'components/manga/ExtensionLangSelect';
+import { defualtLangs, langCodeToName, langSortCmp } from 'util/language';
 
 const allLangs: string[] = [];
 
@@ -46,7 +46,7 @@ function extensionDefaultLangs() {
     return [...defualtLangs(), 'all'];
 }
 
-export default function Extensions() {
+export default function AnimeExtensions() {
     const { setTitle, setAction } = useContext(NavbarContext);
     const [shownLangs, setShownLangs] = useLocalStorage<string[]>('shownExtensionLangs', extensionDefaultLangs());
 
@@ -68,7 +68,7 @@ export default function Extensions() {
     const triggerUpdate = () => setUpdateTriggerHolder(updateTriggerHolder + 1); // just a hack
 
     useEffect(() => {
-        client.get('/api/v1/extension/list')
+        client.get('/api/v1/anime/extension/list')
             .then((response) => response.data)
             .then((data) => setExtensionsRaw(data));
     }, [updateTriggerHolder]);

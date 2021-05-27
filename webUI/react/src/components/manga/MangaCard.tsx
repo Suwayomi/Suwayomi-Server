@@ -13,7 +13,7 @@ import CardMedia from '@material-ui/core/CardMedia';
 import Typography from '@material-ui/core/Typography';
 import { Link } from 'react-router-dom';
 import { Grid } from '@material-ui/core';
-import useLocalStorage from '../util/useLocalStorage';
+import useLocalStorage from 'util/useLocalStorage';
 
 const useStyles = makeStyles({
     root: {

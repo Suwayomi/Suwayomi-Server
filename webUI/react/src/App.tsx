@@ -7,27 +7,29 @@
 
 import React, { useState } from 'react';
 import {
-    BrowserRouter as Router, Redirect, Route, Switch,
+    BrowserRouter as Router, Switch,
+    Route,
+    Redirect,
 } from 'react-router-dom';
 import { Container } from '@material-ui/core';
 import CssBaseline from '@material-ui/core/CssBaseline';
 import { createMuiTheme, ThemeProvider } from '@material-ui/core/styles';
-
-import NavBar from './components/navbar/NavBar';
-import Sources from './screens/Sources';
-import Extensions from './screens/Extensions';
-import SourceMangas from './screens/SourceMangas';
-import Manga from './screens/Manga';
-import Reader from './screens/Reader';
-import Search from './screens/SearchSingle';
-import NavbarContext from './context/NavbarContext';
-import DarkTheme from './context/DarkTheme';
-import Library from './screens/Library';
-import Settings from './screens/Settings';
-import Categories from './screens/settings/Categories';
-import Backup from './screens/settings/Backup';
-import useLocalStorage from './util/useLocalStorage';
-import About from './screens/settings/About';
+import NavBar from 'components/navbar/NavBar';
+import NavbarContext from 'context/NavbarContext';
+import DarkTheme from 'context/DarkTheme';
+import useLocalStorage from 'util/useLocalStorage';
+import Sources from 'screens/manga/Sources';
+import Settings from 'screens/Settings';
+import About from 'screens/settings/About';
+import Categories from 'screens/settings/Categories';
+import Backup from 'screens/settings/Backup';
+import Library from 'screens/manga/Library';
+import SearchSingle from 'screens/manga/SearchSingle';
+import Manga from 'screens/manga/Manga';
+import MangaExtensions from 'screens/manga/MangaExtensions';
+import SourceMangas from 'screens/manga/SourceMangas';
+import Reader from 'screens/manga/Reader';
+import AnimeExtensions from 'screens/anime/AnimeExtensions';
 
 export default function App() {
     const [title, setTitle] = useState<string>('Tachidesk');
@@ -78,11 +80,37 @@ export default function App() {
                         style={{ paddingTop: '64px' }}
                     >
                         <Switch>
-                            <Route path="/sources/:sourceId/search/">
-                                <Search />
+                            {/* general routes */}
+                            <Route
+                                exact
+                                path="/"
+                                render={() => (
+                                    <Redirect to="/library" />
+                                )}
+                            />
+
+                            <Route path="/settings/about">
+                                <About />
                             </Route>
-                            <Route path="/extensions">
-                                <Extensions />
+                            <Route path="/settings/categories">
+                                <Categories />
+                            </Route>
+                            <Route path="/settings/backup">
+                                <Backup />
+                            </Route>
+                            <Route path="/settings">
+                                <DarkTheme.Provider value={darkThemeContext}>
+                                    <Settings />
+                                </DarkTheme.Provider>
+                            </Route>
+
+                            {/* Manga Routes */}
+
+                            <Route path="/sources/:sourceId/search/">
+                                <SearchSingle />
+                            </Route>
+                            <Route path="/manga/extensions">
+                                <MangaExtensions />
                             </Route>
                             <Route path="/sources/:sourceId/popular/">
                                 <SourceMangas popular />
@@ -102,36 +130,20 @@ export default function App() {
                             <Route path="/library">
                                 <Library />
                             </Route>
-                            <Route path="/settings/about">
-                                <About />
-                            </Route>
-                            <Route path="/settings/categories">
-                                <Categories />
-                            </Route>
-                            <Route path="/settings/backup">
-                                <Backup />
-                            </Route>
-                            <Route path="/settings">
-                                <DarkTheme.Provider value={darkThemeContext}>
-                                    <Settings />
-                                </DarkTheme.Provider>
-                            </Route>
                             <Route
-                                exact
-                                path="/"
-                                render={() => (
-                                    <Redirect to="/library" />
-                                )}
+                                path="/manga/:mangaId/chapter/:chapterIndex"
+                                // passing a key re-mounts the reader when changing chapters
+                                render={
+                                    (props:any) => <Reader key={props.match.params.chapterIndex} />
+                                }
                             />
+
+                            {/* Anime Routes */}
+                            <Route path="/anime/extensions">
+                                <AnimeExtensions />
+                            </Route>
                         </Switch>
                     </Container>
-                    <Switch>
-                        <Route
-                            path="/manga/:mangaId/chapter/:chapterIndex"
-                            // passing a key re-mounts the reader when changing chapters
-                            render={(props:any) => <Reader key={props.match.params.chapterIndex} />}
-                        />
-                    </Switch>
                 </NavbarContext.Provider>
             </ThemeProvider>
         </Router>

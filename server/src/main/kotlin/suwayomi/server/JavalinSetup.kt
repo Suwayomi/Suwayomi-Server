@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.future.future
 import mu.KotlinLogging
+import suwayomi.anime.AnimeAPI
 import suwayomi.server.util.Browser
 import suwayomi.tachidesk.TachideskAPI
 import java.io.IOException
@@ -75,5 +76,6 @@ object JavalinSetup {
         }
 
         TachideskAPI.defineEndpoints(app)
+        AnimeAPI.defineEndpoints(app)
     }
 }

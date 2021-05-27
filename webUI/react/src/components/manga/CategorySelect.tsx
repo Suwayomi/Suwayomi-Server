@@ -15,7 +15,7 @@ import Dialog from '@material-ui/core/Dialog';
 import Checkbox from '@material-ui/core/Checkbox';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import FormGroup from '@material-ui/core/FormGroup';
-import client from '../util/client';
+import client from 'util/client';
 
 const useStyles = makeStyles(() => createStyles({
     paper: {

@@ -10,9 +10,9 @@ import { makeStyles } from '@material-ui/core/styles';
 import TextField from '@material-ui/core/TextField';
 import Button from '@material-ui/core/Button';
 import { useParams } from 'react-router-dom';
-import MangaGrid from '../components/MangaGrid';
-import NavbarContext from '../context/NavbarContext';
-import client from '../util/client';
+import MangaGrid from 'components/manga/MangaGrid';
+import NavbarContext from 'context/NavbarContext';
+import client from 'util/client';
 
 const useStyles = makeStyles((theme) => ({
     root: {
