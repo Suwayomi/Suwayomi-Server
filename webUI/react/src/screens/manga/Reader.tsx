@@ -11,7 +11,8 @@ import React, { useContext, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import HorizontalPager from 'components/manga/reader/pager/HorizontalPager';
 import PageNumber from 'components/manga/reader/PageNumber';
-import WebtoonPager from 'components/manga/reader/pager/PagedPager';
+import PagedPager from 'components/manga/reader/pager/PagedPager';
+import DoublePagedPager from 'components/manga/reader/pager/DoublePagedPager';
 import VerticalPager from 'components/manga/reader/pager/VerticalPager';
 import ReaderNavBar, { defaultReaderSettings } from 'components/navbar/ReaderNavBar';
 import NavbarContext from 'context/NavbarContext';
@@ -32,19 +33,18 @@ const useStyles = (settings: IReaderSettings) => makeStyles({
 const getReaderComponent = (readerType: ReaderType) => {
     switch (readerType) {
         case 'ContinuesVertical':
-            return VerticalPager;
-            break;
         case 'Webtoon':
             return VerticalPager;
             break;
         case 'SingleVertical':
-            return WebtoonPager;
-            break;
         case 'SingleRTL':
-            return WebtoonPager;
-            break;
         case 'SingleLTR':
-            return WebtoonPager;
+            return PagedPager;
+            break;
+        case 'DoubleVertical':
+        case 'DoubleRTL':
+        case 'DoubleLTR':
+            return DoublePagedPager;
             break;
         case 'ContinuesHorizontal':
             return HorizontalPager;

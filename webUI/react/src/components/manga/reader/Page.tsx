@@ -9,6 +9,30 @@ import CircularProgress from '@material-ui/core/CircularProgress';
 import { makeStyles } from '@material-ui/core/styles';
 import React, { useEffect, useRef, useState } from 'react';
 
+function imageStyle(settings: IReaderSettings): any {
+    if (settings.readerType === 'DoubleLTR' || settings.readerType === 'DoubleRTL') {
+        return {
+            display: 'block',
+            marginBottom: 0,
+            minWidth: '50vw',
+            width: '100%',
+            maxWidth: '100%',
+            minHeight: '99vh',
+            height: 'auto',
+            maxHeight: '100%',
+            objectFit: 'contain',
+        };
+    }
+
+    return {
+        display: 'block',
+        marginBottom: settings.readerType === 'ContinuesVertical' ? '15px' : 0,
+        minWidth: '50vw',
+        width: '100%',
+        maxWidth: '100%',
+    };
+}
+
 const useStyles = (settings: IReaderSettings) => makeStyles({
     loading: {
         margin: '100px auto',
@@ -22,13 +46,7 @@ const useStyles = (settings: IReaderSettings) => makeStyles({
         backgroundColor: '#525252',
         marginBottom: 10,
     },
-    image: {
-        display: 'block',
-        marginBottom: settings.readerType === 'ContinuesVertical' ? '15px' : 0,
-        minWidth: '50vw',
-        width: '100%',
-        maxWidth: '100%',
-    },
+    image: imageStyle(settings),
 });
 
 interface IProps {
