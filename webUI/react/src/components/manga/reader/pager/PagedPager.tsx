@@ -38,7 +38,27 @@ export default function PagedReader(props: IReaderProps) {
     }
 
     function prevPage() {
-        if (curPage > 0) { setCurPage(curPage - 1); } else if (curPage === 0) { prevChapter(); }
+        if (curPage > 0) {
+            setCurPage(curPage - 1);
+        } else {
+            prevChapter();
+        }
+    }
+
+    function goLeft() {
+        if (settings.readerType === 'SingleLTR') {
+            prevPage();
+        } else if (settings.readerType === 'SingleRTL') {
+            nextPage();
+        }
+    }
+
+    function goRight() {
+        if (settings.readerType === 'SingleLTR') {
+            nextPage();
+        } else if (settings.readerType === 'SingleRTL') {
+            prevPage();
+        }
     }
 
     function keyboardControl(e:KeyboardEvent) {
@@ -48,10 +68,10 @@ export default function PagedReader(props: IReaderProps) {
                 nextPage();
                 break;
             case 'ArrowRight':
-                nextPage();
+                goRight();
                 break;
             case 'ArrowLeft':
-                prevPage();
+                goLeft();
                 break;
             default:
                 break;
@@ -60,9 +80,9 @@ export default function PagedReader(props: IReaderProps) {
 
     function clickControl(e:MouseEvent) {
         if (e.clientX > window.innerWidth / 2) {
-            nextPage();
+            goRight();
         } else {
-            prevPage();
+            goLeft();
         }
     }
 
@@ -74,7 +94,7 @@ export default function PagedReader(props: IReaderProps) {
             document.removeEventListener('keydown', keyboardControl);
             selfRef.current?.removeEventListener('click', clickControl);
         };
-    }, [selfRef, curPage]);
+    }, [selfRef, curPage, settings.readerType]);
 
     return (
         <div ref={selfRef} className={classes.reader}>
