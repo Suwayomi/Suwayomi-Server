@@ -102,7 +102,7 @@ object Anime {
                 fetchedAnime.description,
                 fetchedAnime.genre,
                 AnimeStatus.valueOf(fetchedAnime.status).name,
-                false,
+                animeEntry[AnimeTable.inLibrary],
                 getAnimeSource(animeEntry[AnimeTable.sourceReference]),
                 true
             )
