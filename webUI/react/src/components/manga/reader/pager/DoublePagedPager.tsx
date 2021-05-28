@@ -85,7 +85,7 @@ export default function DoublePagedReader(props: IReaderProps) {
     }
 
     function setPagesToDisplay() {
-        pagesDisplayed.current = 2;
+        pagesDisplayed.current = 0;
         if (curPage < pages.length && pagesRef.current[curPage]) {
             if (pagesRef.current[curPage].children[0] instanceof HTMLImageElement) {
                 pagesDisplayed.current = 1;
@@ -166,12 +166,21 @@ export default function DoublePagedReader(props: IReaderProps) {
     }, []);
 
     useEffect(() => {
-        setPagesToDisplay();
-        showPages();
+        const retryDisplay = setInterval(() => {
+            const isLastPage = (curPage === pages.length - 1);
+            if ((!isLastPage && pageLoaded.current[curPage] && pageLoaded.current[curPage + 1])
+                || pageLoaded.current[curPage]) {
+                setPagesToDisplay();
+                showPages();
+                clearInterval(retryDisplay);
+            }
+        }, 50);
+
         document.addEventListener('keydown', keyboardControl);
         selfRef.current?.addEventListener('click', clickControl);
 
         return () => {
+            clearInterval(retryDisplay);
             hidePages();
             document.removeEventListener('keydown', keyboardControl);
             selfRef.current?.removeEventListener('click', clickControl);
