@@ -11,7 +11,7 @@ import React, { useEffect, useRef } from 'react';
 import SpinnerImage from 'components/SpinnerImage';
 
 function imageStyle(settings: IReaderSettings): CSSProperties {
-    if (settings.readerType === 'DoubleLTR' || settings.readerType === 'DoubleRTL') {
+    if (settings.readerType === 'DoubleLTR' || settings.readerType === 'DoubleRTL' || settings.readerType === 'ContinuesHorizontal') {
         return {
             display: 'block',
             marginBottom: 0,
