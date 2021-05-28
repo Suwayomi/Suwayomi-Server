@@ -5,6 +5,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+/* eslint-disable no-lonely-if */
+
 import { makeStyles } from '@material-ui/core/styles';
 import React, { useEffect, useRef } from 'react';
 import Page from '../Page';
@@ -23,7 +25,7 @@ const useStyles = (settings: IReaderSettings) => makeStyles({
 
 export default function HorizontalPager(props: IReaderProps) {
     const {
-        pages, curPage, settings, setCurPage,
+        pages, curPage, settings, setCurPage, prevChapter, nextChapter,
     } = props;
 
     const classes = useStyles(settings)();
@@ -31,9 +33,60 @@ export default function HorizontalPager(props: IReaderProps) {
     const selfRef = useRef<HTMLDivElement>(null);
     const pagesRef = useRef<HTMLDivElement[]>([]);
 
+    function nextPage() {
+        if (curPage < pages.length - 1) {
+            pagesRef.current[curPage + 1]?.scrollIntoView({ inline: 'center' });
+            setCurPage((page) => page + 1);
+        } else if (settings.loadNextonEnding) {
+            nextChapter();
+        }
+    }
+
+    function prevPage() {
+        if (curPage > 0) {
+            pagesRef.current[curPage - 1]?.scrollIntoView({ inline: 'center' });
+            setCurPage(curPage - 1);
+        } else if (curPage === 0) {
+            prevChapter();
+        }
+    }
+
+    function clickControl(e:MouseEvent) {
+        if (e.clientX > window.innerWidth / 2) {
+            nextPage();
+        } else {
+            prevPage();
+        }
+    }
+
+    const handleLoadNextonEnding = () => {
+        console.log(window.scrollX + window.innerWidth, document.body.scrollWidth);
+        if (settings.readerType === 'ContinuesHorizontalLTR') {
+            if (window.scrollX + window.innerWidth >= document.body.scrollWidth) {
+                nextChapter();
+            }
+        } else {
+            if (window.scrollX <= window.innerWidth) {
+                nextChapter();
+            }
+        }
+    };
+
     useEffect(() => {
         pagesRef.current[curPage]?.scrollIntoView({ inline: 'center' });
     }, [settings.readerType]);
+
+    useEffect(() => {
+        if (settings.loadNextonEnding) {
+            document.addEventListener('scroll', handleLoadNextonEnding);
+        }
+        selfRef.current?.addEventListener('click', clickControl);
+
+        return () => {
+            document.removeEventListener('scroll', handleLoadNextonEnding);
+            selfRef.current?.removeEventListener('click', clickControl);
+        };
+    }, [selfRef, curPage]);
 
     return (
         <div ref={selfRef} className={classes.reader}>
