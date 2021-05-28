@@ -27,7 +27,7 @@ const useStyles = (settings: IReaderSettings) => makeStyles({
         width: 'auto',
         minHeight: '99vh',
         height: 'auto',
-        maxHeight: '100%',
+        maxHeight: '99vh',
         objectFit: 'contain',
     },
     page: {
