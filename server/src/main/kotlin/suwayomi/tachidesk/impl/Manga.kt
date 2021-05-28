@@ -102,7 +102,7 @@ object Manga {
                 fetchedManga.description,
                 fetchedManga.genre,
                 MangaStatus.valueOf(fetchedManga.status).name,
-                false,
+                mangaEntry[MangaTable.inLibrary],
                 getSource(mangaEntry[MangaTable.sourceReference]),
                 true
             )

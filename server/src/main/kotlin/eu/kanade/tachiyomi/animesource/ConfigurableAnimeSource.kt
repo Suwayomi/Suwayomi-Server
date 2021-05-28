@@ -1,4 +1,4 @@
-package eu.kanade.tachiyomi.source
+package eu.kanade.tachiyomi.animesource
 
 import android.support.v7.preference.PreferenceScreen
 

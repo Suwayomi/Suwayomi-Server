@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.source.online
 
+import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
 import eu.kanade.tachiyomi.source.model.Page
 import rx.Observable
 

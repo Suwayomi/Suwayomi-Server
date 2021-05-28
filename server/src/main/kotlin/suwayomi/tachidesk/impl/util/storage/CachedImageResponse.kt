@@ -8,6 +8,7 @@ package suwayomi.tachidesk.impl.util.storage
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import okhttp3.Response
+import okhttp3.internal.closeQuietly
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
@@ -55,6 +56,7 @@ object CachedImageResponse {
 
             return pathToInputStream(fullPath) to imageType
         } else {
+            response.closeQuietly()
             throw Exception("request error! ${response.code}")
         }
     }
