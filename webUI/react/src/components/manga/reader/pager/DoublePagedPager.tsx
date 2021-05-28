@@ -5,8 +5,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 import { makeStyles } from '@material-ui/core/styles';
 import React, { useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
@@ -112,11 +110,6 @@ export default function DoublePagedReader(props: IReaderProps) {
     }
 
     function showPages() {
-        // for (let i = 0; i < pagesDisplayed.current; i++) {
-        //     if (curPage + i < pages.length) {
-        //         pagesRef.current[curPage + i].style.display = 'block';
-        //     }
-        // }
         if (pagesDisplayed.current === 2) {
             ReactDOM.render(
                 <DoublePage
@@ -147,14 +140,6 @@ export default function DoublePagedReader(props: IReaderProps) {
             );
         }
     }
-
-    // function hidePages() {
-    //     for (let i = 0; i < pagesDisplayed.current; i++) {
-    //         if (pagesRef.current[curPage + i]) {
-    //             pagesRef.current[curPage + i].style.display = 'none';
-    //         }
-    //     }
-    // }
 
     function keyboardControl(e:KeyboardEvent) {
         switch (e.code) {
@@ -210,7 +195,6 @@ export default function DoublePagedReader(props: IReaderProps) {
 
         return () => {
             clearInterval(retryDisplay);
-            // hidePages();
             document.removeEventListener('keydown', keyboardControl);
             selfRef.current?.removeEventListener('click', clickControl);
         };
