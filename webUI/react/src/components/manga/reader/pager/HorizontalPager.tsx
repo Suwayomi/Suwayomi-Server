@@ -51,11 +51,27 @@ export default function HorizontalPager(props: IReaderProps) {
         }
     }
 
-    function clickControl(e:MouseEvent) {
-        if (e.clientX > window.innerWidth / 2) {
+    function goLeft() {
+        if (settings.readerType === 'ContinuesHorizontalLTR') {
+            prevPage();
+        } else {
+            nextPage();
+        }
+    }
+
+    function goRight() {
+        if (settings.readerType === 'ContinuesHorizontalLTR') {
             nextPage();
         } else {
             prevPage();
+        }
+    }
+
+    function clickControl(e:MouseEvent) {
+        if (e.clientX > window.innerWidth / 2) {
+            goRight();
+        } else {
+            goLeft();
         }
     }
 
