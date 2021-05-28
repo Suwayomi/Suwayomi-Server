@@ -9,18 +9,6 @@ import { makeStyles } from '@material-ui/core/styles';
 import React from 'react';
 
 const useStyles = (settings: IReaderSettings) => makeStyles({
-    loading: {
-        margin: '100px auto',
-        height: '100vh',
-        width: '100vw',
-    },
-    loadingImage: {
-        height: '100vh',
-        width: '70vw',
-        padding: '50px calc(50% - 20px)',
-        backgroundColor: '#525252',
-        marginBottom: 10,
-    },
     image: {
         display: 'block',
         marginBottom: 0,
