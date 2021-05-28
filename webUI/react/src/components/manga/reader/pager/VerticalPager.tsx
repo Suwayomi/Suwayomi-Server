@@ -114,6 +114,7 @@ export default function VerticalReader(props: IReaderProps) {
                         key={page.index}
                         index={page.index}
                         src={page.src}
+                        onImageLoad={() => {}}
                         setCurPage={setCurPage}
                         settings={settings}
                         ref={(e:HTMLDivElement) => { pagesRef.current[page.index] = e; }}

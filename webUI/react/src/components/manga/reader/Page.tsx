@@ -7,7 +7,30 @@
 
 import CircularProgress from '@material-ui/core/CircularProgress';
 import { makeStyles } from '@material-ui/core/styles';
+import { CSSProperties } from '@material-ui/core/styles/withStyles';
 import React, { useEffect, useRef, useState } from 'react';
+
+function imageStyle(settings: IReaderSettings): CSSProperties {
+    if (settings.readerType === 'DoubleLTR' || settings.readerType === 'DoubleRTL') {
+        return {
+            display: 'block',
+            marginBottom: 0,
+            width: 'auto',
+            minHeight: '99vh',
+            height: 'auto',
+            maxHeight: '99vh',
+            objectFit: 'contain',
+        };
+    }
+
+    return {
+        display: 'block',
+        marginBottom: settings.readerType === 'ContinuesVertical' ? '15px' : 0,
+        minWidth: '50vw',
+        width: '100%',
+        maxWidth: '100%',
+    };
+}
 
 const useStyles = (settings: IReaderSettings) => makeStyles({
     loading: {
@@ -22,25 +45,20 @@ const useStyles = (settings: IReaderSettings) => makeStyles({
         backgroundColor: '#525252',
         marginBottom: 10,
     },
-    image: {
-        display: 'block',
-        marginBottom: settings.readerType === 'ContinuesVertical' ? '15px' : 0,
-        minWidth: '50vw',
-        width: '100%',
-        maxWidth: '100%',
-    },
+    image: imageStyle(settings),
 });
 
 interface IProps {
     src: string
     index: number
+    onImageLoad: () => void
     setCurPage: React.Dispatch<React.SetStateAction<number>>
     settings: IReaderSettings
 }
 
 function LazyImage(props: IProps) {
     const {
-        src, index, setCurPage, settings,
+        src, index, onImageLoad, setCurPage, settings,
     } = props;
 
     const classes = useStyles(settings)();
@@ -70,7 +88,14 @@ function LazyImage(props: IProps) {
         const img = new Image();
         img.src = src;
 
-        img.onload = () => setImagsrc(src);
+        img.onload = () => {
+            setImagsrc(src);
+            onImageLoad();
+        };
+
+        return () => {
+            img.onload = null;
+        };
     }, [src]);
 
     if (imageSrc.length === 0) {
@@ -93,7 +118,7 @@ function LazyImage(props: IProps) {
 
 const Page = React.forwardRef((props: IProps, ref: any) => {
     const {
-        src, index, setCurPage, settings,
+        src, index, onImageLoad, setCurPage, settings,
     } = props;
 
     return (
@@ -101,6 +126,7 @@ const Page = React.forwardRef((props: IProps, ref: any) => {
             <LazyImage
                 src={src}
                 index={index}
+                onImageLoad={onImageLoad}
                 setCurPage={setCurPage}
                 settings={settings}
             />

@@ -114,6 +114,9 @@ type ReaderType =
 'SingleVertical' |
 'SingleRTL' |
 'SingleLTR' |
+'DoubleVertical' |
+'DoubleRTL' |
+'DoubleLTR' |
 'ContinuesHorizontal';
 
 interface IReaderSettings{
