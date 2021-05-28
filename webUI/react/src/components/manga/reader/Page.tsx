@@ -5,13 +5,18 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+/* eslint-disable no-lonely-if */
+
 import { makeStyles } from '@material-ui/core/styles';
 import { CSSProperties } from '@material-ui/core/styles/withStyles';
 import React, { useEffect, useRef } from 'react';
 import SpinnerImage from 'components/SpinnerImage';
 
 function imageStyle(settings: IReaderSettings): CSSProperties {
-    if (settings.readerType === 'DoubleLTR' || settings.readerType === 'DoubleRTL' || settings.readerType === 'ContinuesHorizontal') {
+    if (settings.readerType === 'DoubleLTR'
+    || settings.readerType === 'DoubleRTL'
+    || settings.readerType === 'ContinuesHorizontalLTR'
+    || settings.readerType === 'ContinuesHorizontalRTL') {
         return {
             display: 'block',
             marginBottom: 0,
@@ -64,7 +69,7 @@ const Page = React.forwardRef((props: IProps, ref: any) => {
     const classes = useStyles(settings)();
     const imgRef = useRef<HTMLImageElement>(null);
 
-    const handleScroll = () => {
+    const handleVerticalScroll = () => {
         if (imgRef.current) {
             const rect = imgRef.current.getBoundingClientRect();
             if (rect.y < 0 && rect.y + rect.height > 0) {
@@ -73,15 +78,35 @@ const Page = React.forwardRef((props: IProps, ref: any) => {
         }
     };
 
-    useEffect(() => {
-        if (settings.readerType === 'Webtoon' || settings.readerType === 'ContinuesVertical') {
-            window.addEventListener('scroll', handleScroll);
+    const handleHorizontalScroll = () => {
+        if (imgRef.current) {
+            const rect = imgRef.current.getBoundingClientRect();
+            if (settings.readerType === 'ContinuesHorizontalLTR') {
+                if (rect.left <= 0 && rect.left + rect.width > 0) {
+                    setCurPage(index);
+                }
+            } else {
+                if (rect.right - window.innerWidth <= 0 && rect.left - window.innerWidth > 0) {
+                    setCurPage(index);
+                }
+            }
+        }
+    };
 
-            return () => {
-                window.removeEventListener('scroll', handleScroll);
-            };
-        } return () => {};
-    }, [handleScroll]);
+    useEffect(() => {
+        switch (settings.readerType) {
+            case 'Webtoon':
+            case 'ContinuesVertical':
+                window.addEventListener('scroll', handleVerticalScroll);
+                return () => window.removeEventListener('scroll', handleVerticalScroll);
+            case 'ContinuesHorizontalLTR':
+            case 'ContinuesHorizontalRTL':
+                window.addEventListener('scroll', handleHorizontalScroll);
+                return () => window.removeEventListener('scroll', handleHorizontalScroll);
+            default:
+                return () => {};
+        }
+    }, [handleVerticalScroll]);
 
     return (
         <div ref={ref} style={{ margin: '0 auto' }}>
