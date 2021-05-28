@@ -60,7 +60,6 @@ export default function HorizontalPager(props: IReaderProps) {
     }
 
     const handleLoadNextonEnding = () => {
-        console.log(window.scrollX + window.innerWidth, document.body.scrollWidth);
         if (settings.readerType === 'ContinuesHorizontalLTR') {
             if (window.scrollX + window.innerWidth >= document.body.scrollWidth) {
                 nextChapter();
