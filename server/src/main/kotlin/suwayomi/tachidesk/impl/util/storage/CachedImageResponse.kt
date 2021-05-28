@@ -42,19 +42,20 @@ object CachedImageResponse {
         val response = fetcher()
 
         if (response.code == 200) {
-            val fullPath = "$filePath.tmp"
-            val saveFile = File(fullPath)
-            response.body!!.source().saveTo(saveFile)
+            val tmpSavePath = "$filePath.tmp"
+            val tmpSaveFile = File(tmpSavePath)
+            response.body!!.source().saveTo(tmpSaveFile)
 
             // find image type
             val imageType = response.headers["content-type"]
-                ?: ImageUtil.findImageType { saveFile.inputStream() }?.mime
+                ?: ImageUtil.findImageType { tmpSaveFile.inputStream() }?.mime
                 ?: "image/jpeg"
-                    .substringAfter("image/")
 
-            saveFile.renameTo(File("$filePath.$imageType"))
+            val actualSavePath = "$filePath.${imageType.substringAfter("/")}"
 
-            return pathToInputStream(fullPath) to imageType
+            tmpSaveFile.renameTo(File(actualSavePath))
+
+            return pathToInputStream(actualSavePath) to imageType
         } else {
             response.closeQuietly()
             throw Exception("request error! ${response.code}")
