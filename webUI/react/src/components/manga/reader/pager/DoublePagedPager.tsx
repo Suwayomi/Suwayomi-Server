@@ -23,7 +23,7 @@ const useStyles = (settings: IReaderSettings) => makeStyles({
     },
 });
 
-export default function DoublePagedReader(props: IReaderProps) {
+export default function DoublePagedPager(props: IReaderProps) {
     const {
         pages, settings, setCurPage, curPage, nextChapter, prevChapter,
     } = props;
