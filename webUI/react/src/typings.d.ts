@@ -117,7 +117,8 @@ type ReaderType =
 'DoubleVertical' |
 'DoubleRTL' |
 'DoubleLTR' |
-'ContinuesHorizontal';
+'ContinuesHorizontalLTR'|
+'ContinuesHorizontalRTL';
 
 interface IReaderSettings{
     staticNav: boolean
