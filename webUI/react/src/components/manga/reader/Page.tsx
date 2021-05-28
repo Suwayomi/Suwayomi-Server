@@ -52,13 +52,14 @@ const useStyles = (settings: IReaderSettings) => makeStyles({
 interface IProps {
     src: string
     index: number
+    onImageLoad: () => void
     setCurPage: React.Dispatch<React.SetStateAction<number>>
     settings: IReaderSettings
 }
 
 function LazyImage(props: IProps) {
     const {
-        src, index, setCurPage, settings,
+        src, index, onImageLoad, setCurPage, settings,
     } = props;
 
     const classes = useStyles(settings)();
@@ -88,7 +89,14 @@ function LazyImage(props: IProps) {
         const img = new Image();
         img.src = src;
 
-        img.onload = () => setImagsrc(src);
+        img.onload = () => {
+            setImagsrc(src);
+            onImageLoad();
+        };
+
+        return () => {
+            img.onload = null;
+        };
     }, [src]);
 
     if (imageSrc.length === 0) {
@@ -111,7 +119,7 @@ function LazyImage(props: IProps) {
 
 const Page = React.forwardRef((props: IProps, ref: any) => {
     const {
-        src, index, setCurPage, settings,
+        src, index, onImageLoad, setCurPage, settings,
     } = props;
 
     return (
@@ -119,6 +127,7 @@ const Page = React.forwardRef((props: IProps, ref: any) => {
             <LazyImage
                 src={src}
                 index={index}
+                onImageLoad={onImageLoad}
                 setCurPage={setCurPage}
                 settings={settings}
             />

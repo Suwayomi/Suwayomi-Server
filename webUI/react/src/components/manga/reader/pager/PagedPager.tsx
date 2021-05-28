@@ -101,6 +101,7 @@ export default function PagedReader(props: IReaderProps) {
             <Page
                 key={curPage}
                 index={curPage}
+                onImageLoad={() => {}}
                 src={pages[curPage].src}
                 setCurPage={setCurPage}
                 settings={settings}

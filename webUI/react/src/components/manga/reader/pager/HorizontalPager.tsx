@@ -40,6 +40,7 @@ export default function HorizontalPager(props: IProps) {
                         key={page.index}
                         index={page.index}
                         src={page.src}
+                        onImageLoad={() => {}}
                         setCurPage={setCurPage}
                         settings={settings}
                     />

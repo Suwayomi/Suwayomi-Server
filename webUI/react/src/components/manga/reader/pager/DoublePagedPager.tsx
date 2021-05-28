@@ -33,6 +33,7 @@ export default function DoublePagedReader(props: IReaderProps) {
     const pagesRef = useRef<HTMLDivElement[]>([]);
 
     const pagesDisplayed = useRef<number>(0);
+    const pageLoaded = useRef<boolean[]>(Array(pages.length).fill(false));
 
     function pagesToGoBack() {
         for (let i = 1; i <= 2; i++) {
@@ -151,6 +152,12 @@ export default function DoublePagedReader(props: IReaderProps) {
         }
     }
 
+    function handleImageLoad(index: number) {
+        return () => {
+            pageLoaded.current[index] = true;
+        };
+    }
+
     useEffect(() => {
         pagesRef.current.forEach((e) => {
             const pageRef = e;
@@ -173,13 +180,14 @@ export default function DoublePagedReader(props: IReaderProps) {
 
     return (
         <div ref={selfRef} className={classes.reader}>
-            <div id="test" />
+            {/* <div id="test" /> */}
             {
                 pages.map((page) => (
                     <Page
                         key={page.index}
                         index={page.index}
                         src={page.src}
+                        onImageLoad={handleImageLoad(page.index)}
                         setCurPage={setCurPage}
                         settings={settings}
                         ref={(e:HTMLDivElement) => { pagesRef.current[page.index] = e; }}
