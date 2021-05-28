@@ -82,11 +82,11 @@ const Page = React.forwardRef((props: IProps, ref: any) => {
         if (imgRef.current) {
             const rect = imgRef.current.getBoundingClientRect();
             if (settings.readerType === 'ContinuesHorizontalLTR') {
-                if (rect.left <= 0 && rect.left + rect.width > 0) {
+                if (rect.left <= window.innerWidth / 2 && rect.right > window.innerWidth / 2) {
                     setCurPage(index);
                 }
             } else {
-                if (rect.right - window.innerWidth <= 0 && rect.left - window.innerWidth > 0) {
+                if (rect.right <= window.innerWidth / 2 && rect.left > window.innerWidth / 2) {
                     setCurPage(index);
                 }
             }
