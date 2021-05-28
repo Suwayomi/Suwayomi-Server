@@ -7,9 +7,10 @@
 
 import CircularProgress from '@material-ui/core/CircularProgress';
 import { makeStyles } from '@material-ui/core/styles';
+import { CSSProperties } from '@material-ui/core/styles/withStyles';
 import React, { useEffect, useRef, useState } from 'react';
 
-function imageStyle(settings: IReaderSettings): any {
+function imageStyle(settings: IReaderSettings): CSSProperties {
     if (settings.readerType === 'DoubleLTR' || settings.readerType === 'DoubleRTL') {
         return {
             display: 'block',
