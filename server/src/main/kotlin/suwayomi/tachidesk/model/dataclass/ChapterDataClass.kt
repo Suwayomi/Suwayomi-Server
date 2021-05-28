@@ -24,6 +24,9 @@ data class ChapterDataClass(
     /** last read page, zero means not read/no data */
     val lastPageRead: Int,
 
+    /** last read page offset, zero means no offset data */
+    val lastPageReadOffset: Int,
+
     /** this chapter's index, starts with 1 */
     val index: Int,
 

@@ -122,6 +122,7 @@ object Chapter {
                 dbChapter[ChapterTable.isRead],
                 dbChapter[ChapterTable.isBookmarked],
                 dbChapter[ChapterTable.lastPageRead],
+                dbChapter[ChapterTable.lastPageReadOffset],
 
                 chapterCount - index,
                 chapterList.size
@@ -179,6 +180,7 @@ object Chapter {
             chapterEntry[ChapterTable.isRead],
             chapterEntry[ChapterTable.isBookmarked],
             chapterEntry[ChapterTable.lastPageRead],
+            chapterEntry[ChapterTable.lastPageReadOffset],
 
             chapterEntry[ChapterTable.chapterIndex],
             chapterCount.toInt(),
@@ -186,7 +188,7 @@ object Chapter {
         )
     }
 
-    fun modifyChapter(mangaId: Int, chapterIndex: Int, isRead: Boolean?, isBookmarked: Boolean?, markPrevRead: Boolean?, lastPageRead: Int?) {
+    fun modifyChapter(mangaId: Int, chapterIndex: Int, isRead: Boolean?, isBookmarked: Boolean?, markPrevRead: Boolean?, lastPageRead: Int?, lastPageReadOffset: Int?) {
         transaction {
             if (listOf(isRead, isBookmarked, lastPageRead).any { it != null }) {
                 ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex eq chapterIndex) }) { update ->
@@ -198,6 +200,9 @@ object Chapter {
                     }
                     lastPageRead?.also {
                         update[ChapterTable.lastPageRead] = it
+                    }
+                    lastPageReadOffset?.also {
+                        update[ChapterTable.lastPageReadOffset] = it
                     }
                 }
             }

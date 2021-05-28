@@ -200,8 +200,9 @@ object TachideskAPI {
             val bookmarked = ctx.formParam("bookmarked")?.toBoolean()
             val markPrevRead = ctx.formParam("markPrevRead")?.toBoolean()
             val lastPageRead = ctx.formParam("lastPageRead")?.toInt()
+            val lastPageReadOffset = ctx.formParam("lastPageReadOffset")?.toInt()
 
-            modifyChapter(mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead)
+            modifyChapter(mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead, lastPageReadOffset)
 
             ctx.status(200)
         }

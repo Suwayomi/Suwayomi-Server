@@ -21,6 +21,7 @@ object ChapterTable : IntIdTable() {
     val isRead = bool("read").default(false)
     val isBookmarked = bool("bookmark").default(false)
     val lastPageRead = integer("last_page_read").default(0)
+    val lastPageReadOffset = integer("last_page_read_offset").default(0)
 
     // index is reserved by a function
     val chapterIndex = integer("index")
@@ -39,5 +40,6 @@ fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
         chapterEntry[isRead],
         chapterEntry[isBookmarked],
         chapterEntry[lastPageRead],
+        chapterEntry[lastPageReadOffset],
         chapterEntry[chapterIndex],
     )
