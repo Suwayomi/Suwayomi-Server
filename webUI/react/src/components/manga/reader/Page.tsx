@@ -5,10 +5,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import CircularProgress from '@material-ui/core/CircularProgress';
 import { makeStyles } from '@material-ui/core/styles';
 import { CSSProperties } from '@material-ui/core/styles/withStyles';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
+import SpinnerImage from 'components/SpinnerImage';
 
 function imageStyle(settings: IReaderSettings): CSSProperties {
     if (settings.readerType === 'DoubleLTR' || settings.readerType === 'DoubleRTL') {
@@ -56,18 +56,17 @@ interface IProps {
     settings: IReaderSettings
 }
 
-function LazyImage(props: IProps) {
+const Page = React.forwardRef((props: IProps, ref: any) => {
     const {
         src, index, onImageLoad, setCurPage, settings,
     } = props;
 
     const classes = useStyles(settings)();
-    const [imageSrc, setImagsrc] = useState<string>('');
-    const ref = useRef<HTMLImageElement>(null);
+    const imgRef = useRef<HTMLImageElement>(null);
 
     const handleScroll = () => {
-        if (ref.current) {
-            const rect = ref.current.getBoundingClientRect();
+        if (imgRef.current) {
+            const rect = imgRef.current.getBoundingClientRect();
             if (rect.y < 0 && rect.y + rect.height > 0) {
                 setCurPage(index);
             }
@@ -84,51 +83,15 @@ function LazyImage(props: IProps) {
         } return () => {};
     }, [handleScroll]);
 
-    useEffect(() => {
-        const img = new Image();
-        img.src = src;
-
-        img.onload = () => {
-            setImagsrc(src);
-            onImageLoad();
-        };
-
-        return () => {
-            img.onload = null;
-        };
-    }, [src]);
-
-    if (imageSrc.length === 0) {
-        return (
-            <div className={`${classes.image} ${classes.loadingImage}`}>
-                <CircularProgress thickness={5} />
-            </div>
-        );
-    }
-
-    return (
-        <img
-            className={classes.image}
-            ref={ref}
-            src={imageSrc}
-            alt={`Page #${index}`}
-        />
-    );
-}
-
-const Page = React.forwardRef((props: IProps, ref: any) => {
-    const {
-        src, index, onImageLoad, setCurPage, settings,
-    } = props;
-
     return (
         <div ref={ref} style={{ margin: '0 auto' }}>
-            <LazyImage
+            <SpinnerImage
                 src={src}
-                index={index}
                 onImageLoad={onImageLoad}
-                setCurPage={setCurPage}
-                settings={settings}
+                alt={`Page #${index}`}
+                imgRef={imgRef}
+                spinnerClassName={`${classes.image} ${classes.loadingImage}`}
+                imgClassName={classes.image}
             />
         </div>
     );

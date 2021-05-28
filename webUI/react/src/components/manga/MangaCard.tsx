@@ -9,11 +9,11 @@ import React from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import Card from '@material-ui/core/Card';
 import CardActionArea from '@material-ui/core/CardActionArea';
-import CardMedia from '@material-ui/core/CardMedia';
 import Typography from '@material-ui/core/Typography';
 import { Link } from 'react-router-dom';
 import { Grid } from '@material-ui/core';
 import useLocalStorage from 'util/useLocalStorage';
+import SpinnerImage from 'components/SpinnerImage';
 
 const useStyles = makeStyles({
     root: {
@@ -43,6 +43,11 @@ const useStyles = makeStyles({
         height: '100%',
         width: '100%',
     },
+
+    spinner: {
+        minHeight: '400px',
+        padding: '180px calc(50% - 20px)',
+    },
 });
 
 interface IProps {
@@ -63,12 +68,11 @@ const MangaCard = React.forwardRef((props: IProps, ref) => {
                 <Card className={classes.root} ref={ref}>
                     <CardActionArea>
                         <div className={classes.wrapper}>
-                            <CardMedia
-                                className={classes.image}
-                                component="img"
+                            <SpinnerImage
                                 alt={title}
-                                image={serverAddress + thumbnailUrl}
-                                title={title}
+                                src={serverAddress + thumbnailUrl}
+                                spinnerClassName={classes.spinner}
+                                imgClassName={classes.image}
                             />
                             <div className={classes.gradient} />
                             <Typography className={classes.title} variant="h5" component="h2">{title}</Typography>

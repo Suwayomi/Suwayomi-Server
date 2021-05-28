@@ -29,6 +29,10 @@ export default function VerticalReader(props: IReaderProps) {
     const selfRef = useRef<HTMLDivElement>(null);
     const pagesRef = useRef<HTMLDivElement[]>([]);
 
+    useEffect(() => {
+        pagesRef.current = pagesRef.current.slice(0, pages.length);
+    }, [pages.length]);
+
     function nextPage() {
         if (curPage < pages.length - 1) {
             pagesRef.current[curPage + 1]?.scrollIntoView();
@@ -104,7 +108,7 @@ export default function VerticalReader(props: IReaderProps) {
         if (initialPage > -1) {
             pagesRef.current[initialPage].scrollIntoView();
         }
-    }, []);
+    }, [pagesRef.current.length]);
 
     return (
         <div ref={selfRef} className={classes.reader}>
