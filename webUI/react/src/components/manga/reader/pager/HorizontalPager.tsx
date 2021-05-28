@@ -6,34 +6,37 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import { makeStyles } from '@material-ui/core/styles';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import Page from '../Page';
 
-const useStyles = makeStyles({
+const useStyles = (settings: IReaderSettings) => makeStyles({
     reader: {
         display: 'flex',
-        flexDirection: 'row',
-        justifyContent: 'center',
+        flexDirection: (settings.readerType === 'ContinuesHorizontalLTR') ? 'row' : 'row-reverse',
+        justifyContent: (settings.readerType === 'ContinuesHorizontalLTR') ? 'flex-start' : 'flex-end',
         margin: '0 auto',
-        width: '100%',
-        height: '100vh',
-        overflowX: 'scroll',
+        width: 'auto',
+        height: 'auto',
+        overflowX: 'visible',
     },
 });
 
-interface IProps {
-    pages: Array<IReaderPage>
-    setCurPage: React.Dispatch<React.SetStateAction<number>>
-    settings: IReaderSettings
-}
+export default function HorizontalPager(props: IReaderProps) {
+    const {
+        pages, curPage, settings, setCurPage,
+    } = props;
 
-export default function HorizontalPager(props: IProps) {
-    const { pages, settings, setCurPage } = props;
+    const classes = useStyles(settings)();
 
-    const classes = useStyles();
+    const selfRef = useRef<HTMLDivElement>(null);
+    const pagesRef = useRef<HTMLDivElement[]>([]);
+
+    useEffect(() => {
+        pagesRef.current[curPage]?.scrollIntoView({ inline: 'center' });
+    }, [settings.readerType]);
 
     return (
-        <div className={classes.reader}>
+        <div ref={selfRef} className={classes.reader}>
             {
                 pages.map((page) => (
                     <Page
@@ -43,6 +46,7 @@ export default function HorizontalPager(props: IProps) {
                         onImageLoad={() => {}}
                         setCurPage={setCurPage}
                         settings={settings}
+                        ref={(e:HTMLDivElement) => { pagesRef.current[page.index] = e; }}
                     />
                 ))
             }
