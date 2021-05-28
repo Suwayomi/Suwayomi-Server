@@ -14,9 +14,7 @@ function imageStyle(settings: IReaderSettings): any {
         return {
             display: 'block',
             marginBottom: 0,
-            minWidth: '50vw',
-            width: '100%',
-            maxWidth: '100%',
+            width: 'auto',
             minHeight: '99vh',
             height: 'auto',
             maxHeight: '100%',
