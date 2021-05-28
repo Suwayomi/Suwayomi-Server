@@ -109,10 +109,8 @@ export default function DoublePagedReader(props: IReaderProps) {
     }
 
     function showPages() {
-        // console.log(`pages to display: ${pagesDisplayed.current}`);
         for (let i = 0; i < pagesDisplayed.current; i++) {
             if (curPage + i < pages.length) {
-                // console.log(`showing page ${curPage + i}`);
                 pagesRef.current[curPage + i].style.display = 'block';
             }
         }
@@ -120,7 +118,6 @@ export default function DoublePagedReader(props: IReaderProps) {
 
     function hidePages() {
         for (let i = 0; i < pagesDisplayed.current; i++) {
-            // console.log(`hiding page ${curPage + i}`);
             if (pagesRef.current[curPage + i]) {
                 pagesRef.current[curPage + i].style.display = 'none';
             }
@@ -189,7 +186,6 @@ export default function DoublePagedReader(props: IReaderProps) {
 
     return (
         <div ref={selfRef} className={classes.reader}>
-            {/* <div id="test" /> */}
             {
                 pages.map((page) => (
                     <Page
