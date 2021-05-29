@@ -49,6 +49,7 @@ class Downloader(private val downloadQueue: CopyOnWriteArrayList<DownloadChapter
                     runBlocking { getPageImage(download.mangaId, download.chapterIndex, pageNum) }
                     // TODO: retry on error with 2,4,8 seconds of wait
                     // TODO: download multiple pages at once, possible solution: rx observer's strategy is used in Tachiyomi
+                    // TODO: fine grained download percentage
                     download.progress = (pageNum + 1).toFloat() / pageCount
                     step()
                 }
