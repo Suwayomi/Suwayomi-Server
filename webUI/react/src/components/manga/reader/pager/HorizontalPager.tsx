@@ -18,6 +18,7 @@ const useStyles = (settings: IReaderSettings) => makeStyles({
         width: 'auto',
         height: 'auto',
         overflowX: 'visible',
+        userSelect: 'none',
     },
 });
 
@@ -65,10 +66,25 @@ export default function HorizontalPager(props: IReaderProps) {
         }
     }
 
+    const mouseXPos = useRef<number>(0);
+
+    function dragScreen(e: MouseEvent) {
+        window.scrollBy(mouseXPos.current - e.pageX, 0);
+    }
+
+    function dragControl(e:MouseEvent) {
+        mouseXPos.current = e.pageX;
+        selfRef.current?.addEventListener('mousemove', dragScreen);
+    }
+
+    function removeDragControl() {
+        selfRef.current?.removeEventListener('mousemove', dragScreen);
+    }
+
     function clickControl(e:MouseEvent) {
-        if (e.clientX > window.innerWidth / 2) {
+        if (e.clientX >= window.innerWidth * 0.85) {
             goRight();
-        } else {
+        } else if (e.clientX <= window.innerWidth * 0.15) {
             goLeft();
         }
     }
@@ -90,14 +106,24 @@ export default function HorizontalPager(props: IReaderProps) {
     }, [settings.readerType]);
 
     useEffect(() => {
+        selfRef.current?.addEventListener('mousedown', dragControl);
+        selfRef.current?.addEventListener('mouseup', removeDragControl);
+
+        return () => {
+            selfRef.current?.removeEventListener('mousedown', dragControl);
+            selfRef.current?.removeEventListener('mouseup', removeDragControl);
+        };
+    }, [selfRef]);
+
+    useEffect(() => {
         if (settings.loadNextonEnding) {
             document.addEventListener('scroll', handleLoadNextonEnding);
         }
-        selfRef.current?.addEventListener('click', clickControl);
+        selfRef.current?.addEventListener('mousedown', clickControl);
 
         return () => {
             document.removeEventListener('scroll', handleLoadNextonEnding);
-            selfRef.current?.removeEventListener('click', clickControl);
+            selfRef.current?.removeEventListener('mousedown', clickControl);
         };
     }, [selfRef, curPage]);
 
