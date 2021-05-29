@@ -1,6 +1,7 @@
 
 plugins {
     application
+    kotlin("plugin.serialization")
 }
 
 
@@ -46,6 +47,17 @@ dependencies {
     implementation("org.mozilla:rhino-runtime:1.7.13")
     // 'org.mozilla:rhino-engine' provides the same interface as 'javax.script' a.k.a Nashorn
     implementation("org.mozilla:rhino-engine:1.7.13")
+
+    // Kotlin wrapper around Java Preferences, makes certain things easier
+    val multiplatformSettingsVersion = "0.7.7"
+    implementation("com.russhwolf:multiplatform-settings-jvm:$multiplatformSettingsVersion")
+    implementation("com.russhwolf:multiplatform-settings-serialization-jvm:$multiplatformSettingsVersion")
+}
+
+tasks {
+    withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+        kotlinOptions.freeCompilerArgs = listOf("-Xopt-in=kotlin.RequiresOptIn")
+    }
 }
 
 //def fatJarTask = tasks.getByPath(':AndroidCompat:JVMPatch:fatJar')
