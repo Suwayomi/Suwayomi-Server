@@ -187,7 +187,7 @@ object TachideskAPI {
             ctx.json(future { getChapterList(mangaId, onlineFetch) })
         }
 
-        // used to modify a chapter's meta paramaters
+        // used to modify a manga's meta paramaters
         app.patch("/api/v1/manga/:mangaId/meta") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
 
