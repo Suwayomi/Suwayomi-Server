@@ -33,6 +33,7 @@ import suwayomi.tachidesk.impl.Source.getSourceList
 import suwayomi.tachidesk.impl.backup.BackupFlags
 import suwayomi.tachidesk.impl.backup.legacy.LegacyBackupExport.createLegacyBackup
 import suwayomi.tachidesk.impl.backup.legacy.LegacyBackupImport.restoreLegacyBackup
+import suwayomi.tachidesk.impl.download.DownloadManager
 import suwayomi.tachidesk.impl.extension.Extension.getExtensionIcon
 import suwayomi.tachidesk.impl.extension.Extension.installExtension
 import suwayomi.tachidesk.impl.extension.Extension.uninstallExtension
@@ -383,15 +384,56 @@ object TachideskAPI {
         // Download queue stats
         app.ws("/api/v1/downloads") { ws ->
             ws.onConnect { ctx ->
-                // TODO: send current stat
-                // TODO: add to downlad subscribers
+                DownloadManager.addClient(ctx)
+                DownloadManager.notifyClient(ctx)
             }
-            ws.onMessage {
-                // TODO: send current stat
+            ws.onMessage { ctx ->
+                DownloadManager.handleRequest(ctx)
             }
             ws.onClose { ctx ->
-                // TODO: remove from subscribers
+                DownloadManager.removeClient(ctx)
             }
+        }
+
+        // Start the downloader
+        app.get("/api/v1/downloads/start") { ctx ->
+            DownloadManager.start()
+
+            ctx.status(200)
+        }
+
+        // Stop the downloader
+        app.get("/api/v1/downloads/stop") { ctx ->
+            DownloadManager.stop()
+
+            ctx.status(200)
+        }
+
+        // clear download queue
+        app.get("/api/v1/downloads/clear") { ctx ->
+            DownloadManager.clear()
+
+            ctx.status(200)
+        }
+
+        // Queue chapter for download
+        app.get("/api/v1/download/:mangaId/chapter/:chapterIndex") { ctx ->
+            val chapterIndex = ctx.pathParam("chapterIndex").toInt()
+            val mangaId = ctx.pathParam("mangaId").toInt()
+
+            DownloadManager.enqueue(chapterIndex, mangaId)
+
+            ctx.status(200)
+        }
+
+        // delete chapter from download queue
+        app.delete("/api/v1/download/:mangaId/chapter/:chapterIndex") { ctx ->
+            val chapterIndex = ctx.pathParam("chapterIndex").toInt()
+            val mangaId = ctx.pathParam("mangaId").toInt()
+
+            DownloadManager.unqueue(chapterIndex, mangaId)
+
+            ctx.status(200)
         }
     }
 }

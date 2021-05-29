@@ -1,28 +1,65 @@
 package suwayomi.tachidesk.impl.download
 
-import org.jetbrains.exposed.sql.ResultRow
-import java.util.concurrent.LinkedBlockingQueue
-
 /*
  * Copyright (C) Contributors to the Suwayomi project
- * 
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-data class Download(
-    val chapter: ResultRow,
-)
+import kotlinx.coroutines.runBlocking
+import suwayomi.tachidesk.impl.Chapter.getChapter
+import suwayomi.tachidesk.impl.Page.getPageImage
+import suwayomi.tachidesk.impl.download.model.DownloadChapter
+import suwayomi.tachidesk.impl.download.model.DownloadState.Downloading
+import suwayomi.tachidesk.impl.download.model.DownloadState.Error
+import suwayomi.tachidesk.impl.download.model.DownloadState.Finished
+import suwayomi.tachidesk.impl.download.model.DownloadState.Queued
+import java.util.concurrent.CopyOnWriteArrayList
 
-private val downloadQueue = LinkedBlockingQueue<Download>()
+class Downloader(private val downloadQueue: CopyOnWriteArrayList<DownloadChapter>, val notifier: () -> Unit) : Thread() {
+    var shouldStop: Boolean = false
 
-class Downloader {
+    class DownloadShouldStopException : Exception()
 
-    fun start() {
-        TODO()
+    fun step() {
+        notifier()
+        synchronized(shouldStop) {
+            if (shouldStop) throw DownloadShouldStopException()
+        }
     }
 
-    fun stop() {
-        TODO()
+    override fun run() {
+        do {
+            val download = downloadQueue.firstOrNull { it.state == Queued } ?: break
+
+            try {
+                download.state = Downloading
+                step()
+
+                download.chapter = runBlocking { getChapter(download.chapterIndex, download.mangaId) }
+                step()
+
+                val pageCount = download.chapter!!.pageCount!!
+                for (pageNum in 0 until pageCount) {
+                    runBlocking { getPageImage(download.mangaId, download.chapterIndex, pageNum) }
+                    // TODO: retry on error with 2,4,8 seconds of wait
+                    // TODO: download multiple pages at once, possible solution: rx observer's strategy is used in Tachiyomi
+                    download.progress = (pageNum + 1).toFloat() / pageCount
+                    step()
+                }
+                download.state = Finished
+                step()
+            } catch (e: DownloadShouldStopException) {
+                println("Downloader was stopped")
+                downloadQueue.filter { it.state == Downloading }.forEach { it.state = Queued }
+            } catch (e: Exception) {
+                println("Downloader faced an exception")
+                downloadQueue.filter { it.state == Downloading }.forEach { it.state = Error }
+                e.printStackTrace()
+            } finally {
+                notifier()
+            }
+        } while (!shouldStop)
     }
 }
