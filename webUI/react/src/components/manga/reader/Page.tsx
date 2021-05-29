@@ -5,8 +5,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-/* eslint-disable no-lonely-if */
-
 import { makeStyles } from '@material-ui/core/styles';
 import { CSSProperties } from '@material-ui/core/styles/withStyles';
 import React, { useEffect, useRef } from 'react';
@@ -85,7 +83,7 @@ const Page = React.forwardRef((props: IProps, ref: any) => {
                 if (rect.left <= window.innerWidth / 2 && rect.right > window.innerWidth / 2) {
                     setCurPage(index);
                 }
-            } else {
+            } else if (settings.readerType === 'ContinuesHorizontalRTL') {
                 if (rect.right <= window.innerWidth / 2 && rect.left > window.innerWidth / 2) {
                     setCurPage(index);
                 }

@@ -5,8 +5,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-/* eslint-disable no-lonely-if */
-
 import { makeStyles } from '@material-ui/core/styles';
 import React, { useEffect, useRef } from 'react';
 import Page from '../Page';
@@ -80,7 +78,7 @@ export default function HorizontalPager(props: IReaderProps) {
             if (window.scrollX + window.innerWidth >= document.body.scrollWidth) {
                 nextChapter();
             }
-        } else {
+        } else if (settings.readerType === 'ContinuesHorizontalRTL') {
             if (window.scrollX <= window.innerWidth) {
                 nextChapter();
             }
