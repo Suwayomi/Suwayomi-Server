@@ -24,12 +24,19 @@ data class ChapterDataClass(
     /** last read page, zero means not read/no data */
     val lastPageRead: Int,
 
+    /** last read page, zero means not read/no data */
+    val lastReadAt: Long,
+
     /** this chapter's index, starts with 1 */
     val index: Int,
+
+    /** is chapter downloaded */
+    val downloaded: Boolean,
+
+    /** used to construct pages in the front-end */
+    val pageCount: Int = -1,
 
     /** total chapter count, used to calculate if there's a next and prev chapter */
     val chapterCount: Int? = null,
 
-    /** used to construct pages in the front-end */
-    val pageCount: Int? = null,
 )

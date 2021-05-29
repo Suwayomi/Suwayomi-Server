@@ -8,6 +8,9 @@ package suwayomi.tachidesk.impl.download
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.impl.Chapter.getChapter
 import suwayomi.tachidesk.impl.Page.getPageImage
 import suwayomi.tachidesk.impl.download.model.DownloadChapter
@@ -15,6 +18,7 @@ import suwayomi.tachidesk.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.impl.download.model.DownloadState.Error
 import suwayomi.tachidesk.impl.download.model.DownloadState.Finished
 import suwayomi.tachidesk.impl.download.model.DownloadState.Queued
+import suwayomi.tachidesk.model.table.ChapterTable
 import java.util.concurrent.CopyOnWriteArrayList
 
 class Downloader(private val downloadQueue: CopyOnWriteArrayList<DownloadChapter>, val notifier: () -> Unit) : Thread() {
@@ -49,6 +53,11 @@ class Downloader(private val downloadQueue: CopyOnWriteArrayList<DownloadChapter
                     step()
                 }
                 download.state = Finished
+                transaction {
+                    ChapterTable.update({ (ChapterTable.manga eq download.mangaId) and (ChapterTable.chapterIndex eq download.chapterIndex) }) {
+                        it[isDownloaded] = true
+                    }
+                }
                 step()
             } catch (e: DownloadShouldStopException) {
                 println("Downloader was stopped")

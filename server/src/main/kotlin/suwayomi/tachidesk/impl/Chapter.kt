@@ -24,6 +24,7 @@ import suwayomi.tachidesk.model.table.ChapterTable
 import suwayomi.tachidesk.model.table.MangaTable
 import suwayomi.tachidesk.model.table.PageTable
 import suwayomi.tachidesk.model.table.toDataClass
+import java.time.Instant
 
 object Chapter {
     /** get chapter list when showing a manga */
@@ -122,9 +123,14 @@ object Chapter {
                 dbChapter[ChapterTable.isRead],
                 dbChapter[ChapterTable.isBookmarked],
                 dbChapter[ChapterTable.lastPageRead],
+                dbChapter[ChapterTable.lastReadAt],
 
                 chapterCount - index,
-                chapterList.size
+                dbChapter[ChapterTable.isDownloaded],
+
+                dbChapter[ChapterTable.pageCount],
+
+                chapterList.size,
             )
         }
     }
@@ -136,54 +142,68 @@ object Chapter {
                 (ChapterTable.chapterIndex eq chapterIndex) and (ChapterTable.manga eq mangaId)
             }.first()
         }
-        val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
-        val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
 
-        val pageList = source.fetchPageList(
-            SChapter.create().apply {
-                url = chapterEntry[ChapterTable.url]
-                name = chapterEntry[ChapterTable.name]
-            }
-        ).awaitSingle()
+        return if (!chapterEntry[ChapterTable.isDownloaded]) {
+            val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
+            val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
 
-        val chapterId = chapterEntry[ChapterTable.id].value
-        val chapterCount = transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.count() }
+            val pageList = source.fetchPageList(
+                SChapter.create().apply {
+                    url = chapterEntry[ChapterTable.url]
+                    name = chapterEntry[ChapterTable.name]
+                }
+            ).awaitSingle()
 
-        // update page list for this chapter
-        transaction {
-            pageList.forEach { page ->
-                val pageEntry = transaction { PageTable.select { (PageTable.chapter eq chapterId) and (PageTable.index eq page.index) }.firstOrNull() }
-                if (pageEntry == null) {
-                    PageTable.insert {
-                        it[index] = page.index
-                        it[url] = page.url
-                        it[imageUrl] = page.imageUrl
-                        it[chapter] = chapterId
-                    }
-                } else {
-                    PageTable.update({ (PageTable.chapter eq chapterId) and (PageTable.index eq page.index) }) {
-                        it[url] = page.url
-                        it[imageUrl] = page.imageUrl
+            val chapterId = chapterEntry[ChapterTable.id].value
+            val chapterCount = transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.count() }
+
+            // update page list for this chapter
+            transaction {
+                pageList.forEach { page ->
+                    val pageEntry = transaction { PageTable.select { (PageTable.chapter eq chapterId) and (PageTable.index eq page.index) }.firstOrNull() }
+                    if (pageEntry == null) {
+                        PageTable.insert {
+                            it[index] = page.index
+                            it[url] = page.url
+                            it[imageUrl] = page.imageUrl
+                            it[chapter] = chapterId
+                        }
+                    } else {
+                        PageTable.update({ (PageTable.chapter eq chapterId) and (PageTable.index eq page.index) }) {
+                            it[url] = page.url
+                            it[imageUrl] = page.imageUrl
+                        }
                     }
                 }
             }
+
+            val pageCount = pageList.count()
+
+            transaction {
+                ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex eq chapterIndex) }) {
+                    it[ChapterTable.pageCount] = pageCount
+                }
+            }
+            return ChapterDataClass(
+                chapterEntry[ChapterTable.url],
+                chapterEntry[ChapterTable.name],
+                chapterEntry[ChapterTable.date_upload],
+                chapterEntry[ChapterTable.chapter_number],
+                chapterEntry[ChapterTable.scanlator],
+                mangaId,
+                chapterEntry[ChapterTable.isRead],
+                chapterEntry[ChapterTable.isBookmarked],
+                chapterEntry[ChapterTable.lastPageRead],
+                chapterEntry[ChapterTable.lastReadAt],
+
+                chapterEntry[ChapterTable.chapterIndex],
+                chapterEntry[ChapterTable.isDownloaded],
+                pageCount,
+                chapterCount.toInt()
+            )
+        } else {
+            ChapterTable.toDataClass(chapterEntry)
         }
-
-        return ChapterDataClass(
-            chapterEntry[ChapterTable.url],
-            chapterEntry[ChapterTable.name],
-            chapterEntry[ChapterTable.date_upload],
-            chapterEntry[ChapterTable.chapter_number],
-            chapterEntry[ChapterTable.scanlator],
-            mangaId,
-            chapterEntry[ChapterTable.isRead],
-            chapterEntry[ChapterTable.isBookmarked],
-            chapterEntry[ChapterTable.lastPageRead],
-
-            chapterEntry[ChapterTable.chapterIndex],
-            chapterCount.toInt(),
-            pageList.count()
-        )
     }
 
     fun modifyChapter(mangaId: Int, chapterIndex: Int, isRead: Boolean?, isBookmarked: Boolean?, markPrevRead: Boolean?, lastPageRead: Int?) {
@@ -198,6 +218,7 @@ object Chapter {
                     }
                     lastPageRead?.also {
                         update[ChapterTable.lastPageRead] = it
+                        update[ChapterTable.lastReadAt] = Instant.now().epochSecond
                     }
                 }
             }

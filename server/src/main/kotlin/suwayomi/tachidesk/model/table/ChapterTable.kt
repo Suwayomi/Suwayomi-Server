@@ -9,6 +9,8 @@ package suwayomi.tachidesk.model.table
 
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.model.dataclass.ChapterDataClass
 
 object ChapterTable : IntIdTable() {
@@ -21,9 +23,14 @@ object ChapterTable : IntIdTable() {
     val isRead = bool("read").default(false)
     val isBookmarked = bool("bookmark").default(false)
     val lastPageRead = integer("last_page_read").default(0)
+    val lastReadAt = long("last_read_at").default(0)
 
     // index is reserved by a function
     val chapterIndex = integer("index")
+
+    val isDownloaded = bool("is_downloaded").default(false)
+
+    val pageCount = integer("page_count").default(-1)
 
     val manga = reference("manga", MangaTable)
 }
@@ -39,5 +46,9 @@ fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
         chapterEntry[isRead],
         chapterEntry[isBookmarked],
         chapterEntry[lastPageRead],
+        chapterEntry[lastReadAt],
         chapterEntry[chapterIndex],
+        chapterEntry[isDownloaded],
+        chapterEntry[pageCount],
+        transaction { ChapterTable.select { ChapterTable.manga eq chapterEntry[manga].value }.count().toInt() },
     )
