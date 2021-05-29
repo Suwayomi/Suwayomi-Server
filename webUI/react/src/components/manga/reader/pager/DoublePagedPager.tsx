@@ -12,6 +12,9 @@ import Page from '../Page';
 import DoublePage from '../DoublePage';
 
 const useStyles = (settings: IReaderSettings) => makeStyles({
+    preload: {
+        display: 'none',
+    },
     reader: {
         display: 'flex',
         flexDirection: (settings.readerType === 'DoubleLTR') ? 'row' : 'row-reverse',
@@ -31,16 +34,67 @@ export default function DoublePagedPager(props: IReaderProps) {
     const classes = useStyles(settings)();
 
     const selfRef = useRef<HTMLDivElement>(null);
-    const pagesRef = useRef<HTMLDivElement[]>([]);
+    const pagesRef = useRef<HTMLImageElement[]>([]);
 
     const pagesDisplayed = useRef<number>(0);
     const pageLoaded = useRef<boolean[]>(Array(pages.length).fill(false));
 
+    function setPagesToDisplay() {
+        pagesDisplayed.current = 0;
+        if (curPage < pages.length && pagesRef.current[curPage]) {
+            if (pageLoaded.current[curPage]) {
+                pagesDisplayed.current = 1;
+                const imgElem = pagesRef.current[curPage];
+                const aspectRatio = imgElem.height / imgElem.width;
+                if (aspectRatio < 1) {
+                    return;
+                }
+            }
+        }
+        if (curPage + 1 < pages.length && pagesRef.current[curPage + 1]) {
+            if (pageLoaded.current[curPage + 1]) {
+                const imgElem = pagesRef.current[curPage + 1];
+                const aspectRatio = imgElem.height / imgElem.width;
+                if (aspectRatio < 1) {
+                    return;
+                }
+                pagesDisplayed.current = 2;
+            }
+        }
+    }
+
+    function displayPages() {
+        if (pagesDisplayed.current === 2) {
+            ReactDOM.render(
+                <DoublePage
+                    key={curPage}
+                    index={curPage}
+                    image1src={pages[curPage].src}
+                    image2src={pages[curPage + 1].src}
+                    settings={settings}
+                />,
+                document.getElementById('display'),
+            );
+        } else {
+            ReactDOM.render(
+                <Page
+                    key={curPage}
+                    index={curPage}
+                    src={(pagesDisplayed.current === 1) ? pages[curPage].src : ''}
+                    onImageLoad={() => {}}
+                    setCurPage={setCurPage}
+                    settings={settings}
+                />,
+                document.getElementById('display'),
+            );
+        }
+    }
+
     function pagesToGoBack() {
         for (let i = 1; i <= 2; i++) {
             if (curPage - i > 0 && pagesRef.current[curPage - i]) {
-                if (pagesRef.current[curPage - i].children[0] instanceof HTMLImageElement) {
-                    const imgElem = pagesRef.current[curPage - i].children[0] as HTMLImageElement;
+                if (pageLoaded.current[curPage - i]) {
+                    const imgElem = pagesRef.current[curPage - i];
                     const aspectRatio = imgElem.height / imgElem.width;
                     if (aspectRatio < 1) {
                         return 1;
@@ -85,62 +139,6 @@ export default function DoublePagedPager(props: IReaderProps) {
         }
     }
 
-    function setPagesToDisplay() {
-        pagesDisplayed.current = 0;
-        if (curPage < pages.length && pagesRef.current[curPage]) {
-            if (pagesRef.current[curPage].children[0] instanceof HTMLImageElement) {
-                pagesDisplayed.current = 1;
-                const imgElem = pagesRef.current[curPage].children[0] as HTMLImageElement;
-                const aspectRatio = imgElem.height / imgElem.width;
-                if (aspectRatio < 1) {
-                    return;
-                }
-            }
-        }
-        if (curPage + 1 < pages.length && pagesRef.current[curPage + 1]) {
-            if (pagesRef.current[curPage + 1].children[0] instanceof HTMLImageElement) {
-                const imgElem = pagesRef.current[curPage + 1].children[0] as HTMLImageElement;
-                const aspectRatio = imgElem.height / imgElem.width;
-                if (aspectRatio < 1) {
-                    return;
-                }
-                pagesDisplayed.current = 2;
-            }
-        }
-    }
-
-    function showPages() {
-        if (pagesDisplayed.current === 2) {
-            ReactDOM.render(
-                <DoublePage
-                    key={curPage}
-                    index={curPage}
-                    image1src={pages[curPage].src}
-                    image2src={pages[curPage + 1].src}
-                    settings={settings}
-                />,
-                document.getElementById('display'),
-            );
-        } else if (pagesDisplayed.current === 1) {
-            ReactDOM.render(
-                <Page
-                    key={curPage}
-                    index={curPage}
-                    src={pages[curPage].src}
-                    onImageLoad={() => {}}
-                    setCurPage={setCurPage}
-                    settings={settings}
-                />,
-                document.getElementById('display'),
-            );
-        } else {
-            ReactDOM.render(
-                <div />,
-                document.getElementById('display'),
-            );
-        }
-    }
-
     function keyboardControl(e:KeyboardEvent) {
         switch (e.code) {
             case 'Space':
@@ -173,19 +171,12 @@ export default function DoublePagedPager(props: IReaderProps) {
     }
 
     useEffect(() => {
-        pagesRef.current.forEach((e) => {
-            const pageRef = e;
-            pageRef.style.display = 'none';
-        });
-    }, []);
-
-    useEffect(() => {
         const retryDisplay = setInterval(() => {
             const isLastPage = (curPage === pages.length - 1);
             if ((!isLastPage && pageLoaded.current[curPage] && pageLoaded.current[curPage + 1])
                 || pageLoaded.current[curPage]) {
                 setPagesToDisplay();
-                showPages();
+                displayPages();
                 clearInterval(retryDisplay);
             }
         }, 50);
@@ -202,17 +193,15 @@ export default function DoublePagedPager(props: IReaderProps) {
 
     return (
         <div ref={selfRef}>
-            <div id="preload" className={classes.reader}>
+            <div id="preload" className={classes.preload}>
                 {
                     pages.map((page) => (
-                        <Page
-                            key={page.index}
-                            index={page.index}
+                        <img
+                            ref={(e:HTMLImageElement) => { pagesRef.current[page.index] = e; }}
+                            key={`${page.index}`}
                             src={page.src}
-                            onImageLoad={handleImageLoad(page.index)}
-                            setCurPage={setCurPage}
-                            settings={settings}
-                            ref={(e:HTMLDivElement) => { pagesRef.current[page.index] = e; }}
+                            onLoad={handleImageLoad(page.index)}
+                            alt={`${page.index}`}
                         />
                     ))
                 }
