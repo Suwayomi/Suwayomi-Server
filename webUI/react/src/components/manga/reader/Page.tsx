@@ -23,6 +23,7 @@ function imageStyle(settings: IReaderSettings): CSSProperties {
             height: 'auto',
             maxHeight: '99vh',
             objectFit: 'contain',
+            pointerEvents: 'none',
         };
     }
 
@@ -79,14 +80,8 @@ const Page = React.forwardRef((props: IProps, ref: any) => {
     const handleHorizontalScroll = () => {
         if (imgRef.current) {
             const rect = imgRef.current.getBoundingClientRect();
-            if (settings.readerType === 'ContinuesHorizontalLTR') {
-                if (rect.left <= window.innerWidth / 2 && rect.right > window.innerWidth / 2) {
-                    setCurPage(index);
-                }
-            } else if (settings.readerType === 'ContinuesHorizontalRTL') {
-                if (rect.right <= window.innerWidth / 2 && rect.left > window.innerWidth / 2) {
-                    setCurPage(index);
-                }
+            if (rect.left <= window.innerWidth / 2 && rect.right > window.innerWidth / 2) {
+                setCurPage(index);
             }
         }
     };
