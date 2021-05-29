@@ -15,7 +15,7 @@ import suwayomi.tachidesk.model.table.MangaTable
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-class M0007_MangaAndChapterMeta : Migration() {
+class M0010_MangaAndChapterMeta : Migration() {
     private class ChapterMetaTable : IntIdTable() {
         val key = varchar("key", 256)
         val value = varchar("value", 4096)
