@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-shadow */
+/* eslint-disable react/destructuring-assignment */
+/* eslint-disable react/jsx-props-no-spreading */
 /*
  * Copyright (C) Contributors to the Suwayomi project
  *
@@ -5,9 +8,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-/* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable react/destructuring-assignment */
-/* eslint-disable react/jsx-props-no-spreading */
 import React, { useState, useContext, useEffect } from 'react';
 import {
     List,
@@ -16,7 +16,9 @@ import {
     ListItemIcon,
     IconButton,
 } from '@material-ui/core';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import {
+    DragDropContext, Droppable, Draggable, DropResult, DraggingStyle, NotDraggingStyle,
+} from 'react-beautiful-dnd';
 import DragHandleIcon from '@material-ui/icons/DragHandle';
 import EditIcon from '@material-ui/icons/Edit';
 import { useTheme } from '@material-ui/core/styles';
@@ -31,10 +33,12 @@ import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import Checkbox from '@material-ui/core/Checkbox';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
-import NavbarContext from '../../context/NavbarContext';
-import client from '../../util/client';
+import NavbarContext from 'context/NavbarContext';
+import client from 'util/client';
+import { Palette } from '@material-ui/core/styles/createPalette';
 
-const getItemStyle = (isDragging, draggableStyle, palette) => ({
+const getItemStyle = (isDragging: boolean,
+    draggableStyle: DraggingStyle | NotDraggingStyle | undefined, palette: Palette) => ({
     // styles we need to apply on draggables
     ...draggableStyle,
 
@@ -47,14 +51,14 @@ export default function Categories() {
     const { setTitle, setAction } = useContext(NavbarContext);
     useEffect(() => { setTitle('Categories'); setAction(<></>); }, []);
 
-    const [categories, setCategories] = useState([]);
-    const [categoryToEdit, setCategoryToEdit] = useState(-1); // -1 means new category
-    const [dialogOpen, setDialogOpen] = useState(false);
-    const [dialogName, setDialogName] = useState('');
-    const [dialogDefault, setDialogDefault] = useState(false);
+    const [categories, setCategories] = useState<ICategory[]>([]);
+    const [categoryToEdit, setCategoryToEdit] = useState<number>(-1); // -1 means new category
+    const [dialogOpen, setDialogOpen] = useState<boolean>(false);
+    const [dialogName, setDialogName] = useState<string>('');
+    const [dialogDefault, setDialogDefault] = useState<boolean>(false);
     const theme = useTheme();
 
-    const [updateTriggerHolder, setUpdateTriggerHolder] = useState(0); // just a hack
+    const [updateTriggerHolder, setUpdateTriggerHolder] = useState<number>(0); // just a hack
     const triggerUpdate = () => setUpdateTriggerHolder(updateTriggerHolder + 1); // just a hack
 
     useEffect(() => {
@@ -65,12 +69,12 @@ export default function Categories() {
         }
     }, [updateTriggerHolder]);
 
-    const categoryReorder = (list, from, to) => {
+    const categoryReorder = (list: ICategory[], from: number, to: number) => {
         const category = list[from];
 
         const formData = new FormData();
-        formData.append('from', from + 1);
-        formData.append('to', to + 1);
+        formData.append('from', `${from + 1}`);
+        formData.append('to', `${to + 1}`);
         client.post(`/api/v1/category/${category.id}/reorder`, formData)
             .finally(() => triggerUpdate());
 
@@ -81,7 +85,7 @@ export default function Categories() {
         return result;
     };
 
-    const onDragEnd = (result) => {
+    const onDragEnd = (result: DropResult) => {
         // dropped outside the list?
         if (!result.destination) {
             return;
@@ -105,7 +109,7 @@ export default function Categories() {
         setDialogOpen(true);
     };
 
-    const handleEditDialogOpen = (index) => {
+    const handleEditDialogOpen = (index:number) => {
         setDialogName(categories[index].name);
         setDialogDefault(categories[index].default);
         setCategoryToEdit(index);
@@ -121,7 +125,7 @@ export default function Categories() {
 
         const formData = new FormData();
         formData.append('name', dialogName);
-        formData.append('default', dialogDefault);
+        formData.append('default', dialogDefault.toString());
 
         if (categoryToEdit === -1) {
             client.post('/api/v1/category/', formData)
@@ -133,7 +137,7 @@ export default function Categories() {
         }
     };
 
-    const deleteCategory = (index) => {
+    const deleteCategory = (index:number) => {
         const category = categories[index];
         client.delete(`/api/v1/category/${category.id}`)
             .finally(() => triggerUpdate());
@@ -153,8 +157,7 @@ export default function Categories() {
                                 >
                                     {(provided, snapshot) => (
                                         <ListItem
-                                            ContainerComponent="li"
-                                            ContainerProps={{ ref: provided.innerRef }}
+                                            ContainerProps={{ ref: provided.innerRef } as any}
                                             {...provided.draggableProps}
                                             {...provided.dragHandleProps}
                                             style={getItemStyle(

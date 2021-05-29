@@ -34,6 +34,7 @@ import SourceAnimes from 'screens/anime/SourceAnimes';
 import Reader from 'screens/manga/Reader';
 import Player from 'screens/anime/Player';
 import AnimeExtensions from 'screens/anime/AnimeExtensions';
+import DownloadQueue from 'screens/manga/DownloadQueue';
 
 export default function App() {
     const [title, setTitle] = useState<string>('Tachidesk');
@@ -124,6 +125,9 @@ export default function App() {
                             </Route>
                             <Route path="/manga/sources">
                                 <MangaSources />
+                            </Route>
+                            <Route path="/manga/downloads">
+                                <DownloadQueue />
                             </Route>
                             <Route path="/manga/:mangaId/chapter/:chapterNum">
                                 <></>

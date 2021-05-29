@@ -67,6 +67,7 @@ interface IChapter {
     index: number
     chapterCount: number
     pageCount: number
+    downloaded: boolean
 }
 
 interface IEpisode {
@@ -99,7 +100,7 @@ interface IPartialEpisode {
 interface ICategory {
     id: number
     order: number
-    name: String
+    name: string
     default: boolean
 }
 
@@ -152,4 +153,17 @@ interface IAbout {
     buildTime: number
     github: string
     discord: string
+}
+
+interface IDownloadChapter{
+    chapterIndex: number
+    mangaId: number
+    state: 'Queued' | 'Downloading' | 'Finished' | 'Error'
+    progress: number
+    chapter: IChapter
+}
+
+interface IQueue {
+    status: 'Stopped' | 'Started'
+    queue: IDownloadChapter[]
 }

@@ -41,6 +41,12 @@ const useStyles = makeStyles((theme: Theme) => ({
     },
 }));
 
+const baseWebsocketUrl = JSON.parse(window.localStorage.getItem('serverBaseURL')!).replace('http', 'ws');
+const initialQueue = {
+    status: 'Stopped',
+    queue: [],
+} as IQueue;
+
 export default function Manga() {
     const classes = useStyles();
 
@@ -55,9 +61,47 @@ export default function Manga() {
     const [noChaptersFound, setNoChaptersFound] = useState(false);
     const [chapterUpdateTriggerer, setChapterUpdateTriggerer] = useState(0);
 
+    const [, setWsClient] = useState<WebSocket>();
+    const [{ queue }, setQueueState] = useState<IQueue>(initialQueue);
+
     function triggerChaptersUpdate() {
         setChapterUpdateTriggerer(chapterUpdateTriggerer + 1);
     }
+
+    useEffect(() => {
+        const wsc = new WebSocket(`${baseWebsocketUrl}/api/v1/downloads`);
+        wsc.onmessage = (e) => {
+            const data = JSON.parse(e.data) as IQueue;
+            setQueueState(data);
+
+            let shouldUpdate = false;
+            data.queue.forEach((q) => {
+                if (q.mangaId === manga?.id && q.state === 'Finished') {
+                    shouldUpdate = true;
+                }
+            });
+            if (shouldUpdate) {
+                triggerChaptersUpdate();
+            }
+        };
+
+        setWsClient(wsc);
+
+        return () => wsc.close();
+    }, [queue.length]);
+
+    const downloadingStringFor = (chapter: IChapter) => {
+        let rtn = '';
+        if (chapter.downloaded) {
+            rtn = ' • Downloaded';
+        }
+        queue.forEach((q) => {
+            if (chapter.index === q.chapterIndex && chapter.mangaId === q.mangaId) {
+                rtn = ` • Downloading (${q.progress * 100}%)`;
+            }
+        });
+        return rtn;
+    };
 
     useEffect(() => {
         if (manga === undefined || !manga.freshData) {
@@ -105,6 +149,7 @@ export default function Manga() {
                     itemContent={(index:number) => (
                         <ChapterCard
                             chapter={chapters[index]}
+                            downloadingString={downloadingStringFor(chapters[index])}
                             triggerChaptersUpdate={triggerChaptersUpdate}
                         />
                     )}

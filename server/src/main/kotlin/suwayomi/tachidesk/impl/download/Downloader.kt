@@ -35,7 +35,10 @@ class Downloader(private val downloadQueue: CopyOnWriteArrayList<DownloadChapter
 
     override fun run() {
         do {
-            val download = downloadQueue.firstOrNull { it.state == Queued } ?: break
+            val download = downloadQueue.firstOrNull {
+                it.state == Queued ||
+                    (it.state == Error && it.tries < 3) // 3 re-tries per download
+            } ?: break
 
             try {
                 download.state = Downloading
@@ -44,7 +47,7 @@ class Downloader(private val downloadQueue: CopyOnWriteArrayList<DownloadChapter
                 download.chapter = runBlocking { getChapter(download.chapterIndex, download.mangaId) }
                 step()
 
-                val pageCount = download.chapter!!.pageCount!!
+                val pageCount = download.chapter!!.pageCount
                 for (pageNum in 0 until pageCount) {
                     runBlocking { getPageImage(download.mangaId, download.chapterIndex, pageNum) }
                     // TODO: retry on error with 2,4,8 seconds of wait
@@ -60,12 +63,15 @@ class Downloader(private val downloadQueue: CopyOnWriteArrayList<DownloadChapter
                     }
                 }
                 step()
+
+                downloadQueue.removeIf { it.mangaId == download.mangaId && it.chapterIndex == download.chapterIndex }
+                step()
             } catch (e: DownloadShouldStopException) {
                 println("Downloader was stopped")
                 downloadQueue.filter { it.state == Downloading }.forEach { it.state = Queued }
             } catch (e: Exception) {
                 println("Downloader faced an exception")
-                downloadQueue.filter { it.state == Downloading }.forEach { it.state = Error }
+                downloadQueue.filter { it.state == Downloading }.forEach { it.state = Error; it.tries++ }
                 e.printStackTrace()
             } finally {
                 notifier()

@@ -47,12 +47,13 @@ const useStyles = makeStyles((theme) => ({
 interface IProps{
     chapter: IChapter
     triggerChaptersUpdate: () => void
+    downloadingString: string
 }
 
 export default function ChapterCard(props: IProps) {
     const classes = useStyles();
     const theme = useTheme();
-    const { chapter, triggerChaptersUpdate } = props;
+    const { chapter, triggerChaptersUpdate, downloadingString } = props;
 
     const dateStr = chapter.uploadDate && new Date(chapter.uploadDate).toISOString().slice(0, 10);
 
@@ -73,6 +74,11 @@ export default function ChapterCard(props: IProps) {
         formData.append(key, value);
         client.patch(`/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}`, formData)
             .then(() => triggerChaptersUpdate());
+    };
+
+    const downloadChapter = () => {
+        client.get(`/api/v1/download/${chapter.mangaId}/chapter/${chapter.index}`);
+        handleClose();
     };
 
     const readChapterColor = theme.palette.type === 'dark' ? '#acacac' : '#b0b0b0';
@@ -101,6 +107,7 @@ export default function ChapterCard(props: IProps) {
                                         {chapter.scanlator}
                                         {chapter.scanlator && ' '}
                                         {dateStr}
+                                        {downloadingString}
                                     </Typography>
                                 </div>
                             </div>
@@ -115,7 +122,8 @@ export default function ChapterCard(props: IProps) {
                             open={Boolean(anchorEl)}
                             onClose={handleClose}
                         >
-                            {/* <MenuItem onClick={handleClose}>Download</MenuItem> */}
+                            {downloadingString.length === 0
+                            && <MenuItem onClick={downloadChapter}>Download</MenuItem> }
                             <MenuItem onClick={() => sendChange('bookmarked', !chapter.bookmarked)}>
                                 {chapter.bookmarked && 'Remove bookmark'}
                                 {!chapter.bookmarked && 'Bookmark'}

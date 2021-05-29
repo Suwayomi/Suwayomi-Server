@@ -14,6 +14,7 @@ import ListItemIcon from '@material-ui/core/ListItemIcon';
 import CollectionsBookmarkIcon from '@material-ui/icons/CollectionsBookmark';
 import ExploreIcon from '@material-ui/icons/Explore';
 import ExtensionIcon from '@material-ui/icons/Extension';
+import GetAppIcon from '@material-ui/icons/GetApp';
 import ListItemText from '@material-ui/core/ListItemText';
 import SettingsIcon from '@material-ui/icons/Settings';
 import { Link } from 'react-router-dom';
@@ -85,6 +86,14 @@ export default function TemporaryDrawer({ drawerOpen, setDrawerOpen }: IProps) {
                                     <ExploreIcon />
                                 </ListItemIcon>
                                 <ListItemText primary="Anime Sources" />
+                            </ListItem>
+                        </Link>
+                        <Link to="/manga/downloads" style={{ color: 'inherit', textDecoration: 'none' }}>
+                            <ListItem button key="Manga Download Queue">
+                                <ListItemIcon>
+                                    <GetAppIcon />
+                                </ListItemIcon>
+                                <ListItemText primary="Manga Download Queue" />
                             </ListItem>
                         </Link>
                         <Link to="/settings" style={{ color: 'inherit', textDecoration: 'none' }}>

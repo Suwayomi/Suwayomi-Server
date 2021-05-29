@@ -198,7 +198,7 @@ export default function MangaDetails(props: IProps) {
             <div className={classes.top}>
                 <div className={classes.leftRight}>
                     <div className={classes.leftSide}>
-                        <img src={`${serverAddress}${manga.thumbnailUrl}?x=${Math.random()}`} alt="Manga Thumbnail" />
+                        <img src={`${serverAddress}${manga.thumbnailUrl}`} alt="Manga Thumbnail" />
                     </div>
                     <div className={classes.rightSide}>
                         <h1>

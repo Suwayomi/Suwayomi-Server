@@ -83,6 +83,7 @@ object DownloadManager {
                     )
                 )
             )
+            start()
         }
         notifyAllClients()
     }
@@ -93,10 +94,14 @@ object DownloadManager {
     }
 
     fun start() {
+        if (downloader != null && !downloader?.isAlive!!) // doesn't exist or is dead
+            downloader = null
+
         if (downloader == null) {
             downloader = Downloader(downloadQueue) { notifyAllClients() }
             downloader!!.start()
         }
+
         notifyAllClients()
     }
 
