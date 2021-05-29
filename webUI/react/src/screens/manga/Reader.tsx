@@ -46,7 +46,8 @@ const getReaderComponent = (readerType: ReaderType) => {
         case 'DoubleLTR':
             return DoublePagedPager;
             break;
-        case 'ContinuesHorizontal':
+        case 'ContinuesHorizontalLTR':
+        case 'ContinuesHorizontalRTL':
             return HorizontalPager;
         default:
             return VerticalPager;

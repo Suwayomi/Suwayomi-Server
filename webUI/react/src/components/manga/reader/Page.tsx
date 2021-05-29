@@ -11,15 +11,20 @@ import React, { useEffect, useRef } from 'react';
 import SpinnerImage from 'components/SpinnerImage';
 
 function imageStyle(settings: IReaderSettings): CSSProperties {
-    if (settings.readerType === 'DoubleLTR' || settings.readerType === 'DoubleRTL' || settings.readerType === 'ContinuesHorizontal') {
+    if (settings.readerType === 'DoubleLTR'
+    || settings.readerType === 'DoubleRTL'
+    || settings.readerType === 'ContinuesHorizontalLTR'
+    || settings.readerType === 'ContinuesHorizontalRTL') {
         return {
             display: 'block',
-            marginBottom: 0,
+            marginLeft: '7px',
+            marginRight: '7px',
             width: 'auto',
             minHeight: '99vh',
             height: 'auto',
             maxHeight: '99vh',
             objectFit: 'contain',
+            pointerEvents: 'none',
         };
     }
 
@@ -64,7 +69,7 @@ const Page = React.forwardRef((props: IProps, ref: any) => {
     const classes = useStyles(settings)();
     const imgRef = useRef<HTMLImageElement>(null);
 
-    const handleScroll = () => {
+    const handleVerticalScroll = () => {
         if (imgRef.current) {
             const rect = imgRef.current.getBoundingClientRect();
             if (rect.y < 0 && rect.y + rect.height > 0) {
@@ -73,15 +78,29 @@ const Page = React.forwardRef((props: IProps, ref: any) => {
         }
     };
 
-    useEffect(() => {
-        if (settings.readerType === 'Webtoon' || settings.readerType === 'ContinuesVertical') {
-            window.addEventListener('scroll', handleScroll);
+    const handleHorizontalScroll = () => {
+        if (imgRef.current) {
+            const rect = imgRef.current.getBoundingClientRect();
+            if (rect.left <= window.innerWidth / 2 && rect.right > window.innerWidth / 2) {
+                setCurPage(index);
+            }
+        }
+    };
 
-            return () => {
-                window.removeEventListener('scroll', handleScroll);
-            };
-        } return () => {};
-    }, [handleScroll]);
+    useEffect(() => {
+        switch (settings.readerType) {
+            case 'Webtoon':
+            case 'ContinuesVertical':
+                window.addEventListener('scroll', handleVerticalScroll);
+                return () => window.removeEventListener('scroll', handleVerticalScroll);
+            case 'ContinuesHorizontalLTR':
+            case 'ContinuesHorizontalRTL':
+                window.addEventListener('scroll', handleHorizontalScroll);
+                return () => window.removeEventListener('scroll', handleHorizontalScroll);
+            default:
+                return () => {};
+        }
+    }, [handleVerticalScroll]);
 
     return (
         <div ref={ref} style={{ margin: '0 auto' }}>

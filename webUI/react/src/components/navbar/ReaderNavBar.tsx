@@ -313,8 +313,12 @@ export default function ReaderNavBar(props: IProps) {
                                         Continues Vertical
 
                                     </MenuItem>
-                                    <MenuItem value="ContinuesHorizontal">
-                                        Horizontal(WIP)
+                                    <MenuItem value="ContinuesHorizontalLTR">
+                                        Horizontal (LTR)
+
+                                    </MenuItem>
+                                    <MenuItem value="ContinuesHorizontalRTL">
+                                        Horizontal (RTL)
 
                                     </MenuItem>
                                 </Select>
