@@ -11,6 +11,7 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.impl.Chapter.getChapterMetaMap
 import suwayomi.tachidesk.model.dataclass.ChapterDataClass
 
 object ChapterTable : IntIdTable() {
@@ -51,4 +52,5 @@ fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
         chapterEntry[isDownloaded],
         chapterEntry[pageCount],
         transaction { ChapterTable.select { ChapterTable.manga eq chapterEntry[manga].value }.count().toInt() },
+        getChapterMetaMap(chapterEntry[id]),
     )

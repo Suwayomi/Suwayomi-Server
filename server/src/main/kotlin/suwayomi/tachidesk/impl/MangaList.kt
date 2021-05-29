@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.source.model.MangasPage
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.impl.Manga.getMangaMetaMap
 import suwayomi.tachidesk.impl.util.GetHttpSource.getHttpSource
 import suwayomi.tachidesk.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.model.dataclass.MangaDataClass
@@ -89,7 +90,8 @@ object MangaList {
                         mangaEntry[MangaTable.description],
                         mangaEntry[MangaTable.genre],
                         MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
-                        mangaEntry[MangaTable.inLibrary]
+                        mangaEntry[MangaTable.inLibrary],
+                        meta = getMangaMetaMap(mangaEntry[MangaTable.id])
                     )
                 }
             }

@@ -9,6 +9,7 @@ package suwayomi.tachidesk.impl
 
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
+import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SortOrder.DESC
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
@@ -20,6 +21,7 @@ import suwayomi.tachidesk.impl.Manga.getManga
 import suwayomi.tachidesk.impl.util.GetHttpSource.getHttpSource
 import suwayomi.tachidesk.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.model.dataclass.ChapterDataClass
+import suwayomi.tachidesk.model.table.ChapterMetaTable
 import suwayomi.tachidesk.model.table.ChapterTable
 import suwayomi.tachidesk.model.table.MangaTable
 import suwayomi.tachidesk.model.table.PageTable
@@ -131,6 +133,7 @@ object Chapter {
                 dbChapter[ChapterTable.pageCount],
 
                 chapterList.size,
+                meta = getChapterMetaMap(dbChapter[ChapterTable.id])
             )
         }
     }
@@ -199,7 +202,8 @@ object Chapter {
                 chapterEntry[ChapterTable.chapterIndex],
                 chapterEntry[ChapterTable.isDownloaded],
                 pageCount,
-                chapterCount.toInt()
+                chapterCount.toInt(),
+                getChapterMetaMap(chapterEntry[ChapterTable.id])
             )
         } else {
             ChapterTable.toDataClass(chapterEntry)
@@ -226,6 +230,32 @@ object Chapter {
             markPrevRead?.let {
                 ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex less chapterIndex) }) {
                     it[ChapterTable.isRead] = markPrevRead
+                }
+            }
+        }
+    }
+
+    fun getChapterMetaMap(chapter: EntityID<Int>): Map<String, String> {
+        return transaction {
+            ChapterMetaTable.select { ChapterMetaTable.ref eq chapter }
+                .associate { it[ChapterMetaTable.key] to it[ChapterMetaTable.value] }
+        }
+    }
+
+    fun modifyChapterMeta(mangaId: Int, chapterIndex: Int, key: String, value: String) {
+        transaction {
+            val chapter = ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex eq chapterIndex) }
+                .first()[ChapterTable.id]
+            val meta = transaction { ChapterMetaTable.select { (ChapterMetaTable.ref eq chapter) and (ChapterMetaTable.key eq key) } }.firstOrNull()
+            if (meta == null) {
+                ChapterMetaTable.insert {
+                    it[ChapterMetaTable.key] = key
+                    it[ChapterMetaTable.value] = value
+                    it[ChapterMetaTable.ref] = chapter
+                }
+            } else {
+                ChapterMetaTable.update {
+                    it[ChapterMetaTable.value] = value
                 }
             }
         }

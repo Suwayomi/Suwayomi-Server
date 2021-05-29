@@ -9,6 +9,9 @@ package suwayomi.tachidesk.impl
 
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.model.SManga
+import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -24,6 +27,7 @@ import suwayomi.tachidesk.impl.util.network.await
 import suwayomi.tachidesk.impl.util.storage.CachedImageResponse.clearCachedImage
 import suwayomi.tachidesk.impl.util.storage.CachedImageResponse.getCachedImageResponse
 import suwayomi.tachidesk.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.model.table.MangaMetaTable
 import suwayomi.tachidesk.model.table.MangaStatus
 import suwayomi.tachidesk.model.table.MangaTable
 import java.io.InputStream
@@ -57,6 +61,7 @@ object Manga {
                 MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
                 mangaEntry[MangaTable.inLibrary],
                 getSource(mangaEntry[MangaTable.sourceReference]),
+                getMangaMetaMap(mangaEntry[MangaTable.id]),
                 false
             )
         } else { // initialize manga
@@ -104,8 +109,35 @@ object Manga {
                 MangaStatus.valueOf(fetchedManga.status).name,
                 mangaEntry[MangaTable.inLibrary],
                 getSource(mangaEntry[MangaTable.sourceReference]),
+                getMangaMetaMap(mangaEntry[MangaTable.id]),
                 true
             )
+        }
+    }
+
+    fun getMangaMetaMap(manga: EntityID<Int>): Map<String, String> {
+        return transaction {
+            MangaMetaTable.select { MangaMetaTable.ref eq manga }
+                .associate { it[MangaMetaTable.key] to it[MangaMetaTable.value] }
+        }
+    }
+
+    fun modifyMangaMeta(mangaId: Int, key: String, value: String) {
+        transaction {
+            val manga = MangaMetaTable.select { (MangaTable.id eq mangaId) }
+                .first()[MangaTable.id]
+            val meta = transaction { MangaMetaTable.select { (MangaMetaTable.ref eq manga) and (MangaMetaTable.key eq key) } }.firstOrNull()
+            if (meta == null) {
+                MangaMetaTable.insert {
+                    it[MangaMetaTable.key] = key
+                    it[MangaMetaTable.value] = value
+                    it[MangaMetaTable.ref] = manga
+                }
+            } else {
+                MangaMetaTable.update {
+                    it[MangaMetaTable.value] = value
+                }
+            }
         }
     }
 
