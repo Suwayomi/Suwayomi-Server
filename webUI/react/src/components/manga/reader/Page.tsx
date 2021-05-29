@@ -17,7 +17,8 @@ function imageStyle(settings: IReaderSettings): CSSProperties {
     || settings.readerType === 'ContinuesHorizontalRTL') {
         return {
             display: 'block',
-            marginBottom: 0,
+            marginLeft: '7px',
+            marginRight: '7px',
             width: 'auto',
             minHeight: '99vh',
             height: 'auto',
