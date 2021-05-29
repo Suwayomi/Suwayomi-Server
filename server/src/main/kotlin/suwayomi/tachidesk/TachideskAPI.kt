@@ -18,11 +18,13 @@ import suwayomi.tachidesk.impl.CategoryManga.removeMangaFromCategory
 import suwayomi.tachidesk.impl.Chapter.getChapter
 import suwayomi.tachidesk.impl.Chapter.getChapterList
 import suwayomi.tachidesk.impl.Chapter.modifyChapter
+import suwayomi.tachidesk.impl.Chapter.modifyChapterMeta
 import suwayomi.tachidesk.impl.Library.addMangaToLibrary
 import suwayomi.tachidesk.impl.Library.getLibraryMangas
 import suwayomi.tachidesk.impl.Library.removeMangaFromLibrary
 import suwayomi.tachidesk.impl.Manga.getManga
 import suwayomi.tachidesk.impl.Manga.getMangaThumbnail
+import suwayomi.tachidesk.impl.Manga.modifyMangaMeta
 import suwayomi.tachidesk.impl.MangaList.getMangaList
 import suwayomi.tachidesk.impl.Page.getPageImage
 import suwayomi.tachidesk.impl.Search.sourceFilters
@@ -185,6 +187,18 @@ object TachideskAPI {
             ctx.json(future { getChapterList(mangaId, onlineFetch) })
         }
 
+        // used to modify a chapter's meta paramaters
+        app.patch("/api/v1/manga/:mangaId/meta") { ctx ->
+            val mangaId = ctx.pathParam("mangaId").toInt()
+
+            val key = ctx.formParam("key")!!
+            val value = ctx.formParam("value")!!
+
+            modifyMangaMeta(mangaId, key, value)
+
+            ctx.status(200)
+        }
+
         // used to display a chapter, get a chapter in order to show it's pages
         app.get("/api/v1/manga/:mangaId/chapter/:chapterIndex") { ctx ->
             val chapterIndex = ctx.pathParam("chapterIndex").toInt()
@@ -203,6 +217,19 @@ object TachideskAPI {
             val lastPageRead = ctx.formParam("lastPageRead")?.toInt()
 
             modifyChapter(mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead)
+
+            ctx.status(200)
+        }
+
+        // used to modify a chapter's meta paramaters
+        app.patch("/api/v1/manga/:mangaId/chapter/:chapterIndex/meta") { ctx ->
+            val chapterIndex = ctx.pathParam("chapterIndex").toInt()
+            val mangaId = ctx.pathParam("mangaId").toInt()
+
+            val key = ctx.formParam("key")!!
+            val value = ctx.formParam("value")!!
+
+            modifyChapterMeta(mangaId, chapterIndex, key, value)
 
             ctx.status(200)
         }

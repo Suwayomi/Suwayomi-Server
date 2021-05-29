@@ -14,7 +14,7 @@ import suwayomi.server.database.migration.lib.Migration
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 class M0004_AnimeTablesBatch1 : Migration() {
-    private object AnimeExtensionTable : IntIdTable() {
+    private class AnimeExtensionTable : IntIdTable() {
         val apkName = varchar("apk_name", 1024)
 
         // default is the local source icon from tachiyomi
@@ -35,7 +35,7 @@ class M0004_AnimeTablesBatch1 : Migration() {
         val classFQName = varchar("class_name", 1024).default("") // fully qualified name
     }
 
-    private object AnimeSourceTable : IdTable<Long>() {
+    private class AnimeSourceTable : IdTable<Long>() {
         override val id = long("id").entityId()
         val name = varchar("name", 128)
         val lang = varchar("lang", 10)
@@ -46,8 +46,8 @@ class M0004_AnimeTablesBatch1 : Migration() {
     override fun run() {
         transaction {
             SchemaUtils.create(
-                AnimeExtensionTable,
-                AnimeSourceTable
+                AnimeExtensionTable(),
+                AnimeSourceTable()
             )
         }
     }
