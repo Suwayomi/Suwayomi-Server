@@ -26,6 +26,7 @@ data class MangaDataClass(
     val status: String = MangaStatus.UNKNOWN.name,
     val inLibrary: Boolean = false,
     val source: SourceDataClass? = null,
+    val meta: Map<String, String> = emptyMap(),
 
     val freshData: Boolean = false
 )

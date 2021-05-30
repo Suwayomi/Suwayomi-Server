@@ -14,7 +14,7 @@ import suwayomi.server.database.migration.lib.Migration
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 class M0006_AnimeTablesBatch3 : Migration() {
-    private object EpisodeTable : IntIdTable() {
+    private class EpisodeTable : IntIdTable() {
         val url = varchar("url", 2048)
         val name = varchar("name", 512)
         val date_upload = long("date_upload").default(0)
@@ -34,7 +34,7 @@ class M0006_AnimeTablesBatch3 : Migration() {
     override fun run() {
         transaction {
             SchemaUtils.create(
-                EpisodeTable
+                EpisodeTable()
             )
         }
     }

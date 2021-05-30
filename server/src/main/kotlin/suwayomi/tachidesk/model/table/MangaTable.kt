@@ -10,6 +10,7 @@ package suwayomi.tachidesk.model.table
 import eu.kanade.tachiyomi.source.model.SManga
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
+import suwayomi.tachidesk.impl.Manga.getMangaMetaMap
 import suwayomi.tachidesk.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.model.table.MangaStatus.Companion
@@ -50,7 +51,8 @@ fun MangaTable.toDataClass(mangaEntry: ResultRow) =
         mangaEntry[description],
         mangaEntry[genre],
         Companion.valueOf(mangaEntry[status]).name,
-        mangaEntry[inLibrary]
+        mangaEntry[inLibrary],
+        meta = getMangaMetaMap(mangaEntry[id])
     )
 
 enum class MangaStatus(val status: Int) {

@@ -23,7 +23,7 @@ Here is a list of current features:
 - A library to save your mangas and categories to put them into.
 - Searching and browsing installed sources.
 - A decent chapter reader.
-- Ability to download Mangas for offline read(This partially works)
+- Ability to download Mangas for offline read
 - Backup and restore support powered by Tachiyomi Legacy Backups
 
 **Note:** Keep in mind that Tachidesk is alpha software and can break rarely and/or with each update. See [Troubleshooting](https://github.com/Suwayomi/Tachidesk/wiki/Troubleshooting) if it happens.
