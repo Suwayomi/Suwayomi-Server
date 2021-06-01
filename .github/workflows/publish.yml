@@ -88,6 +88,5 @@ jobs:
 
       - name: Run Docker build workflow
         run: |
-          cd master
           curl -X POST -H "Accept: application/vnd.github.v3+json" -H "Authorization: token ${{ secrets.DOCKER_BUILD_ACCESS_TOKEN }}" -d '{"ref":"main", "inputs":{"tachidesk_release_type": "stable"}}' https://api.github.com/repos/suwayomi/docker-tachidesk/actions/workflows/build_container_images.yml/dispatches
           
