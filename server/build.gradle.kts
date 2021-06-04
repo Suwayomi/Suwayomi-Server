@@ -73,7 +73,7 @@ dependencies {
     testImplementation(kotlin("test-junit5"))
 }
 
-val MainClass = "suwayomi.MainKt"
+val MainClass = "suwayomi.tachidesk.MainKt"
 application {
     mainClass.set(MainClass)
 

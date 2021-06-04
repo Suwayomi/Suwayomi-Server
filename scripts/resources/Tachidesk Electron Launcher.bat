@@ -1,1 +1,1 @@
-jre\bin\javaw "-Dsuwayomi.server.webInterface=electron" "-Dsuwayomi.server.electronPath=electron/electron.exe" -jar Tachidesk.jar
+jre\bin\javaw "-Dsuwayomi.tachidesk.server.webInterface=electron" "-Dsuwayomi.tachidesk.server.electronPath=electron/electron.exe" -jar Tachidesk.jar

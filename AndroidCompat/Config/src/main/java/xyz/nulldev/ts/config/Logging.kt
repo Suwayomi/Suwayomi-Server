@@ -17,4 +17,4 @@ fun setLogLevel(level: Level) {
 }
 
 fun debugLogsEnabled(config: Config)
-    = System.getProperty("suwayomi.server.debugLogsEnabled", config.getString("server.debugLogsEnabled")).toBoolean()
+    = System.getProperty("suwayomi.tachidesk.server.debugLogsEnabled", config.getString("server.debugLogsEnabled")).toBoolean()

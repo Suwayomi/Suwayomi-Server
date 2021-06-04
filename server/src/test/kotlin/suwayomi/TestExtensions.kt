@@ -21,15 +21,15 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import rx.Observable
-import suwayomi.server.applicationSetup
-import suwayomi.tachidesk.impl.Source.getSourceList
-import suwayomi.tachidesk.impl.extension.Extension.installExtension
-import suwayomi.tachidesk.impl.extension.Extension.uninstallExtension
-import suwayomi.tachidesk.impl.extension.Extension.updateExtension
-import suwayomi.tachidesk.impl.extension.ExtensionsList.getExtensionList
-import suwayomi.tachidesk.impl.util.GetHttpSource.getHttpSource
-import suwayomi.tachidesk.impl.util.lang.awaitSingle
-import suwayomi.tachidesk.model.dataclass.ExtensionDataClass
+import suwayomi.tachidesk.server.applicationSetup
+import suwayomi.tachidesk.manga.impl.Source.getSourceList
+import suwayomi.tachidesk.manga.impl.extension.Extension.installExtension
+import suwayomi.tachidesk.manga.impl.extension.Extension.uninstallExtension
+import suwayomi.tachidesk.manga.impl.extension.Extension.updateExtension
+import suwayomi.tachidesk.manga.impl.extension.ExtensionsList.getExtensionList
+import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
+import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
+import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import java.io.File
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
