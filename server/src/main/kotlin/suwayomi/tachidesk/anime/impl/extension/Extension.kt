@@ -39,9 +39,9 @@ import suwayomi.tachidesk.anime.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.anime.impl.util.PackageTools.trustedSignatures
 import suwayomi.tachidesk.anime.model.table.AnimeExtensionTable
 import suwayomi.tachidesk.anime.model.table.AnimeSourceTable
-import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse.getCachedImageResponse
+import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.InputStream

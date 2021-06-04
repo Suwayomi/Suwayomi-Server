@@ -7,8 +7,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.future.future
 import mu.KotlinLogging
 import suwayomi.tachidesk.anime.AnimeAPI
-import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.manga.TachideskAPI
+import suwayomi.tachidesk.server.util.Browser
 import java.io.IOException
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread

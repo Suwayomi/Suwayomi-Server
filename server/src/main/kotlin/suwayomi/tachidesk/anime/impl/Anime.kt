@@ -21,11 +21,11 @@ import suwayomi.tachidesk.anime.impl.util.GetAnimeHttpSource.getAnimeHttpSource
 import suwayomi.tachidesk.anime.model.dataclass.AnimeDataClass
 import suwayomi.tachidesk.anime.model.table.AnimeStatus
 import suwayomi.tachidesk.anime.model.table.AnimeTable
-import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse.getCachedImageResponse
+import suwayomi.tachidesk.server.ApplicationDirs
 import java.io.InputStream
 
 object Anime {

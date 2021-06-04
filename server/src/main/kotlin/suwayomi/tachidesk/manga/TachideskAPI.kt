@@ -8,8 +8,6 @@ package suwayomi.tachidesk.manga
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.javalin.Javalin
-import suwayomi.tachidesk.server.JavalinSetup.future
-import suwayomi.tachidesk.server.impl.About
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga.addMangaToCategory
 import suwayomi.tachidesk.manga.impl.CategoryManga.getCategoryMangaList
@@ -41,6 +39,8 @@ import suwayomi.tachidesk.manga.impl.extension.Extension.installExtension
 import suwayomi.tachidesk.manga.impl.extension.Extension.uninstallExtension
 import suwayomi.tachidesk.manga.impl.extension.Extension.updateExtension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList.getExtensionList
+import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.impl.About
 import java.text.SimpleDateFormat
 import java.util.Date
 

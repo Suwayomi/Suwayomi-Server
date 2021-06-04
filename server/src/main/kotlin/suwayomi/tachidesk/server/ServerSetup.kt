@@ -65,7 +65,7 @@ fun applicationSetup() {
 
     // register Tachidesk's config which is dubbed "ServerConfig"
     GlobalConfigManager.registerModule(
-            ServerConfig.register(GlobalConfigManager.config)
+        ServerConfig.register(GlobalConfigManager.config)
     )
 
     // Make sure only one instance of the app is running
