@@ -32,7 +32,7 @@ object CachedImageResponse {
         val cachedFile = findFileNameStartingWith(saveDir, fileName)
         val filePath = "$saveDir/$fileName"
         if (cachedFile != null) {
-            val fileType = cachedFile.substringAfter(filePath)
+            val fileType = cachedFile.substringAfter("$filePath.")
             return Pair(
                 pathToInputStream(cachedFile),
                 "image/$fileType"
