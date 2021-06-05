@@ -22,9 +22,9 @@ jre_dir="jdk8u292-b10-jre"
 
 echo "creating windows bundle"
 
-jar=$(ls ../server/build/Tachidesk-*.jar)
+jar=$(ls ../server/build/*.jar | tail -n1)
 jar_name=$(echo $jar | cut -d'/' -f4)
-release_name=$(echo $jar_name | cut -d'.' -f4 --complement)-$arch
+release_name=$(echo $jar_name | sed 's/.jar//')-$arch
 
 
 # make release dir
