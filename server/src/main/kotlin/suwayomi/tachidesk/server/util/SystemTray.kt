@@ -24,6 +24,10 @@ object SystemTray {
 
             CacheUtil.clear(BuildConfig.NAME)
 
+            if (System.getProperty("os.name").startsWith("Mac")) {
+                SystemTray.FORCE_TRAY_TYPE = SystemTray.TrayType.Awt
+            }
+
             val systemTray = SystemTray.get(BuildConfig.NAME) ?: return null
             val mainMenu = systemTray.menu
 
