@@ -56,7 +56,7 @@ jobs:
         with:
           path: |
             **/react/node_modules
-          key: ${{ runner.os }}-${{ hashFiles('**/react/webUI.lock') }}
+          key: ${{ runner.os }}-${{ hashFiles('**/webUI/yarn.lock') }}
 
       - name: Build and copy webUI, Build Jar
         uses: eskatos/gradle-command-action@v1
