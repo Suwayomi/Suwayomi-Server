@@ -35,12 +35,12 @@ object JavalinSetup {
         val app = Javalin.create { config ->
             try {
                 // if the bellow line throws an exception then webUI is not bundled
-                this::class.java.getResource("/react/index.html")
+                this::class.java.getResource("/webUI/index.html")
 
                 // no exception so we can tell javalin to serve webUI
                 hasWebUiBundled = true
-                config.addStaticFiles("/react")
-                config.addSinglePageRoot("/", "/react/index.html")
+                config.addStaticFiles("/webUI")
+                config.addSinglePageRoot("/", "/webUI/index.html")
             } catch (e: RuntimeException) {
                 logger.warn("react build files are missing.")
                 hasWebUiBundled = false

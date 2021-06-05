@@ -6,7 +6,7 @@ gradle.properties
 # Ignore Gradle build output directory
 build
 
-server/src/main/resources/react
+server/src/main/resources/webUI
 server/tmp/
 server/tachiserver-data/
 
