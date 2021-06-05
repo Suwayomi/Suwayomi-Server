@@ -48,7 +48,7 @@ jobs:
       - name: Download android.jar
         run: |
           cd master
-          curl https://raw.githubusercontent.com/AriaMoradi/Tachidesk/android-jar/android.jar -o AndroidCompat/lib/android.jar
+          curl https://raw.githubusercontent.com/Suwayomi/Tachidesk/android-jar/android.jar -o AndroidCompat/lib/android.jar
 
       - name: Cache node_modules
         uses: actions/cache@v2
