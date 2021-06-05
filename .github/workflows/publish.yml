@@ -61,7 +61,7 @@ jobs:
       - name: Build and copy webUI, Build Jar
         uses: eskatos/gradle-command-action@v1
         env:
-          TachideskBuildType: "Stable"
+          ProductBuildType: "Stable"
         with:
           build-root-directory: master
           wrapper-directory: master

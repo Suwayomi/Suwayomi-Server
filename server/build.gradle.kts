@@ -93,11 +93,11 @@ sourceSets {
 }
 
 // should be bumped with each stable release
-val tachideskVersion = "v0.4.2"
+val tachideskVersion = System.getenv("ProductVersion") ?: "v0.4.2"
 
 // counts commit count on master
 val tachideskRevision = runCatching {
-    Runtime
+    System.getenv("ProductRevision") ?: Runtime
         .getRuntime()
         .exec("git rev-list HEAD --count")
         .let { process ->
@@ -107,7 +107,6 @@ val tachideskRevision = runCatching {
             }
             process.destroy()
             "r" + output.trim()
-
         }
 }.getOrDefault("r0")
 
@@ -119,7 +118,7 @@ buildConfig {
     buildConfigField("String", "NAME", rootProject.name)
     buildConfigField("String", "VERSION", tachideskVersion)
     buildConfigField("String", "REVISION", tachideskRevision)
-    buildConfigField("String", "BUILD_TYPE", if (System.getenv("TachideskBuildType") == "Stable") "Stable" else "Preview")
+    buildConfigField("String", "BUILD_TYPE", if (System.getenv("ProductBuildType") == "Stable") "Stable" else "Preview")
     buildConfigField("long", "BUILD_TIME", Instant.now().epochSecond.toString())
 
     buildConfigField("String", "GITHUB", "https://github.com/Suwayomi/Tachidesk")
