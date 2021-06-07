@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.animesource
 
+import eu.kanade.tachiyomi.animesource.model.Link
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.animesource.model.SEpisode
 import rx.Observable
@@ -18,6 +19,9 @@ interface AnimeSource {
      * Name of the source.
      */
     val name: String
+
+    val lang: String
+        get() = ""
 
     /**
      * Returns an observable with the updated details for a anime.
@@ -41,7 +45,7 @@ interface AnimeSource {
      * @param episode the episode to get the link for.
      */
 //    @Deprecated("Use getEpisodeList instead")
-    fun fetchEpisodeLink(episode: SEpisode): Observable<String>
+    fun fetchEpisodeLink(episode: SEpisode): Observable<List<Link>>
 
 //    /**
 //     * [1.x API] Get the updated details for a anime.

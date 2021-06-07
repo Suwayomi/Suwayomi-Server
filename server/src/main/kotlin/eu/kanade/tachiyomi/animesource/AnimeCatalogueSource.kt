@@ -9,7 +9,7 @@ interface AnimeCatalogueSource : AnimeSource {
     /**
      * An ISO 639-1 compliant language code (two letters in lower case).
      */
-    val lang: String
+    override val lang: String
 
     /**
      * Whether the source has support for latest updates.

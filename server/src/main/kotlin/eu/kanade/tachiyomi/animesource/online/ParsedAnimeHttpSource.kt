@@ -1,9 +1,9 @@
 package eu.kanade.tachiyomi.animesource.online
 
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
+import eu.kanade.tachiyomi.animesource.model.Link
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.animesource.model.SEpisode
-import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.util.asJsoup
 import okhttp3.Response
 import org.jsoup.nodes.Document
@@ -164,9 +164,9 @@ abstract class ParsedAnimeHttpSource : AnimeHttpSource() {
      *
      * @param response the response from the site.
      */
-    override fun episodeLinkParse(response: Response): String {
+    override fun episodeLinkParse(response: Response): List<Link> {
         val document = response.asJsoup()
-        return linkFromElement(document.select(episodeLinkSelector()).first())
+        return linksFromElement(document.select(episodeLinkSelector()).first())
     }
 
     /**
@@ -186,37 +186,5 @@ abstract class ParsedAnimeHttpSource : AnimeHttpSource() {
      *
      * @param element an element obtained from [episodeListSelector].
      */
-    protected abstract fun linkFromElement(element: Element): String
-
-    /**
-     * Parses the response from the site and returns the page list.
-     *
-     * @param response the response from the site.
-     */
-    override fun pageListParse(response: Response): List<Page> {
-        return pageListParse(response.asJsoup())
-    }
-
-    /**
-     * Returns a page list from the given document.
-     *
-     * @param document the parsed document.
-     */
-    protected abstract fun pageListParse(document: Document): List<Page>
-
-    /**
-     * Parse the response from the site and returns the absolute url to the source image.
-     *
-     * @param response the response from the site.
-     */
-    override fun imageUrlParse(response: Response): String {
-        return imageUrlParse(response.asJsoup())
-    }
-
-    /**
-     * Returns the absolute url to the source image from the document.
-     *
-     * @param document the parsed document.
-     */
-    protected abstract fun imageUrlParse(document: Document): String
+    protected abstract fun linksFromElement(element: Element): List<Link>
 }

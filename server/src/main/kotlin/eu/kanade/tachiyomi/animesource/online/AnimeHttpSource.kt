@@ -3,13 +3,14 @@ package eu.kanade.tachiyomi.animesource.online
 import eu.kanade.tachiyomi.animesource.AnimeCatalogueSource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
+import eu.kanade.tachiyomi.animesource.model.Link
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.animesource.model.SEpisode
+import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.asObservableSuccess
 import eu.kanade.tachiyomi.network.newCallWithProgress
-import eu.kanade.tachiyomi.source.model.Page
 import okhttp3.Headers
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -218,7 +219,69 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
         }
     }
 
-    override fun fetchEpisodeLink(episode: SEpisode): Observable<String> {
+    override fun fetchEpisodeLink(episode: SEpisode): Observable<List<Link>> {
+        return client.newCall(episodeLinkRequest(episode))
+            .asObservableSuccess()
+            .map { response ->
+                episodeLinkParse(response)
+            }
+    }
+
+    /**
+     * Returns an observable with the page containing the source url of the image. If there's any
+     * error, it will return null instead of throwing an exception.
+     *
+     * @param page the page whose source image has to be fetched.
+     */
+    open fun fetchVideoLink(video: Video): Observable<String> {
+        return client.newCall(videoUrlRequest(video))
+            .asObservableSuccess()
+            .map { videoUrlParse(it) }
+    }
+
+    /**
+     * Returns the request for getting the url to the source image. Override only if it's needed to
+     * override the url, send different headers or request method like POST.
+     *
+     * @param video the episode whose page list has to be fetched
+     */
+    protected open fun videoUrlRequest(video: Video): Request {
+        return GET(video.url, headers)
+    }
+
+    /**
+     * Parses the response from the site and returns the absolute url to the source image.
+     *
+     * @param response the response from the site.
+     */
+    protected abstract fun videoUrlParse(response: Response): String
+
+    /**
+     * Returns an observable with the response of the source image.
+     *
+     * @param page the page whose source image has to be downloaded.
+     */
+    fun fetchVideo(page: Video): Observable<Response> {
+        return client.newCallWithProgress(videoRequest(page), page)
+            .asObservableSuccess()
+    }
+
+    /**
+     * Returns the request for getting the source image. Override only if it's needed to override
+     * the url, send different headers or request method like POST.
+     *
+     * @param video the episode whose page list has to be fetched
+     */
+    protected open fun videoRequest(video: Video): Request {
+        return GET(video.videoUrl!!, headers)
+    }
+
+    /**
+     * Returns an observable with the page list for a chapter.
+     *
+     * @param chapter the chapter whose page list has to be fetched.
+     */
+    fun fetchVideoList(episode: SEpisode): Observable<List<Link>> {
         return client.newCall(episodeLinkRequest(episode))
             .asObservableSuccess()
             .map { response ->
@@ -258,73 +321,7 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
      *
      * @param response the response from the site.
      */
-    protected abstract fun episodeLinkParse(response: Response): String
-
-    /**
-     * Returns the request for getting the page list. Override only if it's needed to override the
-     * url, send different headers or request method like POST.
-     *
-     * @param episode the episode whose page list has to be fetched.
-     */
-    protected open fun pageListRequest(episode: SEpisode): Request {
-        return GET(baseUrl + episode.url, headers)
-    }
-
-    /**
-     * Parses the response from the site and returns a list of pages.
-     *
-     * @param response the response from the site.
-     */
-    protected abstract fun pageListParse(response: Response): List<Page>
-
-    /**
-     * Returns an observable with the page containing the source url of the image. If there's any
-     * error, it will return null instead of throwing an exception.
-     *
-     * @param page the page whose source image has to be fetched.
-     */
-    open fun fetchImageUrl(page: Page): Observable<String> {
-        return client.newCall(imageUrlRequest(page))
-            .asObservableSuccess()
-            .map { imageUrlParse(it) }
-    }
-
-    /**
-     * Returns the request for getting the url to the source image. Override only if it's needed to
-     * override the url, send different headers or request method like POST.
-     *
-     * @param page the episode whose page list has to be fetched
-     */
-    protected open fun imageUrlRequest(page: Page): Request {
-        return GET(page.url, headers)
-    }
-
-    /**
-     * Parses the response from the site and returns the absolute url to the source image.
-     *
-     * @param response the response from the site.
-     */
-    protected abstract fun imageUrlParse(response: Response): String
-
-    /**
-     * Returns an observable with the response of the source image.
-     *
-     * @param page the page whose source image has to be downloaded.
-     */
-    fun fetchImage(page: Page): Observable<Response> {
-        return client.newCallWithProgress(imageRequest(page), page)
-            .asObservableSuccess()
-    }
-
-    /**
-     * Returns the request for getting the source image. Override only if it's needed to override
-     * the url, send different headers or request method like POST.
-     *
-     * @param page the episode whose page list has to be fetched
-     */
-    protected open fun imageRequest(page: Page): Request {
-        return GET(page.imageUrl!!, headers)
-    }
+    protected abstract fun episodeLinkParse(response: Response): List<Link>
 
     /**
      * Assigns the url of the episode without the scheme and domain. It saves some redundancy from
