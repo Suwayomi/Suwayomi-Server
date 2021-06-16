@@ -15,13 +15,12 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import okhttp3.Request
 import suwayomi.tachidesk.manga.impl.util.PackageTools.LIB_VERSION_MAX
 import suwayomi.tachidesk.manga.impl.util.PackageTools.LIB_VERSION_MIN
-import suwayomi.tachidesk.manga.impl.util.network.UnzippingInterceptor
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import uy.kohesive.injekt.injectLazy
 
 object ExtensionGithubApi {
-    const val BASE_URL = "https://raw.githubusercontent.com"
-    const val REPO_URL_PREFIX = "$BASE_URL/tachiyomiorg/tachiyomi-extensions/repo"
+    private const val BASE_URL = "https://raw.githubusercontent.com"
+    private const val REPO_URL_PREFIX = "$BASE_URL/tachiyomiorg/tachiyomi-extensions/repo"
 
     private fun parseResponse(json: JsonArray): List<OnlineExtension> {
         return json
@@ -60,17 +59,15 @@ object ExtensionGithubApi {
             .addNetworkInterceptor { chain ->
                 val originalResponse = chain.proceed(chain.request())
                 originalResponse.newBuilder()
-                    .header("Content-Encoding", "gzip")
                     .header("Content-Type", "application/json")
                     .build()
             }
-            .addInterceptor(UnzippingInterceptor())
             .build()
     }
 
-    private fun getRepo(): com.google.gson.JsonArray {
+    private fun getRepo(): JsonArray {
         val request = Request.Builder()
-            .url("$REPO_URL_PREFIX/index.json.gz")
+            .url("$REPO_URL_PREFIX/index.min.json")
             .build()
 
         val response = client.newCall(request).execute().use { response -> response.body!!.string() }
