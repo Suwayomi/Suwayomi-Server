@@ -93,7 +93,7 @@ sourceSets {
 }
 
 // should be bumped with each stable release
-val tachideskVersion = System.getenv("ProductVersion") ?: "v0.4.2"
+val tachideskVersion = System.getenv("ProductVersion") ?: "v0.4.3"
 
 // counts commit count on master
 val tachideskRevision = runCatching {
