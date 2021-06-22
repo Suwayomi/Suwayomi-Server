@@ -24,7 +24,7 @@ $android_jar = (Get-Location).Path + "\tmp\android.jar"
 # We need to remove any stub classes that we have implementations for
 Write-Output "Patching JAR..."
 
-function Remove-Files-Zip($zipfile, $path)
+function Remove-Files-Zip($zipfile, $paths)
 {
     [Reflection.Assembly]::LoadWithPartialName('System.IO.Compression') | Out-Null
 
@@ -32,7 +32,18 @@ function Remove-Files-Zip($zipfile, $path)
     $mode   = [IO.Compression.ZipArchiveMode]::Update
     $zip    = New-Object IO.Compression.ZipArchive($stream, $mode)
 
-    ($zip.Entries | Where-Object { $_.FullName -like $path }) | ForEach-Object { Write-Output "Deleting: $($_.FullName)"; $_.Delete() }
+    if ($paths.getType().Name -eq "Object[]")
+    {
+        $paths | ForEach-Object {
+            $path = $_
+            ($zip.Entries | Where-Object { $_.FullName -like $path }) | ForEach-Object { Write-Output "Deleting: $($_.FullName)"; $_.Delete() }
+        }
+    }
+    else
+    {
+        ($zip.Entries | Where-Object { $_.FullName -like $paths }) | ForEach-Object { Write-Output "Deleting: $($_.FullName)"; $_.Delete() }
+    }
+
 
     $zip.Dispose()
     $stream.Close()
@@ -78,10 +89,7 @@ function Dedupe($path)
     $classes = Get-ChildItem . *.* -Recurse | Where-Object { !$_.PSIsContainer }
     $classes | ForEach-Object {
         "Processing class: $($_.FullName)"
-        Remove-Files-Zip $android_jar "$($_.Name).class" | Out-Null
-        Remove-Files-Zip $android_jar "$($_.Name)$*.class" | Out-Null
-        Remove-Files-Zip $android_jar "$($_.Name)Kt.class" | Out-Null
-        Remove-Files-Zip $android_jar "$($_.Name)Kt$*.class" | Out-Null
+        Remove-Files-Zip $android_jar ("$($_.Name).class","$($_.Name)$*.class","$($_.Name)Kt.class","$($_.Name)Kt$*.class") | Out-Null
     }
     Pop-Location
 }
