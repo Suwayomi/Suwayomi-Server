@@ -25,13 +25,13 @@ dependencies {
 //    compileOnly( fileTree(dir: new File(rootProject.rootDir, "libs/other"), include: "*.jar")
 
     // JSON
-    compileOnly( "com.google.code.gson:gson:2.8.6")
+    compileOnly("com.google.code.gson:gson:2.8.6")
 
     // Javassist
-    compileOnly( "org.javassist:javassist:3.27.0-GA")
+    compileOnly("org.javassist:javassist:3.27.0-GA")
 
     // XML
-    compileOnly( group= "xmlpull", name= "xmlpull", version= "1.1.3.1")
+    compileOnly(group= "xmlpull", name= "xmlpull", version= "1.1.3.1")
 
     // Config API
     implementation(project(":AndroidCompat:Config"))
@@ -40,7 +40,7 @@ dependencies {
     compileOnly("com.android.tools.build:apksig:4.2.0-alpha13")
 
     // AndroidX annotations
-    compileOnly( "androidx.annotation:annotation:1.2.0-alpha01")
+    compileOnly("androidx.annotation:annotation:1.2.0-alpha01")
 
     // substitute for duktape-android
     // 'org.mozilla:rhino' includes some code that we don't need so use 'org.mozilla:rhino-runtime' instead
@@ -52,6 +52,9 @@ dependencies {
     val multiplatformSettingsVersion = "0.7.7"
     implementation("com.russhwolf:multiplatform-settings-jvm:$multiplatformSettingsVersion")
     implementation("com.russhwolf:multiplatform-settings-serialization-jvm:$multiplatformSettingsVersion")
+
+    // Android version of SimpleDateFormat
+    implementation("com.ibm.icu:icu4j:69.1")
 }
 
 tasks {

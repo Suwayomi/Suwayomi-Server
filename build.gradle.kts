@@ -43,7 +43,7 @@ configure(projects) {
         // Kotlin
         implementation(kotlin("stdlib-jdk8"))
         implementation(kotlin("reflect"))
-        testImplementation(kotlin("test"))
+        testImplementation(kotlin("test-junit5"))
 
         // coroutines
         val coroutinesVersion = "1.4.3"

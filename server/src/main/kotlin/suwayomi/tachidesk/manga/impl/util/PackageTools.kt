@@ -81,6 +81,8 @@ object PackageTools {
                 """.trimIndent()
             )
             handler.dump(errorFile, emptyArray<String>())
+        } else {
+            BytecodeEditor.fixAndroidClasses(jarFilePath.toFile())
         }
     }
 

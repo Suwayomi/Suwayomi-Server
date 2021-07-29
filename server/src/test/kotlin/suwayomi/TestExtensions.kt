@@ -31,6 +31,7 @@ import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import suwayomi.tachidesk.server.applicationSetup
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TestExtensions {
@@ -48,7 +49,7 @@ class TestExtensions {
     @BeforeAll
     fun setup() {
         val dataRoot = File("tmp/TestDesk").absolutePath
-        System.setProperty("suwayomi.tachidesk.rootDir", dataRoot)
+        System.setProperty("suwayomi.tachidesk.server.rootDir", dataRoot)
         applicationSetup()
         setLoggingEnabled(false)
 
@@ -63,6 +64,7 @@ class TestExtensions {
                         updateExtension(it.pkgName)
                     }
                     else -> {
+                        uninstallExtension(it.pkgName)
                         installExtension(it.pkgName)
                     }
                 }
@@ -77,10 +79,11 @@ class TestExtensions {
     fun runTest() {
         runBlocking(Dispatchers.Default) {
             val semaphore = Semaphore(10)
-            sources.mapIndexed { index, source ->
+            val popularCount = AtomicInteger(1)
+            sources.map { source ->
                 async {
                     semaphore.withPermit {
-                        logger.info { "$index - Now fetching popular manga from $source" }
+                        logger.info { "${popularCount.getAndIncrement()} - Now fetching popular manga from $source" }
                         try {
                             mangaToFetch += source to (
                                 source.fetchPopularManga(1)
@@ -102,10 +105,11 @@ class TestExtensions {
             )
             logger.info { "Now fetching manga info from ${mangaToFetch.size} sources" }
 
-            mangaToFetch.mapIndexed { index, (source, manga) ->
+            val mangaCount = AtomicInteger(1)
+            mangaToFetch.map { (source, manga) ->
                 async {
                     semaphore.withPermit {
-                        logger.info { "$index - Now fetching manga from $source" }
+                        logger.info { "${mangaCount.getAndIncrement()} - Now fetching manga from $source" }
                         try {
                             manga.copyFrom(source.fetchMangaDetails(manga).awaitSingleRepeat())
                             manga.initialized = true
@@ -127,10 +131,11 @@ class TestExtensions {
             )
             logger.info { "Now fetching manga chapters from ${mangaToFetch.size} sources" }
 
-            mangaToFetch.filter { it.second.initialized }.mapIndexed { index, (source, manga) ->
+            val chapterCount = AtomicInteger(1)
+            mangaToFetch.filter { it.second.initialized }.map { (source, manga) ->
                 async {
                     semaphore.withPermit {
-                        logger.info { "$index - Now fetching manga chapters from $source" }
+                        logger.info { "${chapterCount.getAndIncrement()} - Now fetching manga chapters from $source" }
                         try {
                             chaptersToFetch += Triple(
                                 source,
@@ -160,10 +165,11 @@ class TestExtensions {
                 }
             )
 
-            chaptersToFetch.mapIndexed { index, (source, manga, chapter) ->
+            val pageListCount = AtomicInteger(1)
+            chaptersToFetch.map { (source, manga, chapter) ->
                 async {
                     semaphore.withPermit {
-                        logger.info { "$index - Now fetching page list from $source" }
+                        logger.info { "${pageListCount.getAndIncrement()} - Now fetching page list from $source" }
                         try {
                             source.fetchPageList(chapter).awaitSingleRepeat()
                         } catch (e: Exception) {

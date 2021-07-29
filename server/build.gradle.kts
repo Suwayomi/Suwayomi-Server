@@ -58,6 +58,9 @@ dependencies {
     implementation("com.github.salomonbrys.kotson:kotson:2.5.0")
 
 
+    // asm for fixing SimpleDateFormat (must match Dex2Jar version)
+    implementation("org.ow2.asm:asm-debug-all:5.0.3")
+
     // Source models and interfaces from Tachiyomi 1.x
     // using source class from tachiyomi commit 9493577de27c40ce8b2b6122cc447d025e34c477 to not depend on tachiyomi.sourceapi
 //    implementation("tachiyomi.sourceapi:source-api:1.1")
@@ -68,9 +71,6 @@ dependencies {
 
     // uncomment to test extensions directly
 //    implementation(fileTree("lib/"))
-
-    // Testing
-    testImplementation(kotlin("test-junit5"))
 }
 
 val MainClass = "suwayomi.tachidesk.MainKt"
