@@ -1,7 +1,6 @@
-package xyz.nulldev.androidcompat.replace;
+package xyz.nulldev.androidcompat.replace.java.text;
 
 import com.ibm.icu.text.DisplayContext;
-import com.ibm.icu.text.NumberFormat;
 import com.ibm.icu.util.Currency;
 import com.ibm.icu.util.CurrencyAmount;
 import com.ibm.icu.util.ULocale;
@@ -14,10 +13,10 @@ import java.text.ParseException;
 import java.text.ParsePosition;
 import java.util.Locale;
 
-public class NumberFormatDelegate extends java.text.NumberFormat {
+public class NumberFormat extends java.text.NumberFormat {
     private com.ibm.icu.text.NumberFormat delegate;
 
-    public NumberFormatDelegate(com.ibm.icu.text.NumberFormat delegate) {
+    public NumberFormat(com.ibm.icu.text.NumberFormat delegate) {
         this.delegate = delegate;
     }
 
@@ -102,55 +101,55 @@ public class NumberFormatDelegate extends java.text.NumberFormat {
     }
 
     public static java.text.NumberFormat getInstance(Locale inLocale) {
-        return new NumberFormatDelegate(NumberFormat.getInstance(inLocale));
+        return new NumberFormat(com.ibm.icu.text.NumberFormat.getInstance(inLocale));
     }
 
-    public static NumberFormat getInstance(ULocale inLocale) {
-        return NumberFormat.getInstance(inLocale);
+    public static com.ibm.icu.text.NumberFormat getInstance(ULocale inLocale) {
+        return com.ibm.icu.text.NumberFormat.getInstance(inLocale);
     }
 
-    public static NumberFormat getInstance(int style) {
-        return NumberFormat.getInstance(style);
+    public static com.ibm.icu.text.NumberFormat getInstance(int style) {
+        return com.ibm.icu.text.NumberFormat.getInstance(style);
     }
 
-    public static NumberFormat getInstance(Locale inLocale, int style) {
-        return NumberFormat.getInstance(inLocale, style);
+    public static com.ibm.icu.text.NumberFormat getInstance(Locale inLocale, int style) {
+        return com.ibm.icu.text.NumberFormat.getInstance(inLocale, style);
     }
 
-    public static NumberFormat getNumberInstance(ULocale inLocale) {
-        return NumberFormat.getNumberInstance(inLocale);
+    public static com.ibm.icu.text.NumberFormat getNumberInstance(ULocale inLocale) {
+        return com.ibm.icu.text.NumberFormat.getNumberInstance(inLocale);
     }
 
-    public static NumberFormat getIntegerInstance(ULocale inLocale) {
-        return NumberFormat.getIntegerInstance(inLocale);
+    public static com.ibm.icu.text.NumberFormat getIntegerInstance(ULocale inLocale) {
+        return com.ibm.icu.text.NumberFormat.getIntegerInstance(inLocale);
     }
 
-    public static NumberFormat getCurrencyInstance(ULocale inLocale) {
-        return NumberFormat.getCurrencyInstance(inLocale);
+    public static com.ibm.icu.text.NumberFormat getCurrencyInstance(ULocale inLocale) {
+        return com.ibm.icu.text.NumberFormat.getCurrencyInstance(inLocale);
     }
 
-    public static NumberFormat getPercentInstance(ULocale inLocale) {
-        return NumberFormat.getPercentInstance(inLocale);
+    public static com.ibm.icu.text.NumberFormat getPercentInstance(ULocale inLocale) {
+        return com.ibm.icu.text.NumberFormat.getPercentInstance(inLocale);
     }
 
-    public static NumberFormat getScientificInstance(ULocale inLocale) {
-        return NumberFormat.getScientificInstance(inLocale);
+    public static com.ibm.icu.text.NumberFormat getScientificInstance(ULocale inLocale) {
+        return com.ibm.icu.text.NumberFormat.getScientificInstance(inLocale);
     }
 
     public static Locale[] getAvailableLocales() {
-        return NumberFormat.getAvailableLocales();
+        return com.ibm.icu.text.NumberFormat.getAvailableLocales();
     }
 
     public static ULocale[] getAvailableULocales() {
-        return NumberFormat.getAvailableULocales();
+        return com.ibm.icu.text.NumberFormat.getAvailableULocales();
     }
 
-    public static Object registerFactory(NumberFormat.NumberFormatFactory factory) {
-        return NumberFormat.registerFactory(factory);
+    public static Object registerFactory(com.ibm.icu.text.NumberFormat.NumberFormatFactory factory) {
+        return com.ibm.icu.text.NumberFormat.registerFactory(factory);
     }
 
     public static boolean unregister(Object registryKey) {
-        return NumberFormat.unregister(registryKey);
+        return com.ibm.icu.text.NumberFormat.unregister(registryKey);
     }
 
     @Override
@@ -220,13 +219,13 @@ public class NumberFormatDelegate extends java.text.NumberFormat {
         delegate.setRoundingMode(roundingMode);
     }
 
-    public static NumberFormat getInstance(ULocale desiredLocale, int choice) {
-        return NumberFormat.getInstance(desiredLocale, choice);
+    public static com.ibm.icu.text.NumberFormat getInstance(ULocale desiredLocale, int choice) {
+        return com.ibm.icu.text.NumberFormat.getInstance(desiredLocale, choice);
     }
 
     @Deprecated
     public static String getPatternForStyle(ULocale forLocale, int choice) {
-        return NumberFormat.getPatternForStyle(forLocale, choice);
+        return com.ibm.icu.text.NumberFormat.getPatternForStyle(forLocale, choice);
     }
 
     public ULocale getLocale(ULocale.Type type) {

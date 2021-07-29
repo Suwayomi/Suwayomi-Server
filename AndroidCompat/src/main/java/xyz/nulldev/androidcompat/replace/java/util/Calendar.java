@@ -1,41 +1,39 @@
-package xyz.nulldev.androidcompat.replace;
+package xyz.nulldev.androidcompat.replace.java.util;
 
 import com.ibm.icu.text.DateFormat;
-import com.ibm.icu.util.TimeZone;
 import com.ibm.icu.util.ULocale;
 
-import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
-public class CalendarDelegate extends Calendar {
+public class Calendar extends java.util.Calendar {
     private com.ibm.icu.util.Calendar delegate;
 
-    public CalendarDelegate(com.ibm.icu.util.Calendar delegate) {
+    public Calendar(com.ibm.icu.util.Calendar delegate) {
         this.delegate = delegate;
     }
 
     public static java.util.Calendar getInstance() {
-        return new CalendarDelegate(com.ibm.icu.util.Calendar.getInstance());
+        return new Calendar(com.ibm.icu.util.Calendar.getInstance());
     }
 
-    public static com.ibm.icu.util.Calendar getInstance(TimeZone zone) {
+    public static com.ibm.icu.util.Calendar getInstance(com.ibm.icu.util.TimeZone zone) {
         return com.ibm.icu.util.Calendar.getInstance(zone);
     }
 
     public static java.util.Calendar getInstance(Locale aLocale) {
-        return new CalendarDelegate(com.ibm.icu.util.Calendar.getInstance(aLocale));
+        return new Calendar(com.ibm.icu.util.Calendar.getInstance(aLocale));
     }
 
     public static com.ibm.icu.util.Calendar getInstance(ULocale locale) {
         return com.ibm.icu.util.Calendar.getInstance(locale);
     }
 
-    public static com.ibm.icu.util.Calendar getInstance(TimeZone zone, Locale aLocale) {
+    public static com.ibm.icu.util.Calendar getInstance(com.ibm.icu.util.TimeZone zone, Locale aLocale) {
         return com.ibm.icu.util.Calendar.getInstance(zone, aLocale);
     }
 
-    public static com.ibm.icu.util.Calendar getInstance(TimeZone zone, ULocale locale) {
+    public static com.ibm.icu.util.Calendar getInstance(com.ibm.icu.util.TimeZone zone, ULocale locale) {
         return com.ibm.icu.util.Calendar.getInstance(zone, locale);
     }
 
@@ -155,13 +153,13 @@ public class CalendarDelegate extends Calendar {
         return delegate.fieldDifference(when, field);
     }
 
-    public void setTimeZone(TimeZone value) {
+    public void setTimeZone(com.ibm.icu.util.TimeZone value) {
         delegate.setTimeZone(value);
     }
 
     @Override
     public java.util.TimeZone getTimeZone() {
-        return new TimeZoneDelegate(delegate.getTimeZone());
+        return new TimeZone(delegate.getTimeZone());
     }
 
     @Override

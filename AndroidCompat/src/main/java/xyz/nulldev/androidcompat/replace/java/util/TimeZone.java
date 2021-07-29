@@ -1,16 +1,15 @@
-package xyz.nulldev.androidcompat.replace;
+package xyz.nulldev.androidcompat.replace.java.util;
 
 import com.ibm.icu.util.ULocale;
 
 import java.util.Date;
 import java.util.Locale;
 import java.util.Set;
-import java.util.TimeZone;
 
-public class TimeZoneDelegate extends TimeZone {
+public class TimeZone extends java.util.TimeZone {
     private com.ibm.icu.util.TimeZone delegate;
 
-    public TimeZoneDelegate(com.ibm.icu.util.TimeZone delegate) {
+    public TimeZone(com.ibm.icu.util.TimeZone delegate) {
         this.delegate = delegate;
     }
 
@@ -81,8 +80,8 @@ public class TimeZoneDelegate extends TimeZone {
         return delegate.inDaylightTime(date);
     }
 
-    public static TimeZone getTimeZone(String ID) {
-        return new TimeZoneDelegate(com.ibm.icu.util.TimeZone.getTimeZone(ID));
+    public static java.util.TimeZone getTimeZone(String ID) {
+        return new TimeZone(com.ibm.icu.util.TimeZone.getTimeZone(ID));
     }
 
     public static com.ibm.icu.util.TimeZone getFrozenTimeZone(String ID) {
@@ -125,8 +124,8 @@ public class TimeZoneDelegate extends TimeZone {
         return com.ibm.icu.util.TimeZone.getEquivalentID(id, index);
     }
 
-    public static TimeZone getDefault() {
-        return new TimeZoneDelegate(com.ibm.icu.util.TimeZone.getDefault());
+    public static java.util.TimeZone getDefault() {
+        return new TimeZone(com.ibm.icu.util.TimeZone.getDefault());
     }
 
     public static void setDefault(com.ibm.icu.util.TimeZone tz) {

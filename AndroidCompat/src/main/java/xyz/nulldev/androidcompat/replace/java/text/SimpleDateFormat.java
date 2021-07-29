@@ -1,12 +1,11 @@
-package xyz.nulldev.androidcompat.replace;
+package xyz.nulldev.androidcompat.replace.java.text;
 
 import com.ibm.icu.text.DateFormatSymbols;
 import com.ibm.icu.text.DisplayContext;
-import com.ibm.icu.text.NumberFormat;
 import com.ibm.icu.text.TimeZoneFormat;
-import com.ibm.icu.util.Calendar;
-import com.ibm.icu.util.TimeZone;
 import com.ibm.icu.util.ULocale;
+import xyz.nulldev.androidcompat.replace.java.util.Calendar;
+import xyz.nulldev.androidcompat.replace.java.util.TimeZone;
 
 import java.text.*;
 import java.util.Date;
@@ -15,7 +14,7 @@ import java.util.Locale;
 /**
  * Overridden to switch to Android implementation
  */
-public class SimpleDateFormat extends DateFormat {
+public class SimpleDateFormat extends java.text.DateFormat {
     private com.ibm.icu.text.SimpleDateFormat delegate;
 
     public SimpleDateFormat() {
@@ -51,7 +50,7 @@ public class SimpleDateFormat extends DateFormat {
     }
 
     @Deprecated
-    public static SimpleDateFormat getInstance(Calendar.FormatConfiguration formatConfig) {
+    public static SimpleDateFormat getInstance(com.ibm.icu.util.Calendar.FormatConfiguration formatConfig) {
         return new SimpleDateFormat(com.ibm.icu.text.SimpleDateFormat.getInstance(formatConfig));
     }
 
@@ -67,15 +66,15 @@ public class SimpleDateFormat extends DateFormat {
         delegate.setContext(context);
     }
 
-    public StringBuffer format(Calendar cal, StringBuffer toAppendTo, FieldPosition pos) {
+    public StringBuffer format(com.ibm.icu.util.Calendar cal, StringBuffer toAppendTo, FieldPosition pos) {
         return delegate.format(cal, toAppendTo, pos);
     }
 
-    public void setNumberFormat(NumberFormat newNumberFormat) {
+    public void setNumberFormat(com.ibm.icu.text.NumberFormat newNumberFormat) {
         delegate.setNumberFormat(newNumberFormat);
     }
 
-    public void parse(String text, Calendar cal, ParsePosition parsePos) {
+    public void parse(String text, com.ibm.icu.util.Calendar cal, ParsePosition parsePos) {
         delegate.parse(text, cal, parsePos);
     }
 
@@ -132,15 +131,15 @@ public class SimpleDateFormat extends DateFormat {
     }
 
     @Deprecated
-    public StringBuffer intervalFormatByAlgorithm(Calendar fromCalendar, Calendar toCalendar, StringBuffer appendTo, FieldPosition pos) throws IllegalArgumentException {
+    public StringBuffer intervalFormatByAlgorithm(com.ibm.icu.util.Calendar fromCalendar, com.ibm.icu.util.Calendar toCalendar, StringBuffer appendTo, FieldPosition pos) throws IllegalArgumentException {
         return delegate.intervalFormatByAlgorithm(fromCalendar, toCalendar, appendTo, pos);
     }
 
-    public void setNumberFormat(String fields, NumberFormat overrideNF) {
+    public void setNumberFormat(String fields, com.ibm.icu.text.NumberFormat overrideNF) {
         delegate.setNumberFormat(fields, overrideNF);
     }
 
-    public NumberFormat getNumberFormat(char field) {
+    public com.ibm.icu.text.NumberFormat getNumberFormat(char field) {
         return delegate.getNumberFormat(field);
     }
 
@@ -186,29 +185,29 @@ public class SimpleDateFormat extends DateFormat {
 
     @Override
     public void setCalendar(java.util.Calendar newCalendar) {
-        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(newCalendar.getTimeZone().getID()));
+        com.ibm.icu.util.Calendar cal = com.ibm.icu.util.Calendar.getInstance(com.ibm.icu.util.TimeZone.getTimeZone(newCalendar.getTimeZone().getID()));
         cal.setTimeInMillis(newCalendar.getTimeInMillis());
         delegate.setCalendar(cal);
     }
 
     @Override
     public java.util.Calendar getCalendar() {
-        return new CalendarDelegate(delegate.getCalendar());
+        return new Calendar(delegate.getCalendar());
     }
 
     @Override
     public java.text.NumberFormat getNumberFormat() {
-        return new NumberFormatDelegate(delegate.getNumberFormat());
+        return new NumberFormat(delegate.getNumberFormat());
     }
 
     @Override
     public void setTimeZone(java.util.TimeZone zone) {
-        delegate.setTimeZone(TimeZone.getTimeZone(zone.getID()));
+        delegate.setTimeZone(com.ibm.icu.util.TimeZone.getTimeZone(zone.getID()));
     }
 
     @Override
     public java.util.TimeZone getTimeZone() {
-        return new TimeZoneDelegate(delegate.getTimeZone());
+        return new TimeZone(delegate.getTimeZone());
     }
 
     @Override
@@ -241,51 +240,51 @@ public class SimpleDateFormat extends DateFormat {
         return delegate.getContext(type);
     }
 
-    public static com.ibm.icu.text.DateFormat getDateInstance(Calendar cal, int dateStyle, Locale locale) {
+    public static com.ibm.icu.text.DateFormat getDateInstance(com.ibm.icu.util.Calendar cal, int dateStyle, Locale locale) {
         return com.ibm.icu.text.DateFormat.getDateInstance(cal, dateStyle, locale);
     }
 
-    public static com.ibm.icu.text.DateFormat getDateInstance(Calendar cal, int dateStyle, ULocale locale) {
+    public static com.ibm.icu.text.DateFormat getDateInstance(com.ibm.icu.util.Calendar cal, int dateStyle, ULocale locale) {
         return com.ibm.icu.text.DateFormat.getDateInstance(cal, dateStyle, locale);
     }
 
-    public static com.ibm.icu.text.DateFormat getTimeInstance(Calendar cal, int timeStyle, Locale locale) {
+    public static com.ibm.icu.text.DateFormat getTimeInstance(com.ibm.icu.util.Calendar cal, int timeStyle, Locale locale) {
         return com.ibm.icu.text.DateFormat.getTimeInstance(cal, timeStyle, locale);
     }
 
-    public static com.ibm.icu.text.DateFormat getTimeInstance(Calendar cal, int timeStyle, ULocale locale) {
+    public static com.ibm.icu.text.DateFormat getTimeInstance(com.ibm.icu.util.Calendar cal, int timeStyle, ULocale locale) {
         return com.ibm.icu.text.DateFormat.getTimeInstance(cal, timeStyle, locale);
     }
 
-    public static com.ibm.icu.text.DateFormat getDateTimeInstance(Calendar cal, int dateStyle, int timeStyle, Locale locale) {
+    public static com.ibm.icu.text.DateFormat getDateTimeInstance(com.ibm.icu.util.Calendar cal, int dateStyle, int timeStyle, Locale locale) {
         return com.ibm.icu.text.DateFormat.getDateTimeInstance(cal, dateStyle, timeStyle, locale);
     }
 
-    public static com.ibm.icu.text.DateFormat getDateTimeInstance(Calendar cal, int dateStyle, int timeStyle, ULocale locale) {
+    public static com.ibm.icu.text.DateFormat getDateTimeInstance(com.ibm.icu.util.Calendar cal, int dateStyle, int timeStyle, ULocale locale) {
         return com.ibm.icu.text.DateFormat.getDateTimeInstance(cal, dateStyle, timeStyle, locale);
     }
 
-    public static com.ibm.icu.text.DateFormat getInstance(Calendar cal, Locale locale) {
+    public static com.ibm.icu.text.DateFormat getInstance(com.ibm.icu.util.Calendar cal, Locale locale) {
         return com.ibm.icu.text.DateFormat.getInstance(cal, locale);
     }
 
-    public static com.ibm.icu.text.DateFormat getInstance(Calendar cal, ULocale locale) {
+    public static com.ibm.icu.text.DateFormat getInstance(com.ibm.icu.util.Calendar cal, ULocale locale) {
         return com.ibm.icu.text.DateFormat.getInstance(cal, locale);
     }
 
-    public static com.ibm.icu.text.DateFormat getInstance(Calendar cal) {
+    public static com.ibm.icu.text.DateFormat getInstance(com.ibm.icu.util.Calendar cal) {
         return com.ibm.icu.text.DateFormat.getInstance(cal);
     }
 
-    public static com.ibm.icu.text.DateFormat getDateInstance(Calendar cal, int dateStyle) {
+    public static com.ibm.icu.text.DateFormat getDateInstance(com.ibm.icu.util.Calendar cal, int dateStyle) {
         return com.ibm.icu.text.DateFormat.getDateInstance(cal, dateStyle);
     }
 
-    public static com.ibm.icu.text.DateFormat getTimeInstance(Calendar cal, int timeStyle) {
+    public static com.ibm.icu.text.DateFormat getTimeInstance(com.ibm.icu.util.Calendar cal, int timeStyle) {
         return com.ibm.icu.text.DateFormat.getTimeInstance(cal, timeStyle);
     }
 
-    public static com.ibm.icu.text.DateFormat getDateTimeInstance(Calendar cal, int dateStyle, int timeStyle) {
+    public static com.ibm.icu.text.DateFormat getDateTimeInstance(com.ibm.icu.util.Calendar cal, int dateStyle, int timeStyle) {
         return com.ibm.icu.text.DateFormat.getDateTimeInstance(cal, dateStyle, timeStyle);
     }
 
@@ -301,11 +300,11 @@ public class SimpleDateFormat extends DateFormat {
         return com.ibm.icu.text.DateFormat.getInstanceForSkeleton(skeleton, locale);
     }
 
-    public static com.ibm.icu.text.DateFormat getInstanceForSkeleton(Calendar cal, String skeleton, Locale locale) {
+    public static com.ibm.icu.text.DateFormat getInstanceForSkeleton(com.ibm.icu.util.Calendar cal, String skeleton, Locale locale) {
         return com.ibm.icu.text.DateFormat.getInstanceForSkeleton(cal, skeleton, locale);
     }
 
-    public static com.ibm.icu.text.DateFormat getInstanceForSkeleton(Calendar cal, String skeleton, ULocale locale) {
+    public static com.ibm.icu.text.DateFormat getInstanceForSkeleton(com.ibm.icu.util.Calendar cal, String skeleton, ULocale locale) {
         return com.ibm.icu.text.DateFormat.getInstanceForSkeleton(cal, skeleton, locale);
     }
 
@@ -321,11 +320,11 @@ public class SimpleDateFormat extends DateFormat {
         return com.ibm.icu.text.DateFormat.getPatternInstance(skeleton, locale);
     }
 
-    public static com.ibm.icu.text.DateFormat getPatternInstance(Calendar cal, String skeleton, Locale locale) {
+    public static com.ibm.icu.text.DateFormat getPatternInstance(com.ibm.icu.util.Calendar cal, String skeleton, Locale locale) {
         return com.ibm.icu.text.DateFormat.getPatternInstance(cal, skeleton, locale);
     }
 
-    public static com.ibm.icu.text.DateFormat getPatternInstance(Calendar cal, String skeleton, ULocale locale) {
+    public static com.ibm.icu.text.DateFormat getPatternInstance(com.ibm.icu.util.Calendar cal, String skeleton, ULocale locale) {
         return com.ibm.icu.text.DateFormat.getPatternInstance(cal, skeleton, locale);
     }
 

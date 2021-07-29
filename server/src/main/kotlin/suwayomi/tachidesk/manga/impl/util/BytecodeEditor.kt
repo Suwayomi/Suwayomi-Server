@@ -76,8 +76,9 @@ object BytecodeEditor {
         return ClassNode().also { cr.accept(it, ClassReader.EXPAND_FRAMES) }
     }
 
+    private const val replacementPath = "xyz/nulldev/androidcompat/replace"
     private const val simpleDateFormat = "java/text/SimpleDateFormat"
-    private const val replacementSimpleDateFormat = "xyz/nulldev/androidcompat/replace/SimpleDateFormat"
+    private const val replacementSimpleDateFormat = "$replacementPath/$simpleDateFormat"
 
     private fun String?.replaceFormatFully() = if (this == simpleDateFormat) {
         replacementSimpleDateFormat
