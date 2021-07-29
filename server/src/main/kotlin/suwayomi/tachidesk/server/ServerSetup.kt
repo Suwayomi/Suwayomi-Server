@@ -46,11 +46,14 @@ fun applicationSetup() {
 
     // Application dirs
     val applicationDirs = ApplicationDirs()
+
     DI.global.addImport(
         DI.Module("Server") {
             bind<ApplicationDirs>() with singleton { applicationDirs }
         }
     )
+
+    logger.debug("Data Root directory is set to: ${applicationDirs.dataRoot}")
 
     // make dirs we need
     listOf(
