@@ -6,7 +6,6 @@ import com.russhwolf.settings.ExperimentalSettingsImplementation
 import com.russhwolf.settings.JvmPreferencesSettings
 import com.russhwolf.settings.serialization.decodeValue
 import com.russhwolf.settings.serialization.encodeValue
-import com.russhwolf.settings.set
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.SetSerializer
@@ -138,9 +137,12 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
                 @Suppress("UNCHECKED_CAST")
                 when (value) {
                     is Set<*> -> preferences.encodeValue(SetSerializer(String.serializer()), key, value as Set<String>)
-                    else -> {
-                        preferences[key] = value
-                    }
+                    is String -> preferences.putString(key, value)
+                    is Int -> preferences.putInt(key, value)
+                    is Long -> preferences.putLong(key, value)
+                    is Float -> preferences.putFloat(key, value)
+                    is Double -> preferences.putDouble(key, value)
+                    is Boolean -> preferences.putBoolean(key, value)
                 }
             }
         }
