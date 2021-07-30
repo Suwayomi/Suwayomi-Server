@@ -61,39 +61,41 @@ export default function TemporaryDrawer({ drawerOpen, setDrawerOpen }: IProps) {
                                 <ListItemIcon>
                                     <ExtensionIcon />
                                 </ListItemIcon>
-                                <ListItemText primary="Manga Extensions" />
+                                <ListItemText primary="Extensions" />
                             </ListItem>
                         </Link>
-                        <Link to="/anime/extensions" style={{ color: 'inherit', textDecoration: 'none' }}>
+                        {/* <Link to="/anime/extensions"
+                        style={{ color: 'inherit', textDecoration: 'none' }}>
                             <ListItem button key="Extensions">
                                 <ListItemIcon>
                                     <ExtensionIcon />
                                 </ListItemIcon>
                                 <ListItemText primary="Anime Extensions" />
                             </ListItem>
-                        </Link>
+                        </Link> */}
                         <Link to="/manga/sources" style={{ color: 'inherit', textDecoration: 'none' }}>
                             <ListItem button key="Sources">
                                 <ListItemIcon>
                                     <ExploreIcon />
                                 </ListItemIcon>
-                                <ListItemText primary="Manga Sources" />
+                                <ListItemText primary="Sources" />
                             </ListItem>
                         </Link>
-                        <Link to="/anime/sources" style={{ color: 'inherit', textDecoration: 'none' }}>
+                        {/* <Link to="/anime/sources"
+                        style={{ color: 'inherit', textDecoration: 'none' }}>
                             <ListItem button key="Sources">
                                 <ListItemIcon>
                                     <ExploreIcon />
                                 </ListItemIcon>
                                 <ListItemText primary="Anime Sources" />
                             </ListItem>
-                        </Link>
+                        </Link> */}
                         <Link to="/manga/downloads" style={{ color: 'inherit', textDecoration: 'none' }}>
                             <ListItem button key="Manga Download Queue">
                                 <ListItemIcon>
                                     <GetAppIcon />
                                 </ListItemIcon>
-                                <ListItemText primary="Manga Download Queue" />
+                                <ListItemText primary="Downloadsz" />
                             </ListItem>
                         </Link>
                         <Link to="/settings" style={{ color: 'inherit', textDecoration: 'none' }}>
