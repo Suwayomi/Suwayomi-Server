@@ -63,13 +63,18 @@ object Source {
         val props: Any
     )
 
+    var lastPreferenceScreen: PreferenceScreen? = null
+
     fun getSourcePreferences(sourceId: Long): List<PreferenceObject> {
         val source = getHttpSource(sourceId)
 
         if (source is ConfigurableSource) {
             val screen = PreferenceScreen(context)
+            lastPreferenceScreen = screen
 
             source.setupPreferenceScreen(screen)
+
+            screen.preferences.first().callChangeListener("yo")
 
             return screen.preferences.map {
                 PreferenceObject(it::class.java.name, it)
