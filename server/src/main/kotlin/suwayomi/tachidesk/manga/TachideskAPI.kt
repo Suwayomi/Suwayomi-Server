@@ -30,6 +30,7 @@ import suwayomi.tachidesk.manga.impl.Search.sourceGlobalSearch
 import suwayomi.tachidesk.manga.impl.Search.sourceSearch
 import suwayomi.tachidesk.manga.impl.Source.getSource
 import suwayomi.tachidesk.manga.impl.Source.getSourceList
+import suwayomi.tachidesk.manga.impl.Source.getSourcePreferences
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.legacy.LegacyBackupExport.createLegacyBackup
 import suwayomi.tachidesk.manga.impl.backup.legacy.LegacyBackupImport.restoreLegacyBackup
@@ -107,6 +108,12 @@ object TachideskAPI {
         app.get("/api/v1/source/:sourceId") { ctx ->
             val sourceId = ctx.pathParam("sourceId").toLong()
             ctx.json(getSource(sourceId))
+        }
+
+        // fetch preferences of source with id `sourceId`
+        app.get("/api/v1/source/:sourceId/preference-screen") { ctx ->
+            val sourceId = ctx.pathParam("sourceId").toLong()
+            ctx.json(getSourcePreferences(sourceId))
         }
 
         // popular mangas from source with id `sourceId`

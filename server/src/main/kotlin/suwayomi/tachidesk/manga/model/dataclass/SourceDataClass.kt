@@ -12,5 +12,6 @@ data class SourceDataClass(
     val name: String?,
     val lang: String?,
     val iconUrl: String?,
-    val supportsLatest: Boolean?
+    val supportsLatest: Boolean?,
+    val isConfigurable: Boolean?
 )
