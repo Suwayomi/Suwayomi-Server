@@ -38,7 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import xyz.nulldev.androidcompat.info.ApplicationInfoImpl;
 import xyz.nulldev.androidcompat.io.AndroidFiles;
-import xyz.nulldev.androidcompat.io.sharedprefs.JavaSharedPreferences;
+import xyz.nulldev.androidcompat.io.sharedprefs.JsonSharedPreferences;
 import xyz.nulldev.androidcompat.service.ServiceSupport;
 import xyz.nulldev.androidcompat.util.KodeinGlobalHelper;
 
@@ -50,9 +50,10 @@ import java.util.Map;
 /**
  * Custom context implementation.
  *
+ * TODO Deal with packagemanager for extension sources
  */
 public class CustomContext extends Context implements DIAware {
-    private final DI kodein;
+    private DI kodein;
     public CustomContext() {
         this(KodeinGlobalHelper.kodein());
     }
@@ -164,22 +165,23 @@ public class CustomContext extends Context implements DIAware {
     /** Fake shared prefs! **/
     private Map<String, SharedPreferences> prefs = new HashMap<>(); //Cache
 
+    private File sharedPrefsFileFromString(String s) {
+        return new File(androidFiles.getPrefsDir(), s + ".json");
+    }
+
     @Override
     public synchronized SharedPreferences getSharedPreferences(String s, int i) {
         SharedPreferences preferences = prefs.get(s);
         //Create new shared preferences if one does not exist
         if(preferences == null) {
-            preferences = new JavaSharedPreferences(s);
+            preferences = getSharedPreferences(sharedPrefsFileFromString(s), i);
             prefs.put(s, preferences);
         }
         return preferences;
     }
 
-    @Override
-    public SharedPreferences getSharedPreferences(@NotNull File file, int mode) {
-        String path = file.getAbsolutePath().replace('\\', '/');
-        int firstSlash = path.indexOf("/");
-        return new JavaSharedPreferences(path.substring(firstSlash));
+    public SharedPreferences getSharedPreferences(File file, int mode) {
+        return new JsonSharedPreferences(file);
     }
 
     @Override
@@ -189,8 +191,8 @@ public class CustomContext extends Context implements DIAware {
 
     @Override
     public boolean deleteSharedPreferences(String name) {
-        JavaSharedPreferences item = (JavaSharedPreferences) prefs.remove(name);
-        return item.deleteAll();
+        prefs.remove(name);
+        return sharedPrefsFileFromString(name).delete();
     }
 
     @Override
@@ -732,5 +734,4 @@ public class CustomContext extends Context implements DIAware {
         return null;
     }
 }
-
 
