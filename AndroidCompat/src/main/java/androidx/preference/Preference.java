@@ -8,18 +8,22 @@ package androidx.preference;
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import android.content.Context;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /** A minimal implementation of androidx.preference.Preference */
 public class Preference {
     // reference: https://android.googlesource.com/platform/frameworks/support/+/996971f962fcd554339a7cb2859cef9ca89dbcb7/preference/preference/src/main/java/androidx/preference/Preference.java
     // Note: `Preference` doesn't actually hold or persist the value, `OnPreferenceChangeListener` is called and it's up to the extension to persist it.
 
+    @JsonIgnore
     protected Context context;
 
     private String key;
     private CharSequence title;
     private Object defaultValue;
-    private OnPreferenceChangeListener onChangeListener;
+
+    @JsonIgnore
+    public OnPreferenceChangeListener onChangeListener;
 
     public Preference(Context context) {
         this.context = context;
@@ -28,7 +32,6 @@ public class Preference {
     public Context getContext() {
         return context;
     }
-
 
     public String getKey() {
         return key;
@@ -52,6 +55,10 @@ public class Preference {
 
     public boolean callChangeListener(Object newValue) {
         return onChangeListener == null || onChangeListener.onPreferenceChange(this, newValue);
+    }
+
+    public Object getDefaultValue() {
+        return defaultValue;
     }
 
     public interface OnPreferenceChangeListener {

@@ -58,7 +58,12 @@ object Source {
 
     private val context by DI.global.instance<CustomContext>()
 
-    fun getSourcePreferences(sourceId: Long) {
+    data class PreferenceObject(
+        val type: String,
+        val props: Any
+    )
+
+    fun getSourcePreferences(sourceId: Long): List<PreferenceObject> {
         val source = getHttpSource(sourceId)
 
         if (source is ConfigurableSource) {
@@ -66,7 +71,10 @@ object Source {
 
             source.setupPreferenceScreen(screen)
 
-            screen.preferences.forEach { println(it) }
+            return screen.preferences.map {
+                PreferenceObject(it::class.java.name, it)
+            }
         }
+        return emptyList()
     }
 }

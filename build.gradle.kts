@@ -84,5 +84,8 @@ configure(projects) {
 
         // APK parser
         implementation("net.dongliu:apk-parser:2.6.10")
+
+        // Jackson
+        implementation("com.fasterxml.jackson.core:jackson-annotations:2.10.3")
     }
 }

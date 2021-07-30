@@ -1,5 +1,12 @@
 package suwayomi.tachidesk.server
 
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
 import io.javalin.Javalin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -12,13 +19,6 @@ import suwayomi.tachidesk.server.util.Browser
 import java.io.IOException
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
-
-/*
- * Copyright (C) Contributors to the Suwayomi project
- * 
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 object JavalinSetup {
     private val logger = KotlinLogging.logger {}
