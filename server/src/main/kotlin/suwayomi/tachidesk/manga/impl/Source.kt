@@ -18,6 +18,7 @@ import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.extension.Extension.getExtensionIconUrl
 import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
+import suwayomi.tachidesk.manga.impl.util.GetHttpSource.invalidateSourceCache
 import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
@@ -30,12 +31,12 @@ object Source {
         return transaction {
             SourceTable.selectAll().map {
                 SourceDataClass(
-                    it[SourceTable.id].value.toString(),
-                    it[SourceTable.name],
-                    it[SourceTable.lang],
-                    getExtensionIconUrl(ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }.first()[ExtensionTable.apkName]),
-                    getHttpSource(it[SourceTable.id].value).supportsLatest,
-                    getHttpSource(it[SourceTable.id].value) is ConfigurableSource
+                        it[SourceTable.id].value.toString(),
+                        it[SourceTable.name],
+                        it[SourceTable.lang],
+                        getExtensionIconUrl(ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }.first()[ExtensionTable.apkName]),
+                        getHttpSource(it[SourceTable.id].value).supportsLatest,
+                        getHttpSource(it[SourceTable.id].value) is ConfigurableSource
                 )
             }
         }
@@ -46,12 +47,12 @@ object Source {
             val source = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
 
             SourceDataClass(
-                sourceId.toString(),
-                source?.get(SourceTable.name),
-                source?.get(SourceTable.lang),
-                source?.let { ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()[ExtensionTable.iconUrl] },
-                source?.let { getHttpSource(sourceId).supportsLatest },
-                source?.let { getHttpSource(sourceId) is ConfigurableSource },
+                    sourceId.toString(),
+                    source?.get(SourceTable.name),
+                    source?.get(SourceTable.lang),
+                    source?.let { ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()[ExtensionTable.iconUrl] },
+                    source?.let { getHttpSource(sourceId).supportsLatest },
+                    source?.let { getHttpSource(sourceId) is ConfigurableSource },
             )
         }
     }
@@ -59,27 +60,54 @@ object Source {
     private val context by DI.global.instance<CustomContext>()
 
     data class PreferenceObject(
-        val type: String,
-        val props: Any
+            val type: String,
+            val props: Any
     )
 
-    var lastPreferenceScreen: PreferenceScreen? = null
+    var preferenceScreenMap: MutableMap<Long, PreferenceScreen> = mutableMapOf()
 
+    /**
+     *  Gets a source's PreferenceScreen, puts the result into [preferenceScreenMap]
+     */
     fun getSourcePreferences(sourceId: Long): List<PreferenceObject> {
         val source = getHttpSource(sourceId)
 
         if (source is ConfigurableSource) {
             val screen = PreferenceScreen(context)
-            lastPreferenceScreen = screen
 
             source.setupPreferenceScreen(screen)
 
-            screen.preferences.first().callChangeListener("yo")
+            preferenceScreenMap[sourceId] = screen
 
             return screen.preferences.map {
                 PreferenceObject(it::class.java.name, it)
             }
         }
         return emptyList()
+    }
+
+    data class SourcePreferenceChange(
+            val position: Int,
+            val type: String,
+            val value: String
+    )
+
+    fun setSourcePreference(sourceId: Long, change: SourcePreferenceChange ) {
+        val screen = preferenceScreenMap[sourceId]!!
+
+        val newValue = when(change.type) {
+            "String" -> change.value
+            "Int" -> change.value.toInt()
+            "Long" -> change.value.toLong()
+            "Float" -> change.value.toLong()
+            "Double" -> change.value.toDouble()
+            "Boolean" -> change.value.toBoolean()
+            else -> throw RuntimeException("Unsupported type conversion")
+        }
+
+        screen.preferences[change.position].callChangeListener(newValue)
+
+        // must reload the source cache because a preference was changed
+        invalidateSourceCache(sourceId)
     }
 }

@@ -54,4 +54,8 @@ object GetHttpSource {
         }
         return sourceCache[sourceId]!!
     }
+
+    fun invalidateSourceCache(sourceId: Long) {
+        sourceCache.remove(sourceId)
+    }
 }
