@@ -13,7 +13,7 @@ do
   which $dep >/dev/null 2>&1 || { echo >&2 "Error: This script needs $dep installed."; abort=yes; }
 done
 
-if [ $abort = yes ]; then
+if [ "$abort" = yes ]; then
   echo "Some of the dependencies didn't exist. Aborting."
   exit 1
 fi

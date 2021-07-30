@@ -7,15 +7,21 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import androidx.preference.PreferenceScreen
+import eu.kanade.tachiyomi.source.ConfigurableSource
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.kodein.di.DI
+import org.kodein.di.conf.global
+import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.extension.Extension.getExtensionIconUrl
 import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
 import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
+import xyz.nulldev.androidcompat.androidimpl.CustomContext
 
 object Source {
     private val logger = KotlinLogging.logger {}
@@ -28,7 +34,8 @@ object Source {
                     it[SourceTable.name],
                     it[SourceTable.lang],
                     getExtensionIconUrl(ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }.first()[ExtensionTable.apkName]),
-                    getHttpSource(it[SourceTable.id].value).supportsLatest
+                    getHttpSource(it[SourceTable.id].value).supportsLatest,
+                    getHttpSource(it[SourceTable.id].value) is ConfigurableSource
                 )
             }
         }
@@ -43,8 +50,36 @@ object Source {
                 source?.get(SourceTable.name),
                 source?.get(SourceTable.lang),
                 source?.let { ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()[ExtensionTable.iconUrl] },
-                source?.let { getHttpSource(sourceId).supportsLatest }
+                source?.let { getHttpSource(sourceId).supportsLatest },
+                source?.let { getHttpSource(sourceId) is ConfigurableSource },
             )
         }
+    }
+
+    private val context by DI.global.instance<CustomContext>()
+
+    data class PreferenceObject(
+        val type: String,
+        val props: Any
+    )
+
+    var lastPreferenceScreen: PreferenceScreen? = null
+
+    fun getSourcePreferences(sourceId: Long): List<PreferenceObject> {
+        val source = getHttpSource(sourceId)
+
+        if (source is ConfigurableSource) {
+            val screen = PreferenceScreen(context)
+            lastPreferenceScreen = screen
+
+            source.setupPreferenceScreen(screen)
+
+            screen.preferences.first().callChangeListener("yo")
+
+            return screen.preferences.map {
+                PreferenceObject(it::class.java.name, it)
+            }
+        }
+        return emptyList()
     }
 }
