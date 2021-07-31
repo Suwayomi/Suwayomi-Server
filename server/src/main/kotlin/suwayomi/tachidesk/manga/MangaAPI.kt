@@ -28,9 +28,11 @@ import suwayomi.tachidesk.manga.impl.Page.getPageImage
 import suwayomi.tachidesk.manga.impl.Search.sourceFilters
 import suwayomi.tachidesk.manga.impl.Search.sourceGlobalSearch
 import suwayomi.tachidesk.manga.impl.Search.sourceSearch
+import suwayomi.tachidesk.manga.impl.Source.SourcePreferenceChange
 import suwayomi.tachidesk.manga.impl.Source.getSource
 import suwayomi.tachidesk.manga.impl.Source.getSourceList
 import suwayomi.tachidesk.manga.impl.Source.getSourcePreferences
+import suwayomi.tachidesk.manga.impl.Source.setSourcePreference
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.legacy.LegacyBackupExport.createLegacyBackup
 import suwayomi.tachidesk.manga.impl.backup.legacy.LegacyBackupImport.restoreLegacyBackup
@@ -45,7 +47,7 @@ import suwayomi.tachidesk.server.impl.About
 import java.text.SimpleDateFormat
 import java.util.Date
 
-object TachideskAPI {
+object MangaAPI {
     fun defineEndpoints(app: Javalin) {
         // list all extensions
         app.get("/api/v1/extension/list") { ctx ->
@@ -111,9 +113,16 @@ object TachideskAPI {
         }
 
         // fetch preferences of source with id `sourceId`
-        app.get("/api/v1/source/:sourceId/preference-screen") { ctx ->
+        app.get("/api/v1/source/:sourceId/preference") { ctx ->
             val sourceId = ctx.pathParam("sourceId").toLong()
             ctx.json(getSourcePreferences(sourceId))
+        }
+
+        // fetch preferences of source with id `sourceId`
+        app.post("/api/v1/source/:sourceId/preference") { ctx ->
+            val sourceId = ctx.pathParam("sourceId").toLong()
+            val preferenceChange = ctx.bodyAsClass(SourcePreferenceChange::class.java)
+            ctx.json(setSourcePreference(sourceId, preferenceChange))
         }
 
         // popular mangas from source with id `sourceId`
