@@ -59,6 +59,13 @@ object Source {
 
     private val context by DI.global.instance<CustomContext>()
 
+    /**
+     * Clients should support these types for extensions to work properly (in order of importance)
+     * - EditTextPreference
+     * - SwitchPreferenceCompat
+     * - ListPreference
+     * - CheckBoxPreference
+     */
     data class PreferenceObject(
         val type: String,
         val props: Any
