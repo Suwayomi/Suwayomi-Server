@@ -10,7 +10,9 @@ package androidx.preference;
 import android.content.Context;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-/** A minimal implementation of androidx.preference.Preference */
+/**
+ * A minimal implementation of androidx.preference.Preference
+ */
 public class Preference {
     // reference: https://android.googlesource.com/platform/frameworks/support/+/996971f962fcd554339a7cb2859cef9ca89dbcb7/preference/preference/src/main/java/androidx/preference/Preference.java
     // Note: `Preference` doesn't actually hold or persist the value, `OnPreferenceChangeListener` is called and it's up to the extension to persist it.
@@ -34,12 +36,12 @@ public class Preference {
         return context;
     }
 
-    public String getKey() {
-        return key;
+    public void setOnPreferenceChangeListener(OnPreferenceChangeListener onPreferenceChangeListener) {
+        this.onChangeListener = onPreferenceChangeListener;
     }
 
-    public void setKey(String key) {
-        this.key = key;
+    public void setOnPreferenceClickListener(OnPreferenceClickListener onPreferenceClickListener) {
+        throw new RuntimeException("Stub!");
     }
 
     public CharSequence getTitle() {
@@ -58,12 +60,20 @@ public class Preference {
         this.summary = summary;
     }
 
-    public void setDefaultValue(Object defaultValue) {
-        this.defaultValue = defaultValue;
+    public void setEnabled(boolean enabled) {
+        throw new RuntimeException("Stub!");
     }
 
-    public void setOnPreferenceChangeListener(OnPreferenceChangeListener onPreferenceChangeListener) {
-        this.onChangeListener = onPreferenceChangeListener;
+    public String getKey() {
+        return key;
+    }
+
+    public void setKey(String key) {
+        this.key = key;
+    }
+
+    public void setDefaultValue(Object defaultValue) {
+        this.defaultValue = defaultValue;
     }
 
     public boolean callChangeListener(Object newValue) {
@@ -82,4 +92,7 @@ public class Preference {
         boolean onPreferenceChange(Preference preference, Object newValue);
     }
 
+    public interface OnPreferenceClickListener {
+        boolean onPreferenceClick(Preference preference);
+    }
 }

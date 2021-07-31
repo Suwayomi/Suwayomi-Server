@@ -9,10 +9,10 @@ package androidx.preference;
 
 import android.content.Context;
 
-public class CheckBoxPreference extends TwoStatePreference {
+public class SwitchPreferenceCompat extends Preference {
     // reference: https://android.googlesource.com/platform/frameworks/support/+/996971f962fcd554339a7cb2859cef9ca89dbcb7/preference/preference/src/main/java/androidx/preference/CheckBoxPreference.java
 
-    public CheckBoxPreference(Context context) {
+    public SwitchPreferenceCompat(Context context) {
         super(context);
     }
 }

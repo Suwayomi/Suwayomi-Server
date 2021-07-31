@@ -8,7 +8,6 @@ package androidx.preference;
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import android.content.Context;
-import androidx.annotation.ArrayRes;
 
 public class ListPreference extends Preference {
     // reference: https://android.googlesource.com/platform/frameworks/support/+/996971f962fcd554339a7cb2859cef9ca89dbcb7/preference/preference/src/main/java/androidx/preference/ListPreference.java
@@ -28,9 +27,7 @@ public class ListPreference extends Preference {
         this.entries = entries;
     }
 
-    public void setEntries(@ArrayRes int entriesResId) {
-        throw new RuntimeException("Stub!");
-    }
+    public int findIndexOfValue(String value) { throw new RuntimeException("Stub!"); }
 
     public CharSequence[] getEntryValues() {
         return entryValues;
@@ -40,7 +37,9 @@ public class ListPreference extends Preference {
         this.entryValues = entryValues;
     }
 
-    public void setEntryValues(@ArrayRes int entryValuesResId) {
-        throw new RuntimeException("Stub!");
-    }
+    public void setValueIndex(int index) { throw new RuntimeException("Stub!"); }
+
+    public String getValue() { throw new RuntimeException("Stub!"); }
+
+    public void setValue(String value) { throw new RuntimeException("Stub!"); }
 }

@@ -13,34 +13,16 @@ import android.content.Context;
 import android.widget.EditText;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-public class EditTextPreference extends Preference {
+public class EditTextPreference extends DialogPreference {
     // reference: https://android.googlesource.com/platform/frameworks/support/+/996971f962fcd554339a7cb2859cef9ca89dbcb7/preference/preference/src/main/java/androidx/preference/EditTextPreference.java
 
     private String text;
-    private CharSequence dialogTitle;
-    private CharSequence dialogMessage;
 
     @JsonIgnore
     private OnBindEditTextListener onBindEditTextListener;
 
     public EditTextPreference(Context context) {
         super(context);
-    }
-
-    public CharSequence getDialogTitle() {
-        return dialogTitle;
-    }
-
-    public void setDialogTitle(CharSequence dialogTitle) {
-        this.dialogTitle = dialogTitle;
-    }
-
-    public CharSequence getDialogMessage() {
-        return dialogMessage;
-    }
-
-    public void setDialogMessage(CharSequence dialogMessage) {
-        this.dialogMessage = dialogMessage;
     }
 
     public String getText() {
