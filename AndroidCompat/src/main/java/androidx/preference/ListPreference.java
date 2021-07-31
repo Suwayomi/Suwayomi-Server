@@ -42,4 +42,9 @@ public class ListPreference extends Preference {
     public String getValue() { throw new RuntimeException("Stub!"); }
 
     public void setValue(String value) { throw new RuntimeException("Stub!"); }
+
+    @Override
+    public String getDefaultValueType() {
+        return "String";
+    }
 }

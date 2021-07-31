@@ -29,4 +29,9 @@ public class MultiSelectListPreference extends DialogPreference {
     public Set<String> getValues() { throw new RuntimeException("Stub!"); }
 
     public int findIndexOfValue(String value) { throw new RuntimeException("Stub!"); }
+
+    @Override
+    public String getDefaultValueType() {
+        return "Set";
+    }
 }
