@@ -8,6 +8,7 @@ package androidx.preference;
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import android.content.Context;
+import android.text.TextUtils;
 
 public class ListPreference extends Preference {
     // reference: https://android.googlesource.com/platform/frameworks/support/+/996971f962fcd554339a7cb2859cef9ca89dbcb7/preference/preference/src/main/java/androidx/preference/ListPreference.java
@@ -27,7 +28,16 @@ public class ListPreference extends Preference {
         this.entries = entries;
     }
 
-    public int findIndexOfValue(String value) { throw new RuntimeException("Stub!"); }
+    public int findIndexOfValue(String value) {
+        if (value != null && entryValues != null) {
+            for (int i = entryValues.length - 1; i >= 0; i--) {
+                if (TextUtils.equals(entryValues[i].toString(), value)) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
 
     public CharSequence[] getEntryValues() {
         return entryValues;
