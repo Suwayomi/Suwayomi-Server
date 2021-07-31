@@ -26,6 +26,7 @@ interface ISource {
     iconUrl: string
     supportsLatest: boolean
     history: any
+    isConfigurable: boolean
 }
 
 interface IMangaCard {
