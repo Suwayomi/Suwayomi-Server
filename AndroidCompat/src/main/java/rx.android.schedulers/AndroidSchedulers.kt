@@ -1,5 +1,6 @@
 package rx.android.schedulers
 
+import rx.Scheduler
 import rx.internal.schedulers.ImmediateScheduler
 
 class AndroidSchedulers {
@@ -11,6 +12,7 @@ class AndroidSchedulers {
         /**
          * Simulated main thread scheduler
          */
-        fun mainThread() = mainThreadScheduler
+        @JvmStatic
+        fun mainThread(): Scheduler = mainThreadScheduler
     }
 }
