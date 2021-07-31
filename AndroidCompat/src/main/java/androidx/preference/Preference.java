@@ -20,6 +20,7 @@ public class Preference {
 
     private String key;
     private CharSequence title;
+    private CharSequence summary;
     private Object defaultValue;
 
     @JsonIgnore
@@ -41,12 +42,24 @@ public class Preference {
         this.key = key;
     }
 
-    public void setDefaultValue(Object defaultValue) {
-        this.defaultValue = defaultValue;
-    }
-
     public CharSequence getTitle() {
         return title;
+    }
+
+    public void setTitle(CharSequence title) {
+        this.title = title;
+    }
+
+    public CharSequence getSummary() {
+        return summary;
+    }
+
+    public void setSummary(CharSequence summary) {
+        this.summary = summary;
+    }
+
+    public void setDefaultValue(Object defaultValue) {
+        this.defaultValue = defaultValue;
     }
 
     public void setOnPreferenceChangeListener(OnPreferenceChangeListener onPreferenceChangeListener) {
@@ -59,6 +72,10 @@ public class Preference {
 
     public Object getDefaultValue() {
         return defaultValue;
+    }
+
+    public String getDefaultValueType() {
+        return defaultValue.getClass().getSimpleName();
     }
 
     public interface OnPreferenceChangeListener {

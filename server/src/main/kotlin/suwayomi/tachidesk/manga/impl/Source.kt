@@ -31,12 +31,12 @@ object Source {
         return transaction {
             SourceTable.selectAll().map {
                 SourceDataClass(
-                        it[SourceTable.id].value.toString(),
-                        it[SourceTable.name],
-                        it[SourceTable.lang],
-                        getExtensionIconUrl(ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }.first()[ExtensionTable.apkName]),
-                        getHttpSource(it[SourceTable.id].value).supportsLatest,
-                        getHttpSource(it[SourceTable.id].value) is ConfigurableSource
+                    it[SourceTable.id].value.toString(),
+                    it[SourceTable.name],
+                    it[SourceTable.lang],
+                    getExtensionIconUrl(ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }.first()[ExtensionTable.apkName]),
+                    getHttpSource(it[SourceTable.id].value).supportsLatest,
+                    getHttpSource(it[SourceTable.id].value) is ConfigurableSource
                 )
             }
         }
@@ -47,12 +47,12 @@ object Source {
             val source = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
 
             SourceDataClass(
-                    sourceId.toString(),
-                    source?.get(SourceTable.name),
-                    source?.get(SourceTable.lang),
-                    source?.let { ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()[ExtensionTable.iconUrl] },
-                    source?.let { getHttpSource(sourceId).supportsLatest },
-                    source?.let { getHttpSource(sourceId) is ConfigurableSource },
+                sourceId.toString(),
+                source?.get(SourceTable.name),
+                source?.get(SourceTable.lang),
+                source?.let { ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()[ExtensionTable.iconUrl] },
+                source?.let { getHttpSource(sourceId).supportsLatest },
+                source?.let { getHttpSource(sourceId) is ConfigurableSource },
             )
         }
     }
@@ -60,8 +60,8 @@ object Source {
     private val context by DI.global.instance<CustomContext>()
 
     data class PreferenceObject(
-            val type: String,
-            val props: Any
+        val type: String,
+        val props: Any
     )
 
     var preferenceScreenMap: MutableMap<Long, PreferenceScreen> = mutableMapOf()
@@ -80,22 +80,22 @@ object Source {
             preferenceScreenMap[sourceId] = screen
 
             return screen.preferences.map {
-                PreferenceObject(it::class.java.name, it)
+                PreferenceObject(it::class.java.simpleName, it)
             }
         }
         return emptyList()
     }
 
     data class SourcePreferenceChange(
-            val position: Int,
-            val type: String,
-            val value: String
+        val position: Int,
+        val value: String
     )
 
-    fun setSourcePreference(sourceId: Long, change: SourcePreferenceChange ) {
+    fun setSourcePreference(sourceId: Long, change: SourcePreferenceChange) {
         val screen = preferenceScreenMap[sourceId]!!
+        val pref = screen.preferences[change.position]
 
-        val newValue = when(change.type) {
+        val newValue = when (pref.defaultValueType) {
             "String" -> change.value
             "Int" -> change.value.toInt()
             "Long" -> change.value.toLong()
@@ -105,7 +105,7 @@ object Source {
             else -> throw RuntimeException("Unsupported type conversion")
         }
 
-        screen.preferences[change.position].callChangeListener(newValue)
+        pref.callChangeListener(newValue)
 
         // must reload the source cache because a preference was changed
         invalidateSourceCache(sourceId)

@@ -113,13 +113,13 @@ object MangaAPI {
         }
 
         // fetch preferences of source with id `sourceId`
-        app.get("/api/v1/source/:sourceId/preference") { ctx ->
+        app.get("/api/v1/source/:sourceId/preferences") { ctx ->
             val sourceId = ctx.pathParam("sourceId").toLong()
             ctx.json(getSourcePreferences(sourceId))
         }
 
         // fetch preferences of source with id `sourceId`
-        app.post("/api/v1/source/:sourceId/preference") { ctx ->
+        app.post("/api/v1/source/:sourceId/preferences") { ctx ->
             val sourceId = ctx.pathParam("sourceId").toLong()
             val preferenceChange = ctx.bodyAsClass(SourcePreferenceChange::class.java)
             ctx.json(setSourcePreference(sourceId, preferenceChange))
