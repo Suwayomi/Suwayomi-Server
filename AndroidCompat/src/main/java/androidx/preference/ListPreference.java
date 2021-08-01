@@ -53,6 +53,7 @@ public class ListPreference extends Preference {
 
     public void setValue(String value) { throw new RuntimeException("Stub!"); }
 
+    /** Tachidesk specific API */
     @Override
     public String getDefaultValueType() {
         return "String";

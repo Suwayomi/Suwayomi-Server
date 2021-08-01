@@ -45,6 +45,7 @@ public class EditTextPreference extends DialogPreference {
         void onBindEditText(@NonNull EditText editText);
     }
 
+    /** Tachidesk specific API */
     @Override
     public String getDefaultValueType() {
         return "String";

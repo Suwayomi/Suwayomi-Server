@@ -13,7 +13,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class PreferenceScreen extends Preference {
-    // Tachidesk API
+    /** Tachidesk specific API */
     private List<Preference> preferences = new LinkedList<>();
 
     public PreferenceScreen(Context context) {
@@ -26,7 +26,7 @@ public class PreferenceScreen extends Preference {
         return true;
     }
 
-    // Tachidesk API
+    /** Tachidesk specific API */
     public List<Preference> getPreferences(){
         return preferences;
     }

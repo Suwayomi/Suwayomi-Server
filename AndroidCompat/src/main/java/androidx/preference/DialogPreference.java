@@ -30,5 +30,4 @@ public abstract class DialogPreference extends Preference {
     public void setDialogMessage(CharSequence dialogMessage) {
         this.dialogMessage = dialogMessage;
     }
-
 }

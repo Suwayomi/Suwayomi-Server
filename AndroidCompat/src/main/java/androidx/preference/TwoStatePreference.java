@@ -29,6 +29,7 @@ public class TwoStatePreference extends Preference {
 
     public void setDisableDependentsState(boolean disableDependentsState) { throw new RuntimeException("Stub!"); }
 
+    /** Tachidesk specific API */
     @Override
     public String getDefaultValueType() {
         return "Boolean";

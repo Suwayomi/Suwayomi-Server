@@ -30,6 +30,7 @@ public class MultiSelectListPreference extends DialogPreference {
 
     public int findIndexOfValue(String value) { throw new RuntimeException("Stub!"); }
 
+    /** Tachidesk specific API */
     @Override
     public String getDefaultValueType() {
         return "Set";
