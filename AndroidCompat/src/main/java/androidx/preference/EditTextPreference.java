@@ -44,4 +44,9 @@ public class EditTextPreference extends DialogPreference {
     public interface OnBindEditTextListener {
         void onBindEditText(@NonNull EditText editText);
     }
+
+    @Override
+    public String getDefaultValueType() {
+        return "String";
+    }
 }
