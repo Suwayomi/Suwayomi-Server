@@ -9,9 +9,11 @@ package androidx.preference;
 
 import android.content.Context;
 import android.text.TextUtils;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class ListPreference extends Preference {
     // reference: https://android.googlesource.com/platform/frameworks/support/+/996971f962fcd554339a7cb2859cef9ca89dbcb7/preference/preference/src/main/java/androidx/preference/ListPreference.java
+    // Note: remove @JsonIgnore and implement methods if any extension ever uses these methods or the variables behind them
 
     private CharSequence[] entries;
     private CharSequence[] entryValues;
@@ -47,10 +49,13 @@ public class ListPreference extends Preference {
         this.entryValues = entryValues;
     }
 
+    @JsonIgnore
     public void setValueIndex(int index) { throw new RuntimeException("Stub!"); }
 
+    @JsonIgnore
     public String getValue() { throw new RuntimeException("Stub!"); }
 
+    @JsonIgnore
     public void setValue(String value) { throw new RuntimeException("Stub!"); }
 
     /** Tachidesk specific API */
