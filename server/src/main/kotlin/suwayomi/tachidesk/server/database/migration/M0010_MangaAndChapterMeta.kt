@@ -1,12 +1,12 @@
 package suwayomi.tachidesk.server.database.migration
 
+import de.neonew.exposed.migrations.Migration
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
-import suwayomi.tachidesk.server.database.migration.lib.Migration
 
 /*
  * Copyright (C) Contributors to the Suwayomi project

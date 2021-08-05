@@ -7,12 +7,12 @@ package suwayomi.tachidesk.server.database.migration
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import de.neonew.exposed.migrations.Migration
 import eu.kanade.tachiyomi.source.model.SManga
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.server.database.migration.lib.Migration
 
 @Suppress("ClassName", "unused")
 class M0001_Initial : Migration() {

@@ -44,9 +44,14 @@ dependencies {
     // current database driver
     implementation("com.h2database:h2:1.4.200")
 
+    // Exposed Migrations
+    val exposedMigrationsVersion = "5611dbec5a"
+    implementation("com.github.Suwayomi:exposed-migrations:$exposedMigrationsVersion")
+
     // tray icon
     implementation("com.dorkbox:SystemTray:4.1")
     implementation("com.dorkbox:Utilities:1.9")
+
 
 
     // dependencies of Tachiyomi extensions, some are duplicate, keeping it here for reference

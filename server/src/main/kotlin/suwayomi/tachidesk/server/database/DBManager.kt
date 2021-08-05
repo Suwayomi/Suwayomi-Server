@@ -7,13 +7,14 @@ package suwayomi.tachidesk.server.database
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import de.neonew.exposed.migrations.loadMigrationsFrom
+import de.neonew.exposed.migrations.runMigrations
 import org.jetbrains.exposed.sql.Database
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.server.ApplicationDirs
-import suwayomi.tachidesk.server.database.migration.lib.loadMigrationsFrom
-import suwayomi.tachidesk.server.database.migration.lib.runMigrations
+import suwayomi.tachidesk.server.ServerConfig
 
 object DBManager {
     val db by lazy {
@@ -27,6 +28,6 @@ fun databaseUp() {
     val db = DBManager.db
     db.useNestedTransactions = true
 
-    val migrations = loadMigrationsFrom("suwayomi.tachidesk.server.database.migration")
+    val migrations = loadMigrationsFrom("suwayomi.tachidesk.server.database.migration", ServerConfig::class.java)
     runMigrations(migrations)
 }

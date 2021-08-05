@@ -7,9 +7,9 @@ package suwayomi.tachidesk.server.database.migration
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import de.neonew.exposed.migrations.Migration
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.vendors.currentDialect
-import suwayomi.tachidesk.server.database.migration.lib.Migration
 
 @Suppress("ClassName", "unused")
 class M0009_ChapterLastReadAt : Migration() {
