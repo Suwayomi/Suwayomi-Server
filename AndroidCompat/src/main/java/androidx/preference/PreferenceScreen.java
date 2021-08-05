@@ -21,6 +21,9 @@ public class PreferenceScreen extends Preference {
     }
 
     public boolean addPreference(Preference preference) {
+        // propagate own shared preferences
+        preference.setSharedPreferences(getSharedPreferences());
+
         preferences.add(preference);
 
         return true;

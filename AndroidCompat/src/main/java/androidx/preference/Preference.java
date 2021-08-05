@@ -8,6 +8,7 @@ package androidx.preference;
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
@@ -24,6 +25,10 @@ public class Preference {
     private CharSequence title;
     private CharSequence summary;
     private Object defaultValue;
+
+    /** Tachidesk specific API */
+    @JsonIgnore
+    private SharedPreferences sharedPreferences;
 
     @JsonIgnore
     public OnPreferenceChangeListener onChangeListener;
@@ -89,11 +94,47 @@ public class Preference {
         return defaultValue.getClass().getSimpleName();
     }
 
+    /** Tachidesk specific API */
+    public SharedPreferences getSharedPreferences() {
+        return sharedPreferences;
+    }
+
+    /** Tachidesk specific API */
+    public void setSharedPreferences(SharedPreferences sharedPreferences) {
+        this.sharedPreferences = sharedPreferences;
+    }
+
     public interface OnPreferenceChangeListener {
         boolean onPreferenceChange(Preference preference, Object newValue);
     }
 
     public interface OnPreferenceClickListener {
         boolean onPreferenceClick(Preference preference);
+    }
+
+    /** Tachidesk specific API */
+    public Object getCurrentValue() {
+        switch (getDefaultValueType()) {
+            case "String":
+                return sharedPreferences.getString(key, (String)defaultValue);
+            case "Boolean":
+                return sharedPreferences.getBoolean(key, (Boolean)defaultValue);
+            default:
+                throw new RuntimeException("Unsupported type");
+        }
+    }
+
+    /** Tachidesk specific API */
+    public void saveNewValue(Object value) {
+        switch (getDefaultValueType()) {
+            case "String":
+                sharedPreferences.edit().putString(key, (String)value).apply();
+                break;
+            case "Boolean":
+                sharedPreferences.edit().putBoolean(key, (Boolean)value).apply();
+                break;
+            default:
+                throw new RuntimeException("Unsupported type");
+        }
     }
 }

@@ -7,8 +7,11 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.app.Application
+import android.content.Context
 import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.source.ConfigurableSource
+import eu.kanade.tachiyomi.source.getPreferenceKey
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
@@ -22,6 +25,8 @@ import suwayomi.tachidesk.manga.impl.util.GetHttpSource.invalidateSourceCache
 import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import xyz.nulldev.androidcompat.androidimpl.CustomContext
 
 object Source {
@@ -80,7 +85,10 @@ object Source {
         val source = getHttpSource(sourceId)
 
         if (source is ConfigurableSource) {
+            val sourceShardPreferences = Injekt.get<Application>().getSharedPreferences(source.getPreferenceKey(), Context.MODE_PRIVATE)
+
             val screen = PreferenceScreen(context)
+            screen.sharedPreferences = sourceShardPreferences
 
             source.setupPreferenceScreen(screen)
 
@@ -112,6 +120,7 @@ object Source {
             else -> throw RuntimeException("Unsupported type conversion")
         }
 
+        pref.saveNewValue(newValue)
         pref.callChangeListener(newValue)
 
         // must reload the source cache because a preference was changed
