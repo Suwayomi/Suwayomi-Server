@@ -15,7 +15,7 @@ Write-Output "Getting required Android.jar..."
 Remove-Item -Recurse -Force "tmp" -ErrorAction SilentlyContinue | Out-Null
 New-Item -ItemType Directory -Force -Path "tmp" | Out-Null
 
-$androidEncoded = (Invoke-WebRequest -Uri "https://android.googlesource.com/platform/prebuilts/sdk/+/3b8a524d25fa6c3d795afb1eece3f24870c60988/27/public/android.jar?format=TEXT" -UseBasicParsing).content
+$androidEncoded = (Invoke-WebRequest -Uri "https://android.googlesource.com/platform/prebuilts/sdk/+/6cd31be5e4e25901aadf838120d71a79b46d9add/30/public/android.jar?format=TEXT" -UseBasicParsing).content
 
 $android_jar = (Get-Location).Path + "\tmp\android.jar"
 
