@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.server.impl
+package suwayomi.tachidesk.global.impl
 
 /*
  * Copyright (C) Contributors to the Suwayomi project

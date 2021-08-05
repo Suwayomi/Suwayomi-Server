@@ -43,7 +43,6 @@ import suwayomi.tachidesk.manga.impl.extension.Extension.uninstallExtension
 import suwayomi.tachidesk.manga.impl.extension.Extension.updateExtension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList.getExtensionList
 import suwayomi.tachidesk.server.JavalinSetup.future
-import suwayomi.tachidesk.server.impl.About
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -89,7 +88,7 @@ object MangaAPI {
         }
 
         // icon for extension named `apkName`
-        app.get("/api/v1/extension/icon/:apkName") { ctx -> // TODO: move to pkgName
+        app.get("/api/v1/extension/icon/:apkName") { ctx ->
             val apkName = ctx.pathParam("apkName")
 
             ctx.result(
@@ -328,11 +327,6 @@ object MangaAPI {
             val name = ctx.formParam("name")!!
             Category.createCategory(name)
             ctx.status(200)
-        }
-
-        // returns some static info of the current app build
-        app.get("/api/v1/about/") { ctx ->
-            ctx.json(About.getAbout())
         }
 
         // category modification

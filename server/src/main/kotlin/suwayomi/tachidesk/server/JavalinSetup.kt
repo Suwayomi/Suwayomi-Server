@@ -14,6 +14,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.future.future
 import mu.KotlinLogging
 import suwayomi.tachidesk.anime.AnimeAPI
+import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.manga.MangaAPI
 import suwayomi.tachidesk.server.util.Browser
 import java.io.IOException
@@ -75,6 +76,7 @@ object JavalinSetup {
             ctx.result(e.message ?: "Internal Server Error")
         }
 
+        GlobalAPI.defineEndpoints(app)
         MangaAPI.defineEndpoints(app)
         AnimeAPI.defineEndpoints(app)
     }

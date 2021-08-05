@@ -50,7 +50,7 @@ object Source {
                 sourceId.toString(),
                 source?.get(SourceTable.name),
                 source?.get(SourceTable.lang),
-                source?.let { ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()[ExtensionTable.iconUrl] },
+                source?.let { getExtensionIconUrl(ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()[ExtensionTable.apkName]) },
                 source?.let { getHttpSource(sourceId).supportsLatest },
                 source?.let { getHttpSource(sourceId) is ConfigurableSource },
             )
