@@ -112,10 +112,6 @@ object Source {
 
         val newValue = when (pref.defaultValueType) {
             "String" -> change.value
-            "Int" -> change.value.toInt()
-            "Long" -> change.value.toLong()
-            "Float" -> change.value.toLong()
-            "Double" -> change.value.toDouble()
             "Boolean" -> change.value.toBoolean()
             else -> throw RuntimeException("Unsupported type conversion")
         }
