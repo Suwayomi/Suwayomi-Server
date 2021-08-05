@@ -22,16 +22,16 @@ data class UpdateDataClass(
 )
 
 object AppUpdate {
-    const val LATEST_RELEASE_URL = "https://api.github.com/repos/Suwayomi/Tachidesk/releases/latest"
-    const val LATEST_PREVIEW_URL = "https://api.github.com/repos/Suwayomi/Tachidesk-preview/releases/latest"
+    private const val LATEST_STABLE_URL = "https://api.github.com/repos/Suwayomi/Tachidesk/releases/latest"
+    private const val LATEST_PREVIEW_URL = "https://api.github.com/repos/Suwayomi/Tachidesk-preview/releases/latest"
 
     private val json: Json by injectLazy()
     private val network: NetworkHelper by injectLazy()
 
     suspend fun checkUpdate(): List<UpdateDataClass> {
-        val releaseJson = json.parseToJsonElement(
+        val stableJson = json.parseToJsonElement(
             network.client.newCall(
-                GET(LATEST_RELEASE_URL)
+                GET(LATEST_STABLE_URL)
             ).await().body!!.string()
         ).jsonObject
 
@@ -43,9 +43,9 @@ object AppUpdate {
 
         return listOf(
             UpdateDataClass(
-                "Release",
-                releaseJson["tag_name"]!!.jsonPrimitive.content,
-                releaseJson["html_url"]!!.jsonPrimitive.content,
+                "Stable",
+                stableJson["tag_name"]!!.jsonPrimitive.content,
+                stableJson["html_url"]!!.jsonPrimitive.content,
             ),
             UpdateDataClass(
                 "Preview",
