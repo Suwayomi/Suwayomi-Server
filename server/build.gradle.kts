@@ -112,7 +112,7 @@ val tachideskRevision = runCatching {
 
 buildConfig {
     clsName = "BuildConfig"
-    packageName = "suwayomi.server"
+    packageName = "suwayomi.tachidesk.server"
 
 
     buildConfigField("String", "NAME", rootProject.name)

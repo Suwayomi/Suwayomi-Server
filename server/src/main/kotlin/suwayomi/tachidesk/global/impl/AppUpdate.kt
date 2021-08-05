@@ -16,14 +16,15 @@ import uy.kohesive.injekt.injectLazy
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 data class UpdateDataClass(
+    /** [channel] mirrors [suwayomi.tachidesk.server.BuildConfig.BUILD_TYPE] */
     val channel: String,
     val tag: String,
     val url: String
 )
 
 object AppUpdate {
-    private const val LATEST_STABLE_URL = "https://api.github.com/repos/Suwayomi/Tachidesk/releases/latest"
-    private const val LATEST_PREVIEW_URL = "https://api.github.com/repos/Suwayomi/Tachidesk-preview/releases/latest"
+    private const val LATEST_STABLE_CHANNEL_URL = "https://api.github.com/repos/Suwayomi/Tachidesk/releases/latest"
+    private const val LATEST_PREVIEW_CHANNEL_URL = "https://api.github.com/repos/Suwayomi/Tachidesk-preview/releases/latest"
 
     private val json: Json by injectLazy()
     private val network: NetworkHelper by injectLazy()
@@ -31,13 +32,13 @@ object AppUpdate {
     suspend fun checkUpdate(): List<UpdateDataClass> {
         val stableJson = json.parseToJsonElement(
             network.client.newCall(
-                GET(LATEST_STABLE_URL)
+                GET(LATEST_STABLE_CHANNEL_URL)
             ).await().body!!.string()
         ).jsonObject
 
         val previewJson = json.parseToJsonElement(
             network.client.newCall(
-                GET(LATEST_PREVIEW_URL)
+                GET(LATEST_PREVIEW_CHANNEL_URL)
             ).await().body!!.string()
         ).jsonObject
 
