@@ -26,7 +26,7 @@ export default function About() {
     useEffect(() => { setTitle('About'); setAction(<></>); }, []);
 
     useEffect(() => {
-        client.get('/api/v1/about')
+        client.get('/api/v1/settings/about')
             .then((response) => response.data)
             .then((data:IAbout) => {
                 setAbout(data);

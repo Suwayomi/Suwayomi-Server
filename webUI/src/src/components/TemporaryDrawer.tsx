@@ -95,7 +95,7 @@ export default function TemporaryDrawer({ drawerOpen, setDrawerOpen }: IProps) {
                                 <ListItemIcon>
                                     <GetAppIcon />
                                 </ListItemIcon>
-                                <ListItemText primary="Downloadsz" />
+                                <ListItemText primary="Downloads" />
                             </ListItem>
                         </Link>
                         <Link to="/settings" style={{ color: 'inherit', textDecoration: 'none' }}>
