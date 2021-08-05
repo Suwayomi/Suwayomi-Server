@@ -36,7 +36,7 @@ object AppMutex {
             .build()
 
         val request = Builder()
-            .url("http://$appIP:${serverConfig.port}/api/v1/about/")
+            .url("http://$appIP:${serverConfig.port}/api/v1/settings/about/")
             .build()
 
         val response = try {
