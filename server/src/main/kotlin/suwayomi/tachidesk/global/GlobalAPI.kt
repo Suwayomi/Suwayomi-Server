@@ -2,6 +2,8 @@ package suwayomi.tachidesk.global
 
 import io.javalin.Javalin
 import suwayomi.tachidesk.global.impl.About
+import suwayomi.tachidesk.global.impl.AppUpdate
+import suwayomi.tachidesk.server.JavalinSetup
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -17,9 +19,12 @@ object GlobalAPI {
             ctx.json(About.getAbout())
         }
 
-        // TODO: app update check api
+        // check for app updates
         app.get("/api/v1/settings/check-update/") { ctx ->
-            ctx.json(About.getAbout())
+
+            ctx.json(
+                JavalinSetup.future { AppUpdate.checkUpdate() }
+            )
         }
     }
 }
