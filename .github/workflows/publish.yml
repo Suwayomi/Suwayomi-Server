@@ -51,21 +51,14 @@ jobs:
           cd master
           curl https://raw.githubusercontent.com/Suwayomi/Tachidesk/android-jar/android.jar -o AndroidCompat/lib/android.jar
 
-      - name: Cache node_modules
-        uses: actions/cache@v2
-        with:
-          path: |
-            **/webUI/node_modules
-          key: ${{ runner.os }}-${{ hashFiles('**/webUI/yarn.lock') }}
-
-      - name: Build and copy webUI, Build Jar
+      - name: Build Jar
         uses: eskatos/gradle-command-action@v1
         env:
           ProductBuildType: "Stable"
         with:
           build-root-directory: master
           wrapper-directory: master
-          arguments: :webUI:copyBuild :server:shadowJar --stacktrace
+          arguments: :server:shadowJar --stacktrace
           wrapper-cache-enabled: true
           dependencies-cache-enabled: true
           configuration-cache-enabled: true
@@ -81,7 +74,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "master/server/build/*.jar;master/server/build/*.zip"
+          file: "master/server/build/*.jar"
           tags: true
           draft: true
           verbose: true

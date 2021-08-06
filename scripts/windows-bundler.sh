@@ -6,16 +6,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-electron_version="v12.0.9"
-
 if [ $1 = "win32" ]; then
   jre="OpenJDK8U-jre_x86-32_windows_hotspot_8u292b10.zip"
   arch="win32"
-  electron="electron-$electron_version-win32-ia32.zip"
 else
   jre="OpenJDK8U-jre_x64_windows_hotspot_8u292b10.zip"
   arch="win64"
-  electron="electron-$electron_version-win32-x64.zip"
 fi
 
 jre_dir="jdk8u292-b10-jre"
@@ -38,37 +34,10 @@ fi
 unzip $jre
 mv $jre_dir $release_name/jre
 
-echo "Dealing with electron"
-if [ ! -f $electron ]; then
-  curl -L "https://github.com/electron/electron/releases/download/$electron_version/$electron" -o $electron
-fi
-unzip $electron -d $release_name/electron
-
-# change electron's icon
-rcedit="rcedit-x86.exe"
-if [ ! -f $rcedit ]; then
-  curl -L "https://github.com/electron/rcedit/releases/download/v1.1.1/$rcedit" -o $rcedit
-fi
-
-# check if running under github actions
-if [ $CI = true ]; then
-  # change electron executable's icon
-  sudo dpkg --add-architecture i386
-  wget -qO - https://dl.winehq.org/wine-builds/winehq.key | sudo apt-key add -
-  sudo add-apt-repository ppa:cybermax-dexter/sdl2-backport
-  sudo apt-add-repository "deb https://dl.winehq.org/wine-builds/ubuntu $(lsb_release -cs) main"
-  sudo apt install --install-recommends winehq-stable
-fi
-# this script assumes that wine is installed here on out
-
-WINEARCH=win32 wine $rcedit $release_name/electron/electron.exe --set-icon ../server/src/main/resources/icon/faviconlogo.ico
-
 # copy artifacts
 cp $jar $release_name/Tachidesk.jar
-#cp "resources/Tachidesk Launcher-$arch.exe" "$release_name/Tachidesk Launcher.exe"
-cp "resources/Tachidesk Browser Launcher.bat" $release_name
+cp "resources/Tachidesk Launcher.bat" $release_name
 cp "resources/Tachidesk Debug Launcher.bat" $release_name
-cp "resources/Tachidesk Electron Launcher.bat" $release_name
 
 zip_name=$release_name.zip
 zip -9 -r $zip_name $release_name
