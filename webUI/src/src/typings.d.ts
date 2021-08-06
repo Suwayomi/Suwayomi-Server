@@ -168,3 +168,21 @@ interface IQueue {
     status: 'Stopped' | 'Started'
     queue: IDownloadChapter[]
 }
+
+interface SourcePreferences {
+    type: string
+    props: any
+}
+
+interface PreferenceProps {
+    key: string
+    title: string
+    summary: string
+    defaultValue: any
+    currentValue: any
+    defaultValueType: string
+}
+
+interface CheckBoxPreferenceProps extends PreferenceProps {
+
+}
