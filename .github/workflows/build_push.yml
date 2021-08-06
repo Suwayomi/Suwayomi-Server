@@ -118,7 +118,7 @@ jobs:
           token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
           artifacts: "master/server/build/*.jar,master/server/build/*.zip"
           owner: "Suwayomi"
-          repo: "Tachidesk-preview"
+          repo: "Tachidesk-Server-preview"
           tag: ${{ steps.GenTagName.outputs.value }}
 
       - name: Run Docker build workflow
