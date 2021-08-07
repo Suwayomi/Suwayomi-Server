@@ -7,14 +7,13 @@ package suwayomi.tachidesk.server.database.migration
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import de.neonew.exposed.migrations.Migration
+import de.neonew.exposed.migrations.helpers.AddTableMigration
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import org.jetbrains.exposed.dao.id.IntIdTable
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.Table
 
 @Suppress("ClassName", "unused")
-class M0005_AnimeTablesBatch2 : Migration() {
+class M0005_AnimeTablesBatch2 : AddTableMigration() {
     private class AnimeTable : IntIdTable() {
         val url = varchar("url", 2048)
         val title = varchar("title", 512)
@@ -36,11 +35,8 @@ class M0005_AnimeTablesBatch2 : Migration() {
         val sourceReference = long("source")
     }
 
-    override fun run() {
-        transaction {
-            SchemaUtils.create(
-                AnimeTable()
-            )
-        }
-    }
+    override val tables: Array<Table>
+        get() = arrayOf(
+            AnimeTable()
+        )
 }

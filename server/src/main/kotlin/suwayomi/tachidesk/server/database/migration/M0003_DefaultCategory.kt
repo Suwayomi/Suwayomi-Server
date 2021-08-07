@@ -7,18 +7,11 @@ package suwayomi.tachidesk.server.database.migration
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import de.neonew.exposed.migrations.Migration
-import org.jetbrains.exposed.sql.transactions.TransactionManager
-import org.jetbrains.exposed.sql.vendors.currentDialect
+import de.neonew.exposed.migrations.helpers.RenameFieldMigration
 
 @Suppress("ClassName", "unused")
-class M0003_DefaultCategory : Migration() {
-    /** this migration renamed CategoryTable.IS_LANDING to ChapterTable.IS_DEFAULT */
-    override fun run() {
-        with(TransactionManager.current()) {
-            exec("ALTER TABLE CATEGORY ALTER COLUMN IS_LANDING RENAME TO IS_DEFAULT")
-            commit()
-            currentDialect.resetCaches()
-        }
-    }
-}
+class M0003_DefaultCategory : RenameFieldMigration(
+    "Category",
+    "is_landing",
+    "is_default"
+)

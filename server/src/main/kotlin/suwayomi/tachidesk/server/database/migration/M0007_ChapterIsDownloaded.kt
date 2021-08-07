@@ -7,18 +7,12 @@ package suwayomi.tachidesk.server.database.migration
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import de.neonew.exposed.migrations.Migration
-import org.jetbrains.exposed.sql.transactions.TransactionManager
-import org.jetbrains.exposed.sql.vendors.currentDialect
+import de.neonew.exposed.migrations.helpers.AddColumnMigration
 
 @Suppress("ClassName", "unused")
-class M0007_ChapterIsDownloaded : Migration() {
-    /** this migration added IS_DOWNLOADED to CHAPTER */
-    override fun run() {
-        with(TransactionManager.current()) {
-            exec("ALTER TABLE CHAPTER ADD COLUMN IS_DOWNLOADED BOOLEAN DEFAULT FALSE")
-            commit()
-            currentDialect.resetCaches()
-        }
-    }
-}
+class M0007_ChapterIsDownloaded : AddColumnMigration(
+    "Chapter",
+    "is_downloaded",
+    "BOOLEAN",
+    "FALSE"
+)
