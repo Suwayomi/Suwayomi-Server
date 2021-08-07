@@ -16,6 +16,7 @@ import mu.KotlinLogging
 import suwayomi.tachidesk.anime.AnimeAPI
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.manga.MangaAPI
+import suwayomi.tachidesk.server.util.Browser
 import java.io.IOException
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
@@ -30,8 +31,28 @@ object JavalinSetup {
     }
 
     fun javalinSetup() {
+        var hasWebUiBundled = false
+
         val app = Javalin.create { config ->
+            try {
+                // if the bellow line throws an exception then webUI is not bundled
+                this::class.java.getResource("/webUI/index.html")
+
+                // no exception so we can tell javalin to serve webUI
+                hasWebUiBundled = true
+                config.addStaticFiles("/webUI")
+                config.addSinglePageRoot("/", "/webUI/index.html")
+            } catch (e: RuntimeException) {
+                logger.warn("react build files are missing.")
+                hasWebUiBundled = false
+            }
             config.enableCorsForAllOrigins()
+        }.events { event ->
+            event.serverStarted {
+                if (hasWebUiBundled && serverConfig.initialOpenInBrowserEnabled) {
+                    Browser.openInBrowser()
+                }
+            }
         }.start(serverConfig.ip, serverConfig.port)
 
         // when JVM is prompted to shutdown, stop javalin gracefully

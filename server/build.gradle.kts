@@ -172,6 +172,7 @@ tasks {
 
     named<Copy>("processResources") {
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
+        mustRunAfter(":webUI:copyBuild")
     }
 
     withType<LintTask> {
