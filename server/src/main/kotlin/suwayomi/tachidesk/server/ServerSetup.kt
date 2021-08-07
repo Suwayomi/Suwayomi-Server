@@ -22,6 +22,7 @@ import xyz.nulldev.ts.config.ApplicationRootDir
 import xyz.nulldev.ts.config.ConfigKodeinModule
 import xyz.nulldev.ts.config.GlobalConfigManager
 import java.io.File
+import java.util.Locale
 
 private val logger = KotlinLogging.logger {}
 
@@ -94,6 +95,8 @@ fun applicationSetup() {
         logger.error("Exception while creating initial server.conf:\n", e)
     }
 
+    // fixes #119 , ref: https://github.com/Suwayomi/Tachidesk-Server/issues/119#issuecomment-894681292
+    Locale.setDefault(Locale.ENGLISH)
     databaseUp()
 
     // create system tray
