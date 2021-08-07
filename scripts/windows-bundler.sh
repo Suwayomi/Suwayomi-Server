@@ -65,7 +65,6 @@ WINEARCH=win32 wine $rcedit $release_name/electron/electron.exe --set-icon ../se
 
 # copy artifacts
 cp $jar $release_name/Tachidesk.jar
-#cp "resources/Tachidesk Launcher-$arch.exe" "$release_name/Tachidesk Launcher.exe"
 cp "resources/Tachidesk Browser Launcher.bat" $release_name
 cp "resources/Tachidesk Debug Launcher.bat" $release_name
 cp "resources/Tachidesk Electron Launcher.bat" $release_name
