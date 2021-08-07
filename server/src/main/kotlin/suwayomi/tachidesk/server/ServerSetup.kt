@@ -97,6 +97,7 @@ fun applicationSetup() {
 
     // fixes #119 , ref: https://github.com/Suwayomi/Tachidesk-Server/issues/119#issuecomment-894681292
     Locale.setDefault(Locale.ENGLISH)
+
     databaseUp()
 
     // create system tray

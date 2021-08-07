@@ -13,7 +13,6 @@ import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Table
 
-
 @Suppress("ClassName", "unused")
 /** initial migration, create all tables */
 class M0001_Initial : AddTableMigration() {
