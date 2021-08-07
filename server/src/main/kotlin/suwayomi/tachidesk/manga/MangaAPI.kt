@@ -202,7 +202,7 @@ object MangaAPI {
             ctx.json(future { getChapterList(mangaId, onlineFetch) })
         }
 
-        // used to modify a manga's meta paramaters
+        // used to modify a manga's meta parameters
         app.patch("/api/v1/manga/:mangaId/meta") { ctx ->
             val mangaId = ctx.pathParam("mangaId").toInt()
 
@@ -236,7 +236,7 @@ object MangaAPI {
             ctx.status(200)
         }
 
-        // used to modify a chapter's meta paramaters
+        // used to modify a chapter's meta parameters
         app.patch("/api/v1/manga/:mangaId/chapter/:chapterIndex/meta") { ctx ->
             val chapterIndex = ctx.pathParam("chapterIndex").toInt()
             val mangaId = ctx.pathParam("mangaId").toInt()
