@@ -13,6 +13,7 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 
+@Suppress("ClassName", "unused")
 class M0005_AnimeTablesBatch2 : Migration() {
     private class AnimeTable : IntIdTable() {
         val url = varchar("url", 2048)

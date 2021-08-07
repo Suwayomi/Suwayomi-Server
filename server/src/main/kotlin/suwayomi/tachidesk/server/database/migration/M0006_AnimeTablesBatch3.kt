@@ -13,6 +13,7 @@ import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.anime.model.table.AnimeTable
 
+@Suppress("ClassName", "unused")
 class M0006_AnimeTablesBatch3 : Migration() {
     private class EpisodeTable : IntIdTable() {
         val url = varchar("url", 2048)

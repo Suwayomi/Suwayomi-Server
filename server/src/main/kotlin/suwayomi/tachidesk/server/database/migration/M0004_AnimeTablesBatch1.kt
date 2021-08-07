@@ -13,6 +13,7 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 
+@Suppress("ClassName", "unused")
 class M0004_AnimeTablesBatch1 : Migration() {
     private class AnimeExtensionTable : IntIdTable() {
         val apkName = varchar("apk_name", 1024)
