@@ -92,7 +92,7 @@ jobs:
       - name: Checkout preview branch
         uses: actions/checkout@v2
         with:
-          repository: 'Suwayomi/Tachidesk-preview'
+          repository: 'Suwayomi/Tachidesk-Server-preview'
           ref: main
           path: preview
           token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
