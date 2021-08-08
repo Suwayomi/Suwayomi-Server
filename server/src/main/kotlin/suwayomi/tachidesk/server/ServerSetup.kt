@@ -33,6 +33,7 @@ class ApplicationDirs(
     val mangaThumbnailsRoot = "$dataRoot/manga-thumbnails"
     val animeThumbnailsRoot = "$dataRoot/anime-thumbnails"
     val mangaRoot = "$dataRoot/manga"
+    val webUIRoot = "$dataRoot/webUI"
 }
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }

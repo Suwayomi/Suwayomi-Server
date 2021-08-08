@@ -8,21 +8,28 @@ package suwayomi.tachidesk.server
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.javalin.Javalin
+import io.javalin.http.staticfiles.Location
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.future.future
 import mu.KotlinLogging
+import org.kodein.di.DI
+import org.kodein.di.conf.global
+import org.kodein.di.instance
 import suwayomi.tachidesk.anime.AnimeAPI
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.manga.MangaAPI
 import suwayomi.tachidesk.server.util.Browser
+import suwayomi.tachidesk.server.util.setupWebUI
 import java.io.IOException
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
 
 object JavalinSetup {
     private val logger = KotlinLogging.logger {}
+
+    private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -31,25 +38,19 @@ object JavalinSetup {
     }
 
     fun javalinSetup() {
-        var hasWebUiBundled = false
-
         val app = Javalin.create { config ->
-            try {
-                // if the bellow line throws an exception then webUI is not bundled
-                this::class.java.getResource("/webUI/index.html")
+            if (serverConfig.webUIEnabled) {
+                setupWebUI()
 
-                // no exception so we can tell javalin to serve webUI
-                hasWebUiBundled = true
-                config.addStaticFiles("/webUI")
-                config.addSinglePageRoot("/", "/webUI/index.html")
-            } catch (e: RuntimeException) {
-                logger.warn("react build files are missing.")
-                hasWebUiBundled = false
+                logger.info { "Serving webUI static files" }
+                config.addStaticFiles(applicationDirs.webUIRoot, Location.EXTERNAL)
+                config.addSinglePageRoot("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
             }
+
             config.enableCorsForAllOrigins()
         }.events { event ->
             event.serverStarted {
-                if (hasWebUiBundled && serverConfig.initialOpenInBrowserEnabled) {
+                if (serverConfig.webUIEnabled && serverConfig.initialOpenInBrowserEnabled) {
                     Browser.openInBrowser()
                 }
             }

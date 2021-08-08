@@ -66,6 +66,9 @@ dependencies {
     // asm for fixing SimpleDateFormat (must match Dex2Jar version)
     implementation("org.ow2.asm:asm-debug-all:5.0.3")
 
+    // extracting zip files
+    implementation("net.lingala.zip4j:zip4j:2.9.0")
+
     // Source models and interfaces from Tachiyomi 1.x
     // using source class from tachiyomi commit 9493577de27c40ce8b2b6122cc447d025e34c477 to not depend on tachiyomi.sourceapi
 //    implementation("tachiyomi.sourceapi:source-api:1.1")
@@ -99,6 +102,7 @@ sourceSets {
 
 // should be bumped with each stable release
 val tachideskVersion = System.getenv("ProductVersion") ?: "v0.4.3"
+val webUIRevisionTag = System.getenv("WebUIRevision") ?: "r19"
 
 // counts commit count on master
 val tachideskRevision = runCatching {
@@ -125,6 +129,11 @@ buildConfig {
     buildConfigField("String", "REVISION", tachideskRevision)
     buildConfigField("String", "BUILD_TYPE", if (System.getenv("ProductBuildType") == "Stable") "Stable" else "Preview")
     buildConfigField("long", "BUILD_TIME", Instant.now().epochSecond.toString())
+
+
+    buildConfigField("String", "WEBUI_REPO", "https://github.com/Suwayomi/Tachidesk-WebUI-preview")
+    buildConfigField("String", "WEBUI_TAG", webUIRevisionTag)
+
 
     buildConfigField("String", "GITHUB", "https://github.com/Suwayomi/Tachidesk")
     buildConfigField("String", "DISCORD", "https://discord.gg/DDZdqZWaHA")
