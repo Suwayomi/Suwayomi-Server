@@ -17,7 +17,8 @@ class ServerConfig(config: Config) : ConfigModule(config) {
     val ip: String by config
     val port: Int by config
 
-    val webUIEnabled: Boolean by config
+    val webUIEnabled: Boolean = System.getProperty(
+            "suwayomi.tachidesk.server.webUIEnabled",config.getString("webUIEnabled")).toBoolean()
 
     // proxy
     val socksProxyEnabled: Boolean by config
