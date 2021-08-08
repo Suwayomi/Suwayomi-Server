@@ -1,4 +1,4 @@
-rootProject.name = System.getenv("ProductName") ?: "Tachidesk"
+rootProject.name = System.getenv("ProductName") ?: "Tachidesk-Server"
 
 include("server")
 
