@@ -65,7 +65,7 @@ jobs:
         with:
           build-root-directory: master
           wrapper-directory: master
-          arguments: :webUI:copyBuild :server:shadowJar --stacktrace
+          arguments: :server:downloadWebUI :server:shadowJar --stacktrace
           wrapper-cache-enabled: true
           dependencies-cache-enabled: true
           configuration-cache-enabled: true

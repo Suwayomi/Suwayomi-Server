@@ -181,6 +181,12 @@ tasks {
 
     named<Copy>("processResources") {
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
+        mustRunAfter("downloadWebUI")
+    }
+
+    register<de.undercouch.gradle.tasks.download.Download>("downloadWebUI") {
+        src("https://github.com/Suwayomi/Tachidesk-WebUI-preview/releases/download/$webUIRevisionTag/Tachidesk-WebUI-$webUIRevisionTag.zip")
+        dest("src/main/resources/WebUI.zip")
     }
 
     withType<LintTask> {

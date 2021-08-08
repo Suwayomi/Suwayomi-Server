@@ -53,40 +53,56 @@ fun setupWebUI() {
     } else {
         File(applicationDirs.webUIRoot).deleteRecursively()
 
-        // download webUI zip
         val webUIZip = "Tachidesk-WebUI-${BuildConfig.WEBUI_TAG}.zip"
         val webUIZipPath = "$tmpDir/$webUIZip"
-        val webUIZipURL = "${BuildConfig.WEBUI_REPO}/releases/download/${BuildConfig.WEBUI_TAG}/$webUIZip"
         val webUIZipFile = File(webUIZipPath)
-        webUIZipFile.delete()
 
-        logger.info { "Downloading WebUI zip from the Internet..." }
-        val data = ByteArray(1024)
+        // try with resources first
+        val resourceWebUI = try {
+            BuildConfig::class.java.getResourceAsStream("/WebUI.zip")
+        } catch (e: NullPointerException) { null }
 
-        webUIZipFile.outputStream().use { webUIZipFileOut ->
-            BufferedInputStream(URL(webUIZipURL).openStream()).use { inp ->
-                var totalCount = 0
-                var tresh = 0
-                while (true) {
-                    val count = inp.read(data, 0, 1024)
-                    totalCount += count
-                    if (totalCount > tresh + 10 * 1024) {
-                        tresh = totalCount
-                        print(" *")
+        if (resourceWebUI == null) { // is not bundled
+            // download webUI zip
+            val webUIZipURL = "${BuildConfig.WEBUI_REPO}/releases/download/${BuildConfig.WEBUI_TAG}/$webUIZip"
+            webUIZipFile.delete()
+
+            logger.info { "Downloading WebUI zip from the Internet..." }
+            val data = ByteArray(1024)
+
+            webUIZipFile.outputStream().use { webUIZipFileOut ->
+                BufferedInputStream(URL(webUIZipURL).openStream()).use { inp ->
+                    var totalCount = 0
+                    var tresh = 0
+                    while (true) {
+                        val count = inp.read(data, 0, 1024)
+                        totalCount += count
+                        if (totalCount > tresh + 10 * 1024) {
+                            tresh = totalCount
+                            print(" *")
+                        }
+                        if (count == -1)
+                            break
+                        webUIZipFileOut.write(data, 0, count)
                     }
-                    if (count == -1)
-                        break
-                    webUIZipFileOut.write(data, 0, count)
+                    println()
+                    logger.info { "Downloading WebUI Done." }
                 }
-                println()
-                logger.info { "Downloading WebUI Done." }
+            }
+        } else {
+            logger.info { "Using the bundled WebUI zip..." }
+
+            resourceWebUI.use { input ->
+                webUIZipFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
             }
         }
 
         // extract webUI zip
-        logger.info { "Extracting downloaded WebUI zip..." }
+        logger.info { "Extracting WebUI zip..." }
         File(applicationDirs.webUIRoot).mkdirs()
         ZipFile(webUIZipPath).extractAll(applicationDirs.webUIRoot)
-        logger.info { "Extracting downloaded WebUI zip Done." }
+        logger.info { "Extracting WebUI zip Done." }
     }
 }
