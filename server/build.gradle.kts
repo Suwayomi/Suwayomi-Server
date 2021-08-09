@@ -102,7 +102,7 @@ sourceSets {
 
 // should be bumped with each stable release
 val tachideskVersion = System.getenv("ProductVersion") ?: "v0.4.4"
-val webUIRevisionTag = System.getenv("WebUIRevision") ?: "r20"
+val webUIRevisionTag = System.getenv("WebUIRevision") ?: "r21"
 
 // counts commit count on master
 val tachideskRevision = runCatching {
