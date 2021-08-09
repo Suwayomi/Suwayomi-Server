@@ -10,19 +10,19 @@ package suwayomi.tachidesk.global.controller
 import io.javalin.http.Context
 import suwayomi.tachidesk.global.impl.About
 import suwayomi.tachidesk.global.impl.AppUpdate
-import suwayomi.tachidesk.server.JavalinSetup
+import suwayomi.tachidesk.server.JavalinSetup.future
 
 /** Settings Page/Screen */
 object SettingsController {
     /** returns some static info about the current app build */
-    fun about(ctx: Context): Context {
-        return ctx.json(About.getAbout())
+    fun about(ctx: Context) {
+        ctx.json(About.getAbout())
     }
 
     /** check for app updates */
-    fun checkUpdate(ctx: Context): Context {
-        return ctx.json(
-            JavalinSetup.future { AppUpdate.checkUpdate() }
+    fun checkUpdate(ctx: Context) {
+        ctx.json(
+            future { AppUpdate.checkUpdate() }
         )
     }
 }

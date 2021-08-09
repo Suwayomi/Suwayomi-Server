@@ -8,6 +8,7 @@ package suwayomi.tachidesk.server
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.javalin.Javalin
+import io.javalin.apibuilder.ApiBuilder.path
 import io.javalin.http.staticfiles.Location
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -77,8 +78,12 @@ object JavalinSetup {
             ctx.result(e.message ?: "Internal Server Error")
         }
 
-        GlobalAPI.defineEndpoints(app)
-        MangaAPI.defineEndpoints(app)
-        AnimeAPI.defineEndpoints(app)
+        app.routes {
+            path("api/v1/") {
+                GlobalAPI.defineEndpoints()
+                MangaAPI.defineEndpoints(app)
+                AnimeAPI.defineEndpoints(app) // TODO: migrate Anime endpoints
+            }
+        }
     }
 }
