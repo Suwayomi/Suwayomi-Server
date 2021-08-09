@@ -1,1 +1,1 @@
-jre\bin\java -Dsuwayomi.tachidesk.server.debugLogsEnabled=true -jar  Tachidesk.jar
+jre\bin\java -Dsuwayomi.tachidesk.config.server.debugLogsEnabled=true -jar  Tachidesk.jar
