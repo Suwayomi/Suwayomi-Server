@@ -74,7 +74,7 @@ jobs:
         id: GenTagName
         run: |
           cd master/server/build
-          genTag=$(ls *.jar | sed -e's/Tachidesk-Server\|.jar//g')
+          genTag=$(ls *.jar | sed -e's/Tachidesk-Server-\|.jar//g')
           echo "$genTag"
           echo "::set-output name=value::$genTag"
 
