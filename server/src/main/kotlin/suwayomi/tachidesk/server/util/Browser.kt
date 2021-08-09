@@ -17,12 +17,9 @@ object Browser {
     private val electronInstances = mutableListOf<Any>()
 
     fun openInBrowser() {
-
-        val openInElectron = System.getProperty("suwayomi.tachidesk.server.webInterface")?.equals("electron")
-
-        if (openInElectron == true) {
+        if (serverConfig.webUIBrowser == ("electron")) {
             try {
-                val electronPath = System.getProperty("suwayomi.tachidesk.server.electronPath")!!
+                val electronPath = serverConfig.electronPath
                 electronInstances.add(ProcessBuilder(electronPath, appBaseUrl).start())
             } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
                 e.printStackTrace()
