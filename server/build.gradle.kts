@@ -172,7 +172,6 @@ tasks {
 
     withType<ShadowJar> {
         destinationDirectory.set(File("$rootDir/server/build"))
-        dependsOn("formatKotlin", "lintKotlin")
     }
 
     named("run") {
