@@ -50,7 +50,7 @@ object JavalinSetup {
             config.enableCorsForAllOrigins()
         }.events { event ->
             event.serverStarted {
-                if (serverConfig.webUIEnabled && serverConfig.initialOpenInBrowserEnabled) {
+                if (serverConfig.initialOpenInBrowserEnabled) {
                     Browser.openInBrowser()
                 }
             }

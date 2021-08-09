@@ -17,18 +17,20 @@ object Browser {
     private val electronInstances = mutableListOf<Any>()
 
     fun openInBrowser() {
-        if (serverConfig.webUIBrowser == ("electron")) {
-            try {
-                val electronPath = serverConfig.electronPath
-                electronInstances.add(ProcessBuilder(electronPath, appBaseUrl).start())
-            } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
-                e.printStackTrace()
-            }
-        } else {
-            try {
-                Desktop.browseURL(appBaseUrl)
-            } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
-                e.printStackTrace()
+        if (serverConfig.webUIEnabled) {
+            if (serverConfig.webUIBrowser == ("electron")) {
+                try {
+                    val electronPath = serverConfig.electronPath
+                    electronInstances.add(ProcessBuilder(electronPath, appBaseUrl).start())
+                } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
+                    e.printStackTrace()
+                }
+            } else {
+                try {
+                    Desktop.browseURL(appBaseUrl)
+                } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
+                    e.printStackTrace()
+                }
             }
         }
     }

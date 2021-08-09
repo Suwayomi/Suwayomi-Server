@@ -22,7 +22,6 @@ class SystemPropertyOverrideDelegate(val config: Config, val moduleName: String)
     inline operator fun <R, reified T> getValue(thisRef: R, property: KProperty<*>): T {
         val configValue: T = config.getValue(thisRef, property)
 
-        println("getting " + "suwayomi.tachidesk.config.$moduleName.${property.name}")
         val combined = System.getProperty(
             "suwayomi.tachidesk.config.$moduleName.${property.name}",
             configValue.toString()
