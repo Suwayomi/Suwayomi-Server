@@ -7,18 +7,12 @@ package suwayomi.tachidesk.server.database.migration
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import org.jetbrains.exposed.sql.transactions.TransactionManager
-import org.jetbrains.exposed.sql.vendors.currentDialect
-import suwayomi.tachidesk.server.database.migration.lib.Migration
+import de.neonew.exposed.migrations.helpers.AddColumnMigration
 
 @Suppress("ClassName", "unused")
-class M0008_ChapterPageCount : Migration() {
-    /** this migration added PAGE_COUNT to CHAPTER */
-    override fun run() {
-        with(TransactionManager.current()) {
-            exec("ALTER TABLE CHAPTER ADD COLUMN PAGE_COUNT INT DEFAULT -1")
-            commit()
-            currentDialect.resetCaches()
-        }
-    }
-}
+class M0008_ChapterPageCount : AddColumnMigration(
+    "Chapter",
+    "page_count",
+    "INT",
+    "-1"
+)

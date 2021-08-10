@@ -43,7 +43,7 @@ configure(projects) {
         // Kotlin
         implementation(kotlin("stdlib-jdk8"))
         implementation(kotlin("reflect"))
-        testImplementation(kotlin("test"))
+        testImplementation(kotlin("test-junit5"))
 
         // coroutines
         val coroutinesVersion = "1.4.3"
@@ -84,5 +84,8 @@ configure(projects) {
 
         // APK parser
         implementation("net.dongliu:apk-parser:2.6.10")
+
+        // Jackson
+        implementation("com.fasterxml.jackson.core:jackson-annotations:2.10.3")
     }
 }

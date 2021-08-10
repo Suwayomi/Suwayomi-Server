@@ -233,7 +233,7 @@ public class JsonSharedPreferences implements SharedPreferences {
         private JsonSharedPreferencesEditor() {
         }
 
-        private void recordChange(String key) {
+        private void  recordChange(String key) {
             if (!affectedKeys.contains(key)) {
                 affectedKeys.add(key);
             }

@@ -55,13 +55,13 @@ fun MangaTable.toDataClass(mangaEntry: ResultRow) =
         meta = getMangaMetaMap(mangaEntry[id])
     )
 
-enum class MangaStatus(val status: Int) {
+enum class MangaStatus(val value: Int) {
     UNKNOWN(0),
     ONGOING(1),
     COMPLETED(2),
     LICENSED(3);
 
     companion object {
-        fun valueOf(value: Int): MangaStatus = values().find { it.status == value } ?: UNKNOWN
+        fun valueOf(value: Int): MangaStatus = values().find { it.value == value } ?: UNKNOWN
     }
 }

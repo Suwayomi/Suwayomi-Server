@@ -20,8 +20,8 @@ import suwayomi.tachidesk.manga.impl.util.network.UnzippingInterceptor
 import uy.kohesive.injekt.injectLazy
 
 object ExtensionGithubApi {
-    const val BASE_URL = "https://raw.githubusercontent.com"
-    const val REPO_URL_PREFIX = "$BASE_URL/jmir1/tachiyomi-extensions/repo"
+    private const val BASE_URL = "https://raw.githubusercontent.com"
+    private const val REPO_URL_PREFIX = "$BASE_URL/jmir1/tachiyomi-extensions/repo"
 
     private fun parseResponse(json: JsonArray): List<OnlineExtension> {
         return json
@@ -68,7 +68,7 @@ object ExtensionGithubApi {
             .build()
     }
 
-    private fun getRepo(): com.google.gson.JsonArray {
+    private fun getRepo(): JsonArray {
         val request = Request.Builder()
             .url("$REPO_URL_PREFIX/index.json.gz")
             .build()

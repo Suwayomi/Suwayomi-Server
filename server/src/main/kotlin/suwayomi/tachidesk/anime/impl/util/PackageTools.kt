@@ -22,6 +22,7 @@ import org.kodein.di.conf.global
 import org.kodein.di.instance
 import org.w3c.dom.Element
 import org.w3c.dom.Node
+import suwayomi.tachidesk.manga.impl.util.BytecodeEditor
 import suwayomi.tachidesk.server.ApplicationDirs
 import xyz.nulldev.androidcompat.pm.InstalledPackage.Companion.toList
 import xyz.nulldev.androidcompat.pm.toPackageInfo
@@ -80,6 +81,8 @@ object PackageTools {
                 """.trimIndent()
             )
             handler.dump(errorFile, emptyArray<String>())
+        } else {
+            BytecodeEditor.fixAndroidClasses(jarFilePath.toFile())
         }
     }
 

@@ -81,6 +81,8 @@ object PackageTools {
                 """.trimIndent()
             )
             handler.dump(errorFile, emptyArray<String>())
+        } else {
+            BytecodeEditor.fixAndroidClasses(jarFilePath.toFile())
         }
     }
 
@@ -95,7 +97,7 @@ object PackageTools {
                 dBuilder.parse(it)
             }
 
-            logger.debug(parsed.manifestXml)
+            logger.trace(parsed.manifestXml)
 
             applicationInfo.metaData = Bundle().apply {
                 val appTag = doc.getElementsByTagName("application").item(0)

@@ -1,19 +1,19 @@
 package suwayomi.tachidesk.server.database.migration
 
-import org.jetbrains.exposed.dao.id.IntIdTable
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.anime.model.table.AnimeTable
-import suwayomi.tachidesk.server.database.migration.lib.Migration
-
 /*
  * Copyright (C) Contributors to the Suwayomi project
- * 
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-class M0006_AnimeTablesBatch3 : Migration() {
+import de.neonew.exposed.migrations.helpers.AddTableMigration
+import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.Table
+import suwayomi.tachidesk.anime.model.table.AnimeTable
+
+@Suppress("ClassName", "unused")
+class M0006_AnimeTablesBatch3 : AddTableMigration() {
     private class EpisodeTable : IntIdTable() {
         val url = varchar("url", 2048)
         val name = varchar("name", 512)
@@ -31,11 +31,8 @@ class M0006_AnimeTablesBatch3 : Migration() {
         val anime = reference("anime", AnimeTable)
     }
 
-    override fun run() {
-        transaction {
-            SchemaUtils.create(
-                EpisodeTable()
-            )
-        }
-    }
+    override val tables: Array<Table>
+        get() = arrayOf(
+            EpisodeTable()
+        )
 }

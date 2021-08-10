@@ -13,7 +13,6 @@ import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.conf.global
 import org.kodein.di.singleton
-import suwayomi.server.BuildConfig
 import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
 import suwayomi.tachidesk.server.util.SystemTray.systemTray
@@ -23,6 +22,7 @@ import xyz.nulldev.ts.config.ApplicationRootDir
 import xyz.nulldev.ts.config.ConfigKodeinModule
 import xyz.nulldev.ts.config.GlobalConfigManager
 import java.io.File
+import java.util.Locale
 
 private val logger = KotlinLogging.logger {}
 
@@ -33,6 +33,7 @@ class ApplicationDirs(
     val mangaThumbnailsRoot = "$dataRoot/manga-thumbnails"
     val animeThumbnailsRoot = "$dataRoot/anime-thumbnails"
     val mangaRoot = "$dataRoot/manga"
+    val webUIRoot = "$dataRoot/webUI"
 }
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
@@ -46,11 +47,14 @@ fun applicationSetup() {
 
     // Application dirs
     val applicationDirs = ApplicationDirs()
+
     DI.global.addImport(
         DI.Module("Server") {
             bind<ApplicationDirs>() with singleton { applicationDirs }
         }
     )
+
+    logger.debug("Data Root directory is set to: ${applicationDirs.dataRoot}")
 
     // make dirs we need
     listOf(
@@ -91,6 +95,9 @@ fun applicationSetup() {
     } catch (e: Exception) {
         logger.error("Exception while creating initial server.conf:\n", e)
     }
+
+    // fixes #119 , ref: https://github.com/Suwayomi/Tachidesk-Server/issues/119#issuecomment-894681292
+    Locale.setDefault(Locale.ENGLISH)
 
     databaseUp()
 

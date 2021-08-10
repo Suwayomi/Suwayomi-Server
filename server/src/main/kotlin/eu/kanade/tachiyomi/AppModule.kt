@@ -18,6 +18,7 @@ import com.google.gson.Gson
 // import eu.kanade.tachiyomi.data.track.TrackManager
 // import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.network.NetworkHelper
+import kotlinx.serialization.json.Json
 import rx.Observable
 import rx.schedulers.Schedulers
 import uy.kohesive.injekt.api.InjektModule
@@ -53,6 +54,8 @@ class AppModule(val app: Application) : InjektModule {
 //        addSingletonFactory { LibrarySyncManager(app) }
 
         addSingletonFactory { Gson() }
+
+        addSingletonFactory { Json { ignoreUnknownKeys = true } }
 
         // Asynchronously init expensive components for a faster cold start
 

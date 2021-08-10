@@ -8,26 +8,31 @@ package suwayomi.tachidesk.server
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import com.typesafe.config.Config
-import io.github.config4k.getValue
 import xyz.nulldev.ts.config.ConfigModule
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.debugLogsEnabled
 
-class ServerConfig(config: Config) : ConfigModule(config) {
-    val ip: String by config
-    val port: Int by config
+class ServerConfig(config: Config, moduleName: String = "") : ConfigModule(config, moduleName) {
+    val ip: String by overridableWithSysProperty
+    val port: Int by overridableWithSysProperty
 
     // proxy
-    val socksProxyEnabled: Boolean by config
-    val socksProxyHost: String by config
-    val socksProxyPort: String by config
+    val socksProxyEnabled: Boolean by overridableWithSysProperty
+
+    val socksProxyHost: String by overridableWithSysProperty
+    val socksProxyPort: String by overridableWithSysProperty
 
     // misc
     val debugLogsEnabled: Boolean = debugLogsEnabled(GlobalConfigManager.config)
-    val systemTrayEnabled: Boolean by config
-    val initialOpenInBrowserEnabled: Boolean by config
+    val systemTrayEnabled: Boolean by overridableWithSysProperty
+
+    // webUI
+    val webUIEnabled: Boolean by overridableWithSysProperty
+    val initialOpenInBrowserEnabled: Boolean by overridableWithSysProperty
+    val webUIBrowser: String by overridableWithSysProperty
+    val electronPath: String by overridableWithSysProperty
 
     companion object {
-        fun register(config: Config) = ServerConfig(config.getConfig("server"))
+        fun register(config: Config) = ServerConfig(config.getConfig("server"), "server")
     }
 }

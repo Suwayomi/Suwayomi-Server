@@ -7,15 +7,15 @@ package suwayomi.tachidesk.server.database.migration
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import de.neonew.exposed.migrations.helpers.AddTableMigration
 import eu.kanade.tachiyomi.source.model.SManga
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.id.IntIdTable
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.server.database.migration.lib.Migration
+import org.jetbrains.exposed.sql.Table
 
 @Suppress("ClassName", "unused")
-class M0001_Initial : Migration() {
+/** initial migration, create all tables */
+class M0001_Initial : AddTableMigration() {
     private class ExtensionTable : IntIdTable() {
         init {
             varchar("apk_name", 1024)
@@ -111,9 +111,8 @@ class M0001_Initial : Migration() {
         }
     }
 
-    /** initial migration, create all tables */
-    override fun run() {
-        transaction {
+    override val tables: Array<Table>
+        get() {
             val extensionTable = ExtensionTable()
             val sourceTable = SourceTable(extensionTable)
             val mangaTable = MangaTable()
@@ -121,7 +120,8 @@ class M0001_Initial : Migration() {
             val pageTable = PageTable(chapterTable)
             val categoryTable = CategoryTable()
             val categoryMangaTable = CategoryMangaTable(categoryTable, mangaTable)
-            SchemaUtils.create(
+
+            return arrayOf(
                 extensionTable,
                 sourceTable,
                 mangaTable,
@@ -131,5 +131,4 @@ class M0001_Initial : Migration() {
                 categoryMangaTable,
             )
         }
-    }
 }

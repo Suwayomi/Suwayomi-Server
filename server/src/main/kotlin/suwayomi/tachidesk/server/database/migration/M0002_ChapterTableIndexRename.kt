@@ -7,18 +7,11 @@ package suwayomi.tachidesk.server.database.migration
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import org.jetbrains.exposed.sql.transactions.TransactionManager
-import org.jetbrains.exposed.sql.vendors.currentDialect
-import suwayomi.tachidesk.server.database.migration.lib.Migration
+import de.neonew.exposed.migrations.helpers.RenameFieldMigration
 
 @Suppress("ClassName", "unused")
-class M0002_ChapterTableIndexRename : Migration() {
-    /** this migration renamed ChapterTable.NUMBER_IN_LIST to ChapterTable.INDEX */
-    override fun run() {
-        with(TransactionManager.current()) {
-            exec("ALTER TABLE CHAPTER ALTER COLUMN NUMBER_IN_LIST RENAME TO INDEX")
-            commit()
-            currentDialect.resetCaches()
-        }
-    }
-}
+class M0002_ChapterTableIndexRename : RenameFieldMigration(
+    "Chapter",
+    "number_in_list",
+    "index"
+)

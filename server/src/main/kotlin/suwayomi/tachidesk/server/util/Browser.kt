@@ -17,21 +17,20 @@ object Browser {
     private val electronInstances = mutableListOf<Any>()
 
     fun openInBrowser() {
-
-        val openInElectron = System.getProperty("suwayomi.tachidesk.server.webInterface")?.equals("electron")
-
-        if (openInElectron == true) {
-            try {
-                val electronPath = System.getProperty("suwayomi.tachidesk.server.electronPath")!!
-                electronInstances.add(ProcessBuilder(electronPath, appBaseUrl).start())
-            } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
-                e.printStackTrace()
-            }
-        } else {
-            try {
-                Desktop.browseURL(appBaseUrl)
-            } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
-                e.printStackTrace()
+        if (serverConfig.webUIEnabled) {
+            if (serverConfig.webUIBrowser == ("electron")) {
+                try {
+                    val electronPath = serverConfig.electronPath
+                    electronInstances.add(ProcessBuilder(electronPath, appBaseUrl).start())
+                } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
+                    e.printStackTrace()
+                }
+            } else {
+                try {
+                    Desktop.browseURL(appBaseUrl)
+                } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
+                    e.printStackTrace()
+                }
             }
         }
     }

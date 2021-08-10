@@ -50,10 +50,9 @@ import java.util.Map;
 /**
  * Custom context implementation.
  *
- * TODO Deal with packagemanager for extension sources
  */
 public class CustomContext extends Context implements DIAware {
-    private DI kodein;
+    private final DI kodein;
     public CustomContext() {
         this(KodeinGlobalHelper.kodein());
     }
@@ -733,5 +732,4 @@ public class CustomContext extends Context implements DIAware {
         return null;
     }
 }
-
 

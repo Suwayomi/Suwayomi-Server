@@ -44,9 +44,14 @@ dependencies {
     // current database driver
     implementation("com.h2database:h2:1.4.200")
 
+    // Exposed Migrations
+    val exposedMigrationsVersion = "3.1.0"
+    implementation("com.github.Suwayomi:exposed-migrations:$exposedMigrationsVersion")
+
     // tray icon
     implementation("com.dorkbox:SystemTray:4.1")
     implementation("com.dorkbox:Utilities:1.9")
+
 
 
     // dependencies of Tachiyomi extensions, some are duplicate, keeping it here for reference
@@ -58,6 +63,12 @@ dependencies {
     implementation("com.github.salomonbrys.kotson:kotson:2.5.0")
 
 
+    // asm for fixing SimpleDateFormat (must match Dex2Jar version)
+    implementation("org.ow2.asm:asm-debug-all:5.0.3")
+
+    // extracting zip files
+    implementation("net.lingala.zip4j:zip4j:2.9.0")
+
     // Source models and interfaces from Tachiyomi 1.x
     // using source class from tachiyomi commit 9493577de27c40ce8b2b6122cc447d025e34c477 to not depend on tachiyomi.sourceapi
 //    implementation("tachiyomi.sourceapi:source-api:1.1")
@@ -68,9 +79,6 @@ dependencies {
 
     // uncomment to test extensions directly
 //    implementation(fileTree("lib/"))
-
-    // Testing
-    testImplementation(kotlin("test-junit5"))
 }
 
 val MainClass = "suwayomi.tachidesk.MainKt"
@@ -93,7 +101,8 @@ sourceSets {
 }
 
 // should be bumped with each stable release
-val tachideskVersion = System.getenv("ProductVersion") ?: "v0.4.2"
+val tachideskVersion = System.getenv("ProductVersion") ?: "v0.4.4"
+val webUIRevisionTag = System.getenv("WebUIRevision") ?: "r22"
 
 // counts commit count on master
 val tachideskRevision = runCatching {
@@ -112,7 +121,7 @@ val tachideskRevision = runCatching {
 
 buildConfig {
     clsName = "BuildConfig"
-    packageName = "suwayomi.server"
+    packageName = "suwayomi.tachidesk.server"
 
 
     buildConfigField("String", "NAME", rootProject.name)
@@ -120,6 +129,11 @@ buildConfig {
     buildConfigField("String", "REVISION", tachideskRevision)
     buildConfigField("String", "BUILD_TYPE", if (System.getenv("ProductBuildType") == "Stable") "Stable" else "Preview")
     buildConfigField("long", "BUILD_TIME", Instant.now().epochSecond.toString())
+
+
+    buildConfigField("String", "WEBUI_REPO", "https://github.com/Suwayomi/Tachidesk-WebUI-preview")
+    buildConfigField("String", "WEBUI_TAG", webUIRevisionTag)
+
 
     buildConfigField("String", "GITHUB", "https://github.com/Suwayomi/Tachidesk")
     buildConfigField("String", "DISCORD", "https://discord.gg/DDZdqZWaHA")
@@ -158,7 +172,6 @@ tasks {
 
     withType<ShadowJar> {
         destinationDirectory.set(File("$rootDir/server/build"))
-        dependsOn("formatKotlin", "lintKotlin")
     }
 
     named("run") {
@@ -167,7 +180,12 @@ tasks {
 
     named<Copy>("processResources") {
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
-        mustRunAfter(":webUI:copyBuild")
+        mustRunAfter("downloadWebUI")
+    }
+
+    register<de.undercouch.gradle.tasks.download.Download>("downloadWebUI") {
+        src("https://github.com/Suwayomi/Tachidesk-WebUI-preview/releases/download/$webUIRevisionTag/Tachidesk-WebUI-$webUIRevisionTag.zip")
+        dest("src/main/resources/WebUI.zip")
     }
 
     withType<LintTask> {

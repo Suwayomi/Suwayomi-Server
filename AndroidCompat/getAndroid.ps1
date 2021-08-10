@@ -15,7 +15,7 @@ Write-Output "Getting required Android.jar..."
 Remove-Item -Recurse -Force "tmp" -ErrorAction SilentlyContinue | Out-Null
 New-Item -ItemType Directory -Force -Path "tmp" | Out-Null
 
-$androidEncoded = (Invoke-WebRequest -Uri "https://android.googlesource.com/platform/prebuilts/sdk/+/3b8a524d25fa6c3d795afb1eece3f24870c60988/27/public/android.jar?format=TEXT" -UseBasicParsing).content
+$androidEncoded = (Invoke-WebRequest -Uri "https://android.googlesource.com/platform/prebuilts/sdk/+/6cd31be5e4e25901aadf838120d71a79b46d9add/30/public/android.jar?format=TEXT" -UseBasicParsing).content
 
 $android_jar = (Get-Location).Path + "\tmp\android.jar"
 
@@ -24,7 +24,7 @@ $android_jar = (Get-Location).Path + "\tmp\android.jar"
 # We need to remove any stub classes that we have implementations for
 Write-Output "Patching JAR..."
 
-function Remove-Files-Zip($zipfile, $path)
+function Remove-Files-Zip($zipfile, $paths)
 {
     [Reflection.Assembly]::LoadWithPartialName('System.IO.Compression') | Out-Null
 
@@ -32,7 +32,18 @@ function Remove-Files-Zip($zipfile, $path)
     $mode   = [IO.Compression.ZipArchiveMode]::Update
     $zip    = New-Object IO.Compression.ZipArchive($stream, $mode)
 
-    ($zip.Entries | Where-Object { $_.FullName -like $path }) | ForEach-Object { Write-Output "Deleting: $($_.FullName)"; $_.Delete() }
+    if ($paths.getType().Name -eq "Object[]")
+    {
+        $paths | ForEach-Object {
+            $path = $_
+            ($zip.Entries | Where-Object { $_.FullName -like $path }) | ForEach-Object { Write-Output "Deleting: $($_.FullName)"; $_.Delete() }
+        }
+    }
+    else
+    {
+        ($zip.Entries | Where-Object { $_.FullName -like $paths }) | ForEach-Object { Write-Output "Deleting: $($_.FullName)"; $_.Delete() }
+    }
+
 
     $zip.Dispose()
     $stream.Close()
@@ -78,10 +89,7 @@ function Dedupe($path)
     $classes = Get-ChildItem . *.* -Recurse | Where-Object { !$_.PSIsContainer }
     $classes | ForEach-Object {
         "Processing class: $($_.FullName)"
-        Remove-Files-Zip $android_jar "$($_.Name).class" | Out-Null
-        Remove-Files-Zip $android_jar "$($_.Name)$*.class" | Out-Null
-        Remove-Files-Zip $android_jar "$($_.Name)Kt.class" | Out-Null
-        Remove-Files-Zip $android_jar "$($_.Name)Kt$*.class" | Out-Null
+        Remove-Files-Zip $android_jar ("$($_.Name).class","$($_.Name)$*.class","$($_.Name)Kt.class","$($_.Name)Kt$*.class") | Out-Null
     }
     Pop-Location
 }
