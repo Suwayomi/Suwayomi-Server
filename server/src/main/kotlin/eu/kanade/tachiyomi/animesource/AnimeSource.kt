@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.animesource
 
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.animesource.model.SEpisode
+import eu.kanade.tachiyomi.animesource.model.Video
 import rx.Observable
 
 /**
@@ -18,6 +19,9 @@ interface AnimeSource {
      * Name of the source.
      */
     val name: String
+
+    val lang: String
+        get() = ""
 
     /**
      * Returns an observable with the updated details for a anime.
@@ -36,12 +40,12 @@ interface AnimeSource {
     fun fetchEpisodeList(anime: SAnime): Observable<List<SEpisode>>
 
     /**
-     * Returns an observable with a link for the episode of an anime.
+     * Returns an observable with a list of video for the episode of an anime.
      *
      * @param episode the episode to get the link for.
      */
 //    @Deprecated("Use getEpisodeList instead")
-    fun fetchEpisodeLink(episode: SEpisode): Observable<String>
+    fun fetchVideoList(episode: SEpisode): Observable<List<Video>>
 
 //    /**
 //     * [1.x API] Get the updated details for a anime.
@@ -74,4 +78,4 @@ interface AnimeSource {
 
 // fun AnimeSource.icon(): Drawable? = Injekt.get<AnimeExtensionManager>().getAppIconForSource(this)
 
-// fun AnimeSource.getPreferenceKey(): String = "source_$id"
+fun AnimeSource.getPreferenceKey(): String = "source_$id"

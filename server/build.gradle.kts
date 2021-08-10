@@ -102,7 +102,7 @@ sourceSets {
 
 // should be bumped with each stable release
 val tachideskVersion = System.getenv("ProductVersion") ?: "v0.4.4"
-val webUIRevisionTag = System.getenv("WebUIRevision") ?: "r22"
+val webUIRevisionTag = System.getenv("WebUIRevision") ?: "r23"
 
 // counts commit count on master
 val tachideskRevision = runCatching {
@@ -172,7 +172,6 @@ tasks {
 
     withType<ShadowJar> {
         destinationDirectory.set(File("$rootDir/server/build"))
-        dependsOn("formatKotlin", "lintKotlin")
     }
 
     named("run") {

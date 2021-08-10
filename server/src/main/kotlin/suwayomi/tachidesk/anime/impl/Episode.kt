@@ -19,6 +19,7 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.anime.impl.Anime.getAnime
 import suwayomi.tachidesk.anime.impl.util.GetAnimeHttpSource.getAnimeHttpSource
 import suwayomi.tachidesk.anime.model.dataclass.EpisodeDataClass
+import suwayomi.tachidesk.anime.model.dataclass.VideoDataClass
 import suwayomi.tachidesk.anime.model.table.AnimeTable
 import suwayomi.tachidesk.anime.model.table.EpisodeTable
 import suwayomi.tachidesk.anime.model.table.toDataClass
@@ -135,7 +136,7 @@ object Episode {
 
         val animeEntry = transaction { AnimeTable.select { AnimeTable.id eq animeId }.first() }
         val source = getAnimeHttpSource(animeEntry[AnimeTable.sourceReference])
-        val fetchedLinkUrl = source.fetchEpisodeLink(
+        val fetchedVideos = source.fetchVideoList(
             SEpisode.create().also {
                 it.url = episode.url
                 it.name = episode.name
@@ -154,7 +155,13 @@ object Episode {
             episode.lastPageRead,
             episode.index,
             episode.episodeCount,
-            fetchedLinkUrl
+            fetchedVideos.map {
+                VideoDataClass(
+                    it.url,
+                    it.quality,
+                    it.videoUrl,
+                )
+            }
         )
     }
 

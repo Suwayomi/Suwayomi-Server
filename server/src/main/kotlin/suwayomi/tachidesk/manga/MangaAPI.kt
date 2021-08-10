@@ -68,7 +68,7 @@ object MangaAPI {
 
             patch(":mangaId/chapter/:chapterIndex/meta", MangaController::chapterMeta)
 
-            get(":mangaId/chapter/:chapterIndex/page/:index", MangaController::chapterList)
+            get(":mangaId/chapter/:chapterIndex/page/:index", MangaController::pageRetrieve)
         }
 
         path("") {
