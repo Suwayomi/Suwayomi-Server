@@ -3,7 +3,6 @@ package eu.kanade.tachiyomi.animesource.online
 import eu.kanade.tachiyomi.animesource.AnimeCatalogueSource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
-import eu.kanade.tachiyomi.animesource.model.Link
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.animesource.model.SEpisode
 import eu.kanade.tachiyomi.animesource.model.Video
@@ -219,13 +218,52 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
         }
     }
 
-    override fun fetchEpisodeLink(episode: SEpisode): Observable<List<Link>> {
-        return client.newCall(episodeLinkRequest(episode))
+    /**
+     * Returns the request for updating the episode list. Override only if it's needed to override
+     * the url, send different headers or request method like POST.
+     *
+     * @param anime the anime to look for episodes.
+     */
+    protected open fun episodeListRequest(anime: SAnime): Request {
+        return GET(baseUrl + anime.url, headers)
+    }
+
+    /**
+     * Parses the response from the site and returns a list of episodes.
+     *
+     * @param response the response from the site.
+     */
+    protected abstract fun episodeListParse(response: Response): List<SEpisode>
+
+    /**
+     * Returns an observable with the page list for a chapter.
+     *
+     * @param chapter the chapter whose page list has to be fetched.
+     */
+    override fun fetchVideoList(episode: SEpisode): Observable<List<Video>> {
+        return client.newCall(videoListRequest(episode))
             .asObservableSuccess()
             .map { response ->
-                episodeLinkParse(response)
+                videoListParse(response)
             }
     }
+
+    /**
+     * Returns the request for getting the episode link. Override only if it's needed to override
+     * the url, send different headers or request method like POST.
+     *
+     * @param episode the episode to look for links.
+     */
+    protected open fun videoListRequest(episode: SEpisode): Request {
+        return GET(baseUrl + episode.url, headers)
+    }
+
+    /**
+     * Parses the response from the site and returns a list of pages.
+     *
+     * @param response the response from the site.
+     */
+    protected abstract fun videoListParse(response: Response): List<Video>
 
     /**
      * Returns an observable with the page containing the source url of the image. If there's any
@@ -233,7 +271,7 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
      *
      * @param page the page whose source image has to be fetched.
      */
-    open fun fetchVideoLink(video: Video): Observable<String> {
+    open fun fetchVideoUrl(video: Video): Observable<String> {
         return client.newCall(videoUrlRequest(video))
             .asObservableSuccess()
             .map { videoUrlParse(it) }
@@ -243,7 +281,7 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
      * Returns the request for getting the url to the source image. Override only if it's needed to
      * override the url, send different headers or request method like POST.
      *
-     * @param video the episode whose page list has to be fetched
+     * @param page the chapter whose page list has to be fetched
      */
     protected open fun videoUrlRequest(video: Video): Request {
         return GET(video.url, headers)
@@ -261,8 +299,8 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
      *
      * @param page the page whose source image has to be downloaded.
      */
-    fun fetchVideo(page: Video): Observable<Response> {
-        return client.newCallWithProgress(videoRequest(page), page)
+    fun fetchVideo(video: Video): Observable<Response> {
+        return client.newCallWithProgress(videoRequest(video), video)
             .asObservableSuccess()
     }
 
@@ -270,58 +308,11 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
      * Returns the request for getting the source image. Override only if it's needed to override
      * the url, send different headers or request method like POST.
      *
-     * @param video the episode whose page list has to be fetched
+     * @param video the video whose link has to be fetched
      */
     protected open fun videoRequest(video: Video): Request {
         return GET(video.videoUrl!!, headers)
     }
-
-    /**
-     * Returns an observable with the page list for a chapter.
-     *
-     * @param chapter the chapter whose page list has to be fetched.
-     */
-    fun fetchVideoList(episode: SEpisode): Observable<List<Link>> {
-        return client.newCall(episodeLinkRequest(episode))
-            .asObservableSuccess()
-            .map { response ->
-                episodeLinkParse(response)
-            }
-    }
-
-    /**
-     * Returns the request for updating the episode list. Override only if it's needed to override
-     * the url, send different headers or request method like POST.
-     *
-     * @param anime the anime to look for episodes.
-     */
-    protected open fun episodeListRequest(anime: SAnime): Request {
-        return GET(baseUrl + anime.url, headers)
-    }
-
-    /**
-     * Returns the request for getting the episode link. Override only if it's needed to override
-     * the url, send different headers or request method like POST.
-     *
-     * @param episode the episode to look for links.
-     */
-    protected open fun episodeLinkRequest(episode: SEpisode): Request {
-        return GET(baseUrl + episode.url, headers)
-    }
-
-    /**
-     * Parses the response from the site and returns a list of episodes.
-     *
-     * @param response the response from the site.
-     */
-    protected abstract fun episodeListParse(response: Response): List<SEpisode>
-
-    /**
-     * Parses the response from the site and returns a list of episodes.
-     *
-     * @param response the response from the site.
-     */
-    protected abstract fun episodeLinkParse(response: Response): List<Link>
 
     /**
      * Assigns the url of the episode without the scheme and domain. It saves some redundancy from

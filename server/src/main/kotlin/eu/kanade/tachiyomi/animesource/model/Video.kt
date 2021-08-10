@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.animesource.model
 import android.net.Uri
 import eu.kanade.tachiyomi.network.ProgressListener
 import rx.subjects.Subject
+// import tachiyomi.animesource.model.VideoUrl
 
 open class Video(
     val url: String = "",
@@ -59,14 +60,14 @@ open class Video(
     }
 }
 
-//fun Video.toVideoUrl(): VideoUrl {
+// fun Video.toVideoUrl(): VideoUrl {
 //    return VideoUrl(
 //        url = this.videoUrl ?: this.url
 //    )
-//}
+// }
 //
-//fun VideoUrl.toVideo(index: Int): Video {
+// fun VideoUrl.toVideo(index: Int): Video {
 //    return Video(
 //        videoUrl = this.url
 //    )
-//}
+// }

@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.animesource.model
 
+// import tachiyomi.animesource.model.EpisodeInfo
 import java.io.Serializable
 
 interface SEpisode : Serializable {
@@ -29,7 +30,7 @@ interface SEpisode : Serializable {
     }
 }
 
-//fun SEpisode.toEpisodeInfo(): EpisodeInfo {
+// fun SEpisode.toEpisodeInfo(): EpisodeInfo {
 //    return EpisodeInfo(
 //        dateUpload = this.date_upload,
 //        key = this.url,
@@ -37,9 +38,9 @@ interface SEpisode : Serializable {
 //        number = this.episode_number,
 //        scanlator = this.scanlator ?: ""
 //    )
-//}
+// }
 //
-//fun EpisodeInfo.toSEpisode(): SEpisode {
+// fun EpisodeInfo.toSEpisode(): SEpisode {
 //    val episode = this
 //    return SEpisode.create().apply {
 //        url = episode.key
@@ -48,4 +49,4 @@ interface SEpisode : Serializable {
 //        episode_number = episode.number
 //        scanlator = episode.scanlator
 //    }
-//}
+// }
