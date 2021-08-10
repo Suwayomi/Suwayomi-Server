@@ -35,6 +35,7 @@ open class ConfigManager {
     /**
      * Get a config module (Java API)
      */
+    @Suppress("UNCHECKED_CAST")
     fun <T : ConfigModule> module(type: Class<T>): T = loadedModules[type] as T
 
     /**
