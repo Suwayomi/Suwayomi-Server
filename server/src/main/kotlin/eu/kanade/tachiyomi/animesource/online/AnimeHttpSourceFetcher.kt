@@ -1,26 +1,25 @@
-package eu.kanade.tachiyomi.source.online
+package eu.kanade.tachiyomi.animesource.online
 
-import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
-import eu.kanade.tachiyomi.source.model.Page
+import eu.kanade.tachiyomi.animesource.model.Video
 import rx.Observable
 
-fun AnimeHttpSource.getImageUrl(page: Page): Observable<Page> {
-    page.status = Page.LOAD_PAGE
-    return fetchImageUrl(page)
-        .doOnError { page.status = Page.ERROR }
+fun AnimeHttpSource.getVideoUrl(video: Video): Observable<Video> {
+    video.status = Video.LOAD_VIDEO
+    return fetchVideoUrl(video)
+        .doOnError { video.status = Video.ERROR }
         .onErrorReturn { null }
-        .doOnNext { page.imageUrl = it }
-        .map { page }
+        .doOnNext { video.videoUrl = it }
+        .map { video }
 }
 
-fun AnimeHttpSource.fetchAllImageUrlsFromPageList(pages: List<Page>): Observable<Page> {
-    return Observable.from(pages)
-        .filter { !it.imageUrl.isNullOrEmpty() }
-        .mergeWith(fetchRemainingImageUrlsFromPageList(pages))
+fun AnimeHttpSource.fetchUrlFromVideo(video: Video): Observable<Video> {
+    return Observable.just(video)
+        .filter { !it.videoUrl.isNullOrEmpty() }
+        .mergeWith(fetchRemainingVideoUrlsFromVideoList(video))
 }
 
-fun AnimeHttpSource.fetchRemainingImageUrlsFromPageList(pages: List<Page>): Observable<Page> {
-    return Observable.from(pages)
-        .filter { it.imageUrl.isNullOrEmpty() }
-        .concatMap { getImageUrl(it) }
+fun AnimeHttpSource.fetchRemainingVideoUrlsFromVideoList(video: Video): Observable<Video> {
+    return Observable.just(video)
+        .filter { it.videoUrl.isNullOrEmpty() }
+        .concatMap { getVideoUrl(it) }
 }

@@ -31,5 +31,5 @@ data class EpisodeDataClass(
     val episodeCount: Int? = null,
 
     /** used to construct pages in the front-end */
-    val linkUrl: String? = null,
+    val videos: List<VideoDataClass>? = null,
 )

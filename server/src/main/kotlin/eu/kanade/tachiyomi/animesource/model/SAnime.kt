@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.animesource.model
 
+// import tachiyomi.animesource.model.AnimeInfo
 import java.io.Serializable
 
 interface SAnime : Serializable {
@@ -23,9 +24,7 @@ interface SAnime : Serializable {
     var initialized: Boolean
 
     fun copyFrom(other: SAnime) {
-        if (other.title != null) {
-            title = other.title
-        }
+        title = other.title
 
         if (other.author != null) {
             author = other.author
@@ -65,3 +64,30 @@ interface SAnime : Serializable {
         }
     }
 }
+
+// fun SAnime.toAnimeInfo(): AnimeInfo {
+//    return AnimeInfo(
+//        key = this.url,
+//        title = this.title,
+//        artist = this.artist ?: "",
+//        author = this.author ?: "",
+//        description = this.description ?: "",
+//        genres = this.genre?.split(", ") ?: emptyList(),
+//        status = this.status,
+//        cover = this.thumbnail_url ?: ""
+//    )
+// }
+
+// fun AnimeInfo.toSAnime(): SAnime {
+//    val animeInfo = this
+//    return SAnime.create().apply {
+//        url = animeInfo.key
+//        title = animeInfo.title
+//        artist = animeInfo.artist
+//        author = animeInfo.author
+//        description = animeInfo.description
+//        genre = animeInfo.genres.joinToString(", ")
+//        status = animeInfo.status
+//        thumbnail_url = animeInfo.cover
+//    }
+// }

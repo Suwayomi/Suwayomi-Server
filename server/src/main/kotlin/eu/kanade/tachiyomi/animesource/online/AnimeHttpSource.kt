@@ -5,11 +5,11 @@ import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.animesource.model.SEpisode
+import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.asObservableSuccess
 import eu.kanade.tachiyomi.network.newCallWithProgress
-import eu.kanade.tachiyomi.source.model.Page
 import okhttp3.Headers
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -218,14 +218,6 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
         }
     }
 
-    override fun fetchEpisodeLink(episode: SEpisode): Observable<String> {
-        return client.newCall(episodeLinkRequest(episode))
-            .asObservableSuccess()
-            .map { response ->
-                episodeLinkParse(response)
-            }
-    }
-
     /**
      * Returns the request for updating the episode list. Override only if it's needed to override
      * the url, send different headers or request method like POST.
@@ -237,16 +229,6 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
     }
 
     /**
-     * Returns the request for getting the episode link. Override only if it's needed to override
-     * the url, send different headers or request method like POST.
-     *
-     * @param episode the episode to look for links.
-     */
-    protected open fun episodeLinkRequest(episode: SEpisode): Request {
-        return GET(baseUrl + episode.url, headers)
-    }
-
-    /**
      * Parses the response from the site and returns a list of episodes.
      *
      * @param response the response from the site.
@@ -254,19 +236,25 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
     protected abstract fun episodeListParse(response: Response): List<SEpisode>
 
     /**
-     * Parses the response from the site and returns a list of episodes.
+     * Returns an observable with the page list for a chapter.
      *
-     * @param response the response from the site.
+     * @param chapter the chapter whose page list has to be fetched.
      */
-    protected abstract fun episodeLinkParse(response: Response): String
+    override fun fetchVideoList(episode: SEpisode): Observable<List<Video>> {
+        return client.newCall(videoListRequest(episode))
+            .asObservableSuccess()
+            .map { response ->
+                videoListParse(response)
+            }
+    }
 
     /**
-     * Returns the request for getting the page list. Override only if it's needed to override the
-     * url, send different headers or request method like POST.
+     * Returns the request for getting the episode link. Override only if it's needed to override
+     * the url, send different headers or request method like POST.
      *
-     * @param episode the episode whose page list has to be fetched.
+     * @param episode the episode to look for links.
      */
-    protected open fun pageListRequest(episode: SEpisode): Request {
+    protected open fun videoListRequest(episode: SEpisode): Request {
         return GET(baseUrl + episode.url, headers)
     }
 
@@ -275,7 +263,7 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
      *
      * @param response the response from the site.
      */
-    protected abstract fun pageListParse(response: Response): List<Page>
+    protected abstract fun videoListParse(response: Response): List<Video>
 
     /**
      * Returns an observable with the page containing the source url of the image. If there's any
@@ -283,20 +271,20 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
      *
      * @param page the page whose source image has to be fetched.
      */
-    open fun fetchImageUrl(page: Page): Observable<String> {
-        return client.newCall(imageUrlRequest(page))
+    open fun fetchVideoUrl(video: Video): Observable<String> {
+        return client.newCall(videoUrlRequest(video))
             .asObservableSuccess()
-            .map { imageUrlParse(it) }
+            .map { videoUrlParse(it) }
     }
 
     /**
      * Returns the request for getting the url to the source image. Override only if it's needed to
      * override the url, send different headers or request method like POST.
      *
-     * @param page the episode whose page list has to be fetched
+     * @param page the chapter whose page list has to be fetched
      */
-    protected open fun imageUrlRequest(page: Page): Request {
-        return GET(page.url, headers)
+    protected open fun videoUrlRequest(video: Video): Request {
+        return GET(video.url, headers)
     }
 
     /**
@@ -304,15 +292,15 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
      *
      * @param response the response from the site.
      */
-    protected abstract fun imageUrlParse(response: Response): String
+    protected abstract fun videoUrlParse(response: Response): String
 
     /**
      * Returns an observable with the response of the source image.
      *
      * @param page the page whose source image has to be downloaded.
      */
-    fun fetchImage(page: Page): Observable<Response> {
-        return client.newCallWithProgress(imageRequest(page), page)
+    fun fetchVideo(video: Video): Observable<Response> {
+        return client.newCallWithProgress(videoRequest(video), video)
             .asObservableSuccess()
     }
 
@@ -320,10 +308,10 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
      * Returns the request for getting the source image. Override only if it's needed to override
      * the url, send different headers or request method like POST.
      *
-     * @param page the episode whose page list has to be fetched
+     * @param video the video whose link has to be fetched
      */
-    protected open fun imageRequest(page: Page): Request {
-        return GET(page.imageUrl!!, headers)
+    protected open fun videoRequest(video: Video): Request {
+        return GET(video.videoUrl!!, headers)
     }
 
     /**
