@@ -14,6 +14,7 @@ import suwayomi.tachidesk.anime.impl.AnimeList.getAnimeList
 import suwayomi.tachidesk.anime.impl.Episode.getEpisode
 import suwayomi.tachidesk.anime.impl.Episode.getEpisodeList
 import suwayomi.tachidesk.anime.impl.Episode.modifyEpisode
+import suwayomi.tachidesk.anime.impl.Search.sourceSearch
 import suwayomi.tachidesk.anime.impl.Source.getAnimeSource
 import suwayomi.tachidesk.anime.impl.Source.getSourceList
 import suwayomi.tachidesk.anime.impl.extension.Extension.getExtensionIcon
@@ -219,13 +220,13 @@ object AnimeAPI {
 //            ctx.json(sourceGlobalSearch(searchTerm))
 //        }
 //
-//        // single source search
-//        app.get("/api/v1/source/:sourceId/search/:searchTerm/:pageNum") { ctx ->
-//            val sourceId = ctx.pathParam("sourceId").toLong()
-//            val searchTerm = ctx.pathParam("searchTerm")
-//            val pageNum = ctx.pathParam("pageNum").toInt()
-//            ctx.json(JavalinSetup.future { sourceSearch(sourceId, searchTerm, pageNum) })
-//        }
+        // single source search
+        app.get("/api/v1/anime/source/:sourceId/search/:searchTerm/:pageNum") { ctx ->
+            val sourceId = ctx.pathParam("sourceId").toLong()
+            val searchTerm = ctx.pathParam("searchTerm")
+            val pageNum = ctx.pathParam("pageNum").toInt()
+            ctx.json(future { sourceSearch(sourceId, searchTerm, pageNum) })
+        }
 //
 //        // source filter list
 //        app.get("/api/v1/source/:sourceId/filters/") { ctx ->

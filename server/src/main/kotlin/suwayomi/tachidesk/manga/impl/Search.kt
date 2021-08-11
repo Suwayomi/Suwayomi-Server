@@ -13,16 +13,16 @@ import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 
 object Search {
-    // TODO
-    fun sourceFilters(sourceId: Long) {
-        val source = getHttpSource(sourceId)
-        // source.getFilterList().toItems()
-    }
-
     suspend fun sourceSearch(sourceId: Long, searchTerm: String, pageNum: Int): PagedMangaListDataClass {
         val source = getHttpSource(sourceId)
         val searchManga = source.fetchSearchManga(pageNum, searchTerm, source.getFilterList()).awaitSingle()
         return searchManga.processEntries(sourceId)
+    }
+
+    // TODO
+    fun sourceFilters(sourceId: Long) {
+        val source = getHttpSource(sourceId)
+        // source.getFilterList().toItems()
     }
 
     fun sourceGlobalSearch(searchTerm: String) {
