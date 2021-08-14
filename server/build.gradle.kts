@@ -197,7 +197,7 @@ tasks {
 
 
         fun shouldOverwrite(): Boolean {
-            val zipPath = "src/main/resources/WebUI.zip"
+            val zipPath = project.projectDir.absolutePath + "/src/main/resources/WebUI.zip"
             val zipFile =  net.lingala.zip4j.ZipFile(zipPath)
 
             var shouldOverwrite = true
