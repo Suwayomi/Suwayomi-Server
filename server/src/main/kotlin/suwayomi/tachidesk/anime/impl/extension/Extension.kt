@@ -138,7 +138,7 @@ object Extension {
                 else -> "all"
             }
 
-            val extensionName = packageInfo.applicationInfo.nonLocalizedLabel.toString().substringAfter("Tachiyomi: ")
+            val extensionName = packageInfo.applicationInfo.nonLocalizedLabel.toString().substringAfter("Aniyomi: ")
 
             // update extension info
             transaction {

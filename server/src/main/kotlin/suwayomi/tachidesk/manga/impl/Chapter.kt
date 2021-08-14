@@ -30,8 +30,8 @@ import java.time.Instant
 
 object Chapter {
     /** get chapter list when showing a manga */
-    suspend fun getChapterList(mangaId: Int, onlineFetch: Boolean?): List<ChapterDataClass> {
-        return if (onlineFetch == true) {
+    suspend fun getChapterList(mangaId: Int, onlineFetch: Boolean = false): List<ChapterDataClass> {
+        return if (onlineFetch) {
             getSourceChapters(mangaId)
         } else {
             transaction {
@@ -40,10 +40,7 @@ object Chapter {
                         ChapterTable.toDataClass(it)
                     }
             }.ifEmpty {
-                // If it was explicitly set to offline dont grab chapters
-                if (onlineFetch == null) {
-                    getSourceChapters(mangaId)
-                } else emptyList()
+                getSourceChapters(mangaId)
             }
         }
     }
@@ -163,7 +160,10 @@ object Chapter {
             // update page list for this chapter
             transaction {
                 pageList.forEach { page ->
-                    val pageEntry = transaction { PageTable.select { (PageTable.chapter eq chapterId) and (PageTable.index eq page.index) }.firstOrNull() }
+                    val pageEntry = transaction {
+                        PageTable.select { (PageTable.chapter eq chapterId) and (PageTable.index eq page.index) }
+                            .firstOrNull()
+                    }
                     if (pageEntry == null) {
                         PageTable.insert {
                             it[index] = page.index
@@ -210,7 +210,14 @@ object Chapter {
         }
     }
 
-    fun modifyChapter(mangaId: Int, chapterIndex: Int, isRead: Boolean?, isBookmarked: Boolean?, markPrevRead: Boolean?, lastPageRead: Int?) {
+    fun modifyChapter(
+        mangaId: Int,
+        chapterIndex: Int,
+        isRead: Boolean?,
+        isBookmarked: Boolean?,
+        markPrevRead: Boolean?,
+        lastPageRead: Int?
+    ) {
         transaction {
             if (listOf(isRead, isBookmarked, lastPageRead).any { it != null }) {
                 ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex eq chapterIndex) }) { update ->
@@ -244,9 +251,11 @@ object Chapter {
 
     fun modifyChapterMeta(mangaId: Int, chapterIndex: Int, key: String, value: String) {
         transaction {
-            val chapter = ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex eq chapterIndex) }
-                .first()[ChapterTable.id]
-            val meta = transaction { ChapterMetaTable.select { (ChapterMetaTable.ref eq chapter) and (ChapterMetaTable.key eq key) } }.firstOrNull()
+            val chapter =
+                ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex eq chapterIndex) }
+                    .first()[ChapterTable.id]
+            val meta =
+                transaction { ChapterMetaTable.select { (ChapterMetaTable.ref eq chapter) and (ChapterMetaTable.key eq key) } }.firstOrNull()
             if (meta == null) {
                 ChapterMetaTable.insert {
                     it[ChapterMetaTable.key] = key

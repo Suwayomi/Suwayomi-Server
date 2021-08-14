@@ -32,7 +32,7 @@ object ExtensionGithubApi {
                 libVersion in LIB_VERSION_MIN..LIB_VERSION_MAX
             }
             .map { element ->
-                val name = element["name"].string.substringAfter("Tachiyomi: ")
+                val name = element["name"].string.substringAfter("Aniyomi: ")
                 val pkgName = element["pkg"].string
                 val apkName = element["apk"].string
                 val versionName = element["version"].string
