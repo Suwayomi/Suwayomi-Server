@@ -97,7 +97,7 @@ object MangaController {
     fun chapterList(ctx: Context) {
         val mangaId = ctx.pathParam("mangaId").toInt()
 
-        val onlineFetch = ctx.queryParam("onlineFetch")?.toBoolean()
+        val onlineFetch = ctx.queryParam("onlineFetch", "false").toBoolean()
 
         ctx.json(future { Chapter.getChapterList(mangaId, onlineFetch) })
     }
