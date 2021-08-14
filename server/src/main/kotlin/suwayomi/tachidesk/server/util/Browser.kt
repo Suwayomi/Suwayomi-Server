@@ -18,7 +18,7 @@ object Browser {
 
     fun openInBrowser() {
         if (serverConfig.webUIEnabled) {
-            if (serverConfig.webUIBrowser == ("electron")) {
+            if (serverConfig.webUIInterface == ("electron")) {
                 try {
                     val electronPath = serverConfig.electronPath
                     electronInstances.add(ProcessBuilder(electronPath, appBaseUrl).start())

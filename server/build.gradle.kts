@@ -12,6 +12,15 @@ plugins {
     id("de.fuerstenau.buildconfig") version "1.1.8"
 }
 
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("net.lingala.zip4j:zip4j:2.9.0")
+    }
+}
+
 repositories {
     maven {
         url = uri("https://repo1.maven.org/maven2/")
@@ -53,7 +62,6 @@ dependencies {
     implementation("com.dorkbox:Utilities:1.9")
 
 
-
     // dependencies of Tachiyomi extensions, some are duplicate, keeping it here for reference
     implementation("com.github.inorichi.injekt:injekt-core:65b0440")
     implementation("com.squareup.okhttp3:okhttp:4.9.1")
@@ -87,8 +95,8 @@ application {
 
     // for testing electron
 //    applicationDefaultJvmArgs = listOf(
-//            "-Dsuwayomi.tachidesk.webInterface=electron",
-//            "-Dsuwayomi.tachidesk.electronPath=/usr/bin/electron"
+//            "-Dsuwayomi.tachidesk.config.server.webUIInterface=electron",
+//            "-Dsuwayomi.tachidesk.config.server.electronPath=/usr/bin/electron"
 //    )
 }
 
@@ -143,13 +151,13 @@ tasks {
     shadowJar {
         manifest {
             attributes(
-                    mapOf(
-                            "Main-Class" to MainClass,
-                            "Implementation-Title" to rootProject.name,
-                            "Implementation-Vendor" to "The Suwayomi Project",
-                            "Specification-Version" to tachideskVersion,
-                            "Implementation-Version" to tachideskRevision
-                    )
+                mapOf(
+                    "Main-Class" to MainClass,
+                    "Implementation-Title" to rootProject.name,
+                    "Implementation-Vendor" to "The Suwayomi Project",
+                    "Specification-Version" to tachideskVersion,
+                    "Implementation-Version" to tachideskRevision
+                )
             )
         }
         archiveBaseName.set(rootProject.name)
@@ -159,9 +167,9 @@ tasks {
     withType<KotlinCompile> {
         kotlinOptions {
             freeCompilerArgs = listOf(
-                    "-Xopt-in=kotlin.RequiresOptIn",
-                    "-Xopt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-                    "-Xopt-in=kotlinx.coroutines.InternalCoroutinesApi"
+                "-Xopt-in=kotlin.RequiresOptIn",
+                "-Xopt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+                "-Xopt-in=kotlinx.coroutines.InternalCoroutinesApi"
             )
         }
     }
@@ -175,7 +183,7 @@ tasks {
     }
 
     named("run") {
-        dependsOn("formatKotlin", "lintKotlin")
+        dependsOn("formatKotlin", "lintKotlin", "downloadWebUI")
     }
 
     named<Copy>("processResources") {
@@ -186,6 +194,26 @@ tasks {
     register<de.undercouch.gradle.tasks.download.Download>("downloadWebUI") {
         src("https://github.com/Suwayomi/Tachidesk-WebUI-preview/releases/download/$webUIRevisionTag/Tachidesk-WebUI-$webUIRevisionTag.zip")
         dest("src/main/resources/WebUI.zip")
+
+
+        fun shouldOverwrite(): Boolean {
+            val zipPath = "src/main/resources/WebUI.zip"
+            val zipFile =  net.lingala.zip4j.ZipFile(zipPath)
+
+            var shouldOverwrite = true
+            if (zipFile.isValidZipFile) {
+                val zipRevision = zipFile.getInputStream(zipFile.getFileHeader("revision")).bufferedReader().use {
+                    it.readText().trim()
+                }
+
+                if (zipRevision == webUIRevisionTag)
+                    shouldOverwrite = false
+            }
+
+            return shouldOverwrite
+        }
+
+        overwrite(shouldOverwrite())
     }
 
     withType<LintTask> {

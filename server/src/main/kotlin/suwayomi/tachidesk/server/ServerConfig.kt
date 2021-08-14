@@ -29,7 +29,7 @@ class ServerConfig(config: Config, moduleName: String = "") : ConfigModule(confi
     // webUI
     val webUIEnabled: Boolean by overridableWithSysProperty
     val initialOpenInBrowserEnabled: Boolean by overridableWithSysProperty
-    val webUIBrowser: String by overridableWithSysProperty
+    val webUIInterface: String by overridableWithSysProperty
     val electronPath: String by overridableWithSysProperty
 
     companion object {
