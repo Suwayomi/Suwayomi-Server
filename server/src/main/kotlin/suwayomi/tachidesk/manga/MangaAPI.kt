@@ -87,17 +87,19 @@ object MangaAPI {
         }
 
         path("backup") {
-            post("legacy/import", BackupController::legacyImport)
-            post("legacy/import/file", BackupController::legacyImportFile)
+            path("legacy") { // legacy json
+                post("import", BackupController::legacyImport)
+                post("import/file", BackupController::legacyImportFile)
 
-            get("legacy/export", BackupController::legacyExport)
-            get("legacy/export/file", BackupController::legacyExportFile)
+                get("export", BackupController::legacyExport)
+                get("export/file", BackupController::legacyExportFile)
+            }
 
-            post("protobuf/import", BackupController::protobufImport)
-            post("protobuf/import/file", BackupController::protobufImportFile)
+            post("import", BackupController::protobufImport)
+            post("import/file", BackupController::protobufImportFile)
 
-            get("protobuf/export", BackupController::protobufExport)
-            get("protobuf/export/file", BackupController::protobufExportFile)
+            get("export", BackupController::protobufExport)
+            get("export/file", BackupController::protobufExportFile)
         }
 
         path("downloads") {
