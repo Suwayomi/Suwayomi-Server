@@ -1,8 +1,10 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.4.32"
-    kotlin("plugin.serialization") version "1.4.32" apply false
+    val kotlinVersion = "1.5.21"
+
+    kotlin("jvm") version kotlinVersion
+    kotlin("plugin.serialization") version kotlinVersion
 }
 
 allprojects {
@@ -46,12 +48,12 @@ configure(projects) {
         testImplementation(kotlin("test-junit5"))
 
         // coroutines
-        val coroutinesVersion = "1.4.3"
+        val coroutinesVersion = "1.5.0"
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:$coroutinesVersion")
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:$coroutinesVersion")
 
-        val kotlinSerializationVersion = "1.1.0"
+        val kotlinSerializationVersion = "1.2.1"
         implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinSerializationVersion")
         implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$kotlinSerializationVersion")
 
@@ -80,6 +82,7 @@ configure(projects) {
         implementation("net.harawata:appdirs:1.2.1")
 
         // dex2jar: https://github.com/DexPatcher/dex2jar/releases/tag/v2.1-20190905-lanchon
+        // note: watch https://github.com/ThexXTURBOXx/dex2jar for future development
         implementation("com.github.DexPatcher.dex2jar:dex-tools:v2.1-20190905-lanchon")
 
         // APK parser
