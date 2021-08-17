@@ -1,8 +1,8 @@
+
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jmailen.gradle.kotlinter.tasks.FormatTask
 import org.jmailen.gradle.kotlinter.tasks.LintTask
-import java.io.BufferedReader
 import java.time.Instant
 
 plugins {
@@ -10,15 +10,6 @@ plugins {
     id("com.github.johnrengelman.shadow") version "7.0.0"
     id("org.jmailen.kotlinter") version "3.4.3"
     id("com.github.gmazzo.buildconfig") version "3.0.2"
-}
-
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath("net.lingala.zip4j:zip4j:2.9.0")
-    }
 }
 
 repositories {
@@ -89,11 +80,10 @@ dependencies {
 //    implementation(fileTree("lib/"))
 }
 
-val MainClass = "suwayomi.tachidesk.MainKt"
 application {
     mainClass.set(MainClass)
 
-    // for testing electron
+    // uncomment for testing electron
 //    applicationDefaultJvmArgs = listOf(
 //            "-Dsuwayomi.tachidesk.config.server.webUIInterface=electron",
 //            "-Dsuwayomi.tachidesk.config.server.electronPath=/usr/bin/electron"
@@ -108,31 +98,11 @@ sourceSets {
     }
 }
 
-// should be bumped with each stable release
-val tachideskVersion = System.getenv("ProductVersion") ?: "v0.4.5"
-val webUIRevisionTag = System.getenv("WebUIRevision") ?: "r24"
-
-// counts commit count on master
-val tachideskRevision = runCatching {
-    System.getenv("ProductRevision") ?: Runtime
-        .getRuntime()
-        .exec("git rev-list HEAD --count")
-        .let { process ->
-            process.waitFor()
-            val output = process.inputStream.use {
-                it.bufferedReader().use(BufferedReader::readText)
-            }
-            process.destroy()
-            "r" + output.trim()
-        }
-}.getOrDefault("r0")
-
 buildConfig {
     className("BuildConfig")
     packageName("suwayomi.tachidesk.server")
 
     useKotlinOutput()
-
 
     fun quoteWrap(obj: Any): String = """"$obj""""
 
