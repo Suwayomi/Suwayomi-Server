@@ -134,23 +134,21 @@ buildConfig {
     useKotlinOutput()
 
 
-    fun str(obj: Any): String {
-        return "\"${obj}\""
-    }
+    fun quoteWrap(obj: Any): String = """"$obj"""""
 
-    buildConfigField("String", "NAME", str(rootProject.name))
-    buildConfigField("String", "VERSION", str(tachideskVersion))
-    buildConfigField("String", "REVISION", str(tachideskRevision))
-    buildConfigField("String", "BUILD_TYPE", str(if (System.getenv("ProductBuildType") == "Stable") "Stable" else "Preview"))
+    buildConfigField("String", "NAME", quoteWrap(rootProject.name))
+    buildConfigField("String", "VERSION", quoteWrap(tachideskVersion))
+    buildConfigField("String", "REVISION", quoteWrap(tachideskRevision))
+    buildConfigField("String", "BUILD_TYPE", quoteWrap(if (System.getenv("ProductBuildType") == "Stable") "Stable" else "Preview"))
     buildConfigField("long", "BUILD_TIME", Instant.now().epochSecond.toString())
 
 
-    buildConfigField("String", "WEBUI_REPO", str("https://github.com/Suwayomi/Tachidesk-WebUI-preview"))
-    buildConfigField("String", "WEBUI_TAG", str(webUIRevisionTag))
+    buildConfigField("String", "WEBUI_REPO", quoteWrap("https://github.com/Suwayomi/Tachidesk-WebUI-preview"))
+    buildConfigField("String", "WEBUI_TAG", quoteWrap(webUIRevisionTag))
 
 
-    buildConfigField("String", "GITHUB", str("https://github.com/Suwayomi/Tachidesk"))
-    buildConfigField("String", "DISCORD", str("https://discord.gg/DDZdqZWaHA"))
+    buildConfigField("String", "GITHUB", quoteWrap("https://github.com/Suwayomi/Tachidesk"))
+    buildConfigField("String", "DISCORD", quoteWrap("https://discord.gg/DDZdqZWaHA"))
 }
 
 tasks {
