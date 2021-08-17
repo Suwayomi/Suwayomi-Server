@@ -4,11 +4,21 @@ import java.io.InputStream
 import java.io.Reader
 import java.math.BigDecimal
 import java.net.URL
-import java.sql.*
 import java.sql.Array
+import java.sql.Blob
+import java.sql.Clob
 import java.sql.Date
-import java.util.*
+import java.sql.NClob
+import java.sql.Ref
+import java.sql.ResultSet
+import java.sql.ResultSetMetaData
+import java.sql.RowId
+import java.sql.SQLXML
+import java.sql.Time
+import java.sql.Timestamp
+import java.util.Calendar
 
+@Suppress("UNCHECKED_CAST")
 class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
 
     private val cachedContent = mutableListOf<ResultSetEntry>()

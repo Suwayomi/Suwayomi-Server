@@ -81,7 +81,7 @@ object JavalinSetup {
         app.routes {
             path("api/v1/") {
                 GlobalAPI.defineEndpoints()
-                MangaAPI.defineEndpoints(app)
+                MangaAPI.defineEndpoints()
                 AnimeAPI.defineEndpoints(app) // TODO: migrate Anime endpoints
             }
         }

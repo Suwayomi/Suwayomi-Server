@@ -7,7 +7,6 @@ package suwayomi.tachidesk.manga
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.delete
 import io.javalin.apibuilder.ApiBuilder.get
 import io.javalin.apibuilder.ApiBuilder.patch
@@ -22,7 +21,7 @@ import suwayomi.tachidesk.manga.controller.MangaController
 import suwayomi.tachidesk.manga.controller.SourceController
 
 object MangaAPI {
-    fun defineEndpoints(app: Javalin) {
+    fun defineEndpoints() {
         path("extension") {
             get("list", ExtensionController::list)
 
@@ -82,7 +81,7 @@ object MangaAPI {
                 patch(":categoryId", LibraryController::categoryModify)
                 delete(":categoryId", LibraryController::categoryDelete)
 
-                patch(":categoryId/reorder", LibraryController::categoryReorder)
+                patch(":categoryId/reorder", LibraryController::categoryReorder) // TODO: the underlying code doesn't need `:categoryId`, remove it
             }
         }
 

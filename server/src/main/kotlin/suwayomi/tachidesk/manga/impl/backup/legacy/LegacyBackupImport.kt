@@ -141,6 +141,7 @@ object LegacyBackupImport : LegacyBackupBase() {
      * @param history history data from json
      * @param tracks tracking data from json
      */
+    @Suppress("UNUSED_PARAMETER")
     private suspend fun restoreMangaData(
         manga: Manga,
         source: Source,
@@ -204,6 +205,7 @@ object LegacyBackupImport : LegacyBackupBase() {
         return fetchedManga
     }
 
+    @Suppress("UNUSED_PARAMETER") // TODO: remove this suppress when update Chapters is written
     private fun updateChapters(source: Source, fetchedManga: SManga, chapters: List<Chapter>) {
         // TODO("Not yet implemented")
     }

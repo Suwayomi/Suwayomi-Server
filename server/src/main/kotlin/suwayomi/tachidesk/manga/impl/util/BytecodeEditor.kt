@@ -85,7 +85,7 @@ object BytecodeEditor {
                         bytes[2],
                         bytes[3]
                     )
-                    if (cafebabe.toLowerCase() != "cafebabe") {
+                    if (cafebabe.lowercase() != "cafebabe") {
                         // Corrupted class
                         return@use null
                     }
