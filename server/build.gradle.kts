@@ -134,7 +134,7 @@ buildConfig {
     useKotlinOutput()
 
 
-    fun quoteWrap(obj: Any): String = """"$obj"""""
+    fun quoteWrap(obj: Any): String = """"$obj""""
 
     buildConfigField("String", "NAME", quoteWrap(rootProject.name))
     buildConfigField("String", "VERSION", quoteWrap(tachideskVersion))
