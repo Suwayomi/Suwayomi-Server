@@ -54,10 +54,9 @@ object LibraryController {
 
     /** category re-ordering */
     fun categoryReorder(ctx: Context) {
-        val categoryId = ctx.pathParam("categoryId").toInt()
         val from = ctx.formParam("from")!!.toInt()
         val to = ctx.formParam("to")!!.toInt()
-        Category.reorderCategory(categoryId, from, to)
+        Category.reorderCategory(from, to)
         ctx.status(200)
     }
 }

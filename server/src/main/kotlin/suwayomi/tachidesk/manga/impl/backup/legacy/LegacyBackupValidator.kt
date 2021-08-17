@@ -42,11 +42,11 @@ object LegacyBackupValidator {
                 .sorted()
         }
 
-        val trackers = mangas
-            .filter { it.asJsonObject.has("track") }
-            .flatMap { it.asJsonObject["track"].asJsonArray }
-            .map { it.asJsonObject["s"].asInt }
-            .distinct()
+//        val trackers = mangas
+//            .filter { it.asJsonObject.has("track") }
+//            .flatMap { it.asJsonObject["track"].asJsonArray }
+//            .map { it.asJsonObject["s"].asInt }
+//            .distinct()
 
         val missingTrackers = listOf("")
 //        val missingTrackers = trackers

@@ -20,15 +20,18 @@ object Search {
     }
 
     // TODO
+    @Suppress("UNUSED_PARAMETER", "UNUSED_VARIABLE")
     fun sourceFilters(sourceId: Long) {
         val source = getHttpSource(sourceId)
         // source.getFilterList().toItems()
     }
 
+    @Suppress("UNUSED_PARAMETER")
     fun sourceGlobalSearch(searchTerm: String) {
         // TODO
     }
 
+    @Suppress("unused")
     data class FilterWrapper(
         val type: String,
         val filter: Any

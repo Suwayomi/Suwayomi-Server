@@ -9,7 +9,7 @@ plugins {
     application
     id("com.github.johnrengelman.shadow") version "7.0.0"
     id("org.jmailen.kotlinter") version "3.4.3"
-    id("de.fuerstenau.buildconfig") version "1.1.8"
+    id("com.github.gmazzo.buildconfig") version "3.0.2"
 }
 
 buildscript {
@@ -128,23 +128,29 @@ val tachideskRevision = runCatching {
 }.getOrDefault("r0")
 
 buildConfig {
-    clsName = "BuildConfig"
-    packageName = "suwayomi.tachidesk.server"
+    className("BuildConfig")
+    packageName("suwayomi.tachidesk.server")
+
+    useKotlinOutput()
 
 
-    buildConfigField("String", "NAME", rootProject.name)
-    buildConfigField("String", "VERSION", tachideskVersion)
-    buildConfigField("String", "REVISION", tachideskRevision)
-    buildConfigField("String", "BUILD_TYPE", if (System.getenv("ProductBuildType") == "Stable") "Stable" else "Preview")
+    fun str(obj: Any): String {
+        return "\"${obj}\""
+    }
+
+    buildConfigField("String", "NAME", str(rootProject.name))
+    buildConfigField("String", "VERSION", str(tachideskVersion))
+    buildConfigField("String", "REVISION", str(tachideskRevision))
+    buildConfigField("String", "BUILD_TYPE", str(if (System.getenv("ProductBuildType") == "Stable") "Stable" else "Preview"))
     buildConfigField("long", "BUILD_TIME", Instant.now().epochSecond.toString())
 
 
-    buildConfigField("String", "WEBUI_REPO", "https://github.com/Suwayomi/Tachidesk-WebUI-preview")
-    buildConfigField("String", "WEBUI_TAG", webUIRevisionTag)
+    buildConfigField("String", "WEBUI_REPO", str("https://github.com/Suwayomi/Tachidesk-WebUI-preview"))
+    buildConfigField("String", "WEBUI_TAG", str(webUIRevisionTag))
 
 
-    buildConfigField("String", "GITHUB", "https://github.com/Suwayomi/Tachidesk")
-    buildConfigField("String", "DISCORD", "https://discord.gg/DDZdqZWaHA")
+    buildConfigField("String", "GITHUB", str("https://github.com/Suwayomi/Tachidesk"))
+    buildConfigField("String", "DISCORD", str("https://discord.gg/DDZdqZWaHA"))
 }
 
 tasks {

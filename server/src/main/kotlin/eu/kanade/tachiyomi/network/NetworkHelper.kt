@@ -18,6 +18,7 @@ import okhttp3.OkHttpClient
 // import uy.kohesive.injekt.injectLazy
 import java.util.concurrent.TimeUnit
 
+@Suppress("UNUSED_PARAMETER")
 class NetworkHelper(context: Context) {
 
 //    private val preferences: PreferencesHelper by injectLazy()

@@ -72,7 +72,7 @@ class TestExtensions {
             sources = getSourceList().map { getHttpSource(it.id.toLong()) }
         }
         setLoggingEnabled(true)
-        File("tmp/TestDesk/sources.txt").writeText(sources.joinToString("\n") { "${it.name} - ${it.lang.toUpperCase()} - ${it.id}" })
+        File("tmp/TestDesk/sources.txt").writeText(sources.joinToString("\n") { "${it.name} - ${it.lang.uppercase()} - ${it.id}" })
     }
 
     @Test
@@ -99,7 +99,7 @@ class TestExtensions {
             }.awaitAll()
             File("tmp/TestDesk/failedToFetch.txt").writeText(
                 failedToFetch.joinToString("\n") { (source, exception) ->
-                    "${source.name} (${source.lang.toUpperCase()}, ${source.id}):" +
+                    "${source.name} (${source.lang.uppercase()}, ${source.id}):" +
                         " ${exception.message}"
                 }
             )
