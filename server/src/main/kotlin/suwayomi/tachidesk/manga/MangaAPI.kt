@@ -92,6 +92,12 @@ object MangaAPI {
 
             get("legacy/export", BackupController::legacyExport)
             get("legacy/export/file", BackupController::legacyExportFile)
+
+            post("protobuf/import", BackupController::protobufImport)
+            post("protobuf/import/file", BackupController::protobufImportFile)
+
+            get("protobuf/export", BackupController::protobufExport)
+            get("protobuf/export/file", BackupController::protobufExportFile)
         }
 
         path("downloads") {

@@ -73,4 +73,62 @@ object BackupController {
             }
         )
     }
+
+    /** expects a Tachiyomi protobuf backup in the body */
+    fun protobufImport(ctx: Context) { // TODO
+        ctx.result(
+            JavalinSetup.future {
+                LegacyBackupImport.restoreLegacyBackup(ctx.bodyAsInputStream())
+            }
+        )
+    }
+
+    /** expects a Tachiyomi protobuf backup as a file upload, the file must be named "backup.proto" */
+    fun protobufImportFile(ctx: Context) { // TODO
+        ctx.result(
+            JavalinSetup.future {
+                LegacyBackupImport.restoreLegacyBackup(ctx.uploadedFile("backup.json")!!.content)
+            }
+        )
+    }
+
+    /** returns a Tachiyomi protobuf backup created from the current database as a body */
+    fun protobufExport(ctx: Context) { // TODO
+        ctx.contentType("application/json")
+        ctx.result(
+            JavalinSetup.future {
+                LegacyBackupExport.createLegacyBackup(
+                    BackupFlags(
+                        includeManga = true,
+                        includeCategories = true,
+                        includeChapters = true,
+                        includeTracking = true,
+                        includeHistory = true,
+                    )
+                )
+            }
+        )
+    }
+
+    /** returns a Tachiyomi legacy backup json created from the current database as a file */
+    fun protobufExportFile(ctx: Context) {
+        ctx.contentType("application/json")
+        val sdf = SimpleDateFormat("yyyy-MM-dd_HH-mm")
+        val currentDate = sdf.format(Date())
+
+        ctx.header("Content-Disposition", "attachment; filename=\"tachidesk_$currentDate.json\"")
+        ctx.result(
+            JavalinSetup.future {
+                LegacyBackupExport.createLegacyBackup(
+                    BackupFlags(
+                        includeManga = true,
+                        includeCategories = true,
+                        includeChapters = true,
+                        includeTracking = true,
+                        includeHistory = true,
+                    )
+                )
+            }
+        )
+    }
 }
