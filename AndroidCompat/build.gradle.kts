@@ -20,15 +20,8 @@ dependencies {
     // Android stub library
     implementation(fileTree("lib/"))
 
-
-    // Android JAR libs
-//    compileOnly( fileTree(dir: new File(rootProject.rootDir, "libs/other"), include: "*.jar")
-
     // JSON
     compileOnly("com.google.code.gson:gson:2.8.6")
-
-    // Javassist
-    compileOnly("org.javassist:javassist:3.27.0-GA")
 
     // XML
     compileOnly(group= "xmlpull", name= "xmlpull", version= "1.1.3.1")
@@ -43,10 +36,8 @@ dependencies {
     compileOnly("androidx.annotation:annotation:1.2.0-alpha01")
 
     // substitute for duktape-android
-    // 'org.mozilla:rhino' includes some code that we don't need so use 'org.mozilla:rhino-runtime' instead
-    implementation("org.mozilla:rhino-runtime:1.7.13")
-    // 'org.mozilla:rhino-engine' provides the same interface as 'javax.script' a.k.a Nashorn
-    implementation("org.mozilla:rhino-engine:1.7.13")
+    implementation("org.mozilla:rhino-runtime:1.7.13") // slimmer version of 'org.mozilla:rhino'
+    implementation("org.mozilla:rhino-engine:1.7.13") // provides the same interface as 'javax.script' a.k.a Nashorn
 
     // Kotlin wrapper around Java Preferences, makes certain things easier
     val multiplatformSettingsVersion = "0.7.7"
