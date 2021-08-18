@@ -10,11 +10,11 @@ package suwayomi.tachidesk.manga.impl.backup.legacy
 import com.google.gson.JsonObject
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.manga.impl.backup.AbstractBackupValidator
 import suwayomi.tachidesk.manga.impl.backup.legacy.models.Backup
 import suwayomi.tachidesk.manga.model.table.SourceTable
 
-object LegacyBackupValidator {
-    data class ValidationResult(val missingSources: List<String>, val missingTrackers: List<String>)
+object LegacyBackupValidator: AbstractBackupValidator() {
 
     /**
      * Checks for critical backup file data.

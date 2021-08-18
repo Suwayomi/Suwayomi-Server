@@ -20,7 +20,7 @@ object BackupController {
     fun legacyImport(ctx: Context) {
         ctx.result(
             JavalinSetup.future {
-                LegacyBackupImport.restoreLegacyBackup(ctx.bodyAsInputStream())
+                LegacyBackupImport.performRestore(ctx.bodyAsInputStream())
             }
         )
     }
@@ -29,7 +29,7 @@ object BackupController {
     fun legacyImportFile(ctx: Context) {
         ctx.result(
             JavalinSetup.future {
-                LegacyBackupImport.restoreLegacyBackup(ctx.uploadedFile("backup.json")!!.content)
+                LegacyBackupImport.performRestore(ctx.uploadedFile("backup.json")!!.content)
             }
         )
     }
@@ -78,7 +78,7 @@ object BackupController {
     fun protobufImport(ctx: Context) { // TODO
         ctx.result(
             JavalinSetup.future {
-                LegacyBackupImport.restoreLegacyBackup(ctx.bodyAsInputStream())
+                LegacyBackupImport.performRestore(ctx.bodyAsInputStream())
             }
         )
     }
@@ -87,7 +87,7 @@ object BackupController {
     fun protobufImportFile(ctx: Context) { // TODO
         ctx.result(
             JavalinSetup.future {
-                LegacyBackupImport.restoreLegacyBackup(ctx.uploadedFile("backup.json")!!.content)
+                LegacyBackupImport.performRestore(ctx.uploadedFile("backup.json")!!.content)
             }
         )
     }
