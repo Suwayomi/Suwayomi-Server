@@ -17,21 +17,27 @@ A free and open source manga reader server that runs extensions built for [Tachi
 
 Tachidesk is an independent Tachiyomi compatible software and is **not a Fork of** Tachiyomi.
 
-Tachidesk is as multi-platform as you can get. Any platform that runs java and/or has a modern browser can run it. This includes Windows, Linux, macOS, chrome OS, etc. Follow [Downloading and Running the app](#downloading-and-running-the-app) for installation instructions.
+Tachidesk-Server is as multi-platform as you can get. Any platform that runs java and/or has a modern browser can run it. This includes Windows, Linux, macOS, chrome OS, etc. Follow [Downloading and Running the app](#downloading-and-running-the-app) for installation instructions.
 
 Ability to read and write Tachiyomi compatible backups and syncing is a planned feature.
 
 ## Is this application usable? Should I test it?
 Here is a list of current features:
 
-- Installing and executing Tachiyomi's Extensions, So you'll get the same sources.
-- A library to save your mangas and categories to put them into.
-- Searching and browsing installed sources.
-- A decent chapter reader.
-- Ability to download Manga for offline read
-- Backup and restore support powered by Tachiyomi Legacy Backups
+- From Tachiyomi
+    - Installing and executing Tachiyomi's Extensions, So you'll get the same sources
+    - A library to save your mangas and categories to put them into
+    - Searching and browsing installed sources
+    - Ability to download Manga for offline read
+    - Backup and restore support powered by Tachiyomi Legacy Backups
+- Aniyomi
+    - Installing and executing Aniyomi's Extensions
+    - Searching and browsing installed sources.
+    - Viewing an anime and it's episodes
 
-**Note:** Keep in mind that Tachidesk is alpha software and can break rarely and/or with each update. See [Troubleshooting](https://github.com/Suwayomi/Tachidesk/wiki/Troubleshooting) if it happens.
+**Note:** These are capabilities of Tachidesk-Server, the actual support is provided by each fron-end app, checkout their respective readme for for info.
+
+**Note:** Tachidesk-Server is alpha software and can break rarely and/or with each update. See [Troubleshooting](https://github.com/Suwayomi/Tachidesk-Server/wiki/Troubleshooting) if it happens.
 
 ## Downloading and Running the app
 ### All Operating Systems
