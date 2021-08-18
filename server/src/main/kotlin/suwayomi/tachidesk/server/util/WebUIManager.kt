@@ -14,8 +14,9 @@ import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.BuildConfig
-import java.io.BufferedInputStream
 import java.io.File
+import java.io.InputStream
+import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -58,9 +59,12 @@ fun setupWebUI() {
         val webUIZipFile = File(webUIZipPath)
 
         // try with resources first
-        val resourceWebUI = try {
+        val resourceWebUI: InputStream? = try {
             BuildConfig::class.java.getResourceAsStream("/WebUI.zip")
-        } catch (e: NullPointerException) { null }
+        } catch (e: NullPointerException) {
+            logger.info { "No bundled WebUI.zip found!" }
+            null
+        }
 
         if (resourceWebUI == null) { // is not bundled
             // download webUI zip
@@ -71,18 +75,25 @@ fun setupWebUI() {
             val data = ByteArray(1024)
 
             webUIZipFile.outputStream().use { webUIZipFileOut ->
-                BufferedInputStream(URL(webUIZipURL).openStream()).use { inp ->
+
+                val connection = URL(webUIZipURL).openConnection() as HttpURLConnection
+                connection.connect()
+                val contentLength = connection.contentLength
+
+                connection.inputStream.buffered().use { inp ->
                     var totalCount = 0
-                    var tresh = 0
+
+                    print("Download progress: % 00")
                     while (true) {
                         val count = inp.read(data, 0, 1024)
-                        totalCount += count
-                        if (totalCount > tresh + 10 * 1024) {
-                            tresh = totalCount
-                            print(" *")
-                        }
+
                         if (count == -1)
                             break
+
+                        totalCount += count
+                        val percentage = (totalCount.toFloat() / contentLength * 100).toInt().toString().padStart(2, '0')
+                        print("\b\b$percentage")
+
                         webUIZipFileOut.write(data, 0, count)
                     }
                     println()
