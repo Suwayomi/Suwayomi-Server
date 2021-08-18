@@ -37,7 +37,7 @@ Here is a list of current features:
     - Searching and browsing installed sources.
     - Viewing an anime and it's episodes
 
-**Note:** These are capabilities of Tachidesk-Server, the actual support is provided by each fron-end app, checkout their respective readme for for info.
+**Note:** These are capabilities of Tachidesk-Server, the actual support is provided by each fron-end app, checkout their respective readme for more info.
 
 **Note:** Tachidesk-Server is alpha software and can break rarely and/or with each update. See [Troubleshooting](https://github.com/Suwayomi/Tachidesk-Server/wiki/Troubleshooting) if it happens.
 
