@@ -79,6 +79,10 @@ configure(projects) {
         // to get application content root
         implementation("net.harawata:appdirs:1.2.1")
 
+        // dex2jar: https://github.com/DexPatcher/dex2jar/releases/tag/v2.1-20190905-lanchon
+        // note: watch https://github.com/ThexXTURBOXx/dex2jar for future developments
+        implementation("com.github.DexPatcher.dex2jar:dex-tools:v2.1-20190905-lanchon")
+
         // APK parser
         implementation("net.dongliu:apk-parser:2.6.10")
 
