@@ -5,7 +5,7 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 
 open class MangaImpl : Manga {
 
-    override var id: Long? = 0
+    override var id: Long? = null
 
     override var source: Long = -1
 
@@ -29,6 +29,8 @@ open class MangaImpl : Manga {
 
     override var last_update: Long = 0
 
+    override var next_update: Long = 0
+
     override var date_added: Long = 0
 
     override var initialized: Boolean = false
@@ -42,7 +44,7 @@ open class MangaImpl : Manga {
      * 4 -> Webtoon
      * 5 -> Continues Vertical
      */
-    override var viewer: Int = 0
+    override var viewer_flags: Int = 0
 
     /** Contains some useful info about
      */
@@ -70,7 +72,7 @@ open class MangaImpl : Manga {
                 url = mangaRecord[MangaTable.url]
                 title = mangaRecord[MangaTable.title]
                 source = mangaRecord[MangaTable.sourceReference]
-                viewer = 0 // TODO: implement
+                viewer_flags  = 0 // TODO: implement
                 chapter_flags = 0 // TODO: implement
             }
         }
