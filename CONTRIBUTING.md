@@ -27,7 +27,7 @@ You need these software packages installed in order to build the project
 ### building the full-blown jar (Tachidesk-Server + Tachidesk-WebUI bundle)
 Run `./gradlew server:downloadWebUI server:shadowJar`, the resulting built jar file will be `server/build/Tachidesk-Server-vX.Y.Z-rxxx.jar`.
 
-### building without `webUI` bundled(server only)
+### building without `webUI` bundled (server only)
 Delete `server/src/main/resources/WebUI.zip` if exists from previous runs, then run `./gradlew server:shadowJar`, the resulting built jar file will be `server/build/Tachidesk-Server-vX.Y.Z-rxxx.jar`.
 
 ### building the Windows package
