@@ -9,7 +9,7 @@ Yes, you need a client/user interface app as a front-end for Tachidesk-Server, i
 Here's a list of known clients/user interfaces for Tachidesk-Server:
 - [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): The "official" front-end for Tachidesk-Server, A native desktop Application.
 - [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI): The web/electrion front-end that Tachidesk is traditionally shipped with.
-- [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): A C++/Qt for mobile devices(Android/linux), in super early stage of development.
+- [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): A C++/Qt front-end for mobile devices(Android/linux), in super early stage of development.
 - [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js, in super early stage of development.
 
 # What is Tachidesk then?
