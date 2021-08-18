@@ -8,7 +8,7 @@ Yes, you choose any of these user interface apps as a front-end for Tachidesk-Se
 - [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): The "official" front-end for Tachidesk-Server, A native desktop Application.
 - [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI): The web/electrion front-end that Tachidesk is traditionally shipped with.
 - [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): A C++/Qt for Desktop and Android, in super early stage of development.
-- [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js, in super early stage of development, and seemingly abandoned.
+- [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js, in super early stage of development.
 
 # What is Tachidesk then?
 <img src="https://github.com/Suwayomi/Tachidesk/raw/master/server/src/main/resources/icon/faviconlogo.png" alt="drawing" width="200"/>
