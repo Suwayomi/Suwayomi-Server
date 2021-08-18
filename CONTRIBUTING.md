@@ -21,8 +21,8 @@ You need these software packages installed in order to build the project
 
 - Java Development Kit and Java Runtime Environment version 8 or newer(both Oracle JDK and OpenJDK works)
 - Android stubs jar
-    - Manual download: Download [android.jar](https://raw.githubusercontent.com/Suwayomi/Tachidesk/android-jar/android.jar) and put it under `AndroidCompat/lib`.
-    - Automated download: Run `AndroidCompat/getAndroid.sh`(MacOS/Linux) or `AndroidCompat/getAndroid.ps1`(Windows) from project's root directory to download and rebuild the jar file from Google's repository.
+    - **Manual download:** Download [android.jar](https://raw.githubusercontent.com/Suwayomi/Tachidesk/android-jar/android.jar) and put it under `AndroidCompat/lib`.
+    - **Automated download:** Run `AndroidCompat/getAndroid.sh`(MacOS/Linux) or `AndroidCompat/getAndroid.ps1`(Windows) from project's root directory to download and rebuild the jar file from Google's repository.
 
 ### building the full-blown jar (Tachidesk-Server + Tachidesk-WebUI bundle)
 Run `./gradlew server:downloadWebUI server:shadowJar`, the resulting built jar file will be `server/build/Tachidesk-Server-vX.Y.Z-rxxx.jar`.
