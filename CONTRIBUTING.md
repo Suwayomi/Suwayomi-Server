@@ -6,7 +6,7 @@ Checkout [This Kanban Board](https://github.com/Suwayomi/Tachidesk/projects/1) t
 
 ## How does Tachidesk-Server work?
 This project has two components: 
-1. **Server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run apk extensions. All this concludes to serving a REST API.
+1. **Server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run jar libraries converted from apk extensions. All this concludes to serving a REST API.
 2. **WebUI:** A react SPA(`create-react-app`) project that works with the server to do the presentation located at https://github.com/Suwayomi/Tachidesk-WebUI
 
 ## Why a web server app?
