@@ -1,5 +1,7 @@
 package suwayomi.tachidesk.manga.impl.backup.proto
 
+import suwayomi.tachidesk.manga.impl.backup.BackupFlags
+
 /*
  * Copyright (C) Contributors to the Suwayomi project
  * 
@@ -8,4 +10,7 @@ package suwayomi.tachidesk.manga.impl.backup.proto
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 object ProtoBackupExport {
+    suspend fun createBackup(flags: BackupFlags): String? {
+        TODO()
+    }
 }
