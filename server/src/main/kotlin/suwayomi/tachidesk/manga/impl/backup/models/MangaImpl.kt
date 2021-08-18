@@ -72,7 +72,7 @@ open class MangaImpl : Manga {
                 url = mangaRecord[MangaTable.url]
                 title = mangaRecord[MangaTable.title]
                 source = mangaRecord[MangaTable.sourceReference]
-                viewer_flags  = 0 // TODO: implement
+                viewer_flags = 0 // TODO: implement
                 chapter_flags = 0 // TODO: implement
             }
         }

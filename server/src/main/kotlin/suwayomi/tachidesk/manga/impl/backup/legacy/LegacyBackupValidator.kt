@@ -14,7 +14,7 @@ import suwayomi.tachidesk.manga.impl.backup.AbstractBackupValidator
 import suwayomi.tachidesk.manga.impl.backup.legacy.models.Backup
 import suwayomi.tachidesk.manga.model.table.SourceTable
 
-object LegacyBackupValidator: AbstractBackupValidator() {
+object LegacyBackupValidator : AbstractBackupValidator() {
 
     /**
      * Checks for critical backup file data.

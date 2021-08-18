@@ -1,9 +1,8 @@
 package suwayomi.tachidesk.manga.impl.backup.models
 
 import eu.kanade.tachiyomi.source.model.SManga
-//import eu.kanade.tachiyomi.ui.reader.setting.OrientationType
-//import eu.kanade.tachiyomi.ui.reader.setting.ReadingModeType
-
+// import eu.kanade.tachiyomi.ui.reader.setting.OrientationType
+// import eu.kanade.tachiyomi.ui.reader.setting.ReadingModeType
 
 // substitute for eu.kanade.tachiyomi.ui.reader.setting.OrientationType
 object OrientationType {
@@ -14,7 +13,6 @@ object OrientationType {
 object ReadingModeType {
     const val MASK = 0x00000007
 }
-
 
 interface Manga : SManga {
 
@@ -129,7 +127,7 @@ interface Manga : SManga {
     }
 }
 
-//fun Manga.toMangaInfo(): MangaInfo {
+// fun Manga.toMangaInfo(): MangaInfo {
 //    return MangaInfo(
 //        artist = this.artist ?: "",
 //        author = this.author ?: "",
@@ -140,4 +138,4 @@ interface Manga : SManga {
 //        status = this.status,
 //        title = this.title
 //    )
-//}
+// }

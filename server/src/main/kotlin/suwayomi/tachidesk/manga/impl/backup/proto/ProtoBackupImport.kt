@@ -20,7 +20,7 @@ import java.io.InputStream
 
 private val logger = KotlinLogging.logger {}
 
-object ProtoBackupImport: ProtoBackupBase() {
+object ProtoBackupImport : ProtoBackupBase() {
     var restoreAmount = 0
 
     suspend fun performRestore(sourceStream: InputStream): ValidationResult {
@@ -58,7 +58,6 @@ object ProtoBackupImport: ProtoBackupBase() {
 //        restoreProgress += 1
 //        showRestoreProgress(restoreProgress, restoreAmount, context.getString(R.string.categories))
     }
-
 
     private fun restoreManga(backupManga: BackupManga, backupCategories: List<BackupCategory>) { // TODO
 //        val manga = backupManga.getMangaImpl()

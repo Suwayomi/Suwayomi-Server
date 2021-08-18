@@ -15,7 +15,7 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSerializer
 import java.io.ByteArrayOutputStream
 
-object ProtoBackupExport: ProtoBackupBase() {
+object ProtoBackupExport : ProtoBackupBase() {
     suspend fun createBackup(flags: BackupFlags): ByteArray {
         // Create root object
         var backup: Backup? = null

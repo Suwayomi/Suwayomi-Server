@@ -13,7 +13,7 @@ import suwayomi.tachidesk.manga.impl.backup.AbstractBackupValidator
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.model.table.SourceTable
 
-object ProtoBackupValidator: AbstractBackupValidator() {
+object ProtoBackupValidator : AbstractBackupValidator() {
     fun validate(backup: Backup): ValidationResult {
         if (backup.backupManga.isEmpty()) {
             throw Exception("Backup does not contain any manga.")

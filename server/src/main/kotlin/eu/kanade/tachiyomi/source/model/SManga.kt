@@ -62,7 +62,7 @@ interface SManga : Serializable {
     }
 }
 
-//fun SManga.toMangaInfo(): MangaInfo {
+// fun SManga.toMangaInfo(): MangaInfo {
 //    return MangaInfo(
 //        key = this.url,
 //        title = this.title,
@@ -73,9 +73,9 @@ interface SManga : Serializable {
 //        status = this.status,
 //        cover = this.thumbnail_url ?: ""
 //    )
-//}
+// }
 //
-//fun MangaInfo.toSManga(): SManga {
+// fun MangaInfo.toSManga(): SManga {
 //    val mangaInfo = this
 //    return SManga.create().apply {
 //        url = mangaInfo.key
@@ -87,5 +87,4 @@ interface SManga : Serializable {
 //        status = mangaInfo.status
 //        thumbnail_url = mangaInfo.cover
 //    }
-//}
-
+// }
