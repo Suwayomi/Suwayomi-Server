@@ -32,7 +32,7 @@ Here is a list of current features:
     - Searching and browsing installed sources
     - Ability to download Manga for offline read
     - Backup and restore support powered by Tachiyomi Legacy Backups
-- Aniyomi
+- From Aniyomi
     - Installing and executing Aniyomi's Extensions
     - Searching and browsing installed sources.
     - Viewing an anime and it's episodes
