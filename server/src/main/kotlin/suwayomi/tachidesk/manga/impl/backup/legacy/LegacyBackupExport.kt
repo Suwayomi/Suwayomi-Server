@@ -29,7 +29,7 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 
 object LegacyBackupExport : LegacyBackupBase() {
 
-    suspend fun createLegacyBackup(flags: BackupFlags): String? {
+    suspend fun createBackup(flags: BackupFlags): ByteArray {
         // Create root object
         val root = JsonObject()
 
@@ -77,7 +77,7 @@ object LegacyBackupExport : LegacyBackupBase() {
             backupExtensionInfo(extensionEntries, extensions)
         }
 
-        return parser.toJson(root)
+        return parser.toJson(root).encodeToByteArray()
     }
 
     private fun backupMangaObject(manga: Manga, options: BackupFlags): JsonElement {

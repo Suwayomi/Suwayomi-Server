@@ -1,5 +1,12 @@
 package suwayomi.tachidesk.manga.impl.backup.legacy
 
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
 import com.github.salomonbrys.kotson.fromJson
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
@@ -15,7 +22,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Category.createCategory
 import suwayomi.tachidesk.manga.impl.Category.getCategoryList
-import suwayomi.tachidesk.manga.impl.backup.legacy.LegacyBackupValidator.ValidationResult
+import suwayomi.tachidesk.manga.impl.backup.AbstractBackupValidator.ValidationResult
 import suwayomi.tachidesk.manga.impl.backup.legacy.LegacyBackupValidator.validate
 import suwayomi.tachidesk.manga.impl.backup.legacy.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.legacy.models.DHistory
@@ -32,17 +39,10 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.io.InputStream
 import java.util.Date
 
-/*
- * Copyright (C) Contributors to the Suwayomi project
- * 
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
-
 private val logger = KotlinLogging.logger {}
 
 object LegacyBackupImport : LegacyBackupBase() {
-    suspend fun restoreLegacyBackup(sourceStream: InputStream): ValidationResult {
+    suspend fun performRestore(sourceStream: InputStream): ValidationResult {
         val reader = sourceStream.bufferedReader()
         val json = JsonParser.parseReader(reader).asJsonObject
 

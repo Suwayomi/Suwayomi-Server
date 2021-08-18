@@ -4,6 +4,8 @@ import io.javalin.http.Context
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.legacy.LegacyBackupExport
 import suwayomi.tachidesk.manga.impl.backup.legacy.LegacyBackupImport
+import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
+import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 import suwayomi.tachidesk.server.JavalinSetup
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -20,7 +22,7 @@ object BackupController {
     fun legacyImport(ctx: Context) {
         ctx.result(
             JavalinSetup.future {
-                LegacyBackupImport.restoreLegacyBackup(ctx.bodyAsInputStream())
+                LegacyBackupImport.performRestore(ctx.bodyAsInputStream())
             }
         )
     }
@@ -29,7 +31,7 @@ object BackupController {
     fun legacyImportFile(ctx: Context) {
         ctx.result(
             JavalinSetup.future {
-                LegacyBackupImport.restoreLegacyBackup(ctx.uploadedFile("backup.json")!!.content)
+                LegacyBackupImport.performRestore(ctx.uploadedFile("backup.json")!!.content)
             }
         )
     }
@@ -39,7 +41,7 @@ object BackupController {
         ctx.contentType("application/json")
         ctx.result(
             JavalinSetup.future {
-                LegacyBackupExport.createLegacyBackup(
+                LegacyBackupExport.createBackup(
                     BackupFlags(
                         includeManga = true,
                         includeCategories = true,
@@ -55,13 +57,69 @@ object BackupController {
     /** returns a Tachiyomi legacy backup json created from the current database as a file */
     fun legacyExportFile(ctx: Context) {
         ctx.contentType("application/json")
-        val sdf = SimpleDateFormat("yyyy-MM-dd_HH-mm")
-        val currentDate = sdf.format(Date())
+        val currentDate = SimpleDateFormat("yyyy-MM-dd_HH-mm").format(Date())
 
-        ctx.header("Content-Disposition", "attachment; filename=\"tachidesk_$currentDate.json\"")
+        ctx.header("Content-Disposition", """attachment; filename="tachidesk_$currentDate.json"""")
         ctx.result(
             JavalinSetup.future {
-                LegacyBackupExport.createLegacyBackup(
+                LegacyBackupExport.createBackup(
+                    BackupFlags(
+                        includeManga = true,
+                        includeCategories = true,
+                        includeChapters = true,
+                        includeTracking = true,
+                        includeHistory = true,
+                    )
+                )
+            }
+        )
+    }
+
+    /** expects a Tachiyomi protobuf backup in the body */
+    fun protobufImport(ctx: Context) {
+        ctx.result(
+            JavalinSetup.future {
+                ProtoBackupImport.performRestore(ctx.bodyAsInputStream())
+            }
+        )
+    }
+
+    /** expects a Tachiyomi protobuf backup as a file upload, the file must be named "backup.proto.gz" */
+    fun protobufImportFile(ctx: Context) {
+        ctx.result(
+            JavalinSetup.future {
+                ProtoBackupImport.performRestore(ctx.uploadedFile("backup.proto.gz")!!.content)
+            }
+        )
+    }
+
+    /** returns a Tachiyomi protobuf backup created from the current database as a body */
+    fun protobufExport(ctx: Context) { // TODO
+        ctx.contentType("application/octet-stream")
+        ctx.result(
+            JavalinSetup.future {
+                ProtoBackupExport.createBackup(
+                    BackupFlags(
+                        includeManga = true,
+                        includeCategories = true,
+                        includeChapters = true,
+                        includeTracking = true,
+                        includeHistory = true,
+                    )
+                )
+            }
+        )
+    }
+
+    /** returns a Tachiyomi protobuf backup created from the current database as a file */
+    fun protobufExportFile(ctx: Context) {
+        ctx.contentType("application/octet-stream")
+        val currentDate = SimpleDateFormat("yyyy-MM-dd_HH-mm").format(Date())
+
+        ctx.header("Content-Disposition", """attachment; filename="tachidesk_$currentDate.proto.gz"""")
+        ctx.result(
+            JavalinSetup.future {
+                ProtoBackupExport.createBackup(
                     BackupFlags(
                         includeManga = true,
                         includeCategories = true,

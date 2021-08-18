@@ -7,6 +7,7 @@ import java.time.Instant
 
 plugins {
     application
+    kotlin("plugin.serialization")
     id("com.github.johnrengelman.shadow") version "7.0.0"
     id("org.jmailen.kotlinter") version "3.4.3"
     id("com.github.gmazzo.buildconfig") version "3.0.2"
@@ -143,7 +144,8 @@ tasks {
             freeCompilerArgs = listOf(
                 "-Xopt-in=kotlin.RequiresOptIn",
                 "-Xopt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-                "-Xopt-in=kotlinx.coroutines.InternalCoroutinesApi"
+                "-Xopt-in=kotlinx.coroutines.InternalCoroutinesApi",
+                "-Xopt-in=kotlinx.serialization.ExperimentalSerializationApi",
             )
         }
     }
