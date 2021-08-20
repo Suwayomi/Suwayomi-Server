@@ -21,9 +21,6 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 
 object Library {
-    // TODO: `Category.isLanding` is to handle the default categories a new library manga gets,
-// ..implement that shit at some time...
-// ..also Consider to rename it to `isDefault`
     suspend fun addMangaToLibrary(mangaId: Int) {
         val manga = getManga(mangaId)
         if (!manga.inLibrary) {
