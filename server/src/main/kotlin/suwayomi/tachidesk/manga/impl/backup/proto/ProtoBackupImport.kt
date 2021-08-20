@@ -33,9 +33,9 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.io.InputStream
 import java.util.Date
 
-private val logger = KotlinLogging.logger {}
-
 object ProtoBackupImport : ProtoBackupBase() {
+    private val logger = KotlinLogging.logger {}
+
     private var restoreAmount = 0
 
     private val errors = mutableListOf<Pair<Date, String>>()
