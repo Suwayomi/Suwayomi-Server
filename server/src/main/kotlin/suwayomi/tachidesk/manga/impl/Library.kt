@@ -7,18 +7,15 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Manga.getManga
-import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
-import suwayomi.tachidesk.manga.model.table.toDataClass
 
 object Library {
     suspend fun addMangaToLibrary(mangaId: Int) {
@@ -51,14 +48,6 @@ object Library {
                     it[defaultCategory] = true
                 }
                 CategoryMangaTable.deleteWhere { CategoryMangaTable.manga eq mangaId }
-            }
-        }
-    }
-
-    fun getLibraryMangas(): List<MangaDataClass> {
-        return transaction {
-            MangaTable.select { (MangaTable.inLibrary eq true) and (MangaTable.defaultCategory eq true) }.map {
-                MangaTable.toDataClass(it)
             }
         }
     }

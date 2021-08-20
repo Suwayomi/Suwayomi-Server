@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
@@ -15,9 +16,11 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.CategoryManga.removeMangaFromCategory
+import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
+import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 
 object Category {
@@ -68,11 +71,21 @@ object Category {
         }
     }
 
+    const val DEFAULT_CATEGORY_ID = 0
+    private fun addDefaultIfNecessary(categories: List<CategoryDataClass>): List<CategoryDataClass> =
+        if (MangaTable.select { (MangaTable.inLibrary eq true) and (MangaTable.defaultCategory eq true) }.isNotEmpty()) {
+            listOf(CategoryDataClass(DEFAULT_CATEGORY_ID, 0, "Default", true)) + categories
+        } else {
+            categories
+        }
+
     fun getCategoryList(): List<CategoryDataClass> {
         return transaction {
-            CategoryTable.selectAll().orderBy(CategoryTable.order to SortOrder.ASC).map {
+            val categories = CategoryTable.selectAll().orderBy(CategoryTable.order to SortOrder.ASC).map {
                 CategoryTable.toDataClass(it)
             }
+
+            addDefaultIfNecessary(categories)
         }
     }
 }

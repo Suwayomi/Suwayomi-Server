@@ -10,14 +10,8 @@ package suwayomi.tachidesk.manga.controller
 import io.javalin.http.Context
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
-import suwayomi.tachidesk.manga.impl.Library
 
-object LibraryController {
-    /** lists mangas that have no category assigned */
-    fun list(ctx: Context) {
-        ctx.json(Library.getLibraryMangas())
-    }
-
+object CategoryController {
     /** category list */
     fun categoryList(ctx: Context) {
         ctx.json(Category.getCategoryList())

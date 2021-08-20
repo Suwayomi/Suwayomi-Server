@@ -14,9 +14,9 @@ import io.javalin.apibuilder.ApiBuilder.path
 import io.javalin.apibuilder.ApiBuilder.post
 import io.javalin.apibuilder.ApiBuilder.ws
 import suwayomi.tachidesk.manga.controller.BackupController
+import suwayomi.tachidesk.manga.controller.CategoryController
 import suwayomi.tachidesk.manga.controller.DownloadController
 import suwayomi.tachidesk.manga.controller.ExtensionController
-import suwayomi.tachidesk.manga.controller.LibraryController
 import suwayomi.tachidesk.manga.controller.MangaController
 import suwayomi.tachidesk.manga.controller.SourceController
 
@@ -70,19 +70,18 @@ object MangaAPI {
             get(":mangaId/chapter/:chapterIndex/page/:index", MangaController::pageRetrieve)
         }
 
-        path("") {
-            get("library", LibraryController::list)
+        path("category") {
+            get("", CategoryController::categoryList)
+            post("", CategoryController::categoryCreate)
 
-            path("category") {
-                get("", LibraryController::categoryList)
-                post("", LibraryController::categoryCreate)
+            get(":categoryId", CategoryController::categoryMangas)
+            patch(":categoryId", CategoryController::categoryModify)
+            delete(":categoryId", CategoryController::categoryDelete)
 
-                get(":categoryId", LibraryController::categoryMangas)
-                patch(":categoryId", LibraryController::categoryModify)
-                delete(":categoryId", LibraryController::categoryDelete)
-
-                patch(":categoryId/reorder", LibraryController::categoryReorder) // TODO: the underlying code doesn't need `:categoryId`, remove it
-            }
+            patch(
+                ":categoryId/reorder",
+                CategoryController::categoryReorder
+            ) // TODO: the underlying code doesn't need `:categoryId`, remove it
         }
 
         path("backup") {
