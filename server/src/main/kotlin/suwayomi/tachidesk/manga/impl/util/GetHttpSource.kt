@@ -32,7 +32,7 @@ object GetHttpSource {
         }
 
         val sourceRecord = transaction {
-            SourceTable.select { SourceTable.id eq sourceId }.first()
+            SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!!
         }
 
         val extensionId = sourceRecord[SourceTable.extension]

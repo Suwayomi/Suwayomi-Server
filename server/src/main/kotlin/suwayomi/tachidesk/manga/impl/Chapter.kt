@@ -46,12 +46,12 @@ object Chapter {
     }
 
     private suspend fun getSourceChapters(mangaId: Int): List<ChapterDataClass> {
-        val mangaDetails = getManga(mangaId)
-        val source = getHttpSource(mangaDetails.sourceId.toLong())
+        val manga = getManga(mangaId)
+        val source = getHttpSource(manga.sourceId.toLong())
         val chapterList = source.fetchChapterList(
             SManga.create().apply {
-                title = mangaDetails.title
-                url = mangaDetails.url
+                title = manga.title
+                url = manga.url
             }
         ).awaitSingle()
 
@@ -69,7 +69,7 @@ object Chapter {
                         it[scanlator] = fetchedChapter.scanlator
 
                         it[chapterIndex] = index + 1
-                        it[manga] = mangaId
+                        it[ChapterTable.manga] = mangaId
                     }
                 } else {
                     ChapterTable.update({ ChapterTable.url eq fetchedChapter.url }) {
@@ -79,7 +79,7 @@ object Chapter {
                         it[scanlator] = fetchedChapter.scanlator
 
                         it[chapterIndex] = index + 1
-                        it[manga] = mangaId
+                        it[ChapterTable.manga] = mangaId
                     }
                 }
             }

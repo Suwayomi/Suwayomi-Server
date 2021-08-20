@@ -11,20 +11,36 @@ import mu.KotlinLogging
 import okio.buffer
 import okio.gzip
 import okio.source
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.insertAndGetId
+import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.manga.impl.Category
+import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.backup.AbstractBackupValidator.ValidationResult
+import suwayomi.tachidesk.manga.impl.backup.models.Chapter
+import suwayomi.tachidesk.manga.impl.backup.models.Manga
+import suwayomi.tachidesk.manga.impl.backup.models.Track
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.validate
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupHistory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSerializer
+import suwayomi.tachidesk.manga.model.table.CategoryTable
+import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.io.InputStream
+import java.util.Date
 
 private val logger = KotlinLogging.logger {}
 
 object ProtoBackupImport : ProtoBackupBase() {
-    var restoreAmount = 0
+    private var restoreAmount = 0
+
+    private val errors = mutableListOf<Pair<Date, String>>()
 
     suspend fun performRestore(sourceStream: InputStream): ValidationResult {
-
         val backupString = sourceStream.source().gzip().buffer().use { it.readByteArray() }
         val backup = parser.decodeFromByteArray(BackupSerializer, backupString)
 
@@ -37,43 +53,124 @@ object ProtoBackupImport : ProtoBackupBase() {
             restoreCategories(backup.backupCategories)
         }
 
+        val categoryMapping = transaction {
+            backup.backupCategories.associate {
+                it.order to CategoryTable.select { CategoryTable.name eq it.name }.first()[CategoryTable.id].value
+            }
+        }
+
         // Store source mapping for error messages
         sourceMapping = backup.backupSources.map { it.sourceId to it.name }.toMap()
 
         // Restore individual manga
         backup.backupManga.forEach {
-            restoreManga(it, backup.backupCategories)
+            restoreManga(it, backup.backupCategories, categoryMapping)
         }
 
-        // TODO: optionally trigger online library + tracker update
+        logger.info {
+            """
+                Restore Errors:
+                ${ errors.joinToString("\n") { "${it.first} - ${it.second}" } }
+                Restore Summary:
+                - Missing Sources:
+                    ${validationResult.missingSources.joinToString("\n                    ")}
+                - Missing Trackers:
+${validationResult.missingTrackers.joinToString("\n")}
+            """.trimIndent()
+        }
 
         return validationResult
     }
 
-    private fun restoreCategories(backupCategories: List<BackupCategory>) { // TODO
-//        db.inTransaction {
-//            backupManager.restoreCategories(backupCategories)
-//        }
-//
-//        restoreProgress += 1
-//        showRestoreProgress(restoreProgress, restoreAmount, context.getString(R.string.categories))
+    private fun restoreCategories(backupCategories: List<BackupCategory>) {
+        val dbCategories = Category.getCategoryList()
+
+        // Iterate over them and create missing categories
+        backupCategories.forEach { category ->
+            if (dbCategories.none { it.name == category.name }) {
+                Category.createCategory(category.name)
+            }
+        }
     }
 
-    private fun restoreManga(backupManga: BackupManga, backupCategories: List<BackupCategory>) { // TODO
-//        val manga = backupManga.getMangaImpl()
-//        val chapters = backupManga.getChaptersImpl()
-//        val categories = backupManga.categories
-//        val history = backupManga.history
-//        val tracks = backupManga.getTrackingImpl()
-//
-//        try {
-//            restoreMangaData(manga, chapters, categories, history, tracks, backupCategories)
-//        } catch (e: Exception) {
-//            val sourceName = sourceMapping[manga.source] ?: manga.source.toString()
-//            errors.add(Date() to "${manga.title} [$sourceName]: ${e.message}")
-//        }
-//
-//        restoreProgress += 1
-//        showRestoreProgress(restoreProgress, restoreAmount, manga.title)
+    private fun restoreManga(
+        backupManga: BackupManga,
+        backupCategories: List<BackupCategory>,
+        categoryMapping: Map<Int, Int>
+    ) { // TODO
+        val manga = backupManga.getMangaImpl()
+        val chapters = backupManga.getChaptersImpl()
+        val categories = backupManga.categories
+        val history = backupManga.history
+        val tracks = backupManga.getTrackingImpl()
+
+        try {
+            restoreMangaData(manga, chapters, categories, history, tracks, backupCategories, categoryMapping)
+        } catch (e: Exception) {
+            val sourceName = sourceMapping[manga.source] ?: manga.source.toString()
+            errors.add(Date() to "${manga.title} [$sourceName]: ${e.message}")
+        }
+    }
+
+    private fun restoreMangaData(
+        manga: Manga,
+        chapters: List<Chapter>,
+        categories: List<Int>,
+        history: List<BackupHistory>,
+        tracks: List<Track>,
+        backupCategories: List<BackupCategory>,
+        categoryMapping: Map<Int, Int>
+    ) {
+        val dbManga = transaction {
+            MangaTable.select { (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq manga.source) }
+                .firstOrNull()
+        }
+        if (dbManga == null) { // Manga not in database
+            transaction {
+                // insert manga to database
+                val mangaId = MangaTable.insertAndGetId {
+                    it[url] = manga.url
+                    it[title] = manga.title
+
+                    it[artist] = manga.artist
+                    it[author] = manga.author
+                    it[description] = manga.description
+                    it[genre] = manga.genre
+                    it[status] = manga.status
+                    it[thumbnail_url] = manga.thumbnail_url
+
+                    it[sourceReference] = manga.source
+
+                    it[initialized] = manga.description != null
+                }.value
+
+                // insert chapter data
+                chapters.forEach { chapter ->
+                    ChapterTable.insert {
+                        it[url] = chapter.url
+                        it[name] = chapter.name
+                        it[date_upload] = chapter.date_upload
+                        it[chapter_number] = chapter.chapter_number
+                        it[scanlator] = chapter.scanlator
+
+                        it[chapterIndex] = chapter.source_order
+                        it[ChapterTable.manga] = mangaId
+                    }
+                }
+
+                // insert categories
+                categories.forEach { backupCategoryOrder ->
+                    CategoryManga.addMangaToCategory(mangaId, categoryMapping[backupCategoryOrder]!!)
+                }
+            }
+        } else { // Manga in database
+            // merge chapter data
+
+            // merge categories
+        }
+
+        // TODO: insert/merge history
+
+        // TODO: insert/merge tracking
     }
 }
