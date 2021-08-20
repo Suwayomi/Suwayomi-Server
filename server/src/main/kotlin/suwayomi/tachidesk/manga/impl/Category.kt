@@ -28,6 +28,8 @@ object Category {
      * The new category will be placed at the end of the list
      */
     fun createCategory(name: String) {
+        if (name == DEFAULT_CATEGORY_NAME) return
+
         transaction {
             val count = CategoryTable.selectAll().count()
             if (CategoryTable.select { CategoryTable.name eq name }.firstOrNull() == null)
@@ -72,9 +74,10 @@ object Category {
     }
 
     const val DEFAULT_CATEGORY_ID = 0
+    const val DEFAULT_CATEGORY_NAME = "Default"
     private fun addDefaultIfNecessary(categories: List<CategoryDataClass>): List<CategoryDataClass> =
         if (MangaTable.select { (MangaTable.inLibrary eq true) and (MangaTable.defaultCategory eq true) }.isNotEmpty()) {
-            listOf(CategoryDataClass(DEFAULT_CATEGORY_ID, 0, "Default", true)) + categories
+            listOf(CategoryDataClass(DEFAULT_CATEGORY_ID, 0, DEFAULT_CATEGORY_NAME, true)) + categories
         } else {
             categories
         }
