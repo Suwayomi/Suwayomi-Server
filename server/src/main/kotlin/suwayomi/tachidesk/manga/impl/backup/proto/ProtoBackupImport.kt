@@ -75,7 +75,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                 - Missing Sources:
                     ${validationResult.missingSources.joinToString("\n                    ")}
                 - Missing Trackers:
-${validationResult.missingTrackers.joinToString("\n")}
+                    ${validationResult.missingTrackers.joinToString("\n                    ")}
             """.trimIndent()
         }
 
@@ -155,6 +155,10 @@ ${validationResult.missingTrackers.joinToString("\n")}
 
                         it[chapterIndex] = chapter.source_order
                         it[ChapterTable.manga] = mangaId
+
+                        it[isRead] = chapter.read
+                        it[lastPageRead] = chapter.last_page_read
+                        it[isBookmarked] = chapter.bookmark
                     }
                 }
 
