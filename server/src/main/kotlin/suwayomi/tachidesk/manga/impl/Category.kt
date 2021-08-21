@@ -43,7 +43,7 @@ object Category {
     fun updateCategory(categoryId: Int, name: String?, isDefault: Boolean?) {
         transaction {
             CategoryTable.update({ CategoryTable.id eq categoryId }) {
-                if (name != null) it[CategoryTable.name] = name
+                if (name != null && !name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)) it[CategoryTable.name] = name
                 if (isDefault != null) it[CategoryTable.isDefault] = isDefault
             }
         }
