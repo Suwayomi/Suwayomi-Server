@@ -134,7 +134,7 @@ object BackupController {
     }
 
     /** Reports missing sources and trackers, expects a Tachiyomi protobuf backup in the body */
-    fun protobufValidate(ctx: Context) { // TODO
+    fun protobufValidate(ctx: Context) {
         ctx.json(
             JavalinSetup.future {
                 ProtoBackupValidator.validate(ctx.bodyAsInputStream())
