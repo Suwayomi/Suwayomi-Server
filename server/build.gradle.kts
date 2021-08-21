@@ -63,8 +63,8 @@ dependencies {
     implementation("com.github.salomonbrys.kotson:kotson:2.5.0")
 
 
-    // asm for fixing SimpleDateFormat (must match Dex2Jar version)
-    implementation("org.ow2.asm:asm-debug-all:5.0.3")
+    // asm for ByteCodeEditor(fixing SimpleDateFormat) (must match Dex2Jar version)
+    implementation("org.ow2.asm:asm:9.2")
 
     // extracting zip files
     implementation("net.lingala.zip4j:zip4j:2.9.0")
