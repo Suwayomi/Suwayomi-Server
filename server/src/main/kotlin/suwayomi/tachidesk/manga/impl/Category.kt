@@ -28,7 +28,7 @@ object Category {
      * The new category will be placed at the end of the list
      */
     fun createCategory(name: String) {
-        if (name == DEFAULT_CATEGORY_NAME) return
+        if (name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)) return
 
         transaction {
             val count = CategoryTable.selectAll().count()
