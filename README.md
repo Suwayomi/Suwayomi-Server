@@ -31,7 +31,7 @@ Here is a list of current features:
     - A library to save your mangas and categories to put them into
     - Searching and browsing installed sources
     - Ability to download Manga for offline read
-    - Backup and restore support powered by Tachiyomi Legacy Backups
+    - Backup and restore support powered by Tachiyomi Backups
 - From Aniyomi
     - Installing and executing Aniyomi's Extensions
     - Searching and browsing installed sources.
