@@ -6,6 +6,7 @@ import suwayomi.tachidesk.manga.impl.backup.legacy.LegacyBackupExport
 import suwayomi.tachidesk.manga.impl.backup.legacy.LegacyBackupImport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
+import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator
 import suwayomi.tachidesk.server.JavalinSetup
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -77,7 +78,7 @@ object BackupController {
 
     /** expects a Tachiyomi protobuf backup in the body */
     fun protobufImport(ctx: Context) {
-        ctx.result(
+        ctx.json(
             JavalinSetup.future {
                 ProtoBackupImport.performRestore(ctx.bodyAsInputStream())
             }
@@ -86,7 +87,7 @@ object BackupController {
 
     /** expects a Tachiyomi protobuf backup as a file upload, the file must be named "backup.proto.gz" */
     fun protobufImportFile(ctx: Context) {
-        ctx.result(
+        ctx.json(
             JavalinSetup.future {
                 ProtoBackupImport.performRestore(ctx.uploadedFile("backup.proto.gz")!!.content)
             }
@@ -94,7 +95,7 @@ object BackupController {
     }
 
     /** returns a Tachiyomi protobuf backup created from the current database as a body */
-    fun protobufExport(ctx: Context) { // TODO
+    fun protobufExport(ctx: Context) {
         ctx.contentType("application/octet-stream")
         ctx.result(
             JavalinSetup.future {
@@ -128,6 +129,24 @@ object BackupController {
                         includeHistory = true,
                     )
                 )
+            }
+        )
+    }
+
+    /** Reports missing sources and trackers, expects a Tachiyomi protobuf backup in the body */
+    fun protobufValidate(ctx: Context) { // TODO
+        ctx.json(
+            JavalinSetup.future {
+                ProtoBackupValidator.validate(ctx.bodyAsInputStream())
+            }
+        )
+    }
+
+    /** Reports missing sources and trackers, expects a Tachiyomi protobuf backup as a file upload, the file must be named "backup.proto.gz" */
+    fun protobufValidateFile(ctx: Context) {
+        ctx.json(
+            JavalinSetup.future {
+                ProtoBackupValidator.validate(ctx.uploadedFile("backup.proto.gz")!!.content)
             }
         )
     }

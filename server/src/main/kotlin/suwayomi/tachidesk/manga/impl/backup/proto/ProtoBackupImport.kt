@@ -79,6 +79,7 @@ object ProtoBackupImport : ProtoBackupBase() {
             """.trimIndent()
         }
 
+        println("fek fek")
         return validationResult
     }
 

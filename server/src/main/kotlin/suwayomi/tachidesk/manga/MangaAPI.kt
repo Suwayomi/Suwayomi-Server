@@ -96,6 +96,9 @@ object MangaAPI {
             post("import", BackupController::protobufImport)
             post("import/file", BackupController::protobufImportFile)
 
+            post("validate", BackupController::protobufValidate)
+            post("validate/file", BackupController::protobufValidateFile)
+
             get("export", BackupController::protobufExport)
             get("export/file", BackupController::protobufExportFile)
         }

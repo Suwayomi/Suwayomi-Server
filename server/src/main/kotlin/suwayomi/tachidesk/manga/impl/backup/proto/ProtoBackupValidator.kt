@@ -7,11 +7,16 @@ package suwayomi.tachidesk.manga.impl.backup.proto
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import okio.buffer
+import okio.gzip
+import okio.source
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.backup.AbstractBackupValidator
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSerializer
 import suwayomi.tachidesk.manga.model.table.SourceTable
+import java.io.InputStream
 
 object ProtoBackupValidator : AbstractBackupValidator() {
     fun validate(backup: Backup): ValidationResult {
@@ -41,5 +46,12 @@ object ProtoBackupValidator : AbstractBackupValidator() {
 //            .sorted()
 
         return ValidationResult(missingSources, missingTrackers)
+    }
+
+    fun validate(sourceStream: InputStream): ValidationResult {
+        val backupString = sourceStream.source().gzip().buffer().use { it.readByteArray() }
+        val backup = ProtoBackupImport.parser.decodeFromByteArray(BackupSerializer, backupString)
+
+        return validate(backup)
     }
 }
