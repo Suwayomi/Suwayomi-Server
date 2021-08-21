@@ -142,6 +142,8 @@ object ProtoBackupImport : ProtoBackupBase() {
                     it[sourceReference] = manga.source
 
                     it[initialized] = manga.description != null
+
+                    it[inLibrary] = true
                 }.value
 
                 // insert chapter data
