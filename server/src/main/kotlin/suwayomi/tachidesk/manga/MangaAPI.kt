@@ -85,14 +85,6 @@ object MangaAPI {
         }
 
         path("backup") {
-            path("legacy") { // legacy json
-                post("import", BackupController::legacyImport)
-                post("import/file", BackupController::legacyImportFile)
-
-                get("export", BackupController::legacyExport)
-                get("export/file", BackupController::legacyExportFile)
-            }
-
             post("import", BackupController::protobufImport)
             post("import/file", BackupController::protobufImportFile)
 
