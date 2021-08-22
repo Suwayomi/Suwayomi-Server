@@ -44,7 +44,7 @@ class NetworkHelper(context: Context) {
 
             if (serverConfig.debugLogsEnabled) {
                 val httpLoggingInterceptor = HttpLoggingInterceptor().apply {
-                    level = HttpLoggingInterceptor.Level.HEADERS
+                    level = HttpLoggingInterceptor.Level.BASIC
                 }
                 builder.addInterceptor(httpLoggingInterceptor)
             }
