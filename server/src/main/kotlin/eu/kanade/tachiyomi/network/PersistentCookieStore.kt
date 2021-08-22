@@ -76,5 +76,4 @@ class PersistentCookieStore(context: Context) {
     }
 
     private fun Cookie.hasExpired() = System.currentTimeMillis() >= expiresAt
-
 }

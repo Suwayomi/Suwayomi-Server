@@ -75,7 +75,7 @@ abstract class HttpSource : CatalogueSource {
      * Headers builder for requests. Implementations can override this method for custom headers.
      */
     protected open fun headersBuilder() = Headers.Builder().apply {
-        add("User-Agent", DEFAULT_USERAGENT)
+        add("User-Agent", DEFAULT_USER_AGENT)
     }
 
     /**

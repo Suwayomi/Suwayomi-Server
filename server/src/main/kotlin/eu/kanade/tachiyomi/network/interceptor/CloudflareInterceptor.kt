@@ -4,6 +4,7 @@ import com.gargoylesoftware.htmlunit.BrowserVersion
 import com.gargoylesoftware.htmlunit.WebClient
 import com.gargoylesoftware.htmlunit.html.HtmlPage
 import eu.kanade.tachiyomi.network.NetworkHelper
+import mu.KotlinLogging
 import okhttp3.Cookie
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
@@ -14,6 +15,8 @@ import java.io.IOException
 
 // from TachiWeb-Server
 class CloudflareInterceptor : Interceptor {
+    private val logger = KotlinLogging.logger {}
+
     private val network: NetworkHelper by injectLazy()
 
     private val `serverCheck` = arrayOf("cloudflare-nginx", "cloudflare")
@@ -24,6 +27,7 @@ class CloudflareInterceptor : Interceptor {
 
         // Check if Cloudflare anti-bot is on
         if (response.code == 503 && response.header("Server") in serverCheck) {
+            logger.debug { "CloudflareInterceptor is kicking in..." }
             return try {
                 chain.proceed(resolveChallenge(response))
             } catch (e: Exception) {
