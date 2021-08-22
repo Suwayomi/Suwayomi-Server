@@ -10,12 +10,16 @@ package eu.kanade.tachiyomi.network
 // import android.content.Context
 // import eu.kanade.tachiyomi.BuildConfig
 // import eu.kanade.tachiyomi.data.preference.PreferencesHelper
-import android.content.Context
 // import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.OkHttpClient
 // import okhttp3.dnsoverhttps.DnsOverHttps
 // import okhttp3.logging.HttpLoggingInterceptor
 // import uy.kohesive.injekt.injectLazy
+import android.content.Context
+import eu.kanade.tachiyomi.network.interceptor.CloudflareInterceptor
+import eu.kanade.tachiyomi.network.interceptor.UserAgentInterceptor
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import suwayomi.tachidesk.server.serverConfig
 import java.util.concurrent.TimeUnit
 
 @Suppress("UNUSED_PARAMETER")
@@ -25,55 +29,45 @@ class NetworkHelper(context: Context) {
 
 //    private val cacheDir = File(context.cacheDir, "network_cache")
 
-    private val cacheSize = 5L * 1024 * 1024 // 5 MiB
+//    private val cacheSize = 5L * 1024 * 1024 // 5 MiB
 
-    val cookieManager = MemoryCookieJar()
+//    val cookieManager = MemoryCookieJar()
+    val cookieManager = PersistentCookieJar(context)
 
-    val client by lazy {
-        val builder = OkHttpClient.Builder()
-            .cookieJar(cookieManager)
-//            .cache(Cache(cacheDir, cacheSize))
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(5, TimeUnit.MINUTES)
-            .writeTimeout(5, TimeUnit.MINUTES)
-//            .dispatcher(Dispatcher(Executors.newFixedThreadPool(1)))
+    private val baseClientBuilder: OkHttpClient.Builder
+        get() {
+            val builder = OkHttpClient.Builder()
+                .cookieJar(cookieManager)
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .addInterceptor(UserAgentInterceptor())
 
-//            .addInterceptor(UserAgentInterceptor())
+            if (serverConfig.debugLogsEnabled) {
+                val httpLoggingInterceptor = HttpLoggingInterceptor().apply {
+                    level = HttpLoggingInterceptor.Level.HEADERS
+                }
+                builder.addInterceptor(httpLoggingInterceptor)
+            }
 
-//        if (BuildConfig.DEBUG) {
-//            val httpLoggingInterceptor = HttpLoggingInterceptor().apply {
-//                level = HttpLoggingInterceptor.Level.HEADERS
+//            when (preferences.dohProvider()) {
+//                PREF_DOH_CLOUDFLARE -> builder.dohCloudflare()
+//                PREF_DOH_GOOGLE -> builder.dohGoogle()
 //            }
-//            builder.addInterceptor(httpLoggingInterceptor)
-//        }
 
-//        if (preferences.enableDoh()) {
-//            builder.dns(
-//                DnsOverHttps.Builder().client(builder.build())
-//                    .url("https://cloudflare-dns.com/dns-query".toHttpUrl())
-//                    .bootstrapDnsHosts(
-//                        listOf(
-//                            InetAddress.getByName("162.159.36.1"),
-//                            InetAddress.getByName("162.159.46.1"),
-//                            InetAddress.getByName("1.1.1.1"),
-//                            InetAddress.getByName("1.0.0.1"),
-//                            InetAddress.getByName("162.159.132.53"),
-//                            InetAddress.getByName("2606:4700:4700::1111"),
-//                            InetAddress.getByName("2606:4700:4700::1001"),
-//                            InetAddress.getByName("2606:4700:4700::0064"),
-//                            InetAddress.getByName("2606:4700:4700::6400")
-//                        )
-//                    )
-//                    .build()
-//            )
-//        }
+            return builder
+        }
 
-        builder.build()
-    }
+//    val client by lazy { baseClientBuilder.cache(Cache(cacheDir, cacheSize)).build() }
+    val client by lazy { baseClientBuilder.build() }
 
     val cloudflareClient by lazy {
         client.newBuilder()
             .addInterceptor(CloudflareInterceptor())
             .build()
     }
+
+    // Tachidesk -->
+    val cookies: PersistentCookieStore
+        get() = cookieManager.store
+    // Tachidesk <--
 }

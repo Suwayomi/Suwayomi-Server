@@ -69,6 +69,9 @@ dependencies {
     // extracting zip files
     implementation("net.lingala.zip4j:zip4j:2.9.0")
 
+    // CloudflareInterceptor
+    implementation("net.sourceforge.htmlunit:htmlunit:2.52.0")
+
     // Source models and interfaces from Tachiyomi 1.x
     // using source class from tachiyomi commit 9493577de27c40ce8b2b6122cc447d025e34c477 to not depend on tachiyomi.sourceapi
 //    implementation("tachiyomi.sourceapi:source-api:1.1")
