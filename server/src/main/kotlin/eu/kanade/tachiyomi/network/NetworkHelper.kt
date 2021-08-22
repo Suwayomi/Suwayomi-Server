@@ -31,7 +31,6 @@ class NetworkHelper(context: Context) {
 
 //    private val cacheSize = 5L * 1024 * 1024 // 5 MiB
 
-//    val cookieManager = MemoryCookieJar()
     val cookieManager = PersistentCookieJar(context)
 
     private val baseClientBuilder: OkHttpClient.Builder
