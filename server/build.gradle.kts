@@ -9,7 +9,7 @@ plugins {
     application
     kotlin("plugin.serialization")
     id("com.github.johnrengelman.shadow") version "7.0.0"
-    id("org.jmailen.kotlinter") version "3.4.3"
+    id("org.jmailen.kotlinter") version "3.5.0"
     id("com.github.gmazzo.buildconfig") version "3.0.2"
 }
 
