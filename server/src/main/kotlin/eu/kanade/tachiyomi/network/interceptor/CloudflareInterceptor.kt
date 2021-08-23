@@ -19,27 +19,30 @@ class CloudflareInterceptor : Interceptor {
 
     private val network: NetworkHelper by injectLazy()
 
-    private val `serverCheck` = arrayOf("cloudflare-nginx", "cloudflare")
-
     @Synchronized
     override fun intercept(chain: Interceptor.Chain): Response {
+        val originalRequest = chain.request()
+
         logger.debug { "CloudflareInterceptor is has started." }
 
-        val response = chain.proceed(chain.request())
+        val response = chain.proceed(originalRequest)
 
         // Check if Cloudflare anti-bot is on
-        if (response.code != 503 && response.header("Server") in serverCheck) {
-            logger.debug { "CloudflareInterceptor is kicking in..." }
-            return try {
-                chain.proceed(resolveChallenge(response))
-            } catch (e: Exception) {
-                // Because OkHttp's enqueue only handles IOExceptions, wrap the exception so that
-                // we don't crash the entire app
-                throw IOException(e)
-            }
+        if (response.code != 503 || response.header("Server") !in SERVER_CHECK) {
+            return response
         }
 
-        return response
+        logger.debug { "CloudflareInterceptor is kicking in..." }
+
+        return try {
+//            network.cookies.remove(originalRequest.url.toUri())
+
+            chain.proceed(resolveChallenge(response))
+        } catch (e: Exception) {
+            // Because OkHttp's enqueue only handles IOExceptions, wrap the exception so that
+            // we don't crash the entire app
+            throw IOException(e)
+        }
     }
 
     private fun resolveChallenge(response: Response): Request {
@@ -59,7 +62,7 @@ class CloudflareInterceptor : Interceptor {
                 // Convert cookies -> OkHttp format
                 Cookie.Builder()
                     .domain(it.domain.removePrefix("."))
-                    .expiresAt(it.expires.time)
+                    .expiresAt(it.expires?.time ?: Long.MAX_VALUE)
                     .name(it.name)
                     .path(it.path)
                     .value(it.value).apply {
@@ -97,5 +100,10 @@ class CloudflareInterceptor : Interceptor {
         return response.request.newBuilder()
             .header("Cookie", newCookies.map { it.toString() }.joinToString("; "))
             .build()
+    }
+
+    companion object {
+        private val SERVER_CHECK = arrayOf("cloudflare-nginx", "cloudflare")
+        private val COOKIE_NAMES = listOf("cf_clearance")
     }
 }
