@@ -23,10 +23,12 @@ class CloudflareInterceptor : Interceptor {
 
     @Synchronized
     override fun intercept(chain: Interceptor.Chain): Response {
+        logger.debug { "CloudflareInterceptor is has started." }
+
         val response = chain.proceed(chain.request())
 
         // Check if Cloudflare anti-bot is on
-        if (response.code == 503 && response.header("Server") in serverCheck) {
+        if (response.code in listOf(403, 503) && response.header("Server") in serverCheck) {
             logger.debug { "CloudflareInterceptor is kicking in..." }
             return try {
                 chain.proceed(resolveChallenge(response))
