@@ -1,5 +1,7 @@
 package suwayomi.tachidesk.manga.model.dataclass
 
+import eu.kanade.tachiyomi.source.ConfigurableSource
+
 /*
  * Copyright (C) Contributors to the Suwayomi project
  * 
@@ -12,7 +14,13 @@ data class SourceDataClass(
     val name: String?,
     val lang: String?,
     val iconUrl: String?,
+
+    /** The Source provides a latest listing */
     val supportsLatest: Boolean?,
+
+    /** The Source implements [ConfigurableSource] */
     val isConfigurable: Boolean?,
+
+    /** The Source class has a @Nsfw annotation */
     val isNSFW: Boolean?,
 )
