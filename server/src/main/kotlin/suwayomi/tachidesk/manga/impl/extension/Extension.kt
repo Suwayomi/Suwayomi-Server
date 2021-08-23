@@ -50,10 +50,8 @@ object Extension {
     private val logger = KotlinLogging.logger {}
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
-    data class InstallableAPK(
-        val apkFilePath: String,
-        val pkgName: String
-    )
+    private fun Any.isNsfw(): Boolean =
+        this::class.annotations.any { it.toString() == "@eu.kanade.tachiyomi.annotations.Nsfw()" }
 
     suspend fun installExtension(pkgName: String): Int {
         logger.debug("Installing $pkgName")
@@ -99,7 +97,7 @@ object Extension {
             if (libVersion < LIB_VERSION_MIN || libVersion > LIB_VERSION_MAX) {
                 throw Exception(
                     "Lib version is $libVersion, while only versions " +
-                        "$LIB_VERSION_MIN to $LIB_VERSION_MAX are allowed"
+                            "$LIB_VERSION_MIN to $LIB_VERSION_MAX are allowed"
                 )
             }
 
@@ -114,7 +112,8 @@ object Extension {
 
             val isNsfw = packageInfo.applicationInfo.metaData.getString(METADATA_NSFW) == "1"
 
-            val className = packageInfo.packageName + packageInfo.applicationInfo.metaData.getString(METADATA_SOURCE_CLASS)
+            val className =
+                packageInfo.packageName + packageInfo.applicationInfo.metaData.getString(METADATA_SOURCE_CLASS)
 
             logger.debug("Main class for extension is $className")
 
@@ -125,10 +124,11 @@ object Extension {
             File(dexFilePath).delete()
 
             // collect sources from the extension
-            val sources: List<CatalogueSource> = when (val instance = loadExtensionSources(jarFilePath, className)) {
-                is Source -> listOf(instance)
-                is SourceFactory -> instance.createSources()
-                else -> throw RuntimeException("Unknown source class type! ${instance.javaClass}")
+            val extensionMainClassInstance = loadExtensionSources(jarFilePath, className)
+            val sources: List<CatalogueSource> = when (extensionMainClassInstance) {
+                is Source -> listOf(extensionMainClassInstance)
+                is SourceFactory -> extensionMainClassInstance.createSources()
+                else -> throw RuntimeException("Unknown source class type! ${extensionMainClassInstance.javaClass}")
             }.map { it as CatalogueSource }
 
             val langs = sources.map { it.lang }.toSet()
@@ -159,7 +159,8 @@ object Extension {
                     it[this.classFQName] = className
                 }
 
-                val extensionId = ExtensionTable.select { ExtensionTable.pkgName eq pkgName }.first()[ExtensionTable.id].value
+                val extensionId =
+                    ExtensionTable.select { ExtensionTable.pkgName eq pkgName }.first()[ExtensionTable.id].value
 
                 sources.forEach { httpSource ->
                     SourceTable.insert {
@@ -167,8 +168,9 @@ object Extension {
                         it[name] = httpSource.name
                         it[lang] = httpSource.lang
                         it[extension] = extensionId
+                        it[SourceTable.isNsfw] = isNsfw || extensionMainClassInstance.isNsfw()
                     }
-                    logger.debug("Installed source ${httpSource.name} (${httpSource.lang}) with id:${httpSource.id}")
+                    logger.debug { "Installed source ${httpSource.name} (${httpSource.lang}) with id:${httpSource.id}" }
                 }
             }
             return 201 // we installed successfully
@@ -234,7 +236,8 @@ object Extension {
     }
 
     suspend fun getExtensionIcon(apkName: String): Pair<InputStream, String> {
-        val iconUrl = transaction { ExtensionTable.select { ExtensionTable.apkName eq apkName }.first() }[ExtensionTable.iconUrl]
+        val iconUrl =
+            transaction { ExtensionTable.select { ExtensionTable.apkName eq apkName }.first() }[ExtensionTable.iconUrl]
 
         val saveDir = "${applicationDirs.extensionsRoot}/icon"
 

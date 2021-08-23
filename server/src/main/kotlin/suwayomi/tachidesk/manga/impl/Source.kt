@@ -12,7 +12,6 @@ import android.content.Context
 import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.getPreferenceKey
-import eu.kanade.tachiyomi.source.online.HttpSource
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
@@ -33,34 +32,32 @@ import xyz.nulldev.androidcompat.androidimpl.CustomContext
 object Source {
     private val logger = KotlinLogging.logger {}
 
-    val HttpSource.isNsfw: Boolean
-        get() = this::class.annotations.any { it.toString() == "@eu.kanade.tachiyomi.annotations.Nsfw()" }
-
     fun getSourceList(): List<SourceDataClass> {
         return transaction {
             SourceTable.selectAll().map {
                 val httpSource = getHttpSource(it[SourceTable.id].value)
+                val sourceExtension = ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }.first()
 
                 SourceDataClass(
                     it[SourceTable.id].value.toString(),
                     it[SourceTable.name],
                     it[SourceTable.lang],
-                    getExtensionIconUrl(
-                        ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }
-                            .first()[ExtensionTable.apkName]
-                    ),
+                    getExtensionIconUrl(sourceExtension[ExtensionTable.apkName]),
                     httpSource.supportsLatest,
                     httpSource is ConfigurableSource,
-                    httpSource.isNsfw
+                    it[SourceTable.isNsfw]
                 )
             }
         }
     }
 
-    fun getSource(sourceId: Long): SourceDataClass {
+    fun getSource(sourceId: Long): SourceDataClass { // all the data extracted fresh form the source instance
         return transaction {
             val source = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
             val httpSource = source?.let { getHttpSource(sourceId) }
+            val extension = source?.let {
+                ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()
+            }
 
             SourceDataClass(
                 sourceId.toString(),
@@ -68,13 +65,12 @@ object Source {
                 source?.get(SourceTable.lang),
                 source?.let {
                     getExtensionIconUrl(
-                        ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }
-                            .first()[ExtensionTable.apkName]
+                        extension!![ExtensionTable.apkName]
                     )
                 },
                 httpSource?.supportsLatest,
                 httpSource?.let { it is ConfigurableSource },
-                httpSource?.isNsfw
+                source?.get(SourceTable.isNsfw)
             )
         }
     }
@@ -82,7 +78,7 @@ object Source {
     private val context by DI.global.instance<CustomContext>()
 
     /**
-     * Clients should support these types for extensions to work properly (in order of importance)
+     * Clients should support these types for extensions to work properly
      * - EditTextPreference
      * - SwitchPreferenceCompat
      * - ListPreference

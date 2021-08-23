@@ -137,7 +137,7 @@ object PackageTools {
     }
 
     /**
-     * loads the extension main class called $className from the jar located at $jarPath
+     * loads the extension main class called [className] from the jar located at [jarPath]
      * It may return an instance of HttpSource or SourceFactory depending on the extension.
      */
     fun loadExtensionSources(jarPath: String, className: String): Any {
