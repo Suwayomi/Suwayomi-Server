@@ -35,7 +35,8 @@ class CloudflareInterceptor : Interceptor {
         logger.debug { "CloudflareInterceptor is kicking in..." }
 
         return try {
-//            network.cookies.remove(originalRequest.url.toUri())
+            response.close()
+            network.cookies.remove(originalRequest.url.toUri())
 
             chain.proceed(resolveChallenge(response))
         } catch (e: Exception) {
