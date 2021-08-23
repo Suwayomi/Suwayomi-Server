@@ -12,6 +12,7 @@ import android.content.Context
 import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.getPreferenceKey
+import eu.kanade.tachiyomi.source.online.HttpSource
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
@@ -32,16 +33,25 @@ import xyz.nulldev.androidcompat.androidimpl.CustomContext
 object Source {
     private val logger = KotlinLogging.logger {}
 
+    val HttpSource.isNsfw: Boolean
+        get() = this::class.annotations.any { it.toString() == "@eu.kanade.tachiyomi.annotations.Nsfw()" }
+
     fun getSourceList(): List<SourceDataClass> {
         return transaction {
             SourceTable.selectAll().map {
+                val httpSource = getHttpSource(it[SourceTable.id].value)
+
                 SourceDataClass(
                     it[SourceTable.id].value.toString(),
                     it[SourceTable.name],
                     it[SourceTable.lang],
-                    getExtensionIconUrl(ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }.first()[ExtensionTable.apkName]),
-                    getHttpSource(it[SourceTable.id].value).supportsLatest,
-                    getHttpSource(it[SourceTable.id].value) is ConfigurableSource
+                    getExtensionIconUrl(
+                        ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }
+                            .first()[ExtensionTable.apkName]
+                    ),
+                    httpSource.supportsLatest,
+                    httpSource is ConfigurableSource,
+                    httpSource.isNsfw
                 )
             }
         }
@@ -50,14 +60,21 @@ object Source {
     fun getSource(sourceId: Long): SourceDataClass {
         return transaction {
             val source = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
+            val httpSource = source?.let { getHttpSource(sourceId) }
 
             SourceDataClass(
                 sourceId.toString(),
                 source?.get(SourceTable.name),
                 source?.get(SourceTable.lang),
-                source?.let { getExtensionIconUrl(ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()[ExtensionTable.apkName]) },
-                source?.let { getHttpSource(sourceId).supportsLatest },
-                source?.let { getHttpSource(sourceId) is ConfigurableSource },
+                source?.let {
+                    getExtensionIconUrl(
+                        ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }
+                            .first()[ExtensionTable.apkName]
+                    )
+                },
+                httpSource?.supportsLatest,
+                httpSource?.let { it is ConfigurableSource },
+                httpSource?.isNsfw
             )
         }
     }
@@ -85,7 +102,8 @@ object Source {
         val source = getHttpSource(sourceId)
 
         if (source is ConfigurableSource) {
-            val sourceShardPreferences = Injekt.get<Application>().getSharedPreferences(source.getPreferenceKey(), Context.MODE_PRIVATE)
+            val sourceShardPreferences =
+                Injekt.get<Application>().getSharedPreferences(source.getPreferenceKey(), Context.MODE_PRIVATE)
 
             val screen = PreferenceScreen(context)
             screen.sharedPreferences = sourceShardPreferences
