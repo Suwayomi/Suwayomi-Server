@@ -46,7 +46,7 @@ dependencies {
     implementation("com.h2database:h2:1.4.200")
 
     // Exposed Migrations
-    val exposedMigrationsVersion = "3.1.0"
+    val exposedMigrationsVersion = "3.1.1"
     implementation("com.github.Suwayomi:exposed-migrations:$exposedMigrationsVersion")
 
     // tray icon

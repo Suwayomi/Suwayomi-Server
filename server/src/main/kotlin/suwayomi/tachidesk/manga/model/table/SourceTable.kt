@@ -14,6 +14,5 @@ object SourceTable : IdTable<Long>() {
     val name = varchar("name", 128)
     val lang = varchar("lang", 10)
     val extension = reference("extension", ExtensionTable)
-    val partOfFactorySource = bool("part_of_factory_source").default(false)
     val isNsfw = bool("is_nsfw").default(false)
 }
