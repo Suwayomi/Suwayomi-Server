@@ -143,7 +143,7 @@ object ProtoBackupImport : ProtoBackupBase() {
 
                     it[initialized] = manga.description != null
 
-                    it[inLibrary] = true
+                    it[inLibrary] = manga.favorite
                 }.value
 
                 // insert chapter data
