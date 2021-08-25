@@ -147,7 +147,8 @@ object ProtoBackupImport : ProtoBackupBase() {
                 }.value
 
                 // insert chapter data
-                chapters.reversed().forEach { chapter ->
+                val chaptersLength = chapters.size
+                chapters.forEach { chapter ->
                     ChapterTable.insert {
                         it[url] = chapter.url
                         it[name] = chapter.name
@@ -155,7 +156,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                         it[chapter_number] = chapter.chapter_number
                         it[scanlator] = chapter.scanlator
 
-                        it[chapterIndex] = chapter.source_order
+                        it[chapterIndex] = chaptersLength - chapter.source_order
                         it[ChapterTable.manga] = mangaId
 
                         it[isRead] = chapter.read
