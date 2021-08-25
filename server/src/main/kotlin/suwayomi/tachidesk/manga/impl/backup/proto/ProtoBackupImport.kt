@@ -97,7 +97,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         backupManga: BackupManga,
         backupCategories: List<BackupCategory>,
         categoryMapping: Map<Int, Int>
-    ) { // TODO
+    ) {
         val manga = backupManga.getMangaImpl()
         val chapters = backupManga.getChaptersImpl()
         val categories = backupManga.categories
@@ -147,7 +147,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                 }.value
 
                 // insert chapter data
-                chapters.forEach { chapter ->
+                chapters.reversed().forEach { chapter ->
                     ChapterTable.insert {
                         it[url] = chapter.url
                         it[name] = chapter.name
