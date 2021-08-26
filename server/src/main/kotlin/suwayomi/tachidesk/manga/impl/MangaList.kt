@@ -57,6 +57,8 @@ object MangaList {
                         it[sourceReference] = sourceId
                     }.value
 
+                    val mangaEntry = MangaTable.select { MangaTable.url eq manga.url }.first()
+
                     MangaDataClass(
                         mangaId,
                         sourceId.toString(),
@@ -71,7 +73,11 @@ object MangaList {
                         manga.author,
                         manga.description,
                         manga.genre,
-                        MangaStatus.valueOf(manga.status).name
+                        MangaStatus.valueOf(manga.status).name,
+                        false, // It's a new manga entry
+                        meta = getMangaMetaMap(mangaId),
+                        realUrl = mangaEntry[MangaTable.realUrl],
+                        freshData = true
                     )
                 } else {
                     val mangaId = mangaEntry[MangaTable.id].value
@@ -91,7 +97,9 @@ object MangaList {
                         mangaEntry[MangaTable.genre],
                         MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
                         mangaEntry[MangaTable.inLibrary],
-                        meta = getMangaMetaMap(mangaEntry[MangaTable.id])
+                        meta = getMangaMetaMap(mangaId),
+                        realUrl = mangaEntry[MangaTable.realUrl],
+                        freshData = false
                     )
                 }
             }

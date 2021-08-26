@@ -97,7 +97,7 @@ object Extension {
             if (libVersion < LIB_VERSION_MIN || libVersion > LIB_VERSION_MAX) {
                 throw Exception(
                     "Lib version is $libVersion, while only versions " +
-                            "$LIB_VERSION_MIN to $LIB_VERSION_MAX are allowed"
+                        "$LIB_VERSION_MIN to $LIB_VERSION_MAX are allowed"
                 )
             }
 

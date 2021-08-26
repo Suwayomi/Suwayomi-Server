@@ -10,9 +10,9 @@ package suwayomi.tachidesk.server.database.migration
 import de.neonew.exposed.migrations.helpers.AddColumnMigration
 
 @Suppress("ClassName", "unused")
-class M0011_SourceIsNsfw : AddColumnMigration(
-    "Source",
-    "is_nsfw",
-    "BOOLEAN",
-    "FALSE"
+class M0013_MangaRealUrl : AddColumnMigration(
+    "Manga",
+    "real_url",
+    "VARCHAR(2048)",
+    "NULL"
 )

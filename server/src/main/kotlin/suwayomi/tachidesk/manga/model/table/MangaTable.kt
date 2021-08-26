@@ -31,8 +31,11 @@ object MangaTable : IntIdTable() {
     val inLibrary = bool("in_library").default(false)
     val defaultCategory = bool("default_category").default(true)
 
-    // source is used by some ancestor of IntIdTable
+    // the [source] field name is used by some ancestor of IntIdTable
     val sourceReference = long("source")
+
+    /** the real url of a manga used for the "open in WebView" feature */
+    val realUrl = varchar("real_url", 2048).nullable()
 }
 
 fun MangaTable.toDataClass(mangaEntry: ResultRow) =
@@ -52,7 +55,8 @@ fun MangaTable.toDataClass(mangaEntry: ResultRow) =
         mangaEntry[genre],
         Companion.valueOf(mangaEntry[status]).name,
         mangaEntry[inLibrary],
-        meta = getMangaMetaMap(mangaEntry[id])
+        meta = getMangaMetaMap(mangaEntry[id].value),
+        realUrl = mangaEntry[realUrl],
     )
 
 enum class MangaStatus(val value: Int) {

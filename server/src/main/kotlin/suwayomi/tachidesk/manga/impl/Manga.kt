@@ -9,7 +9,6 @@ package suwayomi.tachidesk.manga.impl
 
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.model.SManga
-import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
@@ -61,17 +60,17 @@ object Manga {
                 MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
                 mangaEntry[MangaTable.inLibrary],
                 getSource(mangaEntry[MangaTable.sourceReference]),
-                getMangaMetaMap(mangaEntry[MangaTable.id]),
+                getMangaMetaMap(mangaId),
+                mangaEntry[MangaTable.realUrl],
                 false
             )
         } else { // initialize manga
             val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
-            val fetchedManga = source.fetchMangaDetails(
-                SManga.create().apply {
-                    url = mangaEntry[MangaTable.url]
-                    title = mangaEntry[MangaTable.title]
-                }
-            ).awaitSingle()
+            val sManga = SManga.create().apply {
+                url = mangaEntry[MangaTable.url]
+                title = mangaEntry[MangaTable.title]
+            }
+            val fetchedManga = source.fetchMangaDetails(sManga).awaitSingle()
 
             transaction {
                 MangaTable.update({ MangaTable.id eq mangaId }) {
@@ -85,6 +84,8 @@ object Manga {
                     it[MangaTable.status] = fetchedManga.status
                     if (fetchedManga.thumbnail_url != null && fetchedManga.thumbnail_url.orEmpty().isNotEmpty())
                         it[MangaTable.thumbnail_url] = fetchedManga.thumbnail_url
+
+                    it[MangaTable.realUrl] = source.mangaDetailsRequest(sManga).url.toString()
                 }
             }
 
@@ -109,13 +110,14 @@ object Manga {
                 MangaStatus.valueOf(fetchedManga.status).name,
                 mangaEntry[MangaTable.inLibrary],
                 getSource(mangaEntry[MangaTable.sourceReference]),
-                getMangaMetaMap(mangaEntry[MangaTable.id]),
+                getMangaMetaMap(mangaId),
+                mangaEntry[MangaTable.realUrl],
                 true
             )
         }
     }
 
-    fun getMangaMetaMap(manga: EntityID<Int>): Map<String, String> {
+    fun getMangaMetaMap(manga: Int): Map<String, String> {
         return transaction {
             MangaMetaTable.select { MangaMetaTable.ref eq manga }
                 .associate { it[MangaMetaTable.key] to it[MangaMetaTable.value] }
@@ -126,7 +128,8 @@ object Manga {
         transaction {
             val manga = MangaMetaTable.select { (MangaTable.id eq mangaId) }
                 .first()[MangaTable.id]
-            val meta = transaction { MangaMetaTable.select { (MangaMetaTable.ref eq manga) and (MangaMetaTable.key eq key) } }.firstOrNull()
+            val meta =
+                transaction { MangaMetaTable.select { (MangaMetaTable.ref eq manga) and (MangaMetaTable.key eq key) } }.firstOrNull()
             if (meta == null) {
                 MangaMetaTable.insert {
                     it[MangaMetaTable.key] = key
