@@ -16,6 +16,7 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.backup.AbstractBackupValidator.ValidationResult
@@ -31,6 +32,7 @@ import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.io.InputStream
+import java.lang.Integer.max
 import java.util.Date
 
 object ProtoBackupImport : ProtoBackupBase() {
@@ -70,7 +72,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         logger.info {
             """
                 Restore Errors:
-                ${ errors.joinToString("\n") { "${it.first} - ${it.second}" } }
+                ${errors.joinToString("\n") { "${it.first} - ${it.second}" }}
                 Restore Summary:
                 - Missing Sources:
                     ${validationResult.missingSources.joinToString("\n                    ")}
@@ -125,6 +127,7 @@ object ProtoBackupImport : ProtoBackupBase() {
             MangaTable.select { (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq manga.source) }
                 .firstOrNull()
         }
+
         if (dbManga == null) { // Manga not in database
             transaction {
                 // insert manga to database
@@ -171,9 +174,59 @@ object ProtoBackupImport : ProtoBackupBase() {
                 }
             }
         } else { // Manga in database
-            // merge chapter data
+            transaction {
+                val mangaId = dbManga[MangaTable.id].value
 
-            // merge categories
+                // Merge manga data
+                MangaTable.update({ MangaTable.id eq mangaId }) {
+                    it[artist] = manga.artist ?: dbManga[artist]
+                    it[author] = manga.author ?: dbManga[author]
+                    it[description] = manga.description ?: dbManga[description]
+                    it[genre] = manga.genre ?: dbManga[genre]
+                    it[status] = manga.status
+                    it[thumbnail_url] = manga.thumbnail_url ?: dbManga[thumbnail_url]
+
+                    it[initialized] = dbManga[initialized] || manga.description != null
+
+                    it[inLibrary] = manga.favorite || dbManga[inLibrary]
+                }
+
+                // merge chapter data
+                val chaptersLength = chapters.size
+                val dbChapters = ChapterTable.select { ChapterTable.manga eq mangaId }
+
+                chapters.forEach { chapter ->
+                    val dbChapter = dbChapters.find { it[ChapterTable.url] == chapter.url }
+
+                    if (dbChapter == null) {
+                        ChapterTable.insert {
+                            it[url] = chapter.url
+                            it[name] = chapter.name
+                            it[date_upload] = chapter.date_upload
+                            it[chapter_number] = chapter.chapter_number
+                            it[scanlator] = chapter.scanlator
+
+                            it[chapterIndex] = chaptersLength - chapter.source_order
+                            it[ChapterTable.manga] = mangaId
+
+                            it[isRead] = chapter.read
+                            it[lastPageRead] = chapter.last_page_read
+                            it[isBookmarked] = chapter.bookmark
+                        }
+                    } else {
+                        ChapterTable.update({ (ChapterTable.url eq dbChapter[ChapterTable.url]) and (ChapterTable.manga eq mangaId) }) {
+                            it[isRead] = chapter.read || dbChapter[isRead]
+                            it[lastPageRead] = max(chapter.last_page_read, dbChapter[lastPageRead])
+                            it[isBookmarked] = chapter.bookmark || dbChapter[isBookmarked]
+                        }
+                    }
+                }
+
+                // merge categories
+                categories.forEach { backupCategoryOrder ->
+                    CategoryManga.addMangaToCategory(mangaId, categoryMapping[backupCategoryOrder]!!)
+                }
+            }
         }
 
         // TODO: insert/merge history
