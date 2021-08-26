@@ -85,7 +85,7 @@ object Manga {
                     if (fetchedManga.thumbnail_url != null && fetchedManga.thumbnail_url.orEmpty().isNotEmpty())
                         it[MangaTable.thumbnail_url] = fetchedManga.thumbnail_url
 
-                    it[MangaTable.realUrl] = source.mangaDetailsRequest(sManga).url.toString()
+                    it[MangaTable.realUrl] = try { source.mangaDetailsRequest(sManga).url.toString() } catch (e: Exception) { null }
                 }
             }
 
