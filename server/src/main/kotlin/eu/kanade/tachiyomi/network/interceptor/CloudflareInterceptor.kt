@@ -23,7 +23,7 @@ class CloudflareInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
 
-        logger.debug { "CloudflareInterceptor is has started." }
+        logger.trace { "CloudflareInterceptor is being used." }
 
         val response = chain.proceed(originalRequest)
 
@@ -32,7 +32,7 @@ class CloudflareInterceptor : Interceptor {
             return response
         }
 
-        logger.debug { "CloudflareInterceptor is kicking in..." }
+        logger.debug { "Cloudflare anti-bot is on, CloudflareInterceptor is kicking in..." }
 
         return try {
             response.close()
