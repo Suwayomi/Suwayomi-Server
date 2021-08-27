@@ -78,7 +78,7 @@ object Source {
     private val context by DI.global.instance<CustomContext>()
 
     /**
-     * Clients should support these types for extensions to work properly
+     * (2021-08) Clients should support these types for extensions to work properly
      * - EditTextPreference
      * - SwitchPreferenceCompat
      * - ListPreference
