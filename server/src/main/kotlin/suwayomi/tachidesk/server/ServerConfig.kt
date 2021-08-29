@@ -8,30 +8,30 @@ package suwayomi.tachidesk.server
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import com.typesafe.config.Config
-import xyz.nulldev.ts.config.ConfigModule
 import xyz.nulldev.ts.config.GlobalConfigManager
+import xyz.nulldev.ts.config.SystemPropertyOverridableConfigModule
 import xyz.nulldev.ts.config.debugLogsEnabled
 
 private const val MODULE_NAME = "server"
-class ServerConfig(config: Config, moduleName: String = MODULE_NAME) : ConfigModule(config, moduleName) {
-    val ip: String by overridableWithSysProperty
-    val port: Int by overridableWithSysProperty
+class ServerConfig(config: Config, moduleName: String = MODULE_NAME) : SystemPropertyOverridableConfigModule(config, moduleName) {
+    val ip: String by overridableConfig
+    val port: Int by overridableConfig
 
     // proxy
-    val socksProxyEnabled: Boolean by overridableWithSysProperty
+    val socksProxyEnabled: Boolean by overridableConfig
 
-    val socksProxyHost: String by overridableWithSysProperty
-    val socksProxyPort: String by overridableWithSysProperty
+    val socksProxyHost: String by overridableConfig
+    val socksProxyPort: String by overridableConfig
 
     // misc
     val debugLogsEnabled: Boolean = debugLogsEnabled(GlobalConfigManager.config)
-    val systemTrayEnabled: Boolean by overridableWithSysProperty
+    val systemTrayEnabled: Boolean by overridableConfig
 
     // webUI
-    val webUIEnabled: Boolean by overridableWithSysProperty
-    val initialOpenInBrowserEnabled: Boolean by overridableWithSysProperty
-    val webUIInterface: String by overridableWithSysProperty
-    val electronPath: String by overridableWithSysProperty
+    val webUIEnabled: Boolean by overridableConfig
+    val initialOpenInBrowserEnabled: Boolean by overridableConfig
+    val webUIInterface: String by overridableConfig
+    val electronPath: String by overridableConfig
 
     companion object {
         fun register(config: Config) = ServerConfig(config.getConfig(MODULE_NAME))

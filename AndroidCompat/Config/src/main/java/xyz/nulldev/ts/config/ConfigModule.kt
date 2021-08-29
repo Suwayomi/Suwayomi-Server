@@ -14,8 +14,13 @@ import kotlin.reflect.KProperty
 /**
  * Abstract config module.
  */
-abstract class ConfigModule(config: Config, moduleName: String = "") {
-    val overridableWithSysProperty = SystemPropertyOverrideDelegate(config, moduleName)
+abstract class ConfigModule(config: Config)
+
+/**
+ * Abstract jvm-commandline-argument-overridable config module.
+ */
+abstract class SystemPropertyOverridableConfigModule(config: Config, moduleName: String): ConfigModule(config) {
+    val overridableConfig = SystemPropertyOverrideDelegate(config, moduleName)
 }
 
 /** Defines a config property that is overridable with jvm `-D` commandline arguments prefixed with [CONFIG_PREFIX] */
