@@ -28,15 +28,18 @@ object Category {
      * The new category will be placed at the end of the list
      */
     fun createCategory(name: String) {
+        // creating a category named Default is illegal
         if (name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)) return
 
         transaction {
             val count = CategoryTable.selectAll().count()
-            if (CategoryTable.select { CategoryTable.name eq name }.firstOrNull() == null)
+            if (CategoryTable.select { CategoryTable.name eq name }.firstOrNull() == null) {
                 CategoryTable.insert {
                     it[CategoryTable.name] = name
-                    it[CategoryTable.order] = count.toInt() + 1
+                    it[CategoryTable.order] = Int.MAX_VALUE
                 }
+                normalizeCategories()
+            }
         }
     }
 
@@ -50,7 +53,7 @@ object Category {
     }
 
     /**
-     * Move the category from position `from` to `to`
+     * Move the category from order number `from` to `to`
      */
     fun reorderCategory(from: Int, to: Int) {
         transaction {
@@ -70,6 +73,19 @@ object Category {
                 removeMangaFromCategory(it[CategoryMangaTable.manga].value, categoryId)
             }
             CategoryTable.deleteWhere { CategoryTable.id eq categoryId }
+            normalizeCategories()
+        }
+    }
+
+    /** make sure category order numbers starts from 1 and is consecutive */
+    private fun normalizeCategories() {
+        transaction {
+            val categories = CategoryTable.selectAll().orderBy(CategoryTable.order to SortOrder.ASC)
+            categories.forEachIndexed { index, cat ->
+                CategoryTable.update({ CategoryTable.id eq cat[CategoryTable.id].value }) {
+                    it[CategoryTable.order] = index + 1
+                }
+            }
         }
     }
 
