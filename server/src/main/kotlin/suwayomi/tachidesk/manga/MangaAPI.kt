@@ -42,10 +42,10 @@ object MangaAPI {
             get(":sourceId/preferences", SourceController::getPreferences)
             post(":sourceId/preferences", SourceController::setPreference)
 
-            post(":sourceId/filters", SourceController::filters) // TODO
+            get(":sourceId/filters", SourceController::filters)
 
             get(":sourceId/search/:searchTerm/:pageNum", SourceController::searchSingle)
-            get("search/:searchTerm/:pageNum", SourceController::searchSingle) // TODO
+//            get("search/:searchTerm/:pageNum", SourceController::searchGlobal)
         }
 
         path("manga") {
@@ -78,10 +78,7 @@ object MangaAPI {
             patch(":categoryId", CategoryController::categoryModify)
             delete(":categoryId", CategoryController::categoryDelete)
 
-            patch(
-                ":categoryId/reorder",
-                CategoryController::categoryReorder
-            ) // TODO: the underlying code doesn't need `:categoryId`, remove it
+            patch("reorder", CategoryController::categoryReorder)
         }
 
         path("backup") {
