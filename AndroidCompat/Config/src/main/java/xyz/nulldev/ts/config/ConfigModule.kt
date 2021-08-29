@@ -37,7 +37,7 @@ class SystemPropertyOverrideDelegate(val config: Config, val moduleName: String)
             "Int" -> combined.toInt()
             "Boolean" -> combined.toBoolean()
             // add more types as needed
-            else -> combined
+            else -> combined // covers String
         } as T
     }
 }
