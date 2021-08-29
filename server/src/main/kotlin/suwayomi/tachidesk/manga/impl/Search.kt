@@ -7,6 +7,8 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.model.Filter
+import eu.kanade.tachiyomi.source.model.FilterList
 import suwayomi.tachidesk.manga.impl.MangaList.processEntries
 import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
@@ -15,27 +17,52 @@ import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 object Search {
     suspend fun sourceSearch(sourceId: Long, searchTerm: String, pageNum: Int): PagedMangaListDataClass {
         val source = getHttpSource(sourceId)
-        val searchManga = source.fetchSearchManga(pageNum, searchTerm, source.getFilterList()).awaitSingle()
+        val searchManga = source.fetchSearchManga(pageNum, searchTerm, getFilterListOf(sourceId)).awaitSingle()
         return searchManga.processEntries(sourceId)
     }
 
-    // TODO
-    @Suppress("UNUSED_PARAMETER", "UNUSED_VARIABLE")
-    fun sourceFilters(sourceId: Long) {
-        val source = getHttpSource(sourceId)
-        // source.getFilterList().toItems()
+    private val filterListCache = mutableMapOf<Long, FilterList>()
+
+    private fun getFilterListOf(sourceId: Long, reset: Boolean = false): FilterList {
+        if (reset || !filterListCache.containsKey(sourceId)) {
+            filterListCache[sourceId] = getHttpSource(sourceId).getFilterList()
+        }
+        return filterListCache[sourceId]!!
     }
+
+    fun getInitialFilterList(sourceId: Long, reset: Boolean): List<FilterObject> {
+        return getFilterListOf(sourceId, reset).list.map {
+            FilterObject(
+                when (it) {
+                    is Filter.Header -> "Header"
+                    is Filter.Separator -> "Separator"
+                    is Filter.CheckBox -> "CheckBox"
+                    is Filter.TriState -> "TriState"
+                    is Filter.Text -> "Text"
+                    is Filter.Select<*> -> "Select"
+                    is Filter.Group<*> -> "Group"
+                    is Filter.Sort -> "Sort"
+                },
+//                when (it) {
+//                    is Filter.Select<*> -> it.getValuesType()
+//                    else -> null
+//                },
+                it
+            )
+        }
+    }
+
+//    private fun Filter.Select<*>.getValuesType(): String = values::class.java.componentType!!.simpleName
+
+    data class FilterObject(
+        val type: String,
+        val filter: Filter<*>
+    )
 
     @Suppress("UNUSED_PARAMETER")
     fun sourceGlobalSearch(searchTerm: String) {
         // TODO
     }
-
-    @Suppress("unused")
-    data class FilterWrapper(
-        val type: String,
-        val filter: Any
-    )
 
     /**
      * Note: Exhentai had a filter serializer (now in SY) that we might be able to steal

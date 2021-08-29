@@ -12,7 +12,6 @@ import suwayomi.tachidesk.manga.impl.MangaList
 import suwayomi.tachidesk.manga.impl.Search
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.Source.SourcePreferenceChange
-import suwayomi.tachidesk.server.JavalinSetup
 import suwayomi.tachidesk.server.JavalinSetup.future
 
 object SourceController {
@@ -63,9 +62,11 @@ object SourceController {
     }
 
     /** fetch filters of source with id `sourceId` */
-    fun filters(ctx: Context) { // TODO
+    fun filters(ctx: Context) {
         val sourceId = ctx.pathParam("sourceId").toLong()
-        ctx.json(Search.sourceFilters(sourceId))
+        val reset = ctx.queryParam("reset", "false").toBoolean()
+
+        ctx.json(Search.getInitialFilterList(sourceId, reset))
     }
 
     /** single source search */
@@ -73,7 +74,7 @@ object SourceController {
         val sourceId = ctx.pathParam("sourceId").toLong()
         val searchTerm = ctx.pathParam("searchTerm")
         val pageNum = ctx.pathParam("pageNum").toInt()
-        ctx.json(JavalinSetup.future { Search.sourceSearch(sourceId, searchTerm, pageNum) })
+        ctx.json(future { Search.sourceSearch(sourceId, searchTerm, pageNum) })
     }
 
     /** all source search */
