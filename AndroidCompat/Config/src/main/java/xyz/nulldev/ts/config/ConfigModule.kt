@@ -18,22 +18,21 @@ abstract class ConfigModule(config: Config, moduleName: String = "") {
     val overridableWithSysProperty = SystemPropertyOverrideDelegate(config, moduleName)
 }
 
+/** Defines a config property that is overridable with jvm `-D` commandline arguments prefixed with [CONFIG_PREFIX] */
 class SystemPropertyOverrideDelegate(val config: Config, val moduleName: String) {
     inline operator fun <R, reified T> getValue(thisRef: R, property: KProperty<*>): T {
         val configValue: T = config.getValue(thisRef, property)
 
         val combined = System.getProperty(
-            "suwayomi.tachidesk.config.$moduleName.${property.name}",
+            "$CONFIG_PREFIX.$moduleName.${property.name}",
             configValue.toString()
         )
 
-        val asT = when(T::class.simpleName) {
+        return when(T::class.simpleName) {
             "Int" -> combined.toInt()
             "Boolean" -> combined.toBoolean()
             // add more types as needed
             else -> combined
-        }
-
-        return asT as T
+        } as T
     }
 }

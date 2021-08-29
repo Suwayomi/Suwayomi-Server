@@ -1,6 +1,7 @@
 package xyz.nulldev.androidcompat.config
 
 import com.typesafe.config.Config
+import io.github.config4k.getValue
 import xyz.nulldev.ts.config.ConfigModule
 
 /**
@@ -8,23 +9,23 @@ import xyz.nulldev.ts.config.ConfigModule
  */
 
 class FilesConfigModule(config: Config) : ConfigModule(config) {
-    val dataDir = config.getString("dataDir")!!
-    val filesDir = config.getString("filesDir")!!
-    val noBackupFilesDir = config.getString("noBackupFilesDir")!!
-    val externalFilesDirs: MutableList<String> = config.getStringList("externalFilesDirs")!!
-    val obbDirs: MutableList<String> = config.getStringList("obbDirs")!!
-    val cacheDir = config.getString("cacheDir")!!
-    val codeCacheDir = config.getString("codeCacheDir")!!
-    val externalCacheDirs: MutableList<String> = config.getStringList("externalCacheDirs")!!
-    val externalMediaDirs: MutableList<String> = config.getStringList("externalMediaDirs")!!
-    val rootDir = config.getString("rootDir")!!
-    val externalStorageDir = config.getString("externalStorageDir")!!
-    val downloadCacheDir = config.getString("downloadCacheDir")!!
-    val databasesDir = config.getString("databasesDir")!!
+    val dataDir:String by config
+    val filesDir:String by config
+    val noBackupFilesDir:String by config
+    val externalFilesDirs: MutableList<String> by config
+    val obbDirs: MutableList<String> by config
+    val cacheDir:String by config
+    val codeCacheDir:String by config
+    val externalCacheDirs: MutableList<String> by config
+    val externalMediaDirs: MutableList<String> by config
+    val rootDir:String by config
+    val externalStorageDir:String by config
+    val downloadCacheDir:String by config
+    val databasesDir:String by config
 
-    val prefsDir = config.getString("prefsDir")!!
+    val prefsDir:String by config
 
-    val packageDir = config.getString("packageDir")!!
+    val packageDir:String by config
 
     companion object {
         fun register(config: Config)

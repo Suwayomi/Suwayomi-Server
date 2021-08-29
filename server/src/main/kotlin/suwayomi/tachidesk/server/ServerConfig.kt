@@ -12,7 +12,8 @@ import xyz.nulldev.ts.config.ConfigModule
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.debugLogsEnabled
 
-class ServerConfig(config: Config, moduleName: String = "") : ConfigModule(config, moduleName) {
+private const val MODULE_NAME = "server"
+class ServerConfig(config: Config, moduleName: String = MODULE_NAME) : ConfigModule(config, moduleName) {
     val ip: String by overridableWithSysProperty
     val port: Int by overridableWithSysProperty
 
@@ -33,6 +34,6 @@ class ServerConfig(config: Config, moduleName: String = "") : ConfigModule(confi
     val electronPath: String by overridableWithSysProperty
 
     companion object {
-        fun register(config: Config) = ServerConfig(config.getConfig("server"), "server")
+        fun register(config: Config) = ServerConfig(config.getConfig(MODULE_NAME))
     }
 }

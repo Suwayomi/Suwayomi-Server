@@ -9,11 +9,12 @@ package xyz.nulldev.ts.config
 
 import net.harawata.appdirs.AppDirsFactory
 
+const val CONFIG_PREFIX = "suwayomi.tachidesk.config"
 
 val ApplicationRootDir: String
     get(): String {
         return System.getProperty(
-                "suwayomi.tachidesk.server.rootDir",
+                "$CONFIG_PREFIX.server.rootDir",
                 AppDirsFactory.getInstance().getUserDataDir("Tachidesk", null, null)
         )
     }

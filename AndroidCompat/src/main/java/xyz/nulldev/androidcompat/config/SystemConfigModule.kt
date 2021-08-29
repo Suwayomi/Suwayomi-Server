@@ -2,9 +2,10 @@ package xyz.nulldev.androidcompat.config
 
 import com.typesafe.config.Config
 import xyz.nulldev.ts.config.ConfigModule
+import io.github.config4k.getValue
 
 class SystemConfigModule(val config: Config) : ConfigModule(config) {
-    val isDebuggable = config.getBoolean("isDebuggable")
+    val isDebuggable: Boolean by config
 
     val propertyPrefix = "properties."
 
