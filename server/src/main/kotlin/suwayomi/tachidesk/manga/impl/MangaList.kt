@@ -41,7 +41,7 @@ object MangaList {
         val mangasPage = this
         val mangaList = transaction {
             return@transaction mangasPage.mangas.map { manga ->
-                val mangaEntry = MangaTable.select { MangaTable.url eq manga.url }.firstOrNull()
+                var mangaEntry = MangaTable.select { MangaTable.url eq manga.url }.firstOrNull()
                 if (mangaEntry == null) { // create manga entry
                     val mangaId = MangaTable.insertAndGetId {
                         it[url] = manga.url
@@ -57,7 +57,7 @@ object MangaList {
                         it[sourceReference] = sourceId
                     }.value
 
-                    val mangaEntry = MangaTable.select { MangaTable.url eq manga.url }.first()
+                    mangaEntry = MangaTable.select { MangaTable.url eq manga.url }.first()
 
                     MangaDataClass(
                         mangaId,

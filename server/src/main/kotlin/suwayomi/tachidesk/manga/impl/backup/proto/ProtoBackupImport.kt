@@ -114,6 +114,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         }
     }
 
+    @Suppress("UNUSED_PARAMETER") // TODO: remove
     private fun restoreMangaData(
         manga: Manga,
         chapters: List<Chapter>,

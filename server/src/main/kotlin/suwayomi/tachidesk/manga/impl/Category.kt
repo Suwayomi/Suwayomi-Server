@@ -32,7 +32,6 @@ object Category {
         if (name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)) return
 
         transaction {
-            val count = CategoryTable.selectAll().count()
             if (CategoryTable.select { CategoryTable.name eq name }.firstOrNull() == null) {
                 CategoryTable.insert {
                     it[CategoryTable.name] = name
