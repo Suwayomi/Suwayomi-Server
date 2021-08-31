@@ -14,6 +14,7 @@ import kotlin.reflect.KProperty
 /**
  * Abstract config module.
  */
+@Suppress("UNUSED_PARAMETER")
 abstract class ConfigModule(config: Config)
 
 /**
