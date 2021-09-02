@@ -2,7 +2,9 @@
 ## Where should I start?
 Checkout [This Kanban Board](https://github.com/Suwayomi/Tachidesk/projects/1) to see the rough development roadmap.
 
-**Note to potential contributors:** Notify the developers on [Suwayomi discord](https://discord.gg/DDZdqZWaHA) (#programming channel) or open a WIP pull request before starting if you decide to take on working on anything from/not from the roadmap in order to avoid parallel efforts on the same issue/feature.
+**Note 1:** Notify the developers on [Suwayomi discord](https://discord.gg/DDZdqZWaHA) (#programming channel) or open a WIP pull request before starting if you decide to take on working on anything from/not from the roadmap in order to avoid parallel efforts on the same issue/feature.
+
+**Note 2:** Store all changes with each direct commit/PR in [CHANGELOG.md](./CHANGELOG.md)
 
 ## How does Tachidesk-Server work?
 This project has two components: 
