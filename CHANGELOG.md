@@ -32,6 +32,7 @@
 - (r42-r45) Change `README.md`: some links and stuff 
 - (r45-r765) Add all of the commit history from when WebUI was separated from Server, jumping from r45 to r765 (r45 is exactly the same as r765)
 - (r766) Steal `.gitattributes` from Tachidesk-Server
+- (r767) Dependency cleanup in `package.json`
 
 
 
