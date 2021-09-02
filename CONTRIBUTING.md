@@ -9,13 +9,13 @@ Checkout [This Kanban Board](https://github.com/Suwayomi/Tachidesk/projects/1) t
 ## How does Tachidesk-Server work?
 This project has two components: 
 1. **Server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run jar libraries converted from apk extensions. All this concludes to serving a REST API.
-2. **WebUI:** A react SPA(`create-react-app`) project that works with the server to do the presentation located at https://github.com/Suwayomi/Tachidesk-WebUI
+2. **WebUI:** A React SPA(`create-react-app`) project that works with the server to do the presentation located at https://github.com/Suwayomi/Tachidesk-WebUI
 
-## Why a web server app?
+## Why a web app?
 This structure is chosen to
 - Achieve the maximum multi-platform-ness
-- Gives the ability to acces Tachidesk-Server from a remote client e.g. your phone, tablet or smart TV
-- Eaise development of user intefaces for Tachidesk
+- Gives the ability to access Tachidesk-Server from a remote client e.g., your phone, tablet or smart TV
+- Ease development of user interfaces for Tachidesk
 
 ## Building from source
 ### Prerequisites
@@ -24,7 +24,7 @@ You need these software packages installed in order to build the project
 - Java Development Kit and Java Runtime Environment version 8 or newer(both Oracle JDK and OpenJDK works)
 - Android stubs jar
     - **Manual download:** Download [android.jar](https://raw.githubusercontent.com/Suwayomi/Tachidesk/android-jar/android.jar) and put it under `AndroidCompat/lib`.
-    - **Automated download:** Run `AndroidCompat/getAndroid.sh`(MacOS/Linux) or `AndroidCompat/getAndroid.ps1`(Windows) from project's root directory to download and rebuild the jar file from Google's repository.
+    - **Automated download:** Run `AndroidCompat/getAndroid.sh`(macOS/Linux) or `AndroidCompat/getAndroid.ps1`(Windows) from project's root directory to download and rebuild the jar file from Google's repository.
 
 ### building the full-blown jar (Tachidesk-Server + Tachidesk-WebUI bundle)
 Run `./gradlew server:downloadWebUI server:shadowJar`, the resulting built jar file will be `server/build/Tachidesk-Server-vX.Y.Z-rxxx.jar`.
