@@ -4,7 +4,7 @@ Checkout [This Kanban Board](https://github.com/Suwayomi/Tachidesk/projects/1) t
 
 **Note 1:** Notify the developers on [Suwayomi discord](https://discord.gg/DDZdqZWaHA) (#programming channel) or open a WIP pull request before starting if you decide to take on working on anything from/not from the roadmap in order to avoid parallel efforts on the same issue/feature.
 
-**Note 2:** Store all changes with each direct commit/PR in [CHANGELOG.md](./CHANGELOG.md)
+**Note 2:** Store all changes with each direct commit/PR in [CHANGELOG.md](./CHANGELOG.md), put `CANGELOG.md` changes in its own separate commit.
 
 ## How does Tachidesk-Server work?
 This project has two components: 

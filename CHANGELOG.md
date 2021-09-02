@@ -14,7 +14,8 @@
 - (r850) Bump WebUI version to r767
 
 #### Non-code changes
-- (r851) Added this changelog file and `CHANGELOG-TEMPLATE.md`
+- (r851) Add this changelog file and `CHANGELOG-TEMPLATE.md`
+- (r852-r853) Add a note about this maintaining this file changelog
 
 
 ## Tachidesk-WebUI
