@@ -17,6 +17,7 @@
 - (r851) Add this changelog file and `CHANGELOG-TEMPLATE.md`
 - (r852-r853) `CONTRIBUTING.md`: Add a note about this maintaining this file changelog
 - (r855) `CONTRIBUTING.md`: text cleanup
+- (r859) `CONTRIBUTING.md`: remove dumb rule
 
 
 ## Tachidesk-WebUI
