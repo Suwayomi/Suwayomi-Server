@@ -6,7 +6,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-electron_version="v12.0.9"
+electron_version="v14.0.0"
 
 if [ $1 = "linux-x64" ]; then
   jre="OpenJDK8U-jre_x64_linux_hotspot_8u302b08.tar.gz"
