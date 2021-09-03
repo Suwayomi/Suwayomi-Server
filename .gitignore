@@ -12,5 +12,6 @@ server/tachiserver-data/
 
 # bundle asset downlaods
 OpenJDK*.*
+zulu*jre*
 electron-*.*
 rcedit-*

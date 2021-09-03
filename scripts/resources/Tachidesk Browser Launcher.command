@@ -1,3 +1,3 @@
-#!/bin/sh
+cd "`dirname "$0"`"
 
 ./jre/Contents/Home/bin/java -jar Tachidesk.jar

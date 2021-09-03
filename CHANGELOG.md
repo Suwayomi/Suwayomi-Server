@@ -19,7 +19,9 @@
 - (r852-r853) `CONTRIBUTING.md`: Add a note about this maintaining this file changelog
 - (r855) `CONTRIBUTING.md`: text cleanup
 - (r859) `CONTRIBUTING.md`: remove dumb rule
-- (r862) `windows-bundler-sh`: update jre
+- (r862) `windows-bundler.sh`: update jre
+- (r864) add linux and macOS bundler script and launcher scripts
+- (r865) fix macOS bundler script and launcher scripts
 
 
 ## Tachidesk-WebUI

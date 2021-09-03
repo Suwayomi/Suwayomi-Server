@@ -12,12 +12,20 @@ if [ $1 = "linux-x64" ]; then
   jre="OpenJDK8U-jre_x64_linux_hotspot_8u302b08.tar.gz"
   jre_release="jdk8u302-b08"
   jre_url="https://github.com/adoptium/temurin8-binaries/releases/download/$jre_release/$jre"
+  jre_dir="$jre_release-jre"
   electron="electron-$electron_version-linux-x64.zip"
 elif [ $1 = "macOS-x64" ]; then
   jre="OpenJDK8U-jre_x64_mac_hotspot_8u302b08.tar.gz"
   jre_release="jdk8u302-b08"
   jre_url="https://github.com/adoptium/temurin8-binaries/releases/download/$jre_release/$jre"
+  jre_dir="$jre_release-jre"
   electron="electron-$electron_version-darwin-x64.zip"
+elif [ $1 = "macOS-arm64" ]; then
+  jre="zulu8.56.0.23-ca-jre8.0.302-macosx_aarch64.tar.gz"
+  jre_release="zulu8.56.0.23-ca-jre8.0.302-macosx_aarch64"
+  jre_url="https://cdn.azul.com/zulu/bin/$jre"
+  jre_dir="$jre_release"
+  electron="electron-$electron_version-darwin-arm64.zip"
 else
   echo "Unsupported arch value: $1"
   exit 1
@@ -25,7 +33,6 @@ fi
 
 arch="$1"
 os=$(echo $arch | cut -d '-' -f1)
-jre_dir="$jre_release-jre"
 
 echo "creating $arch bundle"
 
@@ -53,9 +60,15 @@ unzip $electron -d $release_name/electron
 
 # copy artifacts
 cp $jar $release_name/Tachidesk.jar
-cp "resources/tachidesk-browser-launcher-$os.sh" "$release_name/tachidesk-browser-launcher.sh"
-cp "resources/tachidesk-debug-launcher-$os.sh" "$release_name/tachidesk-debug-launcher.sh"
-cp "resources/tachidesk-electron-launcher-$os.sh" "$release_name/tachidesk-electron-launcher.sh"
+if [ $os = linux ]; then
+  cp "resources/tachidesk-browser-launcher.sh" $release_name
+  cp "resources/tachidesk-debug-launcher.sh" $release_name
+  cp "resources/tachidesk-electron-launcher.sh" $release_name
+elif [ $os = macOS ]; then
+  cp "resources/Tachidesk Browser Launcher.command" $release_name
+  cp "resources/Tachidesk Debug Launcher.command" $release_name
+  cp "resources/Tachidesk Electron Launcher.command" $release_name
+fi
 
 archive_name=""
 if [ $os = linux ]; then
