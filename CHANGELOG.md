@@ -12,6 +12,7 @@
 
 ### Private API
 - (r850) Bump WebUI version to r767
+- (r861) Bump WebUI version to r769
 
 #### Non-code changes
 - (r851) Add this changelog file and `CHANGELOG-TEMPLATE.md`
