@@ -51,13 +51,6 @@ jobs:
           cd master
           curl https://raw.githubusercontent.com/Suwayomi/Tachidesk/android-jar/android.jar -o AndroidCompat/lib/android.jar
 
-      - name: Cache node_modules
-        uses: actions/cache@v2
-        with:
-          path: |
-            **/webUI/node_modules
-          key: ${{ runner.os }}-${{ hashFiles('**/webUI/yarn.lock') }}
-
       - name: Build and copy webUI, Build Jar
         uses: eskatos/gradle-command-action@v1
         env:
