@@ -41,23 +41,45 @@ Here is a list of current features:
 
 **Note:** Tachidesk-Server is alpha software and can break rarely and/or with each update. See [Troubleshooting](https://github.com/Suwayomi/Tachidesk-Server/wiki/Troubleshooting) if it happens.
 
-## Downloading and Running the app
-### All Operating Systems
-You should have The Java Runtime Environment(JRE) 8 or newer and a modern browser installed(Google is your friend for seeking assitance). Also an internet connection is required as almost everything this app does is downloading stuff. 
+# Downloading and Running the app
+## General Requirements
+In order to use the app effectively you need the following:
+- The jar release of Tachideesk-Server
+- The Java Runtime Environment(JRE) 8 or newer (included in bundle releases)
+- A Modern Browser like Google Chrome, Firefox, etc.
+- ElectronJS (optional) (included in bundle releases)
+- An internet connection (when you want to use online features)
+## Using the jar release directly 
+Download the latest `.jar` release from [the releases section](https://github.com/Suwayomi/Tachidesk-Server/releases) or a preview jar build from [the preview repository](https://github.com/Suwayomi/Tachidesk-preview/releases).
 
-Download the latest "Stable" jar release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases) or a preview jar build from [the preview repository](https://github.com/Suwayomi/Tachidesk-preview/releases).
+Make sure you have The Java Runtime Environment installed on your system, Double click on the jar file or run `java -jar Tachidesk-vX.Y.Z-rxxx.jar` (or `java -jar Tachidesk-latest.jar` if you have the latest preview) from a Terminal/Command Prompt window to run the app which will open a new browser window automatically. Also the System Tray Icon is your friend if you need to open the browser window again or close Tachidesk.
 
-Double click on the jar file or run `java -jar Tachidesk-vX.Y.Z-rxxx.jar` (or `java -jar Tachidesk-latest.jar` if you have the latest preview) from a Terminal/Command Prompt window to run the app which will open a new browser window automatically. Also the System Tray Icon is your friend if you need to open the browser window again or close Tachidesk.
+## Using Operating System Specific Bundles
+To facilitate the use of Tachidesk we provide bundle releases that include The Java Runtime Environment, ElectronJS and 3 Tachidesk Launcher Scripts.
+
+#### Launcher Scripts
+- `Tachidesk Electron Launcher`: Launches Tachidesk inside Electron as a desktop applicaton
+- `Tachidesk Browser Launcher`: Launches Tachidesk in a browser window
+- `Tachidesk Debug Launcher`: Launches Tachidesk with debug logs attached. If Tachidesk doesn't work for you, running this can give you insight into why.
+
+**Node:** Linux launcher scripts are named a bit differently but work the same. 
 
 ### Windows
-Download the latest "Stable" win32 or win64 (depending on your system, usually you want win64) release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases) or a preview one from [the preview repository](https://github.com/Suwayomi/Tachidesk-preview/releases).
+Download the latest `win32`(Windows 32-bit) or `win64`(Windows 64-bit) release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases) or a preview one from [the preview repository](https://github.com/Suwayomi/Tachidesk-preview/releases).
 
-The Windows specific build has java bundled inside, so you don't have to install java to use it. Unzip `Tachidesk-vX.Y.Z-rxxx-win64.zip` and run one of the Launcher files depending on what you want(see bellow). The rest works like the previous section.
-#### Windows Launchers
-- `Tachidesk Electron Launcher.bat`: Launches Tachidesk inside Electron as a desktop applicaton
-- `Tachidesk Browser Launcher.bat`: Launches Tachidesk in a browser window
-- `Tachidesk Debug Launcher.bat`: Launches Tachidesk with debug logs attached. If Tachidesk doesn't work for you, running this can give you insight into why.
+Unzip the downloaded file and double click on one of the launcher scripts.
 
+### macOS
+Download the latest `macOS-x64`(older macOS systems) or `macOS-arm64`(Apple M1) release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases) or a preview one from [the preview repository](https://github.com/Suwayomi/Tachidesk-preview/releases).
+
+Unzip the downloaded file and double click on one of the launcher scripts.
+
+### GNU/Linux
+Download the latest `linux-x64`(x86_64) release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases) or a preview one from [the preview repository](https://github.com/Suwayomi/Tachidesk-preview/releases).
+
+`tar xvf` the downloaded file and double click on one of the launcher scripts or run them using the terminal.
+
+## Other methods of getting Tachidesk
 ### Arch Linux
 You can install Tachidesk from the AUR
 ```
