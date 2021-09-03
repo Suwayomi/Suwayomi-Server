@@ -22,6 +22,7 @@
 - (r862) `windows-bundler.sh`: update jre
 - (r864) add linux and macOS bundler script and launcher scripts
 - (r865) fix macOS bundler script and launcher scripts
+- (r866) bump electron version to v14.0.0
 
 
 ## Tachidesk-WebUI
