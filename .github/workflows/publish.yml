@@ -63,18 +63,21 @@ jobs:
           dependencies-cache-enabled: true
           configuration-cache-enabled: true
 
-      - name: make windows packages
+      - name: make bundle packages
         run: |
           cd master/scripts
           ./windows-bundler.sh win32
           ./windows-bundler.sh win64
+          ./unix-bundler.sh linux-x64
+          ./unix-bundler.sh macOS-x64
+          ./unix-bundler.sh macOS-arm64
 
       - name: Upload Release
         uses: xresloader/upload-to-github-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "master/server/build/*.jar;master/server/build/*.zip"
+          file: "master/server/build/*.jar;master/server/build/*.zip;master/server/build/*.tar.gz"
           tags: true
           draft: true
           verbose: true

@@ -78,7 +78,7 @@ jobs:
           echo "$genTag"
           echo "::set-output name=value::$genTag"
 
-      - name: make windows packages
+      - name: make bundle packages
         run: |
           cd master/scripts
           ./windows-bundler.sh win32
