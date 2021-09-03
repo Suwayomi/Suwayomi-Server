@@ -14,7 +14,7 @@
 - N/A
 
 #### Non-code changes
-- (r871) `publish.yml`: remove node module cache, won't need it anymore
+- N/A
 
 
 ## Tachidesk-WebUI
@@ -58,6 +58,8 @@
 - (r865) fix macOS bundler script and launcher scripts
 - (r866) bump electron version to v14.0.0
 - (r868) add linux and macOS bundlers to the publish workflow
+- (r871) `publish.yml`: remove node module cache, won't need it anymore
+- (r873) `publish.yml` and `build_push.yml`: fix oopsies
 
 
 ## Tachidesk-WebUI
