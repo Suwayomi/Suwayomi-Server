@@ -19,6 +19,7 @@
 - (r852-r853) `CONTRIBUTING.md`: Add a note about this maintaining this file changelog
 - (r855) `CONTRIBUTING.md`: text cleanup
 - (r859) `CONTRIBUTING.md`: remove dumb rule
+- (r862) `windows-bundler-sh`: update jre
 
 
 ## Tachidesk-WebUI

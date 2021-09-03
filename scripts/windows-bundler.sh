@@ -10,15 +10,19 @@ electron_version="v12.0.9"
 
 if [ $1 = "win32" ]; then
   jre="OpenJDK8U-jre_x86-32_windows_hotspot_8u292b10.zip"
+  jre_release="jdk8u292-b10"
+  jre_url="https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/$jre_release/$jre"
   arch="win32"
   electron="electron-$electron_version-win32-ia32.zip"
 else
-  jre="OpenJDK8U-jre_x64_windows_hotspot_8u292b10.zip"
+  jre="OpenJDK8U-jre_x64_windows_hotspot_8u302b08.zip"
+  jre_release="jdk8u302-b08"
+  jre_url="https://github.com/adoptium/temurin8-binaries/releases/download/$jre_release/$jre"
   arch="win64"
   electron="electron-$electron_version-win32-x64.zip"
 fi
 
-jre_dir="jdk8u292-b10-jre"
+jre_dir="$jre_release-jre"
 
 echo "creating windows bundle"
 
@@ -33,7 +37,7 @@ mkdir $release_name
 
 echo "Dealing with jre..."
 if [ ! -f $jre ]; then
-  curl -L "https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u292-b10/$jre" -o $jre
+  curl -L $jre_url -o $jre
 fi
 unzip $jre
 mv $jre_dir $release_name/jre
