@@ -4,7 +4,7 @@ on:
 #  push: 
   
 jobs:
-  build_publish_docker_container
+  build_publish_docker_container:
     runs-on: ubuntu-latest
 
     steps:         
