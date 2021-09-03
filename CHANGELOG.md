@@ -23,6 +23,7 @@
 - (r864) add linux and macOS bundler script and launcher scripts
 - (r865) fix macOS bundler script and launcher scripts
 - (r866) bump electron version to v14.0.0
+- (r868) add linux and macOS bundlers to the publish workflow
 
 
 ## Tachidesk-WebUI
