@@ -16,6 +16,7 @@ private const val MODULE_NAME = "server"
 class ServerConfig(config: Config, moduleName: String = MODULE_NAME) : SystemPropertyOverridableConfigModule(config, moduleName) {
     val ip: String by overridableConfig
     val port: Int by overridableConfig
+    val baseUrlExtension: String by overridableConfig
 
     // proxy
     val socksProxyEnabled: Boolean by overridableConfig
