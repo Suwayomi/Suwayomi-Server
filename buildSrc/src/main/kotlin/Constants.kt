@@ -12,7 +12,7 @@ const val kotlinVersion = "1.5.21"
 const val MainClass = "suwayomi.tachidesk.MainKt"
 
 // should be bumped with each stable release
-val tachideskVersion = System.getenv("ProductVersion") ?: "v0.4.8"
+val tachideskVersion = System.getenv("ProductVersion") ?: "v0.4.9"
 
 val webUIRevisionTag = System.getenv("WebUIRevision") ?: "r769"
 

@@ -1,4 +1,38 @@
-# Server: v0.4.8-next + WebUI: r767
+# Server: v0.4.9-next + WebUI: r769
+## Tachidesk-Server
+### Public API
+#### Non-breaking changes
+- N/A
+
+#### Breaking changes
+- N/A
+
+#### Bug fixes
+- N/A
+
+### Private API
+- N/A
+
+#### Non-code changes
+- N/A
+
+
+## Tachidesk-WebUI
+#### Visible changes
+- N/A
+
+#### Bug fixes
+- N/A
+
+#### Internal changes
+- N/A
+
+#### Non-code changes
+- N/A
+
+
+
+# Server: v0.4.9 + WebUI: r769
 ## Tachidesk-Server
 ### Public API
 #### Non-breaking changes
