@@ -22,7 +22,7 @@
 
 ## Tachidesk-WebUI
 #### Visible changes
-- N/A
+- (r767-r769) Support for hiding NSFW content in settings screen, extensions screen, sources screen
 
 #### Bug fixes
 - N/A
