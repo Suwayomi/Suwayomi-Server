@@ -5,7 +5,7 @@
 - N/A
 
 #### Breaking changes
-- N/A
+- (r857) renamed: `SourceDataClass.isNSFW` -> `SourceDataClass.isNsfw`
 
 #### Bug fixes
 - N/A
