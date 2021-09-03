@@ -22,5 +22,5 @@ data class SourceDataClass(
     val isConfigurable: Boolean?,
 
     /** The Source class has a @Nsfw annotation */
-    val isNSFW: Boolean?,
+    val isNsfw: Boolean?,
 )
