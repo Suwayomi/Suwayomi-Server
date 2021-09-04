@@ -1,4 +1,4 @@
-# Server: v0.X.Y-next + WebUI: rXXX
+# Server: v0.X.Y-rXXX + WebUI: rXXX
 ## Tachidesk-Server
 ### Public API
 #### Non-breaking changes

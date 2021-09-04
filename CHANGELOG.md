@@ -1,11 +1,11 @@
-# Server: v0.4.9-next + WebUI: r769
+# Server: v0.4.9-r877 + WebUI: r771
 ## Tachidesk-Server
 ### Public API
 #### Non-breaking changes
 - N/A
 
 #### Breaking changes
-- N/A
+- (r877) `MangaDataClass.genre` changed type to `List<String>`
 
 #### Bug fixes
 - N/A
@@ -16,7 +16,8 @@
 
 ## Tachidesk-WebUI
 #### Visible changes
-- N/A
+- (r770) add support for the new genre type
+- (r771) set the default value of `showNsfw` to `false` so we won't have visual artifacts with a clean install
 
 #### Bug fixes
 - N/A
