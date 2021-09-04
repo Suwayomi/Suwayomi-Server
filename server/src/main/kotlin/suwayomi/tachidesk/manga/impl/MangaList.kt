@@ -16,7 +16,6 @@ import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
-import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 
@@ -73,7 +72,7 @@ object MangaList {
                         manga.artist,
                         manga.author,
                         manga.description,
-                        manga.genre.toGenreList(),
+                        manga.genre,
                         MangaStatus.valueOf(manga.status).name,
                         false, // It's a new manga entry
                         meta = getMangaMetaMap(mangaId),
@@ -95,7 +94,7 @@ object MangaList {
                         mangaEntry[MangaTable.artist],
                         mangaEntry[MangaTable.author],
                         mangaEntry[MangaTable.description],
-                        mangaEntry[MangaTable.genre].toGenreList(),
+                        mangaEntry[MangaTable.genre],
                         MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
                         mangaEntry[MangaTable.inLibrary],
                         meta = getMangaMetaMap(mangaId),
