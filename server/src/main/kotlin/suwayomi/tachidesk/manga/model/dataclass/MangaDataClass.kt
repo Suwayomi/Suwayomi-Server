@@ -22,7 +22,7 @@ data class MangaDataClass(
     val artist: String? = null,
     val author: String? = null,
     val description: String? = null,
-    val genre: String? = null,
+    val genre: List<String> = emptyList(),
     val status: String = MangaStatus.UNKNOWN.name,
     val inLibrary: Boolean = false,
     val source: SourceDataClass? = null,

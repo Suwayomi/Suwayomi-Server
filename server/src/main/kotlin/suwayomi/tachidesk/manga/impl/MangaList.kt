@@ -14,6 +14,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Manga.getMangaMetaMap
 import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
+import suwayomi.tachidesk.manga.impl.util.lang.trimAll
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 import suwayomi.tachidesk.manga.model.table.MangaStatus
@@ -72,7 +73,7 @@ object MangaList {
                         manga.artist,
                         manga.author,
                         manga.description,
-                        manga.genre,
+                        manga.genre?.split(",")?.trimAll().orEmpty(),
                         MangaStatus.valueOf(manga.status).name,
                         false, // It's a new manga entry
                         meta = getMangaMetaMap(mangaId),
@@ -94,7 +95,7 @@ object MangaList {
                         mangaEntry[MangaTable.artist],
                         mangaEntry[MangaTable.author],
                         mangaEntry[MangaTable.description],
-                        mangaEntry[MangaTable.genre],
+                        mangaEntry[MangaTable.genre]?.split(",")?.trimAll().orEmpty(),
                         MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
                         mangaEntry[MangaTable.inLibrary],
                         meta = getMangaMetaMap(mangaId),

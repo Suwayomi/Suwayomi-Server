@@ -21,6 +21,7 @@ import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.impl.Source.getSource
 import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
+import suwayomi.tachidesk.manga.impl.util.lang.trimAll
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse.getCachedImageResponse
@@ -56,7 +57,7 @@ object Manga {
                 mangaEntry[MangaTable.artist],
                 mangaEntry[MangaTable.author],
                 mangaEntry[MangaTable.description],
-                mangaEntry[MangaTable.genre],
+                mangaEntry[MangaTable.genre]?.split(",")?.trimAll().orEmpty(),
                 MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
                 mangaEntry[MangaTable.inLibrary],
                 getSource(mangaEntry[MangaTable.sourceReference]),
@@ -106,7 +107,7 @@ object Manga {
                 fetchedManga.artist,
                 fetchedManga.author,
                 fetchedManga.description,
-                fetchedManga.genre,
+                fetchedManga.genre?.split(",")?.trimAll().orEmpty(),
                 MangaStatus.valueOf(fetchedManga.status).name,
                 mangaEntry[MangaTable.inLibrary],
                 getSource(mangaEntry[MangaTable.sourceReference]),
