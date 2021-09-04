@@ -13,6 +13,7 @@ import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.manga.impl.Manga.getMangaMetaMap
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.MangaStatus.Companion
 
 object MangaTable : IntIdTable() {
@@ -52,7 +53,7 @@ fun MangaTable.toDataClass(mangaEntry: ResultRow) =
         mangaEntry[artist],
         mangaEntry[author],
         mangaEntry[description],
-        mangaEntry[genre],
+        mangaEntry[genre].toGenreList(),
         Companion.valueOf(mangaEntry[status]).name,
         mangaEntry[inLibrary],
         meta = getMangaMetaMap(mangaEntry[id].value),
