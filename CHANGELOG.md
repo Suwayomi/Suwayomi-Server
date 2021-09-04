@@ -13,9 +13,6 @@
 ### Private API
 - N/A
 
-#### Non-code changes
-- N/A
-
 
 ## Tachidesk-WebUI
 #### Visible changes
@@ -25,9 +22,6 @@
 - N/A
 
 #### Internal changes
-- N/A
-
-#### Non-code changes
 - N/A
 
 
