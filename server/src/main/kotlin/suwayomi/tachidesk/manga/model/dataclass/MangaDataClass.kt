@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.model.dataclass
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import suwayomi.tachidesk.manga.impl.util.lang.trimAll
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 
 data class MangaDataClass(
@@ -39,3 +40,5 @@ data class PagedMangaListDataClass(
     val mangaList: List<MangaDataClass>,
     val hasNextPage: Boolean
 )
+
+internal inline fun String?.toGenreList() = this?.split(",")?.trimAll().orEmpty()

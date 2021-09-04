@@ -11,8 +11,8 @@ import eu.kanade.tachiyomi.animesource.model.SAnime
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
-import suwayomi.tachidesk.manga.impl.util.lang.trimAll
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.MangaStatus.Companion
 
 object AnimeTable : IntIdTable() {
@@ -49,7 +49,7 @@ fun AnimeTable.toDataClass(mangaEntry: ResultRow) =
         mangaEntry[artist],
         mangaEntry[author],
         mangaEntry[description],
-        mangaEntry[genre]?.split(",")?.trimAll().orEmpty(),
+        mangaEntry[genre].toGenreList(),
         Companion.valueOf(mangaEntry[status]).name,
         mangaEntry[inLibrary]
     )
