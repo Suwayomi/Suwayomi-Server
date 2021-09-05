@@ -5,7 +5,7 @@
 - N/A
 
 #### Breaking changes
-- (r877) `MangaDataClass.genre` changed type to `List<String>`
+- (r877 #188 by @Syer10) `MangaDataClass.genre` changed type to `List<String>`
 
 #### Bug fixes
 - N/A
