@@ -41,4 +41,4 @@ data class PagedMangaListDataClass(
     val hasNextPage: Boolean
 )
 
-internal inline fun String?.toGenreList() = this?.split(",")?.trimAll().orEmpty()
+internal fun String?.toGenreList() = this?.split(",")?.trimAll().orEmpty()
