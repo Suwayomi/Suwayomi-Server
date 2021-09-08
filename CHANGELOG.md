@@ -1,4 +1,4 @@
-# Server: v0.4.9-r877 + WebUI: r771
+# Server: v0.4.9-r882 + WebUI: r771
 ## Tachidesk-Server
 ### Public API
 #### Non-breaking changes
@@ -18,6 +18,9 @@
 #### Visible changes
 - (r770) add support for the new genre type
 - (r771) set the default value of `showNsfw` to `false` so we won't have visual artifacts with a clean install
+- (r774 #21 by @voltrare) `ReaderNavbar.jsx`: Swap close and retract Navbar buttons
+- (r775 #23 by @voltrare) `yarn.lock`: Fixes version inconsistency after commit 9b866811b
+- (r776 #22 by @voltrare) add margin between Source and Extension cards, make the Search button look nicer
 
 #### Bug fixes
 - N/A
