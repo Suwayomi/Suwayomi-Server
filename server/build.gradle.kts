@@ -9,7 +9,7 @@ plugins {
     application
     kotlin("plugin.serialization")
     id("com.github.johnrengelman.shadow") version "7.0.0"
-    id("org.jmailen.kotlinter") version "3.5.0"
+    id("org.jmailen.kotlinter") version "3.6.0"
     id("com.github.gmazzo.buildconfig") version "3.0.2"
 }
 
@@ -31,13 +31,13 @@ dependencies {
     implementation("com.squareup.okio:okio:2.10.0")
 
     // Javalin api
-    implementation("io.javalin:javalin:3.13.6")
-    // jackson version is tied to javalin, ref: `io.javalin.core.util.OptionalDependency`
+    implementation("io.javalin:javalin:3.13.11")
+    // jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
     implementation("com.fasterxml.jackson.core:jackson-databind:2.10.3")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.10.3")
 
     // Exposed ORM
-    val exposedVersion = "0.31.1"
+    val exposedVersion = "0.34.1"
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
@@ -51,7 +51,7 @@ dependencies {
 
     // tray icon
     implementation("com.dorkbox:SystemTray:4.1")
-    implementation("com.dorkbox:Utilities:1.9")
+    implementation("com.dorkbox:Utilities:1.9") // version locked by SystemTray
 
 
     // dependencies of Tachiyomi extensions, some are duplicate, keeping it here for reference

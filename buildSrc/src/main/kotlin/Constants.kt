@@ -7,7 +7,7 @@ import java.io.BufferedReader
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-const val kotlinVersion = "1.5.21"
+const val kotlinVersion = "1.5.30"
 
 const val MainClass = "suwayomi.tachidesk.MainKt"
 

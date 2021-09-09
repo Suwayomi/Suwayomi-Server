@@ -46,18 +46,18 @@ configure(projects) {
         testImplementation(kotlin("test-junit5"))
 
         // coroutines
-        val coroutinesVersion = "1.5.0"
+        val coroutinesVersion = "1.5.1"
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:$coroutinesVersion")
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:$coroutinesVersion")
 
-        val kotlinSerializationVersion = "1.2.1"
+        val kotlinSerializationVersion = "1.3.0-RC"
         implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinSerializationVersion")
         implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$kotlinSerializationVersion")
 
 
         // Dependency Injection
-        implementation("org.kodein.di:kodein-di-conf-jvm:7.5.0")
+        implementation("org.kodein.di:kodein-di-conf-jvm:7.7.0")
 
         // Logging
         implementation("org.slf4j:slf4j-api:1.7.30")
@@ -69,8 +69,8 @@ configure(projects) {
         implementation("io.reactivex:rxkotlin:1.0.0")
         implementation("com.jakewharton.rxrelay:rxrelay:1.2.0")
 
-        // JSoup
-        implementation("org.jsoup:jsoup:1.13.1")
+        // dependency both in AndroidCompat and extensions, version locked by Tachiyomi app/extensions
+        implementation("org.jsoup:jsoup:1.14.1")
 
         // dependency of :AndroidCompat:Config
         implementation("com.typesafe:config:1.4.1")
@@ -80,14 +80,15 @@ configure(projects) {
         implementation("net.harawata:appdirs:1.2.1")
 
         // dex2jar
-        val dex2jarVersion = "v21"
+        val dex2jarVersion = "v26"
         implementation("com.github.ThexXTURBOXx.dex2jar:dex-translator:$dex2jarVersion")
         implementation("com.github.ThexXTURBOXx.dex2jar:dex-tools:$dex2jarVersion")
 
         // APK parser
         implementation("net.dongliu:apk-parser:2.6.10")
 
-        // Jackson
+
+        // dependency both in AndroidCompat and server, version locked by javalin
         implementation("com.fasterxml.jackson.core:jackson-annotations:2.10.3")
     }
 }
