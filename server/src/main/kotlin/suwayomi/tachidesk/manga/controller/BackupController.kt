@@ -29,6 +29,7 @@ object BackupController {
 
     /** expects a Tachiyomi protobuf backup as a file upload, the file must be named "backup.proto.gz" */
     fun protobufImportFile(ctx: Context) {
+        // TODO: rewrite this with ctx.uploadedFiles(), don't call the multipart field "backup.proto.gz"
         ctx.json(
             JavalinSetup.future {
                 ProtoBackupImport.performRestore(ctx.uploadedFile("backup.proto.gz")!!.content)
