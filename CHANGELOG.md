@@ -22,6 +22,8 @@
 - (r775 #23 by @voltrare) `yarn.lock`: Fixes version inconsistency after commit 9b866811b
 - (r776 #22 by @voltrare) add margin between Source and Extension cards, make the Search button look nicer
 - (r777) add support for installing external APK files
+- (r778) fix the makeToaster?
+- (r779) Action button for installing external extension
 
 #### Bug fixes
 - N/A
