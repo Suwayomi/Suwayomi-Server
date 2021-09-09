@@ -1,4 +1,4 @@
-# Server: v0.4.9-r891 + WebUI: r781
+# Server: v0.4.9-r891 + WebUI: r788
 ## Tachidesk-Server
 ### Public API
 #### Non-breaking changes
@@ -25,12 +25,14 @@
 - (r778) fix the makeToaster?
 - (r779) Action button for installing external extension
 - (r780 Suwayomi/Tachidesk-WebUI#25) add on hover, active effect to Chapter/Episode card
+- (r782-r785) updating material-ui to v5 changed the theme
+- (r785-r788) better `SourceCard` looks on mobile, move `SourceDataClass.isConfigurable` gear button to `SourceMangas` 
 
 #### Bug fixes
 - N/A
 
 #### Internal changes
-- N/A
+- (r782-r785) update dependencies, migrate material-ui from v4 to v5
 
 
 

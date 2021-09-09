@@ -14,9 +14,9 @@ const val MainClass = "suwayomi.tachidesk.MainKt"
 // should be bumped with each stable release
 val tachideskVersion = System.getenv("ProductVersion") ?: "v0.4.9"
 
-val webUIRevisionTag = System.getenv("WebUIRevision") ?: "r781"
+val webUIRevisionTag = System.getenv("WebUIRevision") ?: "r788"
 
-// counts commits on the the master branch
+// counts commits on the master branch
 val tachideskRevision = runCatching {
     System.getenv("ProductRevision") ?: Runtime
         .getRuntime()
