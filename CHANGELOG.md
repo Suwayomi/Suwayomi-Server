@@ -1,4 +1,4 @@
-# Server: v0.4.9-r888 + WebUI: r777
+# Server: v0.4.9-r891 + WebUI: r781
 ## Tachidesk-Server
 ### Public API
 #### Non-breaking changes
@@ -18,12 +18,13 @@
 #### Visible changes
 - (r770) add support for the new genre type
 - (r771) set the default value of `showNsfw` to `false` so we won't have visual artifacts with a clean install
-- (r774 #21 by @voltrare) `ReaderNavbar.jsx`: Swap close and retract Navbar buttons
-- (r775 #23 by @voltrare) `yarn.lock`: Fixes version inconsistency after commit 9b866811b
-- (r776 #22 by @voltrare) add margin between Source and Extension cards, make the Search button look nicer
+- (r774 Suwayomi/Tachidesk-WebUI#21 by @voltrare) `ReaderNavbar.jsx`: Swap close and retract Navbar buttons
+- (r775 Suwayomi/Tachidesk-WebUI#23 by @voltrare) `yarn.lock`: Fixes version inconsistency after commit 9b866811b
+- (r776 Suwayomi/Tachidesk-WebUI#22 by @voltrare) add margin between Source and Extension cards, make the Search button look nicer
 - (r777) add support for installing external APK files
 - (r778) fix the makeToaster?
 - (r779) Action button for installing external extension
+- (r780 Suwayomi/Tachidesk-WebUI#25) add on hover, active effect to Chapter/Episode card
 
 #### Bug fixes
 - N/A
