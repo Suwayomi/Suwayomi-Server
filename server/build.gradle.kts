@@ -162,7 +162,7 @@ tasks {
     }
 
     named("run") {
-        dependsOn("formatKotlin", "lintKotlin", "downloadWebUI")
+        dependsOn("formatKotlin", "lintKotlin")
     }
 
     named<Copy>("processResources") {
