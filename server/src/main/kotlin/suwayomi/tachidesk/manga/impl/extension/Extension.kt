@@ -17,6 +17,7 @@ import mu.KotlinLogging
 import okhttp3.Request
 import okio.buffer
 import okio.sink
+import okio.source
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
@@ -36,7 +37,6 @@ import suwayomi.tachidesk.manga.impl.util.PackageTools.dex2jar
 import suwayomi.tachidesk.manga.impl.util.PackageTools.getPackageInfo
 import suwayomi.tachidesk.manga.impl.util.PackageTools.getSignatureHash
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
-import suwayomi.tachidesk.manga.impl.util.PackageTools.trustedSignatures
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse.getCachedImageResponse
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
@@ -65,6 +65,22 @@ object Extension {
             downloadAPKFile(apkURL, apkSavePath)
 
             apkSavePath
+        }
+    }
+
+    suspend fun installExternalExtension(inputStream: InputStream): Int {
+        return installAPK {
+            val apkName = "apkToSave.apk"
+            val savePath = "${applicationDirs.extensionsRoot}/$apkName"
+            // download apk file
+            val downloadedFile = File(savePath)
+            downloadedFile.sink().buffer().use { sink ->
+                inputStream.source().use { source ->
+                    sink.writeAll(source)
+                    sink.flush()
+                }
+            }
+            savePath
         }
     }
 
@@ -103,12 +119,12 @@ object Extension {
 
             val signatureHash = getSignatureHash(packageInfo)
 
-            if (signatureHash == null) {
-                throw Exception("Package $pkgName isn't signed")
-            } else if (signatureHash !in trustedSignatures) {
-                // TODO: allow trusting keys
-                throw Exception("This apk is not a signed with the official tachiyomi signature")
-            }
+//            if (signatureHash == null) {
+//                throw Exception("Package $pkgName isn't signed")
+//            } else if (signatureHash !in trustedSignatures) {
+//                // TODO: allow trusting keys
+//                throw Exception("This apk is not a signed with the official tachiyomi signature")
+//            }
 
             val isNsfw = packageInfo.applicationInfo.metaData.getString(METADATA_NSFW) == "1"
 

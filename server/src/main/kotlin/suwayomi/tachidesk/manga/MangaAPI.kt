@@ -26,6 +26,7 @@ object MangaAPI {
             get("list", ExtensionController::list)
 
             get("install/:pkgName", ExtensionController::install)
+            post("install", ExtensionController::installFile)
             get("update/:pkgName", ExtensionController::update)
             get("uninstall/:pkgName", ExtensionController::uninstall)
 

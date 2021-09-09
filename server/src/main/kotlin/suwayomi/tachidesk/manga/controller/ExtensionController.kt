@@ -33,6 +33,19 @@ object ExtensionController {
         )
     }
 
+    /** install the uploaded apk file */
+    fun installFile(ctx: Context) {
+
+        val uploadedFile = ctx.uploadedFile("file")!!
+        println(uploadedFile.filename)
+
+        ctx.json(
+            future {
+                Extension.installExternalExtension(uploadedFile.content)
+            }
+        )
+    }
+
     /** update extension identified with "pkgName" */
     fun update(ctx: Context) {
         val pkgName = ctx.pathParam("pkgName")

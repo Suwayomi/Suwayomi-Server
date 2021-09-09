@@ -1,8 +1,8 @@
-# Server: v0.4.9-r882 + WebUI: r776
+# Server: v0.4.9-r888 + WebUI: r777
 ## Tachidesk-Server
 ### Public API
 #### Non-breaking changes
-- N/A
+- (r888) add installing APK from external sources endpoint
 
 #### Breaking changes
 - (r877 #188 by @Syer10) `MangaDataClass.genre` changed type to `List<String>`
@@ -11,7 +11,7 @@
 - N/A
 
 ### Private API
-- N/A
+- (r887) the `run` task won't call `downloadWebUI` now
 
 
 ## Tachidesk-WebUI
@@ -21,6 +21,7 @@
 - (r774 #21 by @voltrare) `ReaderNavbar.jsx`: Swap close and retract Navbar buttons
 - (r775 #23 by @voltrare) `yarn.lock`: Fixes version inconsistency after commit 9b866811b
 - (r776 #22 by @voltrare) add margin between Source and Extension cards, make the Search button look nicer
+- (r777) add support for installing external APK files
 
 #### Bug fixes
 - N/A

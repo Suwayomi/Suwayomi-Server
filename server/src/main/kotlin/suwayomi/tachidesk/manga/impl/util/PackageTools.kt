@@ -45,7 +45,7 @@ object PackageTools {
 
     private const val officialSignature = "7ce04da7773d41b489f4693a366c36bcd0a11fc39b547168553c285bd7348e23" // inorichi's key
     private const val unofficialSignature = "64feb21075ba97ebc9cc981243645b331595c111cef1b0d084236a0403b00581" // ArMor's key
-    var trustedSignatures = mutableSetOf<String>() + officialSignature + unofficialSignature
+    val trustedSignatures = mutableSetOf<String>() + officialSignature + unofficialSignature
 
     /**
      * Convert dex to jar, a wrapper for the dex2jar library
