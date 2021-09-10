@@ -5,7 +5,7 @@
 - (r888) add installing APK from external sources endpoint
 
 #### Breaking changes
-- (r877 #188 by @Syer10) `MangaDataClass.genre` changed type to `List<String>`
+- (r877 [#188](https://github.com/Suwayomi/Tachidesk-Server/pull/188) by @Syer10) `MangaDataClass.genre` changed type to `List<String>`
 
 #### Bug fixes
 - (r899-r901) fix when an external apk is installed and it doesn't have the default tachiyomi-extensions name
@@ -19,9 +19,9 @@
 #### Visible changes
 - (r770) add support for the new genre type
 - (r771) set the default value of `showNsfw` to `false` so we won't have visual artifacts with a clean install
-- (r774 Suwayomi/Tachidesk-WebUI#21 by @voltrare) `ReaderNavbar.jsx`: Swap close and retract Navbar buttons
-- (r775 Suwayomi/Tachidesk-WebUI#23 by @voltrare) `yarn.lock`: Fixes version inconsistency after commit 9b866811b
-- (r776 Suwayomi/Tachidesk-WebUI#22 by @voltrare) add margin between Source and Extension cards, make the Search button look nicer
+- (r774 [#21](https://github.com/Suwayomi/Tachidesk-WebUI/pull/21) by @voltrare) `ReaderNavbar.jsx`: Swap close and retract Navbar buttons
+- (r775 [#23](https://github.com/Suwayomi/Tachidesk-WebUI/pull/23) by @voltrare) `yarn.lock`: Fixes version inconsistency after commit 9b866811b
+- (r776 [#23](https://github.com/Suwayomi/Tachidesk-WebUI/pull/23) by @voltrare) add margin between Source and Extension cards, make the Search button look nicer
 - (r777) add support for installing external APK files
 - (r778) fix the makeToaster?
 - (r779) Action button for installing external extension
