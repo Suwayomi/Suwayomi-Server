@@ -71,6 +71,7 @@ object Extension {
     suspend fun installExternalExtension(inputStream: InputStream, apkName: String): Int {
         return installAPK {
             val savePath = "${applicationDirs.extensionsRoot}/$apkName"
+            logger.debug { "Saving apk at $apkName" }
             // download apk file
             val downloadedFile = File(savePath)
             downloadedFile.sink().buffer().use { sink ->

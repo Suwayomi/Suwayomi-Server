@@ -141,6 +141,7 @@ object PackageTools {
      * It may return an instance of HttpSource or SourceFactory depending on the extension.
      */
     fun loadExtensionSources(jarPath: String, className: String): Any {
+        logger.debug { "loading jar with path: $jarPath" }
         val classLoader = URLClassLoader(arrayOf<URL>(URL("file:$jarPath")))
         val classToLoad = Class.forName(className, false, classLoader)
         return classToLoad.getDeclaredConstructor().newInstance()
