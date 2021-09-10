@@ -1,7 +1,8 @@
 name: Docker Build Stable
 
 on:
-#  push: 
+  release:
+    types: [published]
   
 jobs:
   build_publish_docker_container:
