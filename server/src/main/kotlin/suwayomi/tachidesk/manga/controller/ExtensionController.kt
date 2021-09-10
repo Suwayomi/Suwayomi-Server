@@ -8,11 +8,14 @@ package suwayomi.tachidesk.manga.controller
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.javalin.http.Context
+import mu.KotlinLogging
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList
 import suwayomi.tachidesk.server.JavalinSetup.future
 
 object ExtensionController {
+    private val logger = KotlinLogging.logger {}
+
     /** list all extensions */
     fun list(ctx: Context) {
         ctx.json(
@@ -37,11 +40,11 @@ object ExtensionController {
     fun installFile(ctx: Context) {
 
         val uploadedFile = ctx.uploadedFile("file")!!
-        println(uploadedFile.filename)
+        logger.debug { "Uploaded extension file name: " + uploadedFile.filename }
 
         ctx.json(
             future {
-                Extension.installExternalExtension(uploadedFile.content)
+                Extension.installExternalExtension(uploadedFile.content, uploadedFile.filename)
             }
         )
     }
