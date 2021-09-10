@@ -1,4 +1,4 @@
-# Server: v0.4.9-r891 + WebUI: r788
+# Server: v0.4.9-r902 + WebUI: r788
 ## Tachidesk-Server
 ### Public API
 #### Non-breaking changes
@@ -8,10 +8,11 @@
 - (r877 #188 by @Syer10) `MangaDataClass.genre` changed type to `List<String>`
 
 #### Bug fixes
-- N/A
+- (r899-r901) fix when an external apk is installed and it doesn't have the default tachiyomi-extensions name
 
 ### Private API
 - (r887) the `run` task won't call `downloadWebUI` now
+- (r902) cleanup print/ln instances
 
 
 ## Tachidesk-WebUI
