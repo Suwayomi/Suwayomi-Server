@@ -171,6 +171,7 @@ object Extension {
                 }
 
                 ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
+                    it[this.apkName] = apkName
                     it[this.isInstalled] = true
                     it[this.classFQName] = className
                 }
