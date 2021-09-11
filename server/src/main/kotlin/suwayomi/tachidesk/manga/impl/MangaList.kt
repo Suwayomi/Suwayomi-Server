@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.MangasPage
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -42,7 +43,9 @@ object MangaList {
         val mangasPage = this
         val mangaList = transaction {
             return@transaction mangasPage.mangas.map { manga ->
-                var mangaEntry = MangaTable.select { MangaTable.url eq manga.url }.firstOrNull()
+                var mangaEntry = MangaTable.select {
+                    (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq sourceId)
+                }.firstOrNull()
                 if (mangaEntry == null) { // create manga entry
                     val mangaId = MangaTable.insertAndGetId {
                         it[url] = manga.url
@@ -58,7 +61,9 @@ object MangaList {
                         it[sourceReference] = sourceId
                     }.value
 
-                    mangaEntry = MangaTable.select { MangaTable.url eq manga.url }.first()
+                    mangaEntry = MangaTable.select {
+                        (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq sourceId)
+                    }.first()
 
                     MangaDataClass(
                         mangaId,
