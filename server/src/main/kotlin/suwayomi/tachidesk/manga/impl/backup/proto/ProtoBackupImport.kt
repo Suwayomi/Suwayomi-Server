@@ -62,7 +62,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         }
 
         // Store source mapping for error messages
-        sourceMapping = backup.backupSources.map { it.sourceId to it.name }.toMap()
+        sourceMapping = backup.getSourceMap()
 
         // Restore individual manga
         backup.backupManga.forEach {
@@ -103,7 +103,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         val manga = backupManga.getMangaImpl()
         val chapters = backupManga.getChaptersImpl()
         val categories = backupManga.categories
-        val history = backupManga.history
+        val history = backupManga.brokenHistory.map { BackupHistory(it.url, it.lastRead) } + backupManga.history
         val tracks = backupManga.getTrackingImpl()
 
         try {

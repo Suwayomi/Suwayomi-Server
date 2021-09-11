@@ -43,6 +43,7 @@ object ProtoBackupExport : ProtoBackupBase() {
             Backup(
                 backupManga(databaseManga, flags),
                 backupCategories(),
+                emptyList(),
                 backupExtensionInfo(databaseManga)
             )
         }
