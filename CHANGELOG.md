@@ -1,4 +1,4 @@
-# Server: v0.4.9-r902 + WebUI: r788
+# Server: v0.4.9-r906 + WebUI: r788
 ## Tachidesk-Server
 ### Public API
 #### Non-breaking changes
@@ -9,11 +9,12 @@
 
 #### Bug fixes
 - (r899-r901) fix when an external apk is installed and it doesn't have the default tachiyomi-extensions name
+- (r905) fix a bug where if two sources return the same URL, a false duplicate might be detected
 
 ### Private API
 - (r887) the `run` task won't call `downloadWebUI` now
 - (r902) cleanup print/ln instances
-
+- (r906) better handling of uninstalling Extensions
 
 ## Tachidesk-WebUI
 #### Visible changes
