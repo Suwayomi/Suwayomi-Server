@@ -24,7 +24,7 @@ object ProtoBackupValidator : AbstractBackupValidator() {
             throw Exception("Backup does not contain any manga.")
         }
 
-        val sources = backup.backupSources.map { it.sourceId to it.name }.toMap()
+        val sources = backup.getSourceMap()
 
         val missingSources = transaction {
             sources
