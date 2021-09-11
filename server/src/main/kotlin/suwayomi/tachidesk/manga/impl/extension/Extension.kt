@@ -28,6 +28,8 @@ import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList.extensionTableAsDataClass
 import suwayomi.tachidesk.manga.impl.extension.github.ExtensionGithubApi
+import suwayomi.tachidesk.manga.impl.util.GetHttpSource
+import suwayomi.tachidesk.manga.impl.util.PackageTools
 import suwayomi.tachidesk.manga.impl.util.PackageTools.EXTENSION_FEATURE
 import suwayomi.tachidesk.manga.impl.util.PackageTools.LIB_VERSION_MAX
 import suwayomi.tachidesk.manga.impl.util.PackageTools.LIB_VERSION_MIN
@@ -69,7 +71,7 @@ object Extension {
     }
 
     suspend fun installExternalExtension(inputStream: InputStream, apkName: String): Int {
-        return installAPK {
+        return installAPK(true) {
             val savePath = "${applicationDirs.extensionsRoot}/$apkName"
             logger.debug { "Saving apk at $apkName" }
             // download apk file
@@ -84,7 +86,7 @@ object Extension {
         }
     }
 
-    suspend fun installAPK(fetcher: suspend () -> String): Int {
+    suspend fun installAPK(forceReinstall: Boolean = false, fetcher: suspend () -> String): Int {
         val apkFilePath = fetcher()
         val apkName = File(apkFilePath).name
 
@@ -94,16 +96,19 @@ object Extension {
             ExtensionTable.select { ExtensionTable.apkName eq apkName }.firstOrNull()
         }?.get(ExtensionTable.isInstalled) ?: false
 
-        if (!isInstalled) {
-            val fileNameWithoutType = apkName.substringBefore(".apk")
+        val fileNameWithoutType = apkName.substringBefore(".apk")
 
-            val dirPathWithoutType = "${applicationDirs.extensionsRoot}/$fileNameWithoutType"
-            val jarFilePath = "$dirPathWithoutType.jar"
-            val dexFilePath = "$dirPathWithoutType.dex"
+        val dirPathWithoutType = "${applicationDirs.extensionsRoot}/$fileNameWithoutType"
+        val jarFilePath = "$dirPathWithoutType.jar"
+        val dexFilePath = "$dirPathWithoutType.dex"
 
-            val packageInfo = getPackageInfo(apkFilePath)
-            val pkgName = packageInfo.packageName
+        val packageInfo = getPackageInfo(apkFilePath)
+        val pkgName = packageInfo.packageName
+        if (isInstalled && forceReinstall) {
+            uninstallExtension(pkgName)
+        }
 
+        if (!isInstalled || forceReinstall) {
             if (!packageInfo.reqFeatures.orEmpty().any { it.name == EXTENSION_FEATURE }) {
                 throw Exception("This apk is not a Tachiyomi extension")
             }
@@ -136,7 +141,7 @@ object Extension {
             dex2jar(apkFilePath, jarFilePath, fileNameWithoutType)
 
             // clean up
-//            File(apkFilePath).delete()
+            File(apkFilePath).delete()
             File(dexFilePath).delete()
 
             // collect sources from the extension
@@ -217,19 +222,30 @@ object Extension {
         val extensionRecord = transaction { ExtensionTable.select { ExtensionTable.pkgName eq pkgName }.first() }
         val fileNameWithoutType = extensionRecord[ExtensionTable.apkName].substringBefore(".apk")
         val jarPath = "${applicationDirs.extensionsRoot}/$fileNameWithoutType.jar"
-        transaction {
+        val sources = transaction {
             val extensionId = extensionRecord[ExtensionTable.id].value
 
+            val sources = SourceTable.select { SourceTable.extension eq extensionId }.map { it[SourceTable.id].value }
+
             SourceTable.deleteWhere { SourceTable.extension eq extensionId }
+
             if (extensionRecord[ExtensionTable.isObsolete])
                 ExtensionTable.deleteWhere { ExtensionTable.pkgName eq pkgName }
             else
                 ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
                     it[isInstalled] = false
                 }
+
+            sources
         }
 
         if (File(jarPath).exists()) {
+            // free up the file descriptor if exists
+            PackageTools.jarLoaderMap.remove(jarPath)?.close()
+
+            // clear all loaded sources
+            sources.forEach { GetHttpSource.invalidateSourceCache(it) }
+
             File(jarPath).delete()
         }
     }

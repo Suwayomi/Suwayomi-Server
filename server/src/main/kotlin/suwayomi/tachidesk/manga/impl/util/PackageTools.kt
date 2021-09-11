@@ -136,14 +136,19 @@ object PackageTools {
         }
     }
 
+    val jarLoaderMap = mutableMapOf<String, URLClassLoader>()
+
     /**
      * loads the extension main class called [className] from the jar located at [jarPath]
      * It may return an instance of HttpSource or SourceFactory depending on the extension.
      */
     fun loadExtensionSources(jarPath: String, className: String): Any {
         logger.debug { "loading jar with path: $jarPath" }
-        val classLoader = URLClassLoader(arrayOf<URL>(URL("file:$jarPath")))
+        val classLoader = jarLoaderMap[jarPath] ?: URLClassLoader(arrayOf<URL>(URL("file:$jarPath")))
         val classToLoad = Class.forName(className, false, classLoader)
+
+        jarLoaderMap[jarPath] = classLoader
+
         return classToLoad.getDeclaredConstructor().newInstance()
     }
 }
