@@ -33,6 +33,11 @@ class ServerConfig(config: Config, moduleName: String = MODULE_NAME) : SystemPro
     val webUIInterface: String by overridableConfig
     val electronPath: String by overridableConfig
 
+    // Authentication
+    val basicAuthEnabled: Boolean by overridableConfig
+    val basicAuthUsername: String by overridableConfig
+    val basicAuthPassword: String by overridableConfig
+
     companion object {
         fun register(config: Config) = ServerConfig(config.getConfig(MODULE_NAME))
     }

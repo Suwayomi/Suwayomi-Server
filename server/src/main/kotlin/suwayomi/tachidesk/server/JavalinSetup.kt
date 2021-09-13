@@ -79,6 +79,18 @@ object JavalinSetup {
             ctx.result(e.message ?: "Internal Server Error")
         }
 
+        app.before { ctx ->
+            fun credentialsValid(): Boolean {
+                val (username, password) = ctx.basicAuthCredentials()
+                return username == serverConfig.basicAuthUsername && password == serverConfig.basicAuthPassword
+            }
+
+            if (serverConfig.basicAuthEnabled && !(ctx.basicAuthCredentialsExist() && credentialsValid())) {
+                ctx.header("WWW-Authenticate", "Basic")
+                ctx.status(401).json("Unauthorized")
+            }
+        }
+
         app.routes {
             path("api/v1/") {
                 GlobalAPI.defineEndpoints()
