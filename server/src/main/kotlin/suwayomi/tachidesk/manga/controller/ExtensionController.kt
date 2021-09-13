@@ -18,7 +18,7 @@ object ExtensionController {
 
     /** list all extensions */
     fun list(ctx: Context) {
-        ctx.json(
+        ctx.future(
             future {
                 ExtensionsList.getExtensionList()
             }
@@ -29,7 +29,7 @@ object ExtensionController {
     fun install(ctx: Context) {
         val pkgName = ctx.pathParam("pkgName")
 
-        ctx.json(
+        ctx.future(
             future {
                 Extension.installExtension(pkgName)
             }
@@ -42,7 +42,7 @@ object ExtensionController {
         val uploadedFile = ctx.uploadedFile("file")!!
         logger.debug { "Uploaded extension file name: " + uploadedFile.filename }
 
-        ctx.json(
+        ctx.future(
             future {
                 Extension.installExternalExtension(uploadedFile.content, uploadedFile.filename)
             }
@@ -53,7 +53,7 @@ object ExtensionController {
     fun update(ctx: Context) {
         val pkgName = ctx.pathParam("pkgName")
 
-        ctx.json(
+        ctx.future(
             future {
                 Extension.updateExtension(pkgName)
             }
@@ -72,7 +72,7 @@ object ExtensionController {
     fun icon(ctx: Context) {
         val apkName = ctx.pathParam("apkName")
 
-        ctx.result(
+        ctx.future(
             future { Extension.getExtensionIcon(apkName) }
                 .thenApply {
                     ctx.header("content-type", it.second)

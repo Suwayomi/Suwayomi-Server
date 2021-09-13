@@ -28,7 +28,7 @@ object AnimeAPI {
     fun defineEndpoints(app: Javalin) {
         // list all extensions
         app.get("/api/v1/anime/extension/list") { ctx ->
-            ctx.json(
+            ctx.future(
                 future {
                     getExtensionList()
                 }
@@ -36,10 +36,10 @@ object AnimeAPI {
         }
 
         // install extension identified with "pkgName"
-        app.get("/api/v1/anime/extension/install/:pkgName") { ctx ->
+        app.get("/api/v1/anime/extension/install/{pkgName}") { ctx ->
             val pkgName = ctx.pathParam("pkgName")
 
-            ctx.json(
+            ctx.future(
                 future {
                     installExtension(pkgName)
                 }
@@ -47,10 +47,10 @@ object AnimeAPI {
         }
 
         // update extension identified with "pkgName"
-        app.get("/api/v1/anime/extension/update/:pkgName") { ctx ->
+        app.get("/api/v1/anime/extension/update/{pkgName}") { ctx ->
             val pkgName = ctx.pathParam("pkgName")
 
-            ctx.json(
+            ctx.future(
                 future {
                     updateExtension(pkgName)
                 }
@@ -58,7 +58,7 @@ object AnimeAPI {
         }
 
         // uninstall extension identified with "pkgName"
-        app.get("/api/v1/anime/extension/uninstall/:pkgName") { ctx ->
+        app.get("/api/v1/anime/extension/uninstall/{pkgName}") { ctx ->
             val pkgName = ctx.pathParam("pkgName")
 
             uninstallExtension(pkgName)
@@ -66,10 +66,10 @@ object AnimeAPI {
         }
 
         // icon for extension named `apkName`
-        app.get("/api/v1/anime/extension/icon/:apkName") { ctx -> // TODO: move to pkgName
+        app.get("/api/v1/anime/extension/icon/{apkName}") { ctx -> // TODO: move to pkgName
             val apkName = ctx.pathParam("apkName")
 
-            ctx.result(
+            ctx.future(
                 future { getExtensionIcon(apkName) }
                     .thenApply {
                         ctx.header("content-type", it.second)
@@ -84,16 +84,16 @@ object AnimeAPI {
         }
 
         // fetch source with id `sourceId`
-        app.get("/api/v1/anime/source/:sourceId") { ctx ->
+        app.get("/api/v1/anime/source/{sourceId}") { ctx ->
             val sourceId = ctx.pathParam("sourceId").toLong()
             ctx.json(getAnimeSource(sourceId))
         }
 
         // popular animes from source with id `sourceId`
-        app.get("/api/v1/anime/source/:sourceId/popular/:pageNum") { ctx ->
+        app.get("/api/v1/anime/source/{sourceId}/popular/{pageNum}") { ctx ->
             val sourceId = ctx.pathParam("sourceId").toLong()
             val pageNum = ctx.pathParam("pageNum").toInt()
-            ctx.json(
+            ctx.future(
                 future {
                     getAnimeList(sourceId, pageNum, popular = true)
                 }
@@ -101,10 +101,10 @@ object AnimeAPI {
         }
 
         // latest animes from source with id `sourceId`
-        app.get("/api/v1/anime/source/:sourceId/latest/:pageNum") { ctx ->
+        app.get("/api/v1/anime/source/{sourceId}/latest/{pageNum}") { ctx ->
             val sourceId = ctx.pathParam("sourceId").toLong()
             val pageNum = ctx.pathParam("pageNum").toInt()
-            ctx.json(
+            ctx.future(
                 future {
                     getAnimeList(sourceId, pageNum, popular = false)
                 }
@@ -112,11 +112,11 @@ object AnimeAPI {
         }
 
         // get anime info
-        app.get("/api/v1/anime/anime/:animeId/") { ctx ->
+        app.get("/api/v1/anime/anime/{animeId}/") { ctx ->
             val animeId = ctx.pathParam("animeId").toInt()
-            val onlineFetch = ctx.queryParam("onlineFetch", "false").toBoolean()
+            val onlineFetch = ctx.queryParam("onlineFetch")?.toBoolean() ?: false
 
-            ctx.json(
+            ctx.future(
                 future {
                     getAnime(animeId, onlineFetch)
                 }
@@ -124,10 +124,10 @@ object AnimeAPI {
         }
 
         // anime thumbnail
-        app.get("api/v1/anime/anime/:animeId/thumbnail") { ctx ->
+        app.get("api/v1/anime/anime/{animeId}/thumbnail") { ctx ->
             val animeId = ctx.pathParam("animeId").toInt()
 
-            ctx.result(
+            ctx.future(
                 future { getAnimeThumbnail(animeId) }
                     .thenApply {
                         ctx.header("content-type", it.second)
@@ -137,13 +137,13 @@ object AnimeAPI {
         }
 //
 //        // list manga's categories
-//        app.get("api/v1/manga/:mangaId/category/") { ctx ->
+//        app.get("api/v1/manga/{mangaId}/category/") { ctx ->
 //            val mangaId = ctx.pathParam("mangaId").toInt()
 //            ctx.json(getMangaCategories(mangaId))
 //        }
 //
 //        // adds the manga to category
-//        app.get("api/v1/manga/:mangaId/category/:categoryId") { ctx ->
+//        app.get("api/v1/manga/{mangaId}/category/{categoryId}") { ctx ->
 //            val mangaId = ctx.pathParam("mangaId").toInt()
 //            val categoryId = ctx.pathParam("categoryId").toInt()
 //            addMangaToCategory(mangaId, categoryId)
@@ -151,7 +151,7 @@ object AnimeAPI {
 //        }
 //
 //        // removes the manga from the category
-//        app.delete("api/v1/manga/:mangaId/category/:categoryId") { ctx ->
+//        app.delete("api/v1/manga/{mangaId}/category/{categoryId}") { ctx ->
 //            val mangaId = ctx.pathParam("mangaId").toInt()
 //            val categoryId = ctx.pathParam("categoryId").toInt()
 //            removeMangaFromCategory(mangaId, categoryId)
@@ -159,23 +159,23 @@ object AnimeAPI {
 //        }
 //
         // get episode list when showing a anime
-        app.get("/api/v1/anime/anime/:animeId/episodes") { ctx ->
+        app.get("/api/v1/anime/anime/{animeId}/episodes") { ctx ->
             val animeId = ctx.pathParam("animeId").toInt()
 
             val onlineFetch = ctx.queryParam("onlineFetch")?.toBoolean()
 
-            ctx.json(future { getEpisodeList(animeId, onlineFetch) })
+            ctx.future(future { getEpisodeList(animeId, onlineFetch) })
         }
 
         // used to display a episode, get a episode in order to show it's <Quality pending>
-        app.get("/api/v1/anime/anime/:animeId/episode/:episodeIndex") { ctx ->
+        app.get("/api/v1/anime/anime/{animeId}/episode/{episodeIndex}") { ctx ->
             val episodeIndex = ctx.pathParam("episodeIndex").toInt()
             val animeId = ctx.pathParam("animeId").toInt()
-            ctx.json(future { getEpisode(episodeIndex, animeId) })
+            ctx.future(future { getEpisode(episodeIndex, animeId) })
         }
 
         // used to modify a episode's parameters
-        app.patch("/api/v1/anime/anime/:animeId/episode/:episodeIndex") { ctx ->
+        app.patch("/api/v1/anime/anime/{animeId}/episode/{episodeIndex}") { ctx ->
             val episodeIndex = ctx.pathParam("episodeIndex").toInt()
             val animeId = ctx.pathParam("animeId").toInt()
 
@@ -190,7 +190,7 @@ object AnimeAPI {
         }
 //
 //        // get page at index "index"
-//        app.get("/api/v1/manga/:mangaId/chapter/:chapterIndex/page/:index") { ctx ->
+//        app.get("/api/v1/manga/{mangaId}/chapter/{chapterIndex}/page/{index}") { ctx ->
 //            val mangaId = ctx.pathParam("mangaId").toInt()
 //            val chapterIndex = ctx.pathParam("chapterIndex").toInt()
 //            val index = ctx.pathParam("index").toInt()
@@ -205,49 +205,49 @@ object AnimeAPI {
 //        }
 //
 //        // submit a chapter for download
-//        app.put("/api/v1/manga/:mangaId/chapter/:chapterIndex/download") { ctx ->
+//        app.put("/api/v1/manga/{mangaId}/chapter/{chapterIndex}/download") { ctx ->
 //            // TODO
 //        }
 //
 //        // cancel a chapter download
-//        app.delete("/api/v1/manga/:mangaId/chapter/:chapterIndex/download") { ctx ->
+//        app.delete("/api/v1/manga/{mangaId}/chapter/{chapterIndex}/download") { ctx ->
 //            // TODO
 //        }
 //
 //        // global search, Not implemented yet
-//        app.get("/api/v1/search/:searchTerm") { ctx ->
+//        app.get("/api/v1/search/{searchTerm}") { ctx ->
 //            val searchTerm = ctx.pathParam("searchTerm")
 //            ctx.json(sourceGlobalSearch(searchTerm))
 //        }
 //
         // single source search
-        app.get("/api/v1/anime/source/:sourceId/search/:searchTerm/:pageNum") { ctx ->
+        app.get("/api/v1/anime/source/{sourceId}/search/{searchTerm}/{pageNum}") { ctx ->
             val sourceId = ctx.pathParam("sourceId").toLong()
             val searchTerm = ctx.pathParam("searchTerm")
             val pageNum = ctx.pathParam("pageNum").toInt()
-            ctx.json(future { sourceSearch(sourceId, searchTerm, pageNum) })
+            ctx.future(future { sourceSearch(sourceId, searchTerm, pageNum) })
         }
 //
 //        // source filter list
-//        app.get("/api/v1/source/:sourceId/filters/") { ctx ->
+//        app.get("/api/v1/source/{sourceId}/filters/") { ctx ->
 //            val sourceId = ctx.pathParam("sourceId").toLong()
 //            ctx.json(sourceFilters(sourceId))
 //        }
 //
 //        // adds the manga to library
-//        app.get("api/v1/manga/:mangaId/library") { ctx ->
+//        app.get("api/v1/manga/{mangaId}/library") { ctx ->
 //            val mangaId = ctx.pathParam("mangaId").toInt()
 //
-//            ctx.result(
+//            ctx.future(
 //                JavalinSetup.future { addMangaToLibrary(mangaId) }
 //            )
 //        }
 //
 //        // removes the manga from the library
-//        app.delete("api/v1/manga/:mangaId/library") { ctx ->
+//        app.delete("api/v1/manga/{mangaId}/library") { ctx ->
 //            val mangaId = ctx.pathParam("mangaId").toInt()
 //
-//            ctx.result(
+//            ctx.future(
 //                JavalinSetup.future { removeMangaFromLibrary(mangaId) }
 //            )
 //        }
@@ -275,7 +275,7 @@ object AnimeAPI {
 //        }
 //
 //        // category modification
-//        app.patch("/api/v1/category/:categoryId") { ctx ->
+//        app.patch("/api/v1/category/{categoryId}") { ctx ->
 //            val categoryId = ctx.pathParam("categoryId").toInt()
 //            val name = ctx.formParam("name")
 //            val isDefault = ctx.formParam("default")?.toBoolean()
@@ -284,7 +284,7 @@ object AnimeAPI {
 //        }
 //
 //        // category re-ordering
-//        app.patch("/api/v1/category/:categoryId/reorder") { ctx ->
+//        app.patch("/api/v1/category/{categoryId}/reorder") { ctx ->
 //            val categoryId = ctx.pathParam("categoryId").toInt()
 //            val from = ctx.formParam("from")!!.toInt()
 //            val to = ctx.formParam("to")!!.toInt()
@@ -293,21 +293,21 @@ object AnimeAPI {
 //        }
 //
 //        // category delete
-//        app.delete("/api/v1/category/:categoryId") { ctx ->
+//        app.delete("/api/v1/category/{categoryId}") { ctx ->
 //            val categoryId = ctx.pathParam("categoryId").toInt()
 //            Category.removeCategory(categoryId)
 //            ctx.status(200)
 //        }
 //
 //        // returns the manga list associated with a category
-//        app.get("/api/v1/category/:categoryId") { ctx ->
+//        app.get("/api/v1/category/{categoryId}") { ctx ->
 //            val categoryId = ctx.pathParam("categoryId").toInt()
 //            ctx.json(getCategoryMangaList(categoryId))
 //        }
 //
 //        // expects a Tachiyomi legacy backup json in the body
 //        app.post("/api/v1/backup/legacy/import") { ctx ->
-//            ctx.result(
+//            ctx.future(
 //                future {
 //                    restoreLegacyBackup(ctx.bodyAsInputStream())
 //                }
@@ -316,7 +316,7 @@ object AnimeAPI {
 //
 //        // expects a Tachiyomi legacy backup json as a file upload, the file must be named "backup.json"
 //        app.post("/api/v1/backup/legacy/import/file") { ctx ->
-//            ctx.result(
+//            ctx.future(
 //                JavalinSetup.future {
 //                    restoreLegacyBackup(ctx.uploadedFile("backup.json")!!.content)
 //                }
@@ -326,7 +326,7 @@ object AnimeAPI {
 //        // returns a Tachiyomi legacy backup json created from the current database as a json body
 //        app.get("/api/v1/backup/legacy/export") { ctx ->
 //            ctx.contentType("application/json")
-//            ctx.result(
+//            ctx.future(
 //                JavalinSetup.future {
 //                    createLegacyBackup(
 //                        BackupFlags(
@@ -348,7 +348,7 @@ object AnimeAPI {
 //            val currentDate = sdf.format(Date())
 //
 //            ctx.header("Content-Disposition", "attachment; filename=\"tachidesk_$currentDate.json\"")
-//            ctx.result(
+//            ctx.future(
 //                JavalinSetup.future {
 //                    createLegacyBackup(
 //                        BackupFlags(

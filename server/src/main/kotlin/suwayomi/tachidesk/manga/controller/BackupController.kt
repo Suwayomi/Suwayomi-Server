@@ -5,7 +5,7 @@ import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator
-import suwayomi.tachidesk.server.JavalinSetup
+import suwayomi.tachidesk.server.JavalinSetup.future
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -20,8 +20,8 @@ object BackupController {
 
     /** expects a Tachiyomi protobuf backup in the body */
     fun protobufImport(ctx: Context) {
-        ctx.json(
-            JavalinSetup.future {
+        ctx.future(
+            future {
                 ProtoBackupImport.performRestore(ctx.bodyAsInputStream())
             }
         )
@@ -30,8 +30,8 @@ object BackupController {
     /** expects a Tachiyomi protobuf backup as a file upload, the file must be named "backup.proto.gz" */
     fun protobufImportFile(ctx: Context) {
         // TODO: rewrite this with ctx.uploadedFiles(), don't call the multipart field "backup.proto.gz"
-        ctx.json(
-            JavalinSetup.future {
+        ctx.future(
+            future {
                 ProtoBackupImport.performRestore(ctx.uploadedFile("backup.proto.gz")!!.content)
             }
         )
@@ -40,8 +40,8 @@ object BackupController {
     /** returns a Tachiyomi protobuf backup created from the current database as a body */
     fun protobufExport(ctx: Context) {
         ctx.contentType("application/octet-stream")
-        ctx.result(
-            JavalinSetup.future {
+        ctx.future(
+            future {
                 ProtoBackupExport.createBackup(
                     BackupFlags(
                         includeManga = true,
@@ -61,8 +61,8 @@ object BackupController {
         val currentDate = SimpleDateFormat("yyyy-MM-dd_HH-mm").format(Date())
 
         ctx.header("Content-Disposition", """attachment; filename="tachidesk_$currentDate.proto.gz"""")
-        ctx.result(
-            JavalinSetup.future {
+        ctx.future(
+            future {
                 ProtoBackupExport.createBackup(
                     BackupFlags(
                         includeManga = true,
@@ -78,8 +78,8 @@ object BackupController {
 
     /** Reports missing sources and trackers, expects a Tachiyomi protobuf backup in the body */
     fun protobufValidate(ctx: Context) {
-        ctx.json(
-            JavalinSetup.future {
+        ctx.future(
+            future {
                 ProtoBackupValidator.validate(ctx.bodyAsInputStream())
             }
         )
@@ -87,8 +87,8 @@ object BackupController {
 
     /** Reports missing sources and trackers, expects a Tachiyomi protobuf backup as a file upload, the file must be named "backup.proto.gz" */
     fun protobufValidateFile(ctx: Context) {
-        ctx.json(
-            JavalinSetup.future {
+        ctx.future(
+            future {
                 ProtoBackupValidator.validate(ctx.uploadedFile("backup.proto.gz")!!.content)
             }
         )

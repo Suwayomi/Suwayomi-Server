@@ -8,12 +8,12 @@ package suwayomi.tachidesk.manga.controller
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.javalin.http.Context
-import io.javalin.websocket.WsHandler
+import io.javalin.websocket.WsConfig
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 
 object DownloadController {
     /** Download queue stats */
-    fun downloadsWS(ws: WsHandler) {
+    fun downloadsWS(ws: WsConfig) {
         ws.onConnect { ctx ->
             DownloadManager.addClient(ctx)
             DownloadManager.notifyClient(ctx)

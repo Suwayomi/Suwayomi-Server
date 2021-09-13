@@ -9,6 +9,7 @@ package suwayomi.tachidesk.server
 
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.path
+import io.javalin.core.security.RouteRole
 import io.javalin.http.staticfiles.Location
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -85,5 +86,9 @@ object JavalinSetup {
                 AnimeAPI.defineEndpoints(app) // TODO: migrate Anime endpoints
             }
         }
+    }
+
+    object Auth {
+        enum class Role : RouteRole { ANYONE, USER_READ, USER_WRITE }
     }
 }

@@ -30,7 +30,7 @@ object SourceController {
     fun popular(ctx: Context) {
         val sourceId = ctx.pathParam("sourceId").toLong()
         val pageNum = ctx.pathParam("pageNum").toInt()
-        ctx.json(
+        ctx.future(
             future {
                 MangaList.getMangaList(sourceId, pageNum, popular = true)
             }
@@ -41,7 +41,7 @@ object SourceController {
     fun latest(ctx: Context) {
         val sourceId = ctx.pathParam("sourceId").toLong()
         val pageNum = ctx.pathParam("pageNum").toInt()
-        ctx.json(
+        ctx.future(
             future {
                 MangaList.getMangaList(sourceId, pageNum, popular = false)
             }
@@ -64,7 +64,7 @@ object SourceController {
     /** fetch filters of source with id `sourceId` */
     fun filters(ctx: Context) {
         val sourceId = ctx.pathParam("sourceId").toLong()
-        val reset = ctx.queryParam("reset", "false").toBoolean()
+        val reset = ctx.queryParam("reset")?.toBoolean() ?: false
 
         ctx.json(Search.getInitialFilterList(sourceId, reset))
     }
@@ -74,7 +74,7 @@ object SourceController {
         val sourceId = ctx.pathParam("sourceId").toLong()
         val searchTerm = ctx.pathParam("searchTerm")
         val pageNum = ctx.pathParam("pageNum").toInt()
-        ctx.json(future { Search.sourceSearch(sourceId, searchTerm, pageNum) })
+        ctx.future(future { Search.sourceSearch(sourceId, searchTerm, pageNum) })
     }
 
     /** all source search */

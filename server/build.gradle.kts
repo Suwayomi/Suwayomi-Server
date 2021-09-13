@@ -31,10 +31,10 @@ dependencies {
     implementation("com.squareup.okio:okio:2.10.0")
 
     // Javalin api
-    implementation("io.javalin:javalin:3.13.11")
+    implementation("io.javalin:javalin:4.0.0")
     // jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.10.3")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.10.3")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.12.4")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.12.4")
 
     // Exposed ORM
     val exposedVersion = "0.34.1"

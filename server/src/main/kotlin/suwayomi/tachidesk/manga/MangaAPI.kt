@@ -25,59 +25,59 @@ object MangaAPI {
         path("extension") {
             get("list", ExtensionController::list)
 
-            get("install/:pkgName", ExtensionController::install)
+            get("install/{pkgName}", ExtensionController::install)
             post("install", ExtensionController::installFile)
-            get("update/:pkgName", ExtensionController::update)
-            get("uninstall/:pkgName", ExtensionController::uninstall)
+            get("update/{pkgName}", ExtensionController::update)
+            get("uninstall/{pkgName}", ExtensionController::uninstall)
 
-            get("icon/:apkName", ExtensionController::icon)
+            get("icon/{apkName}", ExtensionController::icon)
         }
 
         path("source") {
             get("list", SourceController::list)
-            get(":sourceId", SourceController::retrieve)
+            get("{sourceId}", SourceController::retrieve)
 
-            get(":sourceId/popular/:pageNum", SourceController::popular)
-            get(":sourceId/latest/:pageNum", SourceController::latest)
+            get("{sourceId}/popular/{pageNum}", SourceController::popular)
+            get("{sourceId}/latest/{pageNum}", SourceController::latest)
 
-            get(":sourceId/preferences", SourceController::getPreferences)
-            post(":sourceId/preferences", SourceController::setPreference)
+            get("{sourceId}/preferences", SourceController::getPreferences)
+            post("{sourceId}/preferences", SourceController::setPreference)
 
-            get(":sourceId/filters", SourceController::filters)
+            get("{sourceId}/filters", SourceController::filters)
 
-            get(":sourceId/search/:searchTerm/:pageNum", SourceController::searchSingle)
-//            get("search/:searchTerm/:pageNum", SourceController::searchGlobal)
+            get("{sourceId}/search/{searchTerm}/{pageNum}", SourceController::searchSingle)
+//            get("search/{searchTerm}/{pageNum}", SourceController::searchGlobal)
         }
 
         path("manga") {
-            get(":mangaId", MangaController::retrieve)
-            get(":mangaId/thumbnail", MangaController::thumbnail)
+            get("{mangaId}", MangaController::retrieve)
+            get("{mangaId}/thumbnail", MangaController::thumbnail)
 
-            get(":mangaId/category", MangaController::categoryList)
-            get(":mangaId/category/:categoryId", MangaController::addToCategory)
-            delete(":mangaId/category/:categoryId", MangaController::removeFromCategory)
+            get("{mangaId}/category", MangaController::categoryList)
+            get("{mangaId}/category/{categoryId}", MangaController::addToCategory)
+            delete("{mangaId}/category/{categoryId}", MangaController::removeFromCategory)
 
-            get(":mangaId/library", MangaController::addToLibrary)
-            delete(":mangaId/library", MangaController::removeFromLibrary)
+            get("{mangaId}/library", MangaController::addToLibrary)
+            delete("{mangaId}/library", MangaController::removeFromLibrary)
 
-            patch(":mangaId/meta", MangaController::meta)
+            patch("{mangaId}/meta", MangaController::meta)
 
-            get(":mangaId/chapters", MangaController::chapterList)
-            get(":mangaId/chapter/:chapterIndex", MangaController::chapterRetrieve)
-            patch(":mangaId/chapter/:chapterIndex", MangaController::chapterModify)
+            get("{mangaId}/chapters", MangaController::chapterList)
+            get("{mangaId}/chapter/{chapterIndex}", MangaController::chapterRetrieve)
+            patch("{mangaId}/chapter/{chapterIndex}", MangaController::chapterModify)
 
-            patch(":mangaId/chapter/:chapterIndex/meta", MangaController::chapterMeta)
+            patch("{mangaId}/chapter/{chapterIndex}/meta", MangaController::chapterMeta)
 
-            get(":mangaId/chapter/:chapterIndex/page/:index", MangaController::pageRetrieve)
+            get("{mangaId}/chapter/{chapterIndex}/page/{index}", MangaController::pageRetrieve)
         }
 
         path("category") {
             get("", CategoryController::categoryList)
             post("", CategoryController::categoryCreate)
 
-            get(":categoryId", CategoryController::categoryMangas)
-            patch(":categoryId", CategoryController::categoryModify)
-            delete(":categoryId", CategoryController::categoryDelete)
+            get("{categoryId}", CategoryController::categoryMangas)
+            patch("{categoryId}", CategoryController::categoryModify)
+            delete("{categoryId}", CategoryController::categoryDelete)
 
             patch("reorder", CategoryController::categoryReorder)
         }
@@ -102,8 +102,8 @@ object MangaAPI {
         }
 
         path("download") {
-            get(":mangaId/chapter/:chapterIndex", DownloadController::queueChapter)
-            delete(":mangaId/chapter/:chapterIndex", DownloadController::unqueueChapter)
+            get("{mangaId}/chapter/{chapterIndex}", DownloadController::queueChapter)
+            delete("{mangaId}/chapter/{chapterIndex}", DownloadController::unqueueChapter)
         }
     }
 }

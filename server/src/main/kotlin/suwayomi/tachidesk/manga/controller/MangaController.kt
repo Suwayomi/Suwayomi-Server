@@ -19,9 +19,9 @@ object MangaController {
     /** get manga info */
     fun retrieve(ctx: Context) {
         val mangaId = ctx.pathParam("mangaId").toInt()
-        val onlineFetch = ctx.queryParam("onlineFetch", "false").toBoolean()
+        val onlineFetch = ctx.queryParam("onlineFetch")?.toBoolean() ?: false
 
-        ctx.json(
+        ctx.future(
             future {
                 Manga.getManga(mangaId, onlineFetch)
             }
@@ -32,7 +32,7 @@ object MangaController {
     fun thumbnail(ctx: Context) {
         val mangaId = ctx.pathParam("mangaId").toInt()
 
-        ctx.result(
+        ctx.future(
             future { Manga.getMangaThumbnail(mangaId) }
                 .thenApply {
                     ctx.header("content-type", it.second)
@@ -45,7 +45,7 @@ object MangaController {
     fun addToLibrary(ctx: Context) {
         val mangaId = ctx.pathParam("mangaId").toInt()
 
-        ctx.result(
+        ctx.future(
             future { Library.addMangaToLibrary(mangaId) }
         )
     }
@@ -54,7 +54,7 @@ object MangaController {
     fun removeFromLibrary(ctx: Context) {
         val mangaId = ctx.pathParam("mangaId").toInt()
 
-        ctx.result(
+        ctx.future(
             future { Library.removeMangaFromLibrary(mangaId) }
         )
     }
@@ -97,16 +97,16 @@ object MangaController {
     fun chapterList(ctx: Context) {
         val mangaId = ctx.pathParam("mangaId").toInt()
 
-        val onlineFetch = ctx.queryParam("onlineFetch", "false").toBoolean()
+        val onlineFetch = ctx.queryParam("onlineFetch")?.toBoolean() ?: false
 
-        ctx.json(future { Chapter.getChapterList(mangaId, onlineFetch) })
+        ctx.future(future { Chapter.getChapterList(mangaId, onlineFetch) })
     }
 
     /** used to display a chapter, get a chapter in order to show its pages */
     fun chapterRetrieve(ctx: Context) {
         val chapterIndex = ctx.pathParam("chapterIndex").toInt()
         val mangaId = ctx.pathParam("mangaId").toInt()
-        ctx.json(future { Chapter.getChapter(chapterIndex, mangaId) })
+        ctx.future(future { Chapter.getChapter(chapterIndex, mangaId) })
     }
 
     /** used to modify a chapter's parameters */
@@ -143,7 +143,7 @@ object MangaController {
         val chapterIndex = ctx.pathParam("chapterIndex").toInt()
         val index = ctx.pathParam("index").toInt()
 
-        ctx.result(
+        ctx.future(
             future { Page.getPageImage(mangaId, chapterIndex, index) }
                 .thenApply {
                     ctx.header("content-type", it.second)

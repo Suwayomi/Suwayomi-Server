@@ -46,7 +46,7 @@ object AppMutex {
         }
 
         return try {
-            JavalinJackson.fromJson(response, AboutDataClass::class.java)
+            JavalinJackson().fromJsonString(response, AboutDataClass::class.java)
             AppMutexState.TachideskInstanceRunning
         } catch (e: IOException) {
             AppMutexState.OtherApplicationRunning
