@@ -5,7 +5,7 @@
 ## Tachidesk-Server
 ### Public API
 #### Non-breaking changes
-- N/A
+- (r915) add BasicAuth support
 
 #### Breaking changes
 - N/A
@@ -14,7 +14,9 @@
 - N/A
 
 ### Private API
-- N/A
+- (r913) remove expand char limit on MangaTable columns
+- (r914) migrate to Javalin 4
+
 
 
 ## Tachidesk-WebUI
