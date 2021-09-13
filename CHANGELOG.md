@@ -1,3 +1,34 @@
+# Server: v0.5.0-r911 + WebUI: r789
+## TL;DR
+<!-- TODO: fill before release -->
+
+## Tachidesk-Server
+### Public API
+#### Non-breaking changes
+- N/A
+
+#### Breaking changes
+- N/A
+
+#### Bug fixes
+- N/A
+
+### Private API
+- N/A
+
+
+## Tachidesk-WebUI
+#### Visible changes
+- N/A
+
+#### Bug fixes
+- N/A
+
+#### Internal changes
+- N/A
+
+
+
 # Server: v0.5.0 + WebUI: r789
 ## TL;DR
 - You can now install APK extensions from the extensions page
