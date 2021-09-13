@@ -1,4 +1,4 @@
-# Server: v0.4.9-r910 + WebUI: r789
+# Server: v0.5.0 + WebUI: r789
 ## TL;DR
 - You can now install APK extensions from the extensions page
 - WebUI now comes with an updated Material Design looks and is faster a little bit.
