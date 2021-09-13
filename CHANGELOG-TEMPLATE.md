@@ -1,4 +1,7 @@
 # Server: v0.X.Y-rXXX + WebUI: rXXX
+## TL;DR
+<!-- TODO: fill before release -->
+
 ## Tachidesk-Server
 ### Public API
 #### Non-breaking changes

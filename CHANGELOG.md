@@ -1,4 +1,11 @@
-# Server: v0.4.9-r906 + WebUI: r788
+# Server: v0.4.9-r906 + WebUI: r789
+## TL;DR
+- You can now install APK extensions from the extensions page
+- WebUI now comes with an updated Material Design looks and is faster a little bit.
+- WebUI now shows Nsfw content by default, disable it in settings if you prefer to not see Nsfw stuff
+- Added support for configuration of sources, this enables MangaDex, Komga, Cubari and many other sources
+- Chapters in the Manga page and Sources in the source page now look nicer and will glow with mouse hover
+
 ## Tachidesk-Server
 ### Public API
 #### Non-breaking changes
@@ -19,7 +26,7 @@
 ## Tachidesk-WebUI
 #### Visible changes
 - (r770) add support for the new genre type
-- (r771) set the default value of `showNsfw` to `false` so we won't have visual artifacts with a clean install
+- (r771) set the default value of `showNsfw` to `true` so we won't have visual artifacts with a clean install
 - (r774 [#21](https://github.com/Suwayomi/Tachidesk-WebUI/pull/21) by @voltrare) `ReaderNavbar.jsx`: Swap close and retract Navbar buttons
 - (r775 [#23](https://github.com/Suwayomi/Tachidesk-WebUI/pull/23) by @voltrare) `yarn.lock`: Fixes version inconsistency after commit 9b866811b
 - (r776 [#23](https://github.com/Suwayomi/Tachidesk-WebUI/pull/23) by @voltrare) add margin between Source and Extension cards, make the Search button look nicer
@@ -28,7 +35,8 @@
 - (r779) Action button for installing external extension
 - (r780 Suwayomi/Tachidesk-WebUI#25) add on hover, active effect to Chapter/Episode card
 - (r782-r785) updating material-ui to v5 changed the theme
-- (r785-r788) better `SourceCard` looks on mobile, move `SourceDataClass.isConfigurable` gear button to `SourceMangas` 
+- (r785-r788) better `SourceCard` looks on mobile, move `SourceDataClass.isConfigurable` gear button to `SourceMangas`
+- (r789) implement source configuration
 
 #### Bug fixes
 - N/A
