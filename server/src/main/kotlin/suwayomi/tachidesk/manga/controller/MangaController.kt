@@ -124,6 +124,16 @@ object MangaController {
         ctx.status(200)
     }
 
+    /** delete a downloaded chapter */
+    fun chapterDelete(ctx: Context) {
+        val chapterIndex = ctx.pathParam("chapterIndex").toInt()
+        val mangaId = ctx.pathParam("mangaId").toInt()
+
+        Chapter.deleteChapter(mangaId, chapterIndex)
+
+        ctx.status(200)
+    }
+
     /** used to modify a chapter's meta parameters */
     fun chapterMeta(ctx: Context) {
         val chapterIndex = ctx.pathParam("chapterIndex").toInt()

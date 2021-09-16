@@ -65,6 +65,7 @@ object MangaAPI {
             get("{mangaId}/chapters", MangaController::chapterList)
             get("{mangaId}/chapter/{chapterIndex}", MangaController::chapterRetrieve)
             patch("{mangaId}/chapter/{chapterIndex}", MangaController::chapterModify)
+            delete("{mangaId}/chapter/{chapterIndex}", MangaController::chapterDelete)
 
             patch("{mangaId}/chapter/{chapterIndex}/meta", MangaController::chapterMeta)
 

@@ -18,6 +18,7 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Manga.getManga
+import suwayomi.tachidesk.manga.impl.Page.getChapterDir
 import suwayomi.tachidesk.manga.impl.Page.getPageName
 import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
@@ -28,6 +29,7 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import java.io.File
 import java.time.Instant
 
 object Chapter {
@@ -267,21 +269,37 @@ object Chapter {
 
     fun modifyChapterMeta(mangaId: Int, chapterIndex: Int, key: String, value: String) {
         transaction {
-            val chapter =
+            val chapterId =
                 ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex eq chapterIndex) }
-                    .first()[ChapterTable.id]
+                    .first()[ChapterTable.id].value
             val meta =
-                transaction { ChapterMetaTable.select { (ChapterMetaTable.ref eq chapter) and (ChapterMetaTable.key eq key) } }.firstOrNull()
+                transaction { ChapterMetaTable.select { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) } }.firstOrNull()
             if (meta == null) {
                 ChapterMetaTable.insert {
                     it[ChapterMetaTable.key] = key
                     it[ChapterMetaTable.value] = value
-                    it[ChapterMetaTable.ref] = chapter
+                    it[ChapterMetaTable.ref] = chapterId
                 }
             } else {
                 ChapterMetaTable.update {
                     it[ChapterMetaTable.value] = value
                 }
+            }
+        }
+    }
+
+    fun deleteChapter(mangaId: Int, chapterIndex: Int) {
+        transaction {
+            val chapterId =
+                ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex eq chapterIndex) }
+                    .first()[ChapterTable.id].value
+
+            val chapterDir = getChapterDir(mangaId, chapterId)
+
+            File(chapterDir).deleteRecursively()
+
+            ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex eq chapterIndex) }) {
+                it[isDownloaded] = false
             }
         }
     }

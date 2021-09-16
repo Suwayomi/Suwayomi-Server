@@ -1,4 +1,4 @@
-# Server: v0.5.0-r911 + WebUI: r789
+# Server: v0.5.0-r918 + WebUI: r791
 ## TL;DR
 <!-- TODO: fill before release -->
 
@@ -6,6 +6,7 @@
 ### Public API
 #### Non-breaking changes
 - (r915) add BasicAuth support
+- (r918) add ability to delete downloaded chapters
 
 #### Breaking changes
 - N/A
@@ -21,7 +22,8 @@
 
 ## Tachidesk-WebUI
 #### Visible changes
-- N/A
+- (r790) nice looking progress percentage
+- (r791) show a Delete button for downloaded chapters
 
 #### Bug fixes
 - N/A
