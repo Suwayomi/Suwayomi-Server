@@ -12,7 +12,7 @@
 - N/A
 
 #### Bug fixes
-- N/A
+- (r917) detect if a downloaded chapter is missing
 
 ### Private API
 - (r913) remove expand char limit on MangaTable columns
