@@ -18,7 +18,7 @@ object CachedImageResponse {
         return FileInputStream(path).buffered()
     }
 
-    private fun findFileNameStartingWith(directoryPath: String, fileName: String): String? {
+    fun findFileNameStartingWith(directoryPath: String, fileName: String): String? {
         val target = "$fileName."
         File(directoryPath).listFiles().orEmpty().forEach { file ->
             if (file.name.startsWith(target))

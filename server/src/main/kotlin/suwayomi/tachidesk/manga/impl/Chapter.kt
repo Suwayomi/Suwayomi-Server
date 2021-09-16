@@ -18,8 +18,10 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Manga.getManga
+import suwayomi.tachidesk.manga.impl.Page.getPageName
 import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
+import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -143,7 +145,15 @@ object Chapter {
             }.first()
         }
 
-        return if (!chapterEntry[ChapterTable.isDownloaded]) {
+        val isReallyDownloaded =
+            chapterEntry[ChapterTable.isDownloaded] && firstPageExists(mangaId, chapterEntry[ChapterTable.id].value)
+        return if (!isReallyDownloaded) {
+            transaction {
+                ChapterTable.update({ (ChapterTable.chapterIndex eq chapterIndex) and (ChapterTable.manga eq mangaId) }) {
+                    it[isDownloaded] = false
+                }
+            }
+
             val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
             val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
 
@@ -209,6 +219,12 @@ object Chapter {
             ChapterTable.toDataClass(chapterEntry)
         }
     }
+
+    private fun firstPageExists(mangaId: Int, chapterId: Int): Boolean =
+        CachedImageResponse.findFileNameStartingWith(
+            Page.getChapterDir(mangaId, chapterId),
+            getPageName(0)
+        ) != null
 
     fun modifyChapter(
         mangaId: Int,

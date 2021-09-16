@@ -51,14 +51,14 @@ object Page {
 
         val pageEntry = transaction { PageTable.select { (PageTable.chapter eq chapterId) and (PageTable.index eq index) }.first() }
 
-        val tachiPage = Page(
+        val tachiyomiPage = Page(
             pageEntry[PageTable.index],
             pageEntry[PageTable.url],
             pageEntry[PageTable.imageUrl]
         )
 
         if (pageEntry[PageTable.imageUrl] == null) {
-            val trueImageUrl = getTrueImageUrl(tachiPage, source)
+            val trueImageUrl = getTrueImageUrl(tachiyomiPage, source)
             transaction {
                 PageTable.update({ (PageTable.chapter eq chapterId) and (PageTable.index eq index) }) {
                     it[imageUrl] = trueImageUrl
@@ -68,15 +68,18 @@ object Page {
 
         val saveDir = getChapterDir(mangaId, chapterId)
         File(saveDir).mkdirs()
-        val fileName = String.format("%03d", index) // e.g. 001.jpeg
+        val fileName = getPageName(index) // e.g. 001
 
         return getCachedImageResponse(saveDir, fileName) {
-            source.fetchImage(tachiPage).awaitSingle()
+            source.fetchImage(tachiyomiPage).awaitSingle()
         }
     }
 
+    fun getPageName(index: Int): String = String.format("%03d", index)
+
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
-    private fun getChapterDir(mangaId: Int, chapterId: Int): String {
+
+    fun getChapterDir(mangaId: Int, chapterId: Int): String {
         val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
         val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
         val chapterEntry = transaction { ChapterTable.select { ChapterTable.id eq chapterId }.first() }
