@@ -37,7 +37,6 @@ import suwayomi.tachidesk.manga.impl.util.PackageTools.METADATA_NSFW
 import suwayomi.tachidesk.manga.impl.util.PackageTools.METADATA_SOURCE_CLASS
 import suwayomi.tachidesk.manga.impl.util.PackageTools.dex2jar
 import suwayomi.tachidesk.manga.impl.util.PackageTools.getPackageInfo
-import suwayomi.tachidesk.manga.impl.util.PackageTools.getSignatureHash
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse.getCachedImageResponse
@@ -122,12 +121,12 @@ object Extension {
                 )
             }
 
-            val signatureHash = getSignatureHash(packageInfo)
+            // TODO: allow trusting keys
+//            val signatureHash = getSignatureHash(packageInfo)
 
 //            if (signatureHash == null) {
 //                throw Exception("Package $pkgName isn't signed")
 //            } else if (signatureHash !in trustedSignatures) {
-//                // TODO: allow trusting keys
 //                throw Exception("This apk is not a signed with the official tachiyomi signature")
 //            }
 
