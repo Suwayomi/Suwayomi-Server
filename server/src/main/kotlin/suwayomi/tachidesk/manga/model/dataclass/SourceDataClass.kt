@@ -23,4 +23,6 @@ data class SourceDataClass(
 
     /** The Source class has a @Nsfw annotation */
     val isNsfw: Boolean?,
+
+    val displayName: String?,
 )

@@ -12,7 +12,7 @@ import org.jetbrains.exposed.dao.id.IdTable
 object SourceTable : IdTable<Long>() {
     override val id = long("id").entityId()
     val name = varchar("name", 128)
-    val lang = varchar("lang", 10)
+    val lang = varchar("lang", 32)
     val extension = reference("extension", ExtensionTable)
     val isNsfw = bool("is_nsfw").default(false)
 }

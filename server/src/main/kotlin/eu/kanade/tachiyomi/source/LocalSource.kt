@@ -1,153 +1,185 @@
 package eu.kanade.tachiyomi.source
 
-import android.content.Context
-import eu.kanade.tachiyomi.source.model.FilterList
-import eu.kanade.tachiyomi.source.model.MangasPage
-import eu.kanade.tachiyomi.source.model.Page
-import eu.kanade.tachiyomi.source.model.SChapter
-import eu.kanade.tachiyomi.source.model.SManga
-import rx.Observable
-
 // import com.github.junrar.Archive
-// import com.google.gson.JsonParser
 // import eu.kanade.tachiyomi.R
-// import eu.kanade.tachiyomi.source.model.Filter
-// import eu.kanade.tachiyomi.source.model.FilterList
 // import eu.kanade.tachiyomi.source.model.MangasPage
 // import eu.kanade.tachiyomi.source.model.Page
 // import eu.kanade.tachiyomi.source.model.SChapter
 // import eu.kanade.tachiyomi.source.model.SManga
 // import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
-// import eu.kanade.tachiyomi.util.lang.compareToCaseInsensitiveNaturalOrder
 // import eu.kanade.tachiyomi.util.storage.DiskUtil
 // import eu.kanade.tachiyomi.util.storage.EpubFile
 // import eu.kanade.tachiyomi.util.system.ImageUtil
 // import rx.Observable
 // import timber.log.Timber
-// import java.io.File
 // import java.io.FileInputStream
 // import java.io.InputStream
 // import java.util.Locale
-// import java.util.concurrent.TimeUnit
 // import java.util.zip.ZipFile
+import com.google.gson.JsonParser
+import eu.kanade.tachiyomi.source.model.Filter
+import eu.kanade.tachiyomi.source.model.FilterList
+import eu.kanade.tachiyomi.source.model.MangasPage
+import eu.kanade.tachiyomi.source.model.Page
+import eu.kanade.tachiyomi.source.model.SChapter
+import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.source.online.HttpSource
+import eu.kanade.tachiyomi.util.lang.compareToCaseInsensitiveNaturalOrder
+import okhttp3.Interceptor
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.insertAndGetId
+import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.kodein.di.DI
+import org.kodein.di.conf.global
+import org.kodein.di.instance
+import rx.Observable
+import suwayomi.tachidesk.manga.model.table.ExtensionTable
+import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.server.ApplicationDirs
+import java.io.File
+import java.io.FileNotFoundException
+import java.net.URL
+import java.util.Locale
+import java.util.concurrent.TimeUnit
 
-class LocalSource(private val context: Context) : CatalogueSource {
+class LocalSource(override val baseUrl: String = "") : HttpSource() {
     companion object {
         const val ID = 0L
-//        const val HELP_URL = "https://tachiyomi.org/help/guides/reading-local-manga/"
-//
-//        private const val COVER_NAME = "cover.jpg"
-//        private val SUPPORTED_ARCHIVE_TYPES = setOf("zip", "rar", "cbr", "cbz", "epub")
-//
-//        private val POPULAR_FILTERS = FilterList(OrderBy())
-//        private val LATEST_FILTERS = FilterList(OrderBy().apply { state = Filter.Sort.Selection(1, false) })
-//        private val LATEST_THRESHOLD = TimeUnit.MILLISECONDS.convert(7, TimeUnit.DAYS)
-//
-//        fun updateCover(context: Context, manga: SManga, input: InputStream): File? {
+        const val LANG = "localsourcelang"
+        const val NAME = "Local source"
+
+        const val EXTENSION_NAME = "Local Source fake extension"
+
+        const val HELP_URL = "https://tachiyomi.org/help/guides/local-manga/"
+
+        private val SUPPORTED_ARCHIVE_TYPES = setOf<String>(
+//            "zip",
+//            "rar",
+//            "cbr",
+//            "cbz",
+//            "epub"
+        )
+
+        private val LATEST_THRESHOLD = TimeUnit.MILLISECONDS.convert(7, TimeUnit.DAYS)
+
+        //        fun updateCover(context: Context, manga: SManga, input: InputStream): File? {
 //            val dir = getBaseDirectories(context).firstOrNull()
 //            if (dir == null) {
 //                input.close()
 //                return null
 //            }
-//            val cover = File("${dir.absolutePath}/${manga.url}", COVER_NAME)
+//            val cover = getCoverFile(File("${dir.absolutePath}/${manga.url}"))
 //
-//            // It might not exist if using the external SD card
-//            cover.parentFile?.mkdirs()
-//            input.use {
-//                cover.outputStream().use {
-//                    input.copyTo(it)
+//            if (cover != null && cover.exists()) {
+//                // It might not exist if using the external SD card
+//                cover.parentFile?.mkdirs()
+//                input.use {
+//                    cover.outputStream().use {
+//                        input.copyTo(it)
+//                    }
 //                }
 //            }
 //            return cover
 //        }
 //
-//        private fun getBaseDirectories(context: Context): List<File> {
-//            val c = context.getString(R.string.app_name) + File.separator + "local"
-//            return DiskUtil.getExternalStorages(context).map { File(it.absolutePath, c) }
+//        /**
+//         * Returns valid cover file inside [parent] directory.
+//         */
+//        private fun getCoverFile(parent: File): File? {
+//            return parent.listFiles()?.find { it.nameWithoutExtension == "cover" }?.takeIf {
+//                it.isFile && ImageUtil.isImage(it.name) { it.inputStream() }
+//            }
 //        }
+//
+        private val applicationDirs by DI.global.instance<ApplicationDirs>()
+
+        fun addDbRecords() {
+            transaction {
+                val sourceRecord = SourceTable.select { SourceTable.id eq ID }.firstOrNull()
+
+                if (sourceRecord == null) {
+                    // must do this to avoid database integrity errors
+                    val extensionId = ExtensionTable.insertAndGetId {
+                        it[apkName] = "localSource"
+                        it[name] = EXTENSION_NAME
+                        it[pkgName] = "eu.kanade.tachiyomi.source.LocalSource"
+                        it[versionName] = "1.2"
+                        it[versionCode] = 0
+                        it[lang] = LANG
+                        it[isNsfw] = false
+                        it[isInstalled] = true
+                    }
+
+                    SourceTable.insert {
+                        it[id] = ID
+                        it[name] = NAME
+                        it[lang] = LANG
+                        it[extension] = extensionId
+                        it[isNsfw] = false
+                    }
+                }
+            }
+        }
     }
 
     override val id = ID
-    override val name = "Local source"
-    override val lang = ""
+    override val name = NAME
+    override val lang = LANG
     override val supportsLatest = true
 
-    override fun fetchMangaDetails(manga: SManga): Observable<SManga> {
-        TODO("Not yet implemented")
-    }
+    override val client: OkHttpClient = super.client.newBuilder()
+        .addInterceptor(FileSystemInterceptor)
+        .build()
 
-    override fun fetchChapterList(manga: SManga): Observable<List<SChapter>> {
-        TODO("Not yet implemented")
-    }
+    override fun toString() = name
 
-    override fun fetchPageList(chapter: SChapter): Observable<List<Page>> {
-        TODO("Not yet implemented")
-    }
-    override fun fetchPopularManga(page: Int): Observable<MangasPage> {
-        TODO("Not yet implemented")
-    }
+    override fun fetchPopularManga(page: Int) = fetchSearchManga(page, "", POPULAR_FILTERS)
 
     override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> {
-        TODO("Not yet implemented")
-    }
+        val time = if (filters === LATEST_FILTERS) System.currentTimeMillis() - LATEST_THRESHOLD else 0L
 
-    override fun fetchLatestUpdates(page: Int): Observable<MangasPage> {
-        TODO("Not yet implemented")
-    }
+        var mangaDirs = File(applicationDirs.localMangaRoot).listFiles().orEmpty().toList()
+            .filter { it.isDirectory }
+            .filterNot { it.name.startsWith('.') }
+            .filter { if (time == 0L) it.name.contains(query, ignoreCase = true) else it.lastModified() >= time }
+            .distinctBy { it.name }
 
-    override fun getFilterList(): FilterList {
-        TODO("Not yet implemented")
-    }
-//
-//    override fun toString() = context.getString(R.string.local_source)
-//
-//    override fun fetchPopularManga(page: Int) = fetchSearchManga(page, "", POPULAR_FILTERS)
-//
-//    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> {
-//        val baseDirs = getBaseDirectories(context)
-//
-//        val time = if (filters === LATEST_FILTERS) System.currentTimeMillis() - LATEST_THRESHOLD else 0L
-//        var mangaDirs = baseDirs
-//            .asSequence()
-//            .mapNotNull { it.listFiles()?.toList() }
-//            .flatten()
-//            .filter { it.isDirectory }
-//            .filterNot { it.name.startsWith('.') }
-//            .filter { if (time == 0L) it.name.contains(query, ignoreCase = true) else it.lastModified() >= time }
-//            .distinctBy { it.name }
-//
-//        val state = ((if (filters.isEmpty()) POPULAR_FILTERS else filters)[0] as OrderBy).state
-//        when (state?.index) {
-//            0 -> {
-//                mangaDirs = if (state.ascending) {
-//                    mangaDirs.sortedBy { it.name.toLowerCase(Locale.ENGLISH) }
-//                } else {
-//                    mangaDirs.sortedByDescending { it.name.toLowerCase(Locale.ENGLISH) }
-//                }
-//            }
-//            1 -> {
-//                mangaDirs = if (state.ascending) {
-//                    mangaDirs.sortedBy(File::lastModified)
-//                } else {
-//                    mangaDirs.sortedByDescending(File::lastModified)
-//                }
-//            }
-//        }
-//
-//        val mangas = mangaDirs.map { mangaDir ->
-//            SManga.create().apply {
-//                title = mangaDir.name
-//                url = mangaDir.name
-//
-//                // Try to find the cover
-//                for (dir in baseDirs) {
-//                    val cover = File("${dir.absolutePath}/$url", COVER_NAME)
-//                    if (cover.exists()) {
-//                        thumbnail_url = cover.absolutePath
-//                        break
-//                    }
-//                }
-//
+        val state = ((if (filters.isEmpty()) POPULAR_FILTERS else filters)[0] as OrderBy).state
+        when (state?.index) {
+            0 -> {
+                mangaDirs = if (state.ascending) {
+                    mangaDirs.sortedBy { it.name.lowercase(Locale.ENGLISH) }
+                } else {
+                    mangaDirs.sortedByDescending { it.name.lowercase(Locale.ENGLISH) }
+                }
+            }
+            1 -> {
+                mangaDirs = if (state.ascending) {
+                    mangaDirs.sortedBy(File::lastModified)
+                } else {
+                    mangaDirs.sortedByDescending(File::lastModified)
+                }
+            }
+        }
+
+        val mangas = mangaDirs.map { mangaDir ->
+            SManga.create().apply {
+                title = mangaDir.name
+                url = mangaDir.name
+
+                // Try to find the cover
+                val cover = File("${applicationDirs.localMangaRoot}/$title/cover.jpg")
+                if (cover.exists()) {
+                    thumbnail_url = "http://${cover.absolutePath}"
+                }
+
 //                val chapters = fetchChapterList(this).toBlocking().first()
 //                if (chapters.isNotEmpty()) {
 //                    val chapter = chapters.last()
@@ -168,117 +200,123 @@ class LocalSource(private val context: Context) : CatalogueSource {
 //                        }
 //                    }
 //                }
-//            }
-//        }
-//
-//        return Observable.just(MangasPage(mangas.toList(), false))
-//    }
-//
-//    override fun fetchLatestUpdates(page: Int) = fetchSearchManga(page, "", LATEST_FILTERS)
-//
-//    override fun fetchMangaDetails(manga: SManga): Observable<SManga> {
-//        getBaseDirectories(context)
-//            .asSequence()
-//            .mapNotNull { File(it, manga.url).listFiles()?.toList() }
-//            .flatten()
-//            .firstOrNull { it.extension == "json" }
-//            ?.apply {
-//                val reader = this.inputStream().bufferedReader()
-//                val json = JsonParser.parseReader(reader).asJsonObject
-//
-//                manga.title = json["title"]?.asString ?: manga.title
-//                manga.author = json["author"]?.asString ?: manga.author
-//                manga.artist = json["artist"]?.asString ?: manga.artist
-//                manga.description = json["description"]?.asString ?: manga.description
-//                manga.genre = json["genre"]?.asJsonArray?.joinToString(", ") { it.asString }
-//                    ?: manga.genre
-//                manga.status = json["status"]?.asInt ?: manga.status
-//            }
-//
-//        return Observable.just(manga)
-//    }
-//
-//    override fun fetchChapterList(manga: SManga): Observable<List<SChapter>> {
-//        val chapters = getBaseDirectories(context)
-//            .asSequence()
-//            .mapNotNull { File(it, manga.url).listFiles()?.toList() }
-//            .flatten()
-//            .filter { it.isDirectory || isSupportedFile(it.extension) }
-//            .map { chapterFile ->
-//                SChapter.create().apply {
-//                    url = "${manga.url}/${chapterFile.name}"
-//                    name = if (chapterFile.isDirectory) {
-//                        chapterFile.name
-//                    } else {
-//                        chapterFile.nameWithoutExtension
-//                    }
-//                    date_upload = chapterFile.lastModified()
-//
+            }
+        }
+
+        return Observable.just(MangasPage(mangas.toList(), false))
+    }
+
+    override fun fetchLatestUpdates(page: Int) = fetchSearchManga(page, "", LATEST_FILTERS)
+
+    override fun fetchMangaDetails(manga: SManga): Observable<SManga> {
+        File(applicationDirs.localMangaRoot, manga.url).listFiles().orEmpty().toList()
+            .firstOrNull { it.extension == "json" }
+            ?.apply {
+                val reader = this.inputStream().bufferedReader()
+                val json = JsonParser.parseReader(reader).asJsonObject
+
+                manga.title = json["title"]?.asString ?: manga.title
+                manga.author = json["author"]?.asString ?: manga.author
+                manga.artist = json["artist"]?.asString ?: manga.artist
+                manga.description = json["description"]?.asString ?: manga.description
+                manga.genre = json["genre"]?.asJsonArray?.joinToString(", ") { it.asString }
+                    ?: manga.genre
+                manga.status = json["status"]?.asInt ?: manga.status
+            }
+
+        return Observable.just(manga)
+    }
+
+    override fun fetchChapterList(manga: SManga): Observable<List<SChapter>> {
+        val chapters = File(applicationDirs.localMangaRoot, manga.url).listFiles().orEmpty().toList()
+            .filter { it.isDirectory || isSupportedFile(it.extension) }
+            .map { chapterFile ->
+                SChapter.create().apply {
+                    url = "${manga.url}/${chapterFile.name}"
+                    name = if (chapterFile.isDirectory) {
+                        chapterFile.name
+                    } else {
+                        chapterFile.nameWithoutExtension
+                    }
+                    date_upload = chapterFile.lastModified()
+
 //                    val format = getFormat(this)
 //                    if (format is Format.Epub) {
 //                        EpubFile(format.file).use { epub ->
 //                            epub.fillChapterMetadata(this)
 //                        }
 //                    }
-//
-//                    val chapNameCut = stripMangaTitle(name, manga.title)
-//                    if (chapNameCut.isNotEmpty()) name = chapNameCut
+
+                    val chapNameCut = stripMangaTitle(name, manga.title)
+                    if (chapNameCut.isNotEmpty()) name = chapNameCut
 //                    ChapterRecognition.parseChapterNumber(this, manga)
-//                }
-//            }
-//            .sortedWith(
-//                Comparator { c1, c2 ->
-//                    val c = c2.chapter_number.compareTo(c1.chapter_number)
-//                    if (c == 0) c2.name.compareToCaseInsensitiveNaturalOrder(c1.name) else c
-//                }
-//            )
-//            .toList()
-//
-//        return Observable.just(chapters)
-//    }
-//
-//    /**
-//     * Strips the manga title from a chapter name, matching only based on alphanumeric and whitespace
-//     * characters.
-//     */
-//    private fun stripMangaTitle(chapterName: String, mangaTitle: String): String {
-//        var chapterNameIndex = 0
-//        var mangaTitleIndex = 0
-//        while (chapterNameIndex < chapterName.length && mangaTitleIndex < mangaTitle.length) {
-//            val chapterChar = chapterName[chapterNameIndex]
-//            val mangaChar = mangaTitle[mangaTitleIndex]
-//            if (!chapterChar.equals(mangaChar, true)) {
-//                val invalidChapterChar = !chapterChar.isLetterOrDigit() && !chapterChar.isWhitespace()
-//                val invalidMangaChar = !mangaChar.isLetterOrDigit() && !mangaChar.isWhitespace()
-//
-//                if (!invalidChapterChar && !invalidMangaChar) {
-//                    return chapterName
-//                }
-//
-//                if (invalidChapterChar) {
-//                    chapterNameIndex++
-//                }
-//
-//                if (invalidMangaChar) {
-//                    mangaTitleIndex++
-//                }
-//            } else {
-//                chapterNameIndex++
-//                mangaTitleIndex++
-//            }
-//        }
-//
-//        return chapterName.substring(chapterNameIndex).trimStart(' ', '-', '_', ',', ':')
-//    }
-//
-//    override fun fetchPageList(chapter: SChapter): Observable<List<Page>> {
-//        return Observable.error(Exception("Unused"))
-//    }
-//
-//    private fun isSupportedFile(extension: String): Boolean {
-//        return extension.toLowerCase() in SUPPORTED_ARCHIVE_TYPES
-//    }
-//
+                }
+            }
+            .sortedWith { c1, c2 ->
+                val c = c2.chapter_number.compareTo(c1.chapter_number)
+                if (c == 0) c2.name.compareToCaseInsensitiveNaturalOrder(c1.name) else c
+            }
+            .toList()
+
+        return Observable.just(chapters)
+    }
+
+    /**
+     * Strips the manga title from a chapter name, matching only based on alphanumeric and whitespace
+     * characters.
+     */
+    private fun stripMangaTitle(chapterName: String, mangaTitle: String): String {
+        var chapterNameIndex = 0
+        var mangaTitleIndex = 0
+        while (chapterNameIndex < chapterName.length && mangaTitleIndex < mangaTitle.length) {
+            val chapterChar = chapterName[chapterNameIndex]
+            val mangaChar = mangaTitle[mangaTitleIndex]
+            if (!chapterChar.equals(mangaChar, true)) {
+                val invalidChapterChar = !chapterChar.isLetterOrDigit() && !chapterChar.isWhitespace()
+                val invalidMangaChar = !mangaChar.isLetterOrDigit() && !mangaChar.isWhitespace()
+
+                if (!invalidChapterChar && !invalidMangaChar) {
+                    return chapterName
+                }
+
+                if (invalidChapterChar) {
+                    chapterNameIndex++
+                }
+
+                if (invalidMangaChar) {
+                    mangaTitleIndex++
+                }
+            } else {
+                chapterNameIndex++
+                mangaTitleIndex++
+            }
+        }
+
+        return chapterName.substring(chapterNameIndex).trimStart(' ', '-', '_', ',', ':')
+    }
+
+    private fun isSupportedFile(extension: String): Boolean {
+        return extension.lowercase() in SUPPORTED_ARCHIVE_TYPES
+    }
+
+    override fun fetchPageList(chapter: SChapter): Observable<List<Page>> {
+        val chapterFile = File(applicationDirs.localMangaRoot + File.separator + chapter.url)
+
+        return Observable.just(
+            if (chapterFile.isDirectory) {
+                chapterFile.listFiles().sortedBy { it.name }.mapIndexed { index, page ->
+                    Page(
+                        index,
+                        imageUrl = "http://" + applicationDirs.localMangaRoot + File.separator + chapter.url + File.separator + page.name
+                    )
+                }
+            } else {
+                throw Exception("Archive chapters are not supported.")
+            }
+        )
+    }
+
+    //
 //    fun getFormat(chapter: SChapter): Format {
 //        val baseDirs = getBaseDirectories(context)
 //
@@ -288,7 +326,7 @@ class LocalSource(private val context: Context) : CatalogueSource {
 //
 //            return getFormat(chapFile)
 //        }
-//        throw Exception("Chapter not found")
+//        throw Exception(context.getString(R.string.chapter_not_found))
 //    }
 //
 //    private fun getFormat(file: File): Format {
@@ -302,7 +340,7 @@ class LocalSource(private val context: Context) : CatalogueSource {
 //        } else if (extension.equals("epub", true)) {
 //            Format.Epub(file)
 //        } else {
-//            throw Exception("Invalid chapter format")
+//            throw Exception(context.getString(R.string.local_invalid_format))
 //        }
 //    }
 //
@@ -345,14 +383,73 @@ class LocalSource(private val context: Context) : CatalogueSource {
 //        }
 //    }
 //
-//    private class OrderBy : Filter.Sort("Order by", arrayOf("Title", "Date"), Selection(0, true))
-//
-//    override fun getFilterList() = FilterList(OrderBy())
-//
-//    sealed class Format {
-//        data class Directory(val file: File) : Format()
-//        data class Zip(val file: File) : Format()
-//        data class Rar(val file: File) : Format()
-//        data class Epub(val file: File) : Format()
-//    }
+    override fun getFilterList() = POPULAR_FILTERS
+
+    private val POPULAR_FILTERS = FilterList(OrderBy())
+    private val LATEST_FILTERS = FilterList(OrderBy().apply { state = Filter.Sort.Selection(1, false) })
+
+    private class OrderBy : Filter.Sort(
+        "Order by",
+        arrayOf("Title", "Date"),
+        Selection(0, true)
+    )
+
+    sealed class Format {
+        data class Directory(val file: File) : Format()
+        data class Zip(val file: File) : Format()
+        data class Rar(val file: File) : Format()
+        data class Epub(val file: File) : Format()
+    }
+
+    // ///////////////////// Not used ///////////////////// //
+
+    override fun mangaDetailsParse(response: Response): SManga = throw Exception("Not used")
+
+    override fun chapterListParse(response: Response): List<SChapter> = throw Exception("Not used")
+
+    override fun pageListParse(response: Response): List<Page> = throw Exception("Not used")
+
+    override fun imageUrlParse(response: Response): String = throw Exception("Not used")
+
+    override fun popularMangaRequest(page: Int): Request = throw Exception("Not used")
+
+    override fun popularMangaParse(response: Response): MangasPage = throw Exception("Not used")
+
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request =
+        throw Exception("Not used")
+
+    override fun searchMangaParse(response: Response): MangasPage = throw Exception("Not used")
+
+    override fun latestUpdatesRequest(page: Int): Request = throw Exception("Not used")
+
+    override fun latestUpdatesParse(response: Response): MangasPage = throw Exception("Not used")
+}
+
+private object FileSystemInterceptor : Interceptor {
+    private fun restoreFileUrl(markedFakeHttpUrl: String): String {
+        return markedFakeHttpUrl.replaceFirst("http:", "file:/")
+    }
+
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val request = chain.request()
+        val url = request.url
+        val fileUrl = restoreFileUrl(url.toString())
+        return try {
+            Response.Builder()
+                .body(URL(fileUrl).readBytes().toResponseBody())
+                .code(200)
+                .message("Some file")
+                .protocol(Protocol.HTTP_1_0)
+                .request(request)
+                .build()
+        } catch (e: FileNotFoundException) {
+            Response.Builder()
+                .body("".toResponseBody())
+                .code(404)
+                .message(e.message ?: "File not found ($fileUrl)")
+                .protocol(Protocol.HTTP_1_0)
+                .request(request)
+                .build()
+        }
+    }
 }

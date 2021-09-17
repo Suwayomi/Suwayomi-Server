@@ -268,8 +268,8 @@ object Extension {
     }
 
     suspend fun getExtensionIcon(apkName: String): Pair<InputStream, String> {
-        val iconUrl =
-            transaction { ExtensionTable.select { ExtensionTable.apkName eq apkName }.first() }[ExtensionTable.iconUrl]
+        val iconUrl = if (apkName == "localSource") ""
+        else transaction { ExtensionTable.select { ExtensionTable.apkName eq apkName }.first() }[ExtensionTable.iconUrl]
 
         val saveDir = "${applicationDirs.extensionsRoot}/icon"
 

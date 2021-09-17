@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.impl.util
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.LocalSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
@@ -33,6 +34,10 @@ object GetHttpSource {
 
         val sourceRecord = transaction {
             SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!!
+        }
+
+        if (sourceId == LocalSource.ID) {
+            return LocalSource()
         }
 
         val extensionId = sourceRecord[SourceTable.extension]
