@@ -222,11 +222,14 @@ object Chapter {
         }
     }
 
-    private fun firstPageExists(mangaId: Int, chapterId: Int): Boolean =
-        CachedImageResponse.findFileNameStartingWith(
-            Page.getChapterDir(mangaId, chapterId),
-            getPageName(0)
+    private fun firstPageExists(mangaId: Int, chapterId: Int): Boolean {
+        val chapterDir = Page.getChapterDir(mangaId, chapterId)
+
+        return CachedImageResponse.findFileNameStartingWith(
+            chapterDir,
+            getPageName(0, chapterDir)
         ) != null
+    }
 
     fun modifyChapter(
         mangaId: Int,

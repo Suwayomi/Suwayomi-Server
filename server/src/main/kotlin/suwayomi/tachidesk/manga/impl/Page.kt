@@ -18,6 +18,7 @@ import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
+import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse.getCachedImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.SafePath
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -49,7 +50,8 @@ object Page {
         }
         val chapterId = chapterEntry[ChapterTable.id].value
 
-        val pageEntry = transaction { PageTable.select { (PageTable.chapter eq chapterId) and (PageTable.index eq index) }.first() }
+        val pageEntry =
+            transaction { PageTable.select { (PageTable.chapter eq chapterId) and (PageTable.index eq index) }.first() }
 
         val tachiyomiPage = Page(
             pageEntry[PageTable.index],
@@ -66,16 +68,28 @@ object Page {
             }
         }
 
-        val saveDir = getChapterDir(mangaId, chapterId)
-        File(saveDir).mkdirs()
-        val fileName = getPageName(index) // e.g. 001
+        val chapterDir = getChapterDir(mangaId, chapterId)
+        File(chapterDir).mkdirs()
+        val fileName = getPageName(index, chapterDir) // e.g. 001
 
-        return getCachedImageResponse(saveDir, fileName) {
+        return getCachedImageResponse(chapterDir, fileName) {
             source.fetchImage(tachiyomiPage).awaitSingle()
         }
     }
 
-    fun getPageName(index: Int): String = String.format("%03d", index)
+    // TODO(v0.6.0) : zero based pages are deprecated
+    fun getPageName(index: Int, chapterDir: String): String {
+        val zeroBasedPageExists = CachedImageResponse.findFileNameStartingWith(
+            chapterDir,
+            formatPageName(0)
+        ) != null
+
+        if (zeroBasedPageExists) return formatPageName(index)
+
+        return formatPageName(index + 1)
+    }
+
+    private fun formatPageName(index: Int) = String.format("%03d", index)
 
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
