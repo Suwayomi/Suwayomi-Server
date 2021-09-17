@@ -18,7 +18,6 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.ApplicationDirs
 import java.io.File
 
-
 private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
 fun getMangaDir(mangaId: Int): String {
