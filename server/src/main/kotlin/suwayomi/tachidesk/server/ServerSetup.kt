@@ -8,6 +8,7 @@ package suwayomi.tachidesk.server
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.App
+import eu.kanade.tachiyomi.source.LocalSource
 import mu.KotlinLogging
 import org.kodein.di.DI
 import org.kodein.di.bind
@@ -33,6 +34,7 @@ class ApplicationDirs(
     val mangaThumbnailsRoot = "$dataRoot/manga-thumbnails"
     val animeThumbnailsRoot = "$dataRoot/anime-thumbnails"
     val mangaRoot = "$dataRoot/manga"
+    val localMangaRoot = "$dataRoot/manga-local"
     val webUIRoot = "$dataRoot/webUI"
 }
 
@@ -63,6 +65,8 @@ fun applicationSetup() {
         applicationDirs.extensionsRoot + "/icon",
         applicationDirs.mangaThumbnailsRoot,
         applicationDirs.animeThumbnailsRoot,
+        applicationDirs.mangaRoot,
+        applicationDirs.localMangaRoot,
     ).forEach {
         File(it).mkdirs()
     }
@@ -93,13 +97,29 @@ fun applicationSetup() {
             }
         }
     } catch (e: Exception) {
-        logger.error("Exception while creating initial server.conf:\n", e)
+        logger.error("Exception while creating initial server.conf", e)
+    }
+
+    // copy local source icon
+    try {
+        val localSourceIconFile = File("${applicationDirs.extensionsRoot}/icon/localSource.png")
+        if (!localSourceIconFile.exists()) {
+            JavalinSetup::class.java.getResourceAsStream("/icon/localSource.png").use { input ->
+                localSourceIconFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+        }
+    } catch (e: Exception) {
+        logger.error("Exception while copying Local source's icon", e)
     }
 
     // fixes #119 , ref: https://github.com/Suwayomi/Tachidesk-Server/issues/119#issuecomment-894681292 , source Id calculation depends on String.lowercase()
     Locale.setDefault(Locale.ENGLISH)
 
     databaseUp()
+
+    LocalSource.addDbRecords()
 
     // create system tray
     if (serverConfig.systemTrayEnabled) {

@@ -11,6 +11,7 @@ import android.app.Application
 import android.content.Context
 import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.source.ConfigurableSource
+import eu.kanade.tachiyomi.source.LocalSource
 import eu.kanade.tachiyomi.source.getPreferenceKey
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.select
@@ -45,7 +46,8 @@ object Source {
                     getExtensionIconUrl(sourceExtension[ExtensionTable.apkName]),
                     httpSource.supportsLatest,
                     httpSource is ConfigurableSource,
-                    it[SourceTable.isNsfw]
+                    it[SourceTable.isNsfw],
+                    httpSource.toString(),
                 )
             }
         }
@@ -53,6 +55,11 @@ object Source {
 
     fun getSource(sourceId: Long): SourceDataClass { // all the data extracted fresh form the source instance
         return transaction {
+            if (sourceId == LocalSource.ID) {
+                // initialize local source
+                getHttpSource(sourceId)
+            }
+
             val source = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
             val httpSource = source?.let { getHttpSource(sourceId) }
             val extension = source?.let {
@@ -70,7 +77,8 @@ object Source {
                 },
                 httpSource?.supportsLatest,
                 httpSource?.let { it is ConfigurableSource },
-                source?.get(SourceTable.isNsfw)
+                source?.get(SourceTable.isNsfw),
+                httpSource?.toString()
             )
         }
     }

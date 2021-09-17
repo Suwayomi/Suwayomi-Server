@@ -20,7 +20,7 @@ object ExtensionTable : IntIdTable() {
     val pkgName = varchar("pkg_name", 128)
     val versionName = varchar("version_name", 16)
     val versionCode = integer("version_code")
-    val lang = varchar("lang", 10)
+    val lang = varchar("lang", 32)
     val isNsfw = bool("is_nsfw")
 
     val isInstalled = bool("is_installed").default(false)

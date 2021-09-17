@@ -62,6 +62,8 @@ dependencies {
     implementation("com.google.code.gson:gson:2.8.7")
     implementation("com.github.salomonbrys.kotson:kotson:2.5.0")
 
+    // Sort
+    implementation("com.github.gpanther:java-nat-sort:natural-comparator-1.1")
 
     // asm for ByteCodeEditor(fixing SimpleDateFormat) (must match Dex2Jar version)
     implementation("org.ow2.asm:asm:9.2")

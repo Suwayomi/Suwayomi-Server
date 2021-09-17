@@ -1,4 +1,4 @@
-# Server: v0.5.0-r918 + WebUI: r791
+# Server: v0.5.0-r918 + WebUI: r800
 ## TL;DR
 <!-- TODO: fill before release -->
 
@@ -24,6 +24,14 @@
 #### Visible changes
 - (r790) nice looking progress percentage
 - (r791) show a Delete button for downloaded chapters
+- (r792) Update hover effect using more of Material-UI color pallete ([#29](https://github.com/Suwayomi/Tachidesk-WebUI/pull/21) by @voltrare)
+- (r793) Optimize images ([#32](https://github.com/Suwayomi/Tachidesk-WebUI/pull/21) by @phanirithvij)
+- (r794) try fix #30 ([#31](https://github.com/Suwayomi/Tachidesk-WebUI/pull/21) by @phanirithvij)
+- (r795) fix viewing page number when the string is long
+- (r796) show proper display name for source
+- (r797) fail gracefully when a thumbnail has errors
+- (r798) fix when a source fails to load mangas
+- (r800) add Local source ([#31](https://github.com/Suwayomi/Tachidesk-WebUI/pull/21))
 
 #### Bug fixes
 - N/A

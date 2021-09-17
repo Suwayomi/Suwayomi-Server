@@ -24,6 +24,7 @@ import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse.getCachedImageResponse
+import suwayomi.tachidesk.manga.impl.util.updateMangaDownloadDir
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
@@ -76,6 +77,12 @@ object Manga {
             transaction {
                 MangaTable.update({ MangaTable.id eq mangaId }) {
 
+                    if (fetchedManga.title != mangaEntry[MangaTable.title]) {
+                        val canUpdateTitle = updateMangaDownloadDir(mangaId, fetchedManga.title)
+
+                        if (canUpdateTitle)
+                            it[MangaTable.title] = fetchedManga.title
+                    }
                     it[MangaTable.initialized] = true
 
                     it[MangaTable.artist] = fetchedManga.artist
@@ -86,7 +93,11 @@ object Manga {
                     if (fetchedManga.thumbnail_url != null && fetchedManga.thumbnail_url.orEmpty().isNotEmpty())
                         it[MangaTable.thumbnail_url] = fetchedManga.thumbnail_url
 
-                    it[MangaTable.realUrl] = try { source.mangaDetailsRequest(sManga).url.toString() } catch (e: Exception) { null }
+                    it[MangaTable.realUrl] = try {
+                        source.mangaDetailsRequest(sManga).url.toString()
+                    } catch (e: Exception) {
+                        null
+                    }
                 }
             }
 
@@ -151,14 +162,20 @@ object Manga {
         val fileName = mangaId.toString()
 
         return getCachedImageResponse(saveDir, fileName) {
-            getManga(mangaId) // make sure is initialized
-
             val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
 
             val sourceId = mangaEntry[MangaTable.sourceReference]
             val source = getHttpSource(sourceId)
 
-            val thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]!!
+            val thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
+                ?: if (!mangaEntry[MangaTable.initialized]) {
+                    // initialize then try again
+                    getManga(mangaId)
+                    transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }[MangaTable.thumbnail_url]!!
+                } else {
+                    // source provides no thumbnail url for this manga
+                    throw NullPointerException()
+                }
 
             source.client.newCall(
                 GET(thumbnailUrl, source.headers)
