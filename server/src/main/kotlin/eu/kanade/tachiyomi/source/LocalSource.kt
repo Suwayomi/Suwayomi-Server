@@ -1,20 +1,6 @@
 package eu.kanade.tachiyomi.source
 
 // import com.github.junrar.Archive
-// import eu.kanade.tachiyomi.R
-// import eu.kanade.tachiyomi.source.model.MangasPage
-// import eu.kanade.tachiyomi.source.model.Page
-// import eu.kanade.tachiyomi.source.model.SChapter
-// import eu.kanade.tachiyomi.source.model.SManga
-// import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
-// import eu.kanade.tachiyomi.util.storage.DiskUtil
-// import eu.kanade.tachiyomi.util.storage.EpubFile
-// import eu.kanade.tachiyomi.util.system.ImageUtil
-// import rx.Observable
-// import timber.log.Timber
-// import java.io.FileInputStream
-// import java.io.InputStream
-// import java.util.Locale
 // import java.util.zip.ZipFile
 import com.google.gson.JsonParser
 import eu.kanade.tachiyomi.source.model.Filter
@@ -31,7 +17,6 @@ import okhttp3.Protocol
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
@@ -69,7 +54,7 @@ class LocalSource(override val baseUrl: String = "") : HttpSource() {
 
         private val LATEST_THRESHOLD = TimeUnit.MILLISECONDS.convert(7, TimeUnit.DAYS)
 
-        //        fun updateCover(context: Context, manga: SManga, input: InputStream): File? {
+//        fun updateCover(context: Context, manga: SManga, input: InputStream): File? {
 //            val dir = getBaseDirectories(context).firstOrNull()
 //            if (dir == null) {
 //                input.close()
