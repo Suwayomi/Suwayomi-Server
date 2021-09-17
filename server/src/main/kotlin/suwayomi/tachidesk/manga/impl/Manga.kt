@@ -24,6 +24,7 @@ import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse.getCachedImageResponse
+import suwayomi.tachidesk.manga.impl.util.updateMangaDownloadDir
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
@@ -75,7 +76,13 @@ object Manga {
 
             transaction {
                 MangaTable.update({ MangaTable.id eq mangaId }) {
-                    it[MangaTable.title] = fetchedManga.title
+
+                    if (fetchedManga.title != mangaEntry[MangaTable.title]) {
+                        val canUpdateTitle = updateMangaDownloadDir(mangaId, fetchedManga.title)
+
+                        if (canUpdateTitle)
+                            it[MangaTable.title] = fetchedManga.title
+                    }
                     it[MangaTable.initialized] = true
 
                     it[MangaTable.artist] = fetchedManga.artist

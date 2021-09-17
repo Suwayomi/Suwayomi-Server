@@ -17,10 +17,10 @@ import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
+import suwayomi.tachidesk.manga.impl.util.getChapterDir
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse.getCachedImageResponse
-import suwayomi.tachidesk.manga.impl.util.storage.SafePath
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
@@ -92,21 +92,4 @@ object Page {
     private fun formatPageName(index: Int) = String.format("%03d", index)
 
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
-
-    fun getChapterDir(mangaId: Int, chapterId: Int): String {
-        val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
-        val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
-        val chapterEntry = transaction { ChapterTable.select { ChapterTable.id eq chapterId }.first() }
-
-        val sourceDir = source.toString()
-        val mangaDir = SafePath.buildValidFilename(mangaEntry[MangaTable.title])
-        val chapterDir = SafePath.buildValidFilename(
-            when {
-                chapterEntry[ChapterTable.scanlator] != null -> "${chapterEntry[ChapterTable.scanlator]}_${chapterEntry[ChapterTable.name]}"
-                else -> chapterEntry[ChapterTable.name]
-            }
-        )
-
-        return "${applicationDirs.mangaRoot}/$sourceDir/$mangaDir/$chapterDir"
-    }
 }

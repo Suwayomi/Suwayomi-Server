@@ -2,7 +2,6 @@ package eu.kanade.tachiyomi.source
 
 // import com.github.junrar.Archive
 // import java.util.zip.ZipFile
-import com.google.gson.JsonParser
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
@@ -170,7 +169,7 @@ class LocalSource(override val baseUrl: String = "") : HttpSource() {
                 url = mangaDir.name
 
                 // Try to find the cover
-                val cover = File("${applicationDirs.localMangaRoot}/$title/cover.jpg")
+                val cover = File("${applicationDirs.localMangaRoot}/$url/cover.jpg")
                 if (cover.exists()) {
                     thumbnail_url = "http://${cover.absolutePath}"
                 }
@@ -208,7 +207,6 @@ class LocalSource(override val baseUrl: String = "") : HttpSource() {
             .firstOrNull { it.extension == "json" }
             ?.apply {
                 val obj = json.decodeFromStream<JsonObject>(inputStream())
-
 
                 manga.title = obj["title"]?.jsonPrimitive?.contentOrNull ?: manga.title
                 manga.author = obj["author"]?.jsonPrimitive?.contentOrNull ?: manga.author
