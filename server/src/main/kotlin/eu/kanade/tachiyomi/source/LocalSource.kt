@@ -11,6 +11,13 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.lang.compareToCaseInsensitiveNaturalOrder
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.decodeFromStream
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
@@ -28,6 +35,7 @@ import rx.Observable
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
+import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.FileNotFoundException
 import java.net.URL
@@ -123,6 +131,8 @@ class LocalSource(override val baseUrl: String = "") : HttpSource() {
         .addInterceptor(FileSystemInterceptor)
         .build()
 
+    private val json: Json by injectLazy()
+
     override fun toString() = name
 
     override fun fetchPopularManga(page: Int) = fetchSearchManga(page, "", POPULAR_FILTERS)
@@ -197,16 +207,16 @@ class LocalSource(override val baseUrl: String = "") : HttpSource() {
         File(applicationDirs.localMangaRoot, manga.url).listFiles().orEmpty().toList()
             .firstOrNull { it.extension == "json" }
             ?.apply {
-                val reader = this.inputStream().bufferedReader()
-                val json = JsonParser.parseReader(reader).asJsonObject
+                val obj = json.decodeFromStream<JsonObject>(inputStream())
 
-                manga.title = json["title"]?.asString ?: manga.title
-                manga.author = json["author"]?.asString ?: manga.author
-                manga.artist = json["artist"]?.asString ?: manga.artist
-                manga.description = json["description"]?.asString ?: manga.description
-                manga.genre = json["genre"]?.asJsonArray?.joinToString(", ") { it.asString }
+
+                manga.title = obj["title"]?.jsonPrimitive?.contentOrNull ?: manga.title
+                manga.author = obj["author"]?.jsonPrimitive?.contentOrNull ?: manga.author
+                manga.artist = obj["artist"]?.jsonPrimitive?.contentOrNull ?: manga.artist
+                manga.description = obj["description"]?.jsonPrimitive?.contentOrNull ?: manga.description
+                manga.genre = obj["genre"]?.jsonArray?.joinToString(", ") { it.jsonPrimitive.content }
                     ?: manga.genre
-                manga.status = json["status"]?.asInt ?: manga.status
+                manga.status = obj["status"]?.jsonPrimitive?.intOrNull ?: manga.status
             }
 
         return Observable.just(manga)

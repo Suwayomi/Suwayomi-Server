@@ -160,7 +160,7 @@ object Manga {
             val sourceId = mangaEntry[MangaTable.sourceReference]
             val source = getHttpSource(sourceId)
 
-            val thumbnailUrl: String = mangaEntry[MangaTable.thumbnail_url]
+            val thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
                 ?: if (!mangaEntry[MangaTable.initialized]) {
                     // initialize then try again
                     getManga(mangaId)
