@@ -97,7 +97,7 @@ fun applicationSetup() {
             }
         }
     } catch (e: Exception) {
-        logger.error("Exception while creating initial server.conf:\n", e)
+        logger.error("Exception while creating initial server.conf", e)
     }
 
     // copy local source icon
@@ -111,7 +111,7 @@ fun applicationSetup() {
             }
         }
     } catch (e: Exception) {
-        logger.error("Exception while creating initial server.conf:\n", e)
+        logger.error("Exception while copying Local source's icon", e)
     }
 
     // fixes #119 , ref: https://github.com/Suwayomi/Tachidesk-Server/issues/119#issuecomment-894681292 , source Id calculation depends on String.lowercase()
