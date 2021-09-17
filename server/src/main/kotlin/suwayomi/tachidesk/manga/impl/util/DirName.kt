@@ -28,7 +28,7 @@ fun getMangaDir(mangaId: Int): String {
     val sourceDir = source.toString()
     val mangaDir = SafePath.buildValidFilename(mangaEntry[MangaTable.title])
 
-    return "$applicationDirs.mangaRoot}/$sourceDir/$mangaDir"
+    return "${applicationDirs.mangaRoot}/$sourceDir/$mangaDir"
 }
 
 fun getChapterDir(mangaId: Int, chapterId: Int): String {
