@@ -15,15 +15,10 @@ import org.objectweb.asm.FieldVisitor
 import org.objectweb.asm.Handle
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
-import org.objectweb.asm.tree.ClassNode
-import suwayomi.tachidesk.manga.impl.util.storage.use
-import java.io.File
-import java.io.IOException
-import java.util.jar.JarEntry
-import java.util.jar.JarFile
-import java.util.jar.JarOutputStream
-import java.util.zip.ZipEntry
-import java.util.zip.ZipInputStream
+import java.nio.file.FileSystems
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.streams.asSequence
 
 object BytecodeEditor {
     private val logger = KotlinLogging.logger {}
@@ -33,75 +28,50 @@ object BytecodeEditor {
      *
      * @param jarFile The JarFile to replace class references in
      */
-    fun fixAndroidClasses(jarFile: File) {
-        val nodes = loadClasses(jarFile)
-            .mapValues { (className, classFileBuffer) ->
-                logger.trace { "Processing class $className" }
-                transform(classFileBuffer)
-            } + loadNonClasses(jarFile)
-
-        saveAsJar(nodes, jarFile)
-    }
-
-    /**
-     * Load all classes inside the [jar] [File]
-     *
-     * @param jar The JarFile to load classes from
-     *
-     * @return [Map] with class names and [ByteArray]s of bytecode
-     */
-    private fun loadClasses(jar: File): Map<String, ByteArray> {
-        return JarFile(jar).use { jarFile ->
-            jarFile.entries()
-                .asSequence()
-                .mapNotNull {
-                    readJar(jarFile, it)
-                }
-                .toMap()
+    fun fixAndroidClasses(jarFile: Path) {
+        FileSystems.newFileSystem(jarFile, null as ClassLoader?)?.use {
+            Files.walk(it.getPath("/")).asSequence()
+                .filterNotNull()
+                .filterNot(Files::isDirectory)
+                .mapNotNull(::getClassBytes)
+                .map(::transform)
+                .forEach(::write)
         }
     }
 
     /**
-     * Get class file in [jar] for [entry]
+     * Get class bytes from a [Path]
      *
-     * @param jar The jar to get the class from
-     * @param entry The entry in the jar
+     * @param path The path entry to get the class bytes from
      *
-     * @return [Pair] of the class name plus the class [ByteArray], or null if it's not a valid class
+     * @return [Pair] of the [Path] plus the class [ByteArray], or null if it's not a valid class
      */
-    private fun readJar(jar: JarFile, entry: JarEntry): Pair<String, ByteArray>? {
+    private fun getClassBytes(path: Path): Pair<Path, ByteArray>? {
         return try {
-            jar.getInputStream(entry).use { stream ->
-                if (entry.name.endsWith(".class")) {
-                    val bytes = stream.readBytes()
-                    if (bytes.size < 4) {
-                        // Invalid class size
-                        return@use null
-                    }
-                    val cafebabe = String.format(
-                        "%02X%02X%02X%02X",
-                        bytes[0],
-                        bytes[1],
-                        bytes[2],
-                        bytes[3]
-                    )
-                    if (cafebabe.lowercase() != "cafebabe") {
-                        // Corrupted class
-                        return@use null
-                    }
+            if (path.toString().endsWith(".class")) {
+                val bytes = Files.readAllBytes(path)
+                if (bytes.size < 4) {
+                    // Invalid class size
+                    return null
+                }
+                val cafebabe = String.format(
+                    "%02X%02X%02X%02X",
+                    bytes[0],
+                    bytes[1],
+                    bytes[2],
+                    bytes[3]
+                )
+                if (cafebabe.lowercase() != "cafebabe") {
+                    // Corrupted class
+                    return null
+                }
 
-                    getNode(bytes).name to bytes
-                } else null
-            }
-        } catch (e: IOException) {
-            logger.error(e) { "Error loading jar file" }
+                path to bytes
+            } else null
+        } catch (e: Exception) {
+            logger.error(e) { "Error loading class from Path: $path" }
             null
         }
-    }
-
-    private fun getNode(bytes: ByteArray): ClassNode {
-        val cr = ClassReader(bytes)
-        return ClassNode().also { cr.accept(it, ClassReader.EXPAND_FRAMES) }
     }
 
     /**
@@ -153,9 +123,9 @@ object BytecodeEditor {
      *
      * @return [ByteArray] with modified bytecode
      */
-    private fun transform(classfileBuffer: ByteArray): ByteArray {
+    private fun transform(pair: Pair<Path, ByteArray>): Pair<Path, ByteArray> {
         // Read the class and prepare to modify it
-        val cr = ClassReader(classfileBuffer)
+        val cr = ClassReader(pair.second)
         val cw = ClassWriter(cr, 0)
         // Modify the class
         cr.accept(
@@ -277,51 +247,10 @@ object BytecodeEditor {
             },
             0
         )
-        return cw.toByteArray()
+        return pair.first to cw.toByteArray()
     }
 
-    /**
-     * Load non-class files from the jar, such as icons and the manifest
-     *
-     * @param [jarFile] The file to load resources from
-     *
-     * @return [Map] of resources
-     */
-    private fun loadNonClasses(jarFile: File): Map<String, ByteArray> {
-        val entries = mutableMapOf<String, ByteArray>()
-        ZipInputStream(jarFile.inputStream()).use { stream ->
-            var nextEntry: ZipEntry?
-            while (stream.nextEntry.also { nextEntry = it } != null) {
-                nextEntry?.use(stream) { entry ->
-                    // If it ends with class or is a directory ignore it
-                    if (!entry.name.endsWith(".class") && !entry.isDirectory) {
-                        val bytes = stream.readBytes()
-                        entries[entry.name] = bytes
-                    }
-                }
-            }
-        }
-        return entries
-    }
-
-    /**
-     * Save jar with modified content
-     *
-     * @param outBytes [Map] of names and [ByteArray]s of content to save inside the jar
-     * @param file JarFile to save to
-     */
-    private fun saveAsJar(outBytes: Map<String, ByteArray>, file: File) {
-        JarOutputStream(file.outputStream()).use { out ->
-            outBytes.forEach { (entry, value) ->
-                // Append extension to class entries
-                out.putNextEntry(
-                    ZipEntry(
-                        entry + if (entry.contains(".")) "" else ".class"
-                    )
-                )
-                out.write(value)
-                out.closeEntry()
-            }
-        }
+    private fun write(pair: Pair<Path, ByteArray>) {
+        Files.write(pair.first, pair.second)
     }
 }

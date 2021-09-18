@@ -82,7 +82,7 @@ object PackageTools {
             )
             handler.dump(errorFile, emptyArray<String>())
         } else {
-            BytecodeEditor.fixAndroidClasses(jarFilePath.toFile())
+            BytecodeEditor.fixAndroidClasses(jarFilePath)
         }
     }
 
