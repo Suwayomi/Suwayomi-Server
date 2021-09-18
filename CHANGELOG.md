@@ -1,10 +1,41 @@
+# Server: v0.5.1-r942 + WebUI: r803
+## TL;DR
+<!-- TODO: fill before release -->
+
+## Tachidesk-Server
+### Public API
+#### Non-breaking changes
+- N/A
+
+#### Breaking changes
+- N/A
+
+#### Bug fixes
+- N/A
+
+### Private API
+- (r942) Gradle Updates ([#199](https://github.com/Suwayomi/Tachidesk-WebUI/pull/199) by @Syer10)
+- (r941) Update BytecodeEditor to use Java NIO Paths ([#200](https://github.com/Suwayomi/Tachidesk-WebUI/pull/200) by @Syer10)
+
+
+## Tachidesk-WebUI
+#### Visible changes
+- N/A
+
+#### Bug fixes
+- N/A
+
+#### Internal changes
+- N/A
+
+
+
 # Server: v0.5.1 + WebUI: r803
 ## TL;DR
 - Loading sources' manga list is at least twice as fast
 - Added support for Tachiyomi's Local source
 - Added BasicAuth support, now you can protect your Tachidesk instance if you are running it on a public server
 - Added ability to turn off cache for image requests
-<!-- TODO: fill before release -->
 
 ## Tachidesk-Server
 ### Public API
@@ -32,14 +63,14 @@
 #### Visible changes
 - (r790) nice looking progress percentage
 - (r791) show a Delete button for downloaded chapters
-- (r792) Update hover effect using more of Material-UI color pallete ([#29](https://github.com/Suwayomi/Tachidesk-WebUI/pull/21) by @voltrare)
-- (r793) Optimize images ([#32](https://github.com/Suwayomi/Tachidesk-WebUI/pull/21) by @phanirithvij)
-- (r794) try fix #30 ([#31](https://github.com/Suwayomi/Tachidesk-WebUI/pull/21) by @phanirithvij)
+- (r792) Update hover effect using more of Material-UI color pallete ([#29](https://github.com/Suwayomi/Tachidesk-WebUI/pull/29) by @voltrare)
+- (r793) Optimize images ([#32](https://github.com/Suwayomi/Tachidesk-WebUI/pull/32) by @phanirithvij)
+- (r794) try fix #30 ([#31](https://github.com/Suwayomi/Tachidesk-WebUI/pull/31) by @phanirithvij)
 - (r795) fix viewing page number when the string is long
 - (r796) show proper display name for source
 - (r797) fail gracefully when a thumbnail has errors
 - (r798) fix when a source fails to load mangas
-- (r800) add Local source ([#31](https://github.com/Suwayomi/Tachidesk-WebUI/pull/21))
+- (r800) add Local source ([#31](https://github.com/Suwayomi/Tachidesk-WebUI/pull/31))
 - (r803) add support for useCache
 
 #### Bug fixes
