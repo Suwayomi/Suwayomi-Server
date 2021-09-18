@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.source
 
 // import com.github.junrar.Archive
 // import java.util.zip.ZipFile
+import eu.kanade.tachiyomi.source.FileSystemInterceptor.fakeUrlFrom
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
@@ -61,7 +62,7 @@ class LocalSource(override val baseUrl: String = "") : HttpSource() {
 
         private val LATEST_THRESHOLD = TimeUnit.MILLISECONDS.convert(7, TimeUnit.DAYS)
 
-//        fun updateCover(context: Context, manga: SManga, input: InputStream): File? {
+        //        fun updateCover(context: Context, manga: SManga, input: InputStream): File? {
 //            val dir = getBaseDirectories(context).firstOrNull()
 //            if (dir == null) {
 //                input.close()
@@ -171,7 +172,7 @@ class LocalSource(override val baseUrl: String = "") : HttpSource() {
                 // Try to find the cover
                 val cover = File("${applicationDirs.localMangaRoot}/$url/cover.jpg")
                 if (cover.exists()) {
-                    thumbnail_url = "http://${cover.absolutePath}"
+                    thumbnail_url = fakeUrlFrom(cover.absolutePath)
                 }
 
 //                val chapters = fetchChapterList(this).toBlocking().first()
@@ -293,14 +294,14 @@ class LocalSource(override val baseUrl: String = "") : HttpSource() {
     }
 
     override fun fetchPageList(chapter: SChapter): Observable<List<Page>> {
-        val chapterFile = File(applicationDirs.localMangaRoot + File.separator + chapter.url)
+        val chapterFile = File(applicationDirs.localMangaRoot + "/" + chapter.url)
 
         return Observable.just(
             if (chapterFile.isDirectory) {
                 chapterFile.listFiles().sortedBy { it.name }.mapIndexed { index, page ->
                     Page(
                         index,
-                        imageUrl = "http://" + applicationDirs.localMangaRoot + File.separator + chapter.url + File.separator + page.name
+                        imageUrl = fakeUrlFrom(applicationDirs.localMangaRoot + "/" + chapter.url + "/" + page.name)
                     )
                 }
             } else {
@@ -419,6 +420,8 @@ class LocalSource(override val baseUrl: String = "") : HttpSource() {
 }
 
 private object FileSystemInterceptor : Interceptor {
+    fun fakeUrlFrom(path: String) = "http://$path"
+
     private fun restoreFileUrl(markedFakeHttpUrl: String): String {
         return markedFakeHttpUrl.replaceFirst("http:", "file:/")
     }
