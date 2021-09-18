@@ -9,6 +9,7 @@ package suwayomi.tachidesk.manga.impl
 
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SortOrder.DESC
 import org.jetbrains.exposed.sql.and
@@ -52,12 +53,19 @@ object Chapter {
     private suspend fun getSourceChapters(mangaId: Int): List<ChapterDataClass> {
         val manga = getManga(mangaId)
         val source = getHttpSource(manga.sourceId.toLong())
-        val chapterList = source.fetchChapterList(
-            SManga.create().apply {
-                title = manga.title
-                url = manga.url
-            }
-        ).awaitSingle()
+
+        val sManga = SManga.create().apply {
+            title = manga.title
+            url = manga.url
+        }
+
+        val chapterList = source.fetchChapterList(sManga).awaitSingle()
+
+        // Recognize number for new chapters.
+        chapterList.forEach {
+            source.prepareNewChapter(it, sManga)
+            ChapterRecognition.parseChapterNumber(it, sManga)
+        }
 
         val chapterCount = chapterList.count()
 

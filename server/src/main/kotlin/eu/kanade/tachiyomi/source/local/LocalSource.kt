@@ -16,6 +16,7 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
+import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
 import eu.kanade.tachiyomi.util.lang.compareToCaseInsensitiveNaturalOrder
 import eu.kanade.tachiyomi.util.storage.EpubFile
 import kotlinx.serialization.json.Json
@@ -248,7 +249,7 @@ class LocalSource : HttpSource() {
 
                     val chapNameCut = stripMangaTitle(name, manga.title)
                     if (chapNameCut.isNotEmpty()) name = chapNameCut
-//                    ChapterRecognition.parseChapterNumber(this, manga)
+                    ChapterRecognition.parseChapterNumber(this, manga)
                 }
             }
             .sortedWith { c1, c2 ->
