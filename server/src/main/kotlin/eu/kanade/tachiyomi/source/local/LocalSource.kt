@@ -2,6 +2,8 @@ package eu.kanade.tachiyomi.source.local
 
 import com.github.junrar.Archive
 import eu.kanade.tachiyomi.source.local.FileSystemInterceptor.fakeUrlFrom
+import eu.kanade.tachiyomi.source.local.Format.Directory
+import eu.kanade.tachiyomi.source.local.Format.Zip
 import eu.kanade.tachiyomi.source.local.LocalSource.Format.Directory
 import eu.kanade.tachiyomi.source.local.LocalSource.Format.Epub
 import eu.kanade.tachiyomi.source.local.LocalSource.Format.Rar
@@ -342,18 +344,14 @@ class LocalSource : HttpSource() {
         throw Exception("Chapter not found")
     }
 
-    private fun getFormat(file: File): Format {
-        return with(file) {
-            when {
-                isDirectory -> Format.Directory(file)
-                extension.equals("zip", true) -> Format.Zip(file)
-                extension.equals("cbz", true) -> Format.Zip(file)
-                extension.equals("rar", true) -> Format.Rar(file)
-                extension.equals("cbr", true) -> Format.Rar(file)
-                extension.equals("epub", true) -> Format.Epub(file)
+    private fun getFormat(file: File): Format = with(file) {
+        when {
+            isDirectory -> Format.Directory(this)
+            extension.equals("zip", true) || extension.equals("cbz", true) -> Format.Zip(this)
+            extension.equals("rar", true) || extension.equals("cbr", true) -> Format.Rar(this)
+            extension.equals("epub", true) -> Format.Epub(this)
 
                 else -> throw Exception("Invalid chapter format")
-            }
         }
     }
 
