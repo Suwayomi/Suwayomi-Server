@@ -8,7 +8,7 @@ package suwayomi.tachidesk.server
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.App
-import eu.kanade.tachiyomi.source.LocalSource
+import eu.kanade.tachiyomi.source.local.LocalSource
 import mu.KotlinLogging
 import org.kodein.di.DI
 import org.kodein.di.bind

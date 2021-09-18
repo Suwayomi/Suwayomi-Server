@@ -1,11 +1,5 @@
 package suwayomi.tachidesk.manga.impl.util.storage
 
-import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil.ImageType.GIF
-import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil.ImageType.JPG
-import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil.ImageType.PNG
-import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil.ImageType.WEBP
-import java.io.InputStream
-
 /*
  * Copyright (C) Contributors to the Suwayomi project
  *
@@ -13,8 +7,23 @@ import java.io.InputStream
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-// adopted from: https://github.com/tachiyomiorg/tachiyomi/blob/ff369010074b058bb734ce24c66508300e6e9ac6/app/src/main/java/eu/kanade/tachiyomi/util/system/ImageUtil.kt
+import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil.ImageType.GIF
+import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil.ImageType.JPG
+import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil.ImageType.PNG
+import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil.ImageType.WEBP
+import java.io.InputStream
+import java.net.URLConnection
+
+// adopted from: eu.kanade.tachiyomi.util.system.ImageUtil
 object ImageUtil {
+    fun isImage(name: String, openStream: (() -> InputStream)? = null): Boolean {
+        val contentType = try {
+            URLConnection.guessContentTypeFromName(name)
+        } catch (e: Exception) {
+            null
+        } ?: openStream?.let { findImageType(it)?.mime }
+        return contentType?.startsWith("image/") ?: false
+    }
 
     fun findImageType(openStream: () -> InputStream): ImageType? {
         return openStream().use { findImageType(it) }

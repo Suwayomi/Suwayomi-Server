@@ -53,7 +53,6 @@ dependencies {
     implementation("com.dorkbox:SystemTray:4.1")
     implementation("com.dorkbox:Utilities:1.9") // version locked by SystemTray
 
-
     // dependencies of Tachiyomi extensions, some are duplicate, keeping it here for reference
     implementation("com.github.inorichi.injekt:injekt-core:65b0440")
     implementation("com.squareup.okhttp3:okhttp:4.9.1")
@@ -68,8 +67,9 @@ dependencies {
     // asm for ByteCodeEditor(fixing SimpleDateFormat) (must match Dex2Jar version)
     implementation("org.ow2.asm:asm:9.2")
 
-    // extracting zip files
+    // Disk & File
     implementation("net.lingala.zip4j:zip4j:2.9.0")
+    implementation("com.github.junrar:junrar:7.4.0")
 
     // CloudflareInterceptor
     implementation("net.sourceforge.htmlunit:htmlunit:2.52.0")
