@@ -1,4 +1,4 @@
-# Server: v0.5.0-r918 + WebUI: r802
+# Server: v0.5.0-r918 + WebUI: r803
 ## TL;DR
 <!-- TODO: fill before release -->
 
@@ -7,6 +7,8 @@
 #### Non-breaking changes
 - (r915) add BasicAuth support
 - (r918) add ability to delete downloaded chapters
+- (r923-r930) add Local Source
+- (r938) add ability to turn off cache for image requests
 
 #### Breaking changes
 - N/A
@@ -17,6 +19,8 @@
 ### Private API
 - (r913) remove expand char limit on MangaTable columns
 - (r914) migrate to Javalin 4
+- (r921) depricate zero based chapters
+- (r937) add ChapterRecognition from tachiyomi, closes #10
 
 
 
@@ -32,6 +36,7 @@
 - (r797) fail gracefully when a thumbnail has errors
 - (r798) fix when a source fails to load mangas
 - (r800) add Local source ([#31](https://github.com/Suwayomi/Tachidesk-WebUI/pull/21))
+- (r803) add support for useCache
 
 #### Bug fixes
 - N/A
