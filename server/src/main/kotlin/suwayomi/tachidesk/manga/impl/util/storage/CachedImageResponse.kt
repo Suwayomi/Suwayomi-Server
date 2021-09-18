@@ -68,4 +68,22 @@ object CachedImageResponse {
             File(it).delete()
         }
     }
+
+    suspend fun getImageResponse(fetcher: suspend () -> Response): Pair<InputStream, String> {
+        val response = fetcher()
+
+        if (response.code == 200) {
+            val responseBytes = response.body!!.bytes()
+
+            // find image type
+            val imageType = response.headers["content-type"]
+                ?: ImageUtil.findImageType { responseBytes.inputStream() }?.mime
+                ?: "image/jpeg"
+
+            return responseBytes.inputStream() to imageType
+        } else {
+            response.closeQuietly()
+            throw Exception("request error! ${response.code}")
+        }
+    }
 }

@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.LocalSource
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
 import org.jetbrains.exposed.sql.and
@@ -65,6 +66,13 @@ object Page {
                 PageTable.update({ (PageTable.chapter eq chapterId) and (PageTable.index eq index) }) {
                     it[imageUrl] = trueImageUrl
                 }
+            }
+        }
+
+        // don't cache images for Local Source
+        if (mangaEntry[MangaTable.sourceReference] == LocalSource.ID) {
+            return CachedImageResponse.getImageResponse {
+                source.fetchImage(tachiyomiPage).awaitSingle()
             }
         }
 
