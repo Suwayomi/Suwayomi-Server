@@ -1,25 +1,11 @@
-
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.jmailen.gradle.kotlinter.tasks.FormatTask
-import org.jmailen.gradle.kotlinter.tasks.LintTask
+import de.undercouch.gradle.tasks.download.Download
 import java.time.Instant
 
 plugins {
     application
-    kotlin("plugin.serialization")
     id("com.github.johnrengelman.shadow") version "7.0.0"
-    id("org.jmailen.kotlinter") version "3.6.0"
-    id("com.github.gmazzo.buildconfig") version "3.0.2"
-}
-
-repositories {
-    maven {
-        url = uri("https://repo1.maven.org/maven2/")
-    }
-    maven {
-        url = uri("https://jitpack.io")
-    }
+    id("com.github.gmazzo.buildconfig") version "3.0.3"
 }
 
 dependencies {
@@ -33,8 +19,9 @@ dependencies {
     // Javalin api
     implementation("io.javalin:javalin:4.0.0")
     // jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.12.4")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.12.4")
+    val jacksonVersion = "2.12.4"
+    implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
 
     // Exposed ORM
     val exposedVersion = "0.34.1"
@@ -46,8 +33,7 @@ dependencies {
     implementation("com.h2database:h2:1.4.200")
 
     // Exposed Migrations
-    val exposedMigrationsVersion = "3.1.2"
-    implementation("com.github.Suwayomi:exposed-migrations:$exposedMigrationsVersion")
+    implementation("com.github.Suwayomi:exposed-migrations:3.1.2")
 
     // tray icon
     implementation("com.dorkbox:SystemTray:4.1")
@@ -57,8 +43,8 @@ dependencies {
     implementation("com.github.inorichi.injekt:injekt-core:65b0440")
     implementation("com.squareup.okhttp3:okhttp:4.9.1")
     implementation("io.reactivex:rxjava:1.3.8")
-    implementation("org.jsoup:jsoup:1.14.1")
-    implementation("com.google.code.gson:gson:2.8.7")
+    implementation("org.jsoup:jsoup:1.14.2")
+    implementation("com.google.code.gson:gson:2.8.8")
     implementation("com.github.salomonbrys.kotson:kotson:2.5.0")
 
     // Sort
@@ -131,28 +117,16 @@ tasks {
     shadowJar {
         manifest {
             attributes(
-                mapOf(
-                    "Main-Class" to MainClass,
-                    "Implementation-Title" to rootProject.name,
-                    "Implementation-Vendor" to "The Suwayomi Project",
-                    "Specification-Version" to tachideskVersion,
-                    "Implementation-Version" to tachideskRevision
-                )
+                "Main-Class" to MainClass,
+                "Implementation-Title" to rootProject.name,
+                "Implementation-Vendor" to "The Suwayomi Project",
+                "Specification-Version" to tachideskVersion,
+                "Implementation-Version" to tachideskRevision
             )
         }
         archiveBaseName.set(rootProject.name)
         archiveVersion.set(tachideskVersion)
         archiveClassifier.set(tachideskRevision)
-    }
-    withType<KotlinCompile> {
-        kotlinOptions {
-            freeCompilerArgs = listOf(
-                "-Xopt-in=kotlin.RequiresOptIn",
-                "-Xopt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-                "-Xopt-in=kotlinx.coroutines.InternalCoroutinesApi",
-                "-Xopt-in=kotlinx.serialization.ExperimentalSerializationApi",
-            )
-        }
     }
 
     test {
@@ -172,7 +146,7 @@ tasks {
         mustRunAfter("downloadWebUI")
     }
 
-    register<de.undercouch.gradle.tasks.download.Download>("downloadWebUI") {
+    register<Download>("downloadWebUI") {
         src("https://github.com/Suwayomi/Tachidesk-WebUI-preview/releases/download/$webUIRevisionTag/Tachidesk-WebUI-$webUIRevisionTag.zip")
         dest("src/main/resources/WebUI.zip")
 
@@ -187,21 +161,14 @@ tasks {
                     it.readText().trim()
                 }
 
-                if (zipRevision == webUIRevisionTag)
+                if (zipRevision == webUIRevisionTag) {
                     shouldOverwrite = false
+                }
             }
 
             return shouldOverwrite
         }
 
         overwrite(shouldOverwrite())
-    }
-
-    withType<LintTask> {
-        source(files("src/kotlin"))
-    }
-
-    withType<FormatTask> {
-        source(files("src/kotlin"))
     }
 }
