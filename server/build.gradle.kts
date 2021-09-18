@@ -43,6 +43,7 @@ dependencies {
     implementation("com.github.inorichi.injekt:injekt-core:65b0440")
     implementation("com.squareup.okhttp3:okhttp:4.9.1")
     implementation("io.reactivex:rxjava:1.3.8")
+    implementation("org.jsoup:jsoup:1.14.2")
     implementation("com.google.code.gson:gson:2.8.8")
     implementation("com.github.salomonbrys.kotson:kotson:2.5.0")
 
