@@ -71,9 +71,10 @@ object ExtensionController {
     /** icon for extension named `apkName` */
     fun icon(ctx: Context) {
         val apkName = ctx.pathParam("apkName")
+        val useCache = ctx.queryParam("useCache")?.toBoolean() ?: true
 
         ctx.future(
-            future { Extension.getExtensionIcon(apkName) }
+            future { Extension.getExtensionIcon(apkName, useCache) }
                 .thenApply {
                     ctx.header("content-type", it.second)
                     it.first

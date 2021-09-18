@@ -20,8 +20,8 @@ import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
 import suwayomi.tachidesk.manga.impl.util.getChapterDir
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
-import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse
-import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse.getCachedImageResponse
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
@@ -41,7 +41,7 @@ object Page {
         return page.imageUrl!!
     }
 
-    suspend fun getPageImage(mangaId: Int, chapterIndex: Int, index: Int): Pair<InputStream, String> {
+    suspend fun getPageImage(mangaId: Int, chapterIndex: Int, index: Int, useCache: Boolean = true): Pair<InputStream, String> {
         val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
         val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
         val chapterEntry = transaction {
@@ -69,7 +69,7 @@ object Page {
             }
 
             // is of directory format
-            return CachedImageResponse.getImageResponse {
+            return ImageResponse.getNoCacheImageResponse {
                 source.fetchImage(tachiyomiPage).awaitSingle()
             }
         }
@@ -87,14 +87,14 @@ object Page {
         File(chapterDir).mkdirs()
         val fileName = getPageName(index, chapterDir) // e.g. 001
 
-        return getCachedImageResponse(chapterDir, fileName) {
+        return getImageResponse(chapterDir, fileName, useCache) {
             source.fetchImage(tachiyomiPage).awaitSingle()
         }
     }
 
     // TODO(v0.6.0) : zero based pages are deprecated
     fun getPageName(index: Int, chapterDir: String): String {
-        val zeroBasedPageExists = CachedImageResponse.findFileNameStartingWith(
+        val zeroBasedPageExists = ImageResponse.findFileNameStartingWith(
             chapterDir,
             formatPageName(0)
         ) != null

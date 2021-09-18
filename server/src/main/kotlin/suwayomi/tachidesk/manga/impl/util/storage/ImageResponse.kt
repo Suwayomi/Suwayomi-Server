@@ -13,7 +13,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
 
-object CachedImageResponse {
+object ImageResponse {
     private fun pathToInputStream(path: String): InputStream {
         return FileInputStream(path).buffered()
     }
@@ -69,7 +69,7 @@ object CachedImageResponse {
         }
     }
 
-    suspend fun getImageResponse(fetcher: suspend () -> Response): Pair<InputStream, String> {
+    suspend fun getNoCacheImageResponse(fetcher: suspend () -> Response): Pair<InputStream, String> {
         val response = fetcher()
 
         if (response.code == 200) {
@@ -84,6 +84,14 @@ object CachedImageResponse {
         } else {
             response.closeQuietly()
             throw Exception("request error! ${response.code}")
+        }
+    }
+
+    suspend fun getImageResponse(saveDir: String, fileName: String, useCache: Boolean = false, fetcher: suspend () -> Response): Pair<InputStream, String> {
+        return if (useCache) {
+            getCachedImageResponse(saveDir, fileName, fetcher)
+        } else {
+            getNoCacheImageResponse(fetcher)
         }
     }
 }

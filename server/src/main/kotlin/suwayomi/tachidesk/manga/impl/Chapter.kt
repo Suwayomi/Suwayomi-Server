@@ -23,7 +23,7 @@ import suwayomi.tachidesk.manga.impl.Page.getPageName
 import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
 import suwayomi.tachidesk.manga.impl.util.getChapterDir
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
-import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -233,7 +233,7 @@ object Chapter {
     private fun firstPageExists(mangaId: Int, chapterId: Int): Boolean {
         val chapterDir = getChapterDir(mangaId, chapterId)
 
-        return CachedImageResponse.findFileNameStartingWith(
+        return ImageResponse.findFileNameStartingWith(
             chapterDir,
             getPageName(0, chapterDir)
         ) != null

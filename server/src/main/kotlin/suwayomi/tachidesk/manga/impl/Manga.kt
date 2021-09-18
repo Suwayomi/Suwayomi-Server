@@ -22,8 +22,8 @@ import suwayomi.tachidesk.manga.impl.Source.getSource
 import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.network.await
-import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse.clearCachedImage
-import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse.getCachedImageResponse
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.updateMangaDownloadDir
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
@@ -157,11 +157,11 @@ object Manga {
     }
 
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
-    suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
+    suspend fun getMangaThumbnail(mangaId: Int, useCache: Boolean): Pair<InputStream, String> {
         val saveDir = applicationDirs.mangaThumbnailsRoot
         val fileName = mangaId.toString()
 
-        return getCachedImageResponse(saveDir, fileName) {
+        return getImageResponse(saveDir, fileName, useCache) {
             val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
 
             val sourceId = mangaEntry[MangaTable.sourceReference]

@@ -23,8 +23,8 @@ import suwayomi.tachidesk.anime.model.table.AnimeStatus
 import suwayomi.tachidesk.anime.model.table.AnimeTable
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.network.await
-import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse.clearCachedImage
-import suwayomi.tachidesk.manga.impl.util.storage.CachedImageResponse.getCachedImageResponse
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getCachedImageResponse
 import suwayomi.tachidesk.server.ApplicationDirs
 import java.io.InputStream
 

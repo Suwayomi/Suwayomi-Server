@@ -31,9 +31,10 @@ object MangaController {
     /** manga thumbnail */
     fun thumbnail(ctx: Context) {
         val mangaId = ctx.pathParam("mangaId").toInt()
+        val useCache = ctx.queryParam("useCache")?.toBoolean() ?: true
 
         ctx.future(
-            future { Manga.getMangaThumbnail(mangaId) }
+            future { Manga.getMangaThumbnail(mangaId, useCache) }
                 .thenApply {
                     ctx.header("content-type", it.second)
                     it.first
@@ -152,9 +153,10 @@ object MangaController {
         val mangaId = ctx.pathParam("mangaId").toInt()
         val chapterIndex = ctx.pathParam("chapterIndex").toInt()
         val index = ctx.pathParam("index").toInt()
+        val useCache = ctx.queryParam("useCache")?.toBoolean() ?: true
 
         ctx.future(
-            future { Page.getPageImage(mangaId, chapterIndex, index) }
+            future { Page.getPageImage(mangaId, chapterIndex, index, useCache) }
                 .thenApply {
                     ctx.header("content-type", it.second)
                     it.first
