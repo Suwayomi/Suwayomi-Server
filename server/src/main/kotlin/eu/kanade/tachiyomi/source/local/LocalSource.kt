@@ -2,8 +2,6 @@ package eu.kanade.tachiyomi.source.local
 
 import com.github.junrar.Archive
 import eu.kanade.tachiyomi.source.local.FileSystemInterceptor.fakeUrlFrom
-import eu.kanade.tachiyomi.source.local.Format.Directory
-import eu.kanade.tachiyomi.source.local.Format.Zip
 import eu.kanade.tachiyomi.source.local.LocalSource.Format.Directory
 import eu.kanade.tachiyomi.source.local.LocalSource.Format.Epub
 import eu.kanade.tachiyomi.source.local.LocalSource.Format.Rar
@@ -351,7 +349,7 @@ class LocalSource : HttpSource() {
             extension.equals("rar", true) || extension.equals("cbr", true) -> Format.Rar(this)
             extension.equals("epub", true) -> Format.Epub(this)
 
-                else -> throw Exception("Invalid chapter format")
+            else -> throw Exception("Invalid chapter format")
         }
     }
 
