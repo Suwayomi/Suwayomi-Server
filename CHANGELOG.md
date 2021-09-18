@@ -1,5 +1,9 @@
-# Server: v0.5.0-r918 + WebUI: r803
+# Server: v0.5.1 + WebUI: r803
 ## TL;DR
+- Loading sources' manga list is at least twice as fast
+- Added support for Tachiyomi's Local source
+- Added BasicAuth support, now you can protect your Tachidesk instance if you are running it on a public server
+- Added ability to turn off cache for image requests
 <!-- TODO: fill before release -->
 
 ## Tachidesk-Server
