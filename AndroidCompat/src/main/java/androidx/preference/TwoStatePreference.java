@@ -13,7 +13,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 public class TwoStatePreference extends Preference {
     // Note: remove @JsonIgnore and implement methods if any extension ever uses these methods or the variables behind them
 
-    public TwoStatePreference(Context context) { super(context); }
+    public TwoStatePreference(Context context) {
+        super(context);
+        setDefaultValue(false);
+    }
 
     @JsonIgnore
     public boolean isChecked() { throw new RuntimeException("Stub!"); }
