@@ -1,4 +1,4 @@
-# Server: v0.5.1-r942 + WebUI: r803
+# Server: v0.5.1-r942 + WebUI: r807
 ## TL;DR
 <!-- TODO: fill before release -->
 
@@ -20,10 +20,12 @@
 
 ## Tachidesk-WebUI
 #### Visible changes
-- N/A
+- (r804) update text positioning on Reader and Player ([#35](https://github.com/Suwayomi/Tachidesk-WebUI/pull/35) by @voltrare)
+- (r806) Source card for Local source is different
+- (r807) add Local source guide
 
 #### Bug fixes
-- N/A
+- (r805) fix chapter name
 
 #### Internal changes
 - N/A
