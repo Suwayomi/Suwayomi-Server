@@ -1,6 +1,7 @@
-# Server: v0.5.1-r942 + WebUI: r807
+# Server: v0.5.2 + WebUI: r807
 ## TL;DR
-<!-- TODO: fill before release -->
+- Fixed Local source not working on Windows
+- Fixed Chapter numbers being shown incorrectly
 
 ## Tachidesk-Server
 ### Public API
