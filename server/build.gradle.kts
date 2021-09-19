@@ -138,7 +138,7 @@ tasks {
     }
 
     named("run") {
-        dependsOn("formatKotlin", "lintKotlin")
+        dependsOn(":formatKotlin", ":lintKotlin")
     }
 
     named<Copy>("processResources") {
