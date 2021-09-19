@@ -1,4 +1,4 @@
-# Server: v0.5.3-r951 + WebUI: r807
+# Server: v0.5.2-r951 + WebUI: r807
 ## TL;DR
 <!-- TODO: fill before release -->
 
@@ -46,8 +46,18 @@
 - N/A
 
 ### Private API
-- (r942) Gradle Updates ([#199](https://github.com/Suwayomi/Tachidesk-WebUI/pull/199) by @Syer10)
 - (r941) Update BytecodeEditor to use Java NIO Paths ([#200](https://github.com/Suwayomi/Tachidesk-WebUI/pull/200) by @Syer10)
+- (r942) Gradle Updates ([#199](https://github.com/Suwayomi/Tachidesk-WebUI/pull/199) by @Syer10)
+- (r943) update CHANGELOG
+- (r944) Minor cleanup
+- (r945) fix compile
+- (r946) update WebUI
+- (r947) fix Task path
+- (r948) Fix ManaToki (KO) and NewToki (KO) (issue [#202](https://github.com/Suwayomi/Tachidesk-WebUI/issue/202)
+- (r949) Local source: fix windows paths
+- (r950) update WebUI
+- (r951) bump version
+
 
 
 ## Tachidesk-WebUI
