@@ -1,3 +1,34 @@
+# Server: v0.5.3-r951 + WebUI: r807
+## TL;DR
+<!-- TODO: fill before release -->
+
+## Tachidesk-Server
+### Public API
+#### Non-breaking changes
+- N/A
+
+#### Breaking changes
+- N/A
+
+#### Bug fixes
+- N/A
+
+### Private API
+- N/A
+
+
+## Tachidesk-WebUI
+#### Visible changes
+- N/A
+
+#### Bug fixes
+- N/A
+
+#### Internal changes
+- N/A
+
+
+
 # Server: v0.5.2 + WebUI: r807
 ## TL;DR
 - Fixed Local source not working on Windows
