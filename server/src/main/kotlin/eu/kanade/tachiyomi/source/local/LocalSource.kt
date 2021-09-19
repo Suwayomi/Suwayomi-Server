@@ -32,7 +32,10 @@ import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Request
 import okhttp3.Response
+import okhttp3.ResponseBody.Companion.asResponseBody
 import okhttp3.ResponseBody.Companion.toResponseBody
+import okio.buffer
+import okio.source
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
@@ -50,7 +53,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.io.InputStream
-import java.net.URL
+import java.net.URLDecoder
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipFile
@@ -435,19 +438,28 @@ class LocalSource : HttpSource() {
 }
 
 private object FileSystemInterceptor : Interceptor {
-    fun fakeUrlFrom(path: String) = "http://$path"
+    fun fakeUrlFrom(path: String): String = "http://$path"
 
-    private fun restoreFileUrl(markedFakeHttpUrl: String): String {
-        return markedFakeHttpUrl.replaceFirst("http:", "file:/")
+
+    private fun restoreFilePath(url: String): String {
+        val path = URLDecoder.decode(url.replaceFirst("http://", ""), "UTF-8")
+
+        // Windows
+        if (System.getProperty("os.name").lowercase().startsWith("win")) {
+            // convert paths like "c/Users/..." to "c:/Users/..."
+            return StringBuilder(path).insert(1, ":").toString()
+        }
+
+        return "/$path"
     }
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         val url = request.url
-        val fileUrl = restoreFileUrl(url.toString())
+        val filePath = restoreFilePath(url.toString())
         return try {
             Response.Builder()
-                .body(URL(fileUrl).readBytes().toResponseBody())
+                .body(File(filePath).source().buffer().asResponseBody())
                 .code(200)
                 .message("Some file")
                 .protocol(Protocol.HTTP_1_0)
@@ -457,7 +469,7 @@ private object FileSystemInterceptor : Interceptor {
             Response.Builder()
                 .body("".toResponseBody())
                 .code(404)
-                .message(e.message ?: "File not found ($fileUrl)")
+                .message(e.message ?: "File not found ($filePath)")
                 .protocol(Protocol.HTTP_1_0)
                 .request(request)
                 .build()
