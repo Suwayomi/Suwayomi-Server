@@ -43,12 +43,12 @@
 - N/A
 
 #### Bug fixes
-- (r948) Fix ManaToki (KO) and NewToki (KO) (issue [#202](https://github.com/Suwayomi/Tachidesk-WebUI/issue/202)
+- (r948) Fix ManaToki (KO) and NewToki (KO) (issue [#202](https://github.com/Suwayomi/Tachidesk-Server/issue/202))
 - (r949) Local source: fix windows paths
 
 ### Private API
-- (r941) Update BytecodeEditor to use Java NIO Paths ([#200](https://github.com/Suwayomi/Tachidesk-WebUI/pull/200) by @Syer10)
-- (r942) Gradle Updates ([#199](https://github.com/Suwayomi/Tachidesk-WebUI/pull/199) by @Syer10)
+- (r941) Update BytecodeEditor to use Java NIO Paths ([#200](https://github.com/Suwayomi/Tachidesk-Server/pull/200) by @Syer10)
+- (r942) Gradle Updates ([#199](https://github.com/Suwayomi/Tachidesk-Server/pull/199) by @Syer10)
 
 
 ## Tachidesk-WebUI
