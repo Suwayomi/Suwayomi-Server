@@ -1,4 +1,4 @@
-#!/bin/bash
+#/bin/bash
 
 # Copyright (C) Contributors to the Suwayomi project
 #
@@ -24,7 +24,7 @@ elif [ $1 = "macOS-arm64" ]; then
   jre="zulu8.56.0.23-ca-jre8.0.302-macosx_aarch64.tar.gz"
   jre_release="zulu8.56.0.23-ca-jre8.0.302-macosx_aarch64"
   jre_url="https://cdn.azul.com/zulu/bin/$jre"
-  jre_dir="$jre_release"
+  jre_dir="$jre_release/zulu-8.jre"
   electron="electron-$electron_version-darwin-arm64.zip"
 else
   echo "Unsupported arch value: $1"
