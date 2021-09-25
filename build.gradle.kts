@@ -30,6 +30,7 @@ val projects = listOf(
 configure(projects) {
     apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "org.jetbrains.kotlin.plugin.serialization")
+    apply(plugin = "org.jmailen.kotlinter")
 
     java {
         sourceCompatibility = JavaVersion.VERSION_1_8
@@ -38,6 +39,7 @@ configure(projects) {
 
     tasks {
         withType<KotlinCompile> {
+            dependsOn(formatKotlin)
             kotlinOptions {
                 jvmTarget = JavaVersion.VERSION_1_8.toString()
                 freeCompilerArgs = listOf(
