@@ -6,7 +6,7 @@ import org.kodein.di.singleton
 
 class ConfigKodeinModule {
     fun create() = DI.Module("ConfigManager") {
-        //Config module
+        // Config module
         bind<ConfigManager>() with singleton { GlobalConfigManager }
     }
 }

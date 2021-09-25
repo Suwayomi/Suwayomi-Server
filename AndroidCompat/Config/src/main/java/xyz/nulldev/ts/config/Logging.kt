@@ -16,5 +16,5 @@ fun setLogLevel(level: Level) {
     (KotlinLogging.logger(Logger.ROOT_LOGGER_NAME).underlyingLogger as ch.qos.logback.classic.Logger).level = level
 }
 
-fun debugLogsEnabled(config: Config)
-    = System.getProperty("suwayomi.tachidesk.config.server.debugLogsEnabled", config.getString("server.debugLogsEnabled")).toBoolean()
+fun debugLogsEnabled(config: Config) =
+    System.getProperty("suwayomi.tachidesk.config.server.debugLogsEnabled", config.getString("server.debugLogsEnabled")).toBoolean()

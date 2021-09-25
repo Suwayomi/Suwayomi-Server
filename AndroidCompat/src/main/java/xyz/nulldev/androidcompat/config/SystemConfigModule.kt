@@ -1,8 +1,8 @@
 package xyz.nulldev.androidcompat.config
 
 import com.typesafe.config.Config
-import xyz.nulldev.ts.config.ConfigModule
 import io.github.config4k.getValue
+import xyz.nulldev.ts.config.ConfigModule
 
 class SystemConfigModule(val config: Config) : ConfigModule(config) {
     val isDebuggable: Boolean by config
@@ -16,7 +16,7 @@ class SystemConfigModule(val config: Config) : ConfigModule(config) {
     fun hasProperty(property: String) = config.hasPath("$propertyPrefix$property")
 
     companion object {
-        fun register(config: Config)
-                = SystemConfigModule(config.getConfig("android.system"))
+        fun register(config: Config) =
+            SystemConfigModule(config.getConfig("android.system"))
     }
 }

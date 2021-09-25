@@ -13,7 +13,7 @@ class ApplicationInfoConfigModule(config: Config) : ConfigModule(config) {
     val debug: Boolean by config
 
     companion object {
-        fun register(config: Config)
-                = ApplicationInfoConfigModule(config.getConfig("android.app"))
+        fun register(config: Config) =
+            ApplicationInfoConfigModule(config.getConfig("android.app"))
     }
 }

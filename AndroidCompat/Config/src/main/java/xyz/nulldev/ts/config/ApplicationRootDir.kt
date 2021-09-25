@@ -14,7 +14,7 @@ const val CONFIG_PREFIX = "suwayomi.tachidesk.config"
 val ApplicationRootDir: String
     get(): String {
         return System.getProperty(
-                "$CONFIG_PREFIX.server.rootDir",
-                AppDirsFactory.getInstance().getUserDataDir("Tachidesk", null, null)
+            "$CONFIG_PREFIX.server.rootDir",
+            AppDirsFactory.getInstance().getUserDataDir("Tachidesk", null, null)
         )
     }

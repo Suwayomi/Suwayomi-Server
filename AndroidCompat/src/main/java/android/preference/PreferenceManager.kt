@@ -9,8 +9,10 @@ import android.content.Context
 class PreferenceManager {
     companion object {
         @JvmStatic
-        fun getDefaultSharedPreferences(context: Context)
-                = context.getSharedPreferences(context.applicationInfo.packageName,
-                Context.MODE_PRIVATE)!!
+        fun getDefaultSharedPreferences(context: Context) =
+            context.getSharedPreferences(
+                context.applicationInfo.packageName,
+                Context.MODE_PRIVATE
+            )!!
     }
 }

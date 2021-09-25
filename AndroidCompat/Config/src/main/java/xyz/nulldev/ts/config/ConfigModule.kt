@@ -20,7 +20,7 @@ abstract class ConfigModule(config: Config)
 /**
  * Abstract jvm-commandline-argument-overridable config module.
  */
-abstract class SystemPropertyOverridableConfigModule(config: Config, moduleName: String): ConfigModule(config) {
+abstract class SystemPropertyOverridableConfigModule(config: Config, moduleName: String) : ConfigModule(config) {
     val overridableConfig = SystemPropertyOverrideDelegate(config, moduleName)
 }
 
@@ -34,7 +34,7 @@ class SystemPropertyOverrideDelegate(val config: Config, val moduleName: String)
             configValue.toString()
         )
 
-        return when(T::class.simpleName) {
+        return when (T::class.simpleName) {
             "Int" -> combined.toInt()
             "Boolean" -> combined.toBoolean()
             // add more types as needed

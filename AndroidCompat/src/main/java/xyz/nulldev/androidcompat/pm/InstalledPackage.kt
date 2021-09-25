@@ -14,8 +14,6 @@ import java.io.File
 import javax.imageio.ImageIO
 import javax.xml.parsers.DocumentBuilderFactory
 
-
-
 data class InstalledPackage(val root: File) {
     val apk = File(root, "package.apk")
     val jar = File(root, "translated.jar")
@@ -40,20 +38,24 @@ data class InstalledPackage(val root: File) {
                 }?.filter {
                     it.tagName == "meta-data"
                 }?.map {
-                    putString(it.attributes.getNamedItem("android:name").nodeValue,
-                            it.attributes.getNamedItem("android:value").nodeValue)
+                    putString(
+                        it.attributes.getNamedItem("android:name").nodeValue,
+                        it.attributes.getNamedItem("android:value").nodeValue
+                    )
                 }
             }
 
-            it.signatures = (parsed.apkSingers.flatMap { it.certificateMetas }
-                    /*+ parsed.apkV2Singers.flatMap { it.certificateMetas }*/) // Blocked by: https://github.com/hsiafan/apk-parser/issues/72
-                    .map { Signature(it.data) }.toTypedArray()
+            it.signatures = (
+                parsed.apkSingers.flatMap { it.certificateMetas }
+                /*+ parsed.apkV2Singers.flatMap { it.certificateMetas }*/
+                ) // Blocked by: https://github.com/hsiafan/apk-parser/issues/72
+                .map { Signature(it.data) }.toTypedArray()
         }
 
     fun verify(): Boolean {
         val res = ApkVerifier.Builder(apk)
-                .build()
-                .verify()
+            .build()
+            .verify()
 
         return res.isVerified
     }
@@ -69,7 +71,7 @@ data class InstalledPackage(val root: File) {
             }.sortedByDescending { it.width * it.height }.firstOrNull() ?: return
 
             ImageIO.write(read, "png", icon)
-        } catch(e: Exception) {
+        } catch (e: Exception) {
             icon.delete()
         }
     }
@@ -77,7 +79,7 @@ data class InstalledPackage(val root: File) {
     fun writeJar() {
         try {
             Dex2jar.from(apk).to(jar.toPath())
-        } catch(e: Exception) {
+        } catch (e: Exception) {
             jar.delete()
         }
     }

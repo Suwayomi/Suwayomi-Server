@@ -29,7 +29,7 @@ class AndroidCompatModule {
 
         bind<PackageController>() with singleton { PackageController() }
 
-        //Context
+        // Context
         bind<CustomContext>() with singleton { CustomContext() }
         bind<Context>() with singleton {
             val context: Context by DI.global.instance<CustomContext>()

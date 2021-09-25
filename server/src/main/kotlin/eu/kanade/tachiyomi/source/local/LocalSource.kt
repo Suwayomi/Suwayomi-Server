@@ -440,7 +440,6 @@ class LocalSource : HttpSource() {
 private object FileSystemInterceptor : Interceptor {
     fun fakeUrlFrom(path: String): String = "http://$path"
 
-
     private fun restoreFilePath(url: String): String {
         val path = URLDecoder.decode(url.replaceFirst("http://", ""), "UTF-8")
 

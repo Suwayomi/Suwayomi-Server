@@ -14,7 +14,7 @@ class AndroidCompatInitializer {
     fun init() {
         DI.global.addImport(AndroidCompatModule().create())
 
-        //Register config modules
+        // Register config modules
         GlobalConfigManager.registerModules(
             FilesConfigModule.register(GlobalConfigManager.config),
             ApplicationInfoConfigModule.register(GlobalConfigManager.config),

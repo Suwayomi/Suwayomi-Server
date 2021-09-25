@@ -27,10 +27,10 @@ class ServiceSupport {
 
         runningServices[name] = service
 
-        //Setup service
+        // Setup service
         thread {
             callOnCreate(service)
-            //TODO Handle more complex cases
+            // TODO Handle more complex cases
             service.onStartCommand(intent, 0, 0)
         }
     }
@@ -43,7 +43,7 @@ class ServiceSupport {
     fun stopService(name: String) {
         logger.debug { "Stopping service: $name" }
         val service = runningServices.remove(name)
-        if(service == null) {
+        if (service == null) {
             logger.warn { "An attempt was made to stop a service that is not running: $name" }
         } else {
             thread {
@@ -63,6 +63,6 @@ class ServiceSupport {
     fun serviceInstanceFromClass(className: String): Service {
         val clazzObj = Class.forName(className)
         return clazzObj.getDeclaredConstructor().newInstance() as? Service
-                ?: throw IllegalArgumentException("$className is not a Service!")
+            ?: throw IllegalArgumentException("$className is not a Service!")
     }
 }

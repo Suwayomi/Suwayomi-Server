@@ -21,7 +21,7 @@ open class ConfigManager {
     private val generatedModules = mutableMapOf<Class<out ConfigModule>, ConfigModule>()
     val config by lazy { loadConfigs() }
 
-    //Public read-only view of modules
+    // Public read-only view of modules
     val loadedModules: Map<Class<out ConfigModule>, ConfigModule>
         get() = generatedModules
 
@@ -42,29 +42,28 @@ open class ConfigManager {
      * Load configs
      */
     fun loadConfigs(): Config {
-        //Load reference configs
+        // Load reference configs
         val compatConfig = ConfigFactory.parseResources("compat-reference.conf")
         val serverConfig = ConfigFactory.parseResources("server-reference.conf")
         val baseConfig =
-                ConfigFactory.parseMap(
-                        mapOf(
-                                "androidcompat.rootDir" to "$ApplicationRootDir/android-compat" // override AndroidCompat's rootDir
-                        )
+            ConfigFactory.parseMap(
+                mapOf(
+                    "androidcompat.rootDir" to "$ApplicationRootDir/android-compat" // override AndroidCompat's rootDir
                 )
+            )
 
-        //Load user config
+        // Load user config
         val userConfig =
-                File(ApplicationRootDir, "server.conf").let {
-                    ConfigFactory.parseFile(it)
-                }
-
+            File(ApplicationRootDir, "server.conf").let {
+                ConfigFactory.parseFile(it)
+            }
 
         val config = ConfigFactory.empty()
-                .withFallback(baseConfig)
-                .withFallback(userConfig)
-                .withFallback(compatConfig)
-                .withFallback(serverConfig)
-                .resolve()
+            .withFallback(baseConfig)
+            .withFallback(userConfig)
+            .withFallback(compatConfig)
+            .withFallback(serverConfig)
+            .resolve()
 
         // set log level early
         if (debugLogsEnabled(config)) {
