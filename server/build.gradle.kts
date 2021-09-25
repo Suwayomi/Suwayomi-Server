@@ -1,11 +1,10 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import de.undercouch.gradle.tasks.download.Download
 import java.time.Instant
 
 plugins {
     application
     id("com.github.johnrengelman.shadow") version "7.0.0"
-    id("com.github.gmazzo.buildconfig") version "3.0.3"
+    id("com.github.gmazzo.buildconfig")
 }
 
 dependencies {
@@ -127,18 +126,11 @@ tasks {
         archiveBaseName.set(rootProject.name)
         archiveVersion.set(tachideskVersion)
         archiveClassifier.set(tachideskRevision)
+        destinationDirectory.set(File("$rootDir/server/build"))
     }
 
     test {
         useJUnit()
-    }
-
-    withType<ShadowJar> {
-        destinationDirectory.set(File("$rootDir/server/build"))
-    }
-
-    named("run") {
-        dependsOn(":formatKotlin", ":lintKotlin")
     }
 
     named<Copy>("processResources") {

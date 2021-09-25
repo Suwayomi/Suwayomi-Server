@@ -6,6 +6,7 @@ plugins {
     kotlin("jvm") version kotlinVersion
     kotlin("plugin.serialization") version kotlinVersion
     id("org.jmailen.kotlinter") version "3.6.0"
+    id("com.github.gmazzo.buildconfig") version "3.0.3" apply false
 }
 
 allprojects {
@@ -29,6 +30,7 @@ val projects = listOf(
 configure(projects) {
     apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "org.jetbrains.kotlin.plugin.serialization")
+    apply(plugin = "org.jmailen.kotlinter")
 
     java {
         sourceCompatibility = JavaVersion.VERSION_1_8
@@ -37,6 +39,7 @@ configure(projects) {
 
     tasks {
         withType<KotlinCompile> {
+            dependsOn(formatKotlin)
             kotlinOptions {
                 jvmTarget = JavaVersion.VERSION_1_8.toString()
                 freeCompilerArgs = listOf(
