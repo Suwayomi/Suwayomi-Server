@@ -5,7 +5,7 @@ import java.time.Instant
 plugins {
     application
     id("com.github.johnrengelman.shadow") version "7.0.0"
-    id("com.github.gmazzo.buildconfig") version "3.0.3"
+    id("com.github.gmazzo.buildconfig")
 }
 
 dependencies {

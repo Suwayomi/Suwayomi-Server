@@ -6,6 +6,7 @@ plugins {
     kotlin("jvm") version kotlinVersion
     kotlin("plugin.serialization") version kotlinVersion
     id("org.jmailen.kotlinter") version "3.6.0"
+    id("com.github.gmazzo.buildconfig") version "3.0.3" apply false
 }
 
 allprojects {
