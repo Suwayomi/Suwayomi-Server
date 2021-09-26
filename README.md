@@ -3,16 +3,7 @@
 |-------|----------|---------|---------|
 | ![CI](https://github.com/Suwayomi/Tachidesk/actions/workflows/build_push.yml/badge.svg) | [![stable release](https://img.shields.io/github/release/Suwayomi/Tachidesk.svg?maxAge=3600&label=download)](https://github.com/Suwayomi/Tachidesk/releases) | [![preview](https://img.shields.io/badge/dynamic/json?url=https://github.com/Suwayomi/Tachidesk-preview/raw/main/index.json&label=download&query=$.latest&color=blue)](https://github.com/Suwayomi/Tachidesk-preview/releases/latest) | [![Discord](https://img.shields.io/discord/801021177333940224.svg?label=discord&labelColor=7289da&color=2c2f33&style=flat)](https://discord.gg/DDZdqZWaHA) |
 
-# Tachidesk-Server is a server app! You may not want to Download Tachidesk-Server directly.
-Yes, you need a client/user interface app as a front-end for Tachidesk-Server, if you Directly Download Tachidesk-Server you'll get a bundled version of [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI) with it.
-
-Here's a list of known clients/user interfaces for Tachidesk-Server:
-- [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): The "official" front-end for Tachidesk-Server, A native desktop Application.
-- [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI): The web/electrion front-end that Tachidesk-Server is traditionally shipped with.
-- [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): A C++/Qt front-end for mobile devices(Android/linux), in super early stage of development.
-- [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js, in super early stage of development.
-
-# What is Tachidesk then?
+# What is Tachidesk?
 <img src="https://github.com/Suwayomi/Tachidesk/raw/master/server/src/main/resources/icon/faviconlogo.png" alt="drawing" width="200"/>
 
 A free and open source manga reader server that runs extensions built for [Tachiyomi](https://tachiyomi.org/). 
@@ -22,6 +13,15 @@ Tachidesk is an independent Tachiyomi compatible software and is **not a Fork of
 Tachidesk-Server is as multi-platform as you can get. Any platform that runs java and/or has a modern browser can run it. This includes Windows, Linux, macOS, chrome OS, etc. Follow [Downloading and Running the app](#downloading-and-running-the-app) for installation instructions.
 
 Ability to read and write Tachiyomi compatible backups and syncing is a planned feature.
+
+# Tachidesk-Server is a server app! You may not want to Download Tachidesk-Server directly.
+Yes, you need a client/user interface app as a front-end for Tachidesk-Server, if you Directly Download Tachidesk-Server you'll get a bundled version of [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI) with it.
+
+Here's a list of known clients/user interfaces for Tachidesk-Server:
+- [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): The "official" front-end for Tachidesk-Server, A native desktop Application.
+- [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI): The web/electrion front-end that Tachidesk-Server is traditionally shipped with.
+- [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): A C++/Qt front-end for mobile devices(Android/linux), in super early stage of development.
+- [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js, in super early stage of development.
 
 ## Is this application usable? Should I test it?
 Here is a list of current features:
