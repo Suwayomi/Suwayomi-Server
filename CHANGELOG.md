@@ -1,4 +1,4 @@
-# Server: v0.5.2 + WebUI: r809
+# Server: v0.5.3 + WebUI: r809
 - added support for a equivalent page to Tachiyomi's Updates tab
 - fix launchers not working on macOS M1/arm64
 
