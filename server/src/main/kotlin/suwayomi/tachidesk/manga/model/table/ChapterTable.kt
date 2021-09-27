@@ -26,7 +26,6 @@ object ChapterTable : IntIdTable() {
     val lastPageRead = integer("last_page_read").default(0)
     val lastReadAt = long("last_read_at").default(0)
 
-    // index is reserved by a function
     val sourceOrder = integer("source_order")
 
     val isDownloaded = bool("is_downloaded").default(false)
