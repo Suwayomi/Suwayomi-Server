@@ -11,7 +11,7 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
 import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.SortOrder.DESC
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
@@ -41,7 +41,7 @@ object Chapter {
             getSourceChapters(mangaId)
         } else {
             transaction {
-                ChapterTable.select { ChapterTable.manga eq mangaId }.orderBy(ChapterTable.sourceOrder to DESC)
+                ChapterTable.select { ChapterTable.manga eq mangaId }.orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
                     .map {
                         ChapterTable.toDataClass(it)
                     }
@@ -322,18 +322,15 @@ object Chapter {
 
     fun getRecentChapters(): List<MangaChapterDataClass> {
         return transaction {
-            val x = (ChapterTable innerJoin MangaTable)
-//                .selectAll()
+            (ChapterTable innerJoin MangaTable)
                 .select { (MangaTable.inLibrary eq true) and (ChapterTable.fetchedAt greater MangaTable.inLibraryAt) }
-
-            println(x.count())
-
-            x.map {
-                MangaChapterDataClass(
-                    MangaTable.toDataClass(it),
-                    ChapterTable.toDataClass(it)
-                )
-            }
+                .orderBy(ChapterTable.fetchedAt to SortOrder.DESC)
+                .map {
+                    MangaChapterDataClass(
+                        MangaTable.toDataClass(it),
+                        ChapterTable.toDataClass(it)
+                    )
+                }
         }
     }
 }
