@@ -46,7 +46,7 @@ object Page {
         val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
         val chapterEntry = transaction {
             ChapterTable.select {
-                (ChapterTable.chapterIndex eq chapterIndex) and (ChapterTable.manga eq mangaId)
+                (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId)
             }.first()
         }
         val chapterId = chapterEntry[ChapterTable.id].value

@@ -77,7 +77,7 @@ object DownloadManager {
                     mangaId,
                     chapter = ChapterTable.toDataClass(
                         transaction {
-                            ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex eq chapterIndex) }
+                            ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }
                                 .first()
                         }
                     )

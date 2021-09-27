@@ -40,7 +40,7 @@ object Chapter {
             getSourceChapters(mangaId)
         } else {
             transaction {
-                ChapterTable.select { ChapterTable.manga eq mangaId }.orderBy(ChapterTable.chapterIndex to DESC)
+                ChapterTable.select { ChapterTable.manga eq mangaId }.orderBy(ChapterTable.sourceOrder to DESC)
                     .map {
                         ChapterTable.toDataClass(it)
                     }
@@ -80,7 +80,7 @@ object Chapter {
                         it[chapter_number] = fetchedChapter.chapter_number
                         it[scanlator] = fetchedChapter.scanlator
 
-                        it[chapterIndex] = index + 1
+                        it[sourceOrder] = index + 1
                         it[ChapterTable.manga] = mangaId
                     }
                 } else {
@@ -90,7 +90,7 @@ object Chapter {
                         it[chapter_number] = fetchedChapter.chapter_number
                         it[scanlator] = fetchedChapter.scanlator
 
-                        it[chapterIndex] = index + 1
+                        it[sourceOrder] = index + 1
                         it[ChapterTable.manga] = mangaId
                     }
                 }
@@ -103,8 +103,8 @@ object Chapter {
             val dbChapterList = transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.toList() }
 
             dbChapterList.forEach {
-                if (it[ChapterTable.chapterIndex] >= chapterList.size ||
-                    chapterList[it[ChapterTable.chapterIndex] - 1].url != it[ChapterTable.url]
+                if (it[ChapterTable.sourceOrder] >= chapterList.size ||
+                    chapterList[it[ChapterTable.sourceOrder] - 1].url != it[ChapterTable.url]
                 ) {
                     transaction {
                         PageTable.deleteWhere { PageTable.chapter eq it[ChapterTable.id] }
@@ -151,7 +151,7 @@ object Chapter {
     suspend fun getChapter(chapterIndex: Int, mangaId: Int): ChapterDataClass {
         val chapterEntry = transaction {
             ChapterTable.select {
-                (ChapterTable.chapterIndex eq chapterIndex) and (ChapterTable.manga eq mangaId)
+                (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId)
             }.first()
         }
 
@@ -159,7 +159,7 @@ object Chapter {
             chapterEntry[ChapterTable.isDownloaded] && firstPageExists(mangaId, chapterEntry[ChapterTable.id].value)
         return if (!isReallyDownloaded) {
             transaction {
-                ChapterTable.update({ (ChapterTable.chapterIndex eq chapterIndex) and (ChapterTable.manga eq mangaId) }) {
+                ChapterTable.update({ (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId) }) {
                     it[isDownloaded] = false
                 }
             }
@@ -203,7 +203,7 @@ object Chapter {
             val pageCount = pageList.count()
 
             transaction {
-                ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex eq chapterIndex) }) {
+                ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }) {
                     it[ChapterTable.pageCount] = pageCount
                 }
             }
@@ -219,7 +219,7 @@ object Chapter {
                 chapterEntry[ChapterTable.lastPageRead],
                 chapterEntry[ChapterTable.lastReadAt],
 
-                chapterEntry[ChapterTable.chapterIndex],
+                chapterEntry[ChapterTable.sourceOrder],
                 chapterEntry[ChapterTable.isDownloaded],
                 pageCount,
                 chapterCount.toInt(),
@@ -249,7 +249,7 @@ object Chapter {
     ) {
         transaction {
             if (listOf(isRead, isBookmarked, lastPageRead).any { it != null }) {
-                ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex eq chapterIndex) }) { update ->
+                ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }) { update ->
                     isRead?.also {
                         update[ChapterTable.isRead] = it
                     }
@@ -264,7 +264,7 @@ object Chapter {
             }
 
             markPrevRead?.let {
-                ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex less chapterIndex) }) {
+                ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder less chapterIndex) }) {
                     it[ChapterTable.isRead] = markPrevRead
                 }
             }
@@ -281,7 +281,7 @@ object Chapter {
     fun modifyChapterMeta(mangaId: Int, chapterIndex: Int, key: String, value: String) {
         transaction {
             val chapterId =
-                ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex eq chapterIndex) }
+                ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }
                     .first()[ChapterTable.id].value
             val meta =
                 transaction { ChapterMetaTable.select { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) } }.firstOrNull()
@@ -302,14 +302,14 @@ object Chapter {
     fun deleteChapter(mangaId: Int, chapterIndex: Int) {
         transaction {
             val chapterId =
-                ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex eq chapterIndex) }
+                ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }
                     .first()[ChapterTable.id].value
 
             val chapterDir = getChapterDir(mangaId, chapterId)
 
             File(chapterDir).deleteRecursively()
 
-            ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.chapterIndex eq chapterIndex) }) {
+            ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }) {
                 it[isDownloaded] = false
             }
         }

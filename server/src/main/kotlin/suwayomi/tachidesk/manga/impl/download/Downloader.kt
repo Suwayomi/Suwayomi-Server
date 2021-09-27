@@ -61,7 +61,7 @@ class Downloader(private val downloadQueue: CopyOnWriteArrayList<DownloadChapter
                 }
                 download.state = Finished
                 transaction {
-                    ChapterTable.update({ (ChapterTable.manga eq download.mangaId) and (ChapterTable.chapterIndex eq download.chapterIndex) }) {
+                    ChapterTable.update({ (ChapterTable.manga eq download.mangaId) and (ChapterTable.sourceOrder eq download.chapterIndex) }) {
                         it[isDownloaded] = true
                     }
                 }

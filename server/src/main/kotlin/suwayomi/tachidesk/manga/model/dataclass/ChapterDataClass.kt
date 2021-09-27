@@ -27,6 +27,7 @@ data class ChapterDataClass(
     /** last read page, zero means not read/no data */
     val lastReadAt: Long,
 
+    // TODO(v0.6.0): rename to sourceOrder
     /** this chapter's index, starts with 1 */
     val index: Int,
 

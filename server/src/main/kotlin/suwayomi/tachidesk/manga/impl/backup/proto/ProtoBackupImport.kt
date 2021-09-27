@@ -160,7 +160,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                         it[chapter_number] = chapter.chapter_number
                         it[scanlator] = chapter.scanlator
 
-                        it[chapterIndex] = chaptersLength - chapter.source_order
+                        it[sourceOrder] = chaptersLength - chapter.source_order
                         it[ChapterTable.manga] = mangaId
 
                         it[isRead] = chapter.read
@@ -207,7 +207,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                             it[chapter_number] = chapter.chapter_number
                             it[scanlator] = chapter.scanlator
 
-                            it[chapterIndex] = chaptersLength - chapter.source_order
+                            it[sourceOrder] = chaptersLength - chapter.source_order
                             it[ChapterTable.manga] = mangaId
 
                             it[isRead] = chapter.read
