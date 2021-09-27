@@ -25,6 +25,7 @@ object ChapterTable : IntIdTable() {
     val isBookmarked = bool("bookmark").default(false)
     val lastPageRead = integer("last_page_read").default(0)
     val lastReadAt = long("last_read_at").default(0)
+    val fetchedAt = long("fetched_at").default(0)
 
     val sourceOrder = integer("source_order")
 
@@ -48,6 +49,7 @@ fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
         chapterEntry[lastPageRead],
         chapterEntry[lastReadAt],
         chapterEntry[sourceOrder],
+        chapterEntry[fetchedAt],
         chapterEntry[isDownloaded],
         chapterEntry[pageCount],
         transaction { ChapterTable.select { manga eq chapterEntry[manga].value }.count().toInt() },

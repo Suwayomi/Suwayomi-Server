@@ -26,6 +26,7 @@ data class MangaDataClass(
     val genre: List<String> = emptyList(),
     val status: String = MangaStatus.UNKNOWN.name,
     val inLibrary: Boolean = false,
+    val inLibraryAt: Long = 0,
     val source: SourceDataClass? = null,
 
     /** meta data for clients */

@@ -25,6 +25,7 @@ import suwayomi.tachidesk.manga.impl.util.getChapterDir
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
+import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -68,6 +69,7 @@ object Chapter {
         }
 
         val chapterCount = chapterList.count()
+        var now = Instant.now().epochSecond
 
         transaction {
             chapterList.reversed().forEachIndexed { index, fetchedChapter ->
@@ -81,6 +83,7 @@ object Chapter {
                         it[scanlator] = fetchedChapter.scanlator
 
                         it[sourceOrder] = index + 1
+                        it[fetchedAt] = now++
                         it[ChapterTable.manga] = mangaId
                     }
                 } else {
@@ -137,6 +140,7 @@ object Chapter {
                 dbChapter[ChapterTable.lastReadAt],
 
                 chapterCount - index,
+                dbChapter[ChapterTable.fetchedAt],
                 dbChapter[ChapterTable.isDownloaded],
 
                 dbChapter[ChapterTable.pageCount],
@@ -220,6 +224,7 @@ object Chapter {
                 chapterEntry[ChapterTable.lastReadAt],
 
                 chapterEntry[ChapterTable.sourceOrder],
+                chapterEntry[ChapterTable.fetchedAt],
                 chapterEntry[ChapterTable.isDownloaded],
                 pageCount,
                 chapterCount.toInt(),
@@ -311,6 +316,23 @@ object Chapter {
 
             ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }) {
                 it[isDownloaded] = false
+            }
+        }
+    }
+
+    fun getRecentChapters(): List<MangaChapterDataClass> {
+        return transaction {
+            val x = (ChapterTable innerJoin MangaTable)
+//                .selectAll()
+                .select { (MangaTable.inLibrary eq true) and (ChapterTable.fetchedAt greater MangaTable.inLibraryAt) }
+
+            println(x.count())
+
+            x.map {
+                MangaChapterDataClass(
+                    MangaTable.toDataClass(it),
+                    ChapterTable.toDataClass(it)
+                )
             }
         }
     }

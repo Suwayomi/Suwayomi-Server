@@ -19,6 +19,7 @@ import suwayomi.tachidesk.manga.controller.DownloadController
 import suwayomi.tachidesk.manga.controller.ExtensionController
 import suwayomi.tachidesk.manga.controller.MangaController
 import suwayomi.tachidesk.manga.controller.SourceController
+import suwayomi.tachidesk.manga.controller.UpdateController
 
 object MangaAPI {
     fun defineEndpoints() {
@@ -105,6 +106,10 @@ object MangaAPI {
         path("download") {
             get("{mangaId}/chapter/{chapterIndex}", DownloadController::queueChapter)
             delete("{mangaId}/chapter/{chapterIndex}", DownloadController::unqueueChapter)
+        }
+
+        path("update") {
+            get("recentChapters", UpdateController::recentChapters)
         }
     }
 }

@@ -31,6 +31,9 @@ data class ChapterDataClass(
     /** this chapter's index, starts with 1 */
     val index: Int,
 
+    /** the date we fist saw this chapter*/
+    val fetchedAt: Long,
+
     /** is chapter downloaded */
     val downloaded: Boolean,
 

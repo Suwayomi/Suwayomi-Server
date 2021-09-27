@@ -81,6 +81,7 @@ object MangaList {
                         manga.genre.toGenreList(),
                         MangaStatus.valueOf(manga.status).name,
                         false, // It's a new manga entry
+                        0,
                         meta = getMangaMetaMap(mangaId),
                         realUrl = mangaEntry[MangaTable.realUrl],
                         freshData = true
@@ -103,6 +104,7 @@ object MangaList {
                         mangaEntry[MangaTable.genre].toGenreList(),
                         MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
                         mangaEntry[MangaTable.inLibrary],
+                        mangaEntry[MangaTable.inLibraryAt],
                         meta = getMangaMetaMap(mangaId),
                         realUrl = mangaEntry[MangaTable.realUrl],
                         freshData = false

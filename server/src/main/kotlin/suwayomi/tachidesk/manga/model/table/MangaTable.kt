@@ -31,6 +31,7 @@ object MangaTable : IntIdTable() {
 
     val inLibrary = bool("in_library").default(false)
     val defaultCategory = bool("default_category").default(true)
+    val inLibraryAt = long("in_library_at").default(0)
 
     // the [source] field name is used by some ancestor of IntIdTable
     val sourceReference = long("source")
@@ -56,6 +57,7 @@ fun MangaTable.toDataClass(mangaEntry: ResultRow) =
         mangaEntry[genre].toGenreList(),
         Companion.valueOf(mangaEntry[status]).name,
         mangaEntry[inLibrary],
+        mangaEntry[inLibraryAt],
         meta = getMangaMetaMap(mangaEntry[id].value),
         realUrl = mangaEntry[realUrl],
     )

@@ -69,6 +69,7 @@ dependencies {
 
     // uncomment to test extensions directly
 //    implementation(fileTree("lib/"))
+    implementation(kotlin("script-runtime"))
 }
 
 application {

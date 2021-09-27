@@ -16,6 +16,7 @@ import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import java.time.Instant
 
 object Library {
     suspend fun addMangaToLibrary(mangaId: Int) {
@@ -25,8 +26,9 @@ object Library {
                 val defaultCategories = CategoryTable.select { CategoryTable.isDefault eq true }.toList()
 
                 MangaTable.update({ MangaTable.id eq manga.id }) {
-                    it[MangaTable.inLibrary] = true
-                    it[MangaTable.defaultCategory] = defaultCategories.isEmpty()
+                    it[inLibrary] = true
+                    it[inLibraryAt] = Instant.now().epochSecond
+                    it[defaultCategory] = defaultCategories.isEmpty()
                 }
 
                 defaultCategories.forEach { category ->
