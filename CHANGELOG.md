@@ -1,31 +1,16 @@
-# Server: v0.5.2-r951 + WebUI: r807
+# Server: v0.5.2-r964 + WebUI: r809
 ## TL;DR
 <!-- TODO: fill before release -->
 
-## Tachidesk-Server
-### Public API
-#### Non-breaking changes
-- N/A
-
-#### Breaking changes
-- N/A
-
-#### Bug fixes
-- N/A
-
-### Private API
-- N/A
+## Tachidesk-Server Changelog
+- (r956) fix macOS-arm64 bundle launchers not working
+- (r957) Workaround StdLib issue and add KtLint to all modules ([#206](https://github.com/Suwayomi/Tachidesk-Server/pull/206) by @Syer10)
+- (r960-r963) Add recently updated chapters(Updates) endpoint
 
 
-## Tachidesk-WebUI
-#### Visible changes
-- N/A
-
-#### Bug fixes
-- N/A
-
-#### Internal changes
-- N/A
+## Tachidesk-WebUI Changelog
+- (r808) fix chapter list not calling onlineFetch=true
+- (r809) add support for Updates
 
 
 

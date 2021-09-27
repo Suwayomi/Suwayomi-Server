@@ -2,27 +2,9 @@
 ## TL;DR
 <!-- TODO: fill before release -->
 
-## Tachidesk-Server
-### Public API
-#### Non-breaking changes
-- N/A
-
-#### Breaking changes
-- N/A
-
-#### Bug fixes
-- N/A
-
-### Private API
+## Tachidesk-Server Changelog
 - N/A
 
 
-## Tachidesk-WebUI
-#### Visible changes
-- N/A
-
-#### Bug fixes
-- N/A
-
-#### Internal changes
+## Tachidesk-WebUI Changelog
 - N/A
