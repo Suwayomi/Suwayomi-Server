@@ -1,4 +1,4 @@
-# Server: v0.5.2-r964 + WebUI: r809
+# Server: v0.5.3 + WebUI: r809
 ## TL;DR
 <!-- TODO: fill before release -->
 
