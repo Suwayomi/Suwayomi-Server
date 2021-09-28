@@ -1,6 +1,6 @@
 # Server: v0.5.3 + WebUI: r809
-## TL;DR
-<!-- TODO: fill before release -->
+- added support for a equivalent page to Tachiyomi's Updates tab
+- fix launchers not working on macOS M1/arm64
 
 ## Tachidesk-Server Changelog
 - (r956) fix macOS-arm64 bundle launchers not working
