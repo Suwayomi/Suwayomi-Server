@@ -1,6 +1,6 @@
 dependencies {
     // Android stub library
-    implementation(fileTree("lib/"))
+    implementation("com.github.Suwayomi:android-jar:1.0.0")
 
     // XML
     compileOnly("xmlpull:xmlpull:1.1.3.4a")
