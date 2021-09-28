@@ -40,9 +40,6 @@ Here is a list of current features:
 
 **Note:** These are capabilities of Tachidesk-Server, the actual working support is provided by each front-end app, checkout their respective readme for more info.
 
-**Note:** “THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.” You are warned. 
-
-
 # Downloading and Running the app
 ## General Requirements
 In order to use the app effectively you need the following:
