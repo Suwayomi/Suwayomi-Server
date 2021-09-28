@@ -47,11 +47,6 @@ jobs:
           mkdir -p ~/.gradle
           cp .github/runner-files/ci-gradle.properties ~/.gradle/gradle.properties
 
-      - name: Download android.jar
-        run: |
-          cd master
-          curl https://raw.githubusercontent.com/Suwayomi/Tachidesk/android-jar/android.jar -o AndroidCompat/lib/android.jar
-
       - name: Build Jar
         uses: eskatos/gradle-command-action@v1
         env:
@@ -63,12 +58,6 @@ jobs:
           wrapper-cache-enabled: true
           dependencies-cache-enabled: true
           configuration-cache-enabled: true
-
-#      - name: Mock Build and copy webUI, Build Jar
-#        run: |
-#          mkdir -p master/server/build
-#          cd master/server/build
-#          echo "test" > Tachidesk-v0.3.8-r583.jar
 
       - name: Generate Tag Name
         id: GenTagName
@@ -86,11 +75,6 @@ jobs:
           ./unix-bundler.sh linux-x64
           ./unix-bundler.sh macOS-x64
           ./unix-bundler.sh macOS-arm64
-
-#      - name: Mock make windows packages
-#        run: |
-#           cd master/server/build
-#           echo test > Tachidesk-v0.3.8-r580-win32.zip
 
       - name: Checkout preview branch
         uses: actions/checkout@v2

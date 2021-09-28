@@ -46,11 +46,6 @@ jobs:
           mkdir -p ~/.gradle
           cp .github/runner-files/ci-gradle.properties ~/.gradle/gradle.properties
 
-      - name: Download android.jar
-        run: |
-          cd master
-          curl https://raw.githubusercontent.com/Suwayomi/Tachidesk/android-jar/android.jar -o AndroidCompat/lib/android.jar
-
       - name: Build and copy webUI, Build Jar
         uses: eskatos/gradle-command-action@v1
         env:
