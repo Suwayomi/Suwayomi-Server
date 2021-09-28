@@ -18,8 +18,8 @@ Ability to read and write Tachiyomi compatible backups and syncing is a planned 
 Yes, you need a client/user interface app as a front-end for Tachidesk-Server, if you Directly Download Tachidesk-Server you'll get a bundled version of [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI) with it.
 
 Here's a list of known clients/user interfaces for Tachidesk-Server:
-- [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): The "official" front-end for Tachidesk-Server, A native desktop Application.
-- [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI): The web/electrion front-end that Tachidesk-Server is traditionally shipped with.
+- [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): The "official" native desktop front-end for Tachidesk-Server. Currently the most advanced.
+- [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI): The web/ElectronJS front-end that Tachidesk-Server is traditionally shipped with. Usually gets new features faster.
 - [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): A C++/Qt front-end for mobile devices(Android/linux), in super early stage of development.
 - [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js, in super early stage of development.
 
@@ -32,6 +32,7 @@ Here is a list of current features:
     - Searching and browsing installed sources
     - Ability to download Manga for offline read
     - Backup and restore support powered by Tachiyomi Backups
+    - Viewing latest updated chapters.
 - From Aniyomi
     - Installing and executing Aniyomi's Extensions
     - Searching and browsing installed sources.
@@ -40,6 +41,8 @@ Here is a list of current features:
 **Note:** These are capabilities of Tachidesk-Server, the actual working support is provided by each front-end app, checkout their respective readme for more info.
 
 **Note:** Tachidesk-Server is alpha software and can break rarely and/or with each update. See [Troubleshooting](https://github.com/Suwayomi/Tachidesk-Server/wiki/Troubleshooting) if it happens.
+
+**Note:** “THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.”
 
 # Downloading and Running the app
 ## General Requirements
