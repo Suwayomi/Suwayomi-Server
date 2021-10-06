@@ -1,4 +1,17 @@
+# Server: v0.5.3-966 + WebUI: r809
+## TL;DR
+- N/A
+
+## Tachidesk-Server Changelog
+- N/A
+
+## Tachidesk-WebUI Changelog
+- N/A
+
+
+
 # Server: v0.5.3 + WebUI: r809
+## TL;DR
 - added support for a equivalent page to Tachiyomi's Updates tab
 - fix launchers not working on macOS M1/arm64
 
