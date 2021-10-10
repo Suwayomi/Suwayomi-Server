@@ -74,12 +74,6 @@ dependencies {
 
 application {
     mainClass.set(MainClass)
-
-    // uncomment for testing electron
-//    applicationDefaultJvmArgs = listOf(
-//            "-Dsuwayomi.tachidesk.config.server.webUIInterface=electron",
-//            "-Dsuwayomi.tachidesk.config.server.electronPath=/usr/bin/electron"
-//    )
 }
 
 sourceSets {
@@ -163,5 +157,17 @@ tasks {
         }
 
         overwrite(shouldOverwrite())
+    }
+
+    register("runElectron") {
+        group = "application"
+        finalizedBy(run)
+        doFirst {
+            application.applicationDefaultJvmArgs = listOf(
+                "-Dsuwayomi.tachidesk.config.server.webUIInterface=electron",
+                // Change this to the installed electron application
+                "-Dsuwayomi.tachidesk.config.server.electronPath=/usr/bin/electron"
+            )
+        }
     }
 }
