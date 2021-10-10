@@ -1,4 +1,4 @@
-# Server: v0.5.3-980 + WebUI: r810
+# Server: v0.5.3-next + WebUI: r810
 ## TL;DR
 - N/A
 
@@ -6,6 +6,7 @@
 - (r973) convert android.jar lib to a maven repo
 - (r978) mimic Tachiyomi's behaviour more closely, fixes ReadComicOnline (EN)
 - (r980) fix export chapter ordering, include new props in backup
+- (r982) remove isNsfw annotation detection
 
 
 ## Tachidesk-WebUI Changelog

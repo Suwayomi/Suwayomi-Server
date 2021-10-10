@@ -1,4 +1,4 @@
-# Server: v0.X.Y-rXXX + WebUI: rXXX
+# Server: v0.X.Y-next + WebUI: rXXX
 ## TL;DR
 <!-- TODO: fill before release -->
 
