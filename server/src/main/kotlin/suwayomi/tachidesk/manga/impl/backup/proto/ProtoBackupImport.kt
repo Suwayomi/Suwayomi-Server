@@ -34,6 +34,7 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.io.InputStream
 import java.lang.Integer.max
 import java.util.Date
+import java.util.concurrent.TimeUnit
 
 object ProtoBackupImport : ProtoBackupBase() {
     private val logger = KotlinLogging.logger {}
@@ -149,7 +150,7 @@ object ProtoBackupImport : ProtoBackupBase() {
 
                     it[inLibrary] = manga.favorite
 
-                    it[inLibraryAt] = manga.date_added
+                    it[inLibraryAt] = TimeUnit.MILLISECONDS.toSeconds(manga.date_added)
                 }.value
 
                 // insert chapter data
@@ -169,7 +170,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                         it[lastPageRead] = chapter.last_page_read
                         it[isBookmarked] = chapter.bookmark
 
-                        it[fetchedAt] = chapter.date_fetch
+                        it[fetchedAt] = TimeUnit.MILLISECONDS.toSeconds(chapter.date_fetch)
                     }
                 }
 
@@ -194,6 +195,8 @@ object ProtoBackupImport : ProtoBackupBase() {
                     it[initialized] = dbManga[initialized] || manga.description != null
 
                     it[inLibrary] = manga.favorite || dbManga[inLibrary]
+
+                    it[inLibraryAt] = TimeUnit.MILLISECONDS.toSeconds(manga.date_added)
                 }
 
                 // merge chapter data

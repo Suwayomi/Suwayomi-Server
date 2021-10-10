@@ -32,6 +32,7 @@ import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import java.util.concurrent.TimeUnit
 
 object ProtoBackupExport : ProtoBackupBase() {
     suspend fun createBackup(flags: BackupFlags): InputStream {
@@ -68,7 +69,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                 mangaRow[MangaTable.genre]?.split(", ") ?: emptyList(),
                 MangaStatus.valueOf(mangaRow[MangaTable.status]).value,
                 mangaRow[MangaTable.thumbnail_url],
-                mangaRow[MangaTable.inLibraryAt],
+                TimeUnit.SECONDS.toMillis(mangaRow[MangaTable.inLibraryAt]),
                 0, // not supported in Tachidesk
             )
 
@@ -84,7 +85,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                         it.read,
                         it.bookmarked,
                         it.lastPageRead,
-                        it.fetchedAt,
+                        TimeUnit.SECONDS.toMillis(it.fetchedAt),
                         it.uploadDate,
                         it.chapterNumber,
                         chapters.size - it.index,
