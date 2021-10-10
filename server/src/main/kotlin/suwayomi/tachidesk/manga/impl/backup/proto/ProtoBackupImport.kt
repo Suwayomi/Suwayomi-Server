@@ -148,6 +148,8 @@ object ProtoBackupImport : ProtoBackupBase() {
                     it[initialized] = manga.description != null
 
                     it[inLibrary] = manga.favorite
+
+                    it[inLibraryAt] = manga.date_added
                 }.value
 
                 // insert chapter data
@@ -166,6 +168,8 @@ object ProtoBackupImport : ProtoBackupBase() {
                         it[isRead] = chapter.read
                         it[lastPageRead] = chapter.last_page_read
                         it[isBookmarked] = chapter.bookmark
+
+                        it[fetchedAt] = chapter.date_fetch
                     }
                 }
 

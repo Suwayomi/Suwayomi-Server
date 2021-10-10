@@ -68,7 +68,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                 mangaRow[MangaTable.genre]?.split(", ") ?: emptyList(),
                 MangaStatus.valueOf(mangaRow[MangaTable.status]).value,
                 mangaRow[MangaTable.thumbnail_url],
-                0, // not supported in Tachidesk
+                mangaRow[MangaTable.inLibraryAt],
                 0, // not supported in Tachidesk
             )
 
@@ -84,10 +84,10 @@ object ProtoBackupExport : ProtoBackupBase() {
                         it.read,
                         it.bookmarked,
                         it.lastPageRead,
-                        0, // not supported in Tachidesk
+                        it.fetchedAt,
                         it.uploadDate,
                         it.chapterNumber,
-                        it.index,
+                        chapters.size - it.index,
                     )
                 }
             }
