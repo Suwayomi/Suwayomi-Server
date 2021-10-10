@@ -7,6 +7,10 @@
 - (r978) mimic Tachiyomi's behaviour more closely, fixes ReadComicOnline (EN)
 - (r980) fix export chapter ordering, include new props in backup
 - (r982) remove isNsfw annotation detection
+- (r984) use correct time conversion units when doing backups
+- (r989) Support using a CatalogueSource instead of only HttpSources ([#219](https://github.com/Suwayomi/Tachidesk-Server/pull/219) by @Syer10)
+- (r991) Use a custom task to run electron ([#220](https://github.com/Suwayomi/Tachidesk-Server/pull/220) by @Syer10)
+
 
 
 ## Tachidesk-WebUI Changelog
