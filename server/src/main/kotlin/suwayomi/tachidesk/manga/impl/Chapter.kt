@@ -9,6 +9,7 @@ package suwayomi.tachidesk.manga.impl
 
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SortOrder
@@ -20,7 +21,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.Page.getPageName
-import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
+import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.getChapterDir
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
@@ -53,7 +54,7 @@ object Chapter {
 
     private suspend fun getSourceChapters(mangaId: Int): List<ChapterDataClass> {
         val manga = getManga(mangaId)
-        val source = getHttpSource(manga.sourceId.toLong())
+        val source = getCatalogueSourceOrStub(manga.sourceId.toLong())
 
         val sManga = SManga.create().apply {
             title = manga.title
@@ -64,7 +65,7 @@ object Chapter {
 
         // Recognize number for new chapters.
         chapterList.forEach {
-            source.prepareNewChapter(it, sManga)
+            (source as? HttpSource)?.prepareNewChapter(it, sManga)
             ChapterRecognition.parseChapterNumber(it, sManga)
         }
 
@@ -169,7 +170,7 @@ object Chapter {
             }
 
             val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
-            val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
+            val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
             val pageList = source.fetchPageList(
                 SChapter.create().apply {

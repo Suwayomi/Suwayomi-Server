@@ -13,7 +13,7 @@ import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Manga.getMangaMetaMap
-import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
+import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
@@ -27,14 +27,15 @@ object MangaList {
     }
 
     suspend fun getMangaList(sourceId: Long, pageNum: Int = 1, popular: Boolean): PagedMangaListDataClass {
-        val source = getHttpSource(sourceId)
+        val source = getCatalogueSourceOrStub(sourceId)
         val mangasPage = if (popular) {
             source.fetchPopularManga(pageNum).awaitSingle()
         } else {
-            if (source.supportsLatest)
+            if (source.supportsLatest) {
                 source.fetchLatestUpdates(pageNum).awaitSingle()
-            else
+            } else {
                 throw Exception("Source $source doesn't support latest")
+            }
         }
         return mangasPage.processEntries(sourceId)
     }

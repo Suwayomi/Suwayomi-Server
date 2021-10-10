@@ -22,7 +22,7 @@ private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
 fun getMangaDir(mangaId: Int): String {
     val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
-    val source = GetHttpSource.getHttpSource(mangaEntry[MangaTable.sourceReference])
+    val source = GetHttpSource.getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
     val sourceDir = source.toString()
     val mangaDir = SafePath.buildValidFilename(mangaEntry[MangaTable.title])
@@ -46,7 +46,7 @@ fun getChapterDir(mangaId: Int, chapterId: Int): String {
 /** return value says if rename/move was successful */
 fun updateMangaDownloadDir(mangaId: Int, newTitle: String): Boolean {
     val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
-    val source = GetHttpSource.getHttpSource(mangaEntry[MangaTable.sourceReference])
+    val source = GetHttpSource.getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
     val sourceDir = source.toString()
     val mangaDir = SafePath.buildValidFilename(mangaEntry[MangaTable.title])

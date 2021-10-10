@@ -10,13 +10,13 @@ package suwayomi.tachidesk.manga.impl
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import suwayomi.tachidesk.manga.impl.MangaList.processEntries
-import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
+import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 
 object Search {
     suspend fun sourceSearch(sourceId: Long, searchTerm: String, pageNum: Int): PagedMangaListDataClass {
-        val source = getHttpSource(sourceId)
+        val source = getCatalogueSourceOrStub(sourceId)
         val searchManga = source.fetchSearchManga(pageNum, searchTerm, getFilterListOf(sourceId)).awaitSingle()
         return searchManga.processEntries(sourceId)
     }
@@ -25,7 +25,7 @@ object Search {
 
     private fun getFilterListOf(sourceId: Long, reset: Boolean = false): FilterList {
         if (reset || !filterListCache.containsKey(sourceId)) {
-            filterListCache[sourceId] = getHttpSource(sourceId).getFilterList()
+            filterListCache[sourceId] = getCatalogueSourceOrStub(sourceId).getFilterList()
         }
         return filterListCache[sourceId]!!
     }

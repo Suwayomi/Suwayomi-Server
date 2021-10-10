@@ -7,15 +7,22 @@ package suwayomi.tachidesk.manga.impl.util
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.local.LocalSource
+import eu.kanade.tachiyomi.source.model.FilterList
+import eu.kanade.tachiyomi.source.model.MangasPage
+import eu.kanade.tachiyomi.source.model.Page
+import eu.kanade.tachiyomi.source.model.SChapter
+import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
+import rx.Observable
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
@@ -23,22 +30,56 @@ import suwayomi.tachidesk.server.ApplicationDirs
 import java.util.concurrent.ConcurrentHashMap
 
 object GetHttpSource {
-    private val sourceCache = ConcurrentHashMap<Long, HttpSource>()
+    private val sourceCache = ConcurrentHashMap<Long, CatalogueSource>(
+        mapOf(LocalSource.ID to LocalSource())
+    )
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
-    fun getHttpSource(sourceId: Long): HttpSource {
-        val cachedResult: HttpSource? = sourceCache[sourceId]
+    class StubSource(override val id: Long) : CatalogueSource {
+        override val lang: String = "other"
+        override val supportsLatest: Boolean = false
+        override val name: String
+            get() = id.toString()
+        override fun fetchPopularManga(page: Int): Observable<MangasPage> {
+            return Observable.error(getSourceNotInstalledException())
+        }
+        override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> {
+            return Observable.error(getSourceNotInstalledException())
+        }
+        override fun fetchLatestUpdates(page: Int): Observable<MangasPage> {
+            return Observable.error(getSourceNotInstalledException())
+        }
+        override fun getFilterList(): FilterList {
+            return FilterList()
+        }
+        override fun fetchMangaDetails(manga: SManga): Observable<SManga> {
+            return Observable.error(getSourceNotInstalledException())
+        }
+        override fun fetchChapterList(manga: SManga): Observable<List<SChapter>> {
+            return Observable.error(getSourceNotInstalledException())
+        }
+        override fun fetchPageList(chapter: SChapter): Observable<List<Page>> {
+            return Observable.error(getSourceNotInstalledException())
+        }
+        override fun toString(): String {
+            return name
+        }
+        private fun getSourceNotInstalledException(): SourceNotInstalledException {
+            return SourceNotInstalledException(id)
+        }
+        inner class SourceNotInstalledException(val id: Long) :
+            Exception("Source not installed: $id")
+    }
+
+    fun getCatalogueSource(sourceId: Long): CatalogueSource? {
+        val cachedResult: CatalogueSource? = sourceCache[sourceId]
         if (cachedResult != null) {
             return cachedResult
         }
 
         val sourceRecord = transaction {
-            SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()!!
-        }
-
-        if (sourceId == LocalSource.ID) {
-            return LocalSource()
-        }
+            SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
+        } ?: return null
 
         val extensionId = sourceRecord[SourceTable.extension]
         val extensionRecord = transaction {
@@ -58,6 +99,10 @@ object GetHttpSource {
             sourceCache[it.id] = it as HttpSource
         }
         return sourceCache[sourceId]!!
+    }
+
+    fun getCatalogueSourceOrStub(sourceId: Long): CatalogueSource {
+        return getCatalogueSource(sourceId) ?: StubSource(sourceId)
     }
 
     fun invalidateSourceCache(sourceId: Long) {
