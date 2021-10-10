@@ -51,9 +51,6 @@ object Extension {
     private val logger = KotlinLogging.logger {}
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
-    private fun Any.isNsfw(): Boolean =
-        this::class.annotations.any { it.toString() == "@eu.kanade.tachiyomi.annotations.Nsfw()" }
-
     suspend fun installExtension(pkgName: String): Int {
         logger.debug("Installing $pkgName")
         val extensionRecord = extensionTableAsDataClass().first { it.pkgName == pkgName }
@@ -189,7 +186,7 @@ object Extension {
                         it[name] = httpSource.name
                         it[lang] = httpSource.lang
                         it[extension] = extensionId
-                        it[SourceTable.isNsfw] = isNsfw || extensionMainClassInstance.isNsfw()
+                        it[SourceTable.isNsfw] = isNsfw
                     }
                     logger.debug { "Installed source ${httpSource.name} (${httpSource.lang}) with id:${httpSource.id}" }
                 }
