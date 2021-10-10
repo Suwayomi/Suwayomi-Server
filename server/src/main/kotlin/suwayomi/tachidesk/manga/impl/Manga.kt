@@ -73,26 +73,27 @@ object Manga {
                 url = mangaEntry[MangaTable.url]
                 title = mangaEntry[MangaTable.title]
             }
-            val fetchedManga = source.fetchMangaDetails(sManga).awaitSingle()
+            val networkManga = source.fetchMangaDetails(sManga).awaitSingle()
+            sManga.copyFrom(networkManga)
 
             transaction {
                 MangaTable.update({ MangaTable.id eq mangaId }) {
 
-                    if (fetchedManga.title != mangaEntry[MangaTable.title]) {
-                        val canUpdateTitle = updateMangaDownloadDir(mangaId, fetchedManga.title)
+                    if (sManga.title != mangaEntry[MangaTable.title]) {
+                        val canUpdateTitle = updateMangaDownloadDir(mangaId, sManga.title)
 
                         if (canUpdateTitle)
-                            it[MangaTable.title] = fetchedManga.title
+                            it[MangaTable.title] = sManga.title
                     }
                     it[MangaTable.initialized] = true
 
-                    it[MangaTable.artist] = fetchedManga.artist
-                    it[MangaTable.author] = fetchedManga.author
-                    it[MangaTable.description] = truncate(fetchedManga.description, 4096)
-                    it[MangaTable.genre] = fetchedManga.genre
-                    it[MangaTable.status] = fetchedManga.status
-                    if (fetchedManga.thumbnail_url != null && fetchedManga.thumbnail_url.orEmpty().isNotEmpty())
-                        it[MangaTable.thumbnail_url] = fetchedManga.thumbnail_url
+                    it[MangaTable.artist] = sManga.artist
+                    it[MangaTable.author] = sManga.author
+                    it[MangaTable.description] = truncate(sManga.description, 4096)
+                    it[MangaTable.genre] = sManga.genre
+                    it[MangaTable.status] = sManga.status
+                    if (sManga.thumbnail_url != null && sManga.thumbnail_url.orEmpty().isNotEmpty())
+                        it[MangaTable.thumbnail_url] = sManga.thumbnail_url
 
                     it[MangaTable.realUrl] = try {
                         source.mangaDetailsRequest(sManga).url.toString()
@@ -116,11 +117,11 @@ object Manga {
 
                 true,
 
-                fetchedManga.artist,
-                fetchedManga.author,
-                fetchedManga.description,
-                fetchedManga.genre.toGenreList(),
-                MangaStatus.valueOf(fetchedManga.status).name,
+                sManga.artist,
+                sManga.author,
+                sManga.description,
+                sManga.genre.toGenreList(),
+                MangaStatus.valueOf(sManga.status).name,
                 mangaEntry[MangaTable.inLibrary],
                 mangaEntry[MangaTable.inLibraryAt],
                 getSource(mangaEntry[MangaTable.sourceReference]),
