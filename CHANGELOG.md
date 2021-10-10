@@ -1,4 +1,4 @@
-# Server: v0.5.3-next + WebUI: r810
+# Server: v0.5.3-next + WebUI: r811
 ## TL;DR
 - N/A
 
@@ -11,7 +11,7 @@
 
 ## Tachidesk-WebUI Changelog
 - (r810) fix wrong strings in set Server Address dialog, fixes [#39](https://github.com/Suwayomi/Tachidesk-WebUI/issues/39)
-
+- (r811) fix chapterFetch loop
 
 
 # Server: v0.5.3 + WebUI: r809
