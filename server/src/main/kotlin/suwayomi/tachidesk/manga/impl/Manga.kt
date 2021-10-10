@@ -8,7 +8,9 @@ package suwayomi.tachidesk.manga.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.source.online.HttpSource
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
@@ -19,11 +21,12 @@ import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.impl.Source.getSource
-import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
+import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
+import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.impl.util.updateMangaDownloadDir
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
@@ -31,6 +34,8 @@ import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.ApplicationDirs
+import java.io.File
+import java.io.IOException
 import java.io.InputStream
 
 object Manga {
@@ -68,7 +73,7 @@ object Manga {
                 false
             )
         } else { // initialize manga
-            val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
+            val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
             val sManga = SManga.create().apply {
                 url = mangaEntry[MangaTable.url]
                 title = mangaEntry[MangaTable.title]
@@ -95,11 +100,9 @@ object Manga {
                     if (sManga.thumbnail_url != null && sManga.thumbnail_url.orEmpty().isNotEmpty())
                         it[MangaTable.thumbnail_url] = sManga.thumbnail_url
 
-                    it[MangaTable.realUrl] = try {
-                        source.mangaDetailsRequest(sManga).url.toString()
-                    } catch (e: Exception) {
-                        null
-                    }
+                    it[MangaTable.realUrl] = runCatching {
+                        (source as? HttpSource)?.mangaDetailsRequest(sManga)?.url?.toString()
+                    }.getOrNull()
                 }
             }
 
@@ -164,25 +167,39 @@ object Manga {
         val saveDir = applicationDirs.mangaThumbnailsRoot
         val fileName = mangaId.toString()
 
-        return getImageResponse(saveDir, fileName, useCache) {
-            val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
+        val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
+        val sourceId = mangaEntry[MangaTable.sourceReference]
 
-            val sourceId = mangaEntry[MangaTable.sourceReference]
-            val source = getHttpSource(sourceId)
+        return when (val source = getCatalogueSourceOrStub(sourceId)) {
+            is HttpSource -> getImageResponse(saveDir, fileName, useCache) {
+                val thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
+                    ?: if (!mangaEntry[MangaTable.initialized]) {
+                        // initialize then try again
+                        getManga(mangaId)
+                        transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }[MangaTable.thumbnail_url]!!
+                    } else {
+                        // source provides no thumbnail url for this manga
+                        throw NullPointerException()
+                    }
 
-            val thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
-                ?: if (!mangaEntry[MangaTable.initialized]) {
-                    // initialize then try again
-                    getManga(mangaId)
-                    transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }[MangaTable.thumbnail_url]!!
-                } else {
-                    // source provides no thumbnail url for this manga
-                    throw NullPointerException()
-                }
-
-            source.client.newCall(
-                GET(thumbnailUrl, source.headers)
-            ).await()
+                source.client.newCall(
+                    GET(thumbnailUrl, source.headers)
+                ).await()
+            }
+            is LocalSource -> {
+                val imageFile = mangaEntry[MangaTable.thumbnail_url]?.let {
+                    val file = File(it)
+                    if (file.exists()) {
+                        file
+                    } else {
+                        null
+                    }
+                } ?: throw IOException("Thumbnail does not exist")
+                val contentType = ImageUtil.findImageType { imageFile.inputStream() }?.mime
+                    ?: "image/jpeg"
+                imageFile.inputStream() to contentType
+            }
+            else -> throw IllegalArgumentException("Unknown source")
         }
     }
 

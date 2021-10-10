@@ -12,7 +12,6 @@ import android.content.Context
 import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.getPreferenceKey
-import eu.kanade.tachiyomi.source.local.LocalSource
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
@@ -21,7 +20,8 @@ import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.extension.Extension.getExtensionIconUrl
-import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
+import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getCatalogueSource
+import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.GetHttpSource.invalidateSourceCache
 import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
@@ -36,7 +36,7 @@ object Source {
     fun getSourceList(): List<SourceDataClass> {
         return transaction {
             SourceTable.selectAll().map {
-                val httpSource = getHttpSource(it[SourceTable.id].value)
+                val catalogueSource = getCatalogueSourceOrStub(it[SourceTable.id].value)
                 val sourceExtension = ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }.first()
 
                 SourceDataClass(
@@ -44,10 +44,10 @@ object Source {
                     it[SourceTable.name],
                     it[SourceTable.lang],
                     getExtensionIconUrl(sourceExtension[ExtensionTable.apkName]),
-                    httpSource.supportsLatest,
-                    httpSource is ConfigurableSource,
+                    catalogueSource.supportsLatest,
+                    catalogueSource is ConfigurableSource,
                     it[SourceTable.isNsfw],
-                    httpSource.toString(),
+                    catalogueSource.toString(),
                 )
             }
         }
@@ -55,13 +55,8 @@ object Source {
 
     fun getSource(sourceId: Long): SourceDataClass { // all the data extracted fresh form the source instance
         return transaction {
-            if (sourceId == LocalSource.ID) {
-                // initialize local source
-                getHttpSource(sourceId)
-            }
-
             val source = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
-            val httpSource = source?.let { getHttpSource(sourceId) }
+            val catalogueSource = source?.let { getCatalogueSource(sourceId) }
             val extension = source?.let {
                 ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()
             }
@@ -75,10 +70,10 @@ object Source {
                         extension!![ExtensionTable.apkName]
                     )
                 },
-                httpSource?.supportsLatest,
-                httpSource?.let { it is ConfigurableSource },
+                catalogueSource?.supportsLatest,
+                catalogueSource?.let { it is ConfigurableSource },
                 source?.get(SourceTable.isNsfw),
-                httpSource?.toString()
+                catalogueSource?.toString()
             )
         }
     }
@@ -103,7 +98,7 @@ object Source {
      *  Gets a source's PreferenceScreen, puts the result into [preferenceScreenMap]
      */
     fun getSourcePreferences(sourceId: Long): List<PreferenceObject> {
-        val source = getHttpSource(sourceId)
+        val source = getCatalogueSourceOrStub(sourceId)
 
         if (source is ConfigurableSource) {
             val sourceShardPreferences =

@@ -1,7 +1,7 @@
 package eu.kanade.tachiyomi.source.local
 
 import com.github.junrar.Archive
-import eu.kanade.tachiyomi.source.local.FileSystemInterceptor.fakeUrlFrom
+import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.local.LocalSource.Format.Directory
 import eu.kanade.tachiyomi.source.local.LocalSource.Format.Epub
 import eu.kanade.tachiyomi.source.local.LocalSource.Format.Rar
@@ -15,7 +15,6 @@ import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
-import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
 import eu.kanade.tachiyomi.util.lang.compareToCaseInsensitiveNaturalOrder
 import eu.kanade.tachiyomi.util.storage.EpubFile
@@ -27,15 +26,6 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import mu.KotlinLogging
-import okhttp3.Interceptor
-import okhttp3.OkHttpClient
-import okhttp3.Protocol
-import okhttp3.Request
-import okhttp3.Response
-import okhttp3.ResponseBody.Companion.asResponseBody
-import okhttp3.ResponseBody.Companion.toResponseBody
-import okio.buffer
-import okio.source
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
@@ -51,14 +41,12 @@ import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.FileInputStream
-import java.io.FileNotFoundException
 import java.io.InputStream
-import java.net.URLDecoder
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipFile
 
-class LocalSource : HttpSource() {
+class LocalSource : CatalogueSource {
     companion object {
         const val ID = 0L
         const val LANG = "localsourcelang"
@@ -133,12 +121,7 @@ class LocalSource : HttpSource() {
     override val id = ID
     override val name = NAME
     override val lang = LANG
-    override val baseUrl: String = ""
     override val supportsLatest = true
-
-    override val client: OkHttpClient = super.client.newBuilder()
-        .addInterceptor(FileSystemInterceptor)
-        .build()
 
     private val json: Json by injectLazy()
 
@@ -181,7 +164,7 @@ class LocalSource : HttpSource() {
                 // Try to find the cover
                 val cover = getCoverFile(File("${applicationDirs.localMangaRoot}/$url"))
                 if (cover != null && cover.exists()) {
-                    thumbnail_url = fakeUrlFrom(cover.absolutePath)
+                    thumbnail_url = cover.absolutePath
                 }
 
                 val chapters = fetchChapterList(this).toBlocking().first()
@@ -197,8 +180,7 @@ class LocalSource : HttpSource() {
                     // Copy the cover from the first chapter found.
                     if (thumbnail_url == null) {
                         try {
-                            val dest = updateCover(chapter, this)
-                            thumbnail_url = dest?.absolutePath?.let { fakeUrlFrom(it) }
+                            thumbnail_url = updateCover(chapter, this)?.absolutePath
                         } catch (e: Exception) {
                             logger.error { e }
                         }
@@ -311,7 +293,7 @@ class LocalSource : HttpSource() {
                     chapterFile.listFiles().orEmpty().sortedBy { it.name }.mapIndexed { index, page ->
                         Page(
                             index,
-                            imageUrl = fakeUrlFrom(applicationDirs.localMangaRoot + "/" + chapter.url + "/" + page.name)
+                            imageUrl = applicationDirs.localMangaRoot + "/" + chapter.url + "/" + page.name
                         )
                     }
                 )
@@ -411,67 +393,5 @@ class LocalSource : HttpSource() {
         data class Zip(val file: File) : Format()
         data class Rar(val file: File) : Format()
         data class Epub(val file: File) : Format()
-    }
-
-    // ///////////////////// Not used ///////////////////// //
-
-    override fun mangaDetailsParse(response: Response): SManga = throw Exception("Not used")
-
-    override fun chapterListParse(response: Response): List<SChapter> = throw Exception("Not used")
-
-    override fun pageListParse(response: Response): List<Page> = throw Exception("Not used")
-
-    override fun imageUrlParse(response: Response): String = throw Exception("Not used")
-
-    override fun popularMangaRequest(page: Int): Request = throw Exception("Not used")
-
-    override fun popularMangaParse(response: Response): MangasPage = throw Exception("Not used")
-
-    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request =
-        throw Exception("Not used")
-
-    override fun searchMangaParse(response: Response): MangasPage = throw Exception("Not used")
-
-    override fun latestUpdatesRequest(page: Int): Request = throw Exception("Not used")
-
-    override fun latestUpdatesParse(response: Response): MangasPage = throw Exception("Not used")
-}
-
-private object FileSystemInterceptor : Interceptor {
-    fun fakeUrlFrom(path: String): String = "http://$path"
-
-    private fun restoreFilePath(url: String): String {
-        val path = URLDecoder.decode(url.replaceFirst("http://", ""), "UTF-8")
-
-        // Windows
-        if (System.getProperty("os.name").lowercase().startsWith("win")) {
-            // convert paths like "c/Users/..." to "c:/Users/..."
-            return StringBuilder(path).insert(1, ":").toString()
-        }
-
-        return "/$path"
-    }
-
-    override fun intercept(chain: Interceptor.Chain): Response {
-        val request = chain.request()
-        val url = request.url
-        val filePath = restoreFilePath(url.toString())
-        return try {
-            Response.Builder()
-                .body(File(filePath).source().buffer().asResponseBody())
-                .code(200)
-                .message("Some file")
-                .protocol(Protocol.HTTP_1_0)
-                .request(request)
-                .build()
-        } catch (e: FileNotFoundException) {
-            Response.Builder()
-                .body("".toResponseBody())
-                .code(404)
-                .message(e.message ?: "File not found ($filePath)")
-                .protocol(Protocol.HTTP_1_0)
-                .request(request)
-                .build()
-        }
     }
 }

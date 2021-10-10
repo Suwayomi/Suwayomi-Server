@@ -17,11 +17,12 @@ import org.jetbrains.exposed.sql.update
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
-import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getHttpSource
+import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.getChapterDir
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
+import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
@@ -43,7 +44,7 @@ object Page {
 
     suspend fun getPageImage(mangaId: Int, chapterIndex: Int, index: Int, useCache: Boolean = true): Pair<InputStream, String> {
         val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
-        val source = getHttpSource(mangaEntry[MangaTable.sourceReference])
+        val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
         val chapterEntry = transaction {
             ChapterTable.select {
                 (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId)
@@ -61,18 +62,19 @@ object Page {
         )
 
         // we treat Local source differently
-        if (mangaEntry[MangaTable.sourceReference] == LocalSource.ID) {
+        if (source.id == LocalSource.ID) {
             // is of archive format
             if (LocalSource.pageCache.containsKey(chapterEntry[ChapterTable.url])) {
-                val pageStream = LocalSource.pageCache[chapterEntry[ChapterTable.url]]!![index]()
-                return pageStream to "image/jpeg"
+                val pageStream = LocalSource.pageCache[chapterEntry[ChapterTable.url]]!![index]
+                return pageStream() to (ImageUtil.findImageType { pageStream() }?.mime ?: "image/jpeg")
             }
 
             // is of directory format
-            return ImageResponse.getNoCacheImageResponse {
-                source.fetchImage(tachiyomiPage).awaitSingle()
-            }
+            val imageFile = File(tachiyomiPage.imageUrl!!)
+            return imageFile.inputStream() to (ImageUtil.findImageType { imageFile.inputStream() }?.mime ?: "image/jpeg")
         }
+
+        source as HttpSource
 
         if (pageEntry[PageTable.imageUrl] == null) {
             val trueImageUrl = getTrueImageUrl(tachiyomiPage, source)
