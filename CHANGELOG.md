@@ -1,12 +1,14 @@
-# Server: v0.5.3-966 + WebUI: r809
+# Server: v0.5.3-966 + WebUI: r810
 ## TL;DR
 - N/A
 
 ## Tachidesk-Server Changelog
-- N/A
+- (r973) convert android.jar lib to a maven repo
+- (r978) mimic Tachiyomi's behaviour more closely, fixes ReadComicOnline (EN)
+
 
 ## Tachidesk-WebUI Changelog
-- N/A
+- (r810) fix wrong strings in set Server Address dialog, fixes [#39](https://github.com/Suwayomi/Tachidesk-WebUI/issues/39)
 
 
 
