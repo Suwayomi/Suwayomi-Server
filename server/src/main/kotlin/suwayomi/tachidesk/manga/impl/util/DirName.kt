@@ -12,6 +12,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
+import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.impl.util.storage.SafePath
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -22,7 +23,7 @@ private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
 fun getMangaDir(mangaId: Int): String {
     val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
-    val source = GetHttpSource.getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
+    val source = GetCatalogueSource.getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
     val sourceDir = source.toString()
     val mangaDir = SafePath.buildValidFilename(mangaEntry[MangaTable.title])
@@ -46,7 +47,7 @@ fun getChapterDir(mangaId: Int, chapterId: Int): String {
 /** return value says if rename/move was successful */
 fun updateMangaDownloadDir(mangaId: Int, newTitle: String): Boolean {
     val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
-    val source = GetHttpSource.getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
+    val source = GetCatalogueSource.getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
     val sourceDir = source.toString()
     val mangaDir = SafePath.buildValidFilename(mangaEntry[MangaTable.title])

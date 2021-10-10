@@ -20,9 +20,9 @@ import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.extension.Extension.getExtensionIconUrl
-import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getCatalogueSource
-import suwayomi.tachidesk.manga.impl.util.GetHttpSource.getCatalogueSourceOrStub
-import suwayomi.tachidesk.manga.impl.util.GetHttpSource.invalidateSourceCache
+import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSource
+import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
+import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.invalidateSourceCache
 import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable

@@ -28,7 +28,6 @@ import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList.extensionTableAsDataClass
 import suwayomi.tachidesk.manga.impl.extension.github.ExtensionGithubApi
-import suwayomi.tachidesk.manga.impl.util.GetHttpSource
 import suwayomi.tachidesk.manga.impl.util.PackageTools
 import suwayomi.tachidesk.manga.impl.util.PackageTools.EXTENSION_FEATURE
 import suwayomi.tachidesk.manga.impl.util.PackageTools.LIB_VERSION_MAX
@@ -39,6 +38,7 @@ import suwayomi.tachidesk.manga.impl.util.PackageTools.dex2jar
 import suwayomi.tachidesk.manga.impl.util.PackageTools.getPackageInfo
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.manga.impl.util.network.await
+import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
@@ -240,7 +240,7 @@ object Extension {
             PackageTools.jarLoaderMap.remove(jarPath)?.close()
 
             // clear all loaded sources
-            sources.forEach { GetHttpSource.invalidateSourceCache(it) }
+            sources.forEach { GetCatalogueSource.invalidateSourceCache(it) }
 
             File(jarPath).delete()
         }
