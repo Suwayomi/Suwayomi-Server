@@ -1,6 +1,8 @@
-# Server: v0.5.3-next + WebUI: r820
+# Server: v0.5.4 + WebUI: r820
 ## TL;DR
-- N/A
+- Fixed ReadComicOnline, Toonily and possibly other sources not working
+- Backup and Restore now includes Updates tab data
+- Removed Anime support from WebUI, Anime support will also be removed from Tachidesk-Server in a future update
 
 ## Tachidesk-Server Changelog
 - (r973) convert android.jar lib to a maven repo
