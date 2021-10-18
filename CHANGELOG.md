@@ -1,4 +1,4 @@
-# Server: v0.5.3-next + WebUI: r813
+# Server: v0.5.3-next + WebUI: r820
 ## TL;DR
 - N/A
 
@@ -16,6 +16,13 @@
 - (r811) fix chapterFetch loop
 - (r812) fix overlapping requests
 - (r813) fix typo
+- (r814) Better portrait support ([#41](https://github.com/Suwayomi/Tachidesk-WebUI/issues/41) by @minhe7735)
+- (r815) fixes Reader navbar colors when in light mode ([#43](https://github.com/Suwayomi/Tachidesk-WebUI/issues/43) by @abhijeetChawla)
+- (r816) default languages cleanup, force Local source enabled
+- (r817) force Local source at LangSelect
+- (r818) rename ExtensionLangSelect: generic name for generic use
+- (r819) don't show anime anymore
+- (r820) Remove Anime support
 
 
 
