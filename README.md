@@ -85,6 +85,14 @@ You can install Tachidesk from the AUR
 yay -S tachidesk
 ```
 
+### Ubuntu-based distributions
+More information can be found on the [PPA's page](https://launchpad.net/~suwayomi/+archive/ubuntu/tachidesk).
+```
+sudo add-apt-repository ppa:suwayomi/tachidesk
+sudo apt update
+sudo apt install tachidesk
+```
+
 ### Docker
 Check our Official Docker release [Tachidesk Container](https://github.com/orgs/Suwayomi/packages/container/package/tachidesk) for running Tachidesk Server in a docker container. Source code for our container is available at [docker-tachidesk](https://github.com/Suwayomi/docker-tachidesk). By default the server will be running on http://localhost:4567 open this url in your browser.
 
