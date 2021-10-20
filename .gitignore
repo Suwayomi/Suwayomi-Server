@@ -1,4 +1,4 @@
-# Ignore Gradle project-specific cache directory
+# Ignore project-specific local files and dirs
 .gradle
 .idea
 gradle.properties
@@ -6,12 +6,11 @@ gradle.properties
 # Ignore Gradle build output directory
 build
 
+# WebUI is either to be downloaded on-demand or is a dynamic build asset
 server/src/main/resources/WebUI.zip
-server/tmp/
-server/tachiserver-data/
 
-# bundle asset downlaods
-OpenJDK*.*
-zulu*jre*
-electron-*.*
-rcedit-*
+# bundling stage downlaoded assets
+scripts/OpenJDK*
+scripts/zulu*
+scripts/electron-*
+scripts/rcedit-*
