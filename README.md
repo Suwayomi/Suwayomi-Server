@@ -10,9 +10,12 @@ A free and open source manga reader server that runs extensions built for [Tachi
 
 Tachidesk is an independent Tachiyomi compatible software and is **not a Fork of** Tachiyomi.
 
+`Tachidesk` is a general term used to describe the combination of Tachidesk-Server(this project) and one of our clients. 
+Think of is like the concept of "distribution" roughly like Linux distributions, in which Linux is the kernel and the difference is which desktop environment or package manager you get with it. 
+
 Tachidesk-Server is as multi-platform as you can get. Any platform that runs java and/or has a modern browser can run it. This includes Windows, Linux, macOS, chrome OS, etc. Follow [Downloading and Running the app](#downloading-and-running-the-app) for installation instructions.
 
-Ability to read and write Tachiyomi compatible backups and syncing is a planned feature.
+Ability to sync with Tachiyomi is a planned feature.
 
 # Tachidesk-Server is a server app! You may not want to Download Tachidesk-Server directly.
 Yes, you need a client/user interface app as a front-end for Tachidesk-Server, if you Directly Download Tachidesk-Server you'll get a bundled version of [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI) with it.
@@ -26,33 +29,16 @@ Here's a list of known clients/user interfaces for Tachidesk-Server:
 ## Is this application usable? Should I test it?
 Here is a list of current features:
 
-- From Tachiyomi
-    - Installing and executing Tachiyomi's Extensions, So you'll get the same sources
-    - A library to save your mangas and categories to put them into
-    - Searching and browsing installed sources
-    - Ability to download Manga for offline read
-    - Backup and restore support powered by Tachiyomi Backups
-    - Viewing latest updated chapters.
-- From Aniyomi
-    - Installing and executing Aniyomi's Extensions
-    - Searching and browsing installed sources.
-    - Viewing an anime and it's episodes
+- Installing and executing Tachiyomi's Extensions, So you'll get the same sources
+- A library to save your mangas and categories to put them into
+- Searching and browsing installed sources
+- Ability to download Manga for offline read
+- Backup and restore support powered by Tachiyomi-compatible Backups
+- Viewing latest updated chapters.
 
 **Note:** These are capabilities of Tachidesk-Server, the actual working support is provided by each front-end app, checkout their respective readme for more info.
 
-# Downloading and Running the app
-## General Requirements
-In order to use the app effectively you need the following:
-- The jar release of Tachideesk-Server
-- The Java Runtime Environment(JRE) 8 or newer (included in bundle releases)
-- A Modern Browser like Google Chrome, Firefox, etc.
-- ElectronJS (optional) (included in bundle releases)
-- An internet connection (when you want to use online features)
-## Using the jar release directly 
-Download the latest `.jar` release from [the releases section](https://github.com/Suwayomi/Tachidesk-Server/releases) or a preview jar build from [the preview repository](https://github.com/Suwayomi/Tachidesk-preview/releases).
-
-Make sure you have The Java Runtime Environment installed on your system, Double click on the jar file or run `java -jar Tachidesk-vX.Y.Z-rxxx.jar` (or `java -jar Tachidesk-latest.jar` if you have the latest preview) from a Terminal/Command Prompt window to run the app which will open a new browser window automatically. Also the System Tray Icon is your friend if you need to open the browser window again or close Tachidesk.
-
+# Downloading and Running the app "The Lazyman's Way"
 ## Using Operating System Specific Bundles
 To facilitate the use of Tachidesk we provide bundle releases that include The Java Runtime Environment, ElectronJS and 3 Tachidesk Launcher Scripts.
 
@@ -105,8 +91,24 @@ Run Container from the command line:
     $ docker run -p 4567:4567 ghcr.io/suwayomi/tachidesk
 ```
 
-### Using Tachidesk Remotely
-You can run Tachidesk on your computer or a server and connect to it remotely through the web interface with a web browser on any device including a mobile or tablet or even your smart TV!, this method of using Tachidesk is only recommended if you are a power user and know what you are doing.
+# Downloading and Running the app "The True Chad's Way"
+### General Requirements
+In order to use the app effectively you need the following:
+- The jar release of Tachideesk-Server
+- The Java Runtime Environment(JRE) 8 or newer (included in bundle releases)
+- A Modern Browser like Google Chrome, Firefox, etc.
+- ElectronJS (optional) (included in bundle releases)
+- An internet connection (when you want to use online features)
+### Using the jar release directly 
+Download the latest `.jar` release from [the releases section](https://github.com/Suwayomi/Tachidesk-Server/releases) or a preview jar build from [the preview repository](https://github.com/Suwayomi/Tachidesk-preview/releases).
+
+Make sure you have The Java Runtime Environment installed on your system, Double click on the jar file or run `java -jar Tachidesk-vX.Y.Z-rxxx.jar` (or `java -jar Tachidesk-latest.jar` if you have the latest preview) from a Terminal/Command Prompt window to run the app which will open a new browser window automatically. Also the System Tray Icon is your friend if you need to open the browser window again or close Tachidesk.
+
+
+## Using Tachidesk Remotely
+You can run Tachidesk on your computer or a server and connect to it remotely through one of our clients or the bundled web interface with a web browser on any device including a mobile or tablet or even your smart TV!, this method of using Tachidesk is requires a bit of networking/firewall/prot forwarding/server configuration/etc. knowledge on your side, if you know how to run a Minecraft server and configure it, then you are good to go.
+
+If you face issues with your set up we are happy to provide help, just join our discord server(a discord badge is on the top of the page, you are just a click clack away!).
 
 ## Troubleshooting and Support
 See [this troubleshooting wiki page](https://github.com/Suwayomi/Tachidesk/wiki/Troubleshooting).
