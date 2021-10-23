@@ -6,6 +6,16 @@ Checkout [This Kanban Board](https://github.com/Suwayomi/Tachidesk/projects/1) t
 
 **Note 2:** Store all changes with each direct commit/PR in [CHANGELOG.md](./CHANGELOG.md).
 
+### Project goals and vision
+- Porting Tachiyomi and covering it's features
+- Syncing with Tachiyomi, [main issue](https://github.com/Suwayomi/Tachidesk-Server/issues/159)
+- and angenerally rejecting features that Tachiyomi(not forks) doesn't have,
+    - Unless it's something that makes sense for desktop sizes or desktop form factor (keyboard + mouse)
+    - Additional/crazy features can go in forks and alternative clients
+- [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI) will always be
+    - responsive
+    - should support both desktop and mobile form factors well
+     
 ## How does Tachidesk-Server work?
 This project has two components: 
 1. **Server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run jar libraries converted from apk extensions. All this concludes to serving a REST API.
