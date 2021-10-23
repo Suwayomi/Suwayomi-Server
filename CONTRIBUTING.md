@@ -12,9 +12,9 @@ Checkout [This Kanban Board](https://github.com/Suwayomi/Tachidesk/projects/1) t
 - and angenerally rejecting features that Tachiyomi(not forks) doesn't have,
     - Unless it's something that makes sense for desktop sizes or desktop form factor (keyboard + mouse)
     - Additional/crazy features can go in forks and alternative clients
-- [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI) will always be
-    - responsive
-    - should support both desktop and mobile form factors well
+- [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI) should
+    - be responsive
+    - support both desktop and mobile form factors well
      
 ## How does Tachidesk-Server work?
 This project has two components: 
