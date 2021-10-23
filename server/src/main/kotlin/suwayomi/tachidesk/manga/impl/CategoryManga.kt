@@ -17,11 +17,13 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Category.DEFAULT_CATEGORY_ID
 import suwayomi.tachidesk.manga.impl.util.lang.isEmpty
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
-import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.manga.model.dataclass.MangaViewDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import suwayomi.tachidesk.manga.model.view.MangaView
+import suwayomi.tachidesk.manga.model.view.toDataClass
 
 object CategoryManga {
     fun addMangaToCategory(mangaId: Int, categoryId: Int) {
@@ -55,17 +57,17 @@ object CategoryManga {
     /**
      * list of mangas that belong to a category
      */
-    fun getCategoryMangaList(categoryId: Int): List<MangaDataClass> {
+    fun getCategoryMangaList(categoryId: Int): List<MangaViewDataClass> {
         if (categoryId == DEFAULT_CATEGORY_ID)
             return transaction {
-                MangaTable.select { (MangaTable.inLibrary eq true) and (MangaTable.defaultCategory eq true) }.map {
-                    MangaTable.toDataClass(it)
+                MangaView.select { (MangaView.inLibrary eq true) and (MangaView.defaultCategory eq true) }.map {
+                    MangaView.toDataClass(it)
                 }
             }
 
         return transaction {
-            CategoryMangaTable.innerJoin(MangaTable).select { CategoryMangaTable.category eq categoryId }.map {
-                MangaTable.toDataClass(it)
+            MangaView.select { MangaView.category eq categoryId }.map {
+                MangaView.toDataClass(it)
             }
         }
     }
