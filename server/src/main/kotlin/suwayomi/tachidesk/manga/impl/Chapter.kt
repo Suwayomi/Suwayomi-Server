@@ -105,14 +105,13 @@ object Chapter {
         val dbChapterCount = transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.count() }
         if (dbChapterCount > chapterCount) { // we got some clean up due
             val dbChapterList = transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.toList() }
+            val chapterUrls = chapterList.map { it.url }.toSet()
 
-            dbChapterList.forEach {
-                if (it[ChapterTable.sourceOrder] >= chapterList.size ||
-                    chapterList[it[ChapterTable.sourceOrder] - 1].url != it[ChapterTable.url]
-                ) {
+            dbChapterList.forEach { dbChapter ->
+                if (!chapterUrls.contains(dbChapter[ChapterTable.url])) {
                     transaction {
-                        PageTable.deleteWhere { PageTable.chapter eq it[ChapterTable.id] }
-                        ChapterTable.deleteWhere { ChapterTable.id eq it[ChapterTable.id] }
+                        PageTable.deleteWhere { PageTable.chapter eq dbChapter[ChapterTable.id] }
+                        ChapterTable.deleteWhere { ChapterTable.id eq dbChapter[ChapterTable.id] }
                     }
                 }
             }
