@@ -110,6 +110,8 @@ You can run Tachidesk on your computer or a server and connect to it remotely th
 
 If you face issues with your set up we are happy to provide help, just join our discord server(a discord badge is on the top of the page, you are just a click clack away!).
 
+Checkout (this wiki page)[https://github.com/Suwayomi/Tachidesk-Server/wiki/Configuring-Tachidesk-server] for a guide on configuring Tachidesk-Server. 
+
 ## Troubleshooting and Support
 See [this troubleshooting wiki page](https://github.com/Suwayomi/Tachidesk/wiki/Troubleshooting).
 
