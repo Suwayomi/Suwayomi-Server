@@ -30,6 +30,7 @@ import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSource
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import suwayomi.tachidesk.server.applicationSetup
+import xyz.nulldev.ts.config.CONFIG_PREFIX
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -48,8 +49,8 @@ class TestExtensions {
 
     @BeforeAll
     fun setup() {
-        val dataRoot = File("tmp/TestDesk").absolutePath
-        System.setProperty("suwayomi.tachidesk.server.rootDir", dataRoot)
+        val dataRoot = File(BASE_PATH).absolutePath
+        System.setProperty("$CONFIG_PREFIX.server.rootDir", dataRoot)
         applicationSetup()
         setLoggingEnabled(false)
 
@@ -72,7 +73,7 @@ class TestExtensions {
             sources = getSourceList().map { getCatalogueSource(it.id.toLong())!! as HttpSource }
         }
         setLoggingEnabled(true)
-        File("tmp/TestDesk/sources.txt").writeText(sources.joinToString("\n") { "${it.name} - ${it.lang.uppercase()} - ${it.id}" })
+        File("$BASE_PATH/sources.txt").writeText(sources.joinToString("\n") { "${it.name} - ${it.lang.uppercase()} - ${it.id}" })
     }
 
     @Test
@@ -97,7 +98,7 @@ class TestExtensions {
                     }
                 }
             }.awaitAll()
-            File("tmp/TestDesk/failedToFetch.txt").writeText(
+            File("$BASE_PATH/failedToFetch.txt").writeText(
                 failedToFetch.joinToString("\n") { (source, exception) ->
                     "${source.name} (${source.lang.uppercase()}, ${source.id}):" +
                         " ${exception.message}"
@@ -122,7 +123,7 @@ class TestExtensions {
                     }
                 }
             }.awaitAll()
-            File("tmp/TestDesk/MangaFailedToFetch.txt").writeText(
+            File("$BASE_PATH/MangaFailedToFetch.txt").writeText(
                 mangaFailedToFetch.joinToString("\n") { (source, manga, exception) ->
                     "${source.name} (${source.lang}, ${source.id}):" +
                         " ${manga.title} (${source.mangaDetailsRequest(manga).url}):" +
@@ -157,7 +158,7 @@ class TestExtensions {
                 }
             }.awaitAll()
 
-            File("tmp/TestDesk/ChaptersFailedToFetch.txt").writeText(
+            File("$BASE_PATH/ChaptersFailedToFetch.txt").writeText(
                 chaptersFailedToFetch.joinToString("\n") { (source, manga, exception) ->
                     "${source.name} (${source.lang}, ${source.id}):" +
                         " ${manga.title} (${source.mangaDetailsRequest(manga).url}):" +
@@ -182,7 +183,7 @@ class TestExtensions {
                 }
             }.awaitAll()
 
-            File("tmp/TestDesk/ChapterPageListFailedToFetch.txt").writeText(
+            File("$BASE_PATH/ChapterPageListFailedToFetch.txt").writeText(
                 chaptersPageListFailedToFetch.joinToString("\n") { (source, manga, exception) ->
                     "${source.name} (${source.lang}, ${source.id}):" +
                         " ${manga.first.title} (${source.mangaDetailsRequest(manga.first).url}):" +

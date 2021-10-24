@@ -45,6 +45,10 @@ First Build the jar, then cd into the `scripts` directory and run `./windows-bun
 ## Running in development mode
 run `./gradlew :server:run --stacktrace` to run the server
 
+## Running tests
+run `./gradlew :server:test` to execute all tests
+to test a specific class run `./gradlew :server:test --tests <package.with.classname>`
+
 ## Building the android-jar maven repository
 Run `AndroidCompat/getAndroid.sh`(macOS/Linux) or `AndroidCompat/getAndroid.ps1`(Windows)
 from project's root directory to download and rebuild the jar file from Google's repository,
