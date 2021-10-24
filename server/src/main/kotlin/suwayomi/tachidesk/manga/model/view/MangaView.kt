@@ -16,6 +16,12 @@ import suwayomi.tachidesk.manga.model.dataclass.MangaViewDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.MangaStatus.Companion
 
+/**
+ * This is a dirty hack to implement View with exposed.
+ * Exposed has actually no concept of a View, so it has been manually created by a sql Migration
+ * Selects on this view work fine, but modifying queries are neither adviced nor tested
+ * One could override the modifying functions or just don't use them
+ */
 object MangaView : IntIdTable("MANGA_AGGREGATED") {
     val url = varchar("url", 2048)
     val title = varchar("title", 512)
@@ -68,14 +74,3 @@ fun MangaView.toDataClass(mangaEntry: ResultRow) =
         unread_count = mangaEntry[unread_count],
         download_count = mangaEntry[download_count]
     )
-
-enum class MangaStatus(val value: Int) {
-    UNKNOWN(0),
-    ONGOING(1),
-    COMPLETED(2),
-    LICENSED(3);
-
-    companion object {
-        fun valueOf(value: Int): MangaStatus = values().find { it.value == value } ?: UNKNOWN
-    }
-}
