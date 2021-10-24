@@ -42,7 +42,8 @@ object Chapter {
             getSourceChapters(mangaId)
         } else {
             transaction {
-                ChapterTable.select { ChapterTable.manga eq mangaId }.orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+                ChapterTable.select { ChapterTable.manga eq mangaId }
+                    .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
                     .map {
                         ChapterTable.toDataClass(it)
                     }

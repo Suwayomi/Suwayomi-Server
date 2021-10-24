@@ -10,10 +10,12 @@ package suwayomi.tachidesk.server.database.migration
 import de.neonew.exposed.migrations.helpers.AddTableMigration
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Table
-import suwayomi.tachidesk.anime.model.table.AnimeTable
 
 @Suppress("ClassName", "unused")
 class M0006_AnimeTablesBatch3 : AddTableMigration() {
+    // dummy table
+    private class AnimeTable : IntIdTable()
+
     private class EpisodeTable : IntIdTable() {
         val url = varchar("url", 2048)
         val name = varchar("name", 512)
@@ -28,7 +30,7 @@ class M0006_AnimeTablesBatch3 : AddTableMigration() {
         // index is reserved by a function
         val animeIndex = integer("index")
 
-        val anime = reference("anime", AnimeTable)
+        val anime = reference("anime", AnimeTable())
     }
 
     override val tables: Array<Table>
