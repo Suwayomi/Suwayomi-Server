@@ -94,25 +94,23 @@ Run Container from the command line:
 ```
 
 ## Advanced Methods
-### General Requirements
-In order to use the app effectively you need the following:
-- The jar release of Tachideesk-Server
-- The Java Runtime Environment(JRE) 8 or newer (included in bundle releases)
-- A Modern Browser like Google Chrome, Firefox, etc.
-- ElectronJS (optional) (included in bundle releases)
-- An internet connection (when you want to use online features)
-### Using the jar release directly 
+### Running the jar release directly
+In order to run the app you need the following:
+- The jar release of Tachidesk-Server
+- The Java Runtime Environment(JRE) 8 or newer
+- A Browser like Google Chrome, Firefox, Edge, etc.
+- ElectronJS (optional)
+
 Download the latest `.jar` release from [the releases section](https://github.com/Suwayomi/Tachidesk-Server/releases) or a preview jar build from [the preview repository](https://github.com/Suwayomi/Tachidesk-preview/releases).
 
-Make sure you have The Java Runtime Environment installed on your system, Double click on the jar file or run `java -jar Tachidesk-vX.Y.Z-rxxx.jar` (or `java -jar Tachidesk-latest.jar` if you have the latest preview) from a Terminal/Command Prompt window to run the app which will open a new browser window automatically. Also the System Tray Icon is your friend if you need to open the browser window again or close Tachidesk.
-
+Make sure you have The Java Runtime Environment installed on your system, Double click on the jar file or run `java -jar Tachidesk-vX.Y.Z-rxxxx.jar` from a Terminal/Command Prompt window to run the app which will open a new browser window automatically.
 
 ### Using Tachidesk Remotely
-You can run Tachidesk on your computer or a server and connect to it remotely through one of our clients or the bundled web interface with a web browser on any device including a mobile or tablet or even your smart TV!, this method of using Tachidesk is requires a bit of networking/firewall/prot forwarding/server configuration/etc. knowledge on your side, if you know how to run a Minecraft server and configure it, then you are good to go.
+You can run Tachidesk on your computer or a server and connect to it remotely through one of our clients or the bundled web interface with a web browser. This method of using Tachidesk is requires a bit of networking/firewall/port forwarding/server configuration/etc. knowledge on your side, if you can run a Minecraft server and configure it, then you are good to go.
 
-If you face issues with your set up we are happy to provide help, just join our discord server(a discord badge is on the top of the page, you are just a click clack away!).
+Check out [this wiki page](https://github.com/Suwayomi/Tachidesk-Server/wiki/Configuring-Tachidesk-Server) for a guide on configuring Tachidesk-Server. 
 
-Checkout [this wiki page](https://github.com/Suwayomi/Tachidesk-Server/wiki/Configuring-Tachidesk-Server) for a guide on configuring Tachidesk-Server. 
+If you face issues with your setup then we are happy to provide help, just join our discord server(a discord badge is on the top of the page, you are just a click clack away!).
 
 ## Troubleshooting and Support
 See [this troubleshooting wiki page](https://github.com/Suwayomi/Tachidesk/wiki/Troubleshooting).
