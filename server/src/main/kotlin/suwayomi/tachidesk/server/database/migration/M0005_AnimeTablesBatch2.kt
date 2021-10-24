@@ -8,7 +8,6 @@ package suwayomi.tachidesk.server.database.migration
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import de.neonew.exposed.migrations.helpers.AddTableMigration
-import eu.kanade.tachiyomi.animesource.model.SAnime
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Table
 
@@ -25,7 +24,7 @@ class M0005_AnimeTablesBatch2 : AddTableMigration() {
         val genre = varchar("genre", 1024).nullable()
 
         //    val status = enumeration("status", MangaStatus::class).default(MangaStatus.UNKNOWN)
-        val status = integer("status").default(SAnime.UNKNOWN)
+        val status = integer("status").default(0)
         val thumbnail_url = varchar("thumbnail_url", 2048).nullable()
 
         val inLibrary = bool("in_library").default(false)

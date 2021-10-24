@@ -19,7 +19,6 @@ import mu.KotlinLogging
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
-import suwayomi.tachidesk.anime.AnimeAPI
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.manga.MangaAPI
 import suwayomi.tachidesk.server.util.Browser
@@ -95,7 +94,6 @@ object JavalinSetup {
             path("api/v1/") {
                 GlobalAPI.defineEndpoints()
                 MangaAPI.defineEndpoints()
-                AnimeAPI.defineEndpoints(app) // TODO: migrate Anime endpoints
             }
         }
     }

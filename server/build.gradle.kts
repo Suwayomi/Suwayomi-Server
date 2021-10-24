@@ -32,7 +32,7 @@ dependencies {
     implementation("com.h2database:h2:1.4.200")
 
     // Exposed Migrations
-    implementation("com.github.Suwayomi:exposed-migrations:3.1.2")
+    implementation("com.github.Suwayomi:exposed-migrations:3.1.4")
 
     // tray icon
     implementation("com.dorkbox:SystemTray:4.1")

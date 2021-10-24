@@ -39,7 +39,7 @@ class M0004_AnimeTablesBatch1 : AddTableMigration() {
         override val id = long("id").entityId()
         val name = varchar("name", 128)
         val lang = varchar("lang", 10)
-        val extension = reference("extension", suwayomi.tachidesk.anime.model.table.AnimeExtensionTable)
+        val extension = reference("extension", AnimeExtensionTable())
         val partOfFactorySource = bool("part_of_factory_source").default(false)
     }
 
