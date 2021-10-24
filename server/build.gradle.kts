@@ -125,7 +125,11 @@ tasks {
     }
 
     test {
-        useJUnit()
+        useJUnitPlatform()
+        testLogging {
+            showStandardStreams = true
+            events("passed", "skipped", "failed")
+        }
     }
 
     named<Copy>("processResources") {
