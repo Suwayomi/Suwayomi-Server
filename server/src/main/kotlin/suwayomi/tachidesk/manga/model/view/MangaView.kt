@@ -12,7 +12,7 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.manga.impl.Manga.getMangaMetaMap
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
-import suwayomi.tachidesk.manga.model.dataclass.MangaViewDataClass
+import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.MangaStatus.Companion
 
@@ -51,7 +51,7 @@ object MangaView : IntIdTable("MANGA_AGGREGATED") {
 }
 
 fun MangaView.toDataClass(mangaEntry: ResultRow) =
-    MangaViewDataClass(
+    MangaDataClass(
         mangaEntry[this.id].value,
         mangaEntry[sourceReference].toString(),
 
@@ -70,7 +70,6 @@ fun MangaView.toDataClass(mangaEntry: ResultRow) =
         mangaEntry[inLibraryAt],
         meta = getMangaMetaMap(mangaEntry[id].value),
         realUrl = mangaEntry[realUrl],
-        category = mangaEntry[category],
         unread_count = mangaEntry[unread_count],
         download_count = mangaEntry[download_count]
     )
