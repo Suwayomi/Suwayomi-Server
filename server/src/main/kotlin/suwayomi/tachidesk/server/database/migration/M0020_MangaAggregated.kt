@@ -10,7 +10,7 @@ package suwayomi.tachidesk.server.database.migration
 import de.neonew.exposed.migrations.helpers.SQLMigration
 
 @Suppress("ClassName", "unused")
-class M0019_MangaAggregated : SQLMigration() {
+class M0020_MangaAggregated : SQLMigration() {
     override val sql = """
         CREATE VIEW "MANGA_AGGREGATED"
                     ("CATEGORY", "ID", "URL", "TITLE", "INITIALIZED", "ARTIST", "AUTHOR", "DESCRIPTION", "GENRE", "STATUS",
