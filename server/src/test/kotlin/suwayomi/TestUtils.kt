@@ -17,3 +17,5 @@ fun setLoggingEnabled(enabled: Boolean = true) {
         Level.DEBUG
     } else Level.ERROR
 }
+
+const val BASE_PATH = "build/tmp/TestDesk"
