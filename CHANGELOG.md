@@ -1,3 +1,19 @@
+# Server: v0.X.Y-next + WebUI: r823
+## TL;DR
+- N/A
+
+## Tachidesk-Server Changelog
+- (r996) .gitignore cleanup
+- (r999) better orphan chapter cleaning algorithm
+- (r1007) remove anime support
+
+
+## Tachidesk-WebUI Changelog
+- (r821) add Permanent sidebar for desktop widths([#46](https://github.com/Suwayomi/Tachidesk-WebUI/issues/46) by @abhijeetChawla)
+- (r822) Fix Local Source being missing
+- (r823) fix the ugliness of bare messages
+
+
 # Server: v0.5.4 + WebUI: r820
 ## TL;DR
 - Fixed ReadComicOnline, Toonily and possibly other sources not working
