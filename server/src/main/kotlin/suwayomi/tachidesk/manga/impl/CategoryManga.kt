@@ -7,19 +7,15 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Category.DEFAULT_CATEGORY_ID
 import suwayomi.tachidesk.manga.impl.util.lang.isEmpty
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
+import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 
@@ -56,17 +52,38 @@ object CategoryManga {
      * list of mangas that belong to a category
      */
     fun getCategoryMangaList(categoryId: Int): List<MangaDataClass> {
+        val unreadExpression = wrapAsExpression<Long>(
+            ChapterTable
+                .slice(ChapterTable.id.count())
+                .select { (MangaTable.id eq ChapterTable.manga) and (ChapterTable.isRead eq false) }
+        )
+        val downloadExpression = wrapAsExpression<Long>(
+            ChapterTable
+                .slice(ChapterTable.id.count())
+                .select { (MangaTable.id eq ChapterTable.manga) and (ChapterTable.isDownloaded eq true) }
+        )
+
+        val selectedColumns = MangaTable.columns + unreadExpression + downloadExpression
+        val transform: (ResultRow) -> MangaDataClass = {
+            val dataClass = MangaTable.toDataClass(it)
+            dataClass.unread_count = it[unreadExpression]?.toInt()
+            dataClass.download_count = it[downloadExpression]?.toInt()
+            dataClass
+        }
+
         if (categoryId == DEFAULT_CATEGORY_ID)
             return transaction {
-                MangaTable.select { (MangaTable.inLibrary eq true) and (MangaTable.defaultCategory eq true) }.map {
-                    MangaTable.toDataClass(it)
-                }
+                MangaTable
+                    .slice(selectedColumns)
+                    .select { (MangaTable.inLibrary eq true) and (MangaTable.defaultCategory eq true) }
+                    .map(transform)
             }
 
         return transaction {
-            CategoryMangaTable.innerJoin(MangaTable).select { CategoryMangaTable.category eq categoryId }.map {
-                MangaTable.toDataClass(it)
-            }
+            CategoryMangaTable.innerJoin(MangaTable)
+                .slice(selectedColumns)
+                .select { CategoryMangaTable.category eq categoryId }
+                .map(transform)
         }
     }
 
