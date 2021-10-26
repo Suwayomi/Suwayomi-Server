@@ -37,6 +37,8 @@ object MangaController {
             future { Manga.getMangaThumbnail(mangaId, useCache) }
                 .thenApply {
                     ctx.header("content-type", it.second)
+                    val httpCacheSeconds = 60 * 60 * 24
+                    ctx.header("cache-control", "max-age=$httpCacheSeconds")
                     it.first
                 }
         )
