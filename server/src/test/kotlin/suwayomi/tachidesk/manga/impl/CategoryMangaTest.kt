@@ -48,12 +48,12 @@ class CategoryMangaTest {
         createChapters(mangaId, 10, true)
         assertEquals(1, CategoryManga.getCategoryMangaList(0).size, "Default category should have one member")
         assertEquals(
-            0, CategoryManga.getCategoryMangaList(0)[0].unread_count,
+            0, CategoryManga.getCategoryMangaList(0)[0].unreadCount,
             "Manga should not have any unread chapters"
         )
         createChapters(mangaId, 10, false)
         assertEquals(
-            10, CategoryManga.getCategoryMangaList(0)[0].unread_count,
+            10, CategoryManga.getCategoryMangaList(0)[0].unreadCount,
             "Manga should have unread chapters"
         )
 
@@ -69,7 +69,7 @@ class CategoryMangaTest {
             "Manga should been moved"
         )
         assertEquals(
-            10, CategoryManga.getCategoryMangaList(1)[0].unread_count,
+            10, CategoryManga.getCategoryMangaList(1)[0].unreadCount,
             "Manga should keep it's unread count in moved category"
         )
         assertEquals(
