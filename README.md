@@ -21,8 +21,8 @@ Ability to sync with Tachiyomi is a planned feature.
 **You need a client/user interface app as a front-end for Tachidesk-Server, if you Directly Download Tachidesk-Server you'll get a bundled version of [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI) with it.**
 
 Here's a list of known clients/user interfaces for Tachidesk-Server:
-- [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): The "official" native desktop front-end for Tachidesk-Server. Currently the most advanced.
 - [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI): The web/ElectronJS front-end that Tachidesk-Server is traditionally shipped with. Usually gets new features faster.
+- [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): The native desktop front-end for Tachidesk-Server. Currently the most advanced. Downlading Tachidesk-JUI is not recommened for now, the current release is getting obsolete, a new version is to be released soon(TM).
 - [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): A C++/Qt front-end for mobile devices(Android/linux), in super early stage of development.
 - [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js, in super early stage of development. Seemingly abandoned.
 
