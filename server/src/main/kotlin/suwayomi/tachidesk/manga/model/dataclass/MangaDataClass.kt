@@ -35,8 +35,8 @@ data class MangaDataClass(
     val realUrl: String? = null,
 
     val freshData: Boolean = false,
-    var unread_count: Int? = null,
-    var download_count: Int? = null
+    var unreadCount: Int? = null,
+    var downloadCount: Int? = null
 )
 
 data class PagedMangaListDataClass(
