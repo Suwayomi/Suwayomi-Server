@@ -1,4 +1,4 @@
-# Server: v0.X.Y-next + WebUI: r823
+# Server: v0.X.Y-next + WebUI: r836
 ## TL;DR
 - N/A
 
@@ -6,13 +6,27 @@
 - (r996) .gitignore cleanup
 - (r999) better orphan chapter cleaning algorithm
 - (r1007) remove anime support
+- (r1009)  Fix tests ([#226](https://github.com/Suwayomi/Tachidesk-Server/pull/226) by @ntbm)
+- (r1010)  Expose unread and download count of Manga in category api ([#227](https://github.com/Suwayomi/Tachidesk-Server/pull/227) by @ntbm)
+- (r1011)  add Cache Header to Thumbnail Response for improved library performance ([#228](https://github.com/Suwayomi/Tachidesk-Server/pull/228) by @ntbm)
+- (r1013)  Fix unread and download counts casing ([#230](https://github.com/Suwayomi/Tachidesk-Server/pull/230) by @ntbm)
+- (r1014)  Fix broken test ([#231](https://github.com/Suwayomi/Tachidesk-Server/pull/231) by @ntbm)
+
 
 
 ## Tachidesk-WebUI Changelog
 - (r821) add Permanent sidebar for desktop widths([#46](https://github.com/Suwayomi/Tachidesk-WebUI/issues/46) by @abhijeetChawla)
 - (r822) Fix Local Source being missing
 - (r823) fix the ugliness of bare messages
-
+- (r825) add Unread badges ([#48](https://github.com/Suwayomi/Tachidesk-WebUI/issues/48) by @ntbm)
+- (r826) Back button implementation ([#47](https://github.com/Suwayomi/Tachidesk-WebUI/issues/47) by @abhijeetChawla)
+- (r827) remove redundant '/manga' prefix from paths
+- (r829) put Sources and Extensions in the same screen
+- (r830) Set Fallback Image for broken Thumbnails ([#50](https://github.com/Suwayomi/Tachidesk-WebUI/issues/50) by @ntbm)
+- (r833) Apply Api changes for unread badges ([#52](https://github.com/Suwayomi/Tachidesk-WebUI/issues/52) by @ntbm)
+- (r834) add EmptyView to DownloadQueue, refactro strings ([#53](https://github.com/Suwayomi/Tachidesk-WebUI/issues/53) by @abhijeetChawla)
+- (r835) Bottom navbar for mobile ([#51](https://github.com/Suwayomi/Tachidesk-WebUI/issues/51) by @abhijeetChawla)
+- (r836) Implement Unread Filter for Library ([#54](https://github.com/Suwayomi/Tachidesk-WebUI/issues/54) by @ntbm)
 
 # Server: v0.5.4 + WebUI: r820
 ## TL;DR
