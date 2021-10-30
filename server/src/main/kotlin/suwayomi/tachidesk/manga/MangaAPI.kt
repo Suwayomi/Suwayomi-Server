@@ -77,11 +77,13 @@ object MangaAPI {
             get("", CategoryController::categoryList)
             post("", CategoryController::categoryCreate)
 
+            // The order here is important {categoryId} needs to be applied last 
+            // or throws a NumberFormatException
+            patch("reorder", CategoryController::categoryReorder)
+
             get("{categoryId}", CategoryController::categoryMangas)
             patch("{categoryId}", CategoryController::categoryModify)
             delete("{categoryId}", CategoryController::categoryDelete)
-
-            patch("reorder", CategoryController::categoryReorder)
         }
 
         path("backup") {
