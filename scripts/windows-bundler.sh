@@ -12,13 +12,13 @@ if [ $1 = "win32" ]; then
   jre="OpenJDK8U-jre_x86-32_windows_hotspot_8u292b10.zip"
   jre_release="jdk8u292-b10"
   jre_url="https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/$jre_release/$jre"
-  arch="win32"
+  arch="windows-x86"
   electron="electron-$electron_version-win32-ia32.zip"
 else
   jre="OpenJDK8U-jre_x64_windows_hotspot_8u302b08.zip"
   jre_release="jdk8u302-b08"
   jre_url="https://github.com/adoptium/temurin8-binaries/releases/download/$jre_release/$jre"
-  arch="win64"
+  arch="windows-x64"
   electron="electron-$electron_version-win32-x64.zip"
 fi
 
