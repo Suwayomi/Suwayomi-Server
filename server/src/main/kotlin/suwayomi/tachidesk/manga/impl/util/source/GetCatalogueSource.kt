@@ -10,7 +10,6 @@ package suwayomi.tachidesk.manga.impl.util.source
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
-import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.online.HttpSource
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -24,9 +23,7 @@ import suwayomi.tachidesk.server.ApplicationDirs
 import java.util.concurrent.ConcurrentHashMap
 
 object GetCatalogueSource {
-    private val sourceCache = ConcurrentHashMap<Long, CatalogueSource>(
-        mapOf(LocalSource.ID to LocalSource())
-    )
+    private val sourceCache = ConcurrentHashMap<Long, CatalogueSource>()
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
     fun getCatalogueSource(sourceId: Long): CatalogueSource? {
@@ -61,6 +58,10 @@ object GetCatalogueSource {
 
     fun getCatalogueSourceOrStub(sourceId: Long): CatalogueSource {
         return getCatalogueSource(sourceId) ?: StubSource(sourceId)
+    }
+
+    fun registerCatalogueSource(sourcePair: Pair<Long, CatalogueSource>) {
+        sourceCache += sourcePair
     }
 
     fun invalidateSourceCache(sourceId: Long) {

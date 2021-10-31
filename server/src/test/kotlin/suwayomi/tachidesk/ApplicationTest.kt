@@ -151,7 +151,7 @@ open class ApplicationTest {
 
             databaseUp(db)
 
-            LocalSource.addDbRecords()
+            LocalSource.register()
         }
     }
 }

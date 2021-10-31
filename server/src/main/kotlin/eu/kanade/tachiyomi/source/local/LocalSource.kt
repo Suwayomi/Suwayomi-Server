@@ -34,6 +34,7 @@ import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
 import rx.Observable
+import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.registerCatalogueSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
@@ -89,7 +90,7 @@ class LocalSource : CatalogueSource {
             }
         }
 
-        fun addDbRecords() {
+        fun register() {
             transaction {
                 val sourceRecord = SourceTable.select { SourceTable.id eq ID }.firstOrNull()
 
@@ -115,6 +116,8 @@ class LocalSource : CatalogueSource {
                     }
                 }
             }
+
+            registerCatalogueSource(ID to LocalSource())
         }
     }
 

@@ -119,7 +119,7 @@ fun applicationSetup() {
 
     databaseUp()
 
-    LocalSource.addDbRecords()
+    LocalSource.register()
 
     // create system tray
     if (serverConfig.systemTrayEnabled) {
