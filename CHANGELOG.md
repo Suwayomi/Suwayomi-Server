@@ -1,32 +1,76 @@
-# Server: v0.X.Y-next + WebUI: r836
+# Server: v0.5.4-next + WebUI: r855
 ## TL;DR
 - N/A
 
 ## Tachidesk-Server Changelog
-- (r996) .gitignore cleanup
-- (r999) better orphan chapter cleaning algorithm
-- (r1007) remove anime support
-- (r1009)  Fix tests ([#226](https://github.com/Suwayomi/Tachidesk-Server/pull/226) by @ntbm)
-- (r1010)  Expose unread and download count of Manga in category api ([#227](https://github.com/Suwayomi/Tachidesk-Server/pull/227) by @ntbm)
-- (r1011)  add Cache Header to Thumbnail Response for improved library performance ([#228](https://github.com/Suwayomi/Tachidesk-Server/pull/228) by @ntbm)
-- (r1013)  Fix unread and download counts casing ([#230](https://github.com/Suwayomi/Tachidesk-Server/pull/230) by @ntbm)
-- (r1014)  Fix broken test ([#231](https://github.com/Suwayomi/Tachidesk-Server/pull/231) by @ntbm)
+- (r992) update (by @AriaMoradi)
+- (r993) update (by @AriaMoradi)
+- (r994) update WebUI (by @AriaMoradi)
+- (r995) bump version (by @AriaMoradi)
+- (r996) cleanup (by @AriaMoradi)
+- (r997) Update README.md ([#223](https://github.com/Suwayomi/Tachidesk-Server/pull/223)) mahorforuzesh@pm.me
+- (r998) Update README.md (by @AriaMoradi)
+- (r999) better cleaning algorithm (by @AriaMoradi)
+- (r1000) Update CONTRIBUTING.md (by @AriaMoradi)
+- (r1001) Update CONTRIBUTING.md (by @AriaMoradi)
+- (r1002) Update CONTRIBUTING.md (by @AriaMoradi)
+- (r1003) Update README.md (by @AriaMoradi)
+- (r1004) Update README.md (by @AriaMoradi)
+- (r1005) Update README.md (by @AriaMoradi)
+- (r1006) Update README.md (by @AriaMoradi)
+- (r1007) remove anime support (by @AriaMoradi)
+- (r1008) update (by @AriaMoradi)
+- (r1009) Fix tests ([#226](https://github.com/Suwayomi/Tachidesk-Server/pull/226) by @ntbm)
+- (r1010) Expose unread and download count of Manga in category api ([#227](https://github.com/Suwayomi/Tachidesk-Server/pull/227) by @ntbm)
+- (r1011) add Cache Header to Thumbnail Response for improved library performance ([#228](https://github.com/Suwayomi/Tachidesk-Server/pull/228) by @ntbm)
+- (r1012) Update README.md (by @AriaMoradi)
+- (r1013) Fix unread and download counts casing ([#230](https://github.com/Suwayomi/Tachidesk-Server/pull/230) by @Syer10)
+- (r1014) Fix broken test ([#231](https://github.com/Suwayomi/Tachidesk-Server/pull/231) by @ntbm)
+- (r1015) update (by @AriaMoradi)
+- (r1016) Fix category reorder Endpoint. Added Test for Category Reorder ([#232](https://github.com/Suwayomi/Tachidesk-Server/pull/232) by @ntbm)
+- (r1017) change windows bundle names (by @AriaMoradi)
+- (r1018) improve tests (by @AriaMoradi)
+- (r1019) allow injecting Sources (by @AriaMoradi)
 
 
+## Tachidesk-WebUI 
+- (r821) add Permanent sidebar for desktop widths([#46](https://github.com/Suwayomi/Tachidesk-WebUI/pull/46) by @abhijeetChawla)
+- (r822) Fix Local Source being missing (by @AriaMoradi)
+- (r823) fix the ugliness of bare messages (by @AriaMoradi)
+- (r824) add pull request template (by @AriaMoradi)
+- (r825) add Unread badges ([#48](https://github.com/Suwayomi/Tachidesk-WebUI/pull/48) by @ntbm)
+- (r826) Back button implementation ([#47](https://github.com/Suwayomi/Tachidesk-WebUI/pull/47) by @abhijeetChawla)
+- (r827) remove redundant '/manga' prefix from paths (by @AriaMoradi)
+- (r828) refactor (by @AriaMoradi)
+- (r829) put Sources and Extensions in the same screen (by @AriaMoradi)
+- (r830) Set Fallback Image for broken Thumbnails ([#50](https://github.com/Suwayomi/Tachidesk-WebUI/pull/50) by @ntbm)
+- (r831) Update README.md (by @AriaMoradi)
+- (r832) Update README.md (by @AriaMoradi)
+- (r833) Apply Api changes for unread badges ([#52](https://github.com/Suwayomi/Tachidesk-WebUI/pull/52) by @ntbm)
+- (r834) add EmptyView to DownloadQueue, refactro strings ([#53](https://github.com/Suwayomi/Tachidesk-WebUI/pull/53) by @abhijeetChawla)
+- (r835) Bottom navbar for mobile ([#51](https://github.com/Suwayomi/Tachidesk-WebUI/pull/51) by @abhijeetChawla)
+- (r836) Implement Unread Filter for Library ([#54](https://github.com/Suwayomi/Tachidesk-WebUI/pull/54) by @ntbm)
+- (r837) fix navbar broken logic (by @AriaMoradi)
+- (r838) fix navbar (by @AriaMoradi)
+- (r839) refactor (by @AriaMoradi)
+- (r840) refactor (by @AriaMoradi)
+- (r841) refactor (by @AriaMoradi)
+- (r842) show different NavbarItems depending on device width (by @AriaMoradi)
+- (r843) remove text decoration (by @AriaMoradi)
+- (r844) fancy icon based on if path selected (by @AriaMoradi)
+- (r845) custom Extension icon, google's version is shit (by @AriaMoradi)
+- (r846) refactor (by @AriaMoradi)
+- (r847) add CONTRIBUTING.md (by @AriaMoradi)
+- (r848) move info (by @AriaMoradi)
+- (r849) add Search to Library ([#55](https://github.com/Suwayomi/Tachidesk-WebUI/pull/55) by @ntbm)
+- (r850) add aspect ratio to the manga card. ([#56](https://github.com/Suwayomi/Tachidesk-WebUI/pull/56) by @abhijeetChawla)
+- (r851) better wording (by @AriaMoradi)
+- (r852) reorder nav buttons (by @AriaMoradi)
+- (r853) nicer gradient (by @AriaMoradi)
+- (r854) refactor MangaCard (by @AriaMoradi)
+- (r855) closes #58 (by @AriaMoradi
 
-## Tachidesk-WebUI Changelog
-- (r821) add Permanent sidebar for desktop widths([#46](https://github.com/Suwayomi/Tachidesk-WebUI/issues/46) by @abhijeetChawla)
-- (r822) Fix Local Source being missing
-- (r823) fix the ugliness of bare messages
-- (r825) add Unread badges ([#48](https://github.com/Suwayomi/Tachidesk-WebUI/issues/48) by @ntbm)
-- (r826) Back button implementation ([#47](https://github.com/Suwayomi/Tachidesk-WebUI/issues/47) by @abhijeetChawla)
-- (r827) remove redundant '/manga' prefix from paths
-- (r829) put Sources and Extensions in the same screen
-- (r830) Set Fallback Image for broken Thumbnails ([#50](https://github.com/Suwayomi/Tachidesk-WebUI/issues/50) by @ntbm)
-- (r833) Apply Api changes for unread badges ([#52](https://github.com/Suwayomi/Tachidesk-WebUI/issues/52) by @ntbm)
-- (r834) add EmptyView to DownloadQueue, refactro strings ([#53](https://github.com/Suwayomi/Tachidesk-WebUI/issues/53) by @abhijeetChawla)
-- (r835) Bottom navbar for mobile ([#51](https://github.com/Suwayomi/Tachidesk-WebUI/issues/51) by @abhijeetChawla)
-- (r836) Implement Unread Filter for Library ([#54](https://github.com/Suwayomi/Tachidesk-WebUI/issues/54) by @ntbm)
+
 
 # Server: v0.5.4 + WebUI: r820
 ## TL;DR
