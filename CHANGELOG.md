@@ -8,7 +8,7 @@
 - (r994) update WebUI (by @AriaMoradi)
 - (r995) bump version (by @AriaMoradi)
 - (r996) cleanup (by @AriaMoradi)
-- (r997) Update README.md ([#223](https://github.com/Suwayomi/Tachidesk-Server/pull/223)) mahorforuzesh@pm.me
+- (r997) Update README.md ([#223](https://github.com/Suwayomi/Tachidesk-Server/pull/223) by @mahor1221)
 - (r998) Update README.md (by @AriaMoradi)
 - (r999) better cleaning algorithm (by @AriaMoradi)
 - (r1000) Update CONTRIBUTING.md (by @AriaMoradi)
