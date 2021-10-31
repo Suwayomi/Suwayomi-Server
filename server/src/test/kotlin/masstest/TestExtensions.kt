@@ -1,4 +1,4 @@
-package suwayomi
+package masstest
 
 /*
  * Copyright (C) Contributors to the Suwayomi project

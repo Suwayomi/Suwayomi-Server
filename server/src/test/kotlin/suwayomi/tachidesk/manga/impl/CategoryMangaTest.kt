@@ -13,10 +13,9 @@ import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import suwayomi.BASE_PATH
+import suwayomi.tachidesk.manga.impl.Category.DEFAULT_CATEGORY_ID
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -26,59 +25,49 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable.name
 import suwayomi.tachidesk.manga.model.table.ChapterTable.sourceOrder
 import suwayomi.tachidesk.manga.model.table.ChapterTable.url
 import suwayomi.tachidesk.manga.model.table.MangaTable
-import suwayomi.tachidesk.server.applicationSetup
-import xyz.nulldev.ts.config.CONFIG_PREFIX
-import java.io.File
+import suwayomi.tachidesk.ApplicationTest
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class CategoryMangaTest {
-
-    @BeforeEach
-    fun setUp() {
-        val dataRoot = File(BASE_PATH).absolutePath
-        System.setProperty("$CONFIG_PREFIX.server.rootDir", dataRoot)
-        applicationSetup()
-    }
-
+class CategoryMangaTest : ApplicationTest() {
     @Test
     fun getCategoryMangaList() {
-        val emptyCats = CategoryManga.getCategoryMangaList(0).size
+        val emptyCats = CategoryManga.getCategoryMangaList(DEFAULT_CATEGORY_ID).size
         assertEquals(0, emptyCats, "Default category should be empty at start")
-        val mangaId = createManga("Psyren")
+        val mangaId = createLibraryManga("Psyren")
         createChapters(mangaId, 10, true)
-        assertEquals(1, CategoryManga.getCategoryMangaList(0).size, "Default category should have one member")
+        assertEquals(1, CategoryManga.getCategoryMangaList(DEFAULT_CATEGORY_ID).size, "Default category should have one member")
         assertEquals(
-            0, CategoryManga.getCategoryMangaList(0)[0].unreadCount,
+            0, CategoryManga.getCategoryMangaList(DEFAULT_CATEGORY_ID)[0].unreadCount,
             "Manga should not have any unread chapters"
         )
         createChapters(mangaId, 10, false)
         assertEquals(
-            10, CategoryManga.getCategoryMangaList(0)[0].unreadCount,
+            10, CategoryManga.getCategoryMangaList(DEFAULT_CATEGORY_ID)[0].unreadCount,
             "Manga should have unread chapters"
         )
 
-        Category.createCategory("Old") // category id 1
+        val categoryId = Category.createCategory("Old")
         assertEquals(
             0,
-            CategoryManga.getCategoryMangaList(1).size,
+            CategoryManga.getCategoryMangaList(categoryId).size,
             "Newly created category shouldn't have any Mangas"
         )
-        CategoryManga.addMangaToCategory(mangaId, 1)
+        CategoryManga.addMangaToCategory(mangaId, categoryId)
         assertEquals(
-            1, CategoryManga.getCategoryMangaList(1).size,
+            1, CategoryManga.getCategoryMangaList(categoryId).size,
             "Manga should been moved"
         )
         assertEquals(
-            10, CategoryManga.getCategoryMangaList(1)[0].unreadCount,
+            10, CategoryManga.getCategoryMangaList(categoryId)[0].unreadCount,
             "Manga should keep it's unread count in moved category"
         )
         assertEquals(
-            0, CategoryManga.getCategoryMangaList(0).size,
+            0, CategoryManga.getCategoryMangaList(DEFAULT_CATEGORY_ID).size,
             "Manga shouldn't be member of default category after moving"
         )
     }
 
-    private fun createManga(
+    private fun createLibraryManga(
         _title: String
     ): Int {
         return transaction {

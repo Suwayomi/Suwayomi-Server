@@ -12,11 +12,14 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.ApplicationTest
 
-internal class CategoryControllerTest : ApplicationTest() {
+@TestInstance(PER_CLASS)
+internal class SourceControllerTest : ApplicationTest() {
     @Test
     fun categoryReorder() {
         Category.createCategory("foo")

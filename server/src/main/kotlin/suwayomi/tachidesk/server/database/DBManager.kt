@@ -23,9 +23,7 @@ object DBManager {
     }
 }
 
-fun databaseUp() {
-    // must mention db object so the lazy block executes
-    val db = DBManager.db
+fun databaseUp(db: Database = DBManager.db) {
     db.useNestedTransactions = true
 
     val migrations = loadMigrationsFrom("suwayomi.tachidesk.server.database.migration", ServerConfig::class.java)

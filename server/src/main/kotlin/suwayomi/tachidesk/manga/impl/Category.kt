@@ -10,7 +10,7 @@ package suwayomi.tachidesk.manga.impl
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -27,18 +27,21 @@ object Category {
     /**
      * The new category will be placed at the end of the list
      */
-    fun createCategory(name: String) {
+    fun createCategory(name: String): Int {
         // creating a category named Default is illegal
-        if (name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)) return
+        if (name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)) return -1
 
-        transaction {
+        return transaction {
             if (CategoryTable.select { CategoryTable.name eq name }.firstOrNull() == null) {
-                CategoryTable.insert {
+                val newCategoryId = CategoryTable.insertAndGetId {
                     it[CategoryTable.name] = name
                     it[CategoryTable.order] = Int.MAX_VALUE
-                }
+                }.value
+
                 normalizeCategories()
-            }
+
+                newCategoryId
+            } else -1
         }
     }
 

@@ -3,6 +3,9 @@
 .idea
 gradle.properties
 
+# But we need these
+!.idea/runConfigurations
+
 # Ignore Gradle build output directory
 build
 
