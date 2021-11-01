@@ -22,7 +22,7 @@ import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.extension.Extension.getExtensionIconUrl
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSource
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.invalidateSourceCache
+import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.unregisterCatalogueSource
 import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
@@ -136,7 +136,7 @@ object Source {
         pref.saveNewValue(newValue)
         pref.callChangeListener(newValue)
 
-        // must reload the source cache because a preference was changed
-        invalidateSourceCache(sourceId)
+        // must reload the source because a preference was changed
+        unregisterCatalogueSource(sourceId)
     }
 }

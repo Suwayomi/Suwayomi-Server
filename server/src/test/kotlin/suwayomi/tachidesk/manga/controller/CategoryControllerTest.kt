@@ -7,14 +7,13 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import org.jetbrains.exposed.sql.deleteAll
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import suwayomi.tachidesk.ApplicationTest
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.model.table.CategoryTable
+import suwayomi.tachidesk.test.ApplicationTest
+import suwayomi.tachidesk.test.clearTables
 
 internal class CategoryControllerTest : ApplicationTest() {
     @Test
@@ -36,8 +35,8 @@ internal class CategoryControllerTest : ApplicationTest() {
 
     @AfterEach
     internal fun tearDown() {
-        transaction {
-            CategoryTable.deleteAll()
-        }
+        clearTables(
+            CategoryTable
+        )
     }
 }

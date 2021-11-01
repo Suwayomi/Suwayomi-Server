@@ -30,12 +30,14 @@ import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSource
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import suwayomi.tachidesk.server.applicationSetup
+import suwayomi.tachidesk.test.BASE_PATH
+import suwayomi.tachidesk.test.setLoggingEnabled
 import xyz.nulldev.ts.config.CONFIG_PREFIX
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class TestExtensions {
+class TestExtensionCompatibility {
     private val logger = KotlinLogging.logger {}
     private lateinit var extensions: List<ExtensionDataClass>
     private lateinit var sources: List<HttpSource>

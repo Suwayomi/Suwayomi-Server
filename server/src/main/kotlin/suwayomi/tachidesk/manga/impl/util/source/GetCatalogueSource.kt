@@ -64,7 +64,7 @@ object GetCatalogueSource {
         sourceCache += sourcePair
     }
 
-    fun invalidateSourceCache(sourceId: Long) {
+    fun unregisterCatalogueSource(sourceId: Long) {
         sourceCache.remove(sourceId)
     }
 }
