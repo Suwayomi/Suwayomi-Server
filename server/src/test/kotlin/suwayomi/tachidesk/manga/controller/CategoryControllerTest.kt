@@ -12,9 +12,9 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import suwayomi.tachidesk.ApplicationTest
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.model.table.CategoryTable
-import suwayomi.tachidesk.ApplicationTest
 
 internal class CategoryControllerTest : ApplicationTest() {
     @Test
