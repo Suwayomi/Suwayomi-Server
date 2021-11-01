@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.manga.controller
 
 import io.javalin.http.Context
+import io.javalin.http.HttpCode
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.server.JavalinSetup.future
 
@@ -19,5 +20,10 @@ object UpdateController {
                 Chapter.getRecentChapters()
             }
         )
+    }
+
+    fun categoryUpdate(ctx: Context) {
+        val category = ctx.formParam("category")!!.toIntOrNull()
+        ctx.status(HttpCode.NOT_IMPLEMENTED)
     }
 }
