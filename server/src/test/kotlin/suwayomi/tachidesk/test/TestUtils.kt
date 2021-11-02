@@ -8,6 +8,7 @@ package suwayomi.tachidesk.test
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import ch.qos.logback.classic.Level
+import eu.kanade.tachiyomi.source.model.SManga
 import mu.KotlinLogging
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.sql.batchInsert
@@ -38,6 +39,17 @@ fun createLibraryManga(
             it[defaultCategory] = true
             it[inLibrary] = true
         }.value
+    }
+}
+
+fun createSMangas(
+    count: Int
+): List<SManga> {
+    return (0 until count).map {
+        SManga.create().apply {
+            title = "Manga $it"
+            url = "https://$title"
+        }
     }
 }
 

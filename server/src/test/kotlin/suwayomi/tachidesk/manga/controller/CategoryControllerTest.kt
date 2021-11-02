@@ -15,7 +15,7 @@ import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.test.ApplicationTest
 import suwayomi.tachidesk.test.clearTables
 
-internal class CategoryControllerTest : ApplicationTest() {
+class CategoryControllerTest : ApplicationTest() {
     @Test
     fun categoryReorder() {
         Category.createCategory("foo")

@@ -7,8 +7,13 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
+import io.javalin.plugin.json.JsonMapper
+import org.kodein.di.DI
+import org.kodein.di.conf.global
+import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.MangaList.processEntries
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
@@ -17,89 +22,102 @@ import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 object Search {
     suspend fun sourceSearch(sourceId: Long, searchTerm: String, pageNum: Int): PagedMangaListDataClass {
         val source = getCatalogueSourceOrStub(sourceId)
-        val searchManga = source.fetchSearchManga(pageNum, searchTerm, getFilterListOf(sourceId)).awaitSingle()
+        val searchManga = source.fetchSearchManga(pageNum, searchTerm, getFilterListOf(source)).awaitSingle()
         return searchManga.processEntries(sourceId)
     }
 
     private val filterListCache = mutableMapOf<Long, FilterList>()
 
-    private fun getFilterListOf(sourceId: Long, reset: Boolean = false): FilterList {
-        if (reset || !filterListCache.containsKey(sourceId)) {
-            filterListCache[sourceId] = getCatalogueSourceOrStub(sourceId).getFilterList()
+    private fun getFilterListOf(source: CatalogueSource, reset: Boolean = false): FilterList {
+        if (reset || !filterListCache.containsKey(source.id)) {
+            filterListCache[source.id] = source.getFilterList()
         }
-        return filterListCache[sourceId]!!
+        return filterListCache[source.id]!!
     }
 
-    fun getInitialFilterList(sourceId: Long, reset: Boolean): List<FilterObject> {
-        return getFilterListOf(sourceId, reset).list.map {
+    fun getFilterList(sourceId: Long, reset: Boolean): List<FilterObject> {
+        val source = getCatalogueSourceOrStub(sourceId)
+
+        return getFilterListOf(source, reset).list.map {
             FilterObject(
                 when (it) {
                     is Filter.Header -> "Header"
                     is Filter.Separator -> "Separator"
+                    is Filter.Select<*> -> "Select"
+                    is Filter.Text -> "Text"
                     is Filter.CheckBox -> "CheckBox"
                     is Filter.TriState -> "TriState"
-                    is Filter.Text -> "Text"
-                    is Filter.Select<*> -> "Select"
                     is Filter.Group<*> -> "Group"
                     is Filter.Sort -> "Sort"
+                    else -> throw RuntimeException("sealed class Cannot have more Subtypes!")
                 },
-//                when (it) {
-//                    is Filter.Select<*> -> it.getValuesType()
-//                    else -> null
-//                },
-                it
+                when (it) {
+                    is Filter.Group<*> -> {
+                        SerializableGroup(
+                            it.name,
+                            it.state.map { item ->
+                                when (item) {
+                                    is Filter.CheckBox -> FilterObject("CheckBox", item)
+                                    is Filter.TriState -> FilterObject("TriState", item)
+                                    is Filter.Text -> FilterObject("Text", item)
+                                    is Filter.Select<*> -> FilterObject("Select", item)
+                                    else -> throw RuntimeException("Illegal Group item type!")
+                                }
+                            }
+                        )
+                    }
+                    else -> it
+                }
             )
         }
     }
 
-//    private fun Filter.Select<*>.getValuesType(): String = values::class.java.componentType!!.simpleName
+    private fun Filter.Select<*>.getValuesType(): String = values::class.java.componentType!!.simpleName
+    class SerializableGroup(name: String, state: List<FilterObject>) : Filter<List<FilterObject>>(name, state)
 
     data class FilterObject(
         val type: String,
-        val filter: Filter<*>
+        val filter: Filter<*>,
+    )
+
+    fun setFilter(sourceId: Long, change: FilterChange) {
+        val source = getCatalogueSourceOrStub(sourceId)
+        val filterList = getFilterListOf(source, false)
+
+        when (val filter = filterList[change.position]) {
+            is Filter.Header -> {
+                // NOOP
+            }
+            is Filter.Separator -> {
+                // NOOP
+            }
+            is Filter.Select<*> -> filter.state = change.state.toInt()
+            is Filter.Text -> filter.state = change.state
+            is Filter.CheckBox -> filter.state = change.state.toBooleanStrict()
+            is Filter.TriState -> filter.state = change.state.toInt()
+            is Filter.Group<*> -> {
+                val groupChange = jsonMapper.fromJsonString(change.state, FilterChange::class.java)
+
+                when (val groupFilter = filter.state[groupChange.position]) {
+                    is Filter.CheckBox -> groupFilter.state = groupChange.state.toBooleanStrict()
+                    is Filter.TriState -> groupFilter.state = groupChange.state.toInt()
+                    is Filter.Text -> groupFilter.state = groupChange.state
+                    is Filter.Select<*> -> groupFilter.state = groupChange.state.toInt()
+                }
+            }
+            is Filter.Sort -> filter.state = jsonMapper.fromJsonString(change.state, Filter.Sort.Selection::class.java)
+        }
+    }
+
+    private val jsonMapper by DI.global.instance<JsonMapper>()
+
+    data class FilterChange(
+        val position: Int,
+        val state: String
     )
 
     @Suppress("UNUSED_PARAMETER")
     fun sourceGlobalSearch(searchTerm: String) {
         // TODO
     }
-
-    /**
-     * Note: Exhentai had a filter serializer (now in SY) that we might be able to steal
-     */
-// private fun FilterList.toFilterWrapper(): List<FilterWrapper> {
-//    return mapNotNull { filter ->
-//        when (filter) {
-//            is Filter.Header -> FilterWrapper("Header",filter)
-//            is Filter.Separator -> FilterWrapper("Separator",filter)
-//            is Filter.CheckBox -> FilterWrapper("CheckBox",filter)
-//            is Filter.TriState -> FilterWrapper("TriState",filter)
-//            is Filter.Text -> FilterWrapper("Text",filter)
-//            is Filter.Select<*> -> FilterWrapper("Select",filter)
-//            is Filter.Group<*> -> {
-//                val group = GroupItem(filter)
-//                val subItems = filter.state.mapNotNull {
-//                    when (it) {
-//                        is Filter.CheckBox -> FilterWrapper("CheckBox",filter)
-//                        is Filter.TriState -> FilterWrapper("TriState",filter)
-//                        is Filter.Text -> FilterWrapper("Text",filter)
-//                        is Filter.Select<*> -> FilterWrapper("Select",filter)
-//                        else -> null
-//                    } as? ISectionable<*, *>
-//                }
-//                subItems.forEach { it.header = group }
-//                group.subItems = subItems
-//                group
-//            }
-//            is Filter.Sort -> {
-//                val group = SortGroup(filter)
-//                val subItems = filter.values.map {
-//                    SortItem(it, group)
-//                }
-//                group.subItems = subItems
-//                group
-//            }
-//        }
-//    }
-// }
 }
