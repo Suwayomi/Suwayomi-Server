@@ -107,7 +107,7 @@ object MangaAPI {
         }
 
         path("download") {
-            get("bulk", DownloadController::bulkQueueChapter)
+            get("{mangaId}/batch", DownloadController::batchQueueChapter)
             get("{mangaId}/chapter/{chapterIndex}", DownloadController::queueChapter)
             delete("{mangaId}/chapter/{chapterIndex}", DownloadController::unqueueChapter)
         }

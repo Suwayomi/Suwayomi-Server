@@ -69,11 +69,11 @@ object DownloadController {
     }
 
     private val classOfMangaIdChapterIdDataClassList = emptyList<MangaIdChapterIdDataClass>()::class.java
-    /** Bulk queue chapters for download */
-    fun bulkQueueChapter(ctx: Context) {
+    /** Batch add chapters for download */
+    fun batchQueueChapter(ctx: Context) {
         val mangaChapters = ctx.bodyAsClass(classOfMangaIdChapterIdDataClassList)
 
-        DownloadManager.bulkEnqueue(mangaChapters)
+        DownloadManager.batchEnqueue(mangaChapters)
 
         ctx.status(200)
     }

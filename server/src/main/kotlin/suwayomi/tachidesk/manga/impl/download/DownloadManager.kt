@@ -89,7 +89,7 @@ object DownloadManager {
         notifyAllClients()
     }
 
-    fun bulkEnqueue(mangaChapters: List<MangaIdChapterIdDataClass>) {
+    fun batchEnqueue(mangaChapters: List<MangaIdChapterIdDataClass>) {
         mangaChapters.forEach {
             enqueue(it.chapterIndex, it.mangaId)
         }
