@@ -12,7 +12,6 @@ import io.javalin.websocket.WsConfig
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.model.dataclass.MangaIdChapterIdDataClass
 
-
 object DownloadController {
     /** Download queue stats */
     fun downloadsWS(ws: WsConfig) {

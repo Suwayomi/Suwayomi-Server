@@ -91,7 +91,7 @@ object DownloadManager {
 
     fun bulkEnqueue(mangaChapters: List<MangaIdChapterIdDataClass>) {
         mangaChapters.forEach {
-            enqueue(it.chapterIndex, it.magnaId)
+            enqueue(it.chapterIndex, it.mangaId)
         }
     }
 
