@@ -13,6 +13,6 @@ data class MangaChapterDataClass(
 )
 
 data class MangaIdChapterIdDataClass(
-    val magnaId: Int,
+    val mangaId: Int,
     val chapterIndex: Int,
 )
