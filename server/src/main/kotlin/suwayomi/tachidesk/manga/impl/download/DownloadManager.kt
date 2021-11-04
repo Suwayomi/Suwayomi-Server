@@ -15,6 +15,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
+import suwayomi.tachidesk.manga.model.dataclass.MangaIdChapterIdDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import java.util.concurrent.ConcurrentHashMap
@@ -86,6 +87,12 @@ object DownloadManager {
             start()
         }
         notifyAllClients()
+    }
+
+    fun bulkEnqueue(mangaChapters: List<MangaIdChapterIdDataClass>) {
+        mangaChapters.forEach {
+            enqueue(it.chapterIndex, it.magnaId)
+        }
     }
 
     fun unqueue(chapterIndex: Int, mangaId: Int) {

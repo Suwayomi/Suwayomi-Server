@@ -10,6 +10,8 @@ package suwayomi.tachidesk.manga.controller
 import io.javalin.http.Context
 import io.javalin.websocket.WsConfig
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
+import suwayomi.tachidesk.manga.model.dataclass.MangaIdChapterIdDataClass
+
 
 object DownloadController {
     /** Download queue stats */
@@ -63,6 +65,16 @@ object DownloadController {
         val mangaId = ctx.pathParam("mangaId").toInt()
 
         DownloadManager.unqueue(chapterIndex, mangaId)
+
+        ctx.status(200)
+    }
+
+    private val classOfMangaIdChapterIdDataClassList = emptyList<MangaIdChapterIdDataClass>()::class.java
+    /** Bulk queue chapters for download */
+    fun bulkQueueChapter(ctx: Context) {
+        val mangaChapters = ctx.bodyAsClass(classOfMangaIdChapterIdDataClassList)
+
+        DownloadManager.bulkEnqueue(mangaChapters)
 
         ctx.status(200)
     }

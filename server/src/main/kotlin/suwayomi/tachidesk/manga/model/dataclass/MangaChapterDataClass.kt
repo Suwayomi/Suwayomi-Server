@@ -11,3 +11,8 @@ data class MangaChapterDataClass(
     val manga: MangaDataClass,
     val chapter: ChapterDataClass,
 )
+
+data class MangaIdChapterIdDataClass(
+    val magnaId: Int,
+    val chapterIndex: Int,
+)
