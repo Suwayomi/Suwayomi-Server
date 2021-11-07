@@ -26,14 +26,14 @@ class MangaTest : ApplicationTest() {
         assertEquals(0, emptyMeta, "Default Manga meta should be empty at start")
 
         Manga.modifyMangaMeta(metaManga, "test", "value")
-        assertEquals(1, Manga.getMangaMetaMap(metaManga).size, "Default Manga meta should have one member")
-        assertEquals("value", Manga.getMangaMetaMap(metaManga)["test"], "Default Manga meta use the value 'value' for key 'test'")
+        assertEquals(1, Manga.getMangaMetaMap(metaManga).size, "Manga meta should have one member")
+        assertEquals("value", Manga.getMangaMetaMap(metaManga)["test"], "Manga meta use the value 'value' for key 'test'")
 
         Manga.modifyMangaMeta(metaManga, "test", "newValue")
         assertEquals(
             1,
             Manga.getMangaMetaMap(metaManga).size,
-            "Modified Manga meta should still only have one pair"
+            "Manga meta should still only have one pair"
         )
         assertEquals(
             "newValue", Manga.getMangaMetaMap(metaManga)["test"],
