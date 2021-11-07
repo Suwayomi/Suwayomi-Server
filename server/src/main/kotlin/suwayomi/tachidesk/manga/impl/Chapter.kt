@@ -241,7 +241,7 @@ object Chapter {
 
         return ImageResponse.findFileNameStartingWith(
             chapterDir,
-            getPageName(0, chapterDir)
+            getPageName(0)
         ) != null
     }
 
