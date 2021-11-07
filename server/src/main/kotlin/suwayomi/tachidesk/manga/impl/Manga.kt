@@ -144,7 +144,7 @@ object Manga {
 
     fun modifyMangaMeta(mangaId: Int, key: String, value: String) {
         transaction {
-            val manga = MangaMetaTable.select { (MangaTable.id eq mangaId) }
+            val manga = MangaTable.select { MangaTable.id eq mangaId }
                 .first()[MangaTable.id]
             val meta =
                 transaction { MangaMetaTable.select { (MangaMetaTable.ref eq manga) and (MangaMetaTable.key eq key) } }.firstOrNull()
