@@ -50,7 +50,7 @@ class Downloader(private val downloadQueue: CopyOnWriteArrayList<DownloadChapter
                 download.chapter = runBlocking { getChapter(download.chapterIndex, download.mangaId) }
                 step()
 
-                val pageCount = download.chapter!!.pageCount
+                val pageCount = download.chapter.pageCount
                 for (pageNum in 0 until pageCount) {
                     runBlocking { getPageImage(download.mangaId, download.chapterIndex, pageNum) }
                     // TODO: retry on error with 2,4,8 seconds of wait

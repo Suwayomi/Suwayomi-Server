@@ -12,6 +12,7 @@ import io.javalin.websocket.WsMessageContext
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
@@ -69,7 +70,7 @@ object DownloadManager {
         )
     }
 
-    fun enqueue(chapterIndex: Int, mangaId: Int) {
+    suspend fun enqueue(chapterIndex: Int, mangaId: Int) {
         if (downloadQueue.none { it.mangaId == mangaId && it.chapterIndex == chapterIndex }) {
             downloadQueue.add(
                 DownloadChapter(
@@ -80,7 +81,8 @@ object DownloadManager {
                             ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }
                                 .first()
                         }
-                    )
+                    ),
+                    manga = getManga(mangaId)
                 )
             )
             start()

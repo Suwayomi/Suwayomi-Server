@@ -9,12 +9,14 @@ package suwayomi.tachidesk.manga.impl.download.model
 
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Queued
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
+import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 
 class DownloadChapter(
     val chapterIndex: Int,
     val mangaId: Int,
+    var chapter: ChapterDataClass,
+    var manga: MangaDataClass,
     var state: DownloadState = Queued,
     var progress: Float = 0f,
     var tries: Int = 0,
-    var chapter: ChapterDataClass? = null,
 )
