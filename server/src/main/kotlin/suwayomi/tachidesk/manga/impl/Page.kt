@@ -14,19 +14,14 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.util.getChapterDir
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
-import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
-import suwayomi.tachidesk.server.ApplicationDirs
 import java.io.File
 import java.io.InputStream
 
@@ -87,26 +82,15 @@ object Page {
 
         val chapterDir = getChapterDir(mangaId, chapterId)
         File(chapterDir).mkdirs()
-        val fileName = getPageName(index, chapterDir) // e.g. 001
+        val fileName = getPageName(index)
 
         return getImageResponse(chapterDir, fileName, useCache) {
             source.fetchImage(tachiyomiPage).awaitSingle()
         }
     }
 
-    // TODO(v0.6.0) : zero based pages are deprecated
-    fun getPageName(index: Int, chapterDir: String): String {
-        val zeroBasedPageExists = ImageResponse.findFileNameStartingWith(
-            chapterDir,
-            formatPageName(0)
-        ) != null
-
-        if (zeroBasedPageExists) return formatPageName(index)
-
-        return formatPageName(index + 1)
+    /** converts 0 to "001" */
+    fun getPageName(index: Int): String {
+        return String.format("%03d", index + 1)
     }
-
-    private fun formatPageName(index: Int) = String.format("%03d", index)
-
-    private val applicationDirs by DI.global.instance<ApplicationDirs>()
 }
