@@ -27,6 +27,8 @@ import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogue
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
+import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
+import suwayomi.tachidesk.manga.model.dataclass.paginatedFrom
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -321,17 +323,19 @@ object Chapter {
         }
     }
 
-    fun getRecentChapters(): List<MangaChapterDataClass> {
-        return transaction {
-            (ChapterTable innerJoin MangaTable)
-                .select { (MangaTable.inLibrary eq true) and (ChapterTable.fetchedAt greater MangaTable.inLibraryAt) }
-                .orderBy(ChapterTable.fetchedAt to SortOrder.DESC)
-                .map {
-                    MangaChapterDataClass(
-                        MangaTable.toDataClass(it),
-                        ChapterTable.toDataClass(it)
-                    )
-                }
+    fun getRecentChapters(pageNum: Int): PaginatedList<MangaChapterDataClass> {
+        return paginatedFrom(pageNum) {
+            transaction {
+                (ChapterTable innerJoin MangaTable)
+                    .select { (MangaTable.inLibrary eq true) and (ChapterTable.fetchedAt greater MangaTable.inLibraryAt) }
+                    .orderBy(ChapterTable.fetchedAt to SortOrder.DESC)
+                    .map {
+                        MangaChapterDataClass(
+                            MangaTable.toDataClass(it),
+                            ChapterTable.toDataClass(it)
+                        )
+                    }
+            }
         }
     }
 }

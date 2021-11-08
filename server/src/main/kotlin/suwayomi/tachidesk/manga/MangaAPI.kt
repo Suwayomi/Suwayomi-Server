@@ -112,7 +112,7 @@ object MangaAPI {
         }
 
         path("update") {
-            get("recentChapters", UpdateController::recentChapters)
+            get("recentChapters/{pageNum}", UpdateController::recentChapters)
         }
     }
 }
