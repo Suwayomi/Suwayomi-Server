@@ -14,9 +14,11 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 object UpdateController {
     /** get recently updated manga chapters */
     fun recentChapters(ctx: Context) {
+        val pageNum = ctx.pathParam("pageNum").toInt()
+
         ctx.future(
             future {
-                Chapter.getRecentChapters()
+                Chapter.getRecentChapters(pageNum)
             }
         )
     }
