@@ -15,6 +15,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import suwayomi.tachidesk.ApplicationTest
 import suwayomi.tachidesk.manga.impl.Category.DEFAULT_CATEGORY_ID
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
@@ -25,7 +26,6 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable.name
 import suwayomi.tachidesk.manga.model.table.ChapterTable.sourceOrder
 import suwayomi.tachidesk.manga.model.table.ChapterTable.url
 import suwayomi.tachidesk.manga.model.table.MangaTable
-import suwayomi.tachidesk.ApplicationTest
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class CategoryMangaTest : ApplicationTest() {

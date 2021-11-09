@@ -1,12 +1,13 @@
 package suwayomi.tachidesk.manga.impl.update
 
+import rx.Observable
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 
 interface IUpdater {
-    fun addManga(manga: MangaDataClass): Unit
-    fun getCurrentJobs(): List<MangaDataClass>
-    fun getProgress(): Pair<Int, Int>
-    fun isUpdating(): Boolean
-    fun start(): Unit
-    fun cancel(): Unit
+    fun addMangaToQueue(manga: MangaDataClass)
+    fun listJobs(): List<UpdateJob>
+    fun startUpdater()
+    fun resetUpdater()
+    fun isUpdaterRunning(): Boolean
+    fun getStatus(): Observable<UpdateStatus>
 }

@@ -9,6 +9,7 @@ package suwayomi.tachidesk
 
 import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.source.local.LocalSource
+import masstest.BASE_PATH
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
 import org.junit.jupiter.api.BeforeAll
@@ -16,7 +17,8 @@ import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.conf.global
 import org.kodein.di.singleton
-import masstest.BASE_PATH
+import suwayomi.tachidesk.manga.impl.update.IUpdater
+import suwayomi.tachidesk.manga.impl.update.TestUpdater
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.JavalinSetup
 import suwayomi.tachidesk.server.ServerConfig
@@ -59,6 +61,7 @@ open class ApplicationTest {
             DI.global.addImport(
                 DI.Module("Server") {
                     bind<ApplicationDirs>() with singleton { applicationDirs }
+                    bind<IUpdater>() with singleton { TestUpdater() }
                 }
             )
 
