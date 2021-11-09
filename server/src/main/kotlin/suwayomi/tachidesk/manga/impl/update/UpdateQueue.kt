@@ -14,7 +14,7 @@ class UpdateQueue : IUpdater, Thread() {
     override fun getStatus(): Observable<UpdateStatus> {
         return Observable.interval(1, TimeUnit.SECONDS).map {
             UpdateStatus(queue, isRunning)
-        }
+        }.distinctUntilChanged()
     }
 
     private val queue = ArrayList<UpdateJob>()

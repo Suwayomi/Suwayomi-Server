@@ -10,15 +10,11 @@ object FunThread : Thread() {
     private val updater by DI.global.instance<IUpdater>()
 
     override fun run() {
-        while (true) {
-            sleep(5000)
-            updater.getStatus().subscribe({
-                logger.info { "Updater status: ${it.running} ${it.statusMap.getOrDefault(JobStatus.PENDING, ArrayList()).size}" }
-            }, {
-                logger.error { "Updater status error: $it" }
-            })
-
-            logger.info { "FunThread" }
-        }
+        updater.getStatus().subscribe({
+            logger.info { "Updater status: ${it.running} ${it.statusMap.getOrDefault(JobStatus.PENDING, ArrayList()).size}" }
+        }, {
+            logger.error { "Updater status error: $it" }
+        })
+        logger.info { "FunThread" }
     }
 }
