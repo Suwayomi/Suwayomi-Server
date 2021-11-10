@@ -72,7 +72,6 @@ dependencies {
     implementation(kotlin("script-runtime"))
 
     testImplementation("io.mockk:mockk:1.9.3")
-    testImplementation("io.javalin:javalin:4.0.0")
 }
 
 application {

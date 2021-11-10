@@ -12,7 +12,6 @@ import mu.KotlinLogging
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
-import suwayomi.tachidesk.manga.impl.download.DownloadManager
 
 object UpdaterSocket : Websocket() {
     private val logger = KotlinLogging.logger {}
