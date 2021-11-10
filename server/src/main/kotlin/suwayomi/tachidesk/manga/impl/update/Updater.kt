@@ -2,7 +2,6 @@ package suwayomi.tachidesk.manga.impl.update
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -54,7 +53,6 @@ class Updater : IUpdater {
         tracker["${job.manga.id}"] = job
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
     override fun addMangaToQueue(manga: MangaDataClass) {
         scope.launch {
             updateChannel.send(UpdateJob(manga))
