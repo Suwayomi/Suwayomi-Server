@@ -12,6 +12,7 @@ import mu.KotlinLogging
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
+import suwayomi.tachidesk.manga.impl.download.DownloadManager
 
 object UpdaterSocket : Websocket() {
     private val logger = KotlinLogging.logger {}
@@ -24,7 +25,17 @@ object UpdaterSocket : Websocket() {
     }
 
     override fun handleRequest(ctx: WsMessageContext) {
-        ctx.send(updater.getStatus().value.getJsonSummary())
+        when (ctx.message()) {
+            "STATUS" -> notifyClient(ctx)
+            else -> ctx.send(
+                """
+                        |Invalid command.
+                        |Supported commands are:
+                        |    - STATUS
+                        |       sends the current update status
+                        |""".trimMargin()
+            )
+        }
     }
 
     override fun addClient(ctx: WsContext) {
