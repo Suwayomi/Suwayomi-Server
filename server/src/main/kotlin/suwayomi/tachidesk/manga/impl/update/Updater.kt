@@ -45,6 +45,7 @@ class Updater : IUpdater {
             Chapter.getChapterList(job.manga.id, true)
             job.status = JobStatus.COMPLETE
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             logger.error(e) { "Error while updating ${job.manga.title}" }
             job.status = JobStatus.FAILED
         }
@@ -57,6 +58,7 @@ class Updater : IUpdater {
             updateChannel.send(UpdateJob(manga))
         }
         tracker["${manga.id}"] = UpdateJob(manga)
+        statusChannel.value = UpdateStatus(tracker.values.toList(), isRunning)
     }
 
     override fun getStatus(): StateFlow<UpdateStatus> {
