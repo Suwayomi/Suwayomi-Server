@@ -22,6 +22,9 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
 
+    // javalin openapi
+    implementation("io.javalin:javalin-openapi:4.1.1")
+
     // Exposed ORM
     val exposedVersion = "0.34.1"
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")

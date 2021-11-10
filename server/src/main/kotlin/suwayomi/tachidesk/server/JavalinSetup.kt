@@ -11,6 +11,10 @@ import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.path
 import io.javalin.core.security.RouteRole
 import io.javalin.http.staticfiles.Location
+import io.javalin.plugin.openapi.OpenApiOptions
+import io.javalin.plugin.openapi.OpenApiPlugin
+import io.javalin.plugin.openapi.ui.SwaggerOptions
+import io.swagger.v3.oas.models.info.Info
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -49,6 +53,7 @@ object JavalinSetup {
             }
 
             config.enableCorsForAllOrigins()
+            config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
         }.events { event ->
             event.serverStarted {
                 if (serverConfig.initialOpenInBrowserEnabled) {
@@ -100,5 +105,18 @@ object JavalinSetup {
 
     object Auth {
         enum class Role : RouteRole { ANYONE, USER_READ, USER_WRITE }
+    }
+
+    private fun getOpenApiOptions(): OpenApiOptions {
+        val applicationInfo: Info = Info()
+            .version("1.0")
+            .description("Tachidesk Api")
+
+        return OpenApiOptions(applicationInfo)
+            .path("/api/openapi.json")
+            .swagger(
+                SwaggerOptions("/api/swagger-ui")
+                    .title("Tachidesk Swagger Documentation")
+            )
     }
 }

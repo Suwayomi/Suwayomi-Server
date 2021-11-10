@@ -2,6 +2,8 @@ package suwayomi.tachidesk.manga.controller
 
 import io.javalin.http.Context
 import io.javalin.http.HttpCode
+import io.javalin.plugin.openapi.dsl.OpenApiDocumentation
+import io.javalin.plugin.openapi.dsl.document
 import io.javalin.websocket.WsConfig
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
@@ -37,6 +39,20 @@ object UpdateController {
         )
     }
 
+    val categoryUpdateDocumentation: OpenApiDocumentation = document()
+        .operation {
+            it.summary("Start fetching all mangas in a category")
+            it.description(
+                """
+                Will start fetching all mangas in a category based on the category id.
+                If the category id is not valid, a Bad Request will be returned.
+                If the category id is null, all categories will be fetched.
+                """.trimIndent()
+            )
+        }
+        .formParam<Int>("category", false)
+        .result<String>("OK", "text/plain")
+        .result<String>("BAD_REQUEST", "text/plain")
     fun categoryUpdate(ctx: Context) {
         val categoryId = ctx.formParam("category")?.toIntOrNull()
         val categoriesForUpdate = ArrayList<CategoryDataClass>()

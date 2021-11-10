@@ -13,6 +13,7 @@ import io.javalin.apibuilder.ApiBuilder.patch
 import io.javalin.apibuilder.ApiBuilder.path
 import io.javalin.apibuilder.ApiBuilder.post
 import io.javalin.apibuilder.ApiBuilder.ws
+import io.javalin.plugin.openapi.dsl.documented
 import suwayomi.tachidesk.manga.controller.BackupController
 import suwayomi.tachidesk.manga.controller.CategoryController
 import suwayomi.tachidesk.manga.controller.DownloadController
@@ -53,7 +54,7 @@ object MangaAPI {
 
         path("manga") {
             get("{mangaId}", MangaController::retrieve)
-            get("{mangaId}/thumbnail", MangaController::thumbnail)
+            get("{mangaId}/thumbnail", documented(MangaController.getThumbnailDocumented, MangaController::thumbnail))
 
             get("{mangaId}/category", MangaController::categoryList)
             get("{mangaId}/category/{categoryId}", MangaController::addToCategory)
@@ -113,7 +114,7 @@ object MangaAPI {
 
         path("update") {
             get("recentChapters/{pageNum}", UpdateController::recentChapters)
-            post("fetch", UpdateController::categoryUpdate)
+            post("fetch", documented(UpdateController.categoryUpdateDocumentation, UpdateController::categoryUpdate))
             get("summary", UpdateController::updateSummary)
             ws("", UpdateController::categoryUpdateWS)
         }
