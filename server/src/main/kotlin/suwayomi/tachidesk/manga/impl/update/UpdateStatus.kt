@@ -9,7 +9,6 @@ class UpdateStatus {
     var running: Boolean = false
 
     constructor(jobs: List<UpdateJob>, running: Boolean) {
-        logger.info { "Recreating" }
         this.running = running
         jobs.forEach {
             val list = statusMap.getOrDefault(it.status, ArrayList())
@@ -36,5 +35,14 @@ class UpdateStatus {
         var result = statusMap.hashCode()
         result = 31 * result + running.hashCode()
         return result
+    }
+
+    override fun toString(): String {
+        return "UpdateStatus(statusMap=${statusMap.map { "${it.key} : ${it.value.size}" }.joinToString("; ")}, running=$running)"
+    }
+
+    // serialize to json
+    fun toJson(): String {
+        return """{"statusMap":{${statusMap.map { "\"${it.key}\" : ${it.value.size}" }.joinToString(",")}}, "running":$running}"""
     }
 }

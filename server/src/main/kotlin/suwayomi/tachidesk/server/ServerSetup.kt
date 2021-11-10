@@ -14,9 +14,8 @@ import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.conf.global
 import org.kodein.di.singleton
-import suwayomi.tachidesk.manga.impl.update.FunThread
 import suwayomi.tachidesk.manga.impl.update.IUpdater
-import suwayomi.tachidesk.manga.impl.update.UpdateQueue
+import suwayomi.tachidesk.manga.impl.update.Updater
 import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
 import suwayomi.tachidesk.server.util.SystemTray.systemTray
@@ -56,7 +55,7 @@ fun applicationSetup() {
     DI.global.addImport(
         DI.Module("Server") {
             bind<ApplicationDirs>() with singleton { applicationDirs }
-            bind<IUpdater>() with singleton { UpdateQueue() }
+            bind<IUpdater>() with singleton { Updater() }
         }
     )
 
@@ -145,6 +144,4 @@ fun applicationSetup() {
         System.getProperties()["socksProxyPort"] = serverConfig.socksProxyPort
         logger.info("Socks Proxy is enabled to ${serverConfig.socksProxyHost}:${serverConfig.socksProxyPort}")
     }
-
-    FunThread.start()
 }

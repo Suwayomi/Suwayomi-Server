@@ -2,6 +2,7 @@ package suwayomi.tachidesk.manga.controller
 
 import io.javalin.http.Context
 import io.javalin.http.HttpCode
+import io.javalin.websocket.WsConfig
 import mu.KotlinLogging
 import org.kodein.di.DI
 import org.kodein.di.conf.global
@@ -10,6 +11,7 @@ import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.update.IUpdater
+import suwayomi.tachidesk.manga.impl.update.UpdaterSocket
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.*
@@ -64,8 +66,17 @@ object UpdateController {
         }
     }
 
-    fun getStatus(ctx: Context) {
-        val updater by DI.global.instance<IUpdater>()
-        ctx.json(updater.getStatus())
+    fun categoryUpdateWS(ws: WsConfig) {
+        logger.info { "Getting wsconfig" }
+        ws.onConnect { ctx ->
+            UpdaterSocket.addClient(ctx)
+            UpdaterSocket.notifyClient(ctx)
+        }
+        ws.onMessage { ctx ->
+            UpdaterSocket.handleRequest(ctx)
+        }
+        ws.onClose { ctx ->
+            UpdaterSocket.removeClient(ctx)
+        }
     }
 }

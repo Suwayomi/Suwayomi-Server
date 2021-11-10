@@ -113,7 +113,7 @@ object MangaAPI {
         path("update") {
             get("recentChapters", UpdateController::recentChapters)
             post("fetch", UpdateController::categoryUpdate)
-            get("status", UpdateController::getStatus)
+            ws("", UpdateController::categoryUpdateWS)
         }
     }
 }
