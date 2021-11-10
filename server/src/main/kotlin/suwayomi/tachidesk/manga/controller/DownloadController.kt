@@ -10,6 +10,7 @@ package suwayomi.tachidesk.manga.controller
 import io.javalin.http.Context
 import io.javalin.websocket.WsConfig
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
+import suwayomi.tachidesk.server.JavalinSetup.future
 
 object DownloadController {
     /** Download queue stats */
@@ -52,9 +53,11 @@ object DownloadController {
         val chapterIndex = ctx.pathParam("chapterIndex").toInt()
         val mangaId = ctx.pathParam("mangaId").toInt()
 
-        DownloadManager.enqueue(chapterIndex, mangaId)
-
-        ctx.status(200)
+        ctx.future(
+            future {
+                DownloadManager.enqueue(chapterIndex, mangaId)
+            }
+        )
     }
 
     /** delete chapter from download queue */
