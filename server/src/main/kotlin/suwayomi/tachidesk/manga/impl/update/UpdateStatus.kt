@@ -24,30 +24,12 @@ class UpdateStatus {
 
     constructor()
 
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as UpdateStatus
-
-        if (statusMap != other.statusMap) return false
-        if (running != other.running) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = statusMap.hashCode()
-        result = 31 * result + running.hashCode()
-        return result
-    }
-
     override fun toString(): String {
         return "UpdateStatus(statusMap=${statusMap.map { "${it.key} : ${it.value.size}" }.joinToString("; ")}, running=$running)"
     }
 
-    // serialize to json
-    fun toJson(): String {
+    // serialize to summary json
+    fun getJsonSummary(): String {
         return """{"statusMap":{${statusMap.map { "\"${it.key}\" : ${it.value.size}" }.joinToString(",")}}, "running":$running}"""
     }
 }

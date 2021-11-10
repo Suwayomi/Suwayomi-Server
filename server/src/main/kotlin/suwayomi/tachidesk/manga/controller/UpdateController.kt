@@ -86,6 +86,6 @@ object UpdateController {
 
     fun updateSummary(ctx: Context) {
         val updater by DI.global.instance<IUpdater>()
-        ctx.json(updater.getStatus().value.toJson())
+        ctx.json(updater.getStatus().value.getJsonSummary())
     }
 }

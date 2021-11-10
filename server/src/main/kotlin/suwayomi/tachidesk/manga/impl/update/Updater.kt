@@ -27,24 +27,28 @@ class Updater : IUpdater {
         return scope.launch {
             while (true) {
                 val job = updateChannel.receive()
-                isRunning = true
-                job.status = JobStatus.RUNNING
-                tracker["${job.manga.id}"] = job
-                statusChannel.emit(UpdateStatus(tracker, isRunning))
-                try {
-                    logger.info { "Updating ${job.manga.title}" }
-                    Chapter.getChapterList(job.manga.id, true)
-                    job.status = JobStatus.COMPLETE
-                } catch (e: Exception) {
-                    logger.error(e) { "Error while updating ${job.manga.title}" }
-                    job.status = JobStatus.FAILED
-                }
-                tracker["${job.manga.id}"] = job
+                process(job)
                 isRunning = !updateChannel.isEmpty
                 val value = UpdateStatus(tracker, isRunning)
                 statusChannel.emit(value)
             }
         }
+    }
+
+    private suspend fun process(job: UpdateJob) {
+        isRunning = true
+        job.status = JobStatus.RUNNING
+        tracker["${job.manga.id}"] = job
+        statusChannel.emit(UpdateStatus(tracker, isRunning))
+        try {
+            logger.info { "Updating ${job.manga.title}" }
+            Chapter.getChapterList(job.manga.id, true)
+            job.status = JobStatus.COMPLETE
+        } catch (e: Exception) {
+            logger.error(e) { "Error while updating ${job.manga.title}" }
+            job.status = JobStatus.FAILED
+        }
+        tracker["${job.manga.id}"] = job
     }
 
     @OptIn(DelicateCoroutinesApi::class)

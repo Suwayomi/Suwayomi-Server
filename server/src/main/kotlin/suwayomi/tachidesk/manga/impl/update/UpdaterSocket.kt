@@ -16,11 +16,11 @@ object UpdaterSocket : Websocket() {
     private var job: Job? = null
 
     override fun notifyClient(ctx: WsContext) {
-        ctx.send(updater.getStatus().value.toJson())
+        ctx.send(updater.getStatus().value.getJsonSummary())
     }
 
     override fun handleRequest(ctx: WsMessageContext) {
-        ctx.send(updater.getStatus().value.toJson())
+        ctx.send(updater.getStatus().value.getJsonSummary())
     }
 
     override fun addClient(ctx: WsContext) {
