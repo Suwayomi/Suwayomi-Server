@@ -40,7 +40,7 @@ object UpdateController {
     }
 
     fun categoryUpdate(ctx: Context) {
-        val categoryId = Optional.ofNullable(ctx.formParam("category")).map { it.toIntOrNull() }.orElse(null)
+        val categoryId = ctx.formParam("category")?.toIntOrNull()
         val categoriesForUpdate = ArrayList<CategoryDataClass>()
         if (categoryId == null) {
             logger.info { "Adding Library to Update Queue" }
@@ -64,9 +64,9 @@ object UpdateController {
         if (clear) {
             runBlocking { updater.reset() }
         }
-        for (category in categories) {
+        categories.forEach { category ->
             val mangas = CategoryManga.getCategoryMangaList(category.id)
-            for (manga in mangas) {
+            mangas.forEach { manga ->
                 updater.addMangaToQueue(manga)
             }
         }
