@@ -9,7 +9,7 @@ Checkout [This Kanban Board](https://github.com/Suwayomi/Tachidesk/projects/1) t
 ### Project goals and vision
 - Porting Tachiyomi and covering it's features
 - Syncing with Tachiyomi, [main issue](https://github.com/Suwayomi/Tachidesk-Server/issues/159)
-- and angenerally rejecting features that Tachiyomi(not forks) doesn't have,
+- Generally rejecting features that Tachiyomi(main app) doesn't have,
     - Unless it's something that makes sense for desktop sizes or desktop form factor (keyboard + mouse)
     - Additional/crazy features can go in forks and alternative clients
 - [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI) should

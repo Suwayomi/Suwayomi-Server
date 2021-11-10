@@ -1,4 +1,4 @@
-package suwayomi.tachidesk
+package suwayomi.tachidesk.test
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -9,7 +9,8 @@ package suwayomi.tachidesk
 
 import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.source.local.LocalSource
-import masstest.BASE_PATH
+import io.javalin.plugin.json.JavalinJackson
+import io.javalin.plugin.json.JsonMapper
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
 import org.junit.jupiter.api.BeforeAll
@@ -61,6 +62,7 @@ open class ApplicationTest {
             DI.global.addImport(
                 DI.Module("Server") {
                     bind<ApplicationDirs>() with singleton { applicationDirs }
+                    bind<JsonMapper>() with singleton { JavalinJackson() }
                     bind<IUpdater>() with singleton { TestUpdater() }
                 }
             )

@@ -9,6 +9,8 @@ package suwayomi.tachidesk.server
 
 import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.source.local.LocalSource
+import io.javalin.plugin.json.JavalinJackson
+import io.javalin.plugin.json.JsonMapper
 import mu.KotlinLogging
 import org.kodein.di.DI
 import org.kodein.di.bind
@@ -56,6 +58,7 @@ fun applicationSetup() {
         DI.Module("Server") {
             bind<ApplicationDirs>() with singleton { applicationDirs }
             bind<IUpdater>() with singleton { Updater() }
+            bind<JsonMapper>() with singleton { JavalinJackson() }
         }
     )
 

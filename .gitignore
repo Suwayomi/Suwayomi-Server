@@ -8,6 +8,8 @@ gradle.properties
 
 # Ignore Gradle build output directory
 build
+server/out
+AndroidCompat/out
 
 # WebUI is either to be downloaded on-demand or is a dynamic build asset
 server/src/main/resources/WebUI.zip

@@ -10,6 +10,7 @@ package suwayomi.tachidesk.manga.controller
 import io.javalin.http.Context
 import suwayomi.tachidesk.manga.impl.MangaList
 import suwayomi.tachidesk.manga.impl.Search
+import suwayomi.tachidesk.manga.impl.Search.FilterChange
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.Source.SourcePreferenceChange
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -54,7 +55,7 @@ object SourceController {
         ctx.json(Source.getSourcePreferences(sourceId))
     }
 
-    /** fetch preferences of source with id `sourceId` */
+    /** set one preference of source with id `sourceId` */
     fun setPreference(ctx: Context) {
         val sourceId = ctx.pathParam("sourceId").toLong()
         val preferenceChange = ctx.bodyAsClass(SourcePreferenceChange::class.java)
@@ -62,11 +63,18 @@ object SourceController {
     }
 
     /** fetch filters of source with id `sourceId` */
-    fun filters(ctx: Context) {
+    fun getFilters(ctx: Context) {
         val sourceId = ctx.pathParam("sourceId").toLong()
         val reset = ctx.queryParam("reset")?.toBoolean() ?: false
+        ctx.json(Search.getFilterList(sourceId, reset))
+    }
 
-        ctx.json(Search.getInitialFilterList(sourceId, reset))
+    /** set one filter of source with id `sourceId` */
+    fun setFilter(ctx: Context) {
+        val sourceId = ctx.pathParam("sourceId").toLong()
+        val filterChange = ctx.bodyAsClass(FilterChange::class.java)
+
+        ctx.json(Search.setFilter(sourceId, filterChange))
     }
 
     /** single source search */

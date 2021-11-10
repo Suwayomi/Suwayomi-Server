@@ -15,7 +15,7 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import rx.Observable
 
-class StubSource(override val id: Long) : CatalogueSource {
+open class StubSource(override val id: Long) : CatalogueSource {
     override val lang: String = "other"
     override val supportsLatest: Boolean = false
     override val name: String

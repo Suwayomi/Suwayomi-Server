@@ -7,10 +7,13 @@ package suwayomi.tachidesk.server.util
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import io.javalin.plugin.json.JavalinJackson
+import io.javalin.plugin.json.JsonMapper
 import mu.KotlinLogging
 import okhttp3.OkHttpClient
 import okhttp3.Request.Builder
+import org.kodein.di.DI
+import org.kodein.di.conf.global
+import org.kodein.di.instance
 import suwayomi.tachidesk.global.impl.AboutDataClass
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.util.Browser.openInBrowser
@@ -30,6 +33,8 @@ object AppMutex {
 
     private val appIP = if (serverConfig.ip == "0.0.0.0") "127.0.0.1" else serverConfig.ip
 
+    private val jsonMapper by DI.global.instance<JsonMapper>()
+
     private fun checkAppMutex(): AppMutexState {
         val client = OkHttpClient.Builder()
             .connectTimeout(200, TimeUnit.MILLISECONDS)
@@ -46,7 +51,7 @@ object AppMutex {
         }
 
         return try {
-            JavalinJackson().fromJsonString(response, AboutDataClass::class.java)
+            jsonMapper.fromJsonString(response, AboutDataClass::class.java)
             AppMutexState.TachideskInstanceRunning
         } catch (e: IOException) {
             AppMutexState.OtherApplicationRunning

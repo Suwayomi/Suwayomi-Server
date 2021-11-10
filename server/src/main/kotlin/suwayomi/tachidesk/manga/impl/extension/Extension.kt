@@ -240,7 +240,7 @@ object Extension {
             PackageTools.jarLoaderMap.remove(jarPath)?.close()
 
             // clear all loaded sources
-            sources.forEach { GetCatalogueSource.invalidateSourceCache(it) }
+            sources.forEach { GetCatalogueSource.unregisterCatalogueSource(it) }
 
             File(jarPath).delete()
         }

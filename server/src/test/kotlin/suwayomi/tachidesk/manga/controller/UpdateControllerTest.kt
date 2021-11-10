@@ -6,7 +6,6 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.*
@@ -14,13 +13,14 @@ import org.junit.jupiter.api.Assertions.*
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
-import suwayomi.tachidesk.ApplicationTest
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.test.ApplicationTest
+import suwayomi.tachidesk.test.clearTables
 
 internal class UpdateControllerTest : ApplicationTest() {
     private val ctx = mockk<Context>(relaxed = true)
@@ -78,11 +78,11 @@ internal class UpdateControllerTest : ApplicationTest() {
 
     @AfterEach
     internal fun tearDown() {
-        transaction {
-            CategoryMangaTable.deleteAll()
-            MangaTable.deleteAll()
-            CategoryTable.deleteAll()
-        }
+        clearTables(
+            CategoryMangaTable,
+            MangaTable,
+            CategoryTable
+        )
         val updater by DI.global.instance<IUpdater>()
         runBlocking { updater.reset() }
     }
