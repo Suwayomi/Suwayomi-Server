@@ -4,10 +4,10 @@ import mu.KotlinLogging
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 
 var logger = KotlinLogging.logger {}
-class UpdateStatus (
+class UpdateStatus(
     var statusMap: MutableMap<JobStatus, MutableList<MangaDataClass>> = mutableMapOf<JobStatus, MutableList<MangaDataClass>>(),
     var running: Boolean = false,
-    ) {
+) {
     var numberOfJobs: Int = 0
 
     constructor(jobs: List<UpdateJob>, running: Boolean) : this(
@@ -21,7 +21,6 @@ class UpdateStatus (
             statusMap[it.status] = list
         }
     }
-
 
     override fun toString(): String {
         return "UpdateStatus(statusMap=${statusMap.map { "${it.key} : ${it.value.size}" }.joinToString("; ")}, running=$running)"

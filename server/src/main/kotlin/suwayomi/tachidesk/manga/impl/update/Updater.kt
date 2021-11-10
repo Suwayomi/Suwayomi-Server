@@ -1,10 +1,16 @@
 package suwayomi.tachidesk.manga.impl.update
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.launch
 import mu.KotlinLogging
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
@@ -12,8 +18,6 @@ import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 class Updater : IUpdater {
     private val logger = KotlinLogging.logger {}
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
-    private var isRunning: Boolean = false
 
     private var tracker = mutableMapOf<String, UpdateJob>()
     private var updateChannel = Channel<UpdateJob>()
@@ -29,17 +33,15 @@ class Updater : IUpdater {
             while (true) {
                 val job = updateChannel.receive()
                 process(job)
-                isRunning = !updateChannel.isEmpty
-                statusChannel.value = UpdateStatus(tracker.values.toList(), isRunning)
+                statusChannel.value = UpdateStatus(tracker.values.toList(), !updateChannel.isEmpty)
             }
         }
     }
 
     private suspend fun process(job: UpdateJob) {
-        isRunning = true
         job.status = JobStatus.RUNNING
         tracker["${job.manga.id}"] = job
-        statusChannel.value = UpdateStatus(tracker.values.toList(), isRunning)
+        statusChannel.value = UpdateStatus(tracker.values.toList(), true)
         try {
             logger.info { "Updating ${job.manga.title}" }
             Chapter.getChapterList(job.manga.id, true)
@@ -58,7 +60,7 @@ class Updater : IUpdater {
             updateChannel.send(UpdateJob(manga))
         }
         tracker["${manga.id}"] = UpdateJob(manga)
-        statusChannel.value = UpdateStatus(tracker.values.toList(), isRunning)
+        statusChannel.value = UpdateStatus(tracker.values.toList(), true)
     }
 
     override fun getStatus(): StateFlow<UpdateStatus> {
@@ -66,11 +68,11 @@ class Updater : IUpdater {
     }
 
     override suspend fun reset() {
-        isRunning = false
         tracker.clear()
         updateChannel.cancel()
+        statusChannel.value = UpdateStatus()
         updateJob?.cancel("Reset")
-        updateChannel = Channel<UpdateJob>()
+        updateChannel = Channel()
         updateJob = createUpdateJob()
     }
 }

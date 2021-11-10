@@ -15,8 +15,6 @@ import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.UpdaterSocket
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
-import java.util.*
-import kotlin.collections.ArrayList
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
