@@ -112,7 +112,6 @@ object MangaAPI {
         }
 
         path("update") {
-            get("recentChapters", UpdateController::recentChapters)
             get("recentChapters/{pageNum}", UpdateController::recentChapters)
             post("fetch", UpdateController::categoryUpdate)
             get("summary", UpdateController::updateSummary)
