@@ -17,6 +17,9 @@ class UpdateStatus {
         }
     }
 
+    constructor(jobsMap: HashMap<String, UpdateJob>, running: Boolean) :
+        this(jobsMap.values.toList(), running)
+
     constructor()
 
     override fun equals(other: Any?): Boolean {

@@ -67,10 +67,8 @@ object UpdateController {
     }
 
     fun categoryUpdateWS(ws: WsConfig) {
-        logger.info { "Getting wsconfig" }
         ws.onConnect { ctx ->
             UpdaterSocket.addClient(ctx)
-            UpdaterSocket.notifyClient(ctx)
         }
         ws.onMessage { ctx ->
             UpdaterSocket.handleRequest(ctx)
@@ -78,5 +76,10 @@ object UpdateController {
         ws.onClose { ctx ->
             UpdaterSocket.removeClient(ctx)
         }
+    }
+
+    fun updateSummary(ctx: Context) {
+        val updater by DI.global.instance<IUpdater>()
+        ctx.json(updater.getStatus().value.toJson())
     }
 }

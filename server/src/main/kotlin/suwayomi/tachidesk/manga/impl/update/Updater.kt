@@ -14,7 +14,7 @@ class Updater : IUpdater {
 
     private var isRunning: Boolean = false
 
-    private var queue = ArrayList<UpdateJob>()
+    private var tracker = HashMap<String, UpdateJob>()
     private var updateChannel = Channel<UpdateJob>()
     private val statusChannel = MutableStateFlow(UpdateStatus())
 
@@ -23,9 +23,15 @@ class Updater : IUpdater {
         scope.launch {
             while (true) {
                 if (updateChannel.isEmpty && !isRunning) {
+                    logger.info { "Clear jobs!" }
+                    tracker.clear()
                     isRunning = false
+                    statusChannel.emit(UpdateStatus(tracker, isRunning))
                 }
                 val job = updateChannel.receive()
+                job.status = JobStatus.RUNNING
+                tracker["${job.manga.id}"] = job
+                statusChannel.emit(UpdateStatus(tracker, isRunning))
                 try {
                     logger.info { "Updating ${job.manga.title}" }
                     Chapter.getChapterList(job.manga.id, true)
@@ -34,8 +40,9 @@ class Updater : IUpdater {
                     logger.error(e) { "Error while updating ${job.manga.title}" }
                     job.status = JobStatus.FAILED
                 }
-                queue.add(job)
-                statusChannel.emit(UpdateStatus(queue, !updateChannel.isEmpty))
+                tracker["${job.manga.id}"] = job
+                val value = UpdateStatus(tracker, !updateChannel.isEmpty)
+                statusChannel.emit(value)
                 if (updateChannel.isEmpty) {
                     isRunning = false
                 }
@@ -45,6 +52,7 @@ class Updater : IUpdater {
 
     override fun addMangaToQueue(manga: MangaDataClass) {
         GlobalScope.launch { updateChannel.send(UpdateJob(manga)); }
+        tracker["${manga.id}"] = UpdateJob(manga)
     }
 
     override fun getStatus(): StateFlow<UpdateStatus> {
