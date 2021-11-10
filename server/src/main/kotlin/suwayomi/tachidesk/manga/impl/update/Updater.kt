@@ -17,18 +17,17 @@ class Updater : IUpdater {
     private var tracker = HashMap<String, UpdateJob>()
     private var updateChannel = Channel<UpdateJob>()
     private val statusChannel = MutableStateFlow(UpdateStatus())
+    private var updateJob: Job? = null
 
     init {
-        logger.info { "Updater initialized" }
-        scope.launch {
+        updateJob = createUpdateJob()
+    }
+
+    private fun createUpdateJob(): Job {
+        return scope.launch {
             while (true) {
-                if (updateChannel.isEmpty && !isRunning) {
-                    logger.info { "Clear jobs!" }
-                    tracker.clear()
-                    isRunning = false
-                    statusChannel.emit(UpdateStatus(tracker, isRunning))
-                }
                 val job = updateChannel.receive()
+                isRunning = true
                 job.status = JobStatus.RUNNING
                 tracker["${job.manga.id}"] = job
                 statusChannel.emit(UpdateStatus(tracker, isRunning))
@@ -41,15 +40,14 @@ class Updater : IUpdater {
                     job.status = JobStatus.FAILED
                 }
                 tracker["${job.manga.id}"] = job
-                val value = UpdateStatus(tracker, !updateChannel.isEmpty)
+                isRunning = !updateChannel.isEmpty
+                val value = UpdateStatus(tracker, isRunning)
                 statusChannel.emit(value)
-                if (updateChannel.isEmpty) {
-                    isRunning = false
-                }
             }
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     override fun addMangaToQueue(manga: MangaDataClass) {
         GlobalScope.launch { updateChannel.send(UpdateJob(manga)); }
         tracker["${manga.id}"] = UpdateJob(manga)
@@ -57,5 +55,14 @@ class Updater : IUpdater {
 
     override fun getStatus(): StateFlow<UpdateStatus> {
         return statusChannel
+    }
+
+    override suspend fun reset() {
+        isRunning = false
+        tracker.clear()
+        updateChannel.cancel()
+        updateJob?.cancel("Reset")
+        updateChannel = Channel<UpdateJob>()
+        updateJob = createUpdateJob()
     }
 }

@@ -7,9 +7,11 @@ var logger = KotlinLogging.logger {}
 class UpdateStatus {
     var statusMap = HashMap<JobStatus, ArrayList<MangaDataClass>>()
     var running: Boolean = false
+    var numberOfJobs: Int = 0
 
     constructor(jobs: List<UpdateJob>, running: Boolean) {
         this.running = running
+        this.numberOfJobs = jobs.size
         jobs.forEach {
             val list = statusMap.getOrDefault(it.status, ArrayList())
             list.add(it.manga)

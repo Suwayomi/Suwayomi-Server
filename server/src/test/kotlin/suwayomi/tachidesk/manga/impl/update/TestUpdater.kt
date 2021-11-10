@@ -1,5 +1,7 @@
 package suwayomi.tachidesk.manga.impl.update
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 
 class TestUpdater : IUpdater {
@@ -8,22 +10,15 @@ class TestUpdater : IUpdater {
 
     override fun addMangaToQueue(manga: MangaDataClass) {
         updateQueue.add(UpdateJob(manga))
-    }
-
-    override fun listJobs(): List<UpdateJob> {
-        return updateQueue
-    }
-
-    override fun startUpdater() {
         isRunning = true
     }
 
-    override fun resetUpdater() {
-        updateQueue.clear()
-        isRunning = false
+    override fun getStatus(): StateFlow<UpdateStatus> {
+        return MutableStateFlow(UpdateStatus(updateQueue, isRunning))
     }
 
-    override fun isUpdaterRunning(): Boolean {
-        return isRunning
+    override suspend fun reset() {
+        updateQueue.clear()
+        isRunning = false
     }
 }

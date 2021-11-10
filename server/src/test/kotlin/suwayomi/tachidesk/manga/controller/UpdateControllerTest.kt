@@ -5,6 +5,7 @@ import io.javalin.http.HttpCode
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -30,7 +31,7 @@ internal class UpdateControllerTest : ApplicationTest() {
         UpdateController.categoryUpdate(ctx)
         verify { ctx.status(HttpCode.BAD_REQUEST) }
         val updater by DI.global.instance<IUpdater>()
-        assertEquals(0, updater.listJobs().size)
+        assertEquals(0, updater.getStatus().value.numberOfJobs)
     }
 
     @Test
@@ -42,7 +43,7 @@ internal class UpdateControllerTest : ApplicationTest() {
         UpdateController.categoryUpdate(ctx)
         verify { ctx.status(HttpCode.OK) }
         val updater by DI.global.instance<IUpdater>()
-        assertEquals(1, updater.listJobs().size)
+        assertEquals(1, updater.getStatus().value.numberOfJobs)
     }
 
     @Test
@@ -58,7 +59,7 @@ internal class UpdateControllerTest : ApplicationTest() {
         UpdateController.categoryUpdate(ctx)
         verify { ctx.status(HttpCode.OK) }
         val updater by DI.global.instance<IUpdater>()
-        assertEquals(3, updater.listJobs().size)
+        assertEquals(3, updater.getStatus().value.numberOfJobs)
     }
 
     private fun createLibraryManga(
@@ -83,6 +84,6 @@ internal class UpdateControllerTest : ApplicationTest() {
             CategoryTable.deleteAll()
         }
         val updater by DI.global.instance<IUpdater>()
-        updater.resetUpdater()
+        runBlocking { updater.reset() }
     }
 }

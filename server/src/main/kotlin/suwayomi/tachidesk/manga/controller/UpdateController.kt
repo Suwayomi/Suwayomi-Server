@@ -3,6 +3,7 @@ package suwayomi.tachidesk.manga.controller
 import io.javalin.http.Context
 import io.javalin.http.HttpCode
 import io.javalin.websocket.WsConfig
+import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
 import org.kodein.di.DI
 import org.kodein.di.conf.global
@@ -52,12 +53,15 @@ object UpdateController {
                 return
             }
         }
-        addCategoriesToUpdateQueue(categoriesForUpdate)
+        addCategoriesToUpdateQueue(categoriesForUpdate, true)
         ctx.status(HttpCode.OK)
     }
 
-    private fun addCategoriesToUpdateQueue(categories: List<CategoryDataClass>) {
+    private fun addCategoriesToUpdateQueue(categories: List<CategoryDataClass>, clear: Boolean = false) {
         val updater by DI.global.instance<IUpdater>()
+        if (clear) {
+            runBlocking { updater.reset() }
+        }
         for (category in categories) {
             val mangas = CategoryManga.getCategoryMangaList(category.id)
             for (manga in mangas) {
