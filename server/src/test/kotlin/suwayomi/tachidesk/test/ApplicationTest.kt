@@ -18,6 +18,8 @@ import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.conf.global
 import org.kodein.di.singleton
+import suwayomi.tachidesk.manga.impl.update.IUpdater
+import suwayomi.tachidesk.manga.impl.update.TestUpdater
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.JavalinSetup
 import suwayomi.tachidesk.server.ServerConfig
@@ -61,6 +63,7 @@ open class ApplicationTest {
                 DI.Module("Server") {
                     bind<ApplicationDirs>() with singleton { applicationDirs }
                     bind<JsonMapper>() with singleton { JavalinJackson() }
+                    bind<IUpdater>() with singleton { TestUpdater() }
                 }
             )
 

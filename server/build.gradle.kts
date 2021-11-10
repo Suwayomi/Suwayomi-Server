@@ -70,6 +70,8 @@ dependencies {
     // uncomment to test extensions directly
 //    implementation(fileTree("lib/"))
     implementation(kotlin("script-runtime"))
+
+    testImplementation("io.mockk:mockk:1.9.3")
 }
 
 application {

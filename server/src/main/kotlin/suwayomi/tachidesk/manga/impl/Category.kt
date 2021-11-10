@@ -109,4 +109,12 @@ object Category {
             addDefaultIfNecessary(categories)
         }
     }
+
+    fun getCategoryById(categoryId: Int): CategoryDataClass? {
+        return transaction {
+            CategoryTable.select { CategoryTable.id eq categoryId }.firstOrNull()?.let {
+                CategoryTable.toDataClass(it)
+            }
+        }
+    }
 }
