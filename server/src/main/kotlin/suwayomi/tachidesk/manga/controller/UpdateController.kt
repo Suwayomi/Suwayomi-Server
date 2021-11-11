@@ -5,6 +5,7 @@ import io.javalin.http.HttpCode
 import io.javalin.plugin.openapi.dsl.DocumentedContent
 import io.javalin.plugin.openapi.dsl.OpenApiDocumentation
 import io.javalin.plugin.openapi.dsl.document
+import io.javalin.plugin.openapi.dsl.documented
 import io.javalin.plugin.openapi.dsl.oneOf
 import io.javalin.websocket.WsConfig
 import kotlinx.coroutines.runBlocking
@@ -32,14 +33,13 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 object UpdateController {
     private val logger = KotlinLogging.logger { }
 
-    val recentChaptersDocumentation = document()
+    val recentChapters = documented( document()
         .operation {
             it.summary("Get the recently updated chapters")
         }
         .pathParam<Int>("pageNum")
         .result("OK", oneOf(DocumentedContent(from = MangaChapterDataClass::class.java, true, "application/json")))
-    /** get recently updated manga chapters */
-    fun recentChapters(ctx: Context) {
+    ) { ctx ->
         val pageNum = ctx.pathParam("pageNum").toInt()
 
         ctx.future(
@@ -49,7 +49,7 @@ object UpdateController {
         )
     }
 
-    val categoryUpdateDocumentation: OpenApiDocumentation = document()
+    val categoryUpdate = documented( document()
         .operation {
             it.summary("Start fetching all mangas in a category")
             it.description(
@@ -62,8 +62,8 @@ object UpdateController {
         }
         .formParam<Int>("category", false)
         .result<String>("OK", "text/plain")
-        .result<String>("BAD_REQUEST", "text/plain")
-    fun categoryUpdate(ctx: Context) {
+        .result<String>("BAD_REQUEST", "text/plain"))
+     { ctx ->
         val categoryId = ctx.formParam("category")?.toIntOrNull()
         val categoriesForUpdate = ArrayList<CategoryDataClass>()
         if (categoryId == null) {
@@ -76,7 +76,7 @@ object UpdateController {
             } else {
                 logger.info { "No Category found" }
                 ctx.status(HttpCode.BAD_REQUEST)
-                return
+                return@documented
             }
         }
         addCategoriesToUpdateQueue(categoriesForUpdate, true)
@@ -108,19 +108,21 @@ object UpdateController {
         }
     }
 
-    val updateSummaryDocumentation: OpenApiDocumentation = document()
-        .operation {
-            it.summary("Get the current update summary")
-            it.description(
-                """
+    val updateSummary = documented(
+        document()
+            .operation {
+                it.summary("Get the current update summary")
+                it.description(
+                    """
                 Will return the current update summary.
                 Also will retain the past update summary till the next update.
                 """.trimIndent()
-            )
-        }
-        .result<UpdateStatusSummary>("OK", "application/json")
-    fun updateSummary(ctx: Context) {
+                )
+            }
+            .result<UpdateStatusSummary>("OK", "application/json")
+    ) { ctx ->
         val updater by DI.global.instance<IUpdater>()
         ctx.json(updater.getStatus().value.getSummary())
     }
+
 }
