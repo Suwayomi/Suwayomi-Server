@@ -8,8 +8,6 @@ package suwayomi.tachidesk.manga.controller
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.javalin.http.Context
-import io.javalin.plugin.openapi.dsl.OpenApiDocumentation
-import io.javalin.plugin.openapi.dsl.document
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Library
@@ -30,20 +28,6 @@ object MangaController {
         )
     }
 
-    val getThumbnailDocumented: OpenApiDocumentation = document()
-        .operation {
-            it.summary("Get Manga thumbnail")
-            it.description("Get the thumbnail for a manga")
-        }
-        .pathParam<Int>("mangaId") {
-            it.description("The id of the manga")
-        }
-        .queryParam<Boolean>("onlineFetch") {
-            it.description("Whether to fetch the manga from the online source")
-        }
-        .result<ByteArray>("200", "binary image") {
-            it.description("The thumbnail image")
-        }
     /** manga thumbnail */
     fun thumbnail(ctx: Context) {
         val mangaId = ctx.pathParam("mangaId").toInt()

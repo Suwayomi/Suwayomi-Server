@@ -54,7 +54,7 @@ object MangaAPI {
 
         path("manga") {
             get("{mangaId}", MangaController::retrieve)
-            get("{mangaId}/thumbnail", documented(MangaController.getThumbnailDocumented, MangaController::thumbnail))
+            get("{mangaId}/thumbnail", MangaController::thumbnail)
 
             get("{mangaId}/category", MangaController::categoryList)
             get("{mangaId}/category/{categoryId}", MangaController::addToCategory)
@@ -113,9 +113,9 @@ object MangaAPI {
         }
 
         path("update") {
-            get("recentChapters/{pageNum}", UpdateController::recentChapters)
+            get("recentChapters/{pageNum}", documented(UpdateController.recentChaptersDocumentation, UpdateController::recentChapters))
             post("fetch", documented(UpdateController.categoryUpdateDocumentation, UpdateController::categoryUpdate))
-            get("summary", UpdateController::updateSummary)
+            get("summary", documented(UpdateController.updateSummaryDocumentation, UpdateController::updateSummary))
             ws("", UpdateController::categoryUpdateWS)
         }
     }
