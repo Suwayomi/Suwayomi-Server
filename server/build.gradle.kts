@@ -16,7 +16,8 @@ dependencies {
     implementation("com.squareup.okio:okio:2.10.0")
 
     // Javalin api
-    implementation("io.javalin:javalin:4.0.0")
+    implementation("io.javalin:javalin:4.1.1")
+    implementation("io.javalin:javalin-openapi:4.1.1")
     // jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
     val jacksonVersion = "2.12.4"
     implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")

@@ -11,6 +11,10 @@ import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.path
 import io.javalin.core.security.RouteRole
 import io.javalin.http.staticfiles.Location
+import io.javalin.plugin.openapi.OpenApiOptions
+import io.javalin.plugin.openapi.OpenApiPlugin
+import io.javalin.plugin.openapi.ui.SwaggerOptions
+import io.swagger.v3.oas.models.info.Info
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -46,6 +50,7 @@ object JavalinSetup {
                 logger.info { "Serving webUI static files" }
                 config.addStaticFiles(applicationDirs.webUIRoot, Location.EXTERNAL)
                 config.addSinglePageRoot("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
+                config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
             }
 
             config.enableCorsForAllOrigins()
@@ -95,6 +100,21 @@ object JavalinSetup {
                 GlobalAPI.defineEndpoints()
                 MangaAPI.defineEndpoints()
             }
+        }
+    }
+
+    private fun getOpenApiOptions(): OpenApiOptions {
+        val applicationInfo = Info().apply {
+            version("1.0")
+            description("Tachidesk Api")
+        }
+        return OpenApiOptions(applicationInfo).apply {
+            path("/api/openapi.json")
+            swagger(
+                SwaggerOptions("/api/swagger-ui").apply {
+                    title("Tachidesk Swagger Documentation")
+                }
+            )
         }
     }
 
