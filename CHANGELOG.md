@@ -1,4 +1,4 @@
-# Server: v0.5.4-next + WebUI: r862
+# Server: v0.5.4-next + WebUI: r864
 ## TL;DR
 - N/A
 
@@ -28,6 +28,8 @@
 - (r1030) add manga data to download queue object ([#244](https://github.com/Suwayomi/src/pull/244) by @AriaMoradi)
 - (r1031) Fix Manga Meta, add Manga Meta test ([#245](https://github.com/Suwayomi/src/pull/245) by @Syer10)
 - (r1032) add pagination to recentChapters ([#246](https://github.com/Suwayomi/src/pull/246) by @AriaMoradi)
+- (r1033) update (by @AriaMoradi)
+- (r1034) Implement Update of Library/Category ([#235](https://github.com/Suwayomi/src/pull/235) by @ntbm)
 
 
 ## Tachidesk-WebUI 
@@ -70,7 +72,8 @@
 - (r860) fix manga FAB margins ([#66](https://github.com/Suwayomi/Tachidesk-WebUI/pull/66) by @AriaMoradi)
 - (r861) remove extra scrollbar on mobile ([#67](https://github.com/Suwayomi/Tachidesk-WebUI/pull/67) by @AriaMoradi)
 - (r862) Fix Bad messages in Library Appbar search ([#70](https://github.com/Suwayomi/Tachidesk-WebUI/pull/70) by @ntbm)
-
+- (r863) ban the style prop (by @AriaMoradi)
+- (r864) Updates pagination update ([#68](https://github.com/Suwayomi/Tachidesk-WebUI/pull/68) by @AriaMoradi)
 
 
 # Server: v0.5.4 + WebUI: r820
