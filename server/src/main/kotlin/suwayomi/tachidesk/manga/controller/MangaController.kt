@@ -13,20 +13,35 @@ import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.Page
+import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.util.handler
+import suwayomi.tachidesk.server.util.pathParam
+import suwayomi.tachidesk.server.util.queryParam
+import suwayomi.tachidesk.server.util.withOperation
 
 object MangaController {
     /** get manga info */
-    fun retrieve(ctx: Context) {
-        val mangaId = ctx.pathParam("mangaId").toInt()
-        val onlineFetch = ctx.queryParam("onlineFetch")?.toBoolean() ?: false
-
-        ctx.future(
-            future {
-                Manga.getManga(mangaId, onlineFetch)
+    val retrieve = handler(
+        pathParam<Int>("mangaId"),
+        queryParam("onlineFetch", false),
+        documentWith = {
+            withOperation {
+                summary("Get a manga")
+                description("Get a manga from the database using a specific id")
             }
-        )
-    }
+        },
+        behaviorOf = { ctx, mangaId, onlineFetch ->
+            ctx.future(
+                future {
+                    Manga.getManga(mangaId, onlineFetch)
+                }
+            )
+        },
+        withResults = {
+            json<MangaDataClass>("OK")
+        }
+    )
 
     /** manga thumbnail */
     fun thumbnail(ctx: Context) {

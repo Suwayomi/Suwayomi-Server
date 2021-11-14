@@ -52,7 +52,7 @@ object MangaAPI {
         }
 
         path("manga") {
-            get("{mangaId}", MangaController::retrieve)
+            get("{mangaId}", MangaController.retrieve)
             get("{mangaId}/thumbnail", MangaController::thumbnail)
 
             get("{mangaId}/category", MangaController::categoryList)
