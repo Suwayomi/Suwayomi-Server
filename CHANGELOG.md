@@ -30,6 +30,10 @@
 - (r1032) add pagination to recentChapters ([#246](https://github.com/Suwayomi/src/pull/246) by @AriaMoradi)
 - (r1033) update (by @AriaMoradi)
 - (r1034) Implement Update of Library/Category ([#235](https://github.com/Suwayomi/src/pull/235) by @ntbm)
+- (r1035) update (by @AriaMoradi)
+- (r1036) Mention the existence of Mahor's Tachidesk-GTK (by @AriaMoradi)
+- (r1037) Add a Kotlin DSL for endpoint documentation ([#249](https://github.com/Suwayomi/Tachidesk-Server/pull/249) by @Syer10)
+- (r1038) update (by @AriaMoradi)
 
 
 ## Tachidesk-WebUI 
