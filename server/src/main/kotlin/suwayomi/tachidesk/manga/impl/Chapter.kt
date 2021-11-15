@@ -166,6 +166,8 @@ object Chapter {
             !(chapterEntry[ChapterTable.isDownloaded] && firstPageExists(mangaId, chapterEntry[ChapterTable.id].value))
 
         return if (isPartiallyDownloaded) {
+
+            // chapter files may have been deleted
             transaction {
                 ChapterTable.update({ (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId) }) {
                     it[isDownloaded] = false
