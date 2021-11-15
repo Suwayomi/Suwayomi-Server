@@ -1,4 +1,4 @@
-# Server: v0.5.4-next + WebUI: r864
+# Server: v0.5.4-next + WebUI: r867
 ## TL;DR
 - N/A
 
@@ -74,6 +74,9 @@
 - (r862) Fix Bad messages in Library Appbar search ([#70](https://github.com/Suwayomi/Tachidesk-WebUI/pull/70) by @ntbm)
 - (r863) ban the style prop (by @AriaMoradi)
 - (r864) Updates pagination update ([#68](https://github.com/Suwayomi/Tachidesk-WebUI/pull/68) by @AriaMoradi)
+- (r865) make the whole chapter card into a button ([#73](https://github.com/Suwayomi/Tachidesk-WebUI/pull/73) by @AriaMoradi)
+- (r866) fix chapter actions not working if manga is not fetched online ([#74](https://github.com/Suwayomi/Tachidesk-WebUI/pull/74) by @AriaMoradi)
+- (r867) migrate some components to Mui5 new styling system ([#72](https://github.com/Suwayomi/Tachidesk-WebUI/pull/72) by @abhijeetChawla)
 
 
 # Server: v0.5.4 + WebUI: r820
