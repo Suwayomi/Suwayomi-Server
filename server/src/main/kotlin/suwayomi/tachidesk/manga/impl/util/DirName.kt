@@ -28,7 +28,7 @@ fun getMangaDir(mangaId: Int): String {
     val sourceDir = source.toString()
     val mangaDir = SafePath.buildValidFilename(mangaEntry[MangaTable.title])
 
-    return "${applicationDirs.mangaRoot}/$sourceDir/$mangaDir"
+    return "${applicationDirs.mangaDownloadsRoot}/$sourceDir/$mangaDir"
 }
 
 fun getChapterDir(mangaId: Int, chapterId: Int): String {
@@ -54,8 +54,8 @@ fun updateMangaDownloadDir(mangaId: Int, newTitle: String): Boolean {
 
     val newMangaDir = SafePath.buildValidFilename(newTitle)
 
-    val oldDir = "${applicationDirs.mangaRoot}/$sourceDir/$mangaDir"
-    val newDir = "${applicationDirs.mangaRoot}/$sourceDir/$newMangaDir"
+    val oldDir = "${applicationDirs.mangaDownloadsRoot}/$sourceDir/$mangaDir"
+    val newDir = "${applicationDirs.mangaDownloadsRoot}/$sourceDir/$newMangaDir"
 
     val oldDirFile = File(oldDir)
     val newDirFile = File(newDir)
