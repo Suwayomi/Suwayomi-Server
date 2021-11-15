@@ -162,9 +162,12 @@ object Chapter {
             }.first()
         }
 
-        val isReallyDownloaded =
-            chapterEntry[ChapterTable.isDownloaded] && firstPageExists(mangaId, chapterEntry[ChapterTable.id].value)
-        return if (!isReallyDownloaded) {
+        val isPartiallyDownloaded =
+            !(chapterEntry[ChapterTable.isDownloaded] && firstPageExists(mangaId, chapterEntry[ChapterTable.id].value))
+
+        return if (isPartiallyDownloaded) {
+
+            // chapter files may have been deleted
             transaction {
                 ChapterTable.update({ (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId) }) {
                     it[isDownloaded] = false
@@ -243,7 +246,7 @@ object Chapter {
 
         return ImageResponse.findFileNameStartingWith(
             chapterDir,
-            getPageName(0)
+            getPageName(1)
         ) != null
     }
 
