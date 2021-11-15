@@ -164,7 +164,7 @@ object Manga {
 
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
     suspend fun getMangaThumbnail(mangaId: Int, useCache: Boolean): Pair<InputStream, String> {
-        val saveDir = applicationDirs.mangaThumbnailsRoot
+        val saveDir = applicationDirs.thumbnailsRoot
         val fileName = mangaId.toString()
 
         val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
@@ -204,7 +204,7 @@ object Manga {
     }
 
     private fun clearMangaThumbnail(mangaId: Int) {
-        val saveDir = applicationDirs.mangaThumbnailsRoot
+        val saveDir = applicationDirs.thumbnailsRoot
         val fileName = mangaId.toString()
 
         clearCachedImage(saveDir, fileName)
