@@ -3,6 +3,29 @@
 |-------|----------|---------|---------|
 | ![CI](https://github.com/Suwayomi/Tachidesk/actions/workflows/build_push.yml/badge.svg) | [![stable release](https://img.shields.io/github/release/Suwayomi/Tachidesk.svg?maxAge=3600&label=download)](https://github.com/Suwayomi/Tachidesk/releases) | [![preview](https://img.shields.io/badge/dynamic/json?url=https://github.com/Suwayomi/Tachidesk-preview/raw/main/index.json&label=download&query=$.latest&color=blue)](https://github.com/Suwayomi/Tachidesk-preview/releases/latest) | [![Discord](https://img.shields.io/discord/801021177333940224.svg?label=discord&labelColor=7289da&color=2c2f33&style=flat)](https://discord.gg/DDZdqZWaHA) |
 
+## Table of Content
+- [What is Tachidesk?](#what-is-tachidesk)
+- [Tachidesk client projects](#tachidesk-client-projects)
+  * [Is this application usable? Should I test it?](#is-this-application-usable-should-i-test-it)
+- [Downloading and Running the app](#downloading-and-running-the-app)
+  * [Using Operating System Specific Bundles](#using-operating-system-specific-bundles)
+      - [Launcher Scripts](#launcher-scripts)
+    + [Windows](#windows)
+    + [macOS](#macos)
+    + [GNU/Linux](#gnulinux)
+  * [Other methods of getting Tachidesk](#other-methods-of-getting-tachidesk)
+    + [Arch Linux](#arch-linux)
+    + [Ubuntu-based distributions](#ubuntu-based-distributions)
+    + [Docker](#docker)
+  * [Advanced Methods](#advanced-methods)
+    + [Running the jar release directly](#running-the-jar-release-directly)
+    + [Using Tachidesk Remotely](#using-tachidesk-remotely)
+- [Syncing With Tachiyomi](#syncing-with-tachiyomi)
+- [Troubleshooting and Support](#troubleshooting-and-support)
+- [Contributing and Technical info](#contributing-and-technical-info)
+- [Credit](#credit)
+- [License](#license)
+
 # What is Tachidesk?
 <img src="https://github.com/Suwayomi/Tachidesk/raw/master/server/src/main/resources/icon/faviconlogo.png" alt="drawing" width="200"/>
 
@@ -112,6 +135,15 @@ You can run Tachidesk on your computer or a server and connect to it remotely th
 Check out [this wiki page](https://github.com/Suwayomi/Tachidesk-Server/wiki/Configuring-Tachidesk-Server) for a guide on configuring Tachidesk-Server. 
 
 If you face issues with your setup then we are happy to provide help, just join our discord server(a discord badge is on the top of the page, you are just a click clack away!).
+
+## Syncing With Tachiyomi
+### The Tachidesk extension
+- You can install the `Tachidesk` extension inside tachiyomi.
+- The extension will load Tachidesk library. 
+- By manipulating filters you can browse your categories.
+
+### Other methods
+Checkout [this issue](https://github.com/Suwayomi/Tachidesk-Server/issues/159) for tracking progress.
 
 ## Troubleshooting and Support
 See [this troubleshooting wiki page](https://github.com/Suwayomi/Tachidesk/wiki/Troubleshooting).
