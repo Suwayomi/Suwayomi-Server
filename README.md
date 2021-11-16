@@ -25,6 +25,7 @@
 - [Contributing and Technical info](#contributing-and-technical-info)
 - [Credit](#credit)
 - [License](#license)
+<!-- Generated with https://ecotrust-canada.github.io/markdown-toc/ -->
 
 # What is Tachidesk?
 <img src="https://github.com/Suwayomi/Tachidesk/raw/master/server/src/main/resources/icon/faviconlogo.png" alt="drawing" width="200"/>
