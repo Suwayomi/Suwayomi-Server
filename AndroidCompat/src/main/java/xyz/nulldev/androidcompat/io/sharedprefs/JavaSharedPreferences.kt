@@ -11,13 +11,10 @@ import android.content.SharedPreferences
 import com.russhwolf.settings.ExperimentalSettingsApi
 import com.russhwolf.settings.ExperimentalSettingsImplementation
 import com.russhwolf.settings.JvmPreferencesSettings
-import com.russhwolf.settings.serialization.decodeValue
-import com.russhwolf.settings.serialization.encodeValue
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.builtins.SetSerializer
-import kotlinx.serialization.builtins.nullable
-import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.util.prefs.PreferenceChangeListener
 import java.util.prefs.Preferences
 
@@ -26,6 +23,10 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
     private val javaPreferences = Preferences.userRoot().node("suwayomi/tachidesk/$key")
     private val preferences = JvmPreferencesSettings(javaPreferences)
     private val listeners = mutableMapOf<SharedPreferences.OnSharedPreferenceChangeListener, PreferenceChangeListener>()
+
+    companion object {
+        private val json = Json { ignoreUnknownKeys }
+    }
 
     // TODO: 2021-05-29 Need to find a way to get this working with all pref types
     override fun getAll(): MutableMap<String, *> {
@@ -40,15 +41,15 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
         }
     }
 
-    override fun getStringSet(key: String, defValues: MutableSet<String>?): MutableSet<String>? {
-        try {
-            return if (defValues != null) {
-                preferences.decodeValue(SetSerializer(String.serializer()).nullable, key, defValues)
-            } else {
-                preferences.decodeValue(SetSerializer(String.serializer()).nullable, key, null)
-            }?.toMutableSet()
-        } catch (e: SerializationException) {
-            throw ClassCastException("$key was not a StringSet")
+    override fun getStringSet(key: String, defValues: MutableSet<String>?): Set<String>? {
+        val value = if (defValues != null) {
+            preferences.getString(key, json.encodeToString(defValues.toList()))
+        } else {
+            preferences.getStringOrNull(key)
+        }
+
+        return value?.let {
+            json.decodeFromString<List<String>>(it).toSet()
         }
     }
 
@@ -143,7 +144,10 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
             itemsToAdd.forEach { (key, value) ->
                 @Suppress("UNCHECKED_CAST")
                 when (value) {
-                    is Set<*> -> preferences.encodeValue(SetSerializer(String.serializer()), key, value as Set<String>)
+                    is Set<*> -> preferences.putString(
+                        key,
+                        json.encodeToString((value as Set<String>).toList())
+                    )
                     is String -> preferences.putString(key, value)
                     is Int -> preferences.putInt(key, value)
                     is Long -> preferences.putLong(key, value)
