@@ -10,6 +10,7 @@ package androidx.preference;
 import android.content.Context;
 import android.content.SharedPreferences;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.util.Set;
 
 /**
  * A minimal implementation of androidx.preference.Preference
@@ -113,18 +114,22 @@ public class Preference {
     }
 
     /** Tachidesk specific API */
+    @SuppressWarnings("unchecked")
     public Object getCurrentValue() {
         switch (getDefaultValueType()) {
             case "String":
                 return sharedPreferences.getString(key, (String)defaultValue);
             case "Boolean":
                 return sharedPreferences.getBoolean(key, (Boolean)defaultValue);
+            case "Set<String>":
+                return sharedPreferences.getStringSet(key, (Set<String>)defaultValue);
             default:
                 throw new RuntimeException("Unsupported type");
         }
     }
 
     /** Tachidesk specific API */
+    @SuppressWarnings("unchecked")
     public void saveNewValue(Object value) {
         switch (getDefaultValueType()) {
             case "String":
@@ -132,6 +137,9 @@ public class Preference {
                 break;
             case "Boolean":
                 sharedPreferences.edit().putBoolean(key, (Boolean)value).apply();
+                break;
+            case "Set<String>":
+                sharedPreferences.edit().putStringSet(key, (Set<String>)value).apply();
                 break;
             default:
                 throw new RuntimeException("Unsupported type");

@@ -12,6 +12,7 @@ import android.content.Context
 import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.getPreferenceKey
+import io.javalin.plugin.json.JsonMapper
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
@@ -81,11 +82,12 @@ object Source {
     private val context by DI.global.instance<CustomContext>()
 
     /**
-     * (2021-08) Clients should support these types for extensions to work properly
+     * (2021-11) Clients should support these types for extensions to work properly
      * - EditTextPreference
      * - SwitchPreferenceCompat
      * - ListPreference
      * - CheckBoxPreference
+     * - MultiSelectListPreference
      */
     data class PreferenceObject(
         val type: String,
@@ -123,13 +125,18 @@ object Source {
         val value: String
     )
 
+    private val jsonMapper by DI.global.instance<JsonMapper>()
+
+    @Suppress("IMPLICIT_CAST_TO_ANY", "UNCHECKED_CAST")
     fun setSourcePreference(sourceId: Long, change: SourcePreferenceChange) {
         val screen = preferenceScreenMap[sourceId]!!
         val pref = screen.preferences[change.position]
 
+        println(jsonMapper::class.java.name)
         val newValue = when (pref.defaultValueType) {
             "String" -> change.value
             "Boolean" -> change.value.toBoolean()
+            "Set<String>" -> jsonMapper.fromJsonString(change.value, List::class.java as Class<List<String>>).toSet()
             else -> throw RuntimeException("Unsupported type conversion")
         }
 

@@ -12,11 +12,11 @@ import com.russhwolf.settings.ExperimentalSettingsApi
 import com.russhwolf.settings.ExperimentalSettingsImplementation
 import com.russhwolf.settings.JvmPreferencesSettings
 import com.russhwolf.settings.serialization.decodeValue
+import com.russhwolf.settings.serialization.decodeValueOrNull
 import com.russhwolf.settings.serialization.encodeValue
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.SetSerializer
-import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.builtins.serializer
 import java.util.prefs.PreferenceChangeListener
 import java.util.prefs.Preferences
@@ -40,13 +40,13 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
         }
     }
 
-    override fun getStringSet(key: String, defValues: MutableSet<String>?): MutableSet<String>? {
+    override fun getStringSet(key: String, defValues: Set<String>?): Set<String>? {
         try {
             return if (defValues != null) {
-                preferences.decodeValue(SetSerializer(String.serializer()).nullable, key, defValues)
+                preferences.decodeValue(SetSerializer(String.serializer()), key, defValues)
             } else {
-                preferences.decodeValue(SetSerializer(String.serializer()).nullable, key, null)
-            }?.toMutableSet()
+                preferences.decodeValueOrNull(SetSerializer(String.serializer()), key)
+            }
         } catch (e: SerializationException) {
             throw ClassCastException("$key was not a StringSet")
         }
