@@ -25,7 +25,7 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
     private val listeners = mutableMapOf<SharedPreferences.OnSharedPreferenceChangeListener, PreferenceChangeListener>()
 
     companion object {
-        private val json = Json { ignoreUnknownKeys }
+        private val json = Json { ignoreUnknownKeys = true }
     }
 
     // TODO: 2021-05-29 Need to find a way to get this working with all pref types
