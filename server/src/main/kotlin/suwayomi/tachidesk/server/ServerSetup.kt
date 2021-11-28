@@ -18,6 +18,7 @@ import org.kodein.di.conf.global
 import org.kodein.di.singleton
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.Updater
+import suwayomi.tachidesk.manga.impl.util.lang.renameTo
 import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
 import suwayomi.tachidesk.server.util.SystemTray.systemTray
@@ -62,6 +63,12 @@ fun applicationSetup() {
     )
 
     logger.debug("Data Root directory is set to: ${applicationDirs.dataRoot}")
+
+    // Migrate Directories from old versions
+    File("$ApplicationRootDir/manga-thumbnails").renameTo(applicationDirs.thumbnailsRoot)
+    File("$ApplicationRootDir/manga-local").renameTo(applicationDirs.localMangaRoot)
+    File("$ApplicationRootDir/manga").renameTo(applicationDirs.mangaDownloadsRoot)
+    File("$ApplicationRootDir/anime-thumbnails").delete()
 
     // make dirs we need
     listOf(
