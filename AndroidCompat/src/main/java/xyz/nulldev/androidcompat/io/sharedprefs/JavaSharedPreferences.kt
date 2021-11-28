@@ -43,13 +43,13 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
 
     override fun getStringSet(key: String, defValues: MutableSet<String>?): Set<String>? {
         val value = if (defValues != null) {
-            preferences.getString(key, json.encodeToString(defValues.toList()))
+            preferences.getString(key, json.encodeToString(defValues))
         } else {
             preferences.getStringOrNull(key)
         }
 
         return value?.let {
-            json.decodeFromString<List<String>>(it).toSet()
+            json.decodeFromString<Set<String>>(it)
         }
     }
 
@@ -144,10 +144,7 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
             itemsToAdd.forEach { (key, value) ->
                 @Suppress("UNCHECKED_CAST")
                 when (value) {
-                    is Set<*> -> preferences.putString(
-                        key,
-                        json.encodeToString((value as Set<String>).toList())
-                    )
+                    is Set<*> -> preferences.putString(key, json.encodeToString((value as Set<String>)))
                     is String -> preferences.putString(key, value)
                     is Int -> preferences.putInt(key, value)
                     is Long -> preferences.putLong(key, value)
