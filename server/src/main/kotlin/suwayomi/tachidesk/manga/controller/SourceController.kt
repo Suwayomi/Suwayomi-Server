@@ -80,8 +80,8 @@ object SourceController {
     /** single source search */
     fun searchSingle(ctx: Context) {
         val sourceId = ctx.pathParam("sourceId").toLong()
-        val searchTerm = ctx.pathParam("searchTerm")
-        val pageNum = ctx.pathParam("pageNum").toInt()
+        val searchTerm = ctx.queryParam("searchTerm") ?: ""
+        val pageNum = ctx.queryParam("pageNum")?.toInt() ?: 1
         ctx.future(future { Search.sourceSearch(sourceId, searchTerm, pageNum) })
     }
 
