@@ -1,6 +1,15 @@
-# Server: v0.5.4-next + WebUI: r867
+# Server: v0.6.0 + WebUI: r893
 ## TL;DR
-- N/A
+- WebUI design went through a whole lot of changes, including
+    - Got rid of hamburger menu, now we have a custom mobile navbar 
+    - Unread and Download count badges
+    - Back button so better electron experience
+    - There's a whole lot more that I'm too lazy to explore.
+- Completely removed anime support
+- Fixed category reordering
+- Added support for search filters(Server side only)
+- Added support for updating library(Server side only)
+- A bunch of API breaking changes(hence why bumping to v0.6.0)!
 
 ## Tachidesk-Server Changelog
 - (r996) cleanup (by @AriaMoradi)
@@ -34,6 +43,14 @@
 - (r1036) Mention the existence of Mahor's Tachidesk-GTK (by @AriaMoradi)
 - (r1037) Add a Kotlin DSL for endpoint documentation ([#249](https://github.com/Suwayomi/Tachidesk-Server/pull/249) by @Syer10)
 - (r1038) update (by @AriaMoradi)
+- (r1039) update (by @AriaMoradi)
+- (r1040) cleanup directory names ([#251](https://github.com/Suwayomi/Tachidesk-Server/pull/251) by @AriaMoradi)
+- (r1041) Fix first page not being detected correctly ([#253](https://github.com/Suwayomi/Tachidesk-Server/pull/253) by @AriaMoradi)
+- (r1042) Update README.md (by @AriaMoradi)
+- (r1043) Update README.md (by @AriaMoradi)
+- (r1044) migrate application directories ([#255](https://github.com/Suwayomi/Tachidesk-Server/pull/255) by @AriaMoradi)
+- (r1045) add support for MultiSelectListPreference ([#258](https://github.com/Suwayomi/Tachidesk-Server/pull/258) by @AriaMoradi)
+- (r1046) empty searchTerm support ([#259](https://github.com/Suwayomi/Tachidesk-Server/pull/259) by @AriaMoradi)
 
 
 ## Tachidesk-WebUI 
@@ -81,7 +98,32 @@
 - (r865) make the whole chapter card into a button ([#73](https://github.com/Suwayomi/Tachidesk-WebUI/pull/73) by @AriaMoradi)
 - (r866) fix chapter actions not working if manga is not fetched online ([#74](https://github.com/Suwayomi/Tachidesk-WebUI/pull/74) by @AriaMoradi)
 - (r867) migrate some components to Mui5 new styling system ([#72](https://github.com/Suwayomi/Tachidesk-WebUI/pull/72) by @abhijeetChawla)
-
+- (r868) load first page on read manga ([#76](https://github.com/Suwayomi/Tachidesk-WebUI/pull/76) by @AriaMoradi)
+- (r869) Revert "migrate some components to Mui5 new styling system ([#72](https://github.com/Suwayomi/Tachidesk-WebUI/pull/72))" (by @AriaMoradi)
+- (r870) migrate Backup to Mui 5 ([#106](https://github.com/Suwayomi/Tachidesk-WebUI/pull/106) by @AriaMoradi)
+- (r871) migrate EmptyView to Mui 5 ([#95](https://github.com/Suwayomi/Tachidesk-WebUI/pull/95) by @AriaMoradi)
+- (r872) migrate CategorySelect to Mui 5 ([#85](https://github.com/Suwayomi/Tachidesk-WebUI/pull/85) by @AriaMoradi)
+- (r873) migrate LibraryOptions to Mui 5 ([#83](https://github.com/Suwayomi/Tachidesk-WebUI/pull/83) by @AriaMoradi)
+- (r874) migrate ChapterCard.tsx to Mui 5 ([#80](https://github.com/Suwayomi/Tachidesk-WebUI/pull/80) by @AriaMoradi)
+- (r875) migrate App.tsx to Mui 5 ([#79](https://github.com/Suwayomi/Tachidesk-WebUI/pull/79) by @AriaMoradi)
+- (r876) migrate SourceConfigure to Mui 5 ([#103](https://github.com/Suwayomi/Tachidesk-WebUI/pull/103) by @AriaMoradi)
+- (r877) migrate Settings to Mui 5 ([#102](https://github.com/Suwayomi/Tachidesk-WebUI/pull/102) by @AriaMoradi)
+- (r878) migrate Updates to Mui 5 ([#104](https://github.com/Suwayomi/Tachidesk-WebUI/pull/104) by @AriaMoradi)
+- (r879) Save tabs number in Url to persist tab when go to other paths ([#78](https://github.com/Suwayomi/Tachidesk-WebUI/pull/78) by @abhijeetChawla)
+- (r880) migrate LangSelect to Mui 5 ([#86](https://github.com/Suwayomi/Tachidesk-WebUI/pull/86) by @AriaMoradi)
+- (r881) migrate ExtensionCard.tsx to Mui 5 ([#81](https://github.com/Suwayomi/Tachidesk-WebUI/pull/81) by @AriaMoradi)
+- (r882) migrate SingleSearch to Mui 5 ([#101](https://github.com/Suwayomi/Tachidesk-WebUI/pull/101) by @AriaMoradi)
+- (r883) migrate LoadingPlaceholder to Mui 5 ([#96](https://github.com/Suwayomi/Tachidesk-WebUI/pull/96) by @AriaMoradi)
+- (r884) migrate About to Mui 5 ([#105](https://github.com/Suwayomi/Tachidesk-WebUI/pull/105) by @AriaMoradi)
+- (r885) migrate SourceCard to Mui 5 ([#82](https://github.com/Suwayomi/Tachidesk-WebUI/pull/82) by @AriaMoradi)
+- (r886) migrate Manga to Mui 5 ([#99](https://github.com/Suwayomi/Tachidesk-WebUI/pull/99) by @AriaMoradi)
+- (r887) migrate Browse to Mui 5 ([#98](https://github.com/Suwayomi/Tachidesk-WebUI/pull/98) by @AriaMoradi)
+- (r888) migrate DesktopSideBar to Mui 5 ([#87](https://github.com/Suwayomi/Tachidesk-WebUI/pull/87) by @AriaMoradi)
+- (r889) cleanup library  ([#107](https://github.com/Suwayomi/Tachidesk-WebUI/pull/107) by @AriaMoradi)
+- (r890) support for new searchTerm (by @AriaMoradi)
+- (r891) Revert "support for new searchTerm" (by @AriaMoradi)
+- (r892) add support for emptySearch ([#109](https://github.com/Suwayomi/Tachidesk-WebUI/pull/109) by @AriaMoradi)
+- (r893) add support for MultiSelectListPreference ([#108](https://github.com/Suwayomi/Tachidesk-WebUI/pull/108) by @AriaMoradi)
 
 # Server: v0.5.4 + WebUI: r820
 ## TL;DR
