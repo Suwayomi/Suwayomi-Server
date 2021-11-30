@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.server.util
 
 import io.javalin.http.Context
+import io.javalin.http.HttpCode
 import io.javalin.plugin.openapi.dsl.DocumentedHandler
 import io.javalin.plugin.openapi.dsl.OpenApiDocumentation
 import io.javalin.plugin.openapi.dsl.documented
@@ -114,19 +115,27 @@ sealed class Param<T> {
 class ResultsBuilder {
     val results = mutableListOf<ResultType<*>>()
 
-    inline fun <reified T> json(status: String) {
-        results += ResultType.MimeType(status, "application/json", T::class.java)
+    inline fun <reified T> json(code: HttpCode) {
+        results += ResultType.MimeType(code, "application/json", T::class.java)
     }
-    inline fun <reified T> plainText(status: String) {
-        results += ResultType.MimeType(status, "text/plain", String::class.java)
+    inline fun <reified T> plainText(code: HttpCode) {
+        results += ResultType.MimeType(code, "text/plain", String::class.java)
+    }
+    fun httpCode(code: HttpCode) {
+        results += ResultType.StatusCode(code)
     }
 }
 
 sealed class ResultType <T> {
     abstract fun applyTo(documentation: OpenApiDocumentation)
-    data class MimeType<T>(val status: String, val mime: String, private val clazz: Class<T>) : ResultType<T>() {
+    data class MimeType<T>(val code: HttpCode, val mime: String, private val clazz: Class<T>) : ResultType<T>() {
         override fun applyTo(documentation: OpenApiDocumentation) {
-            documentation.result(status, clazz)
+            documentation.result(code.status.toString(), clazz)
+        }
+    }
+    data class StatusCode(val code: HttpCode) : ResultType<Unit>() {
+        override fun applyTo(documentation: OpenApiDocumentation) {
+            documentation.result<Unit>(code.status.toString())
         }
     }
 }
