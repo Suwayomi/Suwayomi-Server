@@ -48,8 +48,7 @@ Here's a list of known clients/user interfaces for Tachidesk-Server:
 ##### Actively Developed Cients
 - [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI): The web/ElectronJS front-end that Tachidesk-Server is traditionally shipped with. Usually gets new features faster.
 - [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): The native desktop front-end for Tachidesk-Server. Currently the most advanced.
-- [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): A C++/Qt front-end for mobile devices(Android/linux), in super early stage of development.
-- 
+- [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): A C++/Qt front-end for mobile devices(Android/linux), in super early stage of development. 
 ##### Inctive/Abandoned Cients
 - [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js, in super early stage of development.
 - [Tachidesk-GTK](https://github.com/mahor1221/Tachidesk-GTK): A native Rust/GTK desktop client, in super early stage of development.
