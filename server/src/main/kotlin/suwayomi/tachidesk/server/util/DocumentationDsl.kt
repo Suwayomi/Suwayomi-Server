@@ -118,7 +118,7 @@ class ResultsBuilder {
     inline fun <reified T> json(code: HttpCode) {
         results += ResultType.MimeType(code, "application/json", T::class.java)
     }
-    inline fun <reified T> plainText(code: HttpCode) {
+    fun plainText(code: HttpCode) {
         results += ResultType.MimeType(code, "text/plain", String::class.java)
     }
     fun httpCode(code: HttpCode) {
