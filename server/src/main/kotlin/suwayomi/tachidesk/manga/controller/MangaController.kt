@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.controller
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.javalin.http.Context
+import io.javalin.http.HttpCode
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Library
@@ -40,7 +41,8 @@ object MangaController {
             )
         },
         withResults = {
-            json<MangaDataClass>("OK")
+            json<MangaDataClass>(HttpCode.OK)
+            httpCode(HttpCode.NOT_FOUND)
         }
     )
 
