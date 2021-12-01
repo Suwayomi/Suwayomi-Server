@@ -15,6 +15,8 @@ import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.UpdaterSocket
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.util.handler
+import suwayomi.tachidesk.server.util.withOperation
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -86,4 +88,25 @@ object UpdateController {
         val updater by DI.global.instance<IUpdater>()
         ctx.json(updater.getStatus().value.getJsonSummary())
     }
+
+    val reset = handler(
+        documentWith = {
+            withOperation {
+                summary("Stops and resets the Updater")
+            }
+        },
+        behaviorOf = { ctx ->
+            val updater by DI.global.instance<IUpdater>()
+            logger.info { "Resetting Updater" }
+            ctx.future(
+                future {
+                    updater.reset()
+                }.thenApply {
+                    ctx.status(HttpCode.OK)
+                }
+            )
+        },
+        withResults = {
+        }
+    )
 }
