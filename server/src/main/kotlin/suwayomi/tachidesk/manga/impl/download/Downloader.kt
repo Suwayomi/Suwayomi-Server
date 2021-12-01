@@ -13,7 +13,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Page.getPageImage
-import suwayomi.tachidesk.manga.impl.chapter.getChapterIncludingPages
+import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Error
@@ -47,7 +47,7 @@ class Downloader(private val downloadQueue: CopyOnWriteArrayList<DownloadChapter
                 download.state = Downloading
                 step()
 
-                download.chapter = runBlocking { getChapterIncludingPages(download.chapterIndex, download.mangaId) }
+                download.chapter = runBlocking { getChapterDownloadReady(download.chapterIndex, download.mangaId) }
                 step()
 
                 val pageCount = download.chapter.pageCount

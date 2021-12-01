@@ -26,8 +26,7 @@ import suwayomi.tachidesk.manga.model.table.toDataClass
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-/** used to display a chapter, get a chapter in order to show it's pages */
-suspend fun getChapterIncludingPages(chapterIndex: Int, mangaId: Int): ChapterDataClass {
+suspend fun getChapterDownloadReady(chapterIndex: Int, mangaId: Int): ChapterDataClass {
     val chapter = ChapterForDownload(chapterIndex, mangaId)
 
     return chapter.asDownloadReady()
