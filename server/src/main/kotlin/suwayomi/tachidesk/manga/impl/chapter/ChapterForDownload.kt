@@ -1,5 +1,12 @@
 package suwayomi.tachidesk.manga.impl.chapter
 
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import org.jetbrains.exposed.sql.ResultRow
@@ -19,12 +26,6 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 
-/*
- * Copyright (C) Contributors to the Suwayomi project
- * 
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 suspend fun getChapterDownloadReady(chapterIndex: Int, mangaId: Int): ChapterDataClass {
     val chapter = ChapterForDownload(chapterIndex, mangaId)
