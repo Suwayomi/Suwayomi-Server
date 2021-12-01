@@ -7,7 +7,6 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
@@ -20,11 +19,9 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Manga.getManga
-import suwayomi.tachidesk.manga.impl.Page.getPageName
 import suwayomi.tachidesk.manga.impl.util.getChapterDir
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
-import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
@@ -152,102 +149,6 @@ object Chapter {
                 meta = getChapterMetaMap(dbChapter[ChapterTable.id])
             )
         }
-    }
-
-    /** used to display a chapter, get a chapter in order to show it's pages */
-    suspend fun getChapter(chapterIndex: Int, mangaId: Int): ChapterDataClass {
-        val chapterEntry = transaction {
-            ChapterTable.select {
-                (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId)
-            }.first()
-        }
-
-        val isPartiallyDownloaded =
-            !(chapterEntry[ChapterTable.isDownloaded] && firstPageExists(mangaId, chapterEntry[ChapterTable.id].value))
-
-        return if (isPartiallyDownloaded) {
-
-            // chapter files may have been deleted
-            transaction {
-                ChapterTable.update({ (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId) }) {
-                    it[isDownloaded] = false
-                }
-            }
-
-            val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
-            val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
-
-            val pageList = source.fetchPageList(
-                SChapter.create().apply {
-                    url = chapterEntry[ChapterTable.url]
-                    name = chapterEntry[ChapterTable.name]
-                }
-            ).awaitSingle()
-
-            val chapterId = chapterEntry[ChapterTable.id].value
-            val chapterCount = transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.count() }
-
-            // update page list for this chapter
-            transaction {
-                pageList.forEach { page ->
-                    val pageEntry = transaction {
-                        PageTable.select { (PageTable.chapter eq chapterId) and (PageTable.index eq page.index) }
-                            .firstOrNull()
-                    }
-                    if (pageEntry == null) {
-                        PageTable.insert {
-                            it[index] = page.index
-                            it[url] = page.url
-                            it[imageUrl] = page.imageUrl
-                            it[chapter] = chapterId
-                        }
-                    } else {
-                        PageTable.update({ (PageTable.chapter eq chapterId) and (PageTable.index eq page.index) }) {
-                            it[url] = page.url
-                            it[imageUrl] = page.imageUrl
-                        }
-                    }
-                }
-            }
-
-            val pageCount = pageList.count()
-
-            transaction {
-                ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }) {
-                    it[ChapterTable.pageCount] = pageCount
-                }
-            }
-            return ChapterDataClass(
-                chapterEntry[ChapterTable.url],
-                chapterEntry[ChapterTable.name],
-                chapterEntry[ChapterTable.date_upload],
-                chapterEntry[ChapterTable.chapter_number],
-                chapterEntry[ChapterTable.scanlator],
-                mangaId,
-                chapterEntry[ChapterTable.isRead],
-                chapterEntry[ChapterTable.isBookmarked],
-                chapterEntry[ChapterTable.lastPageRead],
-                chapterEntry[ChapterTable.lastReadAt],
-
-                chapterEntry[ChapterTable.sourceOrder],
-                chapterEntry[ChapterTable.fetchedAt],
-                chapterEntry[ChapterTable.isDownloaded],
-                pageCount,
-                chapterCount.toInt(),
-                getChapterMetaMap(chapterEntry[ChapterTable.id])
-            )
-        } else {
-            ChapterTable.toDataClass(chapterEntry)
-        }
-    }
-
-    private fun firstPageExists(mangaId: Int, chapterId: Int): Boolean {
-        val chapterDir = getChapterDir(mangaId, chapterId)
-
-        return ImageResponse.findFileNameStartingWith(
-            chapterDir,
-            getPageName(1)
-        ) != null
     }
 
     fun modifyChapter(

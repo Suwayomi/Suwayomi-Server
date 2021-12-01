@@ -13,6 +13,7 @@ import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.Page
+import suwayomi.tachidesk.manga.impl.chapter.getChapterIncludingPages
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.util.handler
@@ -124,7 +125,7 @@ object MangaController {
     fun chapterRetrieve(ctx: Context) {
         val chapterIndex = ctx.pathParam("chapterIndex").toInt()
         val mangaId = ctx.pathParam("mangaId").toInt()
-        ctx.future(future { Chapter.getChapter(chapterIndex, mangaId) })
+        ctx.future(future { getChapterIncludingPages(chapterIndex, mangaId) })
     }
 
     /** used to modify a chapter's parameters */
