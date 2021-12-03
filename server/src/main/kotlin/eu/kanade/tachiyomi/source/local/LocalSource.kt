@@ -293,12 +293,15 @@ class LocalSource : CatalogueSource {
         return when (getFormat(chapterFile)) {
             is Directory -> {
                 Observable.just(
-                    chapterFile.listFiles().orEmpty().sortedBy { it.name }.mapIndexed { index, page ->
-                        Page(
-                            index,
-                            imageUrl = applicationDirs.localMangaRoot + "/" + chapter.url + "/" + page.name
-                        )
-                    }
+                    chapterFile.listFiles().orEmpty()
+                        .sortedBy { it.name }
+                        .filter { !it.isDirectory && ImageUtil.isImage(it.name, it::inputStream)
+                        .mapIndexed { index, page ->
+                            Page(
+                                index,
+                                imageUrl = applicationDirs.localMangaRoot + "/" + chapter.url + "/" + page.name
+                            )
+                        }
                 )
             }
             is Zip -> {
