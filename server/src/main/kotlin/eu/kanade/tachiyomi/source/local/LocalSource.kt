@@ -295,7 +295,7 @@ class LocalSource : CatalogueSource {
                 Observable.just(
                     chapterFile.listFiles().orEmpty()
                         .sortedBy { it.name }
-                        .filter { !it.isDirectory && ImageUtil.isImage(it.name, it::inputStream)
+                        .filter { !it.isDirectory && ImageUtil.isImage(it.name, it::inputStream) }
                         .mapIndexed { index, page ->
                             Page(
                                 index,
