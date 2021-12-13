@@ -102,7 +102,7 @@ configure(projects) {
         implementation("net.harawata:appdirs:1.2.1")
 
         // dex2jar
-        val dex2jarVersion = "v26"
+        val dex2jarVersion = "v35"
         implementation("com.github.ThexXTURBOXx.dex2jar:dex-translator:$dex2jarVersion")
         implementation("com.github.ThexXTURBOXx.dex2jar:dex-tools:$dex2jarVersion")
 
