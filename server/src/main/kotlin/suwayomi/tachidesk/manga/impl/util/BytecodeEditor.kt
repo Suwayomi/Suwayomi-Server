@@ -251,6 +251,11 @@ object BytecodeEditor {
     }
 
     private fun write(pair: Pair<Path, ByteArray>) {
-        Files.write(pair.first, pair.second)
+        Files.write(
+            pair.first,
+            pair.second,
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        )
     }
 }
