@@ -58,6 +58,9 @@ jobs:
           dependencies-cache-enabled: true
           configuration-cache-enabled: true
 
+      - name: Install wixl
+        run: sudo apt-get install -y wixl
+
       - name: make bundle packages
         run: |
           cd master/scripts
@@ -72,7 +75,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "master/server/build/*.jar;master/server/build/*.zip;master/server/build/*.tar.gz"
+          file: "master/server/build/*.jar;master/server/build/*.msi;master/server/build/*.zip;master/server/build/*.tar.gz"
           tags: true
           draft: true
           verbose: true

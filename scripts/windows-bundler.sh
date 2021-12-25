@@ -7,8 +7,9 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 electron_version="v14.0.0"
+arch=$1
 
-if [ $1 = "win32" ]; then
+if [ $arch = "win32" ]; then
   jre="OpenJDK8U-jre_x86-32_windows_hotspot_8u292b10.zip"
   jre_release="jdk8u292-b10"
   jre_url="https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/$jre_release/$jre"
@@ -73,14 +74,20 @@ cp "resources/Tachidesk Browser Launcher.bat" $release_name
 cp "resources/Tachidesk Debug Launcher.bat" $release_name
 cp "resources/Tachidesk Electron Launcher.bat" $release_name
 
-zip_name=$release_name.zip
-zip -9 -r $zip_name $release_name
+# create msi package
+find $release_name/jre | wixl-heat --var var.SourceDir -p $release_name/ --directory-ref jre --component-group jre > jre.wxs
+find $release_name/electron | wixl-heat --var var.SourceDir -p $release_name/ --directory-ref electron --component-group electron > electron.wxs
+if [ $arch = "win32" ]; then
+  wixl -D SourceDir=$release_name --arch x86 Tachidesk-Server-x86.wxs jre.wxs electron.wxs -o $release_name.msi
+else
+  wixl -D SourceDir=$release_name --arch x64 Tachidesk-Server-x64.wxs jre.wxs electron.wxs -o $release_name.msi
+fi
 
 rm -rf $release_name
 
 # clean up from possible previous runs
-if [ -f ../server/build/$zip_name ]; then
-  rm ../server/build/$zip_name
+if [ -f ../server/build/$release_name.msi ]; then
+  rm ../server/build/release_name.msi
 fi
 
-mv $zip_name ../server/build/
+mv $release_name.msi ../server/build/
