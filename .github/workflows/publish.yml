@@ -58,9 +58,6 @@ jobs:
           dependencies-cache-enabled: true
           configuration-cache-enabled: true
 
-      - name: Install wixl
-        run: sudo apt-get install -y wixl
-
       - name: make bundle packages
         run: |
           cd master/scripts

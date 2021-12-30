@@ -67,9 +67,6 @@ jobs:
           echo "$genTag"
           echo "::set-output name=value::$genTag"
 
-      - name: Install wixl
-        run: sudo apt-get install -y wixl
-
       - name: make bundle packages
         run: |
           cd master/scripts

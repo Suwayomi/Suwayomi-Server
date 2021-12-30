@@ -8,7 +8,6 @@
 
 electron_version="v14.0.0"
 arch=$1
-
 if [ $arch = "win32" ]; then
   jre="OpenJDK8U-jre_x86-32_windows_hotspot_8u292b10.zip"
   jre_release="jdk8u292-b10"
@@ -74,7 +73,12 @@ cp "resources/Tachidesk Browser Launcher.bat" $release_name
 cp "resources/Tachidesk Debug Launcher.bat" $release_name
 cp "resources/Tachidesk Electron Launcher.bat" $release_name
 
+zip_name=$release_name.zip
+zip -9 -r $zip_name $release_name
+
 # create msi package
+sudo apt-get install -y wixl
+
 find $release_name/jre | wixl-heat --var var.SourceDir -p $release_name/ --directory-ref jre --component-group jre > jre.wxs
 find $release_name/electron | wixl-heat --var var.SourceDir -p $release_name/ --directory-ref electron --component-group electron > electron.wxs
 if [ $arch = "win32" ]; then
