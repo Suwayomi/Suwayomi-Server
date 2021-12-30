@@ -78,20 +78,23 @@ zip -9 -r $zip_name $release_name
 
 # create msi package
 sudo apt-get install -y wixl
+msi_name=$release_name.msi
 
 find $release_name/jre | wixl-heat --var var.SourceDir -p $release_name/ --directory-ref jre --component-group jre > jre.wxs
 find $release_name/electron | wixl-heat --var var.SourceDir -p $release_name/ --directory-ref electron --component-group electron > electron.wxs
 if [ $arch = "win32" ]; then
-  wixl -D SourceDir=$release_name --arch x86 Tachidesk-Server-x86.wxs jre.wxs electron.wxs -o $release_name.msi
+  wixl -D SourceDir=$release_name --arch x86 Tachidesk-Server-x86.wxs jre.wxs electron.wxs -o $msi_name
 else
-  wixl -D SourceDir=$release_name --arch x64 Tachidesk-Server-x64.wxs jre.wxs electron.wxs -o $release_name.msi
+  wixl -D SourceDir=$release_name --arch x64 Tachidesk-Server-x64.wxs jre.wxs electron.wxs -o $msi_name
 fi
 
 rm -rf $release_name
 
 # clean up from possible previous runs
-if [ -f ../server/build/$release_name.msi ]; then
-  rm ../server/build/release_name.msi
+if [ -f ../server/build/$zip_name ]; then
+  rm ../server/build/$zip_name
+if [ -f ../server/build/$msi_name ]; then
+  rm ../server/build/$msi_name
 fi
 
-mv $release_name.msi ../server/build/
+mv $zip_name $msi_name ../server/build/
