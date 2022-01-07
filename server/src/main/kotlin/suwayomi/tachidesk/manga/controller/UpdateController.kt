@@ -107,6 +107,7 @@ object UpdateController {
             )
         },
         withResults = {
+            httpCode(HttpCode.OK)
         }
     )
 }
