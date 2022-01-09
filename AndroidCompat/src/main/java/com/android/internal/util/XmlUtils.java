@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 package com.android.internal.util;
+
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Bitmap.CompressFormat;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.text.TextUtils;
 import android.util.ArrayMap;
@@ -25,19 +26,14 @@ import android.util.Xml;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlSerializer;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ProtocolException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 /** {@hide} */
 public class XmlUtils {
     private static final String STRING_ARRAY_SEPARATOR = ":";
@@ -1396,9 +1392,9 @@ public class XmlUtils {
             } else if (tagName.equals("long")) {
                 return Long.valueOf(parser.getAttributeValue(null, "value"));
             } else if (tagName.equals("float")) {
-                return new Float(parser.getAttributeValue(null, "value"));
+                return Float.valueOf(parser.getAttributeValue(null, "value"));
             } else if (tagName.equals("double")) {
-                return new Double(parser.getAttributeValue(null, "value"));
+                return Double.valueOf(parser.getAttributeValue(null, "value"));
             } else if (tagName.equals("boolean")) {
                 return Boolean.valueOf(parser.getAttributeValue(null, "value"));
             } else {
