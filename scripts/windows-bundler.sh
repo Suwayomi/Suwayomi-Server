@@ -7,8 +7,8 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 electron_version="v14.0.0"
-
-if [ $1 = "win32" ]; then
+arch=$1
+if [ $arch = "win32" ]; then
   jre="OpenJDK8U-jre_x86-32_windows_hotspot_8u292b10.zip"
   jre_release="jdk8u292-b10"
   jre_url="https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/$jre_release/$jre"
@@ -29,7 +29,7 @@ echo "creating windows bundle"
 jar=$(ls ../server/build/*.jar | tail -n1)
 jar_name=$(echo $jar | cut -d'/' -f4)
 release_name=$(echo $jar_name | sed 's/.jar//')-$arch
-
+release_ver=$(tmp=${jar%-*} && echo ${tmp##*-} | tr -d v)
 
 # make release dir
 mkdir $release_name
@@ -62,6 +62,7 @@ if [ $CI = true ]; then
   sudo add-apt-repository ppa:cybermax-dexter/sdl2-backport
   sudo apt-add-repository "deb https://dl.winehq.org/wine-builds/ubuntu $(lsb_release -cs) main"
   sudo apt install --install-recommends winehq-stable
+  sudo apt install -y wixl
 fi
 # this script assumes that wine is installed here on out
 
@@ -76,11 +77,26 @@ cp "resources/Tachidesk Electron Launcher.bat" $release_name
 zip_name=$release_name.zip
 zip -9 -r $zip_name $release_name
 
+# create msi package
+msi_name=$release_name.msi
+
+find $release_name/jre | wixl-heat --var var.SourceDir -p $release_name/ --directory-ref jre --component-group jre > jre.wxs
+find $release_name/electron | wixl-heat --var var.SourceDir -p $release_name/ --directory-ref electron --component-group electron > electron.wxs
+if [ $arch = "win32" ]; then
+  wixl -D ProductVersion=$release_ver -D SourceDir=$release_name --arch x86 Tachidesk-Server-x86.wxs jre.wxs electron.wxs -o $msi_name
+else
+  wixl -D ProductVersion=$release_ver -D SourceDir=$release_name --arch x64 Tachidesk-Server-x64.wxs jre.wxs electron.wxs -o $msi_name
+fi
+
 rm -rf $release_name
 
 # clean up from possible previous runs
 if [ -f ../server/build/$zip_name ]; then
   rm ../server/build/$zip_name
 fi
+if [ -f ../server/build/$msi_name ]; then
+  rm ../server/build/$msi_name
+fi
 
 mv $zip_name ../server/build/
+mv $msi_name ../server/build/
