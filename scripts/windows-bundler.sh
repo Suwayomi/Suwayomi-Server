@@ -62,6 +62,7 @@ if [ $CI = true ]; then
   sudo add-apt-repository ppa:cybermax-dexter/sdl2-backport
   sudo apt-add-repository "deb https://dl.winehq.org/wine-builds/ubuntu $(lsb_release -cs) main"
   sudo apt install --install-recommends winehq-stable
+  sudo apt install -y wixl
 fi
 # this script assumes that wine is installed here on out
 
@@ -77,7 +78,6 @@ zip_name=$release_name.zip
 zip -9 -r $zip_name $release_name
 
 # create msi package
-sudo apt-get install -y wixl
 msi_name=$release_name.msi
 
 find $release_name/jre | wixl-heat --var var.SourceDir -p $release_name/ --directory-ref jre --component-group jre > jre.wxs
@@ -97,4 +97,5 @@ if [ -f ../server/build/$msi_name ]; then
   rm ../server/build/$msi_name
 fi
 
-mv $zip_name $msi_name ../server/build/
+mv $zip_name ../server/build/
+mv $msi_name ../server/build/
