@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Product Id="*" UpgradeCode="*"
-    Version="0.6.0" Language="1033" Name="Tachidesk Server" Manufacturer="Suwayomi">
+    Version="$(var.ProductVersion)" Language="1033" Name="Tachidesk Server" Manufacturer="Suwayomi">
     <Package InstallerVersion="300" Compressed="yes" />
     <Media Id="1" Cabinet="Tachidesk_Server.cab" EmbedCab="yes" />
 
