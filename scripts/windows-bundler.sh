@@ -93,7 +93,7 @@ rm -rf $release_name
 # clean up from possible previous runs
 if [ -f ../server/build/$zip_name ]; then
   rm ../server/build/$zip_name
-if [ -f ../server/build/$msi_name ]; then
+elif [ -f ../server/build/$msi_name ]; then
   rm ../server/build/$msi_name
 fi
 
