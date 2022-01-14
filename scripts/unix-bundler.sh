@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 # Copyright (C) Contributors to the Suwayomi project
 #
@@ -40,10 +40,8 @@ jar=$(ls ../server/build/*.jar | tail -n1)
 jar_name=$(echo $jar | cut -d'/' -f4)
 release_name=$(echo $jar_name | sed 's/.jar//')-$arch
 
-
 # make release dir
 mkdir $release_name
-
 
 echo "Dealing with jre..."
 if [ ! -f $jre ]; then
@@ -74,6 +72,32 @@ archive_name=""
 if [ $os = linux ]; then
   archive_name=$release_name.tar.gz
   GZIP=-9 tar cvzf $archive_name $release_name
+
+  # prepare required resources
+  sudo apt install devscripts build-essential dh-exec
+  release_ver=$(tmp="${jar%-*}" && echo "${tmp##*-}" | tr -d v)
+  icon="../server/src/main/resources/icon/faviconlogo.png"
+  orig_dir="tachidesk-$release_ver"                # dir uses hyphen "-"
+  orig_tar_gz="tachidesk_$release_ver.orig.tar.gz" # orig file uses underscore "_"
+
+  mv "$release_name" "$orig_dir"
+  mv "$archive_name" "$orig_tar_gz"
+  cp -r "resources/debian" "$orig_dir/"
+  cp "resources/tachidesk.desktop" "$orig_dir/debian/tachidesk.desktop"
+  cp "$icon" "$orig_dir/debian/tachidesk.png"
+  sed -i "s/\${version}/$release_ver/" "$orig_dir/debian/changelog"
+
+  # build deb package
+  cd "$orig_dir/debian"
+  debuild -uc -us
+  deb_name="tachidesk_$release_ver-1_all.deb"
+  cd -
+
+  # revert back changes
+  rm -rf "$orig_dir/debian"
+  mv "$orig_dir" "$release_name"
+  mv "$orig_tar_gz" "$archive_name"
+
 elif [ $os = macOS ]; then
   archive_name=$release_name.zip
   zip -9 -r $archive_name $release_name
@@ -85,5 +109,11 @@ rm -rf $release_name
 if [ -f ../server/build/$archive_name ]; then
   rm ../server/build/$archive_name
 fi
+if [ -f ../server/build/$deb_name ]; then
+  rm ../server/build/$deb_name
+fi
 
 mv $archive_name ../server/build/
+if [ $os = linux ]; then
+  mv $deb_name ../server/build/
+fi
