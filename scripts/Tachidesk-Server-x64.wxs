@@ -80,7 +80,7 @@
       <ComponentRef Id="TachideskElectronBAT" />
     </Feature>
 
-    <Icon Id="Tachidesk.ico" SourceFile="$(var.Icon)" />
+    <Icon Id="Tachidesk.ico" SourceFile="../server/src/main/resources/icon/faviconlogo.ico" />
     <Property Id="ARPPRODUCTICON" Value="Tachidesk.ico" /> <!-- Icon in Add/Remove Programs -->
   </Product>
 </Wix>
