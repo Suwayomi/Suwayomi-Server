@@ -76,8 +76,8 @@ elif [ $os = macOS ]; then
   archive_name=$release_name.zip
   zip -9 -r $archive_name $release_name
 elif [ $os = debian ]; then
-  archive_name="tachidesk_$release_ver-1_amd64.deb" 
   release_ver=$(tmp="${jar%-*}" && echo "${tmp##*-}" | tr -d v)
+  archive_name="tachidesk_$release_ver-1_amd64.deb" 
   orig_dir="tachidesk-$release_ver"                # dir uses hyphen "-"
   orig_tar_gz="tachidesk_$release_ver.orig.tar.gz" # orig file uses underscore "_"
   icon="../server/src/main/resources/icon/faviconlogo.png"
