@@ -4,7 +4,7 @@ Upstream-Contact: https://discord.gg/DDZdqZWaHA
 Source: https://github.com/Suwayomi/Tachidesk-Server
 
 Files: *
-Copyright: 2021 Contributors to the Suwayomi project
+Copyright: Contributors to the Suwayomi project
 License: MPL-2.0
  Mozilla Public License Version 2.0
  ==================================
@@ -381,7 +381,7 @@ License: MPL-2.0
    defined by the Mozilla Public License, v. 2.0.
 
 Files: debian/*
-Copyright: 2021 Mahor Foruzesh <mahorforuzesh@pm.me>
+Copyright: Mahor Foruzesh <mahorforuzesh@pm.me>
 License: GPL-2+
  This package is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
