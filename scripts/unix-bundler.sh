@@ -8,7 +8,7 @@
 
 electron_version="v14.0.0"
 
-if [ $1 = "linux-x64" ]; then
+if [ $1 = "linux-x64" ] || [ $1 = "debian-x64" ]; then
   jre="OpenJDK8U-jre_x64_linux_hotspot_8u302b08.tar.gz"
   jre_release="jdk8u302-b08"
   jre_url="https://github.com/adoptium/temurin8-binaries/releases/download/$jre_release/$jre"
@@ -58,7 +58,7 @@ unzip $electron -d $release_name/electron
 
 # copy artifacts
 cp $jar $release_name/Tachidesk.jar
-if [ $os = linux ]; then
+if [ $os = linux ] || [ $os = debian ]; then
   cp "resources/tachidesk-browser-launcher.sh" $release_name
   cp "resources/tachidesk-debug-launcher.sh" $release_name
   cp "resources/tachidesk-electron-launcher.sh" $release_name
@@ -72,35 +72,37 @@ archive_name=""
 if [ $os = linux ]; then
   archive_name=$release_name.tar.gz
   GZIP=-9 tar cvzf $archive_name $release_name
-
-  # prepare required resources
-  sudo apt install devscripts build-essential dh-exec
+elif [ $os = macOS ]; then
+  archive_name=$release_name.zip
+  zip -9 -r $archive_name $release_name
+elif [ $os = debian ]; then
+  archive_name="tachidesk_$release_ver-1_amd64.deb" 
   release_ver=$(tmp="${jar%-*}" && echo "${tmp##*-}" | tr -d v)
-  icon="../server/src/main/resources/icon/faviconlogo.png"
   orig_dir="tachidesk-$release_ver"                # dir uses hyphen "-"
   orig_tar_gz="tachidesk_$release_ver.orig.tar.gz" # orig file uses underscore "_"
+  icon="../server/src/main/resources/icon/faviconlogo.png"
 
+  # prepare required resources
   mv "$release_name" "$orig_dir"
-  mv "$archive_name" "$orig_tar_gz"
+  tar cvzf $orig_tar_gz $orig_dir
+  
   cp -r "resources/debian" "$orig_dir/"
   cp "resources/tachidesk.desktop" "$orig_dir/debian/tachidesk.desktop"
   cp "$icon" "$orig_dir/debian/tachidesk.png"
   sed -i "s/\${version}/$release_ver/" "$orig_dir/debian/changelog"
 
   # build deb package
-  cd "$orig_dir/debian"
+  mkdir -p "build"
+  mv $orig_dir $orig_tar_gz "build/"
+  cd "build/$orig_dir/debian"
+  sudo apt install devscripts build-essential dh-exec
   debuild -uc -us
-  deb_name="tachidesk_$release_ver-1_all.deb"
   cd -
-
-  # revert back changes
-  rm -rf "$orig_dir/debian"
-  mv "$orig_dir" "$release_name"
-  mv "$orig_tar_gz" "$archive_name"
-
-elif [ $os = macOS ]; then
-  archive_name=$release_name.zip
-  zip -9 -r $archive_name $release_name
+  
+  # clean up debuild outouts
+  mv "build/$archive_name" "./"
+  mv "build/$orig_dir" $release_name
+  rm -rf "build"
 fi
 
 rm -rf $release_name
@@ -109,11 +111,5 @@ rm -rf $release_name
 if [ -f ../server/build/$archive_name ]; then
   rm ../server/build/$archive_name
 fi
-if [ -f ../server/build/$deb_name ]; then
-  rm ../server/build/$deb_name
-fi
 
 mv $archive_name ../server/build/
-if [ $os = linux ]; then
-  mv $deb_name ../server/build/
-fi
