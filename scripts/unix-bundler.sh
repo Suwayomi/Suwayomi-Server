@@ -1,4 +1,4 @@
-#!/bin/bash
+#/bin/bash
 
 # Copyright (C) Contributors to the Suwayomi project
 #
@@ -8,7 +8,7 @@
 
 electron_version="v14.0.0"
 
-if [ $1 = "linux-x64" ] || [ $1 = "debian-x64" ]; then
+if [ $1 = "linux-x64" ]; then
   jre="OpenJDK8U-jre_x64_linux_hotspot_8u302b08.tar.gz"
   jre_release="jdk8u302-b08"
   jre_url="https://github.com/adoptium/temurin8-binaries/releases/download/$jre_release/$jre"
@@ -42,20 +42,19 @@ release_name=$(echo $jar_name | sed 's/.jar//')-$arch
 
 # make release dir
 mkdir $release_name
-if [ $os = linux ] || [ $os = macOS ]; then
-  echo "Dealing with jre..."
-  if [ ! -f $jre ]; then
-    curl -L $jre_url -o $jre
-  fi
-  tar xvf $jre
-  mv $jre_dir $release_name/jre
 
-  echo "Dealing with electron"
-  if [ ! -f $electron ]; then
-    curl -L "https://github.com/electron/electron/releases/download/$electron_version/$electron" -o $electron
-  fi
-  unzip $electron -d $release_name/electron
+echo "Dealing with jre..."
+if [ ! -f $jre ]; then
+  curl -L $jre_url -o $jre
 fi
+tar xvf $jre
+mv $jre_dir $release_name/jre
+
+echo "Dealing with electron"
+if [ ! -f $electron ]; then
+  curl -L "https://github.com/electron/electron/releases/download/$electron_version/$electron" -o $electron
+fi
+unzip $electron -d $release_name/electron
 
 # copy artifacts
 cp $jar $release_name/Tachidesk.jar
@@ -67,13 +66,6 @@ elif [ $os = macOS ]; then
   cp "resources/Tachidesk Browser Launcher.command" $release_name
   cp "resources/Tachidesk Debug Launcher.command" $release_name
   cp "resources/Tachidesk Electron Launcher.command" $release_name
-elif [ $os = debian ]; then
-  cp -r "resources/debian" $release_name
-  cp "resources/tachidesk-browser-launcher-aur.sh" $release_name/debian
-  cp "resources/tachidesk-debug-launcher-aur.sh" $release_name/debian
-  cp "resources/tachidesk-electron-launcher-aur.sh" $release_name/debian
-  cp "resources/tachidesk.desktop" $release_name/debian
-  cp "../server/src/main/resources/icon/faviconlogo.png" $release_name/debian
 fi
 
 archive_name=""
@@ -83,30 +75,6 @@ if [ $os = linux ]; then
 elif [ $os = macOS ]; then
   archive_name=$release_name.zip
   zip -9 -r $archive_name $release_name
-elif [ $os = debian ]; then
-  # prepare
-  release_ver=$(tmp="${jar%-*}" && echo "${tmp##*-}" | tr -d v)
-  orig_dir="tachidesk-$release_ver"                # dir uses hyphen "-"
-  orig_tar_gz="tachidesk_$release_ver.orig.tar.gz" # orig file uses underscore "_"
-  archive_name="tachidesk_$release_ver-1_all.deb"
-
-  tar cvzf "$orig_tar_gz" "$release_name/Tachidesk.jar"
-  mv "$release_name" "$orig_dir"
-  sed -i "s/\${version}/$release_ver/" "$orig_dir/debian/changelog"
-
-  # build
-  mkdir "build"
-  mv $orig_dir $orig_tar_gz "build/"
-  cd "build/$orig_dir/debian"
-  sudo apt install devscripts build-essential dh-exec
-  # --lintian-opts --profile debian: build Debian packages on Ubuntu
-  debuild -uc -us --lintian-opts --profile debian
-  cd -
-
-  # clean up
-  mv "build/$archive_name" "./"
-  mv "build/$orig_dir" $release_name
-  rm -rf "build"
 fi
 
 rm -rf $release_name
