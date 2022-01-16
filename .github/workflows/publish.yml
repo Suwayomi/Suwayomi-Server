@@ -3,7 +3,7 @@ name: CI Publish
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   check_wrapper:
@@ -58,12 +58,13 @@ jobs:
           dependencies-cache-enabled: true
           configuration-cache-enabled: true
 
-      - name: make bundle packages
+      - name: Make bundle packages
         run: |
           cd master/scripts
           ./windows-bundler.sh win32
           ./windows-bundler.sh win64
           ./unix-bundler.sh linux-x64
+          ./unix-bundler.sh debian-x64
           ./unix-bundler.sh macOS-x64
           ./unix-bundler.sh macOS-arm64
 
@@ -72,7 +73,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "master/server/build/*.jar;master/server/build/*.msi;master/server/build/*.zip;master/server/build/*.tar.gz"
+          file: "master/server/build/*.jar;master/server/build/*.msi;master/server/build/*.zip;master/server/build/*.tar.gz;master/server/build/*.deb"
           tags: true
           draft: true
           verbose: true
