@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 # Copyright (C) Contributors to the Suwayomi project
 #
