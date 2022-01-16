@@ -1,2 +1,5 @@
-tachidesk (${version}-1) unstable; urgency=medium
+tachidesk (0.6.0-1) unstable; urgency=medium
+
+  * See CHANGELOG.md on https://github.com/Suwayomi/Tachidesk-Server
+
  -- Mahor Foruzesh <mahorforuzesh@pm.me>  Fri, 14 Jan 2022 00:00:00 +0000

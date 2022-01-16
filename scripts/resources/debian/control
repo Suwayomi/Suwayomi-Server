@@ -7,7 +7,7 @@ Standards-Version: 4.5.1
 Homepage: https://github.com/Suwayomi/Tachidesk-Server
 
 Package: tachidesk
-Architecture: amd64
+Architecture: all
 Depends: ${misc:Depends}, default-jre-headless (>= 8)
 Description: Manga Reader
  A free and open source manga reader server that runs extensions built for Tachiyomi.
