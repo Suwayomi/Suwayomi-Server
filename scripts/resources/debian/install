@@ -1,9 +1,9 @@
 #!/usr/bin/dh-exec
 
-debian/faviconlogo.png                    => usr/share/pixmaps/tachidesk.png
-debian/tachidesk.desktop                     usr/share/applications/
-debian/tachidesk-browser-launcher-aur.sh  => usr/bin/tachidesk
-debian/tachidesk-browser-launcher-aur.sh  => usr/bin/tachidesk-browser
-debian/tachidesk-debug-launcher-aur.sh    => usr/bin/tachidesk-debug
-debian/tachidesk-electron-launcher-aur.sh => usr/bin/tachidesk-electron
+debian/tachidesk-browser-launcher-standalone.sh  => usr/bin/tachidesk
+debian/tachidesk-browser-launcher-standalone.sh  => usr/bin/tachidesk-browser
+debian/tachidesk-debug-launcher-standalone.sh    => usr/bin/tachidesk-debug
+debian/tachidesk-electron-launcher-standalone.sh => usr/bin/tachidesk-electron
 Tachidesk.jar => usr/share/java/tachidesk/tachidesk.jar
+debian/faviconlogo.png => usr/share/pixmaps/tachidesk.png
+debian/tachidesk.desktop usr/share/applications/
