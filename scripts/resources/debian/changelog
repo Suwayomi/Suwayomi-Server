@@ -1,4 +1,4 @@
-tachidesk (0.6.0-1) unstable; urgency=medium
+tachidesk (${version}-1) unstable; urgency=medium
 
   * See CHANGELOG.md on https://github.com/Suwayomi/Tachidesk-Server
 
