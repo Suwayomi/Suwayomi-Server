@@ -8,7 +8,7 @@
 
 electron_version="v14.0.0"
 
-if [ $1 = "linux-x64" ] || [ $1 = "debian-x64" ]; then
+if [ $1 = "linux-x64" ]; then
   jre="OpenJDK8U-jre_x64_linux_hotspot_8u302b08.tar.gz"
   jre_release="jdk8u302-b08"
   jre_url="https://github.com/adoptium/temurin8-binaries/releases/download/$jre_release/$jre"
@@ -58,7 +58,7 @@ unzip $electron -d $release_name/electron
 
 # copy artifacts
 cp $jar $release_name/Tachidesk.jar
-if [ $os = linux ] || [ $os = debian ]; then
+if [ $os = linux ]; then
   cp "resources/tachidesk-browser-launcher.sh" $release_name
   cp "resources/tachidesk-debug-launcher.sh" $release_name
   cp "resources/tachidesk-electron-launcher.sh" $release_name
@@ -75,34 +75,6 @@ if [ $os = linux ]; then
 elif [ $os = macOS ]; then
   archive_name=$release_name.zip
   zip -9 -r $archive_name $release_name
-elif [ $os = debian ]; then
-  release_ver=$(tmp="${jar%-*}" && echo "${tmp##*-}" | tr -d v)
-  archive_name="tachidesk_$release_ver-1_amd64.deb" 
-  orig_dir="tachidesk-$release_ver"                # dir uses hyphen "-"
-  orig_tar_gz="tachidesk_$release_ver.orig.tar.gz" # orig file uses underscore "_"
-  icon="../server/src/main/resources/icon/faviconlogo.png"
-
-  # prepare required resources
-  mv "$release_name" "$orig_dir"
-  tar cvzf $orig_tar_gz $orig_dir
-  
-  cp -r "resources/debian" "$orig_dir/"
-  cp "resources/tachidesk.desktop" "$orig_dir/debian/tachidesk.desktop"
-  cp "$icon" "$orig_dir/debian/tachidesk.png"
-  sed -i "s/\${version}/$release_ver/" "$orig_dir/debian/changelog"
-
-  # build deb package
-  mkdir -p "build"
-  mv $orig_dir $orig_tar_gz "build/"
-  cd "build/$orig_dir/debian"
-  sudo apt install devscripts build-essential dh-exec
-  debuild -uc -us
-  cd -
-  
-  # clean up debuild outouts
-  mv "build/$archive_name" "./"
-  mv "build/$orig_dir" $release_name
-  rm -rf "build"
 fi
 
 rm -rf $release_name
