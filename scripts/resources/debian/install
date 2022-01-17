@@ -5,5 +5,5 @@ debian/tachidesk-browser-launcher-standalone.sh  => usr/bin/tachidesk-browser
 debian/tachidesk-debug-launcher-standalone.sh    => usr/bin/tachidesk-debug
 debian/tachidesk-electron-launcher-standalone.sh => usr/bin/tachidesk-electron
 Tachidesk.jar => usr/share/java/tachidesk/tachidesk.jar
-debian/faviconlogo.png => usr/share/pixmaps/tachidesk.png
+debian/tachidesk.png     usr/share/pixmaps/
 debian/tachidesk.desktop usr/share/applications/

@@ -21,7 +21,7 @@ cp "resources/tachidesk-browser-launcher-standalone.sh" "$orig_dir/debian"
 cp "resources/tachidesk-debug-launcher-standalone.sh" "$orig_dir/debian"
 cp "resources/tachidesk-electron-launcher-standalone.sh" "$orig_dir/debian"
 cp "resources/tachidesk.desktop" "$orig_dir/debian"
-cp "../server/src/main/resources/icon/faviconlogo.png" "$orig_dir/debian"
+cp "../server/src/main/resources/icon/faviconlogo.png" "$orig_dir/debian/tachidesk.png"
 
 # prepare
 tar cvzf "$orig_tar_gz" "$orig_dir/Tachidesk.jar"
