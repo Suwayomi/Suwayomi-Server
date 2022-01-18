@@ -104,7 +104,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
-          artifacts: "master/server/build/*.jar,master/server/build/*.msi,master/server/build/*.zip,master/server/build/*.tar.gz;master/server/build/*.deb"
+          artifacts: "master/server/build/*.jar,master/server/build/*.msi,master/server/build/*.zip,master/server/build/*.tar.gz,master/server/build/*.deb"
           owner: "Suwayomi"
           repo: "Tachidesk-Server-preview"
           tag: ${{ steps.GenTagName.outputs.value }}
