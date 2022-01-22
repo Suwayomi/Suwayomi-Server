@@ -29,11 +29,9 @@ echo "creating windows bundle"
 jar=$(ls ../server/build/*.jar | tail -n1)
 jar_name=$(echo $jar | cut -d'/' -f4)
 release_name=$(echo $jar_name | sed 's/.jar//')-$arch
-release_ver=$(tmp=${jar%-*} && echo ${tmp##*-} | tr -d v)
 
 # make release dir
 mkdir $release_name
-
 
 echo "Dealing with jre..."
 if [ ! -f $jre ]; then
@@ -79,13 +77,17 @@ zip -9 -r $zip_name $release_name
 
 # create msi package
 msi_name=$release_name.msi
+release_ver=$(tmp=${jar%-*} && echo ${tmp##*-} | tr -d v)
+icon="../server/src/main/resources/icon/faviconlogo.ico"
 
-find $release_name/jre | wixl-heat --var var.SourceDir -p $release_name/ --directory-ref jre --component-group jre > jre.wxs
-find $release_name/electron | wixl-heat --var var.SourceDir -p $release_name/ --directory-ref electron --component-group electron > electron.wxs
+find $release_name/jre | wixl-heat --var var.SourceDir -p $release_name/ --directory-ref jre --component-group jre >jre.wxs
+find $release_name/electron | wixl-heat --var var.SourceDir -p $release_name/ --directory-ref electron --component-group electron >electron.wxs
 if [ $arch = "win32" ]; then
-  wixl -D ProductVersion=$release_ver -D SourceDir=$release_name --arch x86 Tachidesk-Server-x86.wxs jre.wxs electron.wxs -o $msi_name
+  wixl -D ProductVersion=$release_ver -D SourceDir=$release_name -D Icon=$icon \
+    --arch x86 resources/msi/tachidesk-server-x86.wxs jre.wxs electron.wxs -o $msi_name
 else
-  wixl -D ProductVersion=$release_ver -D SourceDir=$release_name --arch x64 Tachidesk-Server-x64.wxs jre.wxs electron.wxs -o $msi_name
+  wixl -D ProductVersion=$release_ver -D SourceDir=$release_name -D Icon=$icon \
+    --arch x64 resources/msi/tachidesk-server-x64.wxs jre.wxs electron.wxs -o $msi_name
 fi
 
 rm -rf $release_name
