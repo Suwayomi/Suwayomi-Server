@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 # Copyright (C) Contributors to the Suwayomi project
 #
@@ -40,10 +40,8 @@ jar=$(ls ../server/build/*.jar | tail -n1)
 jar_name=$(echo $jar | cut -d'/' -f4)
 release_name=$(echo $jar_name | sed 's/.jar//')-$arch
 
-
 # make release dir
 mkdir $release_name
-
 
 echo "Dealing with jre..."
 if [ ! -f $jre ]; then

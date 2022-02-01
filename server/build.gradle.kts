@@ -3,21 +3,21 @@ import java.time.Instant
 
 plugins {
     application
-    id("com.github.johnrengelman.shadow") version "7.0.0"
+    id("com.github.johnrengelman.shadow") version "7.1.2"
     id("com.github.gmazzo.buildconfig")
 }
 
 dependencies {
     // okhttp
-    val okhttpVersion = "4.9.1" // version is locked by Tachiyomi extensions
+    val okhttpVersion = "4.9.3" // Major version is locked by Tachiyomi extensions
     implementation("com.squareup.okhttp3:okhttp:$okhttpVersion")
     implementation("com.squareup.okhttp3:logging-interceptor:$okhttpVersion")
     implementation("com.squareup.okhttp3:okhttp-dnsoverhttps:$okhttpVersion")
-    implementation("com.squareup.okio:okio:2.10.0")
+    implementation("com.squareup.okio:okio:3.0.0")
 
     // Javalin api
-    implementation("io.javalin:javalin:4.1.1")
-    implementation("io.javalin:javalin-openapi:4.1.1")
+    implementation("io.javalin:javalin:4.2.0")
+    implementation("io.javalin:javalin-openapi:4.2.0")
     // jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
     val jacksonVersion = "2.12.4"
     implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
@@ -41,10 +41,10 @@ dependencies {
 
     // dependencies of Tachiyomi extensions, some are duplicate, keeping it here for reference
     implementation("com.github.inorichi.injekt:injekt-core:65b0440")
-    implementation("com.squareup.okhttp3:okhttp:4.9.1")
+    implementation("com.squareup.okhttp3:okhttp:$okhttpVersion")
     implementation("io.reactivex:rxjava:1.3.8")
-    implementation("org.jsoup:jsoup:1.14.2")
-    implementation("com.google.code.gson:gson:2.8.8")
+    implementation("org.jsoup:jsoup:1.14.3")
+    implementation("com.google.code.gson:gson:2.8.9")
     implementation("com.github.salomonbrys.kotson:kotson:2.5.0")
 
     // Sort
@@ -54,11 +54,11 @@ dependencies {
     implementation("org.ow2.asm:asm:9.2")
 
     // Disk & File
-    implementation("net.lingala.zip4j:zip4j:2.9.0")
+    implementation("net.lingala.zip4j:zip4j:2.9.1")
     implementation("com.github.junrar:junrar:7.4.0")
 
     // CloudflareInterceptor
-    implementation("net.sourceforge.htmlunit:htmlunit:2.52.0")
+    implementation("net.sourceforge.htmlunit:htmlunit:2.56.0")
 
     // Source models and interfaces from Tachiyomi 1.x
     // using source class from tachiyomi commit 9493577de27c40ce8b2b6122cc447d025e34c477 to not depend on tachiyomi.sourceapi
@@ -72,7 +72,7 @@ dependencies {
 //    implementation(fileTree("lib/"))
     implementation(kotlin("script-runtime"))
 
-    testImplementation("io.mockk:mockk:1.9.3")
+    testImplementation("io.mockk:mockk:1.12.2")
 }
 
 application {
@@ -106,7 +106,7 @@ buildConfig {
     buildConfigField("String", "WEBUI_TAG", quoteWrap(webUIRevisionTag))
 
 
-    buildConfigField("String", "GITHUB", quoteWrap("https://github.com/Suwayomi/Tachidesk"))
+    buildConfigField("String", "GITHUB", quoteWrap("https://github.com/Suwayomi/Tachidesk-Server"))
     buildConfigField("String", "DISCORD", quoteWrap("https://discord.gg/DDZdqZWaHA"))
 }
 
