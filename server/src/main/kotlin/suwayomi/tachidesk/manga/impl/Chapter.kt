@@ -36,7 +36,7 @@ import java.time.Instant
 
 object Chapter {
     /** get chapter list when showing a manga */
-    suspend fun getChapterList(mangaId: Int, onlineFetch: Boolean = false): List<ChapterDataClass> {
+    suspend fun getChapterList(mangaId: Int, onlineFetch: Boolean = false, onlineFetchOnEmpty: Boolean = true): List<ChapterDataClass> {
         return if (onlineFetch) {
             getSourceChapters(mangaId)
         } else {
@@ -47,7 +47,10 @@ object Chapter {
                         ChapterTable.toDataClass(it)
                     }
             }.ifEmpty {
-                getSourceChapters(mangaId)
+                if (onlineFetchOnEmpty)
+                    getSourceChapters(mangaId)
+                else
+                    emptyList()
             }
         }
     }
