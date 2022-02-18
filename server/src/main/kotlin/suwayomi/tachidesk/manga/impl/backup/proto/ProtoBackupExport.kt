@@ -76,7 +76,7 @@ object ProtoBackupExport : ProtoBackupBase() {
             val mangaId = mangaRow[MangaTable.id].value
 
             if (flags.includeChapters) {
-                val chapters = runBlocking { Chapter.getChapterList(mangaId, onlineFetchOnEmpty = false) }
+                val chapters = runBlocking { Chapter.getChapterList(mangaId) }
                 backupManga.chapters = chapters.map {
                     BackupChapter(
                         it.url,
