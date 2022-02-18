@@ -7,7 +7,6 @@ package suwayomi.tachidesk.manga.impl.backup.proto
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import kotlinx.coroutines.runBlocking
 import okio.buffer
 import okio.gzip
 import okio.sink
@@ -17,7 +16,6 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.CategoryManga
-import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
@@ -26,6 +24,7 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSerializer
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSource
 import suwayomi.tachidesk.manga.model.table.CategoryTable
+import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
@@ -76,7 +75,14 @@ object ProtoBackupExport : ProtoBackupBase() {
             val mangaId = mangaRow[MangaTable.id].value
 
             if (flags.includeChapters) {
-                val chapters = runBlocking { Chapter.getChapterList(mangaId) }
+                val chapters = transaction {
+                    ChapterTable.select { ChapterTable.manga eq mangaId }
+                        .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+                        .map {
+                            ChapterTable.toDataClass(it)
+                        }
+                }
+
                 backupManga.chapters = chapters.map {
                     BackupChapter(
                         it.url,
