@@ -12,6 +12,7 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SortOrder.ASC
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
@@ -101,14 +102,19 @@ object Chapter {
             }
         }
 
-        // clear any orphaned chapters that are in the db but not in `chapterList`
+        // clear any orphaned/duplicate chapters that are in the db but not in `chapterList`
         val dbChapterCount = transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.count() }
         if (dbChapterCount > chapterCount) { // we got some clean up due
-            val dbChapterList = transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.toList() }
+            val dbChapterList = transaction {
+                ChapterTable.select { ChapterTable.manga eq mangaId }.orderBy(ChapterTable.url to ASC).toList()
+            }
             val chapterUrls = chapterList.map { it.url }.toSet()
 
-            dbChapterList.forEach { dbChapter ->
-                if (!chapterUrls.contains(dbChapter[ChapterTable.url])) {
+            dbChapterList.forEachIndexed { index, dbChapter ->
+                if (
+                    !chapterUrls.contains(dbChapter[ChapterTable.url]) || // is orphaned
+                    (index < dbChapterList.lastIndex && dbChapter[ChapterTable.url] == dbChapterList[index + 1][ChapterTable.url]) // is duplicate
+                ) {
                     transaction {
                         PageTable.deleteWhere { PageTable.chapter eq dbChapter[ChapterTable.id] }
                         ChapterTable.deleteWhere { ChapterTable.id eq dbChapter[ChapterTable.id] }
