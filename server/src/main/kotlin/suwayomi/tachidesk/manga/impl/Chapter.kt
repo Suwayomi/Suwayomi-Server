@@ -110,12 +110,11 @@ object Chapter {
             }
             val chapterUrls = chapterList.map { it.url }.toSet()
 
-            for (i in dbChapterList.indices) {
-                val dbChapter = dbChapterList[i]
+            dbChapterList.forEachIndexed { index, dbChapter ->
 
                 if (
                     !chapterUrls.contains(dbChapter[ChapterTable.url]) || // is orphaned
-                    (i + 1 < dbChapterList.size && dbChapter[ChapterTable.url] == dbChapterList[i + 1][ChapterTable.url]) // is duplicate
+                    (index < dbChapterList.lastIndex && dbChapter[ChapterTable.url] == dbChapterList[index + 1][ChapterTable.url]) // is duplicate
                 ) {
                     transaction {
                         PageTable.deleteWhere { PageTable.chapter eq dbChapter[ChapterTable.id] }
