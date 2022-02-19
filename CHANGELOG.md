@@ -1,6 +1,7 @@
-# Server: v0.6.0-next + WebUI: r911
+# Server: v0.6.1 + WebUI: r911
 ## TL;DR
 - msi and deb packages thanks to @mahor1221
+- [Tachidesk-Flutter](https://github.com/Suwayomi/Tachidesk-Flutter) exists now!
 
 ## Tachidesk-Server Changelog
 - (r1047) update (by @AriaMoradi)
