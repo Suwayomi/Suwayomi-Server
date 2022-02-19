@@ -111,7 +111,6 @@ object Chapter {
             val chapterUrls = chapterList.map { it.url }.toSet()
 
             dbChapterList.forEachIndexed { index, dbChapter ->
-
                 if (
                     !chapterUrls.contains(dbChapter[ChapterTable.url]) || // is orphaned
                     (index < dbChapterList.lastIndex && dbChapter[ChapterTable.url] == dbChapterList[index + 1][ChapterTable.url]) // is duplicate
