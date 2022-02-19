@@ -1,3 +1,53 @@
+# Server: v0.6.0-next + WebUI: r911
+## TL;DR
+- TBA
+
+## Tachidesk-Server Changelog
+- (r1047) update (by @AriaMoradi)
+- (r1048) bump version (by @AriaMoradi)
+- (r1049) Update README.md (by @AriaMoradi)
+- (r1050) Update README.md (by @AriaMoradi)
+- (r1051) refactor getChapter ([#268](https://github.com/Suwayomi/Tachidesk-Server/pull/268) by @AriaMoradi)
+- (r1052) Improve documentation with Http codes ([#261](https://github.com/Suwayomi/Tachidesk-Server/pull/261) by @Syer10)
+- (r1053) Add Route to stop and reset the updater ([#260](https://github.com/Suwayomi/Tachidesk-Server/pull/260) by @ntbm)
+- (r1054) ignore non image files ([#269](https://github.com/Suwayomi/Tachidesk-Server/pull/269) by @AriaMoradi)
+- (r1055) fix compile erorr (by @AriaMoradi)
+- (r1056) update dex2jar (by @AriaMoradi)
+- (r1057) Update Gradle and Dependencies ([#281](https://github.com/Suwayomi/Tachidesk-Server/pull/281) by @Syer10)
+- (r1058) Handlers must return a result ([#282](https://github.com/Suwayomi/Tachidesk-Server/pull/282) by @Syer10)
+- (r1059) Allow app compilation on Java 18+ ([#286](https://github.com/Suwayomi/Tachidesk-Server/pull/286) by @Syer10)
+- (r1060) Automated MSI package building ([#277](https://github.com/Suwayomi/Tachidesk-Server/pull/277) by @mahor1221)
+- (r1061) Automated debian package building ([#287](https://github.com/Suwayomi/Tachidesk-Server/pull/287) by @mahor1221)
+- (r1062) fix Debian package errors ([#288](https://github.com/Suwayomi/Tachidesk-Server/pull/288) by @mahor1221)
+- (r1063) Fix build_push.yml Hopefully ([#289](https://github.com/Suwayomi/Tachidesk-Server/pull/289) by @mahor1221)
+- (r1064) Improve windows-bundler.sh ([#290](https://github.com/Suwayomi/Tachidesk-Server/pull/290) by @mahor1221)
+- (r1065) add Tachidesk-Flutter to readme ([#292](https://github.com/Suwayomi/Tachidesk-Server/pull/292)) 58727124+DattatreyaReddy@users.noreply.github.com
+- (r1066) no online fetch on backup ([#293](https://github.com/Suwayomi/Tachidesk-Server/pull/293) by @AriaMoradi)
+- (r1067) auto-remove duplicate chapters ([#294](https://github.com/Suwayomi/Tachidesk-Server/pull/294) by @AriaMoradi)
+- (r1068) remove gson ([#295](https://github.com/Suwayomi/Tachidesk-Server/pull/295) by @AriaMoradi)
+## Tachidesk-WebUI Changelog
+- (r894) migrate ReaderNavbar to Mui 5 ([#84](https://github.com/Suwayomi/Tachidesk-WebUI/pull/84) by @AriaMoradi)
+- (r895) migrate SpinnerImage to Mui 5 ([#97](https://github.com/Suwayomi/Tachidesk-WebUI/pull/97) by @AriaMoradi)
+- (r896) migrate VerticalPager to Mui 5 ([#94](https://github.com/Suwayomi/Tachidesk-WebUI/pull/94) by @AriaMoradi)
+- (r897) migrate PagedPager to Mui 5 ([#93](https://github.com/Suwayomi/Tachidesk-WebUI/pull/93) by @AriaMoradi)
+- (r898) MangaCard imges don't stretch now ([#110](https://github.com/Suwayomi/Tachidesk-WebUI/pull/110)) abhijeetchawla22@gmail.co
+  m
+- (r899) show correct title ([#111](https://github.com/Suwayomi/Tachidesk-WebUI/pull/111) by @AriaMoradi)
+- (r900) migrate DoublePage to Mui 5 ([#88](https://github.com/Suwayomi/Tachidesk-WebUI/pull/88) by @AriaMoradi)
+- (r901) migrate DoublePagedPager to Mui 5 ([#91](https://github.com/Suwayomi/Tachidesk-WebUI/pull/91) by @AriaMoradi)
+- (r902) migrate Reader to Mui 5 ([#100](https://github.com/Suwayomi/Tachidesk-WebUI/pull/100) by @AriaMoradi)
+- (r903) migrate HorizantalPager to Mui 5 ([#92](https://github.com/Suwayomi/Tachidesk-WebUI/pull/92) by @AriaMoradi)
+- (r904) migrate PageNumber to Mui 5 ([#90](https://github.com/Suwayomi/Tachidesk-WebUI/pull/90) by @AriaMoradi)
+- (r905) Chapter filter is woking ([#114](https://github.com/Suwayomi/Tachidesk-WebUI/pull/114)) abhijeetchawla22@gmail.com
+- (r906) added extension search ([#115](https://github.com/Suwayomi/Tachidesk-WebUI/pull/115)) abhijeetchawla22@gmail.com
+- (r907) cleanup ([#117](https://github.com/Suwayomi/Tachidesk-WebUI/pull/117) by @AriaMoradi)
+- (r908) handle search shortcuts ([#116](https://github.com/Suwayomi/Tachidesk-WebUI/pull/116) by @AriaMoradi)
+- (r909) Refactor for Removing unnecesary UseEffect ([#118](https://github.com/Suwayomi/Tachidesk-WebUI/pull/118)) abhijeetchawla22@gmail.com
+- (r910) refactor ChapterList ([#125](https://github.com/Suwayomi/Tachidesk-WebUI/pull/125)) abhijeetchawla22@gmail.com
+- (r911) refactor ChapterOptions ([#126](https://github.com/Suwayomi/Tachidesk-WebUI/pull/126)) abhijeetchawla22@gmail.com
+
+
+
 # Server: v0.6.0 + WebUI: r893
 ## TL;DR
 - WebUI design went through a whole lot of changes, including
@@ -124,6 +174,8 @@
 - (r891) Revert "support for new searchTerm" (by @AriaMoradi)
 - (r892) add support for emptySearch ([#109](https://github.com/Suwayomi/Tachidesk-WebUI/pull/109) by @AriaMoradi)
 - (r893) add support for MultiSelectListPreference ([#108](https://github.com/Suwayomi/Tachidesk-WebUI/pull/108) by @AriaMoradi)
+
+
 
 # Server: v0.5.4 + WebUI: r820
 ## TL;DR
