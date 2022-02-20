@@ -44,8 +44,6 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:$okhttpVersion")
     implementation("io.reactivex:rxjava:1.3.8")
     implementation("org.jsoup:jsoup:1.14.3")
-    implementation("com.google.code.gson:gson:2.8.9")
-    implementation("com.github.salomonbrys.kotson:kotson:2.5.0")
 
     // Sort
     implementation("com.github.gpanther:java-nat-sort:natural-comparator-1.1")
