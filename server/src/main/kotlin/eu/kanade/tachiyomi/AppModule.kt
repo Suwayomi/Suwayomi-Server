@@ -7,8 +7,6 @@ package eu.kanade.tachiyomi
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import android.app.Application
-import com.google.gson.Gson
 // import eu.kanade.tachiyomi.data.cache.ChapterCache
 // import eu.kanade.tachiyomi.data.cache.CoverCache
 // import eu.kanade.tachiyomi.data.database.DatabaseHelper
@@ -17,6 +15,7 @@ import com.google.gson.Gson
 // import eu.kanade.tachiyomi.data.sync.LibrarySyncManager
 // import eu.kanade.tachiyomi.data.track.TrackManager
 // import eu.kanade.tachiyomi.extension.ExtensionManager
+import android.app.Application
 import eu.kanade.tachiyomi.network.NetworkHelper
 import kotlinx.serialization.json.Json
 import rx.Observable
@@ -52,8 +51,6 @@ class AppModule(val app: Application) : InjektModule {
 //        addSingletonFactory { TrackManager(app) }
 //
 //        addSingletonFactory { LibrarySyncManager(app) }
-
-        addSingletonFactory { Gson() }
 
         addSingletonFactory { Json { ignoreUnknownKeys = true } }
 
