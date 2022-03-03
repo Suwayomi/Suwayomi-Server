@@ -6,43 +6,58 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-echo "creating debian package"
+echo "Creating DEB Package"
+pkgname="tachidesk-server"
+PkgName="Tachidesk-Server"
 jar=$(ls ../server/build/*.jar | tail -n1)
-release_ver=$(tmp="${jar%-*}" && echo "${tmp##*-}" | tr -d v)
-orig_dir="tachidesk-$release_ver"                # dir uses hyphen "-"
-orig_tar_gz="tachidesk_$release_ver.orig.tar.gz" # orig file uses underscore "_"
-package_name="tachidesk_$release_ver-1_all.deb"
+pkgver="$(tmp="${jar%-*}" && echo "${tmp##*-}" | tr -d v)"
+pkgrel=1
 
-# copy artifacts
-mkdir "$orig_dir"
-cp "$jar" "$orig_dir/Tachidesk.jar"
-cp -r "resources/debian" "$orig_dir"
-cp "resources/tachidesk-browser-launcher-standalone.sh" "$orig_dir/debian"
-cp "resources/tachidesk-debug-launcher-standalone.sh" "$orig_dir/debian"
-cp "resources/tachidesk-electron-launcher-standalone.sh" "$orig_dir/debian"
-cp "resources/tachidesk.desktop" "$orig_dir/debian"
-cp "../server/src/main/resources/icon/faviconlogo.png" "$orig_dir/debian/tachidesk.png"
+srcdir="$pkgname-$pkgver"               # uses hyphen "-"
+srctgz="${pkgname}_$pkgver.orig.tar.gz" # uses underscore "_"
+deb="${pkgname}_$pkgver-${pkgrel}_all.deb"
+Deb="${PkgName}_$pkgver-${pkgrel}_all.deb"
 
-# prepare
-tar cvzf "$orig_tar_gz" "$orig_dir/Tachidesk.jar"
-sed -i "s/\${version}/$release_ver/" "$orig_dir/debian/changelog"
+# Prepare
+mkdir "$srcdir/"
+cp "$jar" "$srcdir/$pkgname.jar"
+cp "resources/$pkgname-browser-launcher.sh" "$srcdir/"
+cp "resources/$pkgname-debug-launcher.sh" "$srcdir/"
+cp "resources/$pkgname-electron-launcher.sh" "$srcdir/"
+cp "resources/$pkgname.desktop" "$srcdir/"
+cp "../server/src/main/resources/icon/faviconlogo.png" "$srcdir/$pkgname.png"
 
-# build
-mkdir "build"
-mv $orig_dir $orig_tar_gz "build/"
-cd "build/$orig_dir/debian"
+sed -i "1 i \n\
+if [ ! -f /usr/bin/electron ]; then\n\
+    echo 'Electron executable was not found\n\
+In order to run this launcher, you need Electron installed.\n\
+\n\
+You can install it with these commands:\n\
+sudo apt install npm\n\
+sudo npm install electron -g'\n\
+    exit 1\n\
+fi\n\
+" "$srcdir/$pkgname-electron-launcher.sh"
+
+GZIP=-9 tar -cvzf "$srctgz" "$srcdir/"
+
+cp -r "resources/debian" "$srcdir/"
+sed -i "s/\${pkgver}/$pkgver/" "$srcdir/debian/changelog"
+sed -i "s/\${pkgrel}/$pkgrel/" "$srcdir/debian/changelog"
+
+# Build
+mkdir "debuild/"
+mv "$srctgz" "$srcdir/" "debuild/"
 sudo apt install devscripts build-essential dh-exec
-# --lintian-opts --profile debian: build Debian packages on Ubuntu
+# --lintian-opts --profile are for building Debian packages on Ubuntu 
+cd "debuild/$srcdir/debian"
 debuild -uc -us --lintian-opts --profile debian
 cd -
 
-# clean build directory
-mv "build/$package_name" "./"
-rm -rf "build"
-
 # clean up from possible previous runs
-if [ -f "../server/build/$package_name" ]; then
-  rm "../server/build/$package_name"
+if [ -f "../server/build/$Deb" ]; then
+    rm "../server/build/$Deb"
 fi
 
-mv "$package_name" "../server/build/"
+mv "debuild/$deb" "../server/build/$Deb"
+rm -rf "debuild/"

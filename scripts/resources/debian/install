@@ -1,9 +1,8 @@
 #!/usr/bin/dh-exec
 
-debian/tachidesk-browser-launcher-standalone.sh  => usr/bin/tachidesk
-debian/tachidesk-browser-launcher-standalone.sh  => usr/bin/tachidesk-browser
-debian/tachidesk-debug-launcher-standalone.sh    => usr/bin/tachidesk-debug
-debian/tachidesk-electron-launcher-standalone.sh => usr/bin/tachidesk-electron
-Tachidesk.jar => usr/share/java/tachidesk/tachidesk.jar
-debian/tachidesk.png     usr/share/pixmaps/
-debian/tachidesk.desktop usr/share/applications/
+tachidesk-server-browser-launcher.sh  => usr/bin/tachidesk-server-browser
+tachidesk-server-debug-launcher.sh    => usr/bin/tachidesk-server-debug
+tachidesk-server-electron-launcher.sh => usr/bin/tachidesk-server-electron
+tachidesk-server.jar     usr/share/java/tachidesk-server/
+tachidesk-server.png     usr/share/pixmaps/
+tachidesk-server.desktop usr/share/applications/
