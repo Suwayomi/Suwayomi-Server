@@ -23,21 +23,9 @@ mkdir "$srcdir/"
 cp "$jar" "$srcdir/$pkgname.jar"
 cp "resources/$pkgname-browser-launcher.sh" "$srcdir/"
 cp "resources/$pkgname-debug-launcher.sh" "$srcdir/"
-cp "resources/$pkgname-electron-launcher.sh" "$srcdir/"
+cp "resources/$pkgname-electron-launcher-debian.sh" "$srcdir/$pkgname-electron-launcher.sh"
 cp "resources/$pkgname.desktop" "$srcdir/"
 cp "../server/src/main/resources/icon/faviconlogo.png" "$srcdir/$pkgname.png"
-
-sed -i "1 i \n\
-if [ ! -f /usr/bin/electron ]; then\n\
-    echo 'Electron executable was not found\n\
-In order to run this launcher, you need Electron installed.\n\
-\n\
-You can install it with these commands:\n\
-sudo apt install npm\n\
-sudo npm install electron -g'\n\
-    exit 1\n\
-fi\n\
-" "$srcdir/$pkgname-electron-launcher.sh"
 
 GZIP=-9 tar -cvzf "$srctgz" "$srcdir/"
 
