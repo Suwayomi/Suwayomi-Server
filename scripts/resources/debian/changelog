@@ -1,4 +1,4 @@
-tachidesk (${version}-1) unstable; urgency=medium
+tachidesk-server (${pkgver}-${pkgrel}) unstable; urgency=medium
 
   * See CHANGELOG.md on https://github.com/Suwayomi/Tachidesk-Server
 
