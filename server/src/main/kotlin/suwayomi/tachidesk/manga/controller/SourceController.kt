@@ -70,7 +70,7 @@ object SourceController {
         ctx.json(Search.getFilterList(sourceId, reset))
     }
 
-    /** change filter of source with id `sourceId` */
+    /** change filters of source with id `sourceId` */
     fun setFilters(ctx: Context) {
         val sourceId = ctx.pathParam("sourceId").toLong()
         val filterChange = try {
