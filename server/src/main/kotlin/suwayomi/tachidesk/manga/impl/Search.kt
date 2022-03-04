@@ -106,9 +106,9 @@ object Search {
                         is Filter.Select<*> -> groupFilter.state = groupChange.state.toInt()
                     }
                 }
-                is Filter.Sort ->
-                    filter.state =
-                        jsonMapper.fromJsonString(change.state, Filter.Sort.Selection::class.java)
+                is Filter.Sort -> {
+                    filter.state = jsonMapper.fromJsonString(change.state, Filter.Sort.Selection::class.java)
+                }
             }
         }
     }
