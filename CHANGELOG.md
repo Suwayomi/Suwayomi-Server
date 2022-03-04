@@ -1,3 +1,36 @@
+# Server: v0.6.2 + WebUI: r929
+## TL;DR
+- Changes in WebUI
+    - Moved search to Browse
+    - Support for Source Filters
+    - Better visuals for Download Queue
+    - A live version of WebUI is now available [at this link](https://tachidesk-webui-preview.github.io/).
+
+## Tachidesk-Server Changelog
+- (r1073) Refactor debian-packager.sh, rename launcher scripts ([#303](https://github.com/Suwayomi/Tachidesk-Server/pull/303) by @mahor1221)
+
+## Tachidesk-WebUI Changelog
+- (r912) show locale date, less confusing ([#131](https://github.com/Suwayomi/Tachidesk-WebUI/pull/131) by @AriaMoradi)
+- (r913) fix links to work on a bare host ([#132](https://github.com/Suwayomi/Tachidesk-WebUI/pull/132) by @AriaMoradi)
+- (r914) fix direct links ([#133](https://github.com/Suwayomi/Tachidesk-WebUI/pull/133) by @AriaMoradi)
+- (r915) deploy to github pages (by @AriaMoradi)
+- (r916) fix typo (by @AriaMoradi)
+- (r917) better naming (by @AriaMoradi)
+- (r918) update notice about github pages (by @AriaMoradi)
+- (r919) move text (by @AriaMoradi)
+- (r920) make all links work by catching 404 (by @AriaMoradi)
+- (r921) fix scrolling 8px ([#135](https://github.com/Suwayomi/Tachidesk-WebUI/pull/135) by @Robonau)
+- (r922) sorting ([#136](https://github.com/Suwayomi/Tachidesk-WebUI/pull/136) by @Robonau)
+- (r923) Close button fix ([#141](https://github.com/Suwayomi/Tachidesk-WebUI/pull/141)) z14942744@gmail.com
+- (r924) add NavBarContextProvider ([#128](https://github.com/Suwayomi/Tachidesk-WebUI/pull/128) by @abhijeetChawla)
+- (r925) Resolved Merged Conflicts ([#127](https://github.com/Suwayomi/Tachidesk-WebUI/pull/127) by @abhijeetChawla)
+- (r926) more Download Queue info ([#138](https://github.com/Suwayomi/Tachidesk-WebUI/pull/138) by @Robonau)
+- (r927) Source filters, move search to SourceMangas ([#142](https://github.com/Suwayomi/Tachidesk-WebUI/pull/142) by @Robonau)
+- (r928) Source genre sorts design ([#147](https://github.com/Suwayomi/Tachidesk-WebUI/pull/147) by @Robonau)
+- (r929) Update LibraryOptions.tsx ([#146](https://github.com/Suwayomi/Tachidesk-WebUI/pull/146) by @Robonau)
+
+
+
 # Server: v0.6.1 + WebUI: r911
 ## TL;DR
 - msi and deb packages thanks to @mahor1221
