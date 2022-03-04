@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import com.fasterxml.jackson.databind.exc.MismatchedInputException
 import io.javalin.http.Context
 import suwayomi.tachidesk.manga.impl.MangaList
 import suwayomi.tachidesk.manga.impl.Search
@@ -69,10 +70,14 @@ object SourceController {
         ctx.json(Search.getFilterList(sourceId, reset))
     }
 
-    /** set one filter of source with id `sourceId` */
-    fun setFilter(ctx: Context) {
+    /** change filters of source with id `sourceId` */
+    fun setFilters(ctx: Context) {
         val sourceId = ctx.pathParam("sourceId").toLong()
-        val filterChange = ctx.bodyAsClass(FilterChange::class.java)
+        val filterChange = try {
+            ctx.bodyAsClass<List<FilterChange>>()
+        } catch (e: MismatchedInputException) {
+            listOf(ctx.bodyAsClass<FilterChange>())
+        }
 
         ctx.json(Search.setFilter(sourceId, filterChange))
     }

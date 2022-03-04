@@ -45,7 +45,7 @@ object MangaAPI {
             post("{sourceId}/preferences", SourceController::setPreference)
 
             get("{sourceId}/filters", SourceController::getFilters)
-            post("{sourceId}/filters", SourceController::setFilter)
+            post("{sourceId}/filters", SourceController::setFilters)
 
             get("{sourceId}/search", SourceController::searchSingle)
 //            get("all/search", SourceController::searchGlobal) // TODO
