@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.source.local.LocalSource
 import io.javalin.plugin.json.JavalinJackson
 import io.javalin.plugin.json.JsonMapper
+import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import org.kodein.di.DI
 import org.kodein.di.bind
@@ -59,6 +60,7 @@ fun applicationSetup() {
             bind<ApplicationDirs>() with singleton { applicationDirs }
             bind<IUpdater>() with singleton { Updater() }
             bind<JsonMapper>() with singleton { JavalinJackson() }
+            bind<Json>() with singleton { Json { ignoreUnknownKeys = true } }
         }
     )
 

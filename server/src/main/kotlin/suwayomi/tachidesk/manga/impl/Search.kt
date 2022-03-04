@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import io.javalin.plugin.json.JsonMapper
+import kotlinx.serialization.Serializable
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
@@ -115,6 +116,7 @@ object Search {
 
     private val jsonMapper by DI.global.instance<JsonMapper>()
 
+    @Serializable
     data class FilterChange(
         val position: Int,
         val state: String
