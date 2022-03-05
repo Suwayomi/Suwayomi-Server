@@ -96,11 +96,9 @@ Download the latest `linux-x64`(x86_64) release from [the releases section](http
 
 ## Other methods of getting Tachidesk
 ### Arch Linux
-You can install Tachidesk from the AUR using your favorite AUR helper or:
+You can install Tachidesk from the AUR:
 ```
-git clone https://aur.archlinux.org/tachidesk.git
-cd tachidesk
-makepkg -si
+yay -S tachidesk
 ```
 
 ### Debian/Ubuntu
@@ -112,7 +110,6 @@ makedeb -si
 ```
 
 ### Ubuntu
-It's currently unmaintained. It will get updated soon
 ```
 sudo add-apt-repository ppa:suwayomi/tachidesk-server
 sudo apt update
