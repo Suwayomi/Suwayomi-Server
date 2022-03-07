@@ -24,6 +24,7 @@ import suwayomi.tachidesk.manga.impl.extension.Extension.getExtensionIconUrl
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSource
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.unregisterCatalogueSource
+import suwayomi.tachidesk.manga.impl.util.source.StubSource
 import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
@@ -36,8 +37,9 @@ object Source {
 
     fun getSourceList(): List<SourceDataClass> {
         return transaction {
-            SourceTable.selectAll().map {
+            SourceTable.selectAll().mapNotNull {
                 val catalogueSource = getCatalogueSourceOrStub(it[SourceTable.id].value)
+                if (catalogueSource is StubSource) return@mapNotNull null
                 val sourceExtension = ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }.first()
 
                 SourceDataClass(

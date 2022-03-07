@@ -57,7 +57,7 @@ object GetCatalogueSource {
     }
 
     fun getCatalogueSourceOrStub(sourceId: Long): CatalogueSource {
-        return getCatalogueSource(sourceId) ?: StubSource(sourceId)
+        return runCatching { getCatalogueSource(sourceId) }.getOrNull() ?: StubSource(sourceId)
     }
 
     fun registerCatalogueSource(sourcePair: Pair<Long, CatalogueSource>) {
