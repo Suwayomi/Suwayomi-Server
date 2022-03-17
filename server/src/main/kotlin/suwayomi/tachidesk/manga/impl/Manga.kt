@@ -146,8 +146,10 @@ object Manga {
         transaction {
             val manga = MangaTable.select { MangaTable.id eq mangaId }
                 .first()[MangaTable.id]
-            val meta =
-                transaction { MangaMetaTable.select { (MangaMetaTable.ref eq manga) and (MangaMetaTable.key eq key) } }.firstOrNull()
+            val meta = transaction {
+                MangaMetaTable.select { (MangaMetaTable.ref eq manga) and (MangaMetaTable.key eq key) }
+            }.firstOrNull()
+
             if (meta == null) {
                 MangaMetaTable.insert {
                     it[MangaMetaTable.key] = key
@@ -155,7 +157,7 @@ object Manga {
                     it[MangaMetaTable.ref] = manga
                 }
             } else {
-                MangaMetaTable.update {
+                MangaMetaTable.update({ (MangaMetaTable.ref eq manga) and (MangaMetaTable.key eq key) }) {
                     it[MangaMetaTable.value] = value
                 }
             }
@@ -176,7 +178,9 @@ object Manga {
                     ?: if (!mangaEntry[MangaTable.initialized]) {
                         // initialize then try again
                         getManga(mangaId)
-                        transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }[MangaTable.thumbnail_url]!!
+                        transaction {
+                            MangaTable.select { MangaTable.id eq mangaId }.first()
+                        }[MangaTable.thumbnail_url]!!
                     } else {
                         // source provides no thumbnail url for this manga
                         throw NullPointerException()

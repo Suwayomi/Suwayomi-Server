@@ -201,8 +201,10 @@ object Chapter {
             val chapterId =
                 ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }
                     .first()[ChapterTable.id].value
-            val meta =
-                transaction { ChapterMetaTable.select { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) } }.firstOrNull()
+            val meta = transaction {
+                ChapterMetaTable.select { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
+            }.firstOrNull()
+
             if (meta == null) {
                 ChapterMetaTable.insert {
                     it[ChapterMetaTable.key] = key
@@ -210,7 +212,7 @@ object Chapter {
                     it[ChapterMetaTable.ref] = chapterId
                 }
             } else {
-                ChapterMetaTable.update {
+                ChapterMetaTable.update({ (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }) {
                     it[ChapterMetaTable.value] = value
                 }
             }
