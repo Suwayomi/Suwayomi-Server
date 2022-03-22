@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
@@ -26,6 +27,7 @@ import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
+import suwayomi.tachidesk.manga.impl.util.source.StubSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
@@ -36,6 +38,7 @@ import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.ApplicationDirs
+import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -170,6 +173,7 @@ object Manga {
     }
 
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
+    private val network: NetworkHelper by injectLazy()
     suspend fun getMangaThumbnail(mangaId: Int, useCache: Boolean): Pair<InputStream, String> {
         val saveDir = applicationDirs.thumbnailsRoot
         val fileName = mangaId.toString()
@@ -188,7 +192,7 @@ object Manga {
                         }[MangaTable.thumbnail_url]!!
                     } else {
                         // source provides no thumbnail url for this manga
-                        throw NullPointerException()
+                        throw NullPointerException("No thumbnail found")
                     }
 
                 source.client.newCall(
@@ -207,6 +211,13 @@ object Manga {
                 val contentType = ImageUtil.findImageType { imageFile.inputStream() }?.mime
                     ?: "image/jpeg"
                 imageFile.inputStream() to contentType
+            }
+            is StubSource -> getImageResponse(saveDir, fileName, useCache) {
+                val thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
+                    ?: throw NullPointerException("No thumbnail found")
+                network.client.newCall(
+                    GET(thumbnailUrl)
+                ).await()
             }
             else -> throw IllegalArgumentException("Unknown source")
         }
