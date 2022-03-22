@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
+import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
@@ -23,6 +24,7 @@ import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.impl.Source.getSource
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.network.await
+import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
@@ -50,30 +52,10 @@ object Manga {
         var mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
 
         return if (mangaEntry[MangaTable.initialized] && !onlineFetch) {
-            MangaDataClass(
-                mangaId,
-                mangaEntry[MangaTable.sourceReference].toString(),
-
-                mangaEntry[MangaTable.url],
-                mangaEntry[MangaTable.title],
-                proxyThumbnailUrl(mangaId),
-
-                true,
-
-                mangaEntry[MangaTable.artist],
-                mangaEntry[MangaTable.author],
-                mangaEntry[MangaTable.description],
-                mangaEntry[MangaTable.genre].toGenreList(),
-                MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
-                mangaEntry[MangaTable.inLibrary],
-                mangaEntry[MangaTable.inLibraryAt],
-                getSource(mangaEntry[MangaTable.sourceReference]),
-                getMangaMetaMap(mangaId),
-                mangaEntry[MangaTable.realUrl],
-                false
-            )
+            getMangaDataClass(mangaId, mangaEntry)
         } else { // initialize manga
-            val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
+            val source = getCatalogueSourceOrNull(mangaEntry[MangaTable.sourceReference])
+                ?: return getMangaDataClass(mangaId, mangaEntry)
             val sManga = SManga.create().apply {
                 url = mangaEntry[MangaTable.url]
                 title = mangaEntry[MangaTable.title]
@@ -134,6 +116,29 @@ object Manga {
             )
         }
     }
+
+    private fun getMangaDataClass(mangaId: Int, mangaEntry: ResultRow) = MangaDataClass(
+        mangaId,
+        mangaEntry[MangaTable.sourceReference].toString(),
+
+        mangaEntry[MangaTable.url],
+        mangaEntry[MangaTable.title],
+        proxyThumbnailUrl(mangaId),
+
+        true,
+
+        mangaEntry[MangaTable.artist],
+        mangaEntry[MangaTable.author],
+        mangaEntry[MangaTable.description],
+        mangaEntry[MangaTable.genre].toGenreList(),
+        MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
+        mangaEntry[MangaTable.inLibrary],
+        mangaEntry[MangaTable.inLibraryAt],
+        getSource(mangaEntry[MangaTable.sourceReference]),
+        getMangaMetaMap(mangaId),
+        mangaEntry[MangaTable.realUrl],
+        false
+    )
 
     fun getMangaMetaMap(manga: Int): Map<String, String> {
         return transaction {

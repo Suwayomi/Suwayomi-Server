@@ -29,7 +29,7 @@ object SourceController {
     /** fetch source with id `sourceId` */
     fun retrieve(ctx: Context) {
         val sourceId = ctx.pathParam("sourceId").toLong()
-        ctx.json(Source.getSource(sourceId))
+        ctx.json(Source.getSource(sourceId)!!)
     }
 
     /** popular mangas from source with id `sourceId` */
