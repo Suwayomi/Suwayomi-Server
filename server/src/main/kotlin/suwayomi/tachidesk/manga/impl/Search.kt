@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import io.javalin.plugin.json.JsonMapper
+import kotlinx.serialization.Serializable
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
@@ -80,37 +81,42 @@ object Search {
         val filter: Filter<*>,
     )
 
-    fun setFilter(sourceId: Long, change: FilterChange) {
+    fun setFilter(sourceId: Long, changes: List<FilterChange>) {
         val source = getCatalogueSourceOrStub(sourceId)
         val filterList = getFilterListOf(source, false)
 
-        when (val filter = filterList[change.position]) {
-            is Filter.Header -> {
-                // NOOP
-            }
-            is Filter.Separator -> {
-                // NOOP
-            }
-            is Filter.Select<*> -> filter.state = change.state.toInt()
-            is Filter.Text -> filter.state = change.state
-            is Filter.CheckBox -> filter.state = change.state.toBooleanStrict()
-            is Filter.TriState -> filter.state = change.state.toInt()
-            is Filter.Group<*> -> {
-                val groupChange = jsonMapper.fromJsonString(change.state, FilterChange::class.java)
+        changes.forEach { change ->
+            when (val filter = filterList[change.position]) {
+                is Filter.Header -> {
+                    // NOOP
+                }
+                is Filter.Separator -> {
+                    // NOOP
+                }
+                is Filter.Select<*> -> filter.state = change.state.toInt()
+                is Filter.Text -> filter.state = change.state
+                is Filter.CheckBox -> filter.state = change.state.toBooleanStrict()
+                is Filter.TriState -> filter.state = change.state.toInt()
+                is Filter.Group<*> -> {
+                    val groupChange = jsonMapper.fromJsonString(change.state, FilterChange::class.java)
 
-                when (val groupFilter = filter.state[groupChange.position]) {
-                    is Filter.CheckBox -> groupFilter.state = groupChange.state.toBooleanStrict()
-                    is Filter.TriState -> groupFilter.state = groupChange.state.toInt()
-                    is Filter.Text -> groupFilter.state = groupChange.state
-                    is Filter.Select<*> -> groupFilter.state = groupChange.state.toInt()
+                    when (val groupFilter = filter.state[groupChange.position]) {
+                        is Filter.CheckBox -> groupFilter.state = groupChange.state.toBooleanStrict()
+                        is Filter.TriState -> groupFilter.state = groupChange.state.toInt()
+                        is Filter.Text -> groupFilter.state = groupChange.state
+                        is Filter.Select<*> -> groupFilter.state = groupChange.state.toInt()
+                    }
+                }
+                is Filter.Sort -> {
+                    filter.state = jsonMapper.fromJsonString(change.state, Filter.Sort.Selection::class.java)
                 }
             }
-            is Filter.Sort -> filter.state = jsonMapper.fromJsonString(change.state, Filter.Sort.Selection::class.java)
         }
     }
 
     private val jsonMapper by DI.global.instance<JsonMapper>()
 
+    @Serializable
     data class FilterChange(
         val position: Int,
         val state: String

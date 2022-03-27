@@ -21,7 +21,7 @@ import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.extension.Extension.getExtensionIconUrl
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSource
+import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.unregisterCatalogueSource
 import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
@@ -36,8 +36,8 @@ object Source {
 
     fun getSourceList(): List<SourceDataClass> {
         return transaction {
-            SourceTable.selectAll().map {
-                val catalogueSource = getCatalogueSourceOrStub(it[SourceTable.id].value)
+            SourceTable.selectAll().mapNotNull {
+                val catalogueSource = getCatalogueSourceOrNull(it[SourceTable.id].value) ?: return@mapNotNull null
                 val sourceExtension = ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }.first()
 
                 SourceDataClass(
@@ -54,27 +54,23 @@ object Source {
         }
     }
 
-    fun getSource(sourceId: Long): SourceDataClass { // all the data extracted fresh form the source instance
+    fun getSource(sourceId: Long): SourceDataClass? { // all the data extracted fresh form the source instance
         return transaction {
-            val source = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
-            val catalogueSource = source?.let { getCatalogueSource(sourceId) }
-            val extension = source?.let {
-                ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()
-            }
+            val source = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull() ?: return@transaction null
+            val catalogueSource = getCatalogueSourceOrNull(sourceId) ?: return@transaction null
+            val extension = ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()
 
             SourceDataClass(
                 sourceId.toString(),
-                source?.get(SourceTable.name),
-                source?.get(SourceTable.lang),
-                source?.let {
-                    getExtensionIconUrl(
-                        extension!![ExtensionTable.apkName]
-                    )
-                },
-                catalogueSource?.supportsLatest,
-                catalogueSource?.let { it is ConfigurableSource },
-                source?.get(SourceTable.isNsfw),
-                catalogueSource?.toString()
+                source[SourceTable.name],
+                source[SourceTable.lang],
+                getExtensionIconUrl(
+                    extension[ExtensionTable.apkName]
+                ),
+                catalogueSource.supportsLatest,
+                catalogueSource is ConfigurableSource,
+                source[SourceTable.isNsfw],
+                catalogueSource.toString()
             )
         }
     }

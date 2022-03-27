@@ -12,9 +12,9 @@ const val kotlinVersion = "1.6.10"
 const val MainClass = "suwayomi.tachidesk.MainKt"
 
 // should be bumped with each stable release
-val tachideskVersion = System.getenv("ProductVersion") ?: "v0.6.1"
+val tachideskVersion = System.getenv("ProductVersion") ?: "v0.6.2"
 
-val webUIRevisionTag = System.getenv("WebUIRevision") ?: "r911"
+val webUIRevisionTag = System.getenv("WebUIRevision") ?: "r929"
 
 // counts commits on the master branch
 val tachideskRevision = runCatching {

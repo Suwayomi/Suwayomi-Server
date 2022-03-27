@@ -80,33 +80,40 @@ If a bundle for your operating system or cpu architecture is not provided then r
 **Node:** Linux launcher scripts are named a bit differently but work the same. 
 
 ### Windows
-Download the latest `win32`(Windows 32-bit) or `win64`(Windows 64-bit) release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases) or a preview one from [the preview repository](https://github.com/Suwayomi/Tachidesk-preview/releases).
+Download the latest `win32`(Windows 32-bit) or `win64`(Windows 64-bit) release from [the releases section](https://github.com/Suwayomi/Tachidesk-Server/releases) or a preview one from [the preview repository](https://github.com/Suwayomi/Tachidesk-Server-preview/releases).
 
 Unzip the downloaded file and double click on one of the launcher scripts.
 
 ### macOS
-Download the latest `macOS-x64`(older macOS systems) or `macOS-arm64`(Apple M1) release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases) or a preview one from [the preview repository](https://github.com/Suwayomi/Tachidesk-preview/releases).
+Download the latest `macOS-x64`(older macOS systems) or `macOS-arm64`(Apple M1) release from [the releases section](https://github.com/Suwayomi/Tachidesk-Server/releases) or a preview one from [the preview repository](https://github.com/Suwayomi/Tachidesk-Server-preview/releases).
 
 Unzip the downloaded file and double click on one of the launcher scripts.
 
 ### GNU/Linux
-Download the latest `linux-x64`(x86_64) release from [the releases section](https://github.com/Suwayomi/Tachidesk/releases) or a preview one from [the preview repository](https://github.com/Suwayomi/Tachidesk-preview/releases).
+Download the latest `linux-x64`(x86_64) release from [the releases section](https://github.com/Suwayomi/Tachidesk-Server/releases) or a preview one from [the preview repository](https://github.com/Suwayomi/Tachidesk-Server-preview/releases).
 
 `tar xvf` the downloaded file and double click on one of the launcher scripts or run them using the terminal.
 
 ## Other methods of getting Tachidesk
 ### Arch Linux
-You can install Tachidesk from the AUR
+You can install Tachidesk from the AUR:
 ```
 yay -S tachidesk
 ```
 
-### Ubuntu-based distributions
-More information can be found on the [PPA's page](https://launchpad.net/~suwayomi/+archive/ubuntu/tachidesk).
+### Debian/Ubuntu
+Download the latest deb package from the release section or Install from the MPR
 ```
-sudo add-apt-repository ppa:suwayomi/tachidesk
+git clone https://mpr.makedeb.org/tachidesk-server.git
+cd tachidesk-server
+makedeb -si
+```
+
+### Ubuntu
+```
+sudo add-apt-repository ppa:suwayomi/tachidesk-server
 sudo apt update
-sudo apt install tachidesk
+sudo apt install tachidesk-server
 ```
 
 ### Docker

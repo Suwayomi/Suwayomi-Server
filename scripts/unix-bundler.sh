@@ -57,11 +57,11 @@ fi
 unzip $electron -d $release_name/electron
 
 # copy artifacts
-cp $jar $release_name/Tachidesk.jar
+cp $jar $release_name/Tachidesk-Server.jar
 if [ $os = linux ]; then
-  cp "resources/tachidesk-browser-launcher.sh" $release_name
-  cp "resources/tachidesk-debug-launcher.sh" $release_name
-  cp "resources/tachidesk-electron-launcher.sh" $release_name
+  cp "resources/tachidesk-server-browser-launcher.sh" $release_name
+  cp "resources/tachidesk-server-debug-launcher.sh" $release_name
+  cp "resources/tachidesk-server-electron-launcher.sh" $release_name
 elif [ $os = macOS ]; then
   cp "resources/Tachidesk Browser Launcher.command" $release_name
   cp "resources/Tachidesk Debug Launcher.command" $release_name

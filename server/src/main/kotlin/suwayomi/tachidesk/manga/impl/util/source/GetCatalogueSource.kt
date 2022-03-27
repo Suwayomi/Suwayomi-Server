@@ -26,7 +26,7 @@ object GetCatalogueSource {
     private val sourceCache = ConcurrentHashMap<Long, CatalogueSource>()
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
-    fun getCatalogueSource(sourceId: Long): CatalogueSource? {
+    private fun getCatalogueSource(sourceId: Long): CatalogueSource? {
         val cachedResult: CatalogueSource? = sourceCache[sourceId]
         if (cachedResult != null) {
             return cachedResult
@@ -56,8 +56,12 @@ object GetCatalogueSource {
         return sourceCache[sourceId]!!
     }
 
+    fun getCatalogueSourceOrNull(sourceId: Long): CatalogueSource? {
+        return runCatching { getCatalogueSource(sourceId) }.getOrNull()
+    }
+
     fun getCatalogueSourceOrStub(sourceId: Long): CatalogueSource {
-        return getCatalogueSource(sourceId) ?: StubSource(sourceId)
+        return getCatalogueSourceOrNull(sourceId) ?: StubSource(sourceId)
     }
 
     fun registerCatalogueSource(sourcePair: Pair<Long, CatalogueSource>) {

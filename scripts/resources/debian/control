@@ -1,4 +1,4 @@
-Source: tachidesk
+Source: tachidesk-server
 Section: web
 Priority: optional
 Maintainer: Mahor Foruzesh <mahorforuzesh@pm.me>
@@ -6,7 +6,7 @@ Build-Depends: debhelper-compat (= 12), dh-exec
 Standards-Version: 4.5.1
 Homepage: https://github.com/Suwayomi/Tachidesk-Server
 
-Package: tachidesk
+Package: tachidesk-server
 Architecture: all
 Depends: ${misc:Depends}, default-jre-headless (>= 8)
 Description: Manga Reader

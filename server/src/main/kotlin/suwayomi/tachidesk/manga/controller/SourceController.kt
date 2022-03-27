@@ -8,6 +8,11 @@ package suwayomi.tachidesk.manga.controller
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.javalin.http.Context
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
+import org.kodein.di.DI
+import org.kodein.di.conf.global
+import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.MangaList
 import suwayomi.tachidesk.manga.impl.Search
 import suwayomi.tachidesk.manga.impl.Search.FilterChange
@@ -24,7 +29,7 @@ object SourceController {
     /** fetch source with id `sourceId` */
     fun retrieve(ctx: Context) {
         val sourceId = ctx.pathParam("sourceId").toLong()
-        ctx.json(Source.getSource(sourceId))
+        ctx.json(Source.getSource(sourceId)!!)
     }
 
     /** popular mangas from source with id `sourceId` */
@@ -69,10 +74,16 @@ object SourceController {
         ctx.json(Search.getFilterList(sourceId, reset))
     }
 
-    /** set one filter of source with id `sourceId` */
-    fun setFilter(ctx: Context) {
+    private val json by DI.global.instance<Json>()
+
+    /** change filters of source with id `sourceId` */
+    fun setFilters(ctx: Context) {
         val sourceId = ctx.pathParam("sourceId").toLong()
-        val filterChange = ctx.bodyAsClass(FilterChange::class.java)
+        val filterChange = try {
+            json.decodeFromString<List<FilterChange>>(ctx.body())
+        } catch (e: Exception) {
+            listOf(json.decodeFromString<FilterChange>(ctx.body()))
+        }
 
         ctx.json(Search.setFilter(sourceId, filterChange))
     }
