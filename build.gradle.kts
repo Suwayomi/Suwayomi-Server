@@ -7,7 +7,6 @@ plugins {
     kotlin("plugin.serialization") version kotlinVersion
     id("org.jmailen.kotlinter") version "3.8.0"
     id("com.github.gmazzo.buildconfig") version "3.0.3" apply false
-    id("com.github.ben-manes.versions") version "0.39.0"
 }
 
 buildscript {
