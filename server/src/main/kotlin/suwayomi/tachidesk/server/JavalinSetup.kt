@@ -54,6 +54,20 @@ object JavalinSetup {
             }
 
             config.enableCorsForAllOrigins()
+
+            config.accessManager { handler, ctx, _ ->
+                fun credentialsValid(): Boolean {
+                    val (username, password) = ctx.basicAuthCredentials()
+                    return username == serverConfig.basicAuthUsername && password == serverConfig.basicAuthPassword
+                }
+
+                if (serverConfig.basicAuthEnabled && !(ctx.basicAuthCredentialsExist() && credentialsValid())) {
+                    ctx.header("WWW-Authenticate", "Basic")
+                    ctx.status(401).json("Unauthorized")
+                } else {
+                    handler.handle(ctx)
+                }
+            }
         }.events { event ->
             event.serverStarted {
                 if (serverConfig.initialOpenInBrowserEnabled) {
@@ -81,18 +95,6 @@ object JavalinSetup {
             logger.error("IOException while handling the request", e)
             ctx.status(500)
             ctx.result(e.message ?: "Internal Server Error")
-        }
-
-        app.before { ctx ->
-            fun credentialsValid(): Boolean {
-                val (username, password) = ctx.basicAuthCredentials()
-                return username == serverConfig.basicAuthUsername && password == serverConfig.basicAuthPassword
-            }
-
-            if (serverConfig.basicAuthEnabled && !(ctx.basicAuthCredentialsExist() && credentialsValid())) {
-                ctx.header("WWW-Authenticate", "Basic")
-                ctx.status(401).json("Unauthorized")
-            }
         }
 
         app.routes {
