@@ -1,3 +1,45 @@
+# Server: v0.6.3 + WebUI: r942
+## TL;DR
+- Changes in Server
+    - Support for array search filter changes list
+    - Support for Tachiyomi extensions lib 1.3
+- Changes in WebUI
+    - Better search filter support
+    - Fluid manga grid
+    - Library comfortable grid
+    - Sources view layouts
+    - Various other changes...
+
+## Tachidesk-Server Changelog
+- (r1074) v0.6.2 (by @AriaMoradi)
+- (r1075) support array filter changes ([#304](https://github.com/Suwayomi/Tachidesk-Server/pull/304) by @AriaMoradi)
+- (r1076) fix filterlist bugs ([#306](https://github.com/Suwayomi/Tachidesk-Server/pull/306) by @AriaMoradi)
+- (r1077) Update README.md ([#305](https://github.com/Suwayomi/Tachidesk-Server/pull/305) by @mahor1221)
+- (r1078) fix meta update changing all keys ([#314](https://github.com/Suwayomi/Tachidesk-Server/pull/314) by @AriaMoradi)
+- (r1079) add support for tachiyomi extensions Lib 1.3 ([#316](https://github.com/Suwayomi/Tachidesk-Server/pull/316) by @AriaMoradi)
+- (r1080) Fix sources list of one source throws an exception ([#308](https://github.com/Suwayomi/Tachidesk-Server/pull/308) by @Syer10)
+- (r1081) Improve source handling, fix errors with uninitialized mangas in broken sources ([#319](https://github.com/Suwayomi/Tachidesk-Server/pull/319) by @Syer10)
+- (r1082) Add thumbnail support for stub sources ([#320](https://github.com/Suwayomi/Tachidesk-Server/pull/320) by @Syer10)
+- (r1083) update description for Tachidesk-Sorayomi ([#326](https://github.com/Suwayomi/Tachidesk-Server/pull/326) by @DattatreyaReddy)
+- (r1084) Add last bit of code needed for Extensions Lib 1.3 ([#330](https://github.com/Suwayomi/Tachidesk-Server/pull/330) by @Syer10)
+- (r1085) Add QuickJS, replaces Duktape for Extensions Lib 1.3 ([#331](https://github.com/Suwayomi/Tachidesk-Server/pull/331) by @Syer10)
+- (r1086) fix auth not actually blocking requests ([#333](https://github.com/Suwayomi/Tachidesk-Server/pull/333) by @AriaMoradi)
+
+## Tachidesk-WebUI Changelog
+- (r930) Source filter scroll fix (array of filters on submit [#149](https://github.com/Suwayomi/Tachidesk-WebUI/pull/149) by @Robonau)
+- (r931) fix manga badges setting menu that turns the update/download badges on and off ([#150](https://github.com/Suwayomi/Tachidesk-WebUI/pull/150) by @Robonau)
+- (r932) move sorts to copy tachiyomi ([#151](https://github.com/Suwayomi/Tachidesk-WebUI/pull/151) by @Robonau)
+- (r933) add comfortable grid option ([#152](https://github.com/Suwayomi/Tachidesk-WebUI/pull/152) by @Robonau)
+- (r934) source layouts ([#153](https://github.com/Suwayomi/Tachidesk-WebUI/pull/153) by @Robonau)
+- (r935) List layout ([#154](https://github.com/Suwayomi/Tachidesk-WebUI/pull/154) by @Robonau)
+- (r936) in library badge to manga in sources ([#156](https://github.com/Suwayomi/Tachidesk-WebUI/pull/156) by @Robonau)
+- (r937) mass search ([#157](https://github.com/Suwayomi/Tachidesk-WebUI/pull/157) by @Robonau)
+- (r938) 18+ tag on source/extension cards ([#160](https://github.com/Suwayomi/Tachidesk-WebUI/pull/160) by @Robonau)
+- (r939) fix search source click ([#164](https://github.com/Suwayomi/Tachidesk-WebUI/pull/164) by @Robonau)
+- (r940) items per row setting ([#165](https://github.com/Suwayomi/Tachidesk-WebUI/pull/165) by @Robonau)
+- (r941) fix the grid width thing ([#169](https://github.com/Suwayomi/Tachidesk-WebUI/pull/169) by @Robonau)
+- (r942) unified library options ([#168](https://github.com/Suwayomi/Tachidesk-WebUI/pull/168) by @infix)
+
 # Server: v0.6.2 + WebUI: r929
 ## TL;DR
 - Changes in WebUI
