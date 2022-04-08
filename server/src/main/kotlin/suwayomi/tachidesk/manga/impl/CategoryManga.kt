@@ -90,7 +90,7 @@ object CategoryManga {
         return transaction {
             CategoryMangaTable.innerJoin(MangaTable)
                 .slice(selectedColumns)
-                .select { CategoryMangaTable.category eq categoryId }
+                .select { (MangaTable.inLibrary eq true) and (CategoryMangaTable.category eq categoryId) }
                 .map(transform)
         }
     }
