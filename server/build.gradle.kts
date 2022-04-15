@@ -54,7 +54,7 @@ dependencies {
 
     // Disk & File
     implementation("net.lingala.zip4j:zip4j:2.9.1")
-    implementation("com.github.junrar:junrar:7.4.0")
+    implementation("com.github.junrar:junrar:7.5.0")
 
     // CloudflareInterceptor
     implementation("net.sourceforge.htmlunit:htmlunit:2.56.0")
@@ -75,6 +75,9 @@ dependencies {
 }
 
 application {
+    applicationDefaultJvmArgs = listOf(
+        "-Djunrar.extractor.thread-keep-alive-seconds=30"
+    )
     mainClass.set(MainClass)
 }
 
