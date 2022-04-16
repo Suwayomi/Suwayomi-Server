@@ -45,8 +45,8 @@ class ApplicationDirs(
             val path =
                 if (serverConfig.webUIPath.isNullOrEmpty()) "$dataRoot/webUI"
                 else serverConfig.webUIPath!!
-            return if (File(serverConfig.webUIPath).isAbsolute) serverConfig.webUIPath!!
-            else "$dataRoot/${serverConfig.webUIPath}"
+            return if (File(path).isAbsolute) path
+            else "$dataRoot/$path"
         }
 }
 
