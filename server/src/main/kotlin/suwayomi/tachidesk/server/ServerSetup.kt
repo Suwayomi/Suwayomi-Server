@@ -44,8 +44,8 @@ class ApplicationDirs(
         get() {
             if (!serverConfig.webUIPath.isNullOrEmpty()) {
                 if (serverConfig.webUIPath!!.isNotBlank()) {
-                    val file = File(serverConfig.webUIPath)
-                    return if (file.isAbsolute) {
+                    val path = File(serverConfig.webUIPath)
+                    return if (path.isAbsolute) {
                         serverConfig.webUIPath!!
                     } else {
                         "$dataRoot/${serverConfig.webUIPath}"
