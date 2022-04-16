@@ -29,6 +29,7 @@ class ServerConfig(config: Config, moduleName: String = MODULE_NAME) : SystemPro
 
     // webUI
     val webUIEnabled: Boolean by overridableConfig
+    val webUIPath: String? by overridableConfig
     val initialOpenInBrowserEnabled: Boolean by overridableConfig
     val webUIInterface: String by overridableConfig
     val electronPath: String by overridableConfig

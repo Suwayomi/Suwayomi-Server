@@ -40,7 +40,20 @@ class ApplicationDirs(
     val thumbnailsRoot = "$dataRoot/thumbnails"
     val mangaDownloadsRoot = "$dataRoot/downloads"
     val localMangaRoot = "$dataRoot/local"
-    val webUIRoot = "$dataRoot/webUI"
+    val webUIRoot: String
+        get() {
+            if (!serverConfig.webUIPath.isNullOrEmpty()) {
+                if (serverConfig.webUIPath!!.isNotBlank()) {
+                    val file = File(serverConfig.webUIPath)
+                    return if (file.isAbsolute) {
+                        serverConfig.webUIPath!!
+                    } else {
+                        "$dataRoot/${serverConfig.webUIPath}"
+                    }
+                }
+            }
+            return "$dataRoot/webUI"
+        }
 }
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
