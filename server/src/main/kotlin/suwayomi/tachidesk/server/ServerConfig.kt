@@ -26,6 +26,7 @@ class ServerConfig(config: Config, moduleName: String = MODULE_NAME) : SystemPro
     // misc
     val debugLogsEnabled: Boolean = debugLogsEnabled(GlobalConfigManager.config)
     val systemTrayEnabled: Boolean by overridableConfig
+    val downloadsPath: String by overridableConfig
 
     // webUI
     val webUIEnabled: Boolean by overridableConfig

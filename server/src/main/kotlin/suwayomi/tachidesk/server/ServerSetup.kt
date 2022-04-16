@@ -38,7 +38,7 @@ class ApplicationDirs(
 ) {
     val extensionsRoot = "$dataRoot/extensions"
     val thumbnailsRoot = "$dataRoot/thumbnails"
-    val mangaDownloadsRoot = "$dataRoot/downloads"
+    val mangaDownloadsRoot = serverConfig.downloadsPath.ifBlank { "$dataRoot/downloads" }
     val localMangaRoot = "$dataRoot/local"
     val webUIRoot = "$dataRoot/webUI"
 }
