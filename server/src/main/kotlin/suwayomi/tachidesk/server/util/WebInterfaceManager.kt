@@ -155,56 +155,39 @@ fun setupSorayomi() {
         val sorayomiZipPath = "$tmpDir/$sorayomiZip"
         val sorayomiZipFile = File(sorayomiZipPath)
 
-        // try with resources first
-        val resourceSorayomi: InputStream? = try {
-            BuildConfig::class.java.getResourceAsStream("/Sorayomi.zip")
-        } catch (e: NullPointerException) {
-            logger.info { "No bundled Sorayomi.zip found!" }
-            null
-        }
 
-        if (resourceSorayomi == null) { // is not bundled
-            // download sorayomi zip
-            val sorayomiZipURL = "${BuildConfig.SORAYOMI_REPO}/releases/download/${BuildConfig.SORAYOMI_TAG}/$sorayomiZip"
-            sorayomiZipFile.delete()
+        // download sorayomi zip
+        val sorayomiZipURL = "${BuildConfig.SORAYOMI_REPO}/releases/download/${BuildConfig.SORAYOMI_TAG}/$sorayomiZip"
+        sorayomiZipFile.delete()
 
-            logger.info { "Downloading Sorayomi zip from the Internet..." }
-            val data = ByteArray(1024)
+        logger.info { "Downloading Sorayomi zip from the Internet..." }
+        val data = ByteArray(1024)
 
-            sorayomiZipFile.outputStream().use { sorayomiZipFileOut ->
+        sorayomiZipFile.outputStream().use { sorayomiZipFileOut ->
 
-                val connection = URL(sorayomiZipURL).openConnection() as HttpURLConnection
-                connection.connect()
-                val contentLength = connection.contentLength
+            val connection = URL(sorayomiZipURL).openConnection() as HttpURLConnection
+            connection.connect()
+            val contentLength = connection.contentLength
 
-                connection.inputStream.buffered().use { inp ->
-                    var totalCount = 0
+            connection.inputStream.buffered().use { inp ->
+                var totalCount = 0
 
-                    print("Download progress: % 00")
-                    while (true) {
-                        val count = inp.read(data, 0, 1024)
+                print("Download progress: % 00")
+                while (true) {
+                    val count = inp.read(data, 0, 1024)
 
-                        if (count == -1)
-                            break
+                    if (count == -1)
+                        break
 
-                        totalCount += count
-                        val percentage =
-                            (totalCount.toFloat() / contentLength * 100).toInt().toString().padStart(2, '0')
-                        print("\b\b$percentage")
+                    totalCount += count
+                    val percentage =
+                        (totalCount.toFloat() / contentLength * 100).toInt().toString().padStart(2, '0')
+                    print("\b\b$percentage")
 
-                        sorayomiZipFileOut.write(data, 0, count)
-                    }
-                    println()
-                    logger.info { "Downloading Sorayomi Done." }
+                    sorayomiZipFileOut.write(data, 0, count)
                 }
-            }
-        } else {
-            logger.info { "Using the bundled Sorayomi zip..." }
-
-            resourceSorayomi.use { input ->
-                sorayomiZipFile.outputStream().use { output ->
-                    input.copyTo(output)
-                }
+                println()
+                logger.info { "Downloading Sorayomi Done." }
             }
         }
 
