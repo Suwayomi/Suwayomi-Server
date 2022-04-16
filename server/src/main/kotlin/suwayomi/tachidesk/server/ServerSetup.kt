@@ -42,17 +42,11 @@ class ApplicationDirs(
     val localMangaRoot = "$dataRoot/local"
     val webUIRoot: String
         get() {
-            if (!serverConfig.webUIPath.isNullOrEmpty()) {
-                if (serverConfig.webUIPath!!.isNotBlank()) {
-                    val path = File(serverConfig.webUIPath)
-                    return if (path.isAbsolute) {
-                        serverConfig.webUIPath!!
-                    } else {
-                        "$dataRoot/${serverConfig.webUIPath}"
-                    }
-                }
-            }
-            return "$dataRoot/webUI"
+            val path =
+                if (serverConfig.webUIPath.isNullOrEmpty()) "$dataRoot/webUI"
+                else serverConfig.webUIPath!!
+            return if (File(serverConfig.webUIPath).isAbsolute) serverConfig.webUIPath!!
+            else "$dataRoot/${serverConfig.webUIPath}"
         }
 }
 
