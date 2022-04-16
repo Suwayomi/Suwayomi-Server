@@ -55,7 +55,8 @@ fun setupWebInterface() {
     when (serverConfig.webUIFlavor) {
         "WebUI" -> setupWebUI()
         "Sorayomi" -> setupSorayomi()
-        "Custom" -> { /* do nothing */
+        "Custom" -> {
+            /* do nothing */
         }
         else -> setupWebUI()
     }
@@ -109,8 +110,7 @@ fun setupWebUI() {
                             break
 
                         totalCount += count
-                        val percentage =
-                            (totalCount.toFloat() / contentLength * 100).toInt().toString().padStart(2, '0')
+                        val percentage = (totalCount.toFloat() / contentLength * 100).toInt().toString().padStart(2, '0')
                         print("\b\b$percentage")
 
                         webUIZipFileOut.write(data, 0, count)
@@ -155,7 +155,6 @@ fun setupSorayomi() {
         val sorayomiZipPath = "$tmpDir/$sorayomiZip"
         val sorayomiZipFile = File(sorayomiZipPath)
 
-
         // download sorayomi zip
         val sorayomiZipURL = "${BuildConfig.SORAYOMI_REPO}/releases/download/${BuildConfig.SORAYOMI_TAG}/$sorayomiZip"
         sorayomiZipFile.delete()
@@ -180,8 +179,7 @@ fun setupSorayomi() {
                         break
 
                     totalCount += count
-                    val percentage =
-                        (totalCount.toFloat() / contentLength * 100).toInt().toString().padStart(2, '0')
+                    val percentage = (totalCount.toFloat() / contentLength * 100).toInt().toString().padStart(2, '0')
                     print("\b\b$percentage")
 
                     sorayomiZipFileOut.write(data, 0, count)
