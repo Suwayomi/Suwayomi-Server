@@ -11,6 +11,7 @@ import com.typesafe.config.Config
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.SystemPropertyOverridableConfigModule
 import xyz.nulldev.ts.config.debugLogsEnabled
+import kotlin.reflect.KProperty
 
 private const val MODULE_NAME = "server"
 class ServerConfig(config: Config, moduleName: String = MODULE_NAME) : SystemPropertyOverridableConfigModule(config, moduleName) {
@@ -34,6 +35,15 @@ class ServerConfig(config: Config, moduleName: String = MODULE_NAME) : SystemPro
     val electronPath: String by overridableConfig
 
     // Authentication
+    val authType: String by object {
+        operator fun <R> getValue(thisRef: R, property: KProperty<*>): String {
+            val propValue: String = overridableConfig.getValue(thisRef, property)
+            if (basicAuthEnabled) {
+                return "basicAuth"
+            }
+            return propValue
+        }
+    }
     val basicAuthEnabled: Boolean by overridableConfig
     val basicAuthUsername: String by overridableConfig
     val basicAuthPassword: String by overridableConfig

@@ -56,14 +56,16 @@ object JavalinSetup {
             config.enableCorsForAllOrigins()
 
             config.accessManager { handler, ctx, _ ->
-                fun credentialsValid(): Boolean {
+                fun basicAuthCredentialsValid(): Boolean {
                     val (username, password) = ctx.basicAuthCredentials()
                     return username == serverConfig.basicAuthUsername && password == serverConfig.basicAuthPassword
                 }
 
-                if (serverConfig.basicAuthEnabled && !(ctx.basicAuthCredentialsExist() && credentialsValid())) {
-                    ctx.header("WWW-Authenticate", "Basic")
-                    ctx.status(401).json("Unauthorized")
+                if (serverConfig.authType != "none") {
+                    if (serverConfig.authType == "basicAuth" && !(ctx.basicAuthCredentialsExist() && basicAuthCredentialsValid())) {
+                        ctx.header("WWW-Authenticate", "Basic")
+                        ctx.status(401).json("Unauthorized")
+                    }
                 } else {
                     handler.handle(ctx)
                 }
