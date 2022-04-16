@@ -52,6 +52,11 @@ val androidCompat by lazy { AndroidCompat() }
 fun applicationSetup() {
     logger.info("Running Tachidesk ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")
 
+    // register Tachidesk's config which is dubbed "ServerConfig"
+    GlobalConfigManager.registerModule(
+        ServerConfig.register(GlobalConfigManager.config)
+    )
+
     // Application dirs
     val applicationDirs = ApplicationDirs()
 
@@ -69,7 +74,6 @@ fun applicationSetup() {
     // Migrate Directories from old versions
     File("$ApplicationRootDir/manga-thumbnails").renameTo(applicationDirs.thumbnailsRoot)
     File("$ApplicationRootDir/manga-local").renameTo(applicationDirs.localMangaRoot)
-    File("$ApplicationRootDir/manga").renameTo(applicationDirs.mangaDownloadsRoot)
     File("$ApplicationRootDir/anime-thumbnails").delete()
 
     // make dirs we need
@@ -83,11 +87,6 @@ fun applicationSetup() {
     ).forEach {
         File(it).mkdirs()
     }
-
-    // register Tachidesk's config which is dubbed "ServerConfig"
-    GlobalConfigManager.registerModule(
-        ServerConfig.register(GlobalConfigManager.config)
-    )
 
     // Make sure only one instance of the app is running
     handleAppMutex()
