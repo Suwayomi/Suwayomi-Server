@@ -70,12 +70,20 @@ object CategoryManga {
                 .slice(ChapterTable.id.count())
                 .select { (MangaTable.id eq ChapterTable.manga) and (ChapterTable.isDownloaded eq true) }
         )
+        val chapterCountExpression = wrapAsExpression<Long>(
+            ChapterTable
+                .slice(ChapterTable.id.count())
+                .select { (MangaTable.id eq ChapterTable.manga) }
+        )
+
+        val selectedColumns = MangaTable.columns + unreadExpression + downloadExpression + chapterCountExpression
 
         val selectedColumns = MangaTable.columns + unreadExpression + downloadExpression
         val transform: (ResultRow) -> MangaDataClass = {
             val dataClass = MangaTable.toDataClass(it)
             dataClass.unreadCount = it[unreadExpression]?.toInt()
             dataClass.downloadCount = it[downloadExpression]?.toInt()
+            dataClass.chapterCount = it[chapterCountExpression]?.toInt()
             dataClass
         }
 
