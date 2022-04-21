@@ -77,8 +77,7 @@ object CategoryManga {
         )
 
         val selectedColumns = MangaTable.columns + unreadExpression + downloadExpression + chapterCountExpression
-
-        val selectedColumns = MangaTable.columns + unreadExpression + downloadExpression
+        
         val transform: (ResultRow) -> MangaDataClass = {
             val dataClass = MangaTable.toDataClass(it)
             dataClass.unreadCount = it[unreadExpression]?.toInt()
