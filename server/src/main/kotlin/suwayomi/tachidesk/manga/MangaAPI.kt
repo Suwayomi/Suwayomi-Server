@@ -53,25 +53,25 @@ object MangaAPI {
 
         path("manga") {
             get("{mangaId}", MangaController.retrieve)
-            get("{mangaId}/thumbnail", MangaController::thumbnail)
+            get("{mangaId}/thumbnail", MangaController.thumbnail)
 
-            get("{mangaId}/category", MangaController::categoryList)
-            get("{mangaId}/category/{categoryId}", MangaController::addToCategory)
-            delete("{mangaId}/category/{categoryId}", MangaController::removeFromCategory)
+            get("{mangaId}/category", MangaController.categoryList)
+            get("{mangaId}/category/{categoryId}", MangaController.addToCategory)
+            delete("{mangaId}/category/{categoryId}", MangaController.removeFromCategory)
 
-            get("{mangaId}/library", MangaController::addToLibrary)
-            delete("{mangaId}/library", MangaController::removeFromLibrary)
+            get("{mangaId}/library", MangaController.addToLibrary)
+            delete("{mangaId}/library", MangaController.removeFromLibrary)
 
-            patch("{mangaId}/meta", MangaController::meta)
+            patch("{mangaId}/meta", MangaController.meta)
 
-            get("{mangaId}/chapters", MangaController::chapterList)
-            get("{mangaId}/chapter/{chapterIndex}", MangaController::chapterRetrieve)
-            patch("{mangaId}/chapter/{chapterIndex}", MangaController::chapterModify)
-            delete("{mangaId}/chapter/{chapterIndex}", MangaController::chapterDelete)
+            get("{mangaId}/chapters", MangaController.chapterList)
+            get("{mangaId}/chapter/{chapterIndex}", MangaController.chapterRetrieve)
+            patch("{mangaId}/chapter/{chapterIndex}", MangaController.chapterModify)
+            delete("{mangaId}/chapter/{chapterIndex}", MangaController.chapterDelete)
 
-            patch("{mangaId}/chapter/{chapterIndex}/meta", MangaController::chapterMeta)
+            patch("{mangaId}/chapter/{chapterIndex}/meta", MangaController.chapterMeta)
 
-            get("{mangaId}/chapter/{chapterIndex}/page/{index}", MangaController::pageRetrieve)
+            get("{mangaId}/chapter/{chapterIndex}/page/{index}", MangaController.pageRetrieve)
         }
 
         path("category") {

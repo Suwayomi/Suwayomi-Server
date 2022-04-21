@@ -113,7 +113,7 @@ sealed class Param<T> {
 }
 
 class ResultsBuilder {
-    val results = mutableListOf<ResultType<*>>()
+    val results = mutableListOf<ResultType>()
 
     inline fun <reified T> json(code: HttpCode) {
         results += ResultType.MimeType(code, "application/json", T::class.java)
@@ -121,19 +121,22 @@ class ResultsBuilder {
     fun plainText(code: HttpCode) {
         results += ResultType.MimeType(code, "text/plain", String::class.java)
     }
+    fun mime(code: HttpCode, mime: String) {
+        results += ResultType.MimeType(code, mime, null)
+    }
     fun httpCode(code: HttpCode) {
         results += ResultType.StatusCode(code)
     }
 }
 
-sealed class ResultType <T> {
+sealed class ResultType {
     abstract fun applyTo(documentation: OpenApiDocumentation)
-    data class MimeType<T>(val code: HttpCode, val mime: String, private val clazz: Class<T>) : ResultType<T>() {
+    data class MimeType(val code: HttpCode, val mime: String, private val clazz: Class<*>?) : ResultType() {
         override fun applyTo(documentation: OpenApiDocumentation) {
             documentation.result(code.status.toString(), clazz)
         }
     }
-    data class StatusCode(val code: HttpCode) : ResultType<Unit>() {
+    data class StatusCode(val code: HttpCode) : ResultType() {
         override fun applyTo(documentation: OpenApiDocumentation) {
             documentation.result<Unit>(code.status.toString())
         }
