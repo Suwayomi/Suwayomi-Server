@@ -7,7 +7,6 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import io.javalin.http.Context
 import io.javalin.http.HttpCode
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
@@ -15,8 +14,11 @@ import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
+import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
+import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.util.formParam
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.queryParam
@@ -30,7 +32,7 @@ object MangaController {
         documentWith = {
             withOperation {
                 summary("Get a manga")
-                description("Get a manga from the database using a specific id")
+                description("Get a manga from the database using a specific id.")
             }
         },
         behaviorOf = { ctx, mangaId, onlineFetch ->
@@ -47,140 +49,278 @@ object MangaController {
     )
 
     /** manga thumbnail */
-    fun thumbnail(ctx: Context) {
-        val mangaId = ctx.pathParam("mangaId").toInt()
-        val useCache = ctx.queryParam("useCache")?.toBoolean() ?: true
-
-        ctx.future(
-            future { Manga.getMangaThumbnail(mangaId, useCache) }
-                .thenApply {
-                    ctx.header("content-type", it.second)
-                    val httpCacheSeconds = 60 * 60 * 24
-                    ctx.header("cache-control", "max-age=$httpCacheSeconds")
-                    it.first
-                }
-        )
-    }
+    val thumbnail = handler(
+        pathParam<Int>("mangaId"),
+        queryParam("useCache", true),
+        documentWith = {
+            withOperation {
+                summary("Get a manga thumbnail")
+                description("Get a manga thumbnail from the source or the cache.")
+            }
+        },
+        behaviorOf = { ctx, mangaId, useCache ->
+            ctx.future(
+                future { Manga.getMangaThumbnail(mangaId, useCache) }
+                    .thenApply {
+                        ctx.header("content-type", it.second)
+                        val httpCacheSeconds = 60 * 60 * 24
+                        ctx.header("cache-control", "max-age=$httpCacheSeconds")
+                        it.first
+                    }
+            )
+        },
+        withResults = {
+            mime(HttpCode.OK, "image/*")
+            httpCode(HttpCode.NOT_FOUND)
+        }
+    )
 
     /** adds the manga to library */
-    fun addToLibrary(ctx: Context) {
-        val mangaId = ctx.pathParam("mangaId").toInt()
-
-        ctx.future(
-            future { Library.addMangaToLibrary(mangaId) }
-        )
-    }
+    val addToLibrary = handler(
+        pathParam<Int>("mangaId"),
+        documentWith = {
+            withOperation {
+                summary("Add manga to library")
+                description("Use a manga id to add the manga to your library.\nWill do nothing if manga is already in your library.")
+            }
+        },
+        behaviorOf = { ctx, mangaId ->
+            ctx.future(
+                future { Library.addMangaToLibrary(mangaId) }
+            )
+        },
+        withResults = {
+            httpCode(HttpCode.OK)
+            httpCode(HttpCode.NOT_FOUND)
+        }
+    )
 
     /** removes the manga from the library */
-    fun removeFromLibrary(ctx: Context) {
-        val mangaId = ctx.pathParam("mangaId").toInt()
-
-        ctx.future(
-            future { Library.removeMangaFromLibrary(mangaId) }
-        )
-    }
+    val removeFromLibrary = handler(
+        pathParam<Int>("mangaId"),
+        documentWith = {
+            withOperation {
+                summary("Remove manga to library")
+                description("Use a manga id to remove the manga to your library.\nWill do nothing if manga not in your library.")
+            }
+        },
+        behaviorOf = { ctx, mangaId ->
+            ctx.future(
+                future { Library.removeMangaFromLibrary(mangaId) }
+            )
+        },
+        withResults = {
+            httpCode(HttpCode.OK)
+            httpCode(HttpCode.NOT_FOUND)
+        }
+    )
 
     /** list manga's categories */
-    fun categoryList(ctx: Context) {
-        val mangaId = ctx.pathParam("mangaId").toInt()
-        ctx.json(CategoryManga.getMangaCategories(mangaId))
-    }
+    val categoryList = handler(
+        pathParam<Int>("mangaId"),
+        documentWith = {
+            withOperation {
+                summary("Get a manga's categories")
+                description("Get the list of categories for this manga")
+            }
+        },
+        behaviorOf = { ctx, mangaId ->
+            ctx.json(CategoryManga.getMangaCategories(mangaId))
+        },
+        withResults = {
+            json<List<CategoryDataClass>>(HttpCode.OK)
+        }
+    )
 
     /** adds the manga to category */
-    fun addToCategory(ctx: Context) {
-        val mangaId = ctx.pathParam("mangaId").toInt()
-        val categoryId = ctx.pathParam("categoryId").toInt()
-        CategoryManga.addMangaToCategory(mangaId, categoryId)
-        ctx.status(200)
-    }
+    val addToCategory = handler(
+        pathParam<Int>("mangaId"),
+        pathParam<Int>("categoryId"),
+        documentWith = {
+            withOperation {
+                summary("Add manga to category")
+                description("Add a manga to a category using their ids.")
+            }
+        },
+        behaviorOf = { ctx, mangaId, categoryId ->
+            CategoryManga.addMangaToCategory(mangaId, categoryId)
+            ctx.status(200)
+        },
+        withResults = {
+            httpCode(HttpCode.OK)
+        }
+    )
 
     /** removes the manga from the category */
-    fun removeFromCategory(ctx: Context) {
-        val mangaId = ctx.pathParam("mangaId").toInt()
-        val categoryId = ctx.pathParam("categoryId").toInt()
-        CategoryManga.removeMangaFromCategory(mangaId, categoryId)
-        ctx.status(200)
-    }
+    val removeFromCategory = handler(
+        pathParam<Int>("mangaId"),
+        pathParam<Int>("categoryId"),
+        documentWith = {
+            withOperation {
+                summary("Remove manga from category")
+                description("Remove a manga from a category using their ids.")
+            }
+        },
+        behaviorOf = { ctx, mangaId, categoryId ->
+            CategoryManga.removeMangaFromCategory(mangaId, categoryId)
+            ctx.status(200)
+        },
+        withResults = {
+            httpCode(HttpCode.OK)
+        }
+    )
 
     /** used to modify a manga's meta parameters */
-    fun meta(ctx: Context) {
-        val mangaId = ctx.pathParam("mangaId").toInt()
-
-        val key = ctx.formParam("key")!!
-        val value = ctx.formParam("value")!!
-
-        Manga.modifyMangaMeta(mangaId, key, value)
-
-        ctx.status(200)
-    }
+    val meta = handler(
+        pathParam<Int>("mangaId"),
+        formParam<String>("key"),
+        formParam<String>("value"),
+        documentWith = {
+            withOperation {
+                summary("Add data to manga")
+                description("A simple Key-Value storage in the manga object, you can set values for whatever you want inside it.")
+            }
+        },
+        behaviorOf = { ctx, mangaId, key, value ->
+            Manga.modifyMangaMeta(mangaId, key, value)
+            ctx.status(200)
+        },
+        withResults = {
+            httpCode(HttpCode.OK)
+            httpCode(HttpCode.NOT_FOUND)
+        }
+    )
 
     /** get chapter list when showing a manga */
-    fun chapterList(ctx: Context) {
-        val mangaId = ctx.pathParam("mangaId").toInt()
-
-        val onlineFetch = ctx.queryParam("onlineFetch")?.toBoolean() ?: false
-
-        ctx.future(future { Chapter.getChapterList(mangaId, onlineFetch) })
-    }
+    val chapterList = handler(
+        pathParam<Int>("mangaId"),
+        queryParam("onlineFetch", false),
+        documentWith = {
+            withOperation {
+                summary("Get manga chapter list")
+                description("Get the manga chapter list from the database or online. If there is no chapters in the database it fetches the chapters online. Use onlineFetch to update chapter list.")
+            }
+        },
+        behaviorOf = { ctx, mangaId, onlineFetch ->
+            ctx.future(future { Chapter.getChapterList(mangaId, onlineFetch) })
+        },
+        withResults = {
+            json<List<ChapterDataClass>>(HttpCode.OK)
+            httpCode(HttpCode.NOT_FOUND)
+        }
+    )
 
     /** used to display a chapter, get a chapter in order to show its pages */
-    fun chapterRetrieve(ctx: Context) {
-        val chapterIndex = ctx.pathParam("chapterIndex").toInt()
-        val mangaId = ctx.pathParam("mangaId").toInt()
-        ctx.future(future { getChapterDownloadReady(chapterIndex, mangaId) })
-    }
+    val chapterRetrieve = handler(
+        pathParam<Int>("mangaId"),
+        pathParam<Int>("chapterIndex"),
+        documentWith = {
+            withOperation {
+                summary("Get a chapter")
+                description("Get the chapter from the manga id and chapter index. It will also retrieve the pages for this chapter.")
+            }
+        },
+        behaviorOf = { ctx, mangaId, chapterIndex ->
+            ctx.future(future { getChapterDownloadReady(chapterIndex, mangaId) })
+        },
+        withResults = {
+            json<ChapterDataClass>(HttpCode.OK)
+            httpCode(HttpCode.NOT_FOUND)
+        }
+    )
 
     /** used to modify a chapter's parameters */
-    fun chapterModify(ctx: Context) {
-        val chapterIndex = ctx.pathParam("chapterIndex").toInt()
-        val mangaId = ctx.pathParam("mangaId").toInt()
+    val chapterModify = handler(
+        pathParam<Int>("mangaId"),
+        pathParam<Int>("chapterIndex"),
+        formParam<Boolean?>("read"),
+        formParam<Boolean?>("bookmarked"),
+        formParam<Boolean?>("markPrevRead"),
+        formParam<Int?>("lastPageRead"),
+        documentWith = {
+            withOperation {
+                summary("Modify a chapter")
+                description("Update user info for a given chapter, such as read status, bookmarked, and more.")
+            }
+        },
+        behaviorOf = { ctx, mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead ->
+            Chapter.modifyChapter(mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead)
 
-        val read = ctx.formParam("read")?.toBoolean()
-        val bookmarked = ctx.formParam("bookmarked")?.toBoolean()
-        val markPrevRead = ctx.formParam("markPrevRead")?.toBoolean()
-        val lastPageRead = ctx.formParam("lastPageRead")?.toInt()
-
-        Chapter.modifyChapter(mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead)
-
-        ctx.status(200)
-    }
+            ctx.status(200)
+        },
+        withResults = {
+            httpCode(HttpCode.OK)
+        }
+    )
 
     /** delete a downloaded chapter */
-    fun chapterDelete(ctx: Context) {
-        val chapterIndex = ctx.pathParam("chapterIndex").toInt()
-        val mangaId = ctx.pathParam("mangaId").toInt()
+    val chapterDelete = handler(
+        pathParam<Int>("mangaId"),
+        pathParam<Int>("chapterIndex"),
+        documentWith = {
+            withOperation {
+                summary("Delete a chapter download")
+                description("Delete the downloaded chapter and its files.")
+            }
+        },
+        behaviorOf = { ctx, mangaId, chapterIndex ->
+            Chapter.deleteChapter(mangaId, chapterIndex)
 
-        Chapter.deleteChapter(mangaId, chapterIndex)
-
-        ctx.status(200)
-    }
+            ctx.status(200)
+        },
+        withResults = {
+            httpCode(HttpCode.OK)
+            httpCode(HttpCode.NOT_FOUND)
+        }
+    )
 
     /** used to modify a chapter's meta parameters */
-    fun chapterMeta(ctx: Context) {
-        val chapterIndex = ctx.pathParam("chapterIndex").toInt()
-        val mangaId = ctx.pathParam("mangaId").toInt()
+    val chapterMeta = handler(
+        pathParam<Int>("mangaId"),
+        pathParam<Int>("chapterIndex"),
+        formParam<String>("key"),
+        formParam<String>("value"),
+        documentWith = {
+            withOperation {
+                summary("Add data to chapter")
+                description("A simple Key-Value storage in the chapter object, you can set values for whatever you want inside it.")
+            }
+        },
+        behaviorOf = { ctx, mangaId, chapterIndex, key, value ->
+            Chapter.modifyChapterMeta(mangaId, chapterIndex, key, value)
 
-        val key = ctx.formParam("key")!!
-        val value = ctx.formParam("value")!!
-
-        Chapter.modifyChapterMeta(mangaId, chapterIndex, key, value)
-
-        ctx.status(200)
-    }
+            ctx.status(200)
+        },
+        withResults = {
+            httpCode(HttpCode.OK)
+            httpCode(HttpCode.NOT_FOUND)
+        }
+    )
 
     /** get page at index "index" */
-    fun pageRetrieve(ctx: Context) {
-        val mangaId = ctx.pathParam("mangaId").toInt()
-        val chapterIndex = ctx.pathParam("chapterIndex").toInt()
-        val index = ctx.pathParam("index").toInt()
-        val useCache = ctx.queryParam("useCache")?.toBoolean() ?: true
-
-        ctx.future(
-            future { Page.getPageImage(mangaId, chapterIndex, index, useCache) }
-                .thenApply {
-                    ctx.header("content-type", it.second)
-                    it.first
-                }
-        )
-    }
+    val pageRetrieve = handler(
+        pathParam<Int>("mangaId"),
+        pathParam<Int>("chapterIndex"),
+        pathParam<Int>("index"),
+        queryParam("useCache", true),
+        documentWith = {
+            withOperation {
+                summary("Get a chapter page")
+                description("Get a chapter page for a given index. Cache use can be disabled so it only retrieves it directly from the source.")
+            }
+        },
+        behaviorOf = { ctx, mangaId, chapterIndex, index, useCache ->
+            ctx.future(
+                future { Page.getPageImage(mangaId, chapterIndex, index, useCache) }
+                    .thenApply {
+                        ctx.header("content-type", it.second)
+                        it.first
+                    }
+            )
+        },
+        withResults = {
+            mime(HttpCode.OK, "image/*")
+            httpCode(HttpCode.NOT_FOUND)
+        }
+    )
 }
