@@ -36,7 +36,8 @@ data class MangaDataClass(
 
     val freshData: Boolean = false,
     var unreadCount: Int? = null,
-    var downloadCount: Int? = null
+    var downloadCount: Int? = null,
+    var chapterCount: Int? = null
 )
 
 data class PagedMangaListDataClass(
