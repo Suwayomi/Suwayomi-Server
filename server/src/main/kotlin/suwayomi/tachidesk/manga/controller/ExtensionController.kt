@@ -7,78 +7,160 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import io.javalin.http.Context
+import io.javalin.http.HttpCode
 import mu.KotlinLogging
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList
+import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.util.handler
+import suwayomi.tachidesk.server.util.pathParam
+import suwayomi.tachidesk.server.util.queryParam
+import suwayomi.tachidesk.server.util.withOperation
 
 object ExtensionController {
     private val logger = KotlinLogging.logger {}
 
     /** list all extensions */
-    fun list(ctx: Context) {
-        ctx.future(
-            future {
-                ExtensionsList.getExtensionList()
+    val list = handler(
+        documentWith = {
+            withOperation {
+                summary("Extension list")
+                description("List all extensions")
             }
-        )
-    }
+        },
+        behaviorOf = { ctx ->
+            ctx.future(
+                future {
+                    ExtensionsList.getExtensionList()
+                }
+            )
+        },
+        withResults = {
+            json<List<ExtensionDataClass>>(HttpCode.OK)
+        }
+    )
 
     /** install extension identified with "pkgName" */
-    fun install(ctx: Context) {
-        val pkgName = ctx.pathParam("pkgName")
-
-        ctx.future(
-            future {
-                Extension.installExtension(pkgName)
+    val install = handler(
+        pathParam<String>("pkgName"),
+        documentWith = {
+            withOperation {
+                summary("Extension install")
+                description("install extension identified with \"pkgName\"")
             }
-        )
-    }
+        },
+        behaviorOf = { ctx, pkgName ->
+            ctx.future(
+                future {
+                    Extension.installExtension(pkgName)
+                }
+            )
+        },
+        withResults = {
+            httpCode(HttpCode.CREATED)
+            httpCode(HttpCode.FOUND)
+            httpCode(HttpCode.INTERNAL_SERVER_ERROR)
+        }
+    )
 
     /** install the uploaded apk file */
-    fun installFile(ctx: Context) {
-
-        val uploadedFile = ctx.uploadedFile("file")!!
-        logger.debug { "Uploaded extension file name: " + uploadedFile.filename }
-
-        ctx.future(
-            future {
-                Extension.installExternalExtension(uploadedFile.content, uploadedFile.filename)
+    val installFile = handler(
+        documentWith = {
+            withOperation {
+                summary("Extension install apk")
+                description("Install the uploaded apk file")
             }
-        )
-    }
+            uploadedFile("file") {
+                it.description("Extension apk")
+                it.required(true)
+            }
+        },
+        behaviorOf = { ctx ->
+            val uploadedFile = ctx.uploadedFile("file")!!
+            logger.debug { "Uploaded extension file name: " + uploadedFile.filename }
+
+            ctx.future(
+                future {
+                    Extension.installExternalExtension(uploadedFile.content, uploadedFile.filename)
+                }
+            )
+
+        },
+        withResults = {
+            httpCode(HttpCode.CREATED)
+            httpCode(HttpCode.FOUND)
+            httpCode(HttpCode.INTERNAL_SERVER_ERROR)
+        }
+    )
 
     /** update extension identified with "pkgName" */
-    fun update(ctx: Context) {
-        val pkgName = ctx.pathParam("pkgName")
-
-        ctx.future(
-            future {
-                Extension.updateExtension(pkgName)
+    val update = handler(
+        pathParam<String>("pkgName"),
+        documentWith = {
+            withOperation {
+                summary("Extension update")
+                description("Update extension identified with \"pkgName\"")
             }
-        )
-    }
+        },
+        behaviorOf = { ctx, pkgName ->
+            ctx.future(
+                future {
+                    Extension.updateExtension(pkgName)
+                }
+            )
+        },
+        withResults = {
+            httpCode(HttpCode.CREATED)
+            httpCode(HttpCode.FOUND)
+            httpCode(HttpCode.NOT_FOUND)
+            httpCode(HttpCode.INTERNAL_SERVER_ERROR)
+        }
+    )
 
     /** uninstall extension identified with "pkgName" */
-    fun uninstall(ctx: Context) {
-        val pkgName = ctx.pathParam("pkgName")
-
-        Extension.uninstallExtension(pkgName)
-        ctx.status(200)
-    }
+    val uninstall = handler(
+        pathParam<String>("pkgName"),
+        documentWith = {
+            withOperation {
+                summary("Extension uninstall")
+                description("Uninstall extension identified with \"pkgName\"")
+            }
+        },
+        behaviorOf = { ctx, pkgName ->
+            Extension.uninstallExtension(pkgName)
+            ctx.status(200)
+        },
+        withResults = {
+            httpCode(HttpCode.CREATED)
+            httpCode(HttpCode.FOUND)
+            httpCode(HttpCode.NOT_FOUND)
+            httpCode(HttpCode.INTERNAL_SERVER_ERROR)
+        }
+    )
 
     /** icon for extension named `apkName` */
-    fun icon(ctx: Context) {
-        val apkName = ctx.pathParam("apkName")
-        val useCache = ctx.queryParam("useCache")?.toBoolean() ?: true
-
-        ctx.future(
-            future { Extension.getExtensionIcon(apkName, useCache) }
-                .thenApply {
-                    ctx.header("content-type", it.second)
-                    it.first
-                }
-        )
-    }
+    val icon = handler(
+        pathParam<String>("apkName"),
+        queryParam("useCache", true),
+        documentWith = {
+            withOperation {
+                summary("Extension icon")
+                description("Icon for extension named `apkName`")
+            }
+        },
+        behaviorOf = { ctx, apkName, useCache ->
+            ctx.future(
+                future { Extension.getExtensionIcon(apkName, useCache) }
+                    .thenApply {
+                        ctx.header("content-type", it.second)
+                        it.first
+                    }
+            )
+        },
+        withResults = {
+            httpCode(HttpCode.OK)
+            httpCode(HttpCode.NOT_FOUND)
+        }
+    )
 }

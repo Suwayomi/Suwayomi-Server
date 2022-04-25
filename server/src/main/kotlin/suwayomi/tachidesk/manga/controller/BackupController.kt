@@ -1,11 +1,14 @@
 package suwayomi.tachidesk.manga.controller
 
-import io.javalin.http.Context
+import io.javalin.http.HttpCode
+import suwayomi.tachidesk.manga.impl.backup.AbstractBackupValidator
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.util.handler
+import suwayomi.tachidesk.server.util.withOperation
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -19,78 +22,156 @@ import java.util.Date
 object BackupController {
 
     /** expects a Tachiyomi protobuf backup in the body */
-    fun protobufImport(ctx: Context) {
-        ctx.future(
-            future {
-                ProtoBackupImport.performRestore(ctx.bodyAsInputStream())
+    val protobufImport = handler(
+        documentWith = {
+            withOperation {
+                summary("Restore a backup")
+                description("Expects a Tachiyomi protobuf backup in the body")
             }
-        )
-    }
+        },
+        behaviorOf = { ctx ->
+            ctx.future(
+                future {
+                    ProtoBackupImport.performRestore(ctx.bodyAsInputStream())
+                }
+            )
+        },
+        withResults = {
+            httpCode(HttpCode.OK)
+        }
+    )
 
     /** expects a Tachiyomi protobuf backup as a file upload, the file must be named "backup.proto.gz" */
-    fun protobufImportFile(ctx: Context) {
-        // TODO: rewrite this with ctx.uploadedFiles(), don't call the multipart field "backup.proto.gz"
-        ctx.future(
-            future {
-                ProtoBackupImport.performRestore(ctx.uploadedFile("backup.proto.gz")!!.content)
+    val protobufImportFile = handler(
+        documentWith = {
+            withOperation {
+                summary("Restore a backup file")
+                description("Expects a Tachiyomi protobuf backup as a file upload, the file must be named \"backup.proto.gz\"")
             }
-        )
-    }
+            uploadedFile("backup.proto.gz") {
+                it.description("Protobuf backup")
+                it.required(true)
+            }
+        },
+        behaviorOf = { ctx ->
+            // TODO: rewrite this with ctx.uploadedFiles(), don't call the multipart field "backup.proto.gz"
+            ctx.future(
+                future {
+                    ProtoBackupImport.performRestore(ctx.uploadedFile("backup.proto.gz")!!.content)
+                }
+            )
+        },
+        withResults = {
+            httpCode(HttpCode.OK)
+            httpCode(HttpCode.NOT_FOUND)
+        }
+    )
 
     /** returns a Tachiyomi protobuf backup created from the current database as a body */
-    fun protobufExport(ctx: Context) {
-        ctx.contentType("application/octet-stream")
-        ctx.future(
-            future {
-                ProtoBackupExport.createBackup(
-                    BackupFlags(
-                        includeManga = true,
-                        includeCategories = true,
-                        includeChapters = true,
-                        includeTracking = true,
-                        includeHistory = true,
-                    )
-                )
+    val protobufExport = handler(
+        documentWith = {
+            withOperation {
+                summary("Create a backup")
+                description("Returns a Tachiyomi protobuf backup created from the current database as a body")
             }
-        )
-    }
+        },
+        behaviorOf = { ctx ->
+            ctx.contentType("application/octet-stream")
+            ctx.future(
+                future {
+                    ProtoBackupExport.createBackup(
+                        BackupFlags(
+                            includeManga = true,
+                            includeCategories = true,
+                            includeChapters = true,
+                            includeTracking = true,
+                            includeHistory = true,
+                        )
+                    )
+                }
+            )
+        },
+        withResults = {
+            mime(HttpCode.OK, "application/octet-stream")
+        }
+    )
 
     /** returns a Tachiyomi protobuf backup created from the current database as a file */
-    fun protobufExportFile(ctx: Context) {
-        ctx.contentType("application/octet-stream")
-        val currentDate = SimpleDateFormat("yyyy-MM-dd_HH-mm").format(Date())
-
-        ctx.header("Content-Disposition", """attachment; filename="tachidesk_$currentDate.proto.gz"""")
-        ctx.future(
-            future {
-                ProtoBackupExport.createBackup(
-                    BackupFlags(
-                        includeManga = true,
-                        includeCategories = true,
-                        includeChapters = true,
-                        includeTracking = true,
-                        includeHistory = true,
-                    )
-                )
+    val protobufExportFile = handler(
+        documentWith = {
+            withOperation {
+                summary("Create a backup file")
+                description("Returns a Tachiyomi protobuf backup created from the current database as a file")
             }
-        )
-    }
+        },
+        behaviorOf = { ctx ->
+            ctx.contentType("application/octet-stream")
+            val currentDate = SimpleDateFormat("yyyy-MM-dd_HH-mm").format(Date())
+
+            ctx.header("Content-Disposition", """attachment; filename="tachidesk_$currentDate.proto.gz"""")
+            ctx.future(
+                future {
+                    ProtoBackupExport.createBackup(
+                        BackupFlags(
+                            includeManga = true,
+                            includeCategories = true,
+                            includeChapters = true,
+                            includeTracking = true,
+                            includeHistory = true,
+                        )
+                    )
+                }
+            )
+        },
+        withResults = {
+            mime(HttpCode.OK, "application/octet-stream")
+        }
+    )
 
     /** Reports missing sources and trackers, expects a Tachiyomi protobuf backup in the body */
-    fun protobufValidate(ctx: Context) {
-        ctx.future(
-            future {
-                ProtoBackupValidator.validate(ctx.bodyAsInputStream())
+    val protobufValidate = handler(
+        documentWith = {
+            withOperation {
+                summary("Validate a backup")
+                description("Reports missing sources and trackers, expects a Tachiyomi protobuf backup in the body")
             }
-        )
-    }
+            body<ByteArray>("") {
+
+            }
+        },
+        behaviorOf = { ctx ->
+            ctx.future(
+                future {
+                    ProtoBackupValidator.validate(ctx.bodyAsInputStream())
+                }
+            )
+        },
+        withResults = {
+            json<AbstractBackupValidator.ValidationResult>(HttpCode.OK)
+        }
+    )
 
     /** Reports missing sources and trackers, expects a Tachiyomi protobuf backup as a file upload, the file must be named "backup.proto.gz" */
-    fun protobufValidateFile(ctx: Context) {
-        ctx.future(
-            future {
-                ProtoBackupValidator.validate(ctx.uploadedFile("backup.proto.gz")!!.content)
+    val protobufValidateFile = handler(
+        documentWith = {
+            withOperation {
+                summary("Validate a backup file")
+                description("Reports missing sources and trackers, expects a Tachiyomi protobuf backup as a file upload, the file must be named \"backup.proto.gz\"")
             }
-        )
-    }
+            uploadedFile("backup.proto.gz") {
+                it.description("Protobuf backup")
+                it.required(true)
+            }
+        },
+        behaviorOf = { ctx ->
+            ctx.future(
+                future {
+                    ProtoBackupValidator.validate(ctx.uploadedFile("backup.proto.gz")!!.content)
+                }
+            )
+        },
+        withResults = {
+            json<AbstractBackupValidator.ValidationResult>(HttpCode.OK)
+        }
+    )
 }
