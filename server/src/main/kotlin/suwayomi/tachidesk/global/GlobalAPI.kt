@@ -14,8 +14,8 @@ import suwayomi.tachidesk.global.controller.SettingsController
 object GlobalAPI {
     fun defineEndpoints() {
         path("settings") {
-            get("about", SettingsController::about)
-            get("check-update", SettingsController::checkUpdate)
+            get("about", SettingsController.about)
+            get("check-update", SettingsController.checkUpdate)
         }
     }
 }
