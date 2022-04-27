@@ -24,31 +24,31 @@ import suwayomi.tachidesk.manga.controller.UpdateController
 object MangaAPI {
     fun defineEndpoints() {
         path("extension") {
-            get("list", ExtensionController::list)
+            get("list", ExtensionController.list)
 
-            get("install/{pkgName}", ExtensionController::install)
-            post("install", ExtensionController::installFile)
-            get("update/{pkgName}", ExtensionController::update)
-            get("uninstall/{pkgName}", ExtensionController::uninstall)
+            get("install/{pkgName}", ExtensionController.install)
+            post("install", ExtensionController.installFile)
+            get("update/{pkgName}", ExtensionController.update)
+            get("uninstall/{pkgName}", ExtensionController.uninstall)
 
-            get("icon/{apkName}", ExtensionController::icon)
+            get("icon/{apkName}", ExtensionController.icon)
         }
 
         path("source") {
-            get("list", SourceController::list)
-            get("{sourceId}", SourceController::retrieve)
+            get("list", SourceController.list)
+            get("{sourceId}", SourceController.retrieve)
 
-            get("{sourceId}/popular/{pageNum}", SourceController::popular)
-            get("{sourceId}/latest/{pageNum}", SourceController::latest)
+            get("{sourceId}/popular/{pageNum}", SourceController.popular)
+            get("{sourceId}/latest/{pageNum}", SourceController.latest)
 
-            get("{sourceId}/preferences", SourceController::getPreferences)
-            post("{sourceId}/preferences", SourceController::setPreference)
+            get("{sourceId}/preferences", SourceController.getPreferences)
+            post("{sourceId}/preferences", SourceController.setPreference)
 
-            get("{sourceId}/filters", SourceController::getFilters)
-            post("{sourceId}/filters", SourceController::setFilters)
+            get("{sourceId}/filters", SourceController.getFilters)
+            post("{sourceId}/filters", SourceController.setFilters)
 
-            get("{sourceId}/search", SourceController::searchSingle)
-//            get("all/search", SourceController::searchGlobal) // TODO
+            get("{sourceId}/search", SourceController.searchSingle)
+//            get("all/search", SourceController.searchGlobal) // TODO
         }
 
         path("manga") {
@@ -75,47 +75,47 @@ object MangaAPI {
         }
 
         path("category") {
-            get("", CategoryController::categoryList)
-            post("", CategoryController::categoryCreate)
+            get("", CategoryController.categoryList)
+            post("", CategoryController.categoryCreate)
 
             // The order here is important {categoryId} needs to be applied last
             // or throws a NumberFormatException
-            patch("reorder", CategoryController::categoryReorder)
+            patch("reorder", CategoryController.categoryReorder)
 
-            get("{categoryId}", CategoryController::categoryMangas)
-            patch("{categoryId}", CategoryController::categoryModify)
-            delete("{categoryId}", CategoryController::categoryDelete)
+            get("{categoryId}", CategoryController.categoryMangas)
+            patch("{categoryId}", CategoryController.categoryModify)
+            delete("{categoryId}", CategoryController.categoryDelete)
         }
 
         path("backup") {
-            post("import", BackupController::protobufImport)
-            post("import/file", BackupController::protobufImportFile)
+            post("import", BackupController.protobufImport)
+            post("import/file", BackupController.protobufImportFile)
 
-            post("validate", BackupController::protobufValidate)
-            post("validate/file", BackupController::protobufValidateFile)
+            post("validate", BackupController.protobufValidate)
+            post("validate/file", BackupController.protobufValidateFile)
 
-            get("export", BackupController::protobufExport)
-            get("export/file", BackupController::protobufExportFile)
+            get("export", BackupController.protobufExport)
+            get("export/file", BackupController.protobufExportFile)
         }
 
         path("downloads") {
             ws("", DownloadController::downloadsWS)
 
-            get("start", DownloadController::start)
-            get("stop", DownloadController::stop)
-            get("clear", DownloadController::stop)
+            get("start", DownloadController.start)
+            get("stop", DownloadController.stop)
+            get("clear", DownloadController.stop)
         }
 
         path("download") {
-            get("{mangaId}/chapter/{chapterIndex}", DownloadController::queueChapter)
-            delete("{mangaId}/chapter/{chapterIndex}", DownloadController::unqueueChapter)
+            get("{mangaId}/chapter/{chapterIndex}", DownloadController.queueChapter)
+            delete("{mangaId}/chapter/{chapterIndex}", DownloadController.unqueueChapter)
         }
 
         path("update") {
-            get("recentChapters/{pageNum}", UpdateController::recentChapters)
-            post("fetch", UpdateController::categoryUpdate)
+            get("recentChapters/{pageNum}", UpdateController.recentChapters)
+            post("fetch", UpdateController.categoryUpdate)
             post("reset", UpdateController.reset)
-            get("summary", UpdateController::updateSummary)
+            get("summary", UpdateController.updateSummary)
             ws("", UpdateController::categoryUpdateWS)
         }
     }
