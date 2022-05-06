@@ -13,6 +13,7 @@ import io.javalin.plugin.json.JavalinJackson
 import io.javalin.plugin.json.JsonMapper
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.conf.global
@@ -29,6 +30,7 @@ import xyz.nulldev.ts.config.ApplicationRootDir
 import xyz.nulldev.ts.config.ConfigKodeinModule
 import xyz.nulldev.ts.config.GlobalConfigManager
 import java.io.File
+import java.security.Security
 import java.util.Locale
 
 private val logger = KotlinLogging.logger {}
@@ -153,4 +155,7 @@ fun applicationSetup() {
         System.getProperties()["socksProxyPort"] = serverConfig.socksProxyPort
         logger.info("Socks Proxy is enabled to ${serverConfig.socksProxyHost}:${serverConfig.socksProxyPort}")
     }
+
+    // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
+    Security.addProvider(BouncyCastleProvider())
 }
