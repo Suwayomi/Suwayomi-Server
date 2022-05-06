@@ -1,3 +1,25 @@
+# Server: v0.6.3-next + WebUI: r944
+## TL;DR
+- N/A
+
+## Tachidesk-Server Changelog
+- (r1087) v0.6.3 (by @AriaMoradi)
+- (r1088) Save categories when manga is unfavorited ([#335](https://github.com/Suwayomi/Tachidesk-Server/pull/335) by @Syer10)
+- (r1089) handle solid RAR archives ([#339](https://github.com/Suwayomi/Tachidesk-Server/pull/339)) cfso100@gmail.com
+- (r1090) add support for changing downloads dir ([#343](https://github.com/Suwayomi/Tachidesk-Server/pull/343) by @AriaMoradi)
+- (r1091) fix Applications dir dependency ([#344](https://github.com/Suwayomi/Tachidesk-Server/pull/344) by @AriaMoradi)
+- (r1092) add support for alternative web interfaces ([#342](https://github.com/Suwayomi/Tachidesk-Server/pull/342) by @AriaMoradi)
+- (r1093) Add displayValues json field for select filter ([#347](https://github.com/Suwayomi/Tachidesk-Server/pull/347) by @Syer10)
+- (r1094) document manga endpoints ([#348](https://github.com/Suwayomi/Tachidesk-Server/pull/348) by @Syer10)
+- (r1095) add ChapterCount to manga object in categoryMangas endpoint ([#349](https://github.com/Suwayomi/Tachidesk-Server/pull/349) by @abhijeetChawla)
+- (r1096) document all endpoints ([#350](https://github.com/Suwayomi/Tachidesk-Server/pull/350) by @Syer10)
+- (r1097) fix copymanga ([#354](https://github.com/Suwayomi/Tachidesk-Server/pull/354) by @AriaMoradi)
+- (r1098) fix formatting by kotlinter (by @AriaMoradi)
+
+## Tachidesk-WebUI Changelog
+- (r943) fix default width ([#171](https://github.com/Suwayomi/Tachidesk-WebUI/pull/171) by @Robonau)
+- (r944) added an update checker button for library ([#172](https://github.com/Suwayomi/Tachidesk-WebUI/pull/172) by @infix)
+
 # Server: v0.6.3 + WebUI: r942
 ## TL;DR
 - Changes in Server
