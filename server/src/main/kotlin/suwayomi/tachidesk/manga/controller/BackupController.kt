@@ -136,7 +136,6 @@ object BackupController {
                 description("Reports missing sources and trackers, expects a Tachiyomi protobuf backup in the body")
             }
             body<ByteArray>("") {
-
             }
         },
         behaviorOf = { ctx ->

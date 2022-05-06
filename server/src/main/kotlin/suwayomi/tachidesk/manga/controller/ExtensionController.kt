@@ -85,7 +85,6 @@ object ExtensionController {
                     Extension.installExternalExtension(uploadedFile.content, uploadedFile.filename)
                 }
             )
-
         },
         withResults = {
             httpCode(HttpCode.CREATED)

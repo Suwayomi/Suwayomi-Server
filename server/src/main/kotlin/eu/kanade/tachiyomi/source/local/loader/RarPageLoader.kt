@@ -5,11 +5,10 @@ import com.github.junrar.rarfile.FileHeader
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.util.lang.compareToCaseInsensitiveNaturalOrder
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
-import java.io.ByteArrayOutputStream
 import java.io.ByteArrayInputStream
-import java.io.InputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
-
+import java.io.InputStream
 
 /**
  * Loader used to load a chapter from a .rar or .cbr file.

@@ -78,7 +78,6 @@ object DownloadController {
             DownloadManager.clear()
 
             ctx.status(200)
-
         },
         withResults = {
             httpCode(HttpCode.OK)

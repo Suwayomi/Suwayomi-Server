@@ -49,7 +49,6 @@ object CategoryController {
             } else {
                 ctx.status(HttpCode.BAD_REQUEST)
             }
-
         },
         withResults = {
             httpCode(HttpCode.OK)

@@ -116,7 +116,6 @@ object SourceController {
         },
         behaviorOf = { ctx, sourceId ->
             ctx.json(Source.getSourcePreferences(sourceId))
-
         },
         withResults = {
             json<List<Source.PreferenceObject>>(HttpCode.OK)
