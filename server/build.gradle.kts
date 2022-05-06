@@ -59,6 +59,9 @@ dependencies {
     // CloudflareInterceptor
     implementation("net.sourceforge.htmlunit:htmlunit:2.56.0")
 
+    // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
+    implementation("org.bouncycastle:bcprov-jdk18on:1.71")
+
     // Source models and interfaces from Tachiyomi 1.x
     // using source class from tachiyomi commit 9493577de27c40ce8b2b6122cc447d025e34c477 to not depend on tachiyomi.sourceapi
 //    implementation("tachiyomi.sourceapi:source-api:1.1")
