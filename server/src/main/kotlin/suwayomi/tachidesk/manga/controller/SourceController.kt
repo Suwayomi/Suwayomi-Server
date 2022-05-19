@@ -19,12 +19,12 @@ import suwayomi.tachidesk.manga.impl.Search.FilterChange
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.Source.SourcePreferenceChange
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
+import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.queryParam
 import suwayomi.tachidesk.server.util.withOperation
-import javax.sound.sampled.SourceDataLine
 
 object SourceController {
     /** list of sources */
@@ -39,7 +39,7 @@ object SourceController {
             ctx.json(Source.getSourceList())
         },
         withResults = {
-            json<List<SourceDataLine>>(HttpCode.OK)
+            json<List<SourceDataClass>>(HttpCode.OK)
         }
     )
 
@@ -56,7 +56,7 @@ object SourceController {
             ctx.json(Source.getSource(sourceId)!!)
         },
         withResults = {
-            json<SourceDataLine>(HttpCode.OK)
+            json<SourceDataClass>(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
         }
     )
