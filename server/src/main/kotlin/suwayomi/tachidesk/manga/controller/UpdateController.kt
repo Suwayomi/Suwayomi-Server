@@ -14,7 +14,7 @@ import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.UpdateStatus
 import suwayomi.tachidesk.manga.impl.update.UpdaterSocket
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
-import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.util.formParam
@@ -49,9 +49,15 @@ object UpdateController {
             )
         },
         withResults = {
-            json<PaginatedList<MangaDataClass>>(HttpCode.OK)
+            json<PagedMangaChapterListDataClass>(HttpCode.OK)
         }
     )
+
+    /**
+     * Class made for handling return type in the documentation for [recentChapters],
+     * since OpenApi cannot handle runtime generics.
+     */
+    private class PagedMangaChapterListDataClass : PaginatedList<MangaChapterDataClass>(emptyList(), false)
 
     val categoryUpdate = handler(
         formParam<Int?>("categoryId"),
