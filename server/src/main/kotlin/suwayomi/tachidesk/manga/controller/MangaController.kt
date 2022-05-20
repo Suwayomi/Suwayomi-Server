@@ -128,7 +128,7 @@ object MangaController {
             ctx.json(CategoryManga.getMangaCategories(mangaId))
         },
         withResults = {
-            json<List<CategoryDataClass>>(HttpCode.OK)
+            json<Array<CategoryDataClass>>(HttpCode.OK)
         }
     )
 
@@ -205,7 +205,7 @@ object MangaController {
             ctx.future(future { Chapter.getChapterList(mangaId, onlineFetch) })
         },
         withResults = {
-            json<List<ChapterDataClass>>(HttpCode.OK)
+            json<Array<ChapterDataClass>>(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
         }
     )

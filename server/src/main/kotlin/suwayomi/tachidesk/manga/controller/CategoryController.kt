@@ -30,7 +30,7 @@ object CategoryController {
             ctx.json(Category.getCategoryList())
         },
         withResults = {
-            json<List<CategoryDataClass>>(HttpCode.OK)
+            json<Array<CategoryDataClass>>(HttpCode.OK)
         }
     )
 
@@ -107,7 +107,7 @@ object CategoryController {
             ctx.json(CategoryManga.getCategoryMangaList(categoryId))
         },
         withResults = {
-            json<List<MangaDataClass>>(HttpCode.OK)
+            json<Array<MangaDataClass>>(HttpCode.OK)
         }
     )
 
