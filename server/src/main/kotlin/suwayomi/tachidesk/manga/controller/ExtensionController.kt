@@ -37,7 +37,7 @@ object ExtensionController {
             )
         },
         withResults = {
-            json<List<ExtensionDataClass>>(HttpCode.OK)
+            json<Array<ExtensionDataClass>>(HttpCode.OK)
         }
     )
 

@@ -39,7 +39,7 @@ object SourceController {
             ctx.json(Source.getSourceList())
         },
         withResults = {
-            json<List<SourceDataClass>>(HttpCode.OK)
+            json<Array<SourceDataClass>>(HttpCode.OK)
         }
     )
 
@@ -118,7 +118,7 @@ object SourceController {
             ctx.json(Source.getSourcePreferences(sourceId))
         },
         withResults = {
-            json<List<Source.PreferenceObject>>(HttpCode.OK)
+            json<Array<Source.PreferenceObject>>(HttpCode.OK)
         }
     )
 
@@ -154,7 +154,7 @@ object SourceController {
             ctx.json(Search.getFilterList(sourceId, reset))
         },
         withResults = {
-            json<List<Search.FilterObject>>(HttpCode.OK)
+            json<Array<Search.FilterObject>>(HttpCode.OK)
         }
     )
 
