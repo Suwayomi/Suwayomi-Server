@@ -59,7 +59,7 @@ fi
 
 # copy artifacts
 if [ "$os" = "linux" ]; then
-  cp "$jar $release_name/tachidesk-server.jar"
+  cp "$jar" "$release_name/tachidesk-server.jar"
   cp "resources/tachidesk-server-browser-launcher.sh" "$release_name"
   cp "resources/tachidesk-server-debug-launcher.sh" "$release_name"
   cp "resources/tachidesk-server-electron-launcher.sh" "$release_name"
@@ -67,7 +67,7 @@ if [ "$os" = "linux" ]; then
   cp "../server/src/main/resources/icon/faviconlogo.png" "$release_name/tachidesk-server.png"
   cp "resources/systemd"/* "$release_name" 
 elif [ "$os" = "macOS" ]; then
-  cp "$jar $release_name/Tachidesk.jar"
+  cp "$jar" "$release_name/Tachidesk.jar"
   cp "resources/Tachidesk Browser Launcher.command" "$release_name"
   cp "resources/Tachidesk Debug Launcher.command" "$release_name"
   cp "resources/Tachidesk Electron Launcher.command" "$release_name"
