@@ -72,8 +72,9 @@ jobs:
           cd master/scripts
           ./windows-bundler.sh win32
           ./windows-bundler.sh win64
-          ./unix-bundler.sh linux-x64
           ./debian-packager.sh
+          ./unix-bundler.sh linux-all
+          ./unix-bundler.sh linux-x64
           ./unix-bundler.sh macOS-x64
           ./unix-bundler.sh macOS-arm64
 

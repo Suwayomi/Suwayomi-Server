@@ -1,7 +1,7 @@
 Source: tachidesk-server
 Section: web
 Priority: optional
-Maintainer: Mahor Foruzesh <mahorforuzesh@pm.me>
+Maintainer: Mahor1221 <mahor1221@pm.me>
 Build-Depends: debhelper-compat (= 12), dh-exec
 Standards-Version: 4.5.1
 Homepage: https://github.com/Suwayomi/Tachidesk-Server
