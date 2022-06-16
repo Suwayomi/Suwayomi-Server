@@ -11,7 +11,7 @@ electron_version="v14.0.0"
 arch="$1"
 os="$(echo $arch | cut -d '-' -f1)"
 if [ "$arch" = "linux-all" ]; then
-  # continue
+  continue
 elif [ "$arch" = "linux-x64" ]; then
   jre="OpenJDK8U-jre_x64_linux_hotspot_8u302b08.tar.gz"
   jre_release="jdk8u302-b08"
