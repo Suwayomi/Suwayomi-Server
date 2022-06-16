@@ -23,15 +23,16 @@ mkdir "$srcdir/"
 cp "$jar" "$srcdir/$pkgname.jar"
 cp "resources/$pkgname-browser-launcher.sh" "$srcdir/"
 cp "resources/$pkgname-debug-launcher.sh" "$srcdir/"
-cp "resources/$pkgname-electron-launcher-debian.sh" "$srcdir/$pkgname-electron-launcher.sh"
+cp "resources/$pkgname-electron-launcher.sh" "$srcdir/"
 cp "resources/$pkgname.desktop" "$srcdir/"
 cp "../server/src/main/resources/icon/faviconlogo.png" "$srcdir/$pkgname.png"
+cp "resources/systemd"/* "$srcdir/" 
 
 GZIP=-9 tar -cvzf "$srctgz" "$srcdir/"
 
 cp -r "resources/debian" "$srcdir/"
-sed -i "s/\${pkgver}/$pkgver/" "$srcdir/debian/changelog"
-sed -i "s/\${pkgrel}/$pkgrel/" "$srcdir/debian/changelog"
+sed -i "s/\$pkgver/$pkgver/" "$srcdir/debian/changelog"
+sed -i "s/\$pkgrel/$pkgrel/" "$srcdir/debian/changelog"
 
 # Build
 mkdir "debuild/"
