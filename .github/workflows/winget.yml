@@ -9,4 +9,4 @@ jobs:
       - uses: vedantmgoyal2009/winget-releaser@latest
         with:
           identifier: Suwayomi.Tachidesk-Server
-          token: ${{ secrets.GITHUB_PAT }}
+          token: ${{ secrets.WINGET_PUBLISH_PAT }}
