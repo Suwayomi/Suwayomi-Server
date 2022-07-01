@@ -27,7 +27,7 @@ main() {
 
   OS="$1"
   jar="$(ls ../../master/server/build/*.jar | tail -n1)"
-  release_name="$(echo "${jar%.*}" | sed 's/.jar//')-$OS"
+  release_name="$(echo "${jar%.*}" | sed 's/.jar//' | xargs basename)-$OS"
   release_version="$(tmp="${jar%-*}"; echo "${tmp##*-}" | tr -d v)"
   #local release_revision_number="$(tmp="${jar%.*}" && echo "${tmp##*-}" | tr -d r)"
   electron_version="v14.0.0"
