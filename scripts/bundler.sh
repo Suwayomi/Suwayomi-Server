@@ -241,3 +241,29 @@ make_windows_package() {
     -D Icon="$icon" --arch "$arch" "resources/msi/tachidesk-server-$arch.wxs" \
     "$release_name/jre.wxs" "$release_name/electron.wxs" -o "$release"
 }
+
+# Error handler
+# set -u: Treat unset variables as an error when substituting.
+# set -o pipefail: Prevents errors in pipeline from being masked.
+# set -e: Immediatly exit if any command has a non-zero exit status.
+# set -E: Inherit the trap ERR function before exiting by set.
+#
+# set -e is not recommended and unpredictable.
+# see https://stackoverflow.com/questions/64786/error-handling-in-bash
+# and http://mywiki.wooledge.org/BashFAO/105
+set -euo pipefail
+error() {
+    local parent_lineno="$1"
+    local message="$2"
+    local code="${3:-1}"
+    if [ -z "$message" ]; then
+        echo "$0: line $parent_lineno: exiting with status $code"
+    else
+        echo "$0: line $parent_lineno: $message: exiting with status $code"
+    fi
+    exit "$code"
+}
+trap 'error $LINENO ""' ERR
+
+main "$@"; exit
+
