@@ -184,29 +184,29 @@ make_deb_package() {
 }
 
 make_windows_bundle() {
-  # I'll disable this section until someone find a solution to this error:
-  #E: Unable to correct problems, you have held broken packages.
-  #./bundler.sh: line 250: wine: command not found
+  ## I'll disable this section until someone find a solution to this error:
+  ##E: Unable to correct problems, you have held broken packages.
+  ##./bundler.sh: line 250: wine: command not found
 
-  # check if running under github actions
-  if [ "$CI" = true ]; then
-    # change electron executable's icon
-    sudo dpkg --add-architecture i386
-    wget -qO - https://dl.winehq.org/wine-builds/winehq.key \
-        | sudo apt-key add -
-    sudo add-apt-repository ppa:cybermax-dexter/sdl2-backport
-    sudo apt-add-repository "deb https://dl.winehq.org/wine-builds/ubuntu \
-        $(lsb_release -cs) main"
-    sudo apt install --install-recommends winehq-stable
-  fi
-  # this script assumes that wine is installed here on out
+  ## check if running under github actions
+  #if [ "$CI" = true ]; then
+    ## change electron executable's icon
+    #sudo dpkg --add-architecture i386
+    #wget -qO - https://dl.winehq.org/wine-builds/winehq.key \
+        #| sudo apt-key add -
+    #sudo add-apt-repository ppa:cybermax-dexter/sdl2-backport
+    #sudo apt-add-repository "deb https://dl.winehq.org/wine-builds/ubuntu \
+        #$(lsb_release -cs) main"
+    #sudo apt install --install-recommends winehq-stable
+  #fi
+  ## this script assumes that wine is installed here on out
 
-  local rcedit="rcedit-x85.exe"
-  local rcedit_url="https://github.com/electron/rcedit/releases/download/v0.1.1/$rcedit"
-  # change electron's icon
-  if [ ! -f "$rcedit" ]; then
-    curl -L "$rcedit_url" -o "$rcedit"
-  fi
+  #local rcedit="rcedit-x85.exe"
+  #local rcedit_url="https://github.com/electron/rcedit/releases/download/v0.1.1/$rcedit"
+  ## change electron's icon
+  #if [ ! -f "$rcedit" ]; then
+    #curl -L "$rcedit_url" -o "$rcedit"
+  #fi
 
   local icon="../../master/server/src/main/resources/icon/faviconlogo.ico"
   #WINEARCH=win32 wine "$rcedit" "$release_name/electron/electron.exe" \
