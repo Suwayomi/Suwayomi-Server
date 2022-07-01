@@ -174,8 +174,7 @@ make_deb_package() {
 
   sudo apt install devscripts build-essential dh-exec
   cd "$temp_dir/$source_dir"
-  # --lintian-opts --profile flags are for building Debian packages on Ubuntu
-  debuild -uc -us --lintian-opts --profile debian
+  dpkg-buildpackage --no-sign --build=all
   cd -
 
   local deb="tachidesk-server_$release_version-1_all.deb"
