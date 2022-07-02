@@ -1,9 +1,9 @@
 #!/bin/sh
 
 if [ ! -f /usr/bin/electron ]; then
-	echo "Electron executable was not found! 
+    echo "Electron executable was not found!
 In order to run this launcher, you need Electron installed."
-	exit 1
+    exit 1
 fi
 
 exec /usr/bin/java \

@@ -70,13 +70,13 @@ jobs:
       - name: make bundle packages
         run: |
           cd master/scripts
-          ./windows-bundler.sh win32
-          ./windows-bundler.sh win64
-          ./debian-packager.sh
-          ./unix-bundler.sh linux-all
-          ./unix-bundler.sh linux-x64
-          ./unix-bundler.sh macOS-x64
-          ./unix-bundler.sh macOS-arm64
+          ./bundler.sh -o ../../master/server/build/ windows-x86
+          ./bundler.sh -o ../../master/server/build/ windows-x64
+          ./bundler.sh -o ../../master/server/build/ linux-all
+          ./bundler.sh -o ../../master/server/build/ linux-x64
+          ./bundler.sh -o ../../master/server/build/ debian-all
+          ./bundler.sh -o ../../master/server/build/ macOS-x64
+          ./bundler.sh -o ../../master/server/build/ macOS-arm64
 
       - name: Checkout preview branch
         uses: actions/checkout@v2
