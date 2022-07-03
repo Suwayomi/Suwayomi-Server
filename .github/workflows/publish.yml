@@ -10,27 +10,25 @@ jobs:
   check_wrapper:
     name: Validate Gradle Wrapper
     runs-on: ubuntu-latest
-
     steps:
       - name: Clone repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Validate Gradle Wrapper
         uses: gradle/wrapper-validation-action@v1
-
+        
   build:
-    name: Build artifacts and release
+    name: Build Jar
     needs: check_wrapper
     runs-on: ubuntu-latest
-
     steps:
       - name: Cancel previous runs
-        uses: styfle/cancel-workflow-action@0.9.0
+        uses: styfle/cancel-workflow-action@0.10.0
         with:
           access_token: ${{ github.token }}
 
       - name: Checkout ${{ github.ref }}
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: ${{ github.ref }}
           path: master
@@ -45,7 +43,8 @@ jobs:
         run: |
           cd master
           mkdir -p ~/.gradle
-          cp .github/runner-files/ci-gradle.properties ~/.gradle/gradle.properties
+          cp .github/runner-files/ci-gradle.properties \
+            ~/.gradle/gradle.properties
 
       - name: Build and copy webUI, Build Jar
         uses: eskatos/gradle-command-action@v1
@@ -59,23 +58,120 @@ jobs:
           dependencies-cache-enabled: true
           configuration-cache-enabled: true
 
-      - name: Make bundle packages
-        run: |
-          cd master/scripts
-          ./bundler.sh -o ../../master/server/build/ windows-x86
-          ./bundler.sh -o ../../master/server/build/ windows-x64
-          ./bundler.sh -o ../../master/server/build/ linux-all
-          ./bundler.sh -o ../../master/server/build/ linux-x64
-          ./bundler.sh -o ../../master/server/build/ debian-all
-          ./bundler.sh -o ../../master/server/build/ macOS-x64
-          ./bundler.sh -o ../../master/server/build/ macOS-arm64
-
-      - name: Upload Release
-        uses: xresloader/upload-to-github-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.WINGET_PUBLISH_PAT }}
+      - name: Upload Jar
+        uses: actions/upload-artifact@v3
         with:
-          file: "master/server/build/*.jar;master/server/build/*.msi;master/server/build/*.zip;master/server/build/*.tar.gz;master/server/build/*.deb"
-          tags: true
+          name: jar
+          path: master/server/build/*.jar
+          if-no-files-found: error
+
+      - name: Upload icons
+        uses: actions/upload-artifact@v3
+        with:
+          name: icon
+          path: master/server/src/main/resources/icon
+          if-no-files-found: error
+
+      - name: Tar scripts dir to maintain file permissions
+        run: tar -cvzf scripts.tar.gz -C master/ scripts/
+      - name: Upload scripts.tar.gz
+        uses: actions/upload-artifact@v3
+        with:
+          name: scripts
+          path: scripts.tar.gz
+          if-no-files-found: error
+
+  bundle:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [
+          linux-x64,
+          linux-all,
+          macOS-x64,
+          macOS-arm64,
+          debian-all,
+          windows-x64,
+          windows-x86,
+        ]
+    name: Make ${{ matrix.os }} release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Jar
+        uses: actions/download-artifact@v3
+        with:
+          name: jar
+          path: server/build
+
+      - name: Download icons
+        uses: actions/download-artifact@v3
+        with:
+          name: icon
+          path: server/src/main/resources/icon
+
+      - name: Download scripts.tar.gz
+        uses: actions/download-artifact@v3
+        with:
+          name: scripts
+
+      - name: Make ${{ matrix.os }} release
+        run: |
+          mkdir upload/
+          tar -xvpf scripts.tar.gz
+          scripts/bundler.sh -o upload/ ${{ matrix.os }}
+
+      - name: Upload ${{ matrix.os }} files
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.os }}
+          path: upload/*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: jar
+          path: release
+      - uses: actions/download-artifact@v3
+        with:
+          name: linux-x64
+          path: release
+      - uses: actions/download-artifact@v3
+        with:
+          name: linux-all
+          path: release
+      - uses: actions/download-artifact@v3
+        with:
+          name: macOS-x64
+          path: release
+      - uses: actions/download-artifact@v3
+        with:
+          name: macOS-arm64
+          path: release
+      - uses: actions/download-artifact@v3
+        with:
+          name: debian-all
+          path: release
+      - uses: actions/download-artifact@v3
+        with:
+          name: windows-x64
+          path: release
+      - uses: actions/download-artifact@v3
+        with:
+          name: windows-x86
+          path: release
+
+      - name: Generate checksums
+        run: cd release && sha256sum * > Checksums.sha256
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          token: ${{ secrets.WINGET_PUBLISH_PAT }}
           draft: true
-          verbose: true
+          files: release/*

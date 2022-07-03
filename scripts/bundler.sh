@@ -26,7 +26,7 @@ main() {
   set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
 
   OS="$1"
-  jar="$(ls ../../master/server/build/*.jar | tail -n1)"
+  jar="$(ls server/build/*.jar | tail -n1)"
   release_name="$(echo "${jar%.*}" | sed 's/.jar//' | xargs basename)-$OS"
   release_version="$(tmp="${jar%-*}"; echo "${tmp##*-}" | tr -d v)"
   #local release_revision_number="$(tmp="${jar%.*}" && echo "${tmp##*-}" | tr -d r)"
@@ -132,13 +132,13 @@ download_jre_and_electron() {
 
 make_linux_bundle() {
   cp "$jar" "$release_name/tachidesk-server.jar"
-  cp "resources/tachidesk-server-browser-launcher.sh" "$release_name/"
-  cp "resources/tachidesk-server-debug-launcher.sh" "$release_name/"
-  cp "resources/tachidesk-server-electron-launcher.sh" "$release_name/"
-  cp "resources/tachidesk-server.desktop" "$release_name/"
-  cp "../../master/server/src/main/resources/icon/faviconlogo.png" \
+  cp "scripts/resources/tachidesk-server-browser-launcher.sh" "$release_name/"
+  cp "scripts/resources/tachidesk-server-debug-launcher.sh" "$release_name/"
+  cp "scripts/resources/tachidesk-server-electron-launcher.sh" "$release_name/"
+  cp "scripts/resources/tachidesk-server.desktop" "$release_name/"
+  cp "server/src/main/resources/icon/faviconlogo.png" \
     "$release_name/tachidesk-server.png"
-  cp "resources/systemd"/* "$release_name/"
+  cp "scripts/resources/systemd"/* "$release_name/"
 
   release="$release_name.tar.gz"
   tar -I "gzip -9" -cvf "$release" "$release_name/"
@@ -146,9 +146,9 @@ make_linux_bundle() {
 
 make_macos_bundle() {
   cp "$jar" "$release_name/Tachidesk.jar"
-  cp "resources/Tachidesk Browser Launcher.command" "$release_name/"
-  cp "resources/Tachidesk Debug Launcher.command" "$release_name/"
-  cp "resources/Tachidesk Electron Launcher.command" "$release_name/"
+  cp "scripts/resources/Tachidesk Browser Launcher.command" "$release_name/"
+  cp "scripts/resources/Tachidesk Debug Launcher.command" "$release_name/"
+  cp "scripts/resources/Tachidesk Electron Launcher.command" "$release_name/"
 
   release="$release_name.zip"
   zip -9 -r "$release" "$release_name/"
@@ -158,7 +158,7 @@ make_macos_bundle() {
 # https://www.debian.org/doc/manuals/packaging-tutorial/packaging-tutorial.pdf
 make_deb_package() {
   make_linux_bundle "$release_name" "$jar"
-  cp -r "resources/deb/" "$release_name/debian/"
+  cp -r "scripts/resources/deb/" "$release_name/debian/"
   sed -i "s/\$pkgver/$release_version/" "$release_name/debian/changelog"
   sed -i "s/\$pkgrel/1/"                "$release_name/debian/changelog"
 
@@ -207,14 +207,14 @@ make_windows_bundle() {
     #curl -L "$rcedit_url" -o "$rcedit"
   #fi
 
-  local icon="../../master/server/src/main/resources/icon/faviconlogo.ico"
+  local icon="server/src/main/resources/icon/faviconlogo.ico"
   #WINEARCH=win32 wine "$rcedit" "$release_name/electron/electron.exe" \
   #    --set-icon "$icon"
 
   cp "$jar" "$release_name/Tachidesk.jar"
-  cp "resources/Tachidesk Browser Launcher.bat" "$release_name"
-  cp "resources/Tachidesk Debug Launcher.bat" "$release_name"
-  cp "resources/Tachidesk Electron Launcher.bat" "$release_name"
+  cp "scripts/resources/Tachidesk Browser Launcher.bat" "$release_name"
+  cp "scripts/resources/Tachidesk Debug Launcher.bat" "$release_name"
+  cp "scripts/resources/Tachidesk Electron Launcher.bat" "$release_name"
 
   release="$release_name.zip"
   zip -9 -r "$release" "$release_name"
@@ -232,12 +232,12 @@ make_windows_package() {
   | wixl-heat --var var.SourceDir -p "$release_name/" \
     --directory-ref electron --component-group electron >"$release_name/electron.wxs"
 
-  local icon="../../master/server/src/main/resources/icon/faviconlogo.ico"
+  local icon="server/src/main/resources/icon/faviconlogo.ico"
   local arch=${OS##*-}
   release="$release_name.msi"
 
   wixl -D ProductVersion="$release_version" -D SourceDir="$release_name" \
-    -D Icon="$icon" --arch "$arch" "resources/msi/tachidesk-server-$arch.wxs" \
+    -D Icon="$icon" --arch "$arch" "scripts/resources/msi/tachidesk-server-$arch.wxs" \
     "$release_name/jre.wxs" "$release_name/electron.wxs" -o "$release"
 }
 
