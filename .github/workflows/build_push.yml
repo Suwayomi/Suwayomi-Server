@@ -84,16 +84,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [
-          linux-x64,
-          linux-all,
-          macOS-x64,
-          macOS-arm64,
-          # takes about 6m to build deb package
-          #debian-all,
-          windows-x64,
-          windows-x86,
-        ]
+        os:
+          - linux-x64
+          - linux-all
+          - macOS-x64
+          - macOS-arm64
+          - debian-all
+          - windows-x64
+          - windows-x86
+
     name: Make ${{ matrix.os }} release
     needs: build
     runs-on: ubuntu-latest
@@ -152,10 +151,10 @@ jobs:
         with:
           name: macOS-arm64
           path: release
-      #- uses: actions/download-artifact@v3
-        #with:
-          #name: debian-all
-          #path: release
+      - uses: actions/download-artifact@v3
+        with:
+          name: debian-all
+          path: release
       - uses: actions/download-artifact@v3
         with:
           name: windows-x64
