@@ -47,16 +47,12 @@ jobs:
             ~/.gradle/gradle.properties
 
       - name: Build and copy webUI, Build Jar
-        uses: eskatos/gradle-command-action@v1
+        uses: gradle/gradle-build-action@v2
         env:
           ProductBuildType: "Stable"
         with:
           build-root-directory: master
-          wrapper-directory: master
           arguments: :server:downloadWebUI :server:shadowJar --stacktrace
-          wrapper-cache-enabled: true
-          dependencies-cache-enabled: true
-          configuration-cache-enabled: true
 
       - name: Upload Jar
         uses: actions/upload-artifact@v3

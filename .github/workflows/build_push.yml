@@ -46,16 +46,12 @@ jobs:
           cp .github/runner-files/ci-gradle.properties ~/.gradle/gradle.properties
 
       - name: Build Jar
-        uses: eskatos/gradle-command-action@v1
+        uses: gradle/gradle-build-action@v2
         env:
           ProductBuildType: "Preview"
         with:
           build-root-directory: master
-          wrapper-directory: master
           arguments: :server:shadowJar --stacktrace
-          wrapper-cache-enabled: true
-          dependencies-cache-enabled: true
-          configuration-cache-enabled: true
 
       - name: Upload Jar
         uses: actions/upload-artifact@v3
