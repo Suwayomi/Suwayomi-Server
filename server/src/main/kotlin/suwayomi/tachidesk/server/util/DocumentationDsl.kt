@@ -82,7 +82,7 @@ inline fun getDocumentation(
             when (it) {
                 is Param.FormParam -> formParam(it.key, it.clazz, !it.nullable && it.defaultValue == null)
                 is Param.PathParam -> pathParam(it.key, it.clazz)
-                is Param.QueryParam -> queryParam(it.key, it.clazz,)
+                is Param.QueryParam -> queryParam(it.key, it.clazz)
                 is Param.QueryParams<*, *> -> queryParam(it.key, it.clazz, isRepeatable = true)
             }
         }
