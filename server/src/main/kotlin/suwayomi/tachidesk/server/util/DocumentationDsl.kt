@@ -28,13 +28,7 @@ fun <T> getParam(ctx: Context, param: Param<T>): T {
             Float::class.java, java.lang.Float::class.java -> item.map { it.toFloatOrNull() }
             Double::class.java, java.lang.Double::class.java -> item.map { it.toDoubleOrNull() }
             else -> throw IllegalStateException("Unknown class ${param.clazz.simpleName}")
-        }.let {
-            if (param.nullable) {
-                it
-            } else {
-                it.filterNotNull()
-            }
-        }
+        }.filterNotNull().ifEmpty { param.defaultValue }
         return typedItem as T
     }
     val typedItem: Any? = when (val clazz = param.clazz as Class<T>) {
@@ -132,9 +126,10 @@ sealed class Param<T> {
     data class QueryParams<R, T : List<R>>(
         override val key: String,
         override val clazz: Class<R>,
-        override val defaultValue: T?,
-        override val nullable: Boolean
-    ) : Param<T>()
+        override val defaultValue: T
+    ) : Param<T>() {
+        override val nullable: Boolean = false
+    }
     data class PathParam<T>(
         override val key: String,
         override val clazz: Class<*>,
