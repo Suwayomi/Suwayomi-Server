@@ -12,23 +12,44 @@ fun <T> getSimpleParamItem(ctx: Context, param: Param<T>): String? {
         is Param.FormParam -> ctx.formParam(param.key)
         is Param.PathParam -> ctx.pathParam(param.key)
         is Param.QueryParam -> ctx.queryParam(param.key)
+        else -> throw IllegalStateException("Invalid param")
     }
 }
 
 @Suppress("UNCHECKED_CAST")
 fun <T> getParam(ctx: Context, param: Param<T>): T {
-    val typedItem: Any? = when (param.clazz) {
-        String::class.java -> getSimpleParamItem(ctx, param)
-        Int::class.java -> getSimpleParamItem(ctx, param)?.toIntOrNull()
-        Long::class.java -> getSimpleParamItem(ctx, param)?.toLongOrNull()
-        Boolean::class.java -> getSimpleParamItem(ctx, param)?.toBoolean()
-        Float::class.java -> getSimpleParamItem(ctx, param)?.toFloatOrNull()
-        Double::class.java -> getSimpleParamItem(ctx, param)?.toDoubleOrNull()
+    if (param is Param.QueryParams<*, *>) {
+        val item = ctx.queryParams(param.key).filter(String::isNotBlank)
+        val typedItem: List<Any?> = when (param.clazz) {
+            String::class.java, java.lang.String::class.java -> item
+            Int::class.java, java.lang.Integer::class.java -> item.map { it.toIntOrNull() }
+            Long::class.java, java.lang.Long::class.java -> item.map { it.toLongOrNull() }
+            Boolean::class.java, java.lang.Boolean::class.java -> item.map { it.toBoolean() }
+            Float::class.java, java.lang.Float::class.java -> item.map { it.toFloatOrNull() }
+            Double::class.java, java.lang.Double::class.java -> item.map { it.toDoubleOrNull() }
+            else -> throw IllegalStateException("Unknown class ${param.clazz.simpleName}")
+        }.let {
+            if (param.nullable) {
+                it
+            } else {
+                it.filterNotNull()
+            }
+        }.ifEmpty { param.defaultValue }
+        return typedItem as T
+    }
+    val typedItem: Any? = when (val clazz = param.clazz as Class<T>) {
+        String::class.java, java.lang.String::class.java -> getSimpleParamItem(ctx, param) ?: param.defaultValue
+        Int::class.java, java.lang.Integer::class.java -> getSimpleParamItem(ctx, param)?.toIntOrNull() ?: param.defaultValue
+        Long::class.java, java.lang.Long::class.java -> getSimpleParamItem(ctx, param)?.toLongOrNull() ?: param.defaultValue
+        Boolean::class.java, java.lang.Boolean::class.java -> getSimpleParamItem(ctx, param)?.toBoolean() ?: param.defaultValue
+        Float::class.java, java.lang.Float::class.java -> getSimpleParamItem(ctx, param)?.toFloatOrNull() ?: param.defaultValue
+        Double::class.java, java.lang.Double::class.java -> getSimpleParamItem(ctx, param)?.toDoubleOrNull() ?: param.defaultValue
         else -> {
             when (param) {
-                is Param.FormParam -> ctx.formParamAsClass(param.key, param.clazz)
-                is Param.PathParam -> ctx.pathParamAsClass(param.key, param.clazz)
-                is Param.QueryParam -> ctx.queryParamAsClass(param.key, param.clazz)
+                is Param.FormParam -> ctx.formParamAsClass(param.key, clazz)
+                is Param.PathParam -> ctx.pathParamAsClass(param.key, clazz)
+                is Param.QueryParam -> ctx.queryParamAsClass(param.key, clazz)
+                else -> throw IllegalStateException("Invalid param")
             }.let {
                 if (param.nullable) {
                     it.allowNullable().get() ?: param.defaultValue
@@ -61,7 +82,8 @@ inline fun getDocumentation(
             when (it) {
                 is Param.FormParam -> formParam(it.key, it.clazz, !it.nullable && it.defaultValue == null)
                 is Param.PathParam -> pathParam(it.key, it.clazz)
-                is Param.QueryParam -> queryParam(it.key, it.clazz,)
+                is Param.QueryParam -> queryParam(it.key, it.clazz)
+                is Param.QueryParams<*, *> -> queryParam(it.key, it.clazz, isRepeatable = true)
             }
         }
     }
@@ -83,30 +105,39 @@ inline fun <reified T> formParam(key: String, defaultValue: T? = null): Param.Fo
 inline fun <reified T> queryParam(key: String, defaultValue: T? = null): Param.QueryParam<T> {
     return Param.QueryParam(key, T::class.java, defaultValue, null is T)
 }
+inline fun <reified T> queryParams(key: String, defaultValue: List<T> = emptyList()): Param.QueryParams<T, List<T>> {
+    return Param.QueryParams(key, T::class.java, defaultValue, null is T)
+}
 inline fun <reified T> pathParam(key: String): Param.PathParam<T> {
     return Param.PathParam(key, T::class.java, null, false)
 }
 
 sealed class Param<T> {
     abstract val key: String
-    abstract val clazz: Class<T>
+    abstract val clazz: Class<*>
     abstract val defaultValue: T?
     abstract val nullable: Boolean
     data class FormParam<T>(
         override val key: String,
-        override val clazz: Class<T>,
+        override val clazz: Class<*>,
         override val defaultValue: T?,
         override val nullable: Boolean
     ) : Param<T>()
     data class QueryParam<T>(
         override val key: String,
-        override val clazz: Class<T>,
+        override val clazz: Class<*>,
         override val defaultValue: T?,
+        override val nullable: Boolean
+    ) : Param<T>()
+    data class QueryParams<R, T : List<R>>(
+        override val key: String,
+        override val clazz: Class<R>,
+        override val defaultValue: T,
         override val nullable: Boolean
     ) : Param<T>()
     data class PathParam<T>(
         override val key: String,
-        override val clazz: Class<T>,
+        override val clazz: Class<*>,
         override val defaultValue: T?,
         override val nullable: Boolean
     ) : Param<T>()
