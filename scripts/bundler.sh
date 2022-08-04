@@ -274,7 +274,7 @@ make_windows_package() {
 # set -e is not recommended and unpredictable.
 # see https://stackoverflow.com/questions/64786/error-handling-in-bash
 # and http://mywiki.wooledge.org/BashFAO/105
-set -uo pipefail
+set -euo pipefail
 error() {
   local parent_lineno="$1"
   local message="$2"
@@ -289,4 +289,5 @@ error() {
 trap 'error $LINENO ""' ERR
 
 main "$@"; exit
+
 
