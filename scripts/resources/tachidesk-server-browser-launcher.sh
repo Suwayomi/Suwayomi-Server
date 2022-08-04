@@ -1,2 +1,3 @@
 #!/bin/sh
-exec /usr/bin/java -jar /usr/share/java/tachidesk-server/tachidesk-server.jar
+
+exec ./jre/bin/java -jar ./tachidesk-server.jar
