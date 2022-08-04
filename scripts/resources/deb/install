@@ -1,12 +1,12 @@
 #!/usr/bin/dh-exec
 
-tachidesk-server.jar            usr/share/java/tachidesk-server/
-tachidesk-server.png            usr/share/pixmaps/
-tachidesk-server.desktop        usr/share/applications/
-tachidesk-server.service        usr/lib/systemd/system/
-tachidesk-server.sysusers   =>  usr/lib/sysusers.d/tachidesk-server.conf
-tachidesk-server.tmpfiles   =>  usr/lib/tmpfiles.d/tachidesk-server.conf
-tachidesk-server.conf       =>  etc/tachidesk/server.conf
-tachidesk-server-browser-launcher.sh    =>  usr/bin/tachidesk-server-browser
-tachidesk-server-debug-launcher.sh      =>  usr/bin/tachidesk-server-debug
-tachidesk-server-electron-launcher.sh   =>  usr/bin/tachidesk-server-electron
+tachidesk-server.jar                usr/share/java/tachidesk-server/
+debian/tachidesk-server.png         usr/share/pixmaps/
+debian/tachidesk-server.desktop     usr/share/applications/
+debian/tachidesk-server.service     usr/lib/systemd/system/
+debian/tachidesk-server.sysusers => usr/lib/sysusers.d/tachidesk-server.conf
+debian/tachidesk-server.tmpfiles => usr/lib/tmpfiles.d/tachidesk-server.conf
+debian/tachidesk-server.conf     => etc/tachidesk/server.conf
+debian/tachidesk-server-browser-launcher.sh     => usr/bin/tachidesk-server-browser
+debian/tachidesk-server-debug-launcher.sh       => usr/bin/tachidesk-server-debug
+debian/tachidesk-server-electron-launcher.sh    => usr/bin/tachidesk-server-electron
