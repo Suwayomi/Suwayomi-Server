@@ -1,6 +1,7 @@
 name: CI build
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - master
@@ -27,11 +28,11 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
-      - name: Checkout master branch
+      - name: Checkout ${{ github.ref }}
         uses: actions/checkout@v3
         with:
-          ref: master
-          path: master
+          ref: ${{ github.ref }}
+          path: repo
           fetch-depth: 0
 
       - name: Set up JDK 1.8
@@ -41,7 +42,7 @@ jobs:
 
       - name: Copy CI gradle.properties
         run: |
-          cd master
+          cd repo
           mkdir -p ~/.gradle
           cp .github/runner-files/ci-gradle.properties ~/.gradle/gradle.properties
 
@@ -50,25 +51,25 @@ jobs:
         env:
           ProductBuildType: "Preview"
         with:
-          build-root-directory: master
+          build-root-directory: repo
           arguments: :server:shadowJar --stacktrace
 
       - name: Upload Jar
         uses: actions/upload-artifact@v3
         with:
           name: jar
-          path: master/server/build/*.jar
+          path: repo/server/build/*.jar
           if-no-files-found: error
 
       - name: Upload icons
         uses: actions/upload-artifact@v3
         with:
           name: icon
-          path: master/server/src/main/resources/icon
+          path: repo/server/src/main/resources/icon
           if-no-files-found: error
 
       - name: Tar scripts dir to maintain file permissions
-        run: tar -cvzf scripts.tar.gz -C master/ scripts/
+        run: tar -cvzf scripts.tar.gz -C repo/ scripts/
       - name: Upload scripts.tar.gz
         uses: actions/upload-artifact@v3
         with:

@@ -16,7 +16,7 @@ jobs:
 
       - name: Validate Gradle Wrapper
         uses: gradle/wrapper-validation-action@v1
-        
+
   build:
     name: Build Jar
     needs: check_wrapper
@@ -31,7 +31,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.ref }}
-          path: master
+          path: repo
           fetch-depth: 0
 
       - name: Set up JDK 1.8
@@ -41,7 +41,7 @@ jobs:
 
       - name: Copy CI gradle.properties
         run: |
-          cd master
+          cd repo
           mkdir -p ~/.gradle
           cp .github/runner-files/ci-gradle.properties \
             ~/.gradle/gradle.properties
@@ -51,25 +51,25 @@ jobs:
         env:
           ProductBuildType: "Stable"
         with:
-          build-root-directory: master
+          build-root-directory: repo
           arguments: :server:downloadWebUI :server:shadowJar --stacktrace
 
       - name: Upload Jar
         uses: actions/upload-artifact@v3
         with:
           name: jar
-          path: master/server/build/*.jar
+          path: repo/server/build/*.jar
           if-no-files-found: error
 
       - name: Upload icons
         uses: actions/upload-artifact@v3
         with:
           name: icon
-          path: master/server/src/main/resources/icon
+          path: repo/server/src/main/resources/icon
           if-no-files-found: error
 
       - name: Tar scripts dir to maintain file permissions
-        run: tar -cvzf scripts.tar.gz -C master/ scripts/
+        run: tar -cvzf scripts.tar.gz -C repo/ scripts/
       - name: Upload scripts.tar.gz
         uses: actions/upload-artifact@v3
         with:
@@ -81,15 +81,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [
-          linux-x64,
-          linux-all,
-          macOS-x64,
-          macOS-arm64,
-          debian-all,
-          windows-x64,
-          windows-x86,
-        ]
+        os:
+          - linux-x64
+          - linux-all
+          - macOS-x64
+          - macOS-arm64
+          - debian-all
+          - windows-x64
+          - windows-x86
+
     name: Make ${{ matrix.os }} release
     needs: build
     runs-on: ubuntu-latest
