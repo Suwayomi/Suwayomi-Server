@@ -81,11 +81,11 @@ jobs:
       fail-fast: false
       matrix:
         os:
+          - debian-all
+          - linux-assets
           - linux-x64
-          - linux-all
           - macOS-x64
           - macOS-arm64
-          - debian-all
           - windows-x64
           - windows-x86
 
@@ -133,11 +133,15 @@ jobs:
           path: release
       - uses: actions/download-artifact@v3
         with:
-          name: linux-x64
+          name: debian-all
           path: release
       - uses: actions/download-artifact@v3
         with:
-          name: linux-all
+          name: linux-assets
+          path: release
+      - uses: actions/download-artifact@v3
+        with:
+          name: linux-x64
           path: release
       - uses: actions/download-artifact@v3
         with:
@@ -146,10 +150,6 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: macOS-arm64
-          path: release
-      - uses: actions/download-artifact@v3
-        with:
-          name: debian-all
           path: release
       - uses: actions/download-artifact@v3
         with:
