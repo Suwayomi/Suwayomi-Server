@@ -171,3 +171,34 @@ jobs:
           token: ${{ secrets.WINGET_PUBLISH_PAT }}
           draft: true
           files: release/*
+
+  aur-publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: jar
+      - uses: actions/download-artifact@v3
+        with:
+          name: linux-assets
+      - uses: actions/download-artifact@v3
+        with:
+          name: scripts
+
+      - name: Generate PKGBUILD
+        run: |
+          tar -xvpf scripts.tar.gz
+          scripts/bundler.sh aur-pkgbuild
+
+      - name: Publish AUR package
+        uses: KSXGitHub/github-actions-deploy-aur@v2
+        with:
+          pkgname: tachidesk
+          pkgbuild: ./PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: ${{ github.ref_name }}
+
