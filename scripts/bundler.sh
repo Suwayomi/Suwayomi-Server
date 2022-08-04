@@ -273,7 +273,7 @@ make_windows_package() {
 # set -e is not recommended and unpredictable.
 # see https://stackoverflow.com/questions/64786/error-handling-in-bash
 # and http://mywiki.wooledge.org/BashFAO/105
-set -euo pipefail
+set -uo pipefail
 error() {
   local parent_lineno="$1"
   local message="$2"
