@@ -27,7 +27,7 @@
     <!-- Component -->
     <DirectoryRef Id="INSTALLDIR">
       <Component Id="TachideskJAR" Guid="*">
-          <File Id="Tachidesk.jar" Source="$(var.SourceDir)/Tachidesk.jar" KeyPath="yes" />
+          <File Id="Tachidesk-Server.jar" Source="$(var.SourceDir)/Tachidesk-Server.jar" KeyPath="yes" />
       </Component>
 
       <Component Id="TachideskBrowserBAT" Guid="*">

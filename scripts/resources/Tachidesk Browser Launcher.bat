@@ -1,1 +1,1 @@
-start "" jre/bin/javaw -jar Tachidesk.jar
+start "" jre/bin/javaw -jar Tachidesk-Server.jasr
