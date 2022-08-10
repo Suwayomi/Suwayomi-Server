@@ -16,7 +16,7 @@ jobs:
 
       - name: Validate Gradle Wrapper
         uses: gradle/wrapper-validation-action@v1
-        
+
   build:
     name: Build Jar
     needs: check_wrapper
@@ -81,15 +81,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [
-          linux-x64,
-          linux-all,
-          macOS-x64,
-          macOS-arm64,
-          debian-all,
-          windows-x64,
-          windows-x86,
-        ]
+        os:
+          - debian-all
+          - linux-assets
+          - linux-x64
+          - macOS-x64
+          - macOS-arm64
+          - windows-x64
+          - windows-x86
+
     name: Make ${{ matrix.os }} release
     needs: build
     runs-on: ubuntu-latest
@@ -135,11 +135,15 @@ jobs:
           path: release
       - uses: actions/download-artifact@v3
         with:
-          name: linux-x64
+          name: debian-all
           path: release
       - uses: actions/download-artifact@v3
         with:
-          name: linux-all
+          name: linux-assets
+          path: release
+      - uses: actions/download-artifact@v3
+        with:
+          name: linux-x64
           path: release
       - uses: actions/download-artifact@v3
         with:
@@ -148,10 +152,6 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: macOS-arm64
-          path: release
-      - uses: actions/download-artifact@v3
-        with:
-          name: debian-all
           path: release
       - uses: actions/download-artifact@v3
         with:

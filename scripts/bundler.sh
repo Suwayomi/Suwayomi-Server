@@ -42,9 +42,8 @@ main() {
       make_deb_package
       move_release_to_output_dir
       ;;
-    linux-all)
+    linux-assets)
       RELEASE="$RELEASE_NAME.tar.gz"
-      cp "$JAR" "$RELEASE_NAME/tachidesk-server.jar"
       copy_linux_package_assets_to "$RELEASE_NAME/"
       tar -I "gzip -9" -cvf "$RELEASE" "$RELEASE_NAME/"
       move_release_to_output_dir
@@ -151,11 +150,11 @@ copy_linux_package_assets_to() {
   local output_dir
   output_dir="$(readlink -e "$1" || exit 1)"
 
-  cp "scripts/resources/tachidesk-server-browser-launcher.sh" "$output_dir/"
-  cp "scripts/resources/tachidesk-server-debug-launcher.sh" "$output_dir/"
-  cp "scripts/resources/tachidesk-server-electron-launcher.sh" "$output_dir/"
-  cp "scripts/resources/tachidesk-server.desktop" "$output_dir/"
-  cp "scripts/resources/systemd"/* "$output_dir/"
+  cp "scripts/resources/pkg/tachidesk-server-browser-launcher.sh" "$output_dir/"
+  cp "scripts/resources/pkg/tachidesk-server-debug-launcher.sh" "$output_dir/"
+  cp "scripts/resources/pkg/tachidesk-server-electron-launcher.sh" "$output_dir/"
+  cp "scripts/resources/pkg/tachidesk-server.desktop" "$output_dir/"
+  cp "scripts/resources/pkg/systemd"/* "$output_dir/"
   cp "server/src/main/resources/icon/faviconlogo.png" \
     "$output_dir/tachidesk-server.png"
 }
@@ -274,7 +273,7 @@ make_windows_package() {
 # set -e is not recommended and unpredictable.
 # see https://stackoverflow.com/questions/64786/error-handling-in-bash
 # and http://mywiki.wooledge.org/BashFAO/105
-set -euo pipefail
+set -uo pipefail
 error() {
   local parent_lineno="$1"
   local message="$2"

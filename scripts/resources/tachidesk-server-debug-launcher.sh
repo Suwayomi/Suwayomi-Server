@@ -1,4 +1,5 @@
 #!/bin/sh
-exec /usr/bin/java \
+
+exec ./jre/bin/java \
     -Dsuwayomi.tachidesk.config.server.debugLogsEnabled=true \
-    -jar /usr/share/java/tachidesk-server/tachidesk-server.jar
+    -jar ./tachidesk-server.jar
