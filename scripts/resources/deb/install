@@ -1,6 +1,6 @@
 #!/usr/bin/dh-exec
 
-tachidesk-server.jar                usr/share/java/tachidesk-server/
+Tachidesk-Server.jar                usr/share/java/tachidesk-server/
 debian/tachidesk-server.png         usr/share/pixmaps/
 debian/tachidesk-server.desktop     usr/share/applications/
 debian/tachidesk-server.service     usr/lib/systemd/system/

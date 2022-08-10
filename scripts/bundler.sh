@@ -160,7 +160,7 @@ copy_linux_package_assets_to() {
 }
 
 make_linux_bundle() {
-  cp "$JAR" "$RELEASE_NAME/tachidesk-server.jar"
+  cp "$JAR" "$RELEASE_NAME/Tachidesk-Server.jar"
   cp "scripts/resources/tachidesk-server-browser-launcher.sh" "$RELEASE_NAME/"
   cp "scripts/resources/tachidesk-server-debug-launcher.sh" "$RELEASE_NAME/"
   cp "scripts/resources/tachidesk-server-electron-launcher.sh" "$RELEASE_NAME/"
@@ -169,7 +169,7 @@ make_linux_bundle() {
 }
 
 make_macos_bundle() {
-  cp "$JAR" "$RELEASE_NAME/Tachidesk.jar"
+  cp "$JAR" "$RELEASE_NAME/Tachidesk-Server.jar"
   cp "scripts/resources/Tachidesk Browser Launcher.command" "$RELEASE_NAME/"
   cp "scripts/resources/Tachidesk Debug Launcher.command" "$RELEASE_NAME/"
   cp "scripts/resources/Tachidesk Electron Launcher.command" "$RELEASE_NAME/"
@@ -184,7 +184,7 @@ make_deb_package() {
   temp_dir="$(mktemp -d)"
   trap "rm -rf $temp_dir" RETURN
 
-  cp "$JAR" "$RELEASE_NAME/tachidesk-server.jar"
+  cp "$JAR" "$RELEASE_NAME/Tachidesk-Server.jar"
   tar -I "gzip" -cvf "$RELEASE_NAME.tar.gz" "$RELEASE_NAME/"
   #behind $RELEASE_VERSION is underscore "_"
   local upstream_source="tachidesk-server_$RELEASE_VERSION.orig.tar.gz"
@@ -236,7 +236,7 @@ make_windows_bundle() {
   #WINEARCH=win32 wine "$rcedit" "$RELEASE_NAME/electron/electron.exe" \
   #    --set-icon "$icon"
 
-  cp "$JAR" "$RELEASE_NAME/Tachidesk.jar"
+  cp "$JAR" "$RELEASE_NAME/Tachidesk-Server.jar"
   cp "scripts/resources/Tachidesk Browser Launcher.bat" "$RELEASE_NAME"
   cp "scripts/resources/Tachidesk Debug Launcher.bat" "$RELEASE_NAME"
   cp "scripts/resources/Tachidesk Electron Launcher.bat" "$RELEASE_NAME"
