@@ -19,18 +19,18 @@
 - (r1098) fix formatting by kotlinter (by @AriaMoradi)
 - (r1099) bump WebUI (by @AriaMoradi)
 - (r1100) fix WebUI release name (by @AriaMoradi)
-- (r1101) Fix documentation errors ([#358](https://github.com/Suwayomi/scripts/pull/358) by @Syer10)
-- (r1102) Docs improvements ([#359](https://github.com/Suwayomi/scripts/pull/359) by @Syer10)
-- (r1103) Add linux-all.tar.gz & systemd service ([#366](https://github.com/Suwayomi/scripts/pull/366)) mahor1221@pm.me
-- (r1104) Publish to Windows Package Managar (WinGet [#369](https://github.com/Suwayomi/scripts/pull/369)) 83997633+vedantmgoyal2009@users.noreply.github.com
-- (r1105) Refactor scripts ([#370](https://github.com/Suwayomi/scripts/pull/370)) mahor1221@pm.me
-- (r1106) Run workflow jobs toghether ([#371](https://github.com/Suwayomi/scripts/pull/371)) mahor1221@pm.me
-- (r1107) Update gradle action ([#372](https://github.com/Suwayomi/scripts/pull/372)) mahor1221@pm.me
-- (r1108) Improve DocumentationDsl, bugfix default values and add queryParams ([#378](https://github.com/Suwayomi/scripts/pull/378) by @Syer10)
-- (r1109) Tidy up bundler script ([#380](https://github.com/Suwayomi/scripts/pull/380)) mahor1221@pm.me
-- (r1110) Replace linux-all with linux-assets ([#381](https://github.com/Suwayomi/scripts/pull/381)) mahor1221@pm.me
-- (r1111) Rename every instance of Tachidesk jar to Tachdidesk-Server.jar ([#384](https://github.com/Suwayomi/scripts/pull/384) by @AriaMoradi)
-- (r1112) Fix mistakes from #384 ([#385](https://github.com/Suwayomi/scripts/pull/385) by @AriaMoradi)
+- (r1101) Fix documentation errors ([#358](https://github.com/Suwayomi/Tachidesk-Server/pull/358) by @Syer10)
+- (r1102) Docs improvements ([#359](https://github.com/Suwayomi/Tachidesk-Server/pull/359) by @Syer10)
+- (r1103) Add linux-all.tar.gz & systemd service ([#366](https://github.com/Suwayomi/Tachidesk-Server/pull/366)) mahor1221@pm.me
+- (r1104) Publish to Windows Package Managar (WinGet [#369](https://github.com/Suwayomi/Tachidesk-Server/pull/369)) 83997633+vedantmgoyal2009@users.noreply.github.com
+- (r1105) Refactor scripts ([#370](https://github.com/Suwayomi/Tachidesk-Server/pull/370)) mahor1221@pm.me
+- (r1106) Run workflow jobs toghether ([#371](https://github.com/Suwayomi/Tachidesk-Server/pull/371)) mahor1221@pm.me
+- (r1107) Update gradle action ([#372](https://github.com/Suwayomi/Tachidesk-Server/pull/372)) mahor1221@pm.me
+- (r1108) Improve DocumentationDsl, bugfix default values and add queryParams ([#378](https://github.com/Suwayomi/Tachidesk-Server/pull/378) by @Syer10)
+- (r1109) Tidy up bundler script ([#380](https://github.com/Suwayomi/Tachidesk-Server/pull/380)) mahor1221@pm.me
+- (r1110) Replace linux-all with linux-assets ([#381](https://github.com/Suwayomi/Tachidesk-Server/pull/381)) mahor1221@pm.me
+- (r1111) Rename every instance of Tachidesk jar to Tachdidesk-Server.jar ([#384](https://github.com/Suwayomi/Tachidesk-Server/pull/384) by @AriaMoradi)
+- (r1112) Fix mistakes from #384 ([#385](https://github.com/Suwayomi/Tachidesk-Server/pull/385) by @AriaMoradi)
 
 ## Tachidesk-WebUI Changelog
 - (r943) fix default width ([#171](https://github.com/Suwayomi/Tachidesk-WebUI/pull/171) by @Robonau)
