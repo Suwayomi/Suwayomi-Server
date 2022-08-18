@@ -1,6 +1,8 @@
-# Server: v0.6.3-next + WebUI: r944
+# Server: v0.6.4 + WebUI: r946
 ## TL;DR
-- N/A
+- No new major features
+- Bug fixes and changes for packaging
+- Documentation changes
 
 ## Tachidesk-Server Changelog
 - (r1087) v0.6.3 (by @AriaMoradi)
@@ -15,10 +17,28 @@
 - (r1096) document all endpoints ([#350](https://github.com/Suwayomi/Tachidesk-Server/pull/350) by @Syer10)
 - (r1097) fix copymanga ([#354](https://github.com/Suwayomi/Tachidesk-Server/pull/354) by @AriaMoradi)
 - (r1098) fix formatting by kotlinter (by @AriaMoradi)
+- (r1099) bump WebUI (by @AriaMoradi)
+- (r1100) fix WebUI release name (by @AriaMoradi)
+- (r1101) Fix documentation errors ([#358](https://github.com/Suwayomi/scripts/pull/358) by @Syer10)
+- (r1102) Docs improvements ([#359](https://github.com/Suwayomi/scripts/pull/359) by @Syer10)
+- (r1103) Add linux-all.tar.gz & systemd service ([#366](https://github.com/Suwayomi/scripts/pull/366)) mahor1221@pm.me
+- (r1104) Publish to Windows Package Managar (WinGet [#369](https://github.com/Suwayomi/scripts/pull/369)) 83997633+vedantmgoyal2009@users.noreply.github.com
+- (r1105) Refactor scripts ([#370](https://github.com/Suwayomi/scripts/pull/370)) mahor1221@pm.me
+- (r1106) Run workflow jobs toghether ([#371](https://github.com/Suwayomi/scripts/pull/371)) mahor1221@pm.me
+- (r1107) Update gradle action ([#372](https://github.com/Suwayomi/scripts/pull/372)) mahor1221@pm.me
+- (r1108) Improve DocumentationDsl, bugfix default values and add queryParams ([#378](https://github.com/Suwayomi/scripts/pull/378) by @Syer10)
+- (r1109) Tidy up bundler script ([#380](https://github.com/Suwayomi/scripts/pull/380)) mahor1221@pm.me
+- (r1110) Replace linux-all with linux-assets ([#381](https://github.com/Suwayomi/scripts/pull/381)) mahor1221@pm.me
+- (r1111) Rename every instance of Tachidesk jar to Tachdidesk-Server.jar ([#384](https://github.com/Suwayomi/scripts/pull/384) by @AriaMoradi)
+- (r1112) Fix mistakes from #384 ([#385](https://github.com/Suwayomi/scripts/pull/385) by @AriaMoradi)
 
 ## Tachidesk-WebUI Changelog
 - (r943) fix default width ([#171](https://github.com/Suwayomi/Tachidesk-WebUI/pull/171) by @Robonau)
 - (r944) added an update checker button for library ([#172](https://github.com/Suwayomi/Tachidesk-WebUI/pull/172) by @infix)
+- (r945) fix download queue delete button ([#176](https://github.com/Suwayomi/Tachidesk-WebUI/pull/176) by @Kreach37)
+- (r946) fix mangadex filters ([#177](https://github.com/Suwayomi/Tachidesk-WebUI/pull/177) by @Robonau)
+
+
 
 # Server: v0.6.3 + WebUI: r942
 ## TL;DR
