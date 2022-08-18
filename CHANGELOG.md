@@ -22,7 +22,7 @@
 - (r1101) Fix documentation errors ([#358](https://github.com/Suwayomi/Tachidesk-Server/pull/358) by @Syer10)
 - (r1102) Docs improvements ([#359](https://github.com/Suwayomi/Tachidesk-Server/pull/359) by @Syer10)
 - (r1103) Add linux-all.tar.gz & systemd service ([#366](https://github.com/Suwayomi/Tachidesk-Server/pull/366) by @mahor1221)
-- (r1104) Publish to Windows Package Managar (WinGet) [#369](https://github.com/Suwayomi/Tachidesk-Server/pull/369) by @vedantmgoyal2009)
+- (r1104) Publish to Windows Package Managar (WinGet) ([#369](https://github.com/Suwayomi/Tachidesk-Server/pull/369) by @vedantmgoyal2009)
 - (r1105) Refactor scripts ([#370](https://github.com/Suwayomi/Tachidesk-Server/pull/370) by @mahor1221)
 - (r1106) Run workflow jobs toghether ([#371](https://github.com/Suwayomi/Tachidesk-Server/pull/371) by @mahor1221)
 - (r1107) Update gradle action ([#372](https://github.com/Suwayomi/Tachidesk-Server/pull/372) by @mahor1221)
