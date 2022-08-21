@@ -9,4 +9,5 @@ jobs:
       - uses: vedantmgoyal2009/winget-releaser@latest
         with:
           identifier: Suwayomi.Tachidesk-Server
+          installers-regex: '.*x64.msi$'
           token: ${{ secrets.WINGET_PUBLISH_PAT }}
