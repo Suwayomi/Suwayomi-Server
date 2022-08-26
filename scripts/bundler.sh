@@ -138,7 +138,7 @@ download_jre_and_electron() {
   local jre_dir
   if [ "$ext" = "zip" ]; then
     jre_dir="$(unzip "$JRE" | sed -n '2p' | cut -d: -f2 | xargs basename)"
-    mv "$jre_dir" "$RELEASE_NAME/jre"
+    mv -T "$jre_dir" "$RELEASE_NAME/jre"
   else
     # --strip-components=1: untar an archive without the root folder
     tar xvf "$JRE" --strip-components=1 -C "$RELEASE_NAME/jre/"
