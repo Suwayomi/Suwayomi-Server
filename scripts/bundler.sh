@@ -180,31 +180,27 @@ make_macos_bundle() {
 # https://wiki.debian.org/SimplePackagingTutorial
 # https://www.debian.org/doc/manuals/packaging-tutorial/packaging-tutorial.pdf
 make_deb_package() {
-  local temp_dir
-  temp_dir="$(mktemp -d)"
-  trap "rm -rf $temp_dir" RETURN
-
-  cp "$JAR" "$RELEASE_NAME/Tachidesk-Server.jar"
-  tar -I "gzip" -cvf "$RELEASE_NAME.tar.gz" "$RELEASE_NAME/"
-  #behind $RELEASE_VERSION is underscore "_"
-  local upstream_source="tachidesk-server_$RELEASE_VERSION.orig.tar.gz"
-  mv "$RELEASE_NAME.tar.gz" "$temp_dir/$upstream_source"
-
-  cp -r "scripts/resources/deb/" "$RELEASE_NAME/debian/"
-  copy_linux_package_assets_to "$RELEASE_NAME/debian/"
-  sed -i "s/\$pkgver/$RELEASE_VERSION/" "$RELEASE_NAME/debian/changelog"
-  sed -i "s/\$pkgrel/1/"                "$RELEASE_NAME/debian/changelog"
   #behind $RELEASE_VERSION is hyphen "-"
   local source_dir="tachidesk-server-$RELEASE_VERSION"
-  mv "$RELEASE_NAME/" "$temp_dir/$source_dir/"
+  #behind $RELEASE_VERSION is underscore "_"
+  local upstream_source="tachidesk-server_$RELEASE_VERSION.orig.tar.gz"
+
+  mkdir "$RELEASE_NAME/$source_dir/"
+  cp "$JAR" "$RELEASE_NAME/$source_dir/Tachidesk-Server.jar"
+  copy_linux_package_assets_to "$RELEASE_NAME/$source_dir/"
+  tar -I "gzip" -C "$RELEASE_NAME/" -cvf "$upstream_source" "$source_dir"
+
+  cp -r "scripts/resources/deb/" "$RELEASE_NAME/$source_dir/debian/"
+  sed -i "s/\$pkgver/$RELEASE_VERSION/" "$RELEASE_NAME/$source_dir/debian/changelog"
+  sed -i "s/\$pkgrel/1/"                "$RELEASE_NAME/$source_dir/debian/changelog"
 
   sudo apt install devscripts build-essential dh-exec
-  cd "$temp_dir/$source_dir/"
+  cd "$RELEASE_NAME/$source_dir/"
   dpkg-buildpackage --no-sign --build=all
   cd -
 
   local deb="tachidesk-server_$RELEASE_VERSION-1_all.deb"
-  mv "$temp_dir/$deb" "$RELEASE"
+  mv "$RELEASE_NAME/$deb" "$RELEASE"
 }
 
 make_windows_bundle() {
