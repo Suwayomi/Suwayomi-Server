@@ -1,3 +1,23 @@
+# Server: v0.6.5 + WebUI: r946
+## TL;DR
+- Fixed Windows bundler
+
+## Tachidesk-Server Changelog
+- (r1113) v0.6.4 (by @AriaMoradi)
+- (r1114) fix broken links (by @AriaMoradi)
+- (r1115) fix more broken stuff (by @AriaMoradi)
+- (r1116) fix more broken stuff (by @AriaMoradi)
+- (r1117) fix more broken stuff (by @AriaMoradi)
+- (r1118) Update winget.yml ([#393](https://github.com/Suwayomi/Tachidesk-Server/pull/393) by @vedantmgoyal2009)
+- (r1119) fix jre path([#396](https://github.com/Suwayomi/Tachidesk-Server/pull/396) by @voltrare)
+- (r1120) Fix deb package ([#397](https://github.com/Suwayomi/Tachidesk-Server/pull/397)) by @mahor1221)
+- (r1121) bump version (by @AriaMoradi)
+
+## Tachidesk-WebUI Changelog
+- None
+
+
+
 # Server: v0.6.4 + WebUI: r946
 ## TL;DR
 - No new major features
