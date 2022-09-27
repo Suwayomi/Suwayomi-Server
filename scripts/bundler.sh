@@ -78,7 +78,7 @@ main() {
       download_jre_and_electron
 
       RELEASE="$RELEASE_NAME.zip"
-      make_macos_bundle
+      make_macosarm_bundle
       move_release_to_output_dir
       ;;
     windows-x86)
@@ -173,6 +173,15 @@ make_macos_bundle() {
   cp "scripts/resources/Tachidesk Browser Launcher.command" "$RELEASE_NAME/"
   cp "scripts/resources/Tachidesk Debug Launcher.command" "$RELEASE_NAME/"
   cp "scripts/resources/Tachidesk Electron Launcher.command" "$RELEASE_NAME/"
+
+  zip -9 -r "$RELEASE" "$RELEASE_NAME/"
+}
+
+make_macosarm_bundle() {
+  cp "$JAR" "$RELEASE_NAME/Tachidesk-Server.jar"
+  cp "scripts/resources/Tachidesk Browser Launcher Arm64.command" "$RELEASE_NAME/"
+  cp "scripts/resources/Tachidesk Debug Launcher Arm64.command" "$RELEASE_NAME/"
+  cp "scripts/resources/Tachidesk Electron Launcher Arm64.command" "$RELEASE_NAME/"
 
   zip -9 -r "$RELEASE" "$RELEASE_NAME/"
 }
