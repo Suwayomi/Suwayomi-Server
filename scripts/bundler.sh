@@ -50,7 +50,9 @@ main() {
       ;;
     linux-x64)
       JRE="OpenJDK8U-jre_x64_linux_hotspot_8u302b08.tar.gz"
-      JRE_URL="https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u302-b08/$JRE"
+      JRE_RELEASE="jdk8u302-b08"
+      JRE_DIR="$JRE_RELEASE-jre"
+      JRE_URL="https://github.com/adoptium/temurin8-binaries/releases/download/$JRE_RELEASE/$JRE"
       ELECTRON="electron-$electron_version-linux-x64.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_jre_and_electron
@@ -61,7 +63,9 @@ main() {
       ;;
     macOS-x64)
       JRE="OpenJDK8U-jre_x64_mac_hotspot_8u302b08.tar.gz"
-      JRE_URL="https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u302-b08/$JRE"
+      JRE_RELEASE="jdk8u302-b08"
+      JRE_DIR="$JRE_RELEASE-jre"
+      JRE_URL="https://github.com/adoptium/temurin8-binaries/releases/download/$JRE_RELEASE/$JRE"
       ELECTRON="electron-$electron_version-darwin-x64.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_jre_and_electron
@@ -72,6 +76,8 @@ main() {
       ;;
     macOS-arm64)
       JRE="zulu8.56.0.23-ca-jre8.0.302-macosx_aarch64.tar.gz"
+      JRE_RELEASE="zulu8.56.0.23-ca-jre8.0.302-macosx_aarch64"
+      JRE_DIR="$JRE_RELEASE/zulu-8.jre"
       JRE_URL="https://cdn.azul.com/zulu/bin/$JRE"
       ELECTRON="electron-$electron_version-darwin-arm64.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
@@ -83,7 +89,9 @@ main() {
       ;;
     windows-x86)
       JRE="OpenJDK8U-jre_x86-32_windows_hotspot_8u292b10.zip"
-      JRE_URL="https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u292-b10/$JRE"
+      JRE_RELEASE="jdk8u292-b10"
+      JRE_DIR="$JRE_RELEASE-jre"
+      JRE_URL="https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/$JRE_RELEASE/$JRE"
       ELECTRON="electron-$electron_version-win32-ia32.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_jre_and_electron
@@ -98,7 +106,9 @@ main() {
       ;;
     windows-x64)
       JRE="OpenJDK8U-jre_x64_windows_hotspot_8u302b08.zip"
-      JRE_URL="https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u302-b08/$JRE"
+      JRE_RELEASE="jdk8u302-b08"
+      JRE_DIR="$JRE_RELEASE-jre"
+      JRE_URL="https://github.com/adoptium/temurin8-binaries/releases/download/$JRE_RELEASE/$JRE"
       ELECTRON="electron-$electron_version-win32-x64.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_jre_and_electron
@@ -133,17 +143,15 @@ download_jre_and_electron() {
     curl -L "$ELECTRON_URL" -o "$ELECTRON"
   fi
 
-  mkdir -p "$RELEASE_NAME/jre/"
   local ext="${JRE##*.}"
-  local jre_dir
   if [ "$ext" = "zip" ]; then
-    jre_dir="$(unzip "$JRE" | sed -n '2p' | cut -d: -f2 | xargs basename)"
-    mv -T "$jre_dir" "$RELEASE_NAME/jre"
+    unzip "$JRE"
   else
-    # --strip-components=1: untar an archive without the root folder
-    tar xvf "$JRE" --strip-components=1 -C "$RELEASE_NAME/jre/"
+    tar xvf "$JRE"
   fi
+  mv "$JRE_DIR" "$RELEASE_NAME/jre"
   unzip "$ELECTRON" -d "$RELEASE_NAME/electron/"
+  tree
 }
 
 copy_linux_package_assets_to() {
