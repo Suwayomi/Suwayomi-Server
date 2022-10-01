@@ -12,6 +12,7 @@ import mu.KotlinLogging
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import suwayomi.tachidesk.manga.impl.Chapter.writeMetaData
 import suwayomi.tachidesk.manga.impl.Page.getPageImage
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
@@ -65,6 +66,8 @@ class Downloader(private val downloadQueue: CopyOnWriteArrayList<DownloadChapter
                         it[isDownloaded] = true
                     }
                 }
+
+                writeMetaData(download.mangaId, download.chapterIndex)
                 step()
 
                 downloadQueue.removeIf { it.mangaId == download.mangaId && it.chapterIndex == download.chapterIndex }
