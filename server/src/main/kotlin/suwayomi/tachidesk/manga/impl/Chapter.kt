@@ -19,6 +19,8 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import org.w3c.dom.Document
+import org.w3c.dom.Element
 import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.util.getChapterDir
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
@@ -34,6 +36,13 @@ import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import java.io.File
 import java.time.Instant
+import javax.xml.parsers.DocumentBuilder
+import javax.xml.parsers.DocumentBuilderFactory
+import javax.xml.transform.OutputKeys
+import javax.xml.transform.Transformer
+import javax.xml.transform.TransformerFactory
+import javax.xml.transform.dom.DOMSource
+import javax.xml.transform.stream.StreamResult
 
 object Chapter {
     /** get chapter list when showing a manga */
@@ -215,6 +224,72 @@ object Chapter {
                 ChapterMetaTable.update({ (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }) {
                     it[ChapterMetaTable.value] = value
                 }
+            }
+        }
+    }
+
+    fun writeMetaData(mangaId: Int, chapterIndex: Int) {
+        val chapterId = transaction {
+            ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }
+                .first()[ChapterTable.id].value
+        }
+        val chapterDir = getChapterDir(mangaId, chapterId)
+        transaction {
+            (ChapterTable innerJoin MangaTable).select {
+                (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId)
+            }.forEach {
+
+                val docBuilder: DocumentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder()
+                val doc: Document = docBuilder.newDocument()
+
+                // Create the root node
+                val rootElement: Element = doc.createElement("ComicInfo")
+                rootElement.setAttribute("xmlns:xsd", "http://www.w3.org/2001/XMLSchema")
+                rootElement.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
+
+                // manga chapter title
+                val title: Element = doc.createElement("Title")
+                title.appendChild(doc.createTextNode(it[ChapterTable.name]))
+                rootElement.appendChild(title)
+
+                // manga series
+                val series: Element = doc.createElement("Series")
+                series.appendChild(doc.createTextNode(it[MangaTable.title]))
+                rootElement.appendChild(series)
+
+                // manga chapter number
+                val chapter_number: Element = doc.createElement("Number")
+                chapter_number.appendChild(doc.createTextNode(it[ChapterTable.chapter_number].toString()))
+                rootElement.appendChild(chapter_number)
+
+                // manga author
+                val author: Element = doc.createElement("Writer")
+                author.appendChild(doc.createTextNode(it[MangaTable.author]))
+                rootElement.appendChild(author)
+
+                // manga artist
+                val artist: Element = doc.createElement("Colorist")
+                artist.appendChild(doc.createTextNode(it[MangaTable.artist]))
+                rootElement.appendChild(artist)
+
+                // manga chapter scanlator
+                val scanlator: Element = doc.createElement("Letterer")
+                scanlator.appendChild(doc.createTextNode(it[ChapterTable.scanlator]))
+                rootElement.appendChild(scanlator)
+
+                // Create xml doc
+                doc.appendChild(rootElement)
+
+                val transformer: Transformer = TransformerFactory.newInstance().newTransformer()
+
+// ==== Start: Pretty print
+                // https://stackoverflow.com/questions/139076/how-to-pretty-print-xml-from-java
+                transformer.setOutputProperty(OutputKeys.INDENT, "yes")
+                transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2")
+                // ==== End: Pretty print
+
+// Write xml file
+                transformer.transform(DOMSource(doc), StreamResult(File(chapterDir + "/ComicInfo.xml").getAbsolutePath()))
             }
         }
     }
