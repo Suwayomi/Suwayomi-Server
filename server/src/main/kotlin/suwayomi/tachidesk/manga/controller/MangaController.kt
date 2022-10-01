@@ -297,6 +297,27 @@ object MangaController {
         }
     )
 
+    /** used to write chapter metadata */
+    val chapterMetaData = handler(
+        pathParam<Int>("mangaId"),
+        pathParam<Int>("chapterIndex"),
+        documentWith = {
+            withOperation {
+                summary("Force Tachidesk to write out the ComicInfo metadata file.")
+                description("Writes out the ComicInfo metadata file in the Chapter directory on the server's disk.")
+            }
+        },
+        behaviorOf = { ctx, mangaId, chapterIndex ->
+            Chapter.writeMetaData(mangaId, chapterIndex)
+
+            ctx.status(200)
+        },
+        withResults = {
+            httpCode(HttpCode.OK)
+            httpCode(HttpCode.NOT_FOUND)
+        }
+    )
+
     /** get page at index "index" */
     val pageRetrieve = handler(
         pathParam<Int>("mangaId"),

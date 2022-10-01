@@ -71,6 +71,8 @@ object MangaAPI {
 
             patch("{mangaId}/chapter/{chapterIndex}/meta", MangaController.chapterMeta)
 
+            get("{mangaId}/chapter/{chapterIndex}/writemetadata", MangaController.chapterMetaData)
+
             get("{mangaId}/chapter/{chapterIndex}/page/{index}", MangaController.pageRetrieve)
         }
 
