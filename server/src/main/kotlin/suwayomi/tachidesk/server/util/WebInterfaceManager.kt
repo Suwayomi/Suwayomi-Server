@@ -54,7 +54,6 @@ private fun directoryMD5(fileDir: String): String {
 fun setupWebInterface() {
     when (serverConfig.webUIFlavor) {
         "WebUI" -> setupWebUI()
-        "Sorayomi" -> setupSorayomi()
         "Custom" -> {
             /* do nothing */
         }
@@ -134,65 +133,5 @@ fun setupWebUI() {
         File(applicationDirs.webUIRoot).mkdirs()
         ZipFile(webUIZipPath).extractAll(applicationDirs.webUIRoot)
         logger.info { "Extracting WebUI zip Done." }
-    }
-}
-
-/** Make sure a valid copy of Sorayomi is available */
-fun setupSorayomi() {
-    // check if we have Sorayomi installed and is correct version
-    val sorayomiVersionFile = File(applicationDirs.webUIRoot + "/version.json")
-    if (sorayomiVersionFile.exists() && json.parseToJsonElement(
-            sorayomiVersionFile.readText()
-        ).jsonObject["version"]!!.jsonPrimitive.content == BuildConfig.SORAYOMI_TAG
-    ) {
-        logger.info { "Sorayomi Static files exists and is the correct revision" }
-        logger.info { "Verifying Sorayomi Static files..." }
-        logger.info { "md5: " + directoryMD5(applicationDirs.webUIRoot) }
-    } else {
-        File(applicationDirs.webUIRoot).deleteRecursively()
-
-        val sorayomiZip = "tachidesk-sorayomi-${BuildConfig.SORAYOMI_TAG}-web.zip"
-        val sorayomiZipPath = "$tmpDir/$sorayomiZip"
-        val sorayomiZipFile = File(sorayomiZipPath)
-
-        // download sorayomi zip
-        val sorayomiZipURL = "${BuildConfig.SORAYOMI_REPO}/releases/download/${BuildConfig.SORAYOMI_TAG}/$sorayomiZip"
-        sorayomiZipFile.delete()
-
-        logger.info { "Downloading Sorayomi zip from the Internet..." }
-        val data = ByteArray(1024)
-
-        sorayomiZipFile.outputStream().use { sorayomiZipFileOut ->
-
-            val connection = URL(sorayomiZipURL).openConnection() as HttpURLConnection
-            connection.connect()
-            val contentLength = connection.contentLength
-
-            connection.inputStream.buffered().use { inp ->
-                var totalCount = 0
-
-                print("Download progress: % 00")
-                while (true) {
-                    val count = inp.read(data, 0, 1024)
-
-                    if (count == -1)
-                        break
-
-                    totalCount += count
-                    val percentage = (totalCount.toFloat() / contentLength * 100).toInt().toString().padStart(2, '0')
-                    print("\b\b$percentage")
-
-                    sorayomiZipFileOut.write(data, 0, count)
-                }
-                println()
-                logger.info { "Downloading Sorayomi Done." }
-            }
-        }
-
-        // extract Sorayomi zip
-        logger.info { "Extracting Sorayomi zip..." }
-        File(applicationDirs.webUIRoot).mkdirs()
-        ZipFile(sorayomiZipPath).extractAll(applicationDirs.webUIRoot)
-        logger.info { "Extracting Sorayomi zip Done." }
     }
 }
