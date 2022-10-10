@@ -158,7 +158,7 @@ object ExtensionController {
             )
         },
         withResults = {
-            httpCode(HttpCode.OK)
+            image(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
         }
     )
