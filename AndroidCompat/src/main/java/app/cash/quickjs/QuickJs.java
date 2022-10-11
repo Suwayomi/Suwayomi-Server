@@ -27,8 +27,7 @@ public final class QuickJs implements Closeable {
             Object value = engine.eval(script);
             return translateType(value);
         } catch (Exception exception) {
-            exception.printStackTrace();
-            throw new QuickJsException(exception.getMessage());
+            throw new QuickJsException(exception.getMessage(), exception);
         }
     }
 
