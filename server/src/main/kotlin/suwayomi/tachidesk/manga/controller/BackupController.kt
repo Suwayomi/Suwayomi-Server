@@ -92,7 +92,7 @@ object BackupController {
             )
         },
         withResults = {
-            mime(HttpCode.OK, "application/octet-stream")
+            stream(HttpCode.OK)
         }
     )
 
@@ -124,7 +124,7 @@ object BackupController {
             )
         },
         withResults = {
-            mime(HttpCode.OK, "application/octet-stream")
+            stream(HttpCode.OK)
         }
     )
 
