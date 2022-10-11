@@ -6,26 +6,26 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import mu.KotlinLogging
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
 
-object UpdaterSocket : Websocket() {
+object UpdaterSocket : Websocket<UpdateStatus>() {
     private val logger = KotlinLogging.logger {}
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val updater by DI.global.instance<IUpdater>()
     private var job: Job? = null
 
-    override fun notifyClient(ctx: WsContext) {
-        ctx.send(updater.getStatus().value.getJsonSummary())
+    override fun notifyClient(ctx: WsContext, value: UpdateStatus?) {
+        ctx.send(value ?: updater.status.value)
     }
 
     override fun handleRequest(ctx: WsMessageContext) {
         when (ctx.message()) {
-            "STATUS" -> notifyClient(ctx)
+            "STATUS" -> notifyClient(ctx, updater.status.value)
             else -> ctx.send(
                 """
                         |Invalid command.
@@ -40,7 +40,7 @@ object UpdaterSocket : Websocket() {
     override fun addClient(ctx: WsContext) {
         logger.info { ctx.sessionId }
         super.addClient(ctx)
-        if (job == null) {
+        if (job?.isActive != true) {
             job = start()
         }
     }
@@ -54,12 +54,10 @@ object UpdaterSocket : Websocket() {
     }
 
     fun start(): Job {
-        return scope.launch {
-            while (true) {
-                updater.getStatus().collectLatest {
-                    notifyAllClients()
-                }
+        return updater.status
+            .onEach {
+                notifyAllClients(it)
             }
-        }
+            .launchIn(scope)
     }
 }

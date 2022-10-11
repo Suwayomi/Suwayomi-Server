@@ -32,7 +32,7 @@ internal class UpdateControllerTest : ApplicationTest() {
         UpdateController.categoryUpdate(ctx)
         verify { ctx.status(HttpCode.BAD_REQUEST) }
         val updater by DI.global.instance<IUpdater>()
-        assertEquals(0, updater.getStatus().value.numberOfJobs)
+        assertEquals(0, updater.status.value.numberOfJobs)
     }
 
     @Test
@@ -44,7 +44,7 @@ internal class UpdateControllerTest : ApplicationTest() {
         UpdateController.categoryUpdate(ctx)
         verify { ctx.status(HttpCode.OK) }
         val updater by DI.global.instance<IUpdater>()
-        assertEquals(1, updater.getStatus().value.numberOfJobs)
+        assertEquals(1, updater.status.value.numberOfJobs)
     }
 
     @Test
@@ -60,7 +60,7 @@ internal class UpdateControllerTest : ApplicationTest() {
         UpdateController.categoryUpdate(ctx)
         verify { ctx.status(HttpCode.OK) }
         val updater by DI.global.instance<IUpdater>()
-        assertEquals(3, updater.getStatus().value.numberOfJobs)
+        assertEquals(3, updater.status.value.numberOfJobs)
     }
 
     private fun createLibraryManga(
