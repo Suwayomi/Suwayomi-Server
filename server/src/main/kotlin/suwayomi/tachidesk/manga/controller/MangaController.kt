@@ -23,6 +23,7 @@ import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.queryParam
 import suwayomi.tachidesk.server.util.withOperation
+import kotlin.time.Duration.Companion.days
 
 object MangaController {
     /** get manga info */
@@ -63,14 +64,14 @@ object MangaController {
                 future { Manga.getMangaThumbnail(mangaId, useCache) }
                     .thenApply {
                         ctx.header("content-type", it.second)
-                        val httpCacheSeconds = 60 * 60 * 24
+                        val httpCacheSeconds = 1.days.inWholeSeconds
                         ctx.header("cache-control", "max-age=$httpCacheSeconds")
                         it.first
                     }
             )
         },
         withResults = {
-            mime(HttpCode.OK, "image/*")
+            image(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
         }
     )
@@ -319,7 +320,7 @@ object MangaController {
             )
         },
         withResults = {
-            mime(HttpCode.OK, "image/*")
+            image(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
         }
     )

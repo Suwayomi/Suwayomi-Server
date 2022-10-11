@@ -152,8 +152,14 @@ class ResultsBuilder {
     fun plainText(code: HttpCode) {
         results += ResultType.MimeType(code, "text/plain", String::class.java)
     }
-    fun mime(code: HttpCode, mime: String) {
-        results += ResultType.MimeType(code, mime, null)
+    fun image(code: HttpCode) {
+        results += ResultType.MimeType(code, "image/*", ByteArray::class.java)
+    }
+    fun stream(code: HttpCode) {
+        results += ResultType.MimeType(code, "application/octet-stream", ByteArray::class.java)
+    }
+    inline fun <reified T> mime(code: HttpCode, mime: String) {
+        results += ResultType.MimeType(code, mime, T::class.java)
     }
     fun httpCode(code: HttpCode) {
         results += ResultType.StatusCode(code)
@@ -162,9 +168,9 @@ class ResultsBuilder {
 
 sealed class ResultType {
     abstract fun applyTo(documentation: OpenApiDocumentation)
-    data class MimeType(val code: HttpCode, val mime: String, private val clazz: Class<*>?) : ResultType() {
+    data class MimeType(val code: HttpCode, val mime: String, private val clazz: Class<*>) : ResultType() {
         override fun applyTo(documentation: OpenApiDocumentation) {
-            documentation.result(code.status.toString(), clazz)
+            documentation.result(code.status.toString(), clazz, mime)
         }
     }
     data class StatusCode(val code: HttpCode) : ResultType() {
