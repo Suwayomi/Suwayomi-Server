@@ -2,7 +2,6 @@ package suwayomi.tachidesk.manga.controller
 
 import io.javalin.http.HttpCode
 import io.javalin.websocket.WsConfig
-import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
 import org.kodein.di.DI
 import org.kodein.di.conf.global
@@ -15,6 +14,7 @@ import suwayomi.tachidesk.manga.impl.update.UpdateStatus
 import suwayomi.tachidesk.manga.impl.update.UpdaterSocket
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
+import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.util.formParam
@@ -68,22 +68,18 @@ object UpdateController {
             }
         },
         behaviorOf = { ctx, categoryId ->
-            val categoriesForUpdate = ArrayList<CategoryDataClass>()
             if (categoryId == null) {
                 logger.info { "Adding Library to Update Queue" }
-                categoriesForUpdate.addAll(Category.getCategoryList())
+                addCategoriesToUpdateQueue(Category.getCategoryList(), true)
             } else {
                 val category = Category.getCategoryById(categoryId)
                 if (category != null) {
-                    categoriesForUpdate.add(category)
+                    addCategoriesToUpdateQueue(listOf(category), true)
                 } else {
                     logger.info { "No Category found" }
                     ctx.status(HttpCode.BAD_REQUEST)
-                    return@handler
                 }
             }
-            addCategoriesToUpdateQueue(categoriesForUpdate, true)
-            ctx.status(HttpCode.OK)
         },
         withResults = {
             httpCode(HttpCode.OK)
@@ -94,14 +90,15 @@ object UpdateController {
     private fun addCategoriesToUpdateQueue(categories: List<CategoryDataClass>, clear: Boolean = false) {
         val updater by DI.global.instance<IUpdater>()
         if (clear) {
-            runBlocking { updater.reset() }
+            updater.reset()
         }
-        categories.forEach { category ->
-            val mangas = CategoryManga.getCategoryMangaList(category.id)
-            mangas.forEach { manga ->
+        categories
+            .flatMap { CategoryManga.getCategoryMangaList(it.id) }
+            .distinctBy { it.id }
+            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, MangaDataClass::title))
+            .forEach { manga ->
                 updater.addMangaToQueue(manga)
             }
-        }
     }
 
     fun categoryUpdateWS(ws: WsConfig) {
@@ -125,7 +122,7 @@ object UpdateController {
         },
         behaviorOf = { ctx ->
             val updater by DI.global.instance<IUpdater>()
-            ctx.json(updater.getStatus().value.getJsonSummary())
+            ctx.json(updater.status.value)
         },
         withResults = {
             json<UpdateStatus>(HttpCode.OK)
