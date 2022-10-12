@@ -45,6 +45,10 @@ public final class QuickJs implements Closeable {
             ConsString consString = (ConsString) obj;
             return consString.toString();
         }
+        if (obj instanceof Long) {
+            Long value = (Long) obj;
+            return value.intValue();
+        }
         return obj;
     }
 
