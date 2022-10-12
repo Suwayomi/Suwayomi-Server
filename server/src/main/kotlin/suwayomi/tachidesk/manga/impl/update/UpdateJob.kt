@@ -9,9 +9,7 @@ enum class JobStatus {
     FAILED
 }
 
-class UpdateJob(val manga: MangaDataClass, var status: JobStatus = JobStatus.PENDING) {
-
-    override fun toString(): String {
-        return "UpdateJob(status=$status, manga=${manga.title})"
-    }
-}
+data class UpdateJob(
+    val manga: MangaDataClass,
+    val status: JobStatus = JobStatus.PENDING
+)
