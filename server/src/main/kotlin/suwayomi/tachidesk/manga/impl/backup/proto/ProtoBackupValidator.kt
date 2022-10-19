@@ -12,13 +12,18 @@ import okio.gzip
 import okio.source
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.manga.impl.backup.AbstractBackupValidator
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSerializer
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import java.io.InputStream
 
-object ProtoBackupValidator : AbstractBackupValidator() {
+object ProtoBackupValidator {
+    data class ValidationResult(
+        val missingSources: List<String>,
+        val missingTrackers: List<String>,
+        val mangasMissingSources: List<String>
+    )
+
     fun validate(backup: Backup): ValidationResult {
         if (backup.backupManga.isEmpty()) {
             throw Exception("Backup does not contain any manga.")
@@ -33,6 +38,12 @@ object ProtoBackupValidator : AbstractBackupValidator() {
                 .sorted()
         }
 
+        val brokenSourceIds = backup.brokenBackupSources.map { it.sourceId }
+
+        val mangasMissingSources = backup.backupManga
+            .filter { it.source in brokenSourceIds }
+            .map { manga -> "${manga.title} (from ${backup.brokenBackupSources.first { it.sourceId == manga.source }.name})" }
+
 //        val trackers = backup.backupManga
 //            .flatMap { it.tracking }
 //            .map { it.syncId }
@@ -45,7 +56,7 @@ object ProtoBackupValidator : AbstractBackupValidator() {
 //            .map { context.getString(it.nameRes()) }
 //            .sorted()
 
-        return ValidationResult(missingSources, missingTrackers)
+        return ValidationResult(missingSources, missingTrackers, mangasMissingSources)
     }
 
     suspend fun validate(sourceStream: InputStream): ValidationResult {
