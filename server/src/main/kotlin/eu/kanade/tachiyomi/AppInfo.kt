@@ -6,6 +6,9 @@ package eu.kanade.tachiyomi
  * @since extension-lib 1.3
  */
 object AppInfo {
-    fun getVersionCode() = BuildConfig.VERSION_CODE
-    fun getVersionName() = BuildConfig.VERSION_NAME
+    /** should be something like 74 */
+    fun getVersionCode() = suwayomi.tachidesk.server.BuildConfig.REVISION.substring(1).toInt()
+
+    /** should be something like "0.13.1" */
+    fun getVersionName() = suwayomi.tachidesk.server.BuildConfig.VERSION.substring(1)
 }
