@@ -19,10 +19,10 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
-import suwayomi.tachidesk.manga.impl.backup.AbstractBackupValidator.ValidationResult
 import suwayomi.tachidesk.manga.impl.backup.models.Chapter
 import suwayomi.tachidesk.manga.impl.backup.models.Manga
 import suwayomi.tachidesk.manga.impl.backup.models.Track
+import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.ValidationResult
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.validate
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupHistory
@@ -77,6 +77,8 @@ object ProtoBackupImport : ProtoBackupBase() {
                 Restore Summary:
                 - Missing Sources:
                     ${validationResult.missingSources.joinToString("\n                    ")}
+                - Titles missing Sources:
+                    ${validationResult.mangasMissingSources.joinToString("\n                    ")}
                 - Missing Trackers:
                     ${validationResult.missingTrackers.joinToString("\n                    ")}
             """.trimIndent()
