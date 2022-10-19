@@ -8,8 +8,6 @@ package suwayomi.tachidesk.server.util
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import mu.KotlinLogging
 import net.lingala.zip4j.ZipFile
 import org.kodein.di.DI
