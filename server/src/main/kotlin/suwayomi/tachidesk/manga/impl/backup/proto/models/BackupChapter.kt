@@ -20,7 +20,7 @@ data class BackupChapter(
     @ProtoNumber(8) var dateUpload: Long = 0,
     // chapterNumber is called number is 1.x
     @ProtoNumber(9) var chapterNumber: Float = 0F,
-    @ProtoNumber(10) var sourceOrder: Int = 0
+    @ProtoNumber(10) var sourceOrder: Int = 0,
 ) {
     fun toChapterImpl(): ChapterImpl {
         return ChapterImpl().apply {

@@ -21,5 +21,5 @@ fun CategoryTable.toDataClass(categoryEntry: ResultRow) = CategoryDataClass(
     categoryEntry[this.id].value,
     categoryEntry[order],
     categoryEntry[name],
-    categoryEntry[isDefault]
+    categoryEntry[isDefault],
 )

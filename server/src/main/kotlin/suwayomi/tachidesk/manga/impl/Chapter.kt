@@ -106,9 +106,7 @@ object Chapter {
         val dbChapterCount = transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.count() }
         if (dbChapterCount > chapterCount) { // we got some clean up due
             val dbChapterList = transaction {
-                ChapterTable.select { ChapterTable.manga eq mangaId }
-                    .orderBy(ChapterTable.url to ASC)
-                    .toList()
+                ChapterTable.select { ChapterTable.manga eq mangaId }.orderBy(ChapterTable.url to ASC).toList()
             }
             val chapterUrls = chapterList.map { it.url }.toSet()
 

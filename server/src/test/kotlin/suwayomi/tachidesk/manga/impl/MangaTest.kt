@@ -36,20 +36,17 @@ class MangaTest : ApplicationTest() {
             "Manga meta should still only have one pair"
         )
         assertEquals(
-            "newValue",
-            Manga.getMangaMetaMap(metaManga)["test"],
+            "newValue", Manga.getMangaMetaMap(metaManga)["test"],
             "Manga meta with key 'test' should use the value `newValue`"
         )
 
         Manga.modifyMangaMeta(metaManga, "test2", "value2")
         assertEquals(
-            2,
-            Manga.getMangaMetaMap(metaManga).size,
+            2, Manga.getMangaMetaMap(metaManga).size,
             "Manga Meta should have an additional pair"
         )
         assertEquals(
-            "value2",
-            Manga.getMangaMetaMap(metaManga)["test2"],
+            "value2", Manga.getMangaMetaMap(metaManga)["test2"],
             "Manga Meta for key 'test2' should be 'value2'"
         )
     }

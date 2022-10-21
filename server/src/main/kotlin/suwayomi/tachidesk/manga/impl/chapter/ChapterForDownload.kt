@@ -37,6 +37,7 @@ private class ChapterForDownload(
     private val mangaId: Int
 ) {
     suspend fun asDownloadReady(): ChapterDataClass {
+
         if (isNotCompletelyDownloaded()) {
             markAsNotDownloaded()
 

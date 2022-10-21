@@ -87,8 +87,7 @@ class FilterListTest : ApplicationTest() {
         val filterList = getFilterList(source.id, false)
 
         assertEquals(
-            0,
-            filterList.size
+            0, filterList.size
         )
     }
 
@@ -112,7 +111,7 @@ class FilterListTest : ApplicationTest() {
                 listOf(
                     TestCheckBox("Write Tests"),
                     TestCheckBox("Write More Tests"),
-                    TestCheckBox("Write Even More Tests")
+                    TestCheckBox("Write Even More Tests"),
                 )
             ),
             Sort(
@@ -161,7 +160,7 @@ class FilterListTest : ApplicationTest() {
                     listOf(
                         FilterObject("CheckBox", (source.mFilterList[6].state as List<Filter<*>>)[0]),
                         FilterObject("CheckBox", (source.mFilterList[6].state as List<Filter<*>>)[1]),
-                        FilterObject("CheckBox", (source.mFilterList[6].state as List<Filter<*>>)[2])
+                        FilterObject("CheckBox", (source.mFilterList[6].state as List<Filter<*>>)[2]),
                     )
                 )
             )

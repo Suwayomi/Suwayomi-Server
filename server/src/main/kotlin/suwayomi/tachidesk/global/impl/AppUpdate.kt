@@ -46,13 +46,13 @@ object AppUpdate {
             UpdateDataClass(
                 "Stable",
                 stableJson["tag_name"]!!.jsonPrimitive.content,
-                stableJson["html_url"]!!.jsonPrimitive.content
+                stableJson["html_url"]!!.jsonPrimitive.content,
             ),
             UpdateDataClass(
                 "Preview",
                 previewJson["tag_name"]!!.jsonPrimitive.content,
-                previewJson["html_url"]!!.jsonPrimitive.content
-            )
+                previewJson["html_url"]!!.jsonPrimitive.content,
+            ),
         )
     }
 }

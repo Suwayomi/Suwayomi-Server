@@ -29,6 +29,7 @@ import uy.kohesive.injekt.api.get
 class AppModule(val app: Application) : InjektModule {
 
     override fun InjektRegistrar.registerInjectables() {
+
         addSingleton(app)
 
 //        addSingletonFactory { PreferencesHelper(app) }

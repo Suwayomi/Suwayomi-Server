@@ -78,7 +78,7 @@ object Search {
 
     data class FilterObject(
         val type: String,
-        val filter: Filter<*>
+        val filter: Filter<*>,
     )
 
     fun setFilter(sourceId: Long, changes: List<FilterChange>) {

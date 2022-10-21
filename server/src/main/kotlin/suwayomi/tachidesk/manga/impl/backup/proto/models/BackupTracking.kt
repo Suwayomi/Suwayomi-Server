@@ -24,7 +24,7 @@ data class BackupTracking(
     // startedReadingDate is called startReadTime in 1.x
     @ProtoNumber(10) var startedReadingDate: Long = 0,
     // finishedReadingDate is called endReadTime in 1.x
-    @ProtoNumber(11) var finishedReadingDate: Long = 0
+    @ProtoNumber(11) var finishedReadingDate: Long = 0,
 ) {
     fun getTrackingImpl(): TrackImpl {
         return TrackImpl().apply {

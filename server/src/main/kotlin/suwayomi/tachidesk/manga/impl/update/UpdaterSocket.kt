@@ -32,8 +32,7 @@ object UpdaterSocket : Websocket<UpdateStatus>() {
                         |Supported commands are:
                         |    - STATUS
                         |       sends the current update status
-                        |
-                """.trimMargin()
+                        |""".trimMargin()
             )
         }
     }

@@ -9,5 +9,5 @@ package suwayomi.tachidesk.manga.impl.download.model
 
 data class DownloadStatus(
     val status: String,
-    val queue: List<DownloadChapter>
+    val queue: List<DownloadChapter>,
 )

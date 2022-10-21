@@ -21,9 +21,8 @@ object ImageResponse {
     fun findFileNameStartingWith(directoryPath: String, fileName: String): String? {
         val target = "$fileName."
         File(directoryPath).listFiles().orEmpty().forEach { file ->
-            if (file.name.startsWith(target)) {
+            if (file.name.startsWith(target))
                 return "$directoryPath/${file.name}"
-            }
         }
         return null
     }

@@ -45,11 +45,10 @@ import java.io.InputStream
 
 object Manga {
     private fun truncate(text: String?, maxLength: Int): String? {
-        return if (text?.length ?: 0 > maxLength) {
+        return if (text?.length ?: 0 > maxLength)
             text?.take(maxLength - 3) + "..."
-        } else {
+        else
             text
-        }
     }
 
     suspend fun getManga(mangaId: Int, onlineFetch: Boolean = false): MangaDataClass {
@@ -69,12 +68,12 @@ object Manga {
 
             transaction {
                 MangaTable.update({ MangaTable.id eq mangaId }) {
+
                     if (sManga.title != mangaEntry[MangaTable.title]) {
                         val canUpdateTitle = updateMangaDownloadDir(mangaId, sManga.title)
 
-                        if (canUpdateTitle) {
+                        if (canUpdateTitle)
                             it[MangaTable.title] = sManga.title
-                        }
                     }
                     it[MangaTable.initialized] = true
 
@@ -83,9 +82,8 @@ object Manga {
                     it[MangaTable.description] = truncate(sManga.description, 4096)
                     it[MangaTable.genre] = sManga.genre
                     it[MangaTable.status] = sManga.status
-                    if (sManga.thumbnail_url != null && sManga.thumbnail_url.orEmpty().isNotEmpty()) {
+                    if (sManga.thumbnail_url != null && sManga.thumbnail_url.orEmpty().isNotEmpty())
                         it[MangaTable.thumbnail_url] = sManga.thumbnail_url
-                    }
 
                     it[MangaTable.realUrl] = runCatching {
                         (source as? HttpSource)?.mangaDetailsRequest(sManga)?.url?.toString()
