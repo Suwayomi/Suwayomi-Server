@@ -11,7 +11,7 @@ import kotlin.math.min
 
 open class PaginatedList<T>(
     val page: List<T>,
-    val hasNextPage: Boolean,
+    val hasNextPage: Boolean
 )
 
 const val PaginationFactor = 50

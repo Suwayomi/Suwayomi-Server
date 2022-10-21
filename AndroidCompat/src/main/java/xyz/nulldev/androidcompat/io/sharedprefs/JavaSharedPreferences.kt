@@ -10,7 +10,7 @@ package xyz.nulldev.androidcompat.io.sharedprefs
 import android.content.SharedPreferences
 import com.russhwolf.settings.ExperimentalSettingsApi
 import com.russhwolf.settings.ExperimentalSettingsImplementation
-import com.russhwolf.settings.JvmPreferencesSettings
+import com.russhwolf.settings.PreferencesSettings
 import com.russhwolf.settings.serialization.decodeValue
 import com.russhwolf.settings.serialization.decodeValueOrNull
 import com.russhwolf.settings.serialization.encodeValue
@@ -24,7 +24,7 @@ import java.util.prefs.Preferences
 @OptIn(ExperimentalSettingsImplementation::class, ExperimentalSerializationApi::class, ExperimentalSettingsApi::class)
 class JavaSharedPreferences(key: String) : SharedPreferences {
     private val javaPreferences = Preferences.userRoot().node("suwayomi/tachidesk/$key")
-    private val preferences = JvmPreferencesSettings(javaPreferences)
+    private val preferences = PreferencesSettings(javaPreferences)
     private val listeners = mutableMapOf<SharedPreferences.OnSharedPreferenceChangeListener, PreferenceChangeListener>()
 
     // TODO: 2021-05-29 Need to find a way to get this working with all pref types
@@ -76,7 +76,7 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
         return Editor(preferences)
     }
 
-    class Editor(private val preferences: JvmPreferencesSettings) : SharedPreferences.Editor {
+    class Editor(private val preferences: PreferencesSettings) : SharedPreferences.Editor {
         val itemsToAdd = mutableMapOf<String, Any>()
 
         override fun putString(key: String, value: String?): SharedPreferences.Editor {

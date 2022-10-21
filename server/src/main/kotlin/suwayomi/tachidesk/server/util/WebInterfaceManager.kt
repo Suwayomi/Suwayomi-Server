@@ -103,8 +103,9 @@ fun setupWebUI() {
                     while (true) {
                         val count = inp.read(data, 0, 1024)
 
-                        if (count == -1)
+                        if (count == -1) {
                             break
+                        }
 
                         totalCount += count
                         val percentage = (totalCount.toFloat() / contentLength * 100).toInt().toString().padStart(2, '0')

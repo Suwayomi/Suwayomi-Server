@@ -20,5 +20,5 @@ data class ExtensionDataClass(
 
     val installed: Boolean,
     val hasUpdate: Boolean,
-    val obsolete: Boolean,
+    val obsolete: Boolean
 )

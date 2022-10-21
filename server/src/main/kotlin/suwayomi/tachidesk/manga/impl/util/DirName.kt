@@ -60,7 +60,9 @@ fun updateMangaDownloadDir(mangaId: Int, newTitle: String): Boolean {
     val oldDirFile = File(oldDir)
     val newDirFile = File(newDir)
 
-    return if (oldDirFile.exists())
+    return if (oldDirFile.exists()) {
         oldDirFile.renameTo(newDirFile)
-    else true
+    } else {
+        true
+    }
 }

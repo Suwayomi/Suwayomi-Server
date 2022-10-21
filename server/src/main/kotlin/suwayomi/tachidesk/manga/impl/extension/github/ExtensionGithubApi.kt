@@ -31,7 +31,7 @@ object ExtensionGithubApi {
         val nsfw: Int,
         val hasReadme: Int = 0,
         val hasChangelog: Int = 0,
-        val sources: List<ExtensionSourceJsonObject>?,
+        val sources: List<ExtensionSourceJsonObject>?
     )
 
     @Serializable
