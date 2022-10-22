@@ -9,17 +9,18 @@ plugins {
 
 dependencies {
     // okhttp
-    val okhttpVersion = "4.9.3" // Major version is locked by Tachiyomi extensions
+    val okhttpVersion = "4.10.0" // Major version is locked by Tachiyomi extensions
     implementation("com.squareup.okhttp3:okhttp:$okhttpVersion")
     implementation("com.squareup.okhttp3:logging-interceptor:$okhttpVersion")
     implementation("com.squareup.okhttp3:okhttp-dnsoverhttps:$okhttpVersion")
-    implementation("com.squareup.okio:okio:3.0.0")
+    implementation("com.squareup.okio:okio:3.2.0")
 
     // Javalin api
-    implementation("io.javalin:javalin:4.2.0")
-    implementation("io.javalin:javalin-openapi:4.2.0")
+    // Javalin 5.0.0+ requires Java 11
+    implementation("io.javalin:javalin:4.6.6")
+    implementation("io.javalin:javalin-openapi:4.6.6")
     // jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
-    val jacksonVersion = "2.12.4"
+    val jacksonVersion = "2.13.3"
     implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
 
@@ -43,23 +44,23 @@ dependencies {
     implementation("com.github.inorichi.injekt:injekt-core:65b0440")
     implementation("com.squareup.okhttp3:okhttp:$okhttpVersion")
     implementation("io.reactivex:rxjava:1.3.8")
-    implementation("org.jsoup:jsoup:1.14.3")
+    implementation("org.jsoup:jsoup:1.15.3")
 
     // Sort
     implementation("com.github.gpanther:java-nat-sort:natural-comparator-1.1")
 
     // asm for ByteCodeEditor(fixing SimpleDateFormat) (must match Dex2Jar version)
-    implementation("org.ow2.asm:asm:9.2")
+    implementation("org.ow2.asm:asm:9.4")
 
     // Disk & File
-    implementation("net.lingala.zip4j:zip4j:2.9.1")
-    implementation("com.github.junrar:junrar:7.5.0")
+    implementation("net.lingala.zip4j:zip4j:2.11.2")
+    implementation("com.github.junrar:junrar:7.5.3")
 
     // CloudflareInterceptor
-    implementation("net.sourceforge.htmlunit:htmlunit:2.56.0")
+    implementation("net.sourceforge.htmlunit:htmlunit:2.65.1")
 
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
-    implementation("org.bouncycastle:bcprov-jdk18on:1.71")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.72")
 
     // Source models and interfaces from Tachiyomi 1.x
     // using source class from tachiyomi commit 9493577de27c40ce8b2b6122cc447d025e34c477 to not depend on tachiyomi.sourceapi
@@ -73,7 +74,7 @@ dependencies {
 //    implementation(fileTree("lib/"))
     implementation(kotlin("script-runtime"))
 
-    testImplementation("io.mockk:mockk:1.12.2")
+    testImplementation("io.mockk:mockk:1.13.2")
 }
 
 application {

@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.impl.util.lang
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import rx.Observable
 import rx.Subscriber
@@ -22,6 +23,7 @@ import kotlin.coroutines.resumeWithException
 
 suspend fun <T> Observable<T>.awaitSingle(): T = single().awaitOne()
 
+@OptIn(InternalCoroutinesApi::class)
 private suspend fun <T> Observable<T>.awaitOne(): T = suspendCancellableCoroutine { cont ->
     cont.unsubscribeOnCancellation(
         subscribe(

@@ -4,7 +4,7 @@ package android.text;
 import android.graphics.drawable.Drawable;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
-import org.jsoup.safety.Whitelist;
+import org.jsoup.safety.Safelist;
 import org.xml.sax.XMLReader;
 
 /**
@@ -18,7 +18,7 @@ import org.xml.sax.XMLReader;
 public class Html {
 
     public static Spanned fromHtml(String source) {
-        return new FakeSpanned(Jsoup.clean(source, Whitelist.none()));
+        return new FakeSpanned(Jsoup.clean(source, Safelist.none()));
     }
 
     public static Spanned fromHtml(String source, Html.ImageGetter imageGetter, Html.TagHandler tagHandler) {
