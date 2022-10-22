@@ -48,7 +48,7 @@ object Source {
                     catalogueSource.supportsLatest,
                     catalogueSource is ConfigurableSource,
                     it[SourceTable.isNsfw],
-                    catalogueSource.toString(),
+                    catalogueSource.toString()
                 )
             }
         }

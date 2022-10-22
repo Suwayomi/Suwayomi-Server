@@ -242,7 +242,7 @@ inline fun <reified P1, reified P2, reified P3> handler(
                 it,
                 getParam(it, param1),
                 getParam(it, param2),
-                getParam(it, param3),
+                getParam(it, param3)
             )
         }
     )
@@ -265,7 +265,7 @@ inline fun <reified P1, reified P2, reified P3, reified P4> handler(
                 getParam(it, param1),
                 getParam(it, param2),
                 getParam(it, param3),
-                getParam(it, param4),
+                getParam(it, param4)
             )
         }
     )
@@ -290,7 +290,7 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5> handler(
                 getParam(it, param2),
                 getParam(it, param3),
                 getParam(it, param4),
-                getParam(it, param5),
+                getParam(it, param5)
             )
         }
     )
@@ -317,7 +317,7 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified 
                 getParam(it, param3),
                 getParam(it, param4),
                 getParam(it, param5),
-                getParam(it, param6),
+                getParam(it, param6)
             )
         }
     )
@@ -346,7 +346,7 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified 
                 getParam(it, param4),
                 getParam(it, param5),
                 getParam(it, param6),
-                getParam(it, param7),
+                getParam(it, param7)
             )
         }
     )
@@ -377,7 +377,7 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified 
                 getParam(it, param5),
                 getParam(it, param6),
                 getParam(it, param7),
-                getParam(it, param8),
+                getParam(it, param8)
             )
         }
     )
@@ -410,7 +410,7 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified 
                 getParam(it, param6),
                 getParam(it, param7),
                 getParam(it, param8),
-                getParam(it, param9),
+                getParam(it, param9)
             )
         }
     )
@@ -445,7 +445,7 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified 
                 getParam(it, param7),
                 getParam(it, param8),
                 getParam(it, param9),
-                getParam(it, param10),
+                getParam(it, param10)
             )
         }
     )

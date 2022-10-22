@@ -59,7 +59,7 @@ object ExtensionsList {
                 it[ExtensionTable.isNsfw],
                 it[ExtensionTable.isInstalled],
                 it[ExtensionTable.hasUpdate],
-                it[ExtensionTable.isObsolete],
+                it[ExtensionTable.isObsolete]
             )
         }
     }

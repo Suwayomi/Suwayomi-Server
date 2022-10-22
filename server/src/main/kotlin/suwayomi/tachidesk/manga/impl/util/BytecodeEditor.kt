@@ -67,7 +67,9 @@ object BytecodeEditor {
                 }
 
                 path to bytes
-            } else null
+            } else {
+                null
+            }
         } catch (e: Exception) {
             logger.error(e) { "Error loading class from Path: $path" }
             null
@@ -172,7 +174,11 @@ object BytecodeEditor {
                 ): MethodVisitor {
                     logger.trace { "Processing method $name: ${desc.replaceIndirectly()}: $signature" }
                     val mv: MethodVisitor? = super.visitMethod(
-                        access, name, desc.replaceIndirectly(), signature, exceptions
+                        access,
+                        name,
+                        desc.replaceIndirectly(),
+                        signature,
+                        exceptions
                     )
                     return object : MethodVisitor(Opcodes.ASM5, mv) {
                         override fun visitLdcInsn(cst: Any?) {

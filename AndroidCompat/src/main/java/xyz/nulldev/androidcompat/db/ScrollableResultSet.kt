@@ -60,9 +60,13 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
     }
 
     private fun internalMove(row: Int) {
-        if (cursor < 0) cursor = 0
-        else if (cursor > resultSetLength + 1) cursor = resultSetLength + 1
-        else cursor = row
+        if (cursor < 0) {
+            cursor = 0
+        } else if (cursor > resultSetLength + 1) {
+            cursor = resultSetLength + 1
+        } else {
+            cursor = row
+        }
     }
 
     private fun obj(column: Int): Any? {
@@ -293,10 +297,11 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
     }
 
     override fun <T : Any?> unwrap(iface: Class<T>?): T {
-        if (thisIsWrapperFor(iface))
+        if (thisIsWrapperFor(iface)) {
             return this as T
-        else
+        } else {
             return parent.unwrap(iface)
+        }
     }
 
     override fun next(): Boolean {
@@ -531,10 +536,15 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
     }
 
     private fun castToLong(obj: Any?): Long {
-        if (obj == null) return 0
-        else if (obj is Long) return obj
-        else if (obj is Number) return obj.toLong()
-        else throw IllegalStateException("Object is not a long!")
+        if (obj == null) {
+            return 0
+        } else if (obj is Long) {
+            return obj
+        } else if (obj is Number) {
+            return obj.toLong()
+        } else {
+            throw IllegalStateException("Object is not a long!")
+        }
     }
 
     override fun getLong(columnIndex: Int): Long {

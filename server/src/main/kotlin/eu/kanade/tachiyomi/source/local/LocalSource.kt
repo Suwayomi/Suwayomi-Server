@@ -327,8 +327,9 @@ class LocalSource : CatalogueSource {
 
     fun getFormat(chapter: SChapter): Format {
         val chapFile = File(applicationDirs.localMangaRoot, chapter.url)
-        if (chapFile.exists())
+        if (chapFile.exists()) {
             return getFormat(chapFile)
+        }
 
         throw Exception("Chapter not found")
     }

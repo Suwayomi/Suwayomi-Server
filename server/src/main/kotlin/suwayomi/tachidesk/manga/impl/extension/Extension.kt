@@ -225,12 +225,13 @@ object Extension {
 
             SourceTable.deleteWhere { SourceTable.extension eq extensionId }
 
-            if (extensionRecord[ExtensionTable.isObsolete])
+            if (extensionRecord[ExtensionTable.isObsolete]) {
                 ExtensionTable.deleteWhere { ExtensionTable.pkgName eq pkgName }
-            else
+            } else {
                 ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
                     it[isInstalled] = false
                 }
+            }
 
             sources
         }
@@ -265,8 +266,11 @@ object Extension {
     }
 
     suspend fun getExtensionIcon(apkName: String, useCache: Boolean): Pair<InputStream, String> {
-        val iconUrl = if (apkName == "localSource") ""
-        else transaction { ExtensionTable.select { ExtensionTable.apkName eq apkName }.first() }[ExtensionTable.iconUrl]
+        val iconUrl = if (apkName == "localSource") {
+            ""
+        } else {
+            transaction { ExtensionTable.select { ExtensionTable.apkName eq apkName }.first() }[ExtensionTable.iconUrl]
+        }
 
         val saveDir = "${applicationDirs.extensionsRoot}/icon"
 

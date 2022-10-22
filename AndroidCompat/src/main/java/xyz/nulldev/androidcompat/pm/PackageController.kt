@@ -74,10 +74,11 @@ class PackageController {
 
     fun findPackage(packageName: String): InstalledPackage? {
         val file = File(androidFiles.packagesDir, packageName)
-        return if (file.exists())
+        return if (file.exists()) {
             InstalledPackage(file)
-        else
+        } else {
             null
+        }
     }
 
     fun findJarFromApk(apkFile: File): File? {
