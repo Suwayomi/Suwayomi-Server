@@ -26,14 +26,14 @@ fun OkHttpClient.Builder.rateLimitHost(
     httpUrl: HttpUrl,
     permits: Int,
     period: Long = 1,
-    unit: TimeUnit = TimeUnit.SECONDS,
+    unit: TimeUnit = TimeUnit.SECONDS
 ) = addInterceptor(SpecificHostRateLimitInterceptor(httpUrl, permits, period, unit))
 
 class SpecificHostRateLimitInterceptor(
     httpUrl: HttpUrl,
     private val permits: Int,
     period: Long,
-    unit: TimeUnit,
+    unit: TimeUnit
 ) : Interceptor {
 
     private val requestQueue = ArrayList<Long>(permits)

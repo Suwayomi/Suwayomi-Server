@@ -69,7 +69,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                 MangaStatus.valueOf(mangaRow[MangaTable.status]).value,
                 mangaRow[MangaTable.thumbnail_url],
                 TimeUnit.SECONDS.toMillis(mangaRow[MangaTable.inLibraryAt]),
-                0, // not supported in Tachidesk
+                0 // not supported in Tachidesk
             )
 
             val mangaId = mangaRow[MangaTable.id].value
@@ -94,7 +94,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                         TimeUnit.SECONDS.toMillis(it.fetchedAt),
                         it.uploadDate,
                         it.chapterNumber,
-                        chapters.size - it.index,
+                        chapters.size - it.index
                     )
                 }
             }
@@ -122,7 +122,7 @@ object ProtoBackupExport : ProtoBackupBase() {
             BackupCategory(
                 it.name,
                 it.order,
-                0, // not supported in Tachidesk
+                0 // not supported in Tachidesk
             )
         }
     }

@@ -86,13 +86,14 @@ object CategoryManga {
             dataClass
         }
 
-        if (categoryId == DEFAULT_CATEGORY_ID)
+        if (categoryId == DEFAULT_CATEGORY_ID) {
             return transaction {
                 MangaTable
                     .slice(selectedColumns)
                     .select { (MangaTable.inLibrary eq true) and (MangaTable.defaultCategory eq true) }
                     .map(transform)
             }
+        }
 
         return transaction {
             CategoryMangaTable.innerJoin(MangaTable)

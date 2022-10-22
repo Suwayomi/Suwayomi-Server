@@ -23,7 +23,9 @@ fun setLoggingEnabled(enabled: Boolean = true) {
     val logger = (KotlinLogging.logger(Logger.ROOT_LOGGER_NAME).underlyingLogger as ch.qos.logback.classic.Logger)
     logger.level = if (enabled) {
         Level.DEBUG
-    } else Level.ERROR
+    } else {
+        Level.ERROR
+    }
 }
 
 const val BASE_PATH = "build/tmp/TestDesk"

@@ -84,7 +84,7 @@ object BackupController {
                             includeCategories = true,
                             includeChapters = true,
                             includeTracking = true,
-                            includeHistory = true,
+                            includeHistory = true
                         )
                     )
                 }
@@ -116,7 +116,7 @@ object BackupController {
                             includeCategories = true,
                             includeChapters = true,
                             includeTracking = true,
-                            includeHistory = true,
+                            includeHistory = true
                         )
                     )
                 }

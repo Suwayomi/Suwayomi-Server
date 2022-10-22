@@ -49,7 +49,8 @@ object DownloadManager {
                         |Supported commands are:
                         |    - STATUS
                         |       sends the current download status
-                        |""".trimMargin()
+                        |
+                """.trimMargin()
             )
         }
     }
@@ -65,7 +66,11 @@ object DownloadManager {
         return DownloadStatus(
             if (downloader == null ||
                 downloadQueue.none { it.state == Downloading }
-            ) "Stopped" else "Started",
+            ) {
+                "Stopped"
+            } else {
+                "Started"
+            },
             downloadQueue
         )
     }
@@ -96,8 +101,10 @@ object DownloadManager {
     }
 
     fun start() {
-        if (downloader != null && !downloader?.isAlive!!) // doesn't exist or is dead
+        if (downloader != null && !downloader?.isAlive!!) {
+            // doesn't exist or is dead
             downloader = null
+        }
 
         if (downloader == null) {
             downloader = Downloader(downloadQueue) { notifyAllClients() }
@@ -127,5 +134,5 @@ object DownloadManager {
 enum class DownloaderState(val state: Int) {
     Stopped(0),
     Running(1),
-    Paused(2),
+    Paused(2)
 }

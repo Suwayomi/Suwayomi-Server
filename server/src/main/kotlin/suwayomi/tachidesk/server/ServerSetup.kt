@@ -85,7 +85,7 @@ fun applicationSetup() {
         applicationDirs.extensionsRoot + "/icon",
         applicationDirs.thumbnailsRoot,
         applicationDirs.mangaDownloadsRoot,
-        applicationDirs.localMangaRoot,
+        applicationDirs.localMangaRoot
     ).forEach {
         File(it).mkdirs()
     }

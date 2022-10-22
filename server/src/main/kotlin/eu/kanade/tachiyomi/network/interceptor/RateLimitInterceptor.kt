@@ -23,13 +23,13 @@ import java.util.concurrent.TimeUnit
 fun OkHttpClient.Builder.rateLimit(
     permits: Int,
     period: Long = 1,
-    unit: TimeUnit = TimeUnit.SECONDS,
+    unit: TimeUnit = TimeUnit.SECONDS
 ) = addInterceptor(RateLimitInterceptor(permits, period, unit))
 
 private class RateLimitInterceptor(
     private val permits: Int,
     period: Long,
-    unit: TimeUnit,
+    unit: TimeUnit
 ) : Interceptor {
 
     private val requestQueue = ArrayList<Long>(permits)

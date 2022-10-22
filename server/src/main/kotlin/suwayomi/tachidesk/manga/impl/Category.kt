@@ -41,7 +41,9 @@ object Category {
                 normalizeCategories()
 
                 newCategoryId
-            } else -1
+            } else {
+                -1
+            }
         }
     }
 

@@ -59,7 +59,7 @@ fun MangaTable.toDataClass(mangaEntry: ResultRow) =
         mangaEntry[inLibrary],
         mangaEntry[inLibraryAt],
         meta = getMangaMetaMap(mangaEntry[id].value),
-        realUrl = mangaEntry[realUrl],
+        realUrl = mangaEntry[realUrl]
     )
 
 enum class MangaStatus(val value: Int) {
