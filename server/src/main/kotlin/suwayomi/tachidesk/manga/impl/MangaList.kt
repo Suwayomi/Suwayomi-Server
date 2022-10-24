@@ -20,7 +20,6 @@ import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
-import java.lang.IllegalArgumentException
 
 object MangaList {
     fun proxyThumbnailUrl(mangaId: Int): String {
@@ -28,8 +27,13 @@ object MangaList {
     }
 
     suspend fun getMangaList(sourceId: Long, pageNum: Int = 1, popular: Boolean): PagedMangaListDataClass {
-        if (pageNum == 0) {
-            throw IllegalArgumentException("Page 0 is an invalid index")
+        /*
+        * Page < 0 is a invalid index in the Tachiyomi api,
+        * depending on the source, it can error or duplicate results to the next page.
+        * Hence, handling it explicitly below
+        * */
+        require(pageNum > 0) {
+            "Page 0 is an invalid index"
         }
         val source = getCatalogueSourceOrStub(sourceId)
         val mangasPage = if (popular) {
