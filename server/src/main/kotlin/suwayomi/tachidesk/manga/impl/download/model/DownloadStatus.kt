@@ -1,5 +1,7 @@
 package suwayomi.tachidesk.manga.impl.download.model
 
+import suwayomi.tachidesk.event.EventEntity
+
 /*
  * Copyright (C) Contributors to the Suwayomi project
  *
@@ -10,4 +12,4 @@ package suwayomi.tachidesk.manga.impl.download.model
 data class DownloadStatus(
     val status: String,
     val queue: List<DownloadChapter>
-)
+) : EventEntity()

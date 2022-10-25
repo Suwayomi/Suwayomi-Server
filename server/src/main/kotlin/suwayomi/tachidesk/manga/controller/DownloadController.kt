@@ -19,14 +19,14 @@ object DownloadController {
     /** Download queue stats */
     fun downloadsWS(ws: WsConfig) {
         ws.onConnect { ctx ->
-            DownloadManager.addClient(ctx)
+            DownloadManager.eventDispatcher.addClient(ctx)
             DownloadManager.notifyClient(ctx)
         }
         ws.onMessage { ctx ->
-            DownloadManager.handleRequest(ctx)
+            DownloadManager.eventDispatcher.handleRequest(ctx)
         }
         ws.onClose { ctx ->
-            DownloadManager.removeClient(ctx)
+            DownloadManager.eventDispatcher.removeClient(ctx)
         }
     }
 
