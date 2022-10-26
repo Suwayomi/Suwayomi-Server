@@ -27,13 +27,8 @@ object MangaList {
     }
 
     suspend fun getMangaList(sourceId: Long, pageNum: Int = 1, popular: Boolean): PagedMangaListDataClass {
-        /*
-        * Page < 0 is a invalid index in the Tachiyomi api,
-        * depending on the source, it can error or duplicate results to the next page.
-        * Hence, handling it explicitly below
-        * */
         require(pageNum > 0) {
-            "Page 0 is an invalid index"
+            "pageNum = $pageNum is not in valid range"
         }
         val source = getCatalogueSourceOrStub(sourceId)
         val mangasPage = if (popular) {
