@@ -27,6 +27,9 @@ object MangaList {
     }
 
     suspend fun getMangaList(sourceId: Long, pageNum: Int = 1, popular: Boolean): PagedMangaListDataClass {
+        require(pageNum > 0) {
+            "pageNum = $pageNum is not in valid range"
+        }
         val source = getCatalogueSourceOrStub(sourceId)
         val mangasPage = if (popular) {
             source.fetchPopularManga(pageNum).awaitSingle()

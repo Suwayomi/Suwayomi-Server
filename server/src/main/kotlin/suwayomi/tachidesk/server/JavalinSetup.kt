@@ -28,6 +28,7 @@ import suwayomi.tachidesk.manga.MangaAPI
 import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.setupWebInterface
 import java.io.IOException
+import java.lang.IllegalArgumentException
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
 
@@ -95,6 +96,12 @@ object JavalinSetup {
             logger.error("IOException while handling the request", e)
             ctx.status(500)
             ctx.result(e.message ?: "Internal Server Error")
+        }
+
+        app.exception(IllegalArgumentException::class.java) { e, ctx ->
+            logger.error("IllegalArgumentException while handling the request", e)
+            ctx.status(400)
+            ctx.result(e.message ?: "Bad Request")
         }
 
         app.routes {
