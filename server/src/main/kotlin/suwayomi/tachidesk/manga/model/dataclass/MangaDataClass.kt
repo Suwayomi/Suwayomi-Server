@@ -9,6 +9,7 @@ package suwayomi.tachidesk.manga.model.dataclass
 
 import suwayomi.tachidesk.manga.impl.util.lang.trimAll
 import suwayomi.tachidesk.manga.model.table.MangaStatus
+import java.time.Instant
 
 data class MangaDataClass(
     val id: Int,
@@ -39,7 +40,10 @@ data class MangaDataClass(
     val freshData: Boolean = false,
     var unreadCount: Int? = null,
     var downloadCount: Int? = null,
-    var chapterCount: Int? = null
+    var chapterCount: Int? = null,
+
+    val age: Long? = if (lastFetchedAt == null) 0 else Instant.now().epochSecond.minus(lastFetchedAt),
+    val chaptersAge: Long? = if (chaptersLastFetchedAt == null) null else Instant.now().epochSecond.minus(chaptersLastFetchedAt)
 )
 
 data class PagedMangaListDataClass(
