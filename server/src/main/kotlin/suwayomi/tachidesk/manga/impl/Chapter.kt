@@ -100,6 +100,10 @@ object Chapter {
                     }
                 }
             }
+
+            MangaTable.update({ MangaTable.id eq mangaId }) {
+                it[MangaTable.chaptersLastFetchedAt] = Instant.now().epochSecond
+            }
         }
 
         // clear any orphaned/duplicate chapters that are in the db but not in `chapterList`
