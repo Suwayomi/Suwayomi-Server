@@ -315,6 +315,8 @@ object MangaController {
                 future { Page.getPageImage(mangaId, chapterIndex, index, useCache) }
                     .thenApply {
                         ctx.header("content-type", it.second)
+                        val httpCacheSeconds = 1.days.inWholeSeconds
+                        ctx.header("cache-control", "max-age=$httpCacheSeconds")
                         it.first
                     }
             )
