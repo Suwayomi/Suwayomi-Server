@@ -117,6 +117,8 @@ object Manga {
                 getSource(mangaEntry[MangaTable.sourceReference]),
                 getMangaMetaMap(mangaId),
                 mangaEntry[MangaTable.realUrl],
+                mangaEntry[MangaTable.lastFetchedAt],
+                mangaEntry[MangaTable.chaptersLastFetchedAt],
                 true
             )
         }
@@ -142,6 +144,8 @@ object Manga {
         getSource(mangaEntry[MangaTable.sourceReference]),
         getMangaMetaMap(mangaId),
         mangaEntry[MangaTable.realUrl],
+        mangaEntry[MangaTable.lastFetchedAt],
+        mangaEntry[MangaTable.chaptersLastFetchedAt],
         false
     )
 

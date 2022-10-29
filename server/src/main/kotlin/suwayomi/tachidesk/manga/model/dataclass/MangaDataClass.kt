@@ -33,6 +33,8 @@ data class MangaDataClass(
     val meta: Map<String, String> = emptyMap(),
 
     val realUrl: String? = null,
+    var lastFetchedAt: Long? = 0,
+    var chaptersLastFetchedAt: Long? = 0,
 
     val freshData: Boolean = false,
     var unreadCount: Int? = null,

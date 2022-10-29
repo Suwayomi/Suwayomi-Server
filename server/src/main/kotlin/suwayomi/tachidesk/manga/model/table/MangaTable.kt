@@ -38,6 +38,9 @@ object MangaTable : IntIdTable() {
 
     /** the real url of a manga used for the "open in WebView" feature */
     val realUrl = varchar("real_url", 2048).nullable()
+
+    val lastFetchedAt = long("last_fetched_at").default(0)
+    val chaptersLastFetchedAt = long("chapters_last_fetched_at").default(0)
 }
 
 fun MangaTable.toDataClass(mangaEntry: ResultRow) =
@@ -59,7 +62,9 @@ fun MangaTable.toDataClass(mangaEntry: ResultRow) =
         mangaEntry[inLibrary],
         mangaEntry[inLibraryAt],
         meta = getMangaMetaMap(mangaEntry[id].value),
-        realUrl = mangaEntry[realUrl]
+        realUrl = mangaEntry[realUrl],
+        lastFetchedAt = mangaEntry[lastFetchedAt],
+        chaptersLastFetchedAt = mangaEntry[chaptersLastFetchedAt]
     )
 
 enum class MangaStatus(val value: Int) {
