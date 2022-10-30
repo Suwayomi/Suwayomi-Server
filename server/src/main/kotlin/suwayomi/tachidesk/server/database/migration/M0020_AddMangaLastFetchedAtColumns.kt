@@ -7,12 +7,12 @@ package suwayomi.tachidesk.server.database.migration
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import de.neonew.exposed.migrations.helpers.AddColumnMigration
+import de.neonew.exposed.migrations.helpers.SQLMigration
 
 @Suppress("ClassName", "unused")
-class M0020_AddMangaLastFetchedAt : AddColumnMigration(
-    "Manga",
-    "last_fetched_at",
-    "BIGINT",
-    "0"
-)
+class M0020_AddMangaLastFetchedAtColumns : SQLMigration() {
+    override val sql = """
+        ALTER TABLE Manga ADD COLUMN last_fetched_at BIGINT DEFAULT 0;
+        ALTER TABLE Manga ADD COLUMN chapters_last_fetched_at BIGINT DEFAULT 0;
+    """.trimIndent()
+}
