@@ -128,6 +128,9 @@ object Chapter {
                 .associateBy({ it[ChapterTable.url] }, { it })
         }
 
+        val chapterIds = chapterList.map { dbChapterMap.getValue(it.url)[ChapterTable.id] }
+        val chapterMetas = getChaptersMetaMaps(chapterIds)
+
         return chapterList.mapIndexed { index, it ->
 
             val dbChapter = dbChapterMap.getValue(it.url)
@@ -152,7 +155,7 @@ object Chapter {
                 dbChapter[ChapterTable.pageCount],
 
                 chapterList.size,
-                meta = getChapterMetaMap(dbChapter[ChapterTable.id])
+                meta = chapterMetas.getValue(dbChapter[ChapterTable.id])
             )
         }
     }
@@ -186,6 +189,15 @@ object Chapter {
                     it[ChapterTable.isRead] = markPrevRead
                 }
             }
+        }
+    }
+
+    fun getChaptersMetaMaps(chapterIds: List<EntityID<Int>>): Map<EntityID<Int>, Map<String, String>> {
+        return transaction {
+            ChapterMetaTable.select { ChapterMetaTable.ref inList chapterIds }
+                .groupBy { it[ChapterMetaTable.ref] }
+                .mapValues { it.value.associate { it[ChapterMetaTable.key] to it[ChapterMetaTable.value] } }
+                .withDefault { emptyMap<String, String>() }
         }
     }
 
