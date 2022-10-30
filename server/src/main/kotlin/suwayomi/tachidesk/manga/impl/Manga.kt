@@ -42,6 +42,7 @@ import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
+import java.time.Instant
 
 object Manga {
     private fun truncate(text: String?, maxLength: Int): String? {
@@ -90,6 +91,8 @@ object Manga {
                     it[MangaTable.realUrl] = runCatching {
                         (source as? HttpSource)?.mangaDetailsRequest(sManga)?.url?.toString()
                     }.getOrNull()
+
+                    it[MangaTable.lastFetchedAt] = Instant.now().epochSecond
                 }
             }
 
@@ -117,6 +120,8 @@ object Manga {
                 getSource(mangaEntry[MangaTable.sourceReference]),
                 getMangaMetaMap(mangaId),
                 mangaEntry[MangaTable.realUrl],
+                mangaEntry[MangaTable.lastFetchedAt],
+                mangaEntry[MangaTable.chaptersLastFetchedAt],
                 true
             )
         }
@@ -142,6 +147,8 @@ object Manga {
         getSource(mangaEntry[MangaTable.sourceReference]),
         getMangaMetaMap(mangaId),
         mangaEntry[MangaTable.realUrl],
+        mangaEntry[MangaTable.lastFetchedAt],
+        mangaEntry[MangaTable.chaptersLastFetchedAt],
         false
     )
 

@@ -88,6 +88,8 @@ object MangaList {
                         0,
                         meta = getMangaMetaMap(mangaId),
                         realUrl = mangaEntry[MangaTable.realUrl],
+                        lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
+                        chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
                         freshData = true
                     )
                 } else {
@@ -111,6 +113,8 @@ object MangaList {
                         mangaEntry[MangaTable.inLibraryAt],
                         meta = getMangaMetaMap(mangaId),
                         realUrl = mangaEntry[MangaTable.realUrl],
+                        lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
+                        chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
                         freshData = false
                     )
                 }
