@@ -21,9 +21,10 @@ import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogue
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 
 object Search {
-    suspend fun sourceSearch(sourceId: Long, searchTerm: String, pageNum: Int): PagedMangaListDataClass {
+    suspend fun sourceSearch(sourceId: Long, searchTerm: String, pageNum: Int, changes: List<FilterChange>?): PagedMangaListDataClass {
         val source = getCatalogueSourceOrStub(sourceId)
-        val searchManga = source.fetchSearchManga(pageNum, searchTerm, getFilterListOf(source)).awaitSingle()
+        val filterList = if (changes != null) buildFilterList(sourceId, changes) else getFilterListOf(source)
+        val searchManga = source.fetchSearchManga(pageNum, searchTerm, filterList).awaitSingle()
         return searchManga.processEntries(sourceId)
     }
 
@@ -84,7 +85,10 @@ object Search {
     fun setFilter(sourceId: Long, changes: List<FilterChange>) {
         val source = getCatalogueSourceOrStub(sourceId)
         val filterList = getFilterListOf(source, false)
+        updateFilterList(filterList, changes)
+    }
 
+    private fun updateFilterList(filterList: FilterList, changes: List<FilterChange>): FilterList {
         changes.forEach { change ->
             when (val filter = filterList[change.position]) {
                 is Filter.Header -> {
@@ -112,6 +116,13 @@ object Search {
                 }
             }
         }
+        return filterList
+    }
+
+    private fun buildFilterList(sourceId: Long, changes: List<FilterChange>): FilterList {
+        val source = getCatalogueSourceOrStub(sourceId)
+        val filterList = source.getFilterList()
+        return updateFilterList(filterList, changes)
     }
 
     private val jsonMapper by DI.global.instance<JsonMapper>()

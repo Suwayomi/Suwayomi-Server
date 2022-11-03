@@ -195,7 +195,15 @@ object SourceController {
             }
         },
         behaviorOf = { ctx, sourceId, searchTerm, pageNum ->
-            ctx.future(future { Search.sourceSearch(sourceId, searchTerm, pageNum) })
+            var filterChange: List<FilterChange>? = null
+            if (ctx.method() == "POST") {
+                filterChange = try {
+                    json.decodeFromString<List<FilterChange>>(ctx.body())
+                } catch (e: Exception) {
+                    listOf(json.decodeFromString<FilterChange>(ctx.body()))
+                }
+            }
+            ctx.future(future { Search.sourceSearch(sourceId, searchTerm, pageNum, filterChange) })
         },
         withResults = {
             json<PagedMangaListDataClass>(HttpCode.OK)
