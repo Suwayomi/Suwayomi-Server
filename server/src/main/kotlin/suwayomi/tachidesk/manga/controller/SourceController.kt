@@ -169,6 +169,8 @@ object SourceController {
                 summary("Source filters set")
                 description("Change filters of source with id `sourceId`")
             }
+            body<FilterChange>()
+            body<Array<FilterChange>>()
         },
         behaviorOf = { ctx, sourceId ->
             val filterChange = try {
@@ -212,9 +214,10 @@ object SourceController {
                 summary("Source manga quick search")
                 description("Returns list of manga from source matching posted searchTerm and filter")
             }
+            body<FilterData>()
         },
         behaviorOf = { ctx, sourceId, pageNum ->
-            var filter = json.decodeFromString<FilterData>(ctx.body())
+            val filter = json.decodeFromString<FilterData>(ctx.body())
             ctx.future(future { Search.sourceFilter(sourceId, pageNum, filter) })
         },
         withResults = {
