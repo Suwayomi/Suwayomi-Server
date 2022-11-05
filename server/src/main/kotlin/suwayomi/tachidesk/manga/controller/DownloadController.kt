@@ -105,7 +105,7 @@ object DownloadController {
         behaviorOf = { ctx, chapterIndex, mangaId ->
             ctx.future(
                 future {
-                    DownloadManager.enqueueMultiple(listOf(EnqueueInput(mangaId, chapterIndex)))
+                    DownloadManager.enqueue(listOf(EnqueueInput(mangaId, chapterIndex)))
                 }
             )
         },
@@ -121,15 +121,15 @@ object DownloadController {
                 summary("Downloader add multiple chapters")
                 description("Queue multiple chapters for download")
             }
+            body<Array<EnqueueInput>>()
         },
         behaviorOf = { ctx ->
             val inputs = json.decodeFromString<List<EnqueueInput>>(ctx.body())
             ctx.future(
                 future {
-                    DownloadManager.enqueueMultiple(inputs)
+                    DownloadManager.enqueue(inputs)
                 }
             )
-            ctx.status(200)
         },
         withResults = {
             httpCode(HttpCode.OK)

@@ -86,7 +86,7 @@ object DownloadManager {
         val chapterIndex: Int
     )
 
-    fun enqueueMultiple(inputs: List<EnqueueInput>) {
+    fun enqueue(inputs: List<EnqueueInput>) {
         val mangas = transaction {
             val mangaIds = inputs.map { it.mangaId }.distinct()
             MangaTable.select { MangaTable.id inList mangaIds }
@@ -124,10 +124,8 @@ object DownloadManager {
      * If any of inputs was actually added to queue, starts the queue
      */
     private fun addMultipleToQueue(inputs: List<Pair<MangaDataClass, ChapterDataClass>>) {
-        val addedChapters = inputs.map { addToQueue(it.first, it.second) }
-        val anyAdded = addedChapters.any { it != null }
-
-        if (anyAdded) {
+        val addedChapters = inputs.mapNotNull { addToQueue(it.first, it.second) }
+        if (addedChapters.isNotEmpty()) {
             start()
             notifyAllClients()
         }
@@ -139,17 +137,17 @@ object DownloadManager {
      */
     private fun addToQueue(manga: MangaDataClass, chapter: ChapterDataClass): DownloadChapter? {
         if (downloadQueue.none { it.mangaId == manga.id && it.chapterIndex == chapter.index }) {
-            val dc = DownloadChapter(
+            val downloadChapter = DownloadChapter(
                 chapter.index,
                 manga.id,
                 chapter,
                 manga
             )
-            downloadQueue.add(dc)
-            logger.debug("Added to download queue: ${manga.title} | ${chapter.index}")
-            return dc
+            downloadQueue.add(downloadChapter)
+            logger.debug { "Added to download queue: ${manga.title} | ${chapter.index}" }
+            return downloadChapter
         }
-        logger.debug("Chapter already present in queue: ${manga.title} | ${chapter.index}")
+        logger.debug { "Chapter already present in queue: ${manga.title} | ${chapter.index}" }
         return null
     }
 
