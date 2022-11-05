@@ -209,8 +209,8 @@ object SourceController {
         queryParam("pageNum", 1),
         documentWith = {
             withOperation {
-                summary("Source search")
-                description("Single source search")
+                summary("Source manga filter")
+                description("Returns list of manga from source matching posted searchTerm and filter")
             }
         },
         behaviorOf = { ctx, sourceId, pageNum ->
