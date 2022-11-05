@@ -27,6 +27,13 @@ object Search {
         return searchManga.processEntries(sourceId)
     }
 
+    suspend fun sourceFilter(sourceId: Long, pageNum: Int, filter: FilterData): PagedMangaListDataClass {
+        val source = getCatalogueSourceOrStub(sourceId)
+        val filterList = if (filter.filter != null) buildFilterList(sourceId, filter.filter) else source.getFilterList()
+        val searchManga = source.fetchSearchManga(pageNum, filter.searchTerm ?: "", filterList).awaitSingle()
+        return searchManga.processEntries(sourceId)
+    }
+
     private val filterListCache = mutableMapOf<Long, FilterList>()
 
     private fun getFilterListOf(source: CatalogueSource, reset: Boolean = false): FilterList {
@@ -84,7 +91,10 @@ object Search {
     fun setFilter(sourceId: Long, changes: List<FilterChange>) {
         val source = getCatalogueSourceOrStub(sourceId)
         val filterList = getFilterListOf(source, false)
+        updateFilterList(filterList, changes)
+    }
 
+    private fun updateFilterList(filterList: FilterList, changes: List<FilterChange>): FilterList {
         changes.forEach { change ->
             when (val filter = filterList[change.position]) {
                 is Filter.Header -> {
@@ -112,6 +122,13 @@ object Search {
                 }
             }
         }
+        return filterList
+    }
+
+    private fun buildFilterList(sourceId: Long, changes: List<FilterChange>): FilterList {
+        val source = getCatalogueSourceOrStub(sourceId)
+        val filterList = source.getFilterList()
+        return updateFilterList(filterList, changes)
     }
 
     private val jsonMapper by DI.global.instance<JsonMapper>()
@@ -120,6 +137,12 @@ object Search {
     data class FilterChange(
         val position: Int,
         val state: String
+    )
+
+    @Serializable
+    data class FilterData(
+        val searchTerm: String?,
+        val filter: List<FilterChange>?
     )
 
     @Suppress("UNUSED_PARAMETER")

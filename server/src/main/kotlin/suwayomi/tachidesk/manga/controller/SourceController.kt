@@ -16,6 +16,7 @@ import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.MangaList
 import suwayomi.tachidesk.manga.impl.Search
 import suwayomi.tachidesk.manga.impl.Search.FilterChange
+import suwayomi.tachidesk.manga.impl.Search.FilterData
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.Source.SourcePreferenceChange
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
@@ -196,6 +197,25 @@ object SourceController {
         },
         behaviorOf = { ctx, sourceId, searchTerm, pageNum ->
             ctx.future(future { Search.sourceSearch(sourceId, searchTerm, pageNum) })
+        },
+        withResults = {
+            json<PagedMangaListDataClass>(HttpCode.OK)
+        }
+    )
+
+    /** quick search single source filter */
+    val quickSearchSingle = handler(
+        pathParam<Long>("sourceId"),
+        queryParam("pageNum", 1),
+        documentWith = {
+            withOperation {
+                summary("Source manga quick search")
+                description("Returns list of manga from source matching posted searchTerm and filter")
+            }
+        },
+        behaviorOf = { ctx, sourceId, pageNum ->
+            var filter = json.decodeFromString<FilterData>(ctx.body())
+            ctx.future(future { Search.sourceFilter(sourceId, pageNum, filter) })
         },
         withResults = {
             json<PagedMangaListDataClass>(HttpCode.OK)
