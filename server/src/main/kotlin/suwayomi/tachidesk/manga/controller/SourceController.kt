@@ -16,6 +16,7 @@ import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.MangaList
 import suwayomi.tachidesk.manga.impl.Search
 import suwayomi.tachidesk.manga.impl.Search.FilterChange
+import suwayomi.tachidesk.manga.impl.Search.FilterData
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.Source.SourcePreferenceChange
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
@@ -195,15 +196,26 @@ object SourceController {
             }
         },
         behaviorOf = { ctx, sourceId, searchTerm, pageNum ->
-            var filterChange: List<FilterChange>? = null
-            if (ctx.method() == "POST") {
-                filterChange = try {
-                    json.decodeFromString<List<FilterChange>>(ctx.body())
-                } catch (e: Exception) {
-                    listOf(json.decodeFromString<FilterChange>(ctx.body()))
-                }
+            ctx.future(future { Search.sourceSearch(sourceId, searchTerm, pageNum) })
+        },
+        withResults = {
+            json<PagedMangaListDataClass>(HttpCode.OK)
+        }
+    )
+
+    /** single source filter */
+    val filterSingle = handler(
+        pathParam<Long>("sourceId"),
+        queryParam("pageNum", 1),
+        documentWith = {
+            withOperation {
+                summary("Source search")
+                description("Single source search")
             }
-            ctx.future(future { Search.sourceSearch(sourceId, searchTerm, pageNum, filterChange) })
+        },
+        behaviorOf = { ctx, sourceId, pageNum ->
+            var filter = json.decodeFromString<FilterData>(ctx.body())
+            ctx.future(future { Search.sourceFilter(sourceId, pageNum, filter) })
         },
         withResults = {
             json<PagedMangaListDataClass>(HttpCode.OK)

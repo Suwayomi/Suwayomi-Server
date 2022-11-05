@@ -21,10 +21,16 @@ import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogue
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 
 object Search {
-    suspend fun sourceSearch(sourceId: Long, searchTerm: String, pageNum: Int, changes: List<FilterChange>?): PagedMangaListDataClass {
+    suspend fun sourceSearch(sourceId: Long, searchTerm: String, pageNum: Int): PagedMangaListDataClass {
         val source = getCatalogueSourceOrStub(sourceId)
-        val filterList = if (changes != null) buildFilterList(sourceId, changes) else getFilterListOf(source)
-        val searchManga = source.fetchSearchManga(pageNum, searchTerm, filterList).awaitSingle()
+        val searchManga = source.fetchSearchManga(pageNum, searchTerm, getFilterListOf(source)).awaitSingle()
+        return searchManga.processEntries(sourceId)
+    }
+
+    suspend fun sourceFilter(sourceId: Long, pageNum: Int, filter: FilterData): PagedMangaListDataClass {
+        val source = getCatalogueSourceOrStub(sourceId)
+        val filterList = if (filter.filter != null) buildFilterList(sourceId, filter.filter) else source.getFilterList()
+        val searchManga = source.fetchSearchManga(pageNum, filter.searchTerm ?: "", filterList).awaitSingle()
         return searchManga.processEntries(sourceId)
     }
 
@@ -131,6 +137,12 @@ object Search {
     data class FilterChange(
         val position: Int,
         val state: String
+    )
+
+    @Serializable
+    data class FilterData(
+        val searchTerm: String?,
+        val filter: List<FilterChange>?
     )
 
     @Suppress("UNUSED_PARAMETER")
