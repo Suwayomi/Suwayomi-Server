@@ -203,13 +203,13 @@ object SourceController {
         }
     )
 
-    /** single source filter */
-    val filterSingle = handler(
+    /** quick search single source filter */
+    val quickSearchSingle = handler(
         pathParam<Long>("sourceId"),
         queryParam("pageNum", 1),
         documentWith = {
             withOperation {
-                summary("Source manga filter")
+                summary("Source manga quick search")
                 description("Returns list of manga from source matching posted searchTerm and filter")
             }
         },

@@ -48,7 +48,7 @@ object MangaAPI {
             post("{sourceId}/filters", SourceController.setFilters)
 
             get("{sourceId}/search", SourceController.searchSingle)
-            post("{sourceId}/filter", SourceController.filterSingle)
+            post("{sourceId}/quick-search", SourceController.quickSearchSingle)
 //            get("all/search", SourceController.searchGlobal) // TODO
         }
 
