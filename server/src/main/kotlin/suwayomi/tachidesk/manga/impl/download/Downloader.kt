@@ -69,7 +69,7 @@ class Downloader(private val downloadQueue: CopyOnWriteArrayList<DownloadChapter
                                     .distinctUntilChanged()
                                     .onEach {
                                         download.progress = (pageNum.toFloat() + (it.toFloat() * 0.01f)) / pageCount
-                                        step(download)
+                                        step(null) // don't throw on canceled download here since we can't do anything
                                     }
                                     .launchIn(GlobalScope)
                             }
