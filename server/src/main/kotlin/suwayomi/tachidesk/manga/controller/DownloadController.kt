@@ -121,10 +121,10 @@ object DownloadController {
                 summary("Downloader add multiple chapters")
                 description("Queue multiple chapters for download")
             }
-            body<Array<EnqueueInput>>()
+            body<EnqueueInput>()
         },
         behaviorOf = { ctx ->
-            val inputs = json.decodeFromString<List<EnqueueInput>>(ctx.body())
+            val inputs = json.decodeFromString<EnqueueInput>(ctx.body())
             ctx.future(
                 future {
                     DownloadManager.enqueue(inputs)

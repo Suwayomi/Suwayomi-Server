@@ -88,19 +88,22 @@ object DownloadManager {
                 .select { ChapterTable.manga.eq(mangaId) and ChapterTable.sourceOrder.eq(chapterIndex) }
                 .first()
         }
-        enqueue(listOf(EnqueueInput(chapter[ChapterTable.id].value)))
+        enqueue(EnqueueInput(chapterIds = listOf(chapter[ChapterTable.id].value)))
     }
 
     @Serializable
+    // Input might have additional formats in the future, such as "All for mangaID" or "Unread for categoryID"
+    // Having this input format is just future-proofing
     data class EnqueueInput(
-        val chapterId: Int
+        val chapterIds: List<Int>?
     )
 
-    fun enqueue(inputs: List<EnqueueInput>) {
+    fun enqueue(input: EnqueueInput) {
+        if (input.chapterIds == null) return
+
         val chapters = transaction {
-            val chapterIds = inputs.map { it.chapterId }.distinct()
             (ChapterTable innerJoin MangaTable)
-                .select { ChapterTable.id inList chapterIds }
+                .select { ChapterTable.id inList input.chapterIds }
                 .toList()
         }
 
