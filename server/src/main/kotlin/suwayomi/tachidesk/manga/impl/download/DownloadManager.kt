@@ -9,17 +9,23 @@ package suwayomi.tachidesk.manga.impl.download
 
 import io.javalin.websocket.WsContext
 import io.javalin.websocket.WsMessageContext
+import kotlinx.serialization.Serializable
+import mu.KotlinLogging
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
+import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
+import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+
+private val logger = KotlinLogging.logger {}
 
 object DownloadManager {
     private val clients = ConcurrentHashMap<String, WsContext>()
@@ -75,24 +81,81 @@ object DownloadManager {
         )
     }
 
-    suspend fun enqueue(chapterIndex: Int, mangaId: Int) {
-        if (downloadQueue.none { it.mangaId == mangaId && it.chapterIndex == chapterIndex }) {
-            downloadQueue.add(
-                DownloadChapter(
-                    chapterIndex,
-                    mangaId,
-                    chapter = ChapterTable.toDataClass(
-                        transaction {
-                            ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }
-                                .first()
-                        }
-                    ),
-                    manga = getManga(mangaId)
-                )
-            )
-            start()
+    fun enqueueWithChapterIndex(mangaId: Int, chapterIndex: Int) {
+        val chapter = transaction {
+            ChapterTable
+                .slice(ChapterTable.id)
+                .select { ChapterTable.manga.eq(mangaId) and ChapterTable.sourceOrder.eq(chapterIndex) }
+                .first()
         }
-        notifyAllClients()
+        enqueue(EnqueueInput(chapterIds = listOf(chapter[ChapterTable.id].value)))
+    }
+
+    @Serializable
+    // Input might have additional formats in the future, such as "All for mangaID" or "Unread for categoryID"
+    // Having this input format is just future-proofing
+    data class EnqueueInput(
+        val chapterIds: List<Int>?
+    )
+
+    fun enqueue(input: EnqueueInput) {
+        if (input.chapterIds == null) return
+
+        val chapters = transaction {
+            (ChapterTable innerJoin MangaTable)
+                .select { ChapterTable.id inList input.chapterIds }
+                .toList()
+        }
+
+        val mangas = transaction {
+            chapters.distinctBy { chapter -> chapter[MangaTable.id] }
+                .map { MangaTable.toDataClass(it) }
+                .associateBy { it.id }
+        }
+
+        val inputPairs = transaction {
+            chapters.map {
+                Pair(
+                    // this should be safe because mangas is created above from chapters
+                    mangas[it[ChapterTable.manga].value]!!,
+                    ChapterTable.toDataClass(it)
+                )
+            }
+        }
+
+        addMultipleToQueue(inputPairs)
+    }
+
+    /**
+     * Tries to add multiple inputs to queue
+     * If any of inputs was actually added to queue, starts the queue
+     */
+    private fun addMultipleToQueue(inputs: List<Pair<MangaDataClass, ChapterDataClass>>) {
+        val addedChapters = inputs.mapNotNull { addToQueue(it.first, it.second) }
+        if (addedChapters.isNotEmpty()) {
+            start()
+            notifyAllClients()
+        }
+    }
+
+    /**
+     * Tries to add chapter to queue.
+     * If chapter is added, returns the created DownloadChapter, otherwise returns null
+     */
+    private fun addToQueue(manga: MangaDataClass, chapter: ChapterDataClass): DownloadChapter? {
+        if (downloadQueue.none { it.mangaId == manga.id && it.chapterIndex == chapter.index }) {
+            val downloadChapter = DownloadChapter(
+                chapter.index,
+                manga.id,
+                chapter,
+                manga
+            )
+            downloadQueue.add(downloadChapter)
+            logger.debug { "Added chapter ${chapter.id} to download queue (${manga.title} | ${chapter.name})" }
+            return downloadChapter
+        }
+        logger.debug { "Chapter ${chapter.id} already present in queue (${manga.title} | ${chapter.name})" }
+        return null
     }
 
     fun unqueue(chapterIndex: Int, mangaId: Int) {

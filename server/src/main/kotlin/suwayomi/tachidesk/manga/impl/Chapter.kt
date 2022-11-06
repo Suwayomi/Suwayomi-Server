@@ -140,6 +140,7 @@ object Chapter {
             val dbChapter = dbChapterMap.getValue(it.url)
 
             ChapterDataClass(
+                dbChapter[ChapterTable.id].value,
                 it.url,
                 it.name,
                 it.date_upload,
