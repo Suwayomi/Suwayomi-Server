@@ -8,62 +8,30 @@ package suwayomi.tachidesk.manga.impl.download
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.javalin.websocket.WsContext
-import io.javalin.websocket.WsMessageContext
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.event.Event
+import suwayomi.tachidesk.event.enums.EventType
 import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
 object DownloadManager {
-    private val clients = ConcurrentHashMap<String, WsContext>()
+    val eventDispatcher = DownloadEventDispatcher()
     private val downloadQueue = CopyOnWriteArrayList<DownloadChapter>()
     private var downloader: Downloader? = null
 
-    fun addClient(ctx: WsContext) {
-        clients[ctx.sessionId] = ctx
-    }
-
-    fun removeClient(ctx: WsContext) {
-        clients.remove(ctx.sessionId)
-    }
-
     fun notifyClient(ctx: WsContext) {
-        ctx.send(
-            getStatus()
-        )
+        eventDispatcher.notifyClient(ctx, getStatus())
     }
 
-    fun handleRequest(ctx: WsMessageContext) {
-        when (ctx.message()) {
-            "STATUS" -> notifyClient(ctx)
-            else -> ctx.send(
-                """
-                        |Invalid command.
-                        |Supported commands are:
-                        |    - STATUS
-                        |       sends the current download status
-                        |
-                """.trimMargin()
-            )
-        }
-    }
-
-    private fun notifyAllClients() {
-        val status = getStatus()
-        clients.forEach {
-            it.value.send(status)
-        }
-    }
-
-    private fun getStatus(): DownloadStatus {
-        return DownloadStatus(
+    private fun getStatus(): Event<DownloadStatus> {
+        val status = DownloadStatus(
             if (downloader == null ||
                 downloadQueue.none { it.state == Downloading }
             ) {
@@ -72,6 +40,10 @@ object DownloadManager {
                 "Started"
             },
             downloadQueue
+        )
+        return Event(
+            type = EventType.STATIC,
+            entity = status
         )
     }
 
@@ -92,12 +64,16 @@ object DownloadManager {
             )
             start()
         }
-        notifyAllClients()
+        val status = getStatus()
+        eventDispatcher.enqueue(status)
+        eventDispatcher.notifyAllClients(status)
     }
 
     fun unqueue(chapterIndex: Int, mangaId: Int) {
         downloadQueue.removeIf { it.mangaId == mangaId && it.chapterIndex == chapterIndex }
-        notifyAllClients()
+        val status = getStatus()
+        eventDispatcher.dequeue(status)
+        eventDispatcher.notifyAllClients(status)
     }
 
     fun start() {
@@ -107,11 +83,11 @@ object DownloadManager {
         }
 
         if (downloader == null) {
-            downloader = Downloader(downloadQueue) { notifyAllClients() }
+            downloader = Downloader(downloadQueue) { eventDispatcher.notifyAllClients(getStatus()) }
             downloader!!.start()
         }
 
-        notifyAllClients()
+        eventDispatcher.notifyAllClients(getStatus())
     }
 
     fun stop() {
@@ -121,13 +97,13 @@ object DownloadManager {
             }
         }
         downloader = null
-        notifyAllClients()
+        eventDispatcher.notifyAllClients(getStatus())
     }
 
     fun clear() {
         stop()
         downloadQueue.clear()
-        notifyAllClients()
+        eventDispatcher.notifyAllClients(getStatus())
     }
 }
 
