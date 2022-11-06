@@ -38,6 +38,7 @@ object ChapterTable : IntIdTable() {
 
 fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
     ChapterDataClass(
+        chapterEntry[id].value,
         chapterEntry[url],
         chapterEntry[name],
         chapterEntry[date_upload],
