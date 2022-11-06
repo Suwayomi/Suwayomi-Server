@@ -1,6 +1,5 @@
 package eu.kanade.tachiyomi.source.local.loader
 
-import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.util.storage.EpubFile
 import java.io.File
 
@@ -24,7 +23,6 @@ class EpubPageLoader(file: File) : PageLoader {
                 val streamFn = { epub.getInputStream(epub.getEntry(path)!!) }
                 ReaderPage(i).apply {
                     stream = streamFn
-                    status = Page.READY
                 }
             }
     }

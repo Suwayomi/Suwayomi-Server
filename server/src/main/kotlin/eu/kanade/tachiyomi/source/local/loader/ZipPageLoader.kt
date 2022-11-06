@@ -1,6 +1,5 @@
 package eu.kanade.tachiyomi.source.local.loader
 
-import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.util.lang.compareToCaseInsensitiveNaturalOrder
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import java.io.File
@@ -24,7 +23,6 @@ class ZipPageLoader(file: File) : PageLoader {
                 val streamFn = { zip.getInputStream(entry) }
                 ReaderPage(i).apply {
                     stream = streamFn
-                    status = Page.READY
                 }
             }
     }

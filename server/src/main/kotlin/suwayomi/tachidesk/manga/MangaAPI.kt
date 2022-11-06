@@ -104,7 +104,7 @@ object MangaAPI {
 
             get("start", DownloadController.start)
             get("stop", DownloadController.stop)
-            get("clear", DownloadController.stop)
+            get("clear", DownloadController.clear)
         }
 
         path("download") {

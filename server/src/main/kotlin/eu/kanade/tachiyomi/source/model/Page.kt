@@ -2,7 +2,8 @@ package eu.kanade.tachiyomi.source.model
 
 import android.net.Uri
 import eu.kanade.tachiyomi.network.ProgressListener
-import rx.subjects.Subject
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 open class Page(
     val index: Int,
@@ -11,46 +12,15 @@ open class Page(
     @Transient var uri: Uri? = null // Deprecated but can't be deleted due to extensions
 ) : ProgressListener {
 
-    val number: Int
-        get() = index + 1
-
-    @Transient
-    @Volatile
-    var status: Int = 0
-        set(value) {
-            field = value
-            statusSubject?.onNext(value)
-            statusCallback?.invoke(this)
-        }
-
-    @Transient
-    @Volatile
-    var progress: Int = 0
-        set(value) {
-            field = value
-            statusCallback?.invoke(this)
-        }
-
-    @Transient
-    private var statusSubject: Subject<Int, Int>? = null
-
-    @Transient
-    private var statusCallback: ((Page) -> Unit)? = null
+    private val _progress = MutableStateFlow(0)
+    val progress = _progress.asStateFlow()
 
     override fun update(bytesRead: Long, contentLength: Long, done: Boolean) {
-        progress = if (contentLength > 0) {
+        _progress.value = if (contentLength > 0) {
             (100 * bytesRead / contentLength).toInt()
         } else {
             -1
         }
-    }
-
-    fun setStatusSubject(subject: Subject<Int, Int>?) {
-        this.statusSubject = subject
-    }
-
-    fun setStatusCallback(f: ((Page) -> Unit)?) {
-        statusCallback = f
     }
 
     companion object {

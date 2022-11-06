@@ -116,13 +116,13 @@ fun Call.asObservableSuccess(): Observable<Response> {
 @Suppress("UNUSED_PARAMETER")
 fun OkHttpClient.newCallWithProgress(request: Request, listener: ProgressListener): Call {
     val progressClient = newBuilder()
-//        .cache(null)
-//        .addNetworkInterceptor { chain ->
-//            val originalResponse = chain.proceed(chain.request())
-//            originalResponse.newBuilder()
-//                .body(ProgressResponseBody(originalResponse.body!!, listener))
-//                .build()
-//        }
+        .cache(null)
+        .addNetworkInterceptor { chain ->
+            val originalResponse = chain.proceed(chain.request())
+            originalResponse.newBuilder()
+                .body(ProgressResponseBody(originalResponse.body!!, listener))
+                .build()
+        }
         .build()
 
     return progressClient.newCall(request)

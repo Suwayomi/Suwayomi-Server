@@ -9,6 +9,10 @@ package suwayomi.tachidesk.manga.impl.download
 
 import io.javalin.websocket.WsContext
 import io.javalin.websocket.WsMessageContext
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.and
@@ -30,7 +34,8 @@ private val logger = KotlinLogging.logger {}
 object DownloadManager {
     private val clients = ConcurrentHashMap<String, WsContext>()
     private val downloadQueue = CopyOnWriteArrayList<DownloadChapter>()
-    private var downloader: Downloader? = null
+    private val downloader = Downloader(downloadQueue) { notifyAllClients() }
+    private var downloaderJob: Job? = null
 
     fun addClient(ctx: WsContext) {
         clients[ctx.sessionId] = ctx
@@ -70,9 +75,7 @@ object DownloadManager {
 
     private fun getStatus(): DownloadStatus {
         return DownloadStatus(
-            if (downloader == null ||
-                downloadQueue.none { it.state == Downloading }
-            ) {
+            if (downloadQueue.none { it.state == Downloading }) {
                 "Stopped"
             } else {
                 "Started"
@@ -164,30 +167,21 @@ object DownloadManager {
     }
 
     fun start() {
-        if (downloader != null && !downloader?.isAlive!!) {
-            // doesn't exist or is dead
-            downloader = null
-        }
-
-        if (downloader == null) {
-            downloader = Downloader(downloadQueue) { notifyAllClients() }
-            downloader!!.start()
-        }
-
-        notifyAllClients()
-    }
-
-    fun stop() {
-        downloader?.let {
-            synchronized(it.shouldStop) {
-                it.shouldStop = true
+        if (downloaderJob?.isActive != true) {
+            downloaderJob = GlobalScope.launch {
+                downloader.run()
             }
         }
-        downloader = null
+
         notifyAllClients()
     }
 
-    fun clear() {
+    suspend fun stop() {
+        downloaderJob?.cancelAndJoin()
+        notifyAllClients()
+    }
+
+    suspend fun clear() {
         stop()
         downloadQueue.clear()
         notifyAllClients()
