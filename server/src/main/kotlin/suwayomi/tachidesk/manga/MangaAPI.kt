@@ -106,7 +106,7 @@ object MangaAPI {
             get("stop", DownloadController.stop)
             get("clear", DownloadController.stop)
 
-            post("", DownloadController.queueChapters)
+            post("batch", DownloadController.queueChapters)
         }
 
         path("download") {
