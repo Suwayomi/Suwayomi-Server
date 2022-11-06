@@ -11,6 +11,7 @@ import io.javalin.websocket.WsContext
 import io.javalin.websocket.WsMessageContext
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
@@ -80,43 +81,46 @@ object DownloadManager {
         )
     }
 
+    fun enqueueWithChapterIndex(mangaId: Int, chapterIndex: Int) {
+        val chapter = transaction {
+            ChapterTable
+                .slice(ChapterTable.id)
+                .select { ChapterTable.manga.eq(mangaId) and ChapterTable.sourceOrder.eq(chapterIndex) }
+                .first()
+        }
+        enqueue(listOf(EnqueueInput(chapter[ChapterTable.id].value)))
+    }
+
     @Serializable
     data class EnqueueInput(
-        val mangaId: Int,
-        val chapterIndex: Int
+        val chapterId: Int
     )
 
     fun enqueue(inputs: List<EnqueueInput>) {
-        val mangas = transaction {
-            val mangaIds = inputs.map { it.mangaId }.distinct()
-            MangaTable.select { MangaTable.id inList mangaIds }
-                .map { MangaTable.toDataClass(it) }
-        }
-
-        // This list will have unwanted chapters from other manga but there is no simple way
-        // to select only wanted ones. It will be mapped to input later so it should not be problem
         val chapters = transaction {
-            val chapterIndexes = inputs.map { it.chapterIndex }.distinct()
-            ChapterTable.select { ChapterTable.sourceOrder inList chapterIndexes }.toList()
+            val chapterIds = inputs.map { it.chapterId }.distinct()
+            (ChapterTable innerJoin MangaTable)
+                .select { ChapterTable.id inList chapterIds }
+                .toList()
         }
 
-        val mappedInputs = transaction {
-            inputs.map {
+        val mangas = transaction {
+            chapters.distinctBy { chapter -> chapter[MangaTable.id] }
+                .map { MangaTable.toDataClass(it) }
+                .associateBy { it.id }
+        }
+
+        val inputPairs = transaction {
+            chapters.map {
                 Pair(
-                    mangas.first { manga -> manga.id == it.mangaId },
-                    ChapterTable.toDataClass(
-                        chapters.first { chapter ->
-                            inputs.find { input ->
-                                it.chapterIndex == chapter[ChapterTable.sourceOrder] &&
-                                    input.mangaId == chapter[ChapterTable.manga].value
-                            } != null
-                        }
-                    )
+                    // this should be safe because mangas is created above from chapters
+                    mangas[it[ChapterTable.manga].value]!!,
+                    ChapterTable.toDataClass(it)
                 )
             }
         }
 
-        addMultipleToQueue(mappedInputs)
+        addMultipleToQueue(inputPairs)
     }
 
     /**
@@ -144,10 +148,10 @@ object DownloadManager {
                 manga
             )
             downloadQueue.add(downloadChapter)
-            logger.debug { "Added to download queue: ${manga.title} | ${chapter.index}" }
+            logger.debug { "Added chapter ${chapter.id} to download queue (${manga.title} | ${chapter.name})" }
             return downloadChapter
         }
-        logger.debug { "Chapter already present in queue: ${manga.title} | ${chapter.index}" }
+        logger.debug { "Chapter ${chapter.id} already present in queue (${manga.title} | ${chapter.name})" }
         return null
     }
 

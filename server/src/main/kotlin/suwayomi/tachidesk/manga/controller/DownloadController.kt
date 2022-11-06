@@ -105,7 +105,7 @@ object DownloadController {
         behaviorOf = { ctx, chapterIndex, mangaId ->
             ctx.future(
                 future {
-                    DownloadManager.enqueue(listOf(EnqueueInput(mangaId, chapterIndex)))
+                    DownloadManager.enqueueWithChapterIndex(mangaId, chapterIndex)
                 }
             )
         },
