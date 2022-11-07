@@ -11,11 +11,11 @@ import io.javalin.websocket.WsContext
 import io.javalin.websocket.WsMessageContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
@@ -38,12 +38,13 @@ import kotlin.time.Duration.Companion.seconds
 
 private val logger = KotlinLogging.logger {}
 
+private const val MAX_SOURCES_IN_PARAllEL = 5
+
 object DownloadManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val clients = ConcurrentHashMap<String, WsContext>()
     private val downloadQueue = CopyOnWriteArrayList<DownloadChapter>()
-    private val downloader = Downloader(scope, downloadQueue) { notifyAllClients() }
-    private var downloaderJob: Job? = null
+    private val downloaders = ConcurrentHashMap<Long, Downloader>()
 
     fun addClient(ctx: WsContext) {
         clients[ctx.sessionId] = ctx
@@ -104,6 +105,46 @@ object DownloadManager {
         )
     }
 
+    private val downloaderWatch = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    init {
+        scope.launch {
+            downloaderWatch.sample(1.seconds).collect {
+                val runningDownloaders = downloaders.values.filter { it.isActive }
+                logger.info { "Running: ${runningDownloaders.size}" }
+                if (runningDownloaders.size < MAX_SOURCES_IN_PARAllEL) {
+                    downloadQueue.asSequence()
+                        .map { it.manga.sourceId.toLong() }
+                        .distinct()
+                        .minus(
+                            runningDownloaders.map { it.sourceId }.toSet()
+                        )
+                        .take(MAX_SOURCES_IN_PARAllEL - runningDownloaders.size)
+                        .map { getDownloader(it) }
+                        .forEach {
+                            it.start()
+                        }
+                    notifyAllClients()
+                }
+            }
+        }
+    }
+
+    private fun refreshDownloaders() {
+        scope.launch {
+            downloaderWatch.emit(Unit)
+        }
+    }
+
+    private fun getDownloader(sourceId: Long) = downloaders.getOrPut(sourceId) {
+        Downloader(
+            scope = scope,
+            sourceId = sourceId,
+            downloadQueue = downloadQueue,
+            notifier = ::notifyAllClients,
+            onComplete = ::refreshDownloaders
+        )
+    }
+
     fun enqueueWithChapterIndex(mangaId: Int, chapterIndex: Int) {
         val chapter = transaction {
             ChapterTable
@@ -159,6 +200,9 @@ object DownloadManager {
             start()
             notifyAllClients()
         }
+        scope.launch {
+            downloaderWatch.emit(Unit)
+        }
     }
 
     /**
@@ -195,17 +239,19 @@ object DownloadManager {
     }
 
     fun start() {
-        if (downloaderJob?.isActive != true) {
-            downloaderJob = GlobalScope.launch {
-                downloader.run()
-            }
+        scope.launch {
+            downloaderWatch.emit(Unit)
         }
-
-        notifyAllClients()
     }
 
     suspend fun stop() {
-        downloaderJob?.cancelAndJoin()
+        coroutineScope {
+            downloaders.map { (_, downloader) ->
+                async {
+                    downloader.stop()
+                }
+            }.awaitAll()
+        }
         notifyAllClients()
     }
 

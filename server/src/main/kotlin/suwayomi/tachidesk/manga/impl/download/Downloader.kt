@@ -10,6 +10,7 @@ package suwayomi.tachidesk.manga.impl.download
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -35,16 +37,19 @@ private val logger = KotlinLogging.logger {}
 
 class Downloader(
     private val scope: CoroutineScope,
+    val sourceId: Long,
     private val downloadQueue: CopyOnWriteArrayList<DownloadChapter>,
-    private val notifier: () -> Unit
+    private val notifier: () -> Unit,
+    private val onComplete: () -> Unit
 ) {
+    private var job: Job? = null
     class StopDownloadException : Exception("Cancelled download")
     class PauseDownloadException : Exception("Pause download")
 
     private suspend fun step(download: DownloadChapter?) {
         notifier()
         currentCoroutineContext().ensureActive()
-        if (download != null && download != downloadQueue.firstOrNull { it.state != Error }) {
+        if (download != null && download != downloadQueue.firstOrNull { it.manga.sourceId.toLong() == sourceId && it.state != Error }) {
             if (download in downloadQueue) {
                 throw PauseDownloadException()
             } else {
@@ -53,11 +58,34 @@ class Downloader(
         }
     }
 
-    suspend fun run() {
+    val isActive
+        get() = job?.isActive == true
+
+    fun start() {
+        if (!isActive) {
+            job = scope.launch {
+                run()
+            }.also { job ->
+                job.invokeOnCompletion {
+                    if (it !is CancellationException) {
+                        onComplete()
+                    }
+                }
+            }
+        }
+
+        notifier()
+    }
+
+    suspend fun stop() {
+        job?.cancelAndJoin()
+    }
+
+    private suspend fun run() {
         while (downloadQueue.isNotEmpty() && currentCoroutineContext().isActive) {
             val download = downloadQueue.firstOrNull {
-                it.state == Queued ||
-                    (it.state == Error && it.tries < 3) // 3 re-tries per download
+                it.manga.sourceId.toLong() == sourceId &&
+                    (it.state == Queued || (it.state == Error && it.tries < 3)) // 3 re-tries per download
             } ?: break
 
             try {
