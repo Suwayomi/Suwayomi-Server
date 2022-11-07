@@ -119,7 +119,6 @@ class Downloader(
                         pageProgressJob?.cancel()
                     }
                     // TODO: retry on error with 2,4,8 seconds of wait
-                    // TODO: download multiple pages at once, possible solution: rx observer's strategy is used in Tachiyomi
                     download.progress = ((pageNum + 1).toFloat()) / pageCount
                     step(download)
                 }
