@@ -9,9 +9,15 @@ package suwayomi.tachidesk.manga.impl.download
 
 import io.javalin.websocket.WsContext
 import io.javalin.websocket.WsMessageContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
@@ -28,13 +34,15 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.time.Duration.Companion.seconds
 
 private val logger = KotlinLogging.logger {}
 
 object DownloadManager {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val clients = ConcurrentHashMap<String, WsContext>()
     private val downloadQueue = CopyOnWriteArrayList<DownloadChapter>()
-    private val downloader = Downloader(downloadQueue) { notifyAllClients() }
+    private val downloader = Downloader(scope, downloadQueue) { notifyAllClients() }
     private var downloaderJob: Job? = null
 
     fun addClient(ctx: WsContext) {
@@ -66,10 +74,22 @@ object DownloadManager {
         }
     }
 
+    private val notifyFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
+    init {
+        scope.launch {
+            notifyFlow.sample(1.seconds).collect {
+                val status = getStatus()
+                clients.forEach {
+                    it.value.send(status)
+                }
+            }
+        }
+    }
+
     private fun notifyAllClients() {
-        val status = getStatus()
-        clients.forEach {
-            it.value.send(status)
+        scope.launch {
+            notifyFlow.emit(Unit)
         }
     }
 
@@ -80,7 +100,7 @@ object DownloadManager {
             } else {
                 "Started"
             },
-            downloadQueue
+            downloadQueue.toList()
         )
     }
 
@@ -102,7 +122,7 @@ object DownloadManager {
     )
 
     fun enqueue(input: EnqueueInput) {
-        if (input.chapterIds == null) return
+        if (input.chapterIds.isNullOrEmpty()) return
 
         val chapters = transaction {
             (ChapterTable innerJoin MangaTable)

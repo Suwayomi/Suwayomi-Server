@@ -8,7 +8,7 @@ package suwayomi.tachidesk.manga.impl.download
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -33,12 +33,24 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 private val logger = KotlinLogging.logger {}
 
-class Downloader(private val downloadQueue: CopyOnWriteArrayList<DownloadChapter>, val notifier: () -> Unit) {
+class Downloader(
+    private val scope: CoroutineScope,
+    private val downloadQueue: CopyOnWriteArrayList<DownloadChapter>,
+    private val notifier: () -> Unit
+) {
+    class StopDownloadException : Exception("Cancelled download")
+    class PauseDownloadException : Exception("Pause download")
 
     private suspend fun step(download: DownloadChapter?) {
         notifier()
         currentCoroutineContext().ensureActive()
-        if (download != null && download !in downloadQueue) throw Exception("Cancelled download")
+        if (download != null && download != downloadQueue.firstOrNull()) {
+            if (download in downloadQueue) {
+                throw PauseDownloadException()
+            } else {
+                throw StopDownloadException()
+            }
+        }
     }
 
     suspend fun run() {
@@ -71,7 +83,7 @@ class Downloader(private val downloadQueue: CopyOnWriteArrayList<DownloadChapter
                                         download.progress = (pageNum.toFloat() + (it.toFloat() * 0.01f)) / pageCount
                                         step(null) // don't throw on canceled download here since we can't do anything
                                     }
-                                    .launchIn(GlobalScope)
+                                    .launchIn(scope)
                             }
                         ).first.close()
                     } finally {
@@ -96,6 +108,8 @@ class Downloader(private val downloadQueue: CopyOnWriteArrayList<DownloadChapter
             } catch (e: CancellationException) {
                 logger.debug("Downloader was stopped")
                 downloadQueue.filter { it.state == Downloading }.forEach { it.state = Queued }
+            } catch (e: PauseDownloadException) {
+                download.state = Queued
             } catch (e: Exception) {
                 logger.info("Downloader faced an exception", e)
                 download.tries++
