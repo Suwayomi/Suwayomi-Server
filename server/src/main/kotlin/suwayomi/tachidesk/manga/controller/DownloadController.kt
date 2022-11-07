@@ -153,4 +153,23 @@ object DownloadController {
             httpCode(HttpCode.OK)
         }
     )
+
+    /** clear download queue */
+    val reorderChapter = handler(
+        pathParam<Int>("chapterIndex"),
+        pathParam<Int>("mangaId"),
+        pathParam<Int>("to"),
+        documentWith = {
+            withOperation {
+                summary("Downloader reorder chapter")
+                description("Reorder chapter in download queue")
+            }
+        },
+        behaviorOf = { _, chapterIndex, mangaId, to ->
+            DownloadManager.reorder(chapterIndex, mangaId, to)
+        },
+        withResults = {
+            httpCode(HttpCode.OK)
+        }
+    )
 }

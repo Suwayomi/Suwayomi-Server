@@ -110,6 +110,7 @@ object MangaAPI {
         path("download") {
             get("{mangaId}/chapter/{chapterIndex}", DownloadController.queueChapter)
             delete("{mangaId}/chapter/{chapterIndex}", DownloadController.unqueueChapter)
+            patch("{mangaId}/chapter/{chapterIndex}/reorder/{to}", DownloadController.reorderChapter)
             post("batch", DownloadController.queueChapters)
         }
 

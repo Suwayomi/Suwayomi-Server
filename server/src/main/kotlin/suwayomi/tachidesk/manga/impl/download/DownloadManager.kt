@@ -186,6 +186,14 @@ object DownloadManager {
         notifyAllClients()
     }
 
+    fun reorder(chapterIndex: Int, mangaId: Int, to: Int) {
+        require(to >= 0) { "'to' must be over or equal to 0" }
+        val download = downloadQueue.find { it.mangaId == mangaId && it.chapterIndex == chapterIndex }
+            ?: return
+        downloadQueue -= download
+        downloadQueue.add(to, download)
+    }
+
     fun start() {
         if (downloaderJob?.isActive != true) {
             downloaderJob = GlobalScope.launch {

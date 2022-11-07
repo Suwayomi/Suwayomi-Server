@@ -44,7 +44,7 @@ class Downloader(
     private suspend fun step(download: DownloadChapter?) {
         notifier()
         currentCoroutineContext().ensureActive()
-        if (download != null && download != downloadQueue.firstOrNull()) {
+        if (download != null && download != downloadQueue.firstOrNull { it.state != Error }) {
             if (download in downloadQueue) {
                 throw PauseDownloadException()
             } else {
