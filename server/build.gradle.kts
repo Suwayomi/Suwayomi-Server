@@ -30,8 +30,8 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-java-time:$exposedVersion")
-    // current database driver
-    implementation("com.h2database:h2:2.1.214")
+    // current database driver, can't update to h2 v2 without sql migration
+    implementation("com.h2database:h2:1.4.200")
 
     // Exposed Migrations
     implementation("com.github.Suwayomi:exposed-migrations:3.2.0")
