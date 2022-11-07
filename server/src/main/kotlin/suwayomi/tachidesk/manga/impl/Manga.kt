@@ -152,29 +152,27 @@ object Manga {
         false
     )
 
-    fun getMangaMetaMap(manga: Int): Map<String, String> {
+    fun getMangaMetaMap(mangaId: Int): Map<String, String> {
         return transaction {
-            MangaMetaTable.select { MangaMetaTable.ref eq manga }
+            MangaMetaTable.select { MangaMetaTable.ref eq mangaId }
                 .associate { it[MangaMetaTable.key] to it[MangaMetaTable.value] }
         }
     }
 
     fun modifyMangaMeta(mangaId: Int, key: String, value: String) {
         transaction {
-            val manga = MangaTable.select { MangaTable.id eq mangaId }
-                .first()[MangaTable.id]
-            val meta = transaction {
-                MangaMetaTable.select { (MangaMetaTable.ref eq manga) and (MangaMetaTable.key eq key) }
-            }.firstOrNull()
+            val meta =
+                MangaMetaTable.select { (MangaMetaTable.ref eq mangaId) and (MangaMetaTable.key eq key) }
+                    .firstOrNull()
 
             if (meta == null) {
                 MangaMetaTable.insert {
                     it[MangaMetaTable.key] = key
                     it[MangaMetaTable.value] = value
-                    it[MangaMetaTable.ref] = manga
+                    it[MangaMetaTable.ref] = mangaId
                 }
             } else {
-                MangaMetaTable.update({ (MangaMetaTable.ref eq manga) and (MangaMetaTable.key eq key) }) {
+                MangaMetaTable.update({ (MangaMetaTable.ref eq mangaId) and (MangaMetaTable.key eq key) }) {
                     it[MangaMetaTable.value] = value
                 }
             }

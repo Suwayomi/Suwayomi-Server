@@ -86,6 +86,8 @@ object MangaAPI {
             get("{categoryId}", CategoryController.categoryMangas)
             patch("{categoryId}", CategoryController.categoryModify)
             delete("{categoryId}", CategoryController.categoryDelete)
+
+            patch("{categoryId}/meta", CategoryController.meta)
         }
 
         path("backup") {

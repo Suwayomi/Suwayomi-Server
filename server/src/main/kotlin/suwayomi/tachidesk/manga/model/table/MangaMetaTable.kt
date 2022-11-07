@@ -12,7 +12,7 @@ import org.jetbrains.exposed.sql.ReferenceOption
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable.ref
 
 /**
- * Meta data storage for clients, about Manga with id == [ref].
+ * Metadata storage for clients, about Manga with id == [ref].
  *
  *  For example, if you added reader mode(with the key juiReaderMode) such as webtoon to a manga object,
  *  this is what will show up when you request that manga from the api again
