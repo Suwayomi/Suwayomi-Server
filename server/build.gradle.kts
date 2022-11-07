@@ -25,16 +25,16 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
 
     // Exposed ORM
-    val exposedVersion = "0.34.1"
+    val exposedVersion = "0.40.1"
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-java-time:$exposedVersion")
     // current database driver
-    implementation("com.h2database:h2:1.4.200")
+    implementation("com.h2database:h2:2.1.214")
 
     // Exposed Migrations
-    implementation("com.github.Suwayomi:exposed-migrations:3.1.4")
+    implementation("com.github.Suwayomi:exposed-migrations:3.2.0")
 
     // tray icon
     implementation("com.dorkbox:SystemTray:4.1")
