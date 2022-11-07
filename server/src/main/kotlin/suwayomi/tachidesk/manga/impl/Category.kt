@@ -11,6 +11,7 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
@@ -20,6 +21,7 @@ import suwayomi.tachidesk.manga.impl.CategoryManga.removeMangaFromCategory
 import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
+import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
@@ -117,6 +119,33 @@ object Category {
         return transaction {
             CategoryTable.select { CategoryTable.id eq categoryId }.firstOrNull()?.let {
                 CategoryTable.toDataClass(it)
+            }
+        }
+    }
+
+    fun getCategoryMetaMap(categoryId: Int): Map<String, String> {
+        return transaction {
+            CategoryMetaTable.select { CategoryMetaTable.ref eq categoryId }
+                .associate { it[CategoryMetaTable.key] to it[CategoryMetaTable.value] }
+        }
+    }
+
+    fun modifyMeta(categoryId: Int, key: String, value: String) {
+        transaction {
+            val meta = transaction {
+                CategoryMetaTable.select { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
+            }.firstOrNull()
+
+            if (meta == null) {
+                CategoryMetaTable.insert {
+                    it[CategoryMetaTable.key] = key
+                    it[CategoryMetaTable.value] = value
+                    it[CategoryMetaTable.ref] = categoryId
+                }
+            } else {
+                CategoryMetaTable.update({ (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }) {
+                    it[CategoryMetaTable.value] = value
+                }
             }
         }
     }

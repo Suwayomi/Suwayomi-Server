@@ -129,4 +129,25 @@ object CategoryController {
             httpCode(HttpCode.OK)
         }
     )
+
+    /** used to modify a category's meta parameters */
+    val meta = handler(
+        pathParam<Int>("categoryId"),
+        formParam<String>("key"),
+        formParam<String>("value"),
+        documentWith = {
+            withOperation {
+                summary("Add meta data to category")
+                description("A simple Key-Value storage in the manga object, you can set values for whatever you want inside it.")
+            }
+        },
+        behaviorOf = { ctx, categoryId, key, value ->
+            Category.modifyMeta(categoryId, key, value)
+            ctx.status(200)
+        },
+        withResults = {
+            httpCode(HttpCode.OK)
+            httpCode(HttpCode.NOT_FOUND)
+        }
+    )
 }

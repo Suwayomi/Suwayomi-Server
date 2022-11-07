@@ -9,6 +9,7 @@ package suwayomi.tachidesk.manga.model.table
 
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
+import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 
 object CategoryTable : IntIdTable() {
@@ -18,8 +19,9 @@ object CategoryTable : IntIdTable() {
 }
 
 fun CategoryTable.toDataClass(categoryEntry: ResultRow) = CategoryDataClass(
-    categoryEntry[this.id].value,
+    categoryEntry[id].value,
     categoryEntry[order],
     categoryEntry[name],
-    categoryEntry[isDefault]
+    categoryEntry[isDefault],
+    Category.getCategoryMetaMap(categoryEntry[id].value)
 )
