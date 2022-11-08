@@ -131,6 +131,7 @@ object SourceController {
                 summary("Source preference set")
                 description("Set one preference of source with id `sourceId`")
             }
+            body<SourcePreferenceChange>()
         },
         behaviorOf = { ctx, sourceId ->
             val preferenceChange = ctx.bodyAsClass(SourcePreferenceChange::class.java)
