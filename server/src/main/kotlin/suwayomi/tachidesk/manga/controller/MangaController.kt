@@ -8,6 +8,11 @@ package suwayomi.tachidesk.manga.controller
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.javalin.http.HttpCode
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
+import org.kodein.di.DI
+import org.kodein.di.conf.global
+import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Library
@@ -26,6 +31,8 @@ import suwayomi.tachidesk.server.util.withOperation
 import kotlin.time.Duration.Companion.days
 
 object MangaController {
+    private val json by DI.global.instance<Json>()
+
     /** get manga info */
     val retrieve = handler(
         pathParam<Int>("mangaId"),
@@ -208,6 +215,25 @@ object MangaController {
         withResults = {
             json<Array<ChapterDataClass>>(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
+        }
+    )
+
+    /** batch edit chapters */
+    val chapterBatch = handler(
+        pathParam<Int>("mangaId"),
+        documentWith = {
+            withOperation {
+                summary("Chapters update multiple")
+                description("Update multiple chapters. For batch marking as read, or bookmarking")
+            }
+            body<Chapter.ChapterBatchEditInput>()
+        },
+        behaviorOf = { ctx, mangaId ->
+            val input = json.decodeFromString<Chapter.ChapterBatchEditInput>(ctx.body())
+            Chapter.modifyChapters(input, mangaId)
+        },
+        withResults = {
+            httpCode(HttpCode.OK)
         }
     )
 

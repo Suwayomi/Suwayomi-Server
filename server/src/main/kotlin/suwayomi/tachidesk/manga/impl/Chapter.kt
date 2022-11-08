@@ -10,16 +10,12 @@ package suwayomi.tachidesk.manga.impl
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
+import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SortOrder.ASC
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.util.getChapterDir
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
@@ -193,6 +189,52 @@ object Chapter {
             markPrevRead?.let {
                 ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder less chapterIndex) }) {
                     it[ChapterTable.isRead] = markPrevRead
+                }
+            }
+        }
+    }
+
+    @Serializable
+    data class ChapterChange(
+        val isRead: Boolean? = null,
+        val isBookmarked: Boolean? = null,
+        val lastPageRead: Int? = null // this probably won't be very useful, but for completion's sake
+    )
+
+    @Serializable
+    data class ChapterBatchEditInput(
+        val chapterIds: List<Int>? = null,
+        val chapterIndexes: List<Int>? = null,
+        val change: ChapterChange?
+    )
+
+    fun modifyChapters(input: ChapterBatchEditInput, mangaId: Int) {
+        // Make sure change is defined
+        if (input.change == null) return
+        val (isRead, isBookmarked, lastPageRead) = input.change
+        if (isRead == null && isBookmarked == null) return
+
+        // Make sure some filter is defined
+        val condition = when {
+            input.chapterIds != null ->
+                Op.build { (ChapterTable.manga eq mangaId) and (ChapterTable.id inList input.chapterIds) }
+            input.chapterIndexes != null ->
+                Op.build { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder inList input.chapterIndexes) }
+            else -> null
+        } ?: return
+
+        transaction {
+            val now = Instant.now().epochSecond
+            ChapterTable.update({ condition }) { update ->
+                isRead?.also {
+                    update[ChapterTable.isRead] = it
+                }
+                isBookmarked?.also {
+                    update[ChapterTable.isBookmarked] = it
+                }
+                lastPageRead?.also {
+                    update[ChapterTable.lastPageRead] = it
+                    update[ChapterTable.lastReadAt] = now
                 }
             }
         }
