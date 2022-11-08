@@ -4,9 +4,7 @@ import eu.kanade.tachiyomi.source.model.Page
 import rx.Observable
 
 fun HttpSource.getImageUrl(page: Page): Observable<Page> {
-    page.status = Page.LOAD_PAGE
     return fetchImageUrl(page)
-        .doOnError { page.status = Page.ERROR }
         .onErrorReturn { null }
         .doOnNext { page.imageUrl = it }
         .map { page }

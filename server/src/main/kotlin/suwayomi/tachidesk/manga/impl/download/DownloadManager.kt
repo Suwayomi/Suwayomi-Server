@@ -9,6 +9,16 @@ package suwayomi.tachidesk.manga.impl.download
 
 import io.javalin.websocket.WsContext
 import io.javalin.websocket.WsMessageContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.sample
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.and
@@ -24,13 +34,17 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.time.Duration.Companion.seconds
 
 private val logger = KotlinLogging.logger {}
 
+private const val MAX_SOURCES_IN_PARAllEL = 5
+
 object DownloadManager {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val clients = ConcurrentHashMap<String, WsContext>()
     private val downloadQueue = CopyOnWriteArrayList<DownloadChapter>()
-    private var downloader: Downloader? = null
+    private val downloaders = ConcurrentHashMap<Long, Downloader>()
 
     fun addClient(ctx: WsContext) {
         clients[ctx.sessionId] = ctx
@@ -61,23 +75,73 @@ object DownloadManager {
         }
     }
 
+    private val notifyFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
+    init {
+        scope.launch {
+            notifyFlow.sample(1.seconds).collect {
+                val status = getStatus()
+                clients.forEach {
+                    it.value.send(status)
+                }
+            }
+        }
+    }
+
     private fun notifyAllClients() {
-        val status = getStatus()
-        clients.forEach {
-            it.value.send(status)
+        scope.launch {
+            notifyFlow.emit(Unit)
         }
     }
 
     private fun getStatus(): DownloadStatus {
         return DownloadStatus(
-            if (downloader == null ||
-                downloadQueue.none { it.state == Downloading }
-            ) {
+            if (downloadQueue.none { it.state == Downloading }) {
                 "Stopped"
             } else {
                 "Started"
             },
-            downloadQueue
+            downloadQueue.toList()
+        )
+    }
+
+    private val downloaderWatch = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    init {
+        scope.launch {
+            downloaderWatch.sample(1.seconds).collect {
+                val runningDownloaders = downloaders.values.filter { it.isActive }
+                logger.info { "Running: ${runningDownloaders.size}" }
+                if (runningDownloaders.size < MAX_SOURCES_IN_PARAllEL) {
+                    downloadQueue.asSequence()
+                        .map { it.manga.sourceId.toLong() }
+                        .distinct()
+                        .minus(
+                            runningDownloaders.map { it.sourceId }.toSet()
+                        )
+                        .take(MAX_SOURCES_IN_PARAllEL - runningDownloaders.size)
+                        .map { getDownloader(it) }
+                        .forEach {
+                            it.start()
+                        }
+                    notifyAllClients()
+                }
+            }
+        }
+    }
+
+    private fun refreshDownloaders() {
+        scope.launch {
+            downloaderWatch.emit(Unit)
+        }
+    }
+
+    private fun getDownloader(sourceId: Long) = downloaders.getOrPut(sourceId) {
+        Downloader(
+            scope = scope,
+            sourceId = sourceId,
+            downloadQueue = downloadQueue,
+            notifier = ::notifyAllClients,
+            onComplete = ::refreshDownloaders
         )
     }
 
@@ -99,7 +163,7 @@ object DownloadManager {
     )
 
     fun enqueue(input: EnqueueInput) {
-        if (input.chapterIds == null) return
+        if (input.chapterIds.isNullOrEmpty()) return
 
         val chapters = transaction {
             (ChapterTable innerJoin MangaTable)
@@ -136,6 +200,9 @@ object DownloadManager {
             start()
             notifyAllClients()
         }
+        scope.launch {
+            downloaderWatch.emit(Unit)
+        }
     }
 
     /**
@@ -163,31 +230,32 @@ object DownloadManager {
         notifyAllClients()
     }
 
+    fun reorder(chapterIndex: Int, mangaId: Int, to: Int) {
+        require(to >= 0) { "'to' must be over or equal to 0" }
+        val download = downloadQueue.find { it.mangaId == mangaId && it.chapterIndex == chapterIndex }
+            ?: return
+        downloadQueue -= download
+        downloadQueue.add(to, download)
+    }
+
     fun start() {
-        if (downloader != null && !downloader?.isAlive!!) {
-            // doesn't exist or is dead
-            downloader = null
+        scope.launch {
+            downloaderWatch.emit(Unit)
         }
+    }
 
-        if (downloader == null) {
-            downloader = Downloader(downloadQueue) { notifyAllClients() }
-            downloader!!.start()
+    suspend fun stop() {
+        coroutineScope {
+            downloaders.map { (_, downloader) ->
+                async {
+                    downloader.stop()
+                }
+            }.awaitAll()
         }
-
         notifyAllClients()
     }
 
-    fun stop() {
-        downloader?.let {
-            synchronized(it.shouldStop) {
-                it.shouldStop = true
-            }
-        }
-        downloader = null
-        notifyAllClients()
-    }
-
-    fun clear() {
+    suspend fun clear() {
         stop()
         downloadQueue.clear()
         notifyAllClients()

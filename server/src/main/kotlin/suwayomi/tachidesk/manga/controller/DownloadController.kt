@@ -46,10 +46,8 @@ object DownloadController {
                 description("Start the downloader")
             }
         },
-        behaviorOf = { ctx ->
+        behaviorOf = {
             DownloadManager.start()
-
-            ctx.status(200)
         },
         withResults = {
             httpCode(HttpCode.OK)
@@ -65,9 +63,9 @@ object DownloadController {
             }
         },
         behaviorOf = { ctx ->
-            DownloadManager.stop()
-
-            ctx.status(200)
+            ctx.future(
+                future { DownloadManager.stop() }
+            )
         },
         withResults = {
             httpCode(HttpCode.OK)
@@ -83,9 +81,9 @@ object DownloadController {
             }
         },
         behaviorOf = { ctx ->
-            DownloadManager.clear()
-
-            ctx.status(200)
+            ctx.future(
+                future { DownloadManager.clear() }
+            )
         },
         withResults = {
             httpCode(HttpCode.OK)
@@ -150,6 +148,25 @@ object DownloadController {
             DownloadManager.unqueue(chapterIndex, mangaId)
 
             ctx.status(200)
+        },
+        withResults = {
+            httpCode(HttpCode.OK)
+        }
+    )
+
+    /** clear download queue */
+    val reorderChapter = handler(
+        pathParam<Int>("chapterIndex"),
+        pathParam<Int>("mangaId"),
+        pathParam<Int>("to"),
+        documentWith = {
+            withOperation {
+                summary("Downloader reorder chapter")
+                description("Reorder chapter in download queue")
+            }
+        },
+        behaviorOf = { _, chapterIndex, mangaId, to ->
+            DownloadManager.reorder(chapterIndex, mangaId, to)
         },
         withResults = {
             httpCode(HttpCode.OK)

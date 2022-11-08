@@ -2,7 +2,6 @@ package eu.kanade.tachiyomi.source.local.loader
 
 import com.github.junrar.Archive
 import com.github.junrar.rarfile.FileHeader
-import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.util.lang.compareToCaseInsensitiveNaturalOrder
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import java.io.ByteArrayInputStream
@@ -46,7 +45,6 @@ class RarPageLoader(file: File) : PageLoader {
 
                     ReaderPage(i).apply {
                         stream = streamFn
-                        status = Page.READY
                     }
                 }
         }
@@ -58,7 +56,6 @@ class RarPageLoader(file: File) : PageLoader {
 
                 ReaderPage(i).apply {
                     stream = streamFn
-                    status = Page.READY
                 }
             }
     }

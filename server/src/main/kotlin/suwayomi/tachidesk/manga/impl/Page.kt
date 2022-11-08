@@ -10,6 +10,7 @@ package suwayomi.tachidesk.manga.impl
 import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
+import kotlinx.coroutines.flow.StateFlow
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -37,7 +38,7 @@ object Page {
         return page.imageUrl!!
     }
 
-    suspend fun getPageImage(mangaId: Int, chapterIndex: Int, index: Int, useCache: Boolean = true): Pair<InputStream, String> {
+    suspend fun getPageImage(mangaId: Int, chapterIndex: Int, index: Int, useCache: Boolean = true, progressFlow: ((StateFlow<Int>) -> Unit)? = null): Pair<InputStream, String> {
         val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
         val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
         val chapterEntry = transaction {
@@ -55,6 +56,7 @@ object Page {
             pageEntry[PageTable.url],
             pageEntry[PageTable.imageUrl]
         )
+        progressFlow?.invoke(tachiyomiPage.progress)
 
         // we treat Local source differently
         if (source.id == LocalSource.ID) {
