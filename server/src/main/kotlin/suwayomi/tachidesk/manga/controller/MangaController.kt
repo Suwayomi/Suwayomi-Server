@@ -33,13 +33,12 @@ import kotlin.time.Duration.Companion.days
 object MangaController {
     private val json by DI.global.instance<Json>()
 
-    /** get manga info */
     val retrieve = handler(
         pathParam<Int>("mangaId"),
         queryParam("onlineFetch", false),
         documentWith = {
             withOperation {
-                summary("Get a manga")
+                summary("Get manga info")
                 description("Get a manga from the database using a specific id.")
             }
         },
@@ -47,6 +46,29 @@ object MangaController {
             ctx.future(
                 future {
                     Manga.getManga(mangaId, onlineFetch)
+                }
+            )
+        },
+        withResults = {
+            json<MangaDataClass>(HttpCode.OK)
+            httpCode(HttpCode.NOT_FOUND)
+        }
+    )
+
+    /** get manga info with all data filled in */
+    val retrieveFull = handler(
+        pathParam<Int>("mangaId"),
+        queryParam("onlineFetch", false),
+        documentWith = {
+            withOperation {
+                summary("Get manga info with all data filled in")
+                description("Get a manga from the database using a specific id.")
+            }
+        },
+        behaviorOf = { ctx, mangaId, onlineFetch ->
+            ctx.future(
+                future {
+                    Manga.getMangaFull(mangaId, onlineFetch)
                 }
             )
         },

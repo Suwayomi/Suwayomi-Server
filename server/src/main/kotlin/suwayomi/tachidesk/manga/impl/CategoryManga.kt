@@ -81,9 +81,9 @@ object CategoryManga {
 
         val transform: (ResultRow) -> MangaDataClass = {
             val dataClass = MangaTable.toDataClass(it)
-            dataClass.unreadCount = it[unreadExpression]?.toInt()
-            dataClass.downloadCount = it[downloadExpression]?.toInt()
-            dataClass.chapterCount = it[chapterCountExpression]?.toInt()
+            dataClass.unreadCount = it[unreadExpression]
+            dataClass.downloadCount = it[downloadExpression]
+            dataClass.chapterCount = it[chapterCountExpression]
             dataClass
         }
 

@@ -13,6 +13,7 @@ import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
@@ -34,9 +35,11 @@ import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.impl.util.updateMangaDownloadDir
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
+import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import java.io.File
@@ -127,6 +130,40 @@ object Manga {
         }
     }
 
+    suspend fun getMangaFull(mangaId: Int, onlineFetch: Boolean = false): MangaDataClass {
+        val mangaDaaClass = getManga(mangaId, onlineFetch)
+
+        return transaction {
+            val unreadCount =
+                ChapterTable
+                    .select { (ChapterTable.manga eq mangaId) and (ChapterTable.isRead eq false) }
+                    .count()
+
+            val downloadCount =
+                ChapterTable
+                    .select { (ChapterTable.manga eq mangaId) and (ChapterTable.isDownloaded eq true) }
+                    .count()
+
+            val chapterCount =
+                ChapterTable
+                    .select { (ChapterTable.manga eq mangaId) }
+                    .count()
+
+            val lastChapterRead =
+                ChapterTable
+                    .select { (ChapterTable.manga eq mangaId) }
+                    .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+                    .firstOrNull { it[ChapterTable.isRead] }
+
+            mangaDaaClass.unreadCount = unreadCount
+            mangaDaaClass.downloadCount = downloadCount
+            mangaDaaClass.chapterCount = chapterCount
+            mangaDaaClass.lastChapterRead = lastChapterRead?.let { ChapterTable.toDataClass(it) }
+
+            mangaDaaClass
+        }
+    }
+
     private fun getMangaDataClass(mangaId: Int, mangaEntry: ResultRow) = MangaDataClass(
         mangaId,
         mangaEntry[MangaTable.sourceReference].toString(),
@@ -206,6 +243,7 @@ object Manga {
                     GET(thumbnailUrl, source.headers)
                 ).await()
             }
+
             is LocalSource -> {
                 val imageFile = mangaEntry[MangaTable.thumbnail_url]?.let {
                     val file = File(it)
@@ -219,6 +257,7 @@ object Manga {
                     ?: "image/jpeg"
                 imageFile.inputStream() to contentType
             }
+
             is StubSource -> getImageResponse(saveDir, fileName, useCache) {
                 val thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
                     ?: throw NullPointerException("No thumbnail found")
@@ -226,6 +265,7 @@ object Manga {
                     GET(thumbnailUrl)
                 ).await()
             }
+
             else -> throw IllegalArgumentException("Unknown source")
         }
     }

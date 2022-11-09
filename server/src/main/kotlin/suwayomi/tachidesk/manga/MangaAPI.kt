@@ -12,6 +12,7 @@ import io.javalin.apibuilder.ApiBuilder.get
 import io.javalin.apibuilder.ApiBuilder.patch
 import io.javalin.apibuilder.ApiBuilder.path
 import io.javalin.apibuilder.ApiBuilder.post
+import io.javalin.apibuilder.ApiBuilder.put
 import io.javalin.apibuilder.ApiBuilder.ws
 import suwayomi.tachidesk.manga.controller.BackupController
 import suwayomi.tachidesk.manga.controller.CategoryController
@@ -54,6 +55,7 @@ object MangaAPI {
 
         path("manga") {
             get("{mangaId}", MangaController.retrieve)
+            get("{mangaId}/full", MangaController.retrieveFull)
             get("{mangaId}/thumbnail", MangaController.thumbnail)
 
             get("{mangaId}/category", MangaController.categoryList)
@@ -69,6 +71,7 @@ object MangaAPI {
             post("{mangaId}/chapter/batch", MangaController.chapterBatch)
             get("{mangaId}/chapter/{chapterIndex}", MangaController.chapterRetrieve)
             patch("{mangaId}/chapter/{chapterIndex}", MangaController.chapterModify)
+            put("{mangaId}/chapter/{chapterIndex}", MangaController.chapterModify)
             delete("{mangaId}/chapter/{chapterIndex}", MangaController.chapterDelete)
 
             patch("{mangaId}/chapter/{chapterIndex}/meta", MangaController.chapterMeta)

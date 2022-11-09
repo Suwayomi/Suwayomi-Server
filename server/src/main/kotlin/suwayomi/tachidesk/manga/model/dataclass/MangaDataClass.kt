@@ -38,9 +38,10 @@ data class MangaDataClass(
     var chaptersLastFetchedAt: Long? = 0,
 
     val freshData: Boolean = false,
-    var unreadCount: Int? = null,
-    var downloadCount: Int? = null,
-    var chapterCount: Int? = null,
+    var unreadCount: Long? = null,
+    var downloadCount: Long? = null,
+    var chapterCount: Long? = null,
+    var lastChapterRead: ChapterDataClass? = null,
 
     val age: Long? = if (lastFetchedAt == null) 0 else Instant.now().epochSecond.minus(lastFetchedAt),
     val chaptersAge: Long? = if (chaptersLastFetchedAt == null) null else Instant.now().epochSecond.minus(chaptersLastFetchedAt)
