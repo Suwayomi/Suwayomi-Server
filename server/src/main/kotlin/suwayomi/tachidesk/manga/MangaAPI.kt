@@ -66,6 +66,7 @@ object MangaAPI {
             patch("{mangaId}/meta", MangaController.meta)
 
             get("{mangaId}/chapters", MangaController.chapterList)
+            post("{mangaId}/chapter/batch", MangaController.chapterBatch)
             get("{mangaId}/chapter/{chapterIndex}", MangaController.chapterRetrieve)
             patch("{mangaId}/chapter/{chapterIndex}", MangaController.chapterModify)
             delete("{mangaId}/chapter/{chapterIndex}", MangaController.chapterDelete)
