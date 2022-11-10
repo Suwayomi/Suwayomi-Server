@@ -7,11 +7,16 @@
 
 package suwayomi.tachidesk.graphql
 
+import io.javalin.apibuilder.ApiBuilder.get
 import io.javalin.apibuilder.ApiBuilder.post
 import suwayomi.tachidesk.graphql.controller.GraphQLController
 
 object GraphQL {
     fun defineEndpoints() {
         post("graphql", GraphQLController.execute)
+        get("graphql") { ctx ->
+            val html = javaClass.getResource("/graphql.html")?.readText()
+            ctx.html(html ?: "Could not load playground")
+        }
     }
 }
