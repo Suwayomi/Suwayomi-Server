@@ -43,7 +43,7 @@ object SettingsController {
             }
         },
         behaviorOf = { ctx ->
-            ctx.json(
+            ctx.future(
                 future { AppUpdate.checkUpdate() }
             )
         },
