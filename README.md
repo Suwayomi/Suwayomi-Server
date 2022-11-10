@@ -85,7 +85,7 @@ Download the latest `win32`(Windows 32-bit) or `win64`(Windows 64-bit) release f
 Unzip the downloaded file and double click on one of the launcher scripts.
 
 ### macOS
-Download the latest `macOS-x64`(older macOS systems) or `macOS-arm64`(Apple M1) release from [the releases section](https://github.com/Suwayomi/Tachidesk-Server/releases) or a preview one from [the preview repository](https://github.com/Suwayomi/Tachidesk-Server-preview/releases).
+Download the latest `macOS-x64`(older macOS systems) or `macOS-arm64`(Apple M1 and newer) release from [the releases section](https://github.com/Suwayomi/Tachidesk-Server/releases) or a preview one from [the preview repository](https://github.com/Suwayomi/Tachidesk-Server-preview/releases).
 
 Unzip the downloaded file and double click on one of the launcher scripts.
 
