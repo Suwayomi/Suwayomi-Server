@@ -15,6 +15,7 @@ import com.expediagroup.graphql.generator.toSchema
 import graphql.GraphQL
 import graphql.scalars.ExtendedScalars
 import graphql.schema.GraphQLType
+import suwayomi.tachidesk.graphql.mutations.ChapterMutation
 import suwayomi.tachidesk.graphql.queries.ChapterQuery
 import suwayomi.tachidesk.graphql.queries.MangaQuery
 import kotlin.reflect.KClass
@@ -37,7 +38,9 @@ val schema = toSchema(
         TopLevelObject(MangaQuery()),
         TopLevelObject(ChapterQuery())
     ),
-    mutations = listOf()
+    mutations = listOf(
+        TopLevelObject(ChapterMutation())
+    )
 )
 
 fun getGraphQLObject(): GraphQL = GraphQL.newGraphQL(schema)
