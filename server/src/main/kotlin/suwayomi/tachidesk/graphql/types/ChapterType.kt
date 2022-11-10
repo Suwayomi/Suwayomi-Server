@@ -30,7 +30,6 @@ class ChapterType(
     val isDownloaded: Boolean,
     val pageCount: Int
 //    val chapterCount: Int?,
-//    val meta: Map<String, String> = emptyMap()
 ) {
     constructor(row: ResultRow) : this(
         row[ChapterTable.id].value,
@@ -49,14 +48,13 @@ class ChapterType(
         row[ChapterTable.isDownloaded],
         row[ChapterTable.pageCount]
 //        transaction { ChapterTable.select { manga eq chapterEntry[manga].value }.count().toInt() },
-//        Chapter.getChapterMetaMap(chapterEntry[id])
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> {
         return dataFetchingEnvironment.getValueFromDataLoader<Int, MangaType>("MangaDataLoader", mangaId)
     }
 
-//    fun chapters(): List<String> {
-//        return listOf("Foo", "Bar", "Baz")
-//    }
+    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MetaType> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, MetaType>("ChapterMetaDataLoader", id)
+    }
 }

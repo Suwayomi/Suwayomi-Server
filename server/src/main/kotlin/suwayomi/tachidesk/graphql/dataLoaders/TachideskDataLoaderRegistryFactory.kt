@@ -12,5 +12,7 @@ import com.expediagroup.graphql.dataloader.KotlinDataLoaderRegistryFactory
 val tachideskDataLoaderRegistryFactory = KotlinDataLoaderRegistryFactory(
     MangaDataLoader(),
     ChapterDataLoader(),
-    ChaptersForMangaDataLoader()
+    ChaptersForMangaDataLoader(),
+    ChapterMetaDataLoader(),
+    MangaMetaDataLoader()
 )
