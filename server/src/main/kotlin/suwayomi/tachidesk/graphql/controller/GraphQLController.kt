@@ -8,6 +8,7 @@
 package suwayomi.tachidesk.graphql.controller
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.javalin.http.Context
 import io.javalin.http.HttpCode
 import suwayomi.tachidesk.graphql.impl.getGraphQLServer
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -38,4 +39,19 @@ object GraphQLController {
             json<Any>(HttpCode.OK)
         }
     )
+
+    fun playground(ctx: Context) {
+        val playgroundHtml = javaClass.getResource("/graphql-playground.html")
+
+        val body = playgroundHtml.openStream().bufferedReader().use { reader ->
+            val graphQLEndpoint = "graphql"
+            val subscriptionsEndpoint = "graphql"
+
+            reader.readText()
+                .replace("\${graphQLEndpoint}", graphQLEndpoint)
+                .replace("\${subscriptionsEndpoint}", subscriptionsEndpoint)
+        }
+
+        ctx.html(body ?: "Could not load playground")
+    }
 }
