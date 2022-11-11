@@ -48,7 +48,7 @@ object SettingsController {
             )
         },
         withResults = {
-            json<UpdateDataClass>(HttpCode.OK)
+            json<Array<UpdateDataClass>>(HttpCode.OK)
         }
     )
 }
