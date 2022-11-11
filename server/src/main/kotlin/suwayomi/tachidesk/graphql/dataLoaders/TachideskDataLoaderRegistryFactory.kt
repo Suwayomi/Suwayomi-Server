@@ -14,5 +14,8 @@ val tachideskDataLoaderRegistryFactory = KotlinDataLoaderRegistryFactory(
     ChapterDataLoader(),
     ChaptersForMangaDataLoader(),
     ChapterMetaDataLoader(),
-    MangaMetaDataLoader()
+    MangaMetaDataLoader(),
+    MangaForCategoryDataLoader(),
+    CategoryMetaDataLoader(),
+    CategoriesForMangaDataLoader()
 )

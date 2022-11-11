@@ -7,6 +7,7 @@ import org.jetbrains.exposed.sql.StdOutSqlLogger
 import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.types.CategoryMetaItem
 import suwayomi.tachidesk.graphql.types.ChapterMetaItem
 import suwayomi.tachidesk.graphql.types.MangaMetaItem
 import suwayomi.tachidesk.graphql.types.MetaType
@@ -20,10 +21,10 @@ class ChapterMetaDataLoader : KotlinDataLoader<Int, MetaType> {
         CompletableFuture.supplyAsync {
             transaction {
                 addLogger(StdOutSqlLogger)
-                val metasByChapterId = ChapterMetaTable.select { ChapterMetaTable.ref inList ids }
+                val metasByRefId = ChapterMetaTable.select { ChapterMetaTable.ref inList ids }
                     .map { ChapterMetaItem(it) }
                     .groupBy { it.ref }
-                ids.map { metasByChapterId[it] ?: emptyList() }
+                ids.map { metasByRefId[it] ?: emptyList() }
             }
         }
     }
@@ -35,10 +36,25 @@ class MangaMetaDataLoader : KotlinDataLoader<Int, MetaType> {
         CompletableFuture.supplyAsync {
             transaction {
                 addLogger(StdOutSqlLogger)
-                val metasByChapterId = MangaMetaTable.select { MangaMetaTable.ref inList ids }
+                val metasByRefId = MangaMetaTable.select { MangaMetaTable.ref inList ids }
                     .map { MangaMetaItem(it) }
                     .groupBy { it.ref }
-                ids.map { metasByChapterId[it] ?: emptyList() }
+                ids.map { metasByRefId[it] ?: emptyList() }
+            }
+        }
+    }
+}
+
+class CategoryMetaDataLoader : KotlinDataLoader<Int, MetaType> {
+    override val dataLoaderName = "CategoryMetaDataLoader"
+    override fun getDataLoader(): DataLoader<Int, MetaType> = DataLoaderFactory.newDataLoader<Int, MetaType> { ids ->
+        CompletableFuture.supplyAsync {
+            transaction {
+                addLogger(StdOutSqlLogger)
+                val metasByRefId = MangaMetaTable.select { MangaMetaTable.ref inList ids }
+                    .map { CategoryMetaItem(it) }
+                    .groupBy { it.ref }
+                ids.map { metasByRefId[it] ?: emptyList() }
             }
         }
     }

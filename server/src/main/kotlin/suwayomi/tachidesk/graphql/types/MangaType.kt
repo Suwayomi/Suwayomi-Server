@@ -71,4 +71,8 @@ class MangaType(
     fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MetaType> {
         return dataFetchingEnvironment.getValueFromDataLoader<Int, MetaType>("MangaMetaDataLoader", id)
     }
+
+    fun categories(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<CategoryType>> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, List<CategoryType>>("CategoriesForMangaDataLoader", id)
+    }
 }

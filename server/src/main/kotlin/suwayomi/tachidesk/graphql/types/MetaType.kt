@@ -2,6 +2,7 @@ package suwayomi.tachidesk.graphql.types
 
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import org.jetbrains.exposed.sql.ResultRow
+import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 
@@ -21,3 +22,7 @@ class ChapterMetaItem(
 class MangaMetaItem(
     private val row: ResultRow
 ) : MetaItem(row[MangaMetaTable.key], row[MangaMetaTable.value], row[MangaMetaTable.ref].value)
+
+class CategoryMetaItem(
+    private val row: ResultRow
+) : MetaItem(row[CategoryMetaTable.key], row[CategoryMetaTable.value], row[CategoryMetaTable.ref].value)

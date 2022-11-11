@@ -16,6 +16,7 @@ import graphql.GraphQL
 import graphql.scalars.ExtendedScalars
 import graphql.schema.GraphQLType
 import suwayomi.tachidesk.graphql.mutations.ChapterMutation
+import suwayomi.tachidesk.graphql.queries.CategoryQuery
 import suwayomi.tachidesk.graphql.queries.ChapterQuery
 import suwayomi.tachidesk.graphql.queries.MangaQuery
 import kotlin.reflect.KClass
@@ -36,7 +37,8 @@ val schema = toSchema(
     ),
     queries = listOf(
         TopLevelObject(MangaQuery()),
-        TopLevelObject(ChapterQuery())
+        TopLevelObject(ChapterQuery()),
+        TopLevelObject(CategoryQuery())
     ),
     mutations = listOf(
         TopLevelObject(ChapterMutation())
