@@ -12,7 +12,7 @@ import suwayomi.tachidesk.graphql.controller.GraphQLController
 
 object GraphQL {
     fun defineEndpoints() {
-        post("graphql", GraphQLController.execute)
+        post("graphql", GraphQLController::execute)
 
         // graphql playground
         get("graphql", GraphQLController::playground)
