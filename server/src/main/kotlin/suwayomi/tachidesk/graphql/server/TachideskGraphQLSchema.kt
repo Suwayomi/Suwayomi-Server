@@ -5,20 +5,19 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-package suwayomi.tachidesk.graphql.impl
+package suwayomi.tachidesk.graphql.server
 
 import com.expediagroup.graphql.generator.SchemaGeneratorConfig
 import com.expediagroup.graphql.generator.TopLevelObject
 import com.expediagroup.graphql.generator.hooks.SchemaGeneratorHooks
-import com.expediagroup.graphql.generator.scalars.IDValueUnboxer
 import com.expediagroup.graphql.generator.toSchema
-import graphql.GraphQL
 import graphql.scalars.ExtendedScalars
 import graphql.schema.GraphQLType
 import suwayomi.tachidesk.graphql.mutations.ChapterMutation
 import suwayomi.tachidesk.graphql.queries.CategoryQuery
 import suwayomi.tachidesk.graphql.queries.ChapterQuery
 import suwayomi.tachidesk.graphql.queries.MangaQuery
+import suwayomi.tachidesk.graphql.subscriptions.DownloadSubscription
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
@@ -42,9 +41,8 @@ val schema = toSchema(
     ),
     mutations = listOf(
         TopLevelObject(ChapterMutation())
+    ),
+    subscriptions = listOf(
+        TopLevelObject(DownloadSubscription())
     )
 )
-
-fun getGraphQLObject(): GraphQL = GraphQL.newGraphQL(schema)
-    .valueUnboxer(IDValueUnboxer())
-    .build()

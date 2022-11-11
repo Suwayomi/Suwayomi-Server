@@ -10,6 +10,7 @@ package suwayomi.tachidesk.graphql.types
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.ResultRow
+import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import java.util.concurrent.CompletableFuture
 
@@ -48,6 +49,24 @@ class ChapterType(
         row[ChapterTable.isDownloaded],
         row[ChapterTable.pageCount]
 //        transaction { ChapterTable.select { manga eq chapterEntry[manga].value }.count().toInt() },
+    )
+
+    constructor(dataClass: ChapterDataClass) : this(
+        dataClass.id,
+        dataClass.url,
+        dataClass.name,
+        dataClass.uploadDate,
+        dataClass.chapterNumber,
+        dataClass.scanlator,
+        dataClass.mangaId,
+        dataClass.read,
+        dataClass.bookmarked,
+        dataClass.lastPageRead,
+        dataClass.lastReadAt,
+        dataClass.index,
+        dataClass.fetchedAt,
+        dataClass.downloaded,
+        dataClass.pageCount
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> {

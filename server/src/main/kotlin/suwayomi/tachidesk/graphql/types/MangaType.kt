@@ -10,6 +10,7 @@ package suwayomi.tachidesk.graphql.types
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.ResultRow
+import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -51,6 +52,25 @@ class MangaType(
         row[MangaTable.realUrl],
         row[MangaTable.lastFetchedAt],
         row[MangaTable.chaptersLastFetchedAt]
+    )
+
+    constructor(dataClass: MangaDataClass) : this(
+        dataClass.id,
+        dataClass.sourceId,
+        dataClass.url,
+        dataClass.title,
+        dataClass.thumbnailUrl,
+        dataClass.initialized,
+        dataClass.artist,
+        dataClass.author,
+        dataClass.description,
+        dataClass.genre,
+        dataClass.status,
+        dataClass.inLibrary,
+        dataClass.inLibraryAt,
+        dataClass.realUrl,
+        dataClass.lastFetchedAt,
+        dataClass.chaptersLastFetchedAt
     )
 
     fun chapters(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<ChapterType>> {

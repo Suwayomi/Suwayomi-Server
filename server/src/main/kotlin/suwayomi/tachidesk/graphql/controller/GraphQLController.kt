@@ -7,20 +7,19 @@
 
 package suwayomi.tachidesk.graphql.controller
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.javalin.http.Context
-import suwayomi.tachidesk.graphql.impl.getGraphQLServer
+import io.javalin.websocket.WsConfig
+import suwayomi.tachidesk.graphql.server.TachideskGraphQLServer
 import suwayomi.tachidesk.server.JavalinSetup.future
 
 object GraphQLController {
-    private val mapper = jacksonObjectMapper()
-    private val tachideskGraphQLServer = getGraphQLServer(mapper)
+    private val server = TachideskGraphQLServer.create()
 
     /** execute graphql query */
     fun execute(ctx: Context) {
         ctx.future(
             future {
-                tachideskGraphQLServer.execute(ctx)
+                server.execute(ctx)
             }
         )
     }
@@ -38,5 +37,14 @@ object GraphQLController {
         }
 
         ctx.html(body ?: "Could not load playground")
+    }
+
+    fun webSocket(ws: WsConfig) {
+        ws.onMessage { ctx ->
+            server.handleSubscriptionMessage(ctx)
+        }
+        ws.onClose { ctx ->
+            server.handleSubscriptionDisconnect(ctx)
+        }
     }
 }
