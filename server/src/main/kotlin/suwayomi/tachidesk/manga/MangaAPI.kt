@@ -69,6 +69,7 @@ object MangaAPI {
 
             get("{mangaId}/chapters", MangaController.chapterList)
             post("{mangaId}/chapter/batch", MangaController.chapterBatch)
+            post("any/chapter/batch", MangaController.anyChapterBatch)
             get("{mangaId}/chapter/{chapterIndex}", MangaController.chapterRetrieve)
             patch("{mangaId}/chapter/{chapterIndex}", MangaController.chapterModify)
             put("{mangaId}/chapter/{chapterIndex}", MangaController.chapterModify)
@@ -77,8 +78,6 @@ object MangaAPI {
             patch("{mangaId}/chapter/{chapterIndex}/meta", MangaController.chapterMeta)
 
             get("{mangaId}/chapter/{chapterIndex}/page/{index}", MangaController.pageRetrieve)
-
-            post("any/chapters/batch", MangaController.anyChapterBatch)
         }
 
         path("category") {
