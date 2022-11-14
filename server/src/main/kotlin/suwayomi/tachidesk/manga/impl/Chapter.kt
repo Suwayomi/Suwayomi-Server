@@ -223,10 +223,11 @@ object Chapter {
 
         // Handle deleting separately
         if (delete == true) {
-            return deleteChapters(input, mangaId)
+            deleteChapters(input, mangaId)
         }
 
-        if (isRead == null && isBookmarked == null) return
+        // return early if there are no other changes
+        if (listOfNotNull(isRead, isBookmarked, lastPageRead).isEmpty()) return
 
         // Make sure some filter is defined
         val condition = when {
