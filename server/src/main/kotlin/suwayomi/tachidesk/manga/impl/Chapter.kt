@@ -202,13 +202,19 @@ object Chapter {
     )
 
     @Serializable
-    data class ChapterBatchEditInput(
+    data class MangaChapterBatchEditInput(
         val chapterIds: List<Int>? = null,
         val chapterIndexes: List<Int>? = null,
         val change: ChapterChange?
     )
 
-    fun modifyChapters(input: ChapterBatchEditInput, mangaId: Int) {
+    @Serializable
+    data class ChapterBatchEditInput(
+        val chapterIds: List<Int>? = null,
+        val change: ChapterChange?
+    )
+
+    fun modifyChapters(input: MangaChapterBatchEditInput, mangaId: Int? = null) {
         // Make sure change is defined
         if (input.change == null) return
         val (isRead, isBookmarked, lastPageRead) = input.change
@@ -216,11 +222,23 @@ object Chapter {
 
         // Make sure some filter is defined
         val condition = when {
-            input.chapterIds != null ->
-                Op.build { (ChapterTable.manga eq mangaId) and (ChapterTable.id inList input.chapterIds) }
-            input.chapterIndexes != null ->
-                Op.build { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder inList input.chapterIndexes) }
-            else -> null
+            mangaId != null ->
+                // mangaId is not null, scope query under manga
+                when {
+                    input.chapterIds != null ->
+                        Op.build { (ChapterTable.manga eq mangaId) and (ChapterTable.id inList input.chapterIds) }
+                    input.chapterIndexes != null ->
+                        Op.build { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder inList input.chapterIndexes) }
+                    else -> null
+                }
+            else -> {
+                // mangaId is null, only chapterIndexes is valid for this case
+                when {
+                    input.chapterIds != null ->
+                        Op.build { (ChapterTable.id inList input.chapterIds) }
+                    else -> null
+                }
+            }
         } ?: return
 
         transaction {

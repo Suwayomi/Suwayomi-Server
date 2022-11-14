@@ -77,6 +77,8 @@ object MangaAPI {
             patch("{mangaId}/chapter/{chapterIndex}/meta", MangaController.chapterMeta)
 
             get("{mangaId}/chapter/{chapterIndex}/page/{index}", MangaController.pageRetrieve)
+
+            post("any/chapters/batch", MangaController.anyChapterBatch)
         }
 
         path("category") {
