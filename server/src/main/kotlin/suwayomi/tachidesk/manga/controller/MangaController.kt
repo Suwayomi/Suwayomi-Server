@@ -259,7 +259,7 @@ object MangaController {
         }
     )
 
-    /** batch edit chapters */
+    /** batch edit chapters from multiple manga */
     val anyChapterBatch = handler(
         documentWith = {
             withOperation {

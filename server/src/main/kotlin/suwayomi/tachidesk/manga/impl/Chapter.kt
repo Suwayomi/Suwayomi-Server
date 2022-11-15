@@ -199,7 +199,7 @@ object Chapter {
     data class ChapterChange(
         val isRead: Boolean? = null,
         val isBookmarked: Boolean? = null,
-        val lastPageRead: Int? = null, // this probably won't be very useful, but for completion's sake
+        val lastPageRead: Int? = null,
         val delete: Boolean? = null
     )
 
@@ -322,7 +322,7 @@ object Chapter {
         }
     }
 
-    fun deleteChapters(input: MangaChapterBatchEditInput, mangaId: Int? = null) {
+    private fun deleteChapters(input: MangaChapterBatchEditInput, mangaId: Int? = null) {
         if (input.chapterIds != null) {
             val chapterIds = input.chapterIds
 
