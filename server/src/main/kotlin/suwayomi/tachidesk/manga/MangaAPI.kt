@@ -79,6 +79,10 @@ object MangaAPI {
             get("{mangaId}/chapter/{chapterIndex}/page/{index}", MangaController.pageRetrieve)
         }
 
+        path("chapters") {
+            post("batch", MangaController.anyChapterBatch)
+        }
+
         path("category") {
             get("", CategoryController.categoryList)
             post("", CategoryController.categoryCreate)

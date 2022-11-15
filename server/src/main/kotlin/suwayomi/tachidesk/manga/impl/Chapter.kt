@@ -15,6 +15,7 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SortOrder.ASC
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.util.getChapterDir
@@ -198,29 +199,55 @@ object Chapter {
     data class ChapterChange(
         val isRead: Boolean? = null,
         val isBookmarked: Boolean? = null,
-        val lastPageRead: Int? = null // this probably won't be very useful, but for completion's sake
+        val lastPageRead: Int? = null,
+        val delete: Boolean? = null
     )
 
     @Serializable
-    data class ChapterBatchEditInput(
+    data class MangaChapterBatchEditInput(
         val chapterIds: List<Int>? = null,
         val chapterIndexes: List<Int>? = null,
         val change: ChapterChange?
     )
 
-    fun modifyChapters(input: ChapterBatchEditInput, mangaId: Int) {
+    @Serializable
+    data class ChapterBatchEditInput(
+        val chapterIds: List<Int>? = null,
+        val change: ChapterChange?
+    )
+
+    fun modifyChapters(input: MangaChapterBatchEditInput, mangaId: Int? = null) {
         // Make sure change is defined
         if (input.change == null) return
-        val (isRead, isBookmarked, lastPageRead) = input.change
-        if (isRead == null && isBookmarked == null) return
+        val (isRead, isBookmarked, lastPageRead, delete) = input.change
+
+        // Handle deleting separately
+        if (delete == true) {
+            deleteChapters(input, mangaId)
+        }
+
+        // return early if there are no other changes
+        if (listOfNotNull(isRead, isBookmarked, lastPageRead).isEmpty()) return
 
         // Make sure some filter is defined
         val condition = when {
-            input.chapterIds != null ->
-                Op.build { (ChapterTable.manga eq mangaId) and (ChapterTable.id inList input.chapterIds) }
-            input.chapterIndexes != null ->
-                Op.build { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder inList input.chapterIndexes) }
-            else -> null
+            mangaId != null ->
+                // mangaId is not null, scope query under manga
+                when {
+                    input.chapterIds != null ->
+                        Op.build { (ChapterTable.manga eq mangaId) and (ChapterTable.id inList input.chapterIds) }
+                    input.chapterIndexes != null ->
+                        Op.build { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder inList input.chapterIndexes) }
+                    else -> null
+                }
+            else -> {
+                // mangaId is null, only chapterIndexes is valid for this case
+                when {
+                    input.chapterIds != null ->
+                        Op.build { (ChapterTable.id inList input.chapterIds) }
+                    else -> null
+                }
+            }
         } ?: return
 
         transaction {
@@ -291,6 +318,42 @@ object Chapter {
 
             ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }) {
                 it[isDownloaded] = false
+            }
+        }
+    }
+
+    private fun deleteChapters(input: MangaChapterBatchEditInput, mangaId: Int? = null) {
+        if (input.chapterIds != null) {
+            val chapterIds = input.chapterIds
+
+            transaction {
+                ChapterTable.slice(ChapterTable.manga, ChapterTable.id)
+                    .select { ChapterTable.id inList chapterIds }
+                    .forEach { row ->
+                        val chapterMangaId = row[ChapterTable.manga].value
+                        val chapterId = row[ChapterTable.id].value
+                        val chapterDir = getChapterDir(chapterMangaId, chapterId)
+                        File(chapterDir).deleteRecursively()
+                    }
+
+                ChapterTable.update({ ChapterTable.id inList chapterIds }) {
+                    it[isDownloaded] = false
+                }
+            }
+        } else if (input.chapterIndexes != null && mangaId != null) {
+            transaction {
+                val chapterIds = ChapterTable.slice(ChapterTable.manga, ChapterTable.id)
+                    .select { (ChapterTable.sourceOrder inList input.chapterIndexes) and (ChapterTable.manga eq mangaId) }
+                    .map { row ->
+                        val chapterId = row[ChapterTable.id].value
+                        val chapterDir = getChapterDir(mangaId, chapterId)
+                        File(chapterDir).deleteRecursively()
+                        chapterId
+                    }
+
+                ChapterTable.update({ ChapterTable.id inList chapterIds }) {
+                    it[isDownloaded] = false
+                }
             }
         }
     }

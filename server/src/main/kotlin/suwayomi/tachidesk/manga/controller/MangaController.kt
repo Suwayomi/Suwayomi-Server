@@ -240,19 +240,43 @@ object MangaController {
         }
     )
 
-    /** batch edit chapters */
+    /** batch edit chapters of single manga */
     val chapterBatch = handler(
         pathParam<Int>("mangaId"),
         documentWith = {
             withOperation {
                 summary("Chapters update multiple")
-                description("Update multiple chapters. For batch marking as read, or bookmarking")
+                description("Update multiple chapters of single manga. For batch marking as read, or bookmarking")
+            }
+            body<Chapter.MangaChapterBatchEditInput>()
+        },
+        behaviorOf = { ctx, mangaId ->
+            val input = json.decodeFromString<Chapter.MangaChapterBatchEditInput>(ctx.body())
+            Chapter.modifyChapters(input, mangaId)
+        },
+        withResults = {
+            httpCode(HttpCode.OK)
+        }
+    )
+
+    /** batch edit chapters from multiple manga */
+    val anyChapterBatch = handler(
+        documentWith = {
+            withOperation {
+                summary("Chapters update multiple")
+                description("Update multiple chapters on any manga. For batch marking as read, or bookmarking")
             }
             body<Chapter.ChapterBatchEditInput>()
         },
-        behaviorOf = { ctx, mangaId ->
+        behaviorOf = { ctx ->
             val input = json.decodeFromString<Chapter.ChapterBatchEditInput>(ctx.body())
-            Chapter.modifyChapters(input, mangaId)
+            Chapter.modifyChapters(
+                Chapter.MangaChapterBatchEditInput(
+                    input.chapterIds,
+                    null,
+                    input.change
+                )
+            )
         },
         withResults = {
             httpCode(HttpCode.OK)
