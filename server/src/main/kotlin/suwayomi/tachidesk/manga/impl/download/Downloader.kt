@@ -39,15 +39,15 @@ class Downloader(
     private val scope: CoroutineScope,
     val sourceId: Long,
     private val downloadQueue: CopyOnWriteArrayList<DownloadChapter>,
-    private val notifier: () -> Unit,
+    private val notifier: (immediate: Boolean) -> Unit,
     private val onComplete: () -> Unit
 ) {
     private var job: Job? = null
     class StopDownloadException : Exception("Cancelled download")
     class PauseDownloadException : Exception("Pause download")
 
-    private suspend fun step(download: DownloadChapter?) {
-        notifier()
+    private suspend fun step(download: DownloadChapter?, immediate: Boolean) {
+        notifier(immediate)
         currentCoroutineContext().ensureActive()
         if (download != null && download != downloadQueue.firstOrNull { it.manga.sourceId.toLong() == sourceId && it.state != Error }) {
             if (download in downloadQueue) {
@@ -74,7 +74,7 @@ class Downloader(
             }
         }
 
-        notifier()
+        notifier(true)
     }
 
     suspend fun stop() {
@@ -90,10 +90,10 @@ class Downloader(
 
             try {
                 download.state = Downloading
-                step(download)
+                step(download, true)
 
                 download.chapter = getChapterDownloadReady(download.chapterIndex, download.mangaId)
-                step(download)
+                step(download, true)
 
                 val pageCount = download.chapter.pageCount
                 for (pageNum in 0 until pageCount) {
@@ -109,7 +109,7 @@ class Downloader(
                                     .distinctUntilChanged()
                                     .onEach {
                                         download.progress = (pageNum.toFloat() + (it.toFloat() * 0.01f)) / pageCount
-                                        step(null) // don't throw on canceled download here since we can't do anything
+                                        step(null, false) // don't throw on canceled download here since we can't do anything
                                     }
                                     .launchIn(scope)
                             }
@@ -120,7 +120,7 @@ class Downloader(
                     }
                     // TODO: retry on error with 2,4,8 seconds of wait
                     download.progress = ((pageNum + 1).toFloat()) / pageCount
-                    step(download)
+                    step(download, false)
                 }
                 download.state = Finished
                 transaction {
@@ -128,10 +128,10 @@ class Downloader(
                         it[isDownloaded] = true
                     }
                 }
-                step(download)
+                step(download, true)
 
                 downloadQueue.removeIf { it.mangaId == download.mangaId && it.chapterIndex == download.chapterIndex }
-                step(null)
+                step(null, true)
             } catch (e: CancellationException) {
                 logger.debug("Downloader was stopped")
                 downloadQueue.filter { it.state == Downloading }.forEach { it.state = Queued }
@@ -142,7 +142,7 @@ class Downloader(
                 download.tries++
                 download.state = Error
             } finally {
-                notifier()
+                notifier(true)
             }
         }
     }

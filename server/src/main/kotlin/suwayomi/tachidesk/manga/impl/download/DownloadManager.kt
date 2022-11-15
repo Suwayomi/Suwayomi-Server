@@ -80,17 +80,25 @@ object DownloadManager {
     init {
         scope.launch {
             notifyFlow.sample(1.seconds).collect {
-                val status = getStatus()
-                clients.forEach {
-                    it.value.send(status)
-                }
+                sendStatusToAllClients()
             }
         }
     }
 
-    private fun notifyAllClients() {
-        scope.launch {
-            notifyFlow.emit(Unit)
+    private fun sendStatusToAllClients() {
+        val status = getStatus()
+        clients.forEach {
+            it.value.send(status)
+        }
+    }
+
+    private fun notifyAllClients(immediate: Boolean = false) {
+        if (immediate) {
+            sendStatusToAllClients()
+        } else {
+            scope.launch {
+                notifyFlow.emit(Unit)
+            }
         }
     }
 
@@ -198,7 +206,7 @@ object DownloadManager {
         val addedChapters = inputs.mapNotNull { addToQueue(it.first, it.second) }
         if (addedChapters.isNotEmpty()) {
             start()
-            notifyAllClients()
+            notifyAllClients(true)
         }
         scope.launch {
             downloaderWatch.emit(Unit)
@@ -227,7 +235,7 @@ object DownloadManager {
 
     fun unqueue(chapterIndex: Int, mangaId: Int) {
         downloadQueue.removeIf { it.mangaId == mangaId && it.chapterIndex == chapterIndex }
-        notifyAllClients()
+        notifyAllClients(true)
     }
 
     fun reorder(chapterIndex: Int, mangaId: Int, to: Int) {
@@ -252,13 +260,13 @@ object DownloadManager {
                 }
             }.awaitAll()
         }
-        notifyAllClients()
+        notifyAllClients(true)
     }
 
     suspend fun clear() {
         stop()
         downloadQueue.clear()
-        notifyAllClients()
+        notifyAllClients(true)
     }
 }
 
