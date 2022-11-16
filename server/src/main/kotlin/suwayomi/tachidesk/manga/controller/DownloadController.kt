@@ -134,6 +134,28 @@ object DownloadController {
         }
     )
 
+    /** delete multiple chapters from download queue */
+    val unqueueChapters = handler(
+        documentWith = {
+            withOperation {
+                summary("Downloader remove multiple downloads")
+                description("Remove multiple chapters downloads from queue")
+            }
+            body<EnqueueInput>()
+        },
+        behaviorOf = { ctx ->
+            val input = json.decodeFromString<EnqueueInput>(ctx.body())
+            ctx.future(
+                future {
+                    DownloadManager.unqueue(input)
+                }
+            )
+        },
+        withResults = {
+            httpCode(HttpCode.OK)
+        }
+    )
+
     /** delete chapter from download queue */
     val unqueueChapter = handler(
         pathParam<Int>("chapterIndex"),
