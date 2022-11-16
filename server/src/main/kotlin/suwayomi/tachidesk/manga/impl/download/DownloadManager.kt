@@ -94,9 +94,7 @@ object DownloadManager {
 
     private fun notifyAllClients(immediate: Boolean = false) {
         if (immediate) {
-            scope.launch {
-                sendStatusToAllClients()
-            }
+            sendStatusToAllClients()
         } else {
             scope.launch {
                 notifyFlow.emit(Unit)
