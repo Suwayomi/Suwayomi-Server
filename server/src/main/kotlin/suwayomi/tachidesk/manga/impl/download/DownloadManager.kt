@@ -190,6 +190,14 @@ object DownloadManager {
         addMultipleToQueue(inputPairs)
     }
 
+    fun unqueue(input: EnqueueInput) {
+        if (input.chapterIds.isNullOrEmpty()) return
+
+        downloadQueue.removeIf { it.chapter.id in input.chapterIds }
+
+        notifyAllClients()
+    }
+
     /**
      * Tries to add multiple inputs to queue
      * If any of inputs was actually added to queue, starts the queue
