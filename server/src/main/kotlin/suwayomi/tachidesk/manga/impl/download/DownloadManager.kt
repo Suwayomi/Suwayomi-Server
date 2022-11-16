@@ -235,7 +235,7 @@ object DownloadManager {
 
     fun unqueue(chapterIndex: Int, mangaId: Int) {
         downloadQueue.removeIf { it.mangaId == mangaId && it.chapterIndex == chapterIndex }
-        notifyAllClients(true)
+        notifyAllClients()
     }
 
     fun reorder(chapterIndex: Int, mangaId: Int, to: Int) {
@@ -260,13 +260,13 @@ object DownloadManager {
                 }
             }.awaitAll()
         }
-        notifyAllClients(true)
+        notifyAllClients()
     }
 
     suspend fun clear() {
         stop()
         downloadQueue.clear()
-        notifyAllClients(true)
+        notifyAllClients()
     }
 }
 

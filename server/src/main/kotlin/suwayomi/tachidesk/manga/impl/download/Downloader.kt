@@ -74,7 +74,7 @@ class Downloader(
             }
         }
 
-        notifier(true)
+        notifier(false)
     }
 
     suspend fun stop() {
@@ -93,7 +93,7 @@ class Downloader(
                 step(download, true)
 
                 download.chapter = getChapterDownloadReady(download.chapterIndex, download.mangaId)
-                step(download, true)
+                step(download, false)
 
                 val pageCount = download.chapter.pageCount
                 for (pageNum in 0 until pageCount) {
@@ -131,7 +131,7 @@ class Downloader(
                 step(download, true)
 
                 downloadQueue.removeIf { it.mangaId == download.mangaId && it.chapterIndex == download.chapterIndex }
-                step(null, true)
+                step(null, false)
             } catch (e: CancellationException) {
                 logger.debug("Downloader was stopped")
                 downloadQueue.filter { it.state == Downloading }.forEach { it.state = Queued }
@@ -142,7 +142,7 @@ class Downloader(
                 download.tries++
                 download.state = Error
             } finally {
-                notifier(true)
+                notifier(false)
             }
         }
     }
