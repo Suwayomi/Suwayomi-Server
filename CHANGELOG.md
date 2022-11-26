@@ -1,6 +1,11 @@
 # Server: v0.6.6 + WebUI: r963
 ## TL;DR
-- N/A
+- Batch actions for chapters
+- Improved the downloader
+- WebUI changes:
+    - Support for chapter actions
+    - a lot of code cleanup
+    - some bugfixes
 
 ## Tachidesk-Server Changelog
 - (r1114) fix broken links (by @AriaMoradi)
