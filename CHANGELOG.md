@@ -12,26 +12,26 @@
 - (r1115) fix more broken stuff (by @AriaMoradi)
 - (r1116) fix more broken stuff (by @AriaMoradi)
 - (r1117) fix more broken stuff (by @AriaMoradi)
-- (r1118) Update winget.yml ([#393](https://github.com/Suwayomi/Tachidesk-Server/pull/393)) 83997633+vedantmgoyal2009@users.noreply.github.com
-- (r1119) fix jre path([#396](https://github.com/Suwayomi/Tachidesk-Server/pull/396)) 30526233+voltrare@users.noreply.github.com
-- (r1120) Fix deb package ([#397](https://github.com/Suwayomi/Tachidesk-Server/pull/397)) mahor1221@pm.me
+- (r1118) Update winget.yml ([#393](https://github.com/Suwayomi/Tachidesk-Server/pull/393) by @vedantmgoyal2009)
+- (r1119) fix jre path([#396](https://github.com/Suwayomi/Tachidesk-Server/pull/396) by @vedantmgoyal2009)
+- (r1120) Fix deb package ([#397](https://github.com/Suwayomi/Tachidesk-Server/pull/397) by @mahor1221)
 - (r1121) bump version (by @AriaMoradi)
 - (r1122) Update Changelog (by @AriaMoradi)
-- (r1123) Add libc++-dev ([#405](https://github.com/Suwayomi/Tachidesk-Server/pull/405)) mahor1221@pm.me
-- (r1124) Revert back to correct way of handling jre_dir ([#408](https://github.com/Suwayomi/Tachidesk-Server/pull/408)) mahor1221@pm.me
-- (r1125) Update winget.yml ([#410](https://github.com/Suwayomi/Tachidesk-Server/pull/410)) 83997633+vedantmgoyal2009@users.noreply.github.com
-- (r1126) Remove support for Sorayomi web interface ([#414](https://github.com/Suwayomi/Tachidesk-Server/pull/414)) ebbinghaus.marco@gmail.com
+- (r1123) Add libc++-dev ([#405](https://github.com/Suwayomi/Tachidesk-Server/pull/405) by @mahor1221)
+- (r1124) Revert back to correct way of handling jre_dir ([#408](https://github.com/Suwayomi/Tachidesk-Server/pull/408) by @mahor1221)
+- (r1125) Update winget.yml ([#410](https://github.com/Suwayomi/Tachidesk-Server/pull/410) by @vedantmgoyal2009)
+- (r1126) Remove support for Sorayomi web interface ([#414](https://github.com/Suwayomi/Tachidesk-Server/pull/414) by @marcoebbinghaus)
 - (r1127) Fix downloader memory leak ([#418](https://github.com/Suwayomi/Tachidesk-Server/pull/418) by @Syer10)
 - (r1128) Documentation cleanup ([#417](https://github.com/Suwayomi/Tachidesk-Server/pull/417) by @Syer10)
 - (r1129) Updater cleanup and improvements ([#416](https://github.com/Suwayomi/Tachidesk-Server/pull/416) by @Syer10)
-- (r1130) replace quickjs with Mozilla Rhino ([#415](https://github.com/Suwayomi/Tachidesk-Server/pull/415)) 747367352@qq.com
+- (r1130) replace quickjs with Mozilla Rhino ([#415](https://github.com/Suwayomi/Tachidesk-Server/pull/415) by @xhzhe)
 - (r1131) ktlint (by @AriaMoradi)
 - (r1132) move Tachiyomi's BuildConfig to kotlin dir (by @AriaMoradi)
 - (r1133) remove BuildConfig as extensions now use AppInfo (by @AriaMoradi)
 - (r1134) include list of mangas missing source in restore report ([#421](https://github.com/Suwayomi/Tachidesk-Server/pull/421) by @AriaMoradi)
 - (r1135) Update dependencies ([#422](https://github.com/Suwayomi/Tachidesk-Server/pull/422) by @Syer10)
 - (r1136) Lint ([#423](https://github.com/Suwayomi/Tachidesk-Server/pull/423) by @Syer10)
-- (r1137) Fix: Error handling for popular/latest api if pageNum was supplied as zero ([#424](https://github.com/Suwayomi/Tachidesk-Server/pull/424)) anurag4884@gmail.com
+- (r1137) Fix: Error handling for popular/latest api if pageNum was supplied as zero ([#424](https://github.com/Suwayomi/Tachidesk-Server/pull/424) by @meta-boy)
 - (r1138) Add cache control header to manga page response ([#430](https://github.com/Suwayomi/Tachidesk-Server/pull/430) by @martinek)
 - (r1139) add MangaTable.lastFetchedAt and ChapterTable.chaptersLastFetchedAt ([#431](https://github.com/Suwayomi/Tachidesk-Server/pull/431) by @martinek)
 - (r1140) Pre-load meta entries for all chapters for optimization ([#432](https://github.com/Suwayomi/Tachidesk-Server/pull/432) by @martinek)
@@ -87,7 +87,7 @@
 - (r1117) fix more broken stuff (by @AriaMoradi)
 - (r1118) Update winget.yml ([#393](https://github.com/Suwayomi/Tachidesk-Server/pull/393) by @vedantmgoyal2009)
 - (r1119) fix jre path([#396](https://github.com/Suwayomi/Tachidesk-Server/pull/396) by @voltrare)
-- (r1120) Fix deb package ([#397](https://github.com/Suwayomi/Tachidesk-Server/pull/397)) by @mahor1221)
+- (r1120) Fix deb package ([#397](https://github.com/Suwayomi/Tachidesk-Server/pull/397) by @mahor1221)
 - (r1121) bump version (by @AriaMoradi)
 
 ## Tachidesk-WebUI Changelog
