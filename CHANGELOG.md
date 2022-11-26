@@ -1,3 +1,75 @@
+# Server: v0.6.6 + WebUI: r963
+## TL;DR
+- N/A
+
+## Tachidesk-Server Changelog
+- (r1114) fix broken links (by @AriaMoradi)
+- (r1115) fix more broken stuff (by @AriaMoradi)
+- (r1116) fix more broken stuff (by @AriaMoradi)
+- (r1117) fix more broken stuff (by @AriaMoradi)
+- (r1118) Update winget.yml ([#393](https://github.com/Suwayomi/Tachidesk-Server/pull/393)) 83997633+vedantmgoyal2009@users.noreply.github.com
+- (r1119) fix jre path([#396](https://github.com/Suwayomi/Tachidesk-Server/pull/396)) 30526233+voltrare@users.noreply.github.com
+- (r1120) Fix deb package ([#397](https://github.com/Suwayomi/Tachidesk-Server/pull/397)) mahor1221@pm.me
+- (r1121) bump version (by @AriaMoradi)
+- (r1122) Update Changelog (by @AriaMoradi)
+- (r1123) Add libc++-dev ([#405](https://github.com/Suwayomi/Tachidesk-Server/pull/405)) mahor1221@pm.me
+- (r1124) Revert back to correct way of handling jre_dir ([#408](https://github.com/Suwayomi/Tachidesk-Server/pull/408)) mahor1221@pm.me
+- (r1125) Update winget.yml ([#410](https://github.com/Suwayomi/Tachidesk-Server/pull/410)) 83997633+vedantmgoyal2009@users.noreply.github.com
+- (r1126) Remove support for Sorayomi web interface ([#414](https://github.com/Suwayomi/Tachidesk-Server/pull/414)) ebbinghaus.marco@gmail.com
+- (r1127) Fix downloader memory leak ([#418](https://github.com/Suwayomi/Tachidesk-Server/pull/418) by @Syer10)
+- (r1128) Documentation cleanup ([#417](https://github.com/Suwayomi/Tachidesk-Server/pull/417) by @Syer10)
+- (r1129) Updater cleanup and improvements ([#416](https://github.com/Suwayomi/Tachidesk-Server/pull/416) by @Syer10)
+- (r1130) replace quickjs with Mozilla Rhino ([#415](https://github.com/Suwayomi/Tachidesk-Server/pull/415)) 747367352@qq.com
+- (r1131) ktlint (by @AriaMoradi)
+- (r1132) move Tachiyomi's BuildConfig to kotlin dir (by @AriaMoradi)
+- (r1133) remove BuildConfig as extensions now use AppInfo (by @AriaMoradi)
+- (r1134) include list of mangas missing source in restore report ([#421](https://github.com/Suwayomi/Tachidesk-Server/pull/421) by @AriaMoradi)
+- (r1135) Update dependencies ([#422](https://github.com/Suwayomi/Tachidesk-Server/pull/422) by @Syer10)
+- (r1136) Lint ([#423](https://github.com/Suwayomi/Tachidesk-Server/pull/423) by @Syer10)
+- (r1137) Fix: Error handling for popular/latest api if pageNum was supplied as zero ([#424](https://github.com/Suwayomi/Tachidesk-Server/pull/424)) anurag4884@gmail.com
+- (r1138) Add cache control header to manga page response ([#430](https://github.com/Suwayomi/Tachidesk-Server/pull/430) by @martinek)
+- (r1139) add MangaTable.lastFetchedAt and ChapterTable.chaptersLastFetchedAt ([#431](https://github.com/Suwayomi/Tachidesk-Server/pull/431) by @martinek)
+- (r1140) Pre-load meta entries for all chapters for optimization ([#432](https://github.com/Suwayomi/Tachidesk-Server/pull/432) by @martinek)
+- (r1141) POST variant for `/{sourceId}/search` endpoint ([#434](https://github.com/Suwayomi/Tachidesk-Server/pull/434) by @martinek)
+- (r1142) Add request body to documentation ([#435](https://github.com/Suwayomi/Tachidesk-Server/pull/435) by @Syer10)
+- (r1143) add batch download api ([#436](https://github.com/Suwayomi/Tachidesk-Server/pull/436) by @martinek)
+- (r1144) Migrate to H2 v2 (by @AriaMoradi)
+- (r1145) add category and global meta ([#438](https://github.com/Suwayomi/Tachidesk-Server/pull/438) by @AriaMoradi)
+- (r1146) Revert H2 database to v1 (by @AriaMoradi)
+- (r1147) refactor deprecated api (by @AriaMoradi)
+- (r1148) Downloader Rewrite ([#437](https://github.com/Suwayomi/Tachidesk-Server/pull/437) by @Syer10)
+- (r1149) Set source preference doc fix ([#441](https://github.com/Suwayomi/Tachidesk-Server/pull/441) by @Syer10)
+- (r1150) Add batch chapter update endpoint ([#442](https://github.com/Suwayomi/Tachidesk-Server/pull/442) by @martinek)
+- (r1151) changes needed for tachiyomi tracker (by @AriaMoradi)
+- (r1152) Future proofing (by @AriaMoradi)
+- (r1153) Fix settings/check-update endpoint ([#445](https://github.com/Suwayomi/Tachidesk-Server/pull/445) by @martinek)
+- (r1154) Fix docs for /server/check-updates ([#447](https://github.com/Suwayomi/Tachidesk-Server/pull/447) by @martinek)
+- (r1155) Batch editing and deleting any chapter ([#449](https://github.com/Suwayomi/Tachidesk-Server/pull/449) by @martinek)
+- (r1156) make chapters endpoint more unifrom (by @AriaMoradi)
+- (r1157) Add batch endpoint for removing downloads from download queue ([#452](https://github.com/Suwayomi/Tachidesk-Server/pull/452) by @martinek)
+- (r1158) Download queue missing update fix ([#450](https://github.com/Suwayomi/Tachidesk-Server/pull/450) by @martinek)
+
+## Tachidesk-WebUI Changelog
+- (r947) Feature/swr for library screens ([#186](https://github.com/Suwayomi/Tachidesk-WebUI/pull/186) by @martinek)
+- (r948) Feature/swr for simple queries ([#187](https://github.com/Suwayomi/Tachidesk-WebUI/pull/187) by @martinek)
+- (r949) Check download queue for changes and reload chapters if any chapter download changes state. ([#189](https://github.com/Suwayomi/Tachidesk-WebUI/pull/189) by @martinek)
+- (r950) Update typescript dependency ([#190](https://github.com/Suwayomi/Tachidesk-WebUI/pull/190) by @martinek)
+- (r951) update browserlist (by @AriaMoradi)
+- (r952) Feature/batch chapter download ([#191](https://github.com/Suwayomi/Tachidesk-WebUI/pull/191) by @martinek)
+- (r953) Memoize empty view face so it does not change on rerender ([#193](https://github.com/Suwayomi/Tachidesk-WebUI/pull/193) by @martinek)
+- (r954) Feature/batch chapter actions ([#194](https://github.com/Suwayomi/Tachidesk-WebUI/pull/194) by @martinek)
+- (r955) Fix navbar back button behavior ([#195](https://github.com/Suwayomi/Tachidesk-WebUI/pull/195) by @martinek)
+- (r956) Options panels refactoring ([#196](https://github.com/Suwayomi/Tachidesk-WebUI/pull/196) by @martinek)
+- (r957) Refactor and fix sorting in library ([#197](https://github.com/Suwayomi/Tachidesk-WebUI/pull/197) by @martinek)
+- (r958) Scroll window to top when PagedPager changes page ([#198](https://github.com/Suwayomi/Tachidesk-WebUI/pull/198) by @martinek)
+- (r959) Verticall scroll navigation and fix ([#200](https://github.com/Suwayomi/Tachidesk-WebUI/pull/200) by @martinek)
+- (r960) Hide overflowing text in reader title if text can't be wrapped ([#199](https://github.com/Suwayomi/Tachidesk-WebUI/pull/199) by @martinek)
+- (r961) Add safezone to scroll end detection to prevent edge cases when scrolling to the end would not detect end ([#201](https://github.com/Suwayomi/Tachidesk-WebUI/pull/201) by @martinek)
+- (r962) Refactor/download queue and cleanup visuals overall ([#202](https://github.com/Suwayomi/Tachidesk-WebUI/pull/202) by @martinek)
+- (r963) Fix "back" pagination on double page layout in reader for spread pages ([#203](https://github.com/Suwayomi/Tachidesk-WebUI/pull/203) by @martinek)
+
+
+
 # Server: v0.6.5 + WebUI: r946
 ## TL;DR
 - Fixed Windows bundler
