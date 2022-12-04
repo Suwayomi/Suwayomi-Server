@@ -27,7 +27,7 @@ jobs:
               },
               {
                 "type": "title",
-                "regex": ".*<.*>.*",
+                "regex": ".*(<|>)+.*",
                 "message": "You did not remove Angle brackets(< and >) from the title"
               },
               {
