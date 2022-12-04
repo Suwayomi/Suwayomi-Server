@@ -129,17 +129,20 @@ object CFClearance {
     }
 
     private fun getCookies(page: Page, url: String): List<Cookie> {
-        stealthInitScripts(page)
+        applyStealthInitScripts(page)
         page.navigate(url)
-        val res = cloudflareRetry(page)
+        val challengeResolved = waitForChallengeResolve(page)
 
-        return if (res) {
+        return if (challengeResolved) {
             val cookies = page.context().cookies()
 
-            /*val ua = page.evaluate("() => {return navigator.userAgent}")
-            println(ua)*/
+            logger.debug {
+                val userAgent = page.evaluate("() => {return navigator.userAgent}")
+                "Playwright User-Agent is $userAgent"
+            }
+
+            // Convert PlayWright cookies to OkHttp cookies
             cookies.map {
-                // Convert cookies -> OkHttp format
                 Cookie.Builder()
                     .domain(it.domain.removePrefix("."))
                     .expiresAt(it.expires?.times(1000)?.toLong() ?: Long.MAX_VALUE)
@@ -151,12 +154,13 @@ object CFClearance {
                     }.build()
             }
         } else {
-            logger.debug { "cloudflare challenge failed" }
+            logger.debug { "Cloudflare challenge failed to resolve" }
             throw CloudflareBypassException()
         }
     }
 
-    private val cfScripts by lazy {
+    // ref: https://github.com/vvanglro/cf-clearance/blob/44124a8f06d8d0ecf2bf558a027082ff88dab435/cf_clearance/stealth.py#L18
+    private val stealthInitScripts by lazy {
         arrayOf(
             ServerConfig::class.java.getResource("/cloudflare-js/canvas.fingerprinting.js")!!.readText(),
             ServerConfig::class.java.getResource("/cloudflare-js/chrome.global.js")!!.readText(),
@@ -169,20 +173,22 @@ object CFClearance {
     }
 
     // ref: https://github.com/vvanglro/cf-clearance/blob/44124a8f06d8d0ecf2bf558a027082ff88dab435/cf_clearance/stealth.py#L76
-    private fun stealthInitScripts(page: Page) {
-        for (script in cfScripts) {
+    private fun applyStealthInitScripts(page: Page) {
+        for (script in stealthInitScripts) {
             page.addInitScript(script)
         }
     }
 
     // ref: https://github.com/vvanglro/cf-clearance/blob/44124a8f06d8d0ecf2bf558a027082ff88dab435/cf_clearance/retry.py#L21
-    private fun cloudflareRetry(page: Page, tries: Int = 3): Boolean {
-        for (i in 0 until tries) {
-            page.waitForTimeout(10.seconds.toDouble(DurationUnit.MILLISECONDS))
+    private fun waitForChallengeResolve(page: Page): Boolean {
+        // sometimes the user has to solve the captcha challenge manually, potentially wait a long time
+        val timeoutSeconds = 120
+        repeat(timeoutSeconds) {
+            page.waitForTimeout(1.seconds.toDouble(DurationUnit.MILLISECONDS))
             val success = try {
                 page.querySelector("#challenge-form") == null
             } catch (e: Exception) {
-                logger.debug(e) { "Error?" }
+                logger.debug(e) { "query Error" }
                 false
             }
             if (success) return true
