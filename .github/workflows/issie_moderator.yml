@@ -1,23 +1,34 @@
-name: Issue closer
+name: Issue moderator
 
 on:
   issues:
     types: [opened, edited, reopened]
+  issue_comment:
+    types: [created]
 
 jobs:
   autoclose:
     runs-on: ubuntu-latest
     steps:
-      - name: Autoclose issues
-        uses: arkon/issue-closer-action@v3.0
+      - name: Moderate issues
+        uses: tachiyomiorg/issue-moderator-action@v1
         with:
           repo-token: ${{ github.token }}
-          rules: |
+          duplicate-check-enabled: true
+          duplicate-check-label: Source request
+          existing-check-enabled: true
+          existing-check-label: Source request
+          auto-close-rules: |
             [
               {
                 "type": "title",
-                "regex": ".*<short description>*",
+                "regex": ".*<short description>.*",
                 "message": "You did not fill out the description in the title"
+              },
+              {
+                "type": "title",
+                "regex": ".*<.*>.*",
+                "message": "You did not remove brackets from the title"
               },
               {
                 "type": "body",
@@ -26,7 +37,7 @@ jobs:
               },
               {
                 "type": "body",
-                "regex": "(Tachidesk version|Server Operating System|Server Desktop Environment|Server JVM version|Client Operating System|Client Web Browser):.*(\\(Example:|<usually).*",
+                "regex": ".*(Tachidesk version|Server Operating System|Server Desktop Environment|Server JVM version|Client Operating System|Client Web Browser):.*(\\(Example:|<usually).*",
                 "message": "The requested information was not filled out"
               },
               {
