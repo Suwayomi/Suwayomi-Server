@@ -4,6 +4,7 @@ import com.microsoft.playwright.BrowserType.LaunchOptions
 import com.microsoft.playwright.Page
 import com.microsoft.playwright.Playwright
 import eu.kanade.tachiyomi.network.NetworkHelper
+import eu.kanade.tachiyomi.network.interceptor.CFClearance.resolveWithWebView
 import mu.KotlinLogging
 import okhttp3.Cookie
 import okhttp3.HttpUrl
@@ -15,7 +16,6 @@ import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 
-// from TachiWeb-Server
 class CloudflareInterceptor : Interceptor {
     private val logger = KotlinLogging.logger {}
 
@@ -50,7 +50,24 @@ class CloudflareInterceptor : Interceptor {
         }
     }
 
-    private fun resolveWithWebView(originalRequest: Request): Request {
+
+    companion object {
+        private val ERROR_CODES = listOf(403, 503)
+        private val SERVER_CHECK = arrayOf("cloudflare-nginx", "cloudflare")
+        private val COOKIE_NAMES = listOf("cf_clearance")
+    }
+}
+
+/*
+ * This class is ported from https://github.com/vvanglro/cf-clearance
+ * The original code is licensed under Apache 2.0
+*/
+object CFClearance {
+    private val logger = KotlinLogging.logger {}
+    private val network: NetworkHelper by injectLazy()
+
+
+    fun resolveWithWebView(originalRequest: Request): Request {
         val url = originalRequest.url.toString()
 
         logger.debug { "resolveWithWebView($url)" }
@@ -70,7 +87,7 @@ class CloudflareInterceptor : Interceptor {
             page.navigate(url)
 
             val res = cloudflareRetry(page)
-//            page.waitForClose(WaitForCloseOptions().setTimeout(0.0), {})
+
             if (res) {
                 val cookies = page.context().cookies()
 
@@ -160,12 +177,6 @@ class CloudflareInterceptor : Interceptor {
             if (success) return true
         }
         return false
-    }
-
-    companion object {
-        private val ERROR_CODES = listOf(403, 503)
-        private val SERVER_CHECK = arrayOf("cloudflare-nginx", "cloudflare")
-        private val COOKIE_NAMES = listOf("cf_clearance")
     }
 
     private class CloudflareBypassException : Exception()
