@@ -57,7 +57,7 @@ dependencies {
     implementation("com.github.junrar:junrar:7.5.3")
 
     // CloudflareInterceptor
-    implementation("net.sourceforge.htmlunit:htmlunit:2.65.1")
+    implementation("com.microsoft.playwright:playwright:1.28.0")
 
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
     implementation("org.bouncycastle:bcprov-jdk18on:1.72")
