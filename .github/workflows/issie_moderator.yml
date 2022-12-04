@@ -28,7 +28,7 @@ jobs:
               {
                 "type": "title",
                 "regex": ".*<.*>.*",
-                "message": "You did not remove brackets from the title"
+                "message": "You did not remove Angle brackets(< and >) from the title"
               },
               {
                 "type": "body",
