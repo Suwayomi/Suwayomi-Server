@@ -128,6 +128,21 @@ object CFClearance {
             .build()
     }
 
+    fun getWebViewUserAgent(): String {
+        Playwright.create().use { playwright ->
+            playwright.chromium().launch(
+                LaunchOptions()
+                    .setHeadless(true)
+            ).use { browser ->
+                browser.newPage().use { page ->
+                    val userAgent = page.evaluate("() => {return navigator.userAgent}") as String
+                    logger.debug { "WebView User-Agent is $userAgent" }
+                    return userAgent
+                }
+            }
+        }
+    }
+
     private fun getCookies(page: Page, url: String): List<Cookie> {
         applyStealthInitScripts(page)
         page.navigate(url)
