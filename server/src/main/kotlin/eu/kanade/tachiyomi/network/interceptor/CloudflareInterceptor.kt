@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.network.interceptor
 
+import com.microsoft.playwright.Browser
 import com.microsoft.playwright.BrowserType.LaunchOptions
 import com.microsoft.playwright.Page
 import com.microsoft.playwright.Playwright
@@ -15,6 +16,8 @@ import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.DurationUnit
 
 class CloudflareInterceptor : Interceptor {
     private val logger = KotlinLogging.logger {}
@@ -50,7 +53,6 @@ class CloudflareInterceptor : Interceptor {
         }
     }
 
-
     companion object {
         private val ERROR_CODES = listOf(403, 503)
         private val SERVER_CHECK = arrayOf("cloudflare-nginx", "cloudflare")
@@ -66,14 +68,13 @@ object CFClearance {
     private val logger = KotlinLogging.logger {}
     private val network: NetworkHelper by injectLazy()
 
-
     fun resolveWithWebView(originalRequest: Request): Request {
         val url = originalRequest.url.toString()
 
         logger.debug { "resolveWithWebView($url)" }
 
         val cookies = Playwright.create().use { playwright ->
-            val browser = playwright.chromium().launch(
+            playwright.chromium().launch(
                 LaunchOptions()
                     .setHeadless(false)
                     .apply {
@@ -81,44 +82,26 @@ object CFClearance {
                             setProxy("socks5://${serverConfig.socksProxyHost}:${serverConfig.socksProxyPort}")
                         }
                     }
-            )
-            val page = browser.newPage()
-            stealthInitScripts(page)
-            page.navigate(url)
-
-            val res = cloudflareRetry(page)
-
-            if (res) {
-                val cookies = page.context().cookies()
-
-//                val ua = page.evaluate("() => {return navigator.userAgent}")
-//                println(ua)
-                cookies.map {
-                    // Convert cookies -> OkHttp format
-                    Cookie.Builder()
-                        .domain(it.domain.removePrefix("."))
-                        .expiresAt(it.expires?.times(1000)?.toLong() ?: Long.MAX_VALUE)
-                        .name(it.name)
-                        .path(it.path)
-                        .value(it.value).apply {
-                            if (it.httpOnly) httpOnly()
-                            if (it.secure) secure()
-                        }.build()
+            ).use { browser ->
+                val userAgent = originalRequest.header("User-Agent")
+                if (userAgent != null) {
+                    browser.newContext(Browser.NewContextOptions().setUserAgent(userAgent)).use { browserContext ->
+                        browserContext.newPage().use { getCookies(it, url) }
+                    }
+                } else {
+                    browser.newPage().use { getCookies(it, url) }
                 }
-            } else {
-                logger.debug { "cloudflare challenge failed" }
-                throw CloudflareBypassException()
             }
         }
 
         // Copy cookies to cookie store
-        cookies.forEach {
+        cookies.groupBy { it.domain }.forEach { (domain, cookies) ->
             network.cookies.addAll(
-                HttpUrl.Builder()
+                url = HttpUrl.Builder()
                     .scheme("http")
-                    .host(it.domain)
+                    .host(domain)
                     .build(),
-                listOf(it)
+                cookies = cookies
             )
         }
         // Merge new and existing cookies for this request
@@ -135,18 +118,45 @@ object CFClearance {
         val filteredExisting = existingCookies.filter { existing ->
             convertedForThisRequest.none { converted -> converted.name == existing.name }
         }
-        println("existing")
-        println(existingCookies.map { it.toString() }.joinToString("; "))
-        println("converted")
-        println(convertedForThisRequest.map { it.toString() }.joinToString("; "))
+        logger.trace { "Existing cookies" }
+        logger.trace { existingCookies.joinToString("; ") }
         val newCookies = filteredExisting + convertedForThisRequest
-        println(newCookies.map { it.toString() }.joinToString("; "))
+        logger.trace { "New cookies" }
+        logger.trace { newCookies.joinToString("; ") }
         return originalRequest.newBuilder()
-            .header("Cookie", newCookies.map { "${it.name}=${it.value}" }.joinToString("; "))
+            .header("Cookie", newCookies.joinToString("; ") { "${it.name}=${it.value}" })
             .build()
     }
 
-    val cfScripts by lazy {
+    private fun getCookies(page: Page, url: String): List<Cookie> {
+        stealthInitScripts(page)
+        page.navigate(url)
+        val res = cloudflareRetry(page)
+
+        return if (res) {
+            val cookies = page.context().cookies()
+
+            /*val ua = page.evaluate("() => {return navigator.userAgent}")
+            println(ua)*/
+            cookies.map {
+                // Convert cookies -> OkHttp format
+                Cookie.Builder()
+                    .domain(it.domain.removePrefix("."))
+                    .expiresAt(it.expires?.times(1000)?.toLong() ?: Long.MAX_VALUE)
+                    .name(it.name)
+                    .path(it.path)
+                    .value(it.value).apply {
+                        if (it.httpOnly) httpOnly()
+                        if (it.secure) secure()
+                    }.build()
+            }
+        } else {
+            logger.debug { "cloudflare challenge failed" }
+            throw CloudflareBypassException()
+        }
+    }
+
+    private val cfScripts by lazy {
         arrayOf(
             ServerConfig::class.java.getResource("/cloudflare-js/canvas.fingerprinting.js")!!.readText(),
             ServerConfig::class.java.getResource("/cloudflare-js/chrome.global.js")!!.readText(),
@@ -159,19 +169,20 @@ object CFClearance {
     }
 
     // ref: https://github.com/vvanglro/cf-clearance/blob/44124a8f06d8d0ecf2bf558a027082ff88dab435/cf_clearance/stealth.py#L76
-    fun stealthInitScripts(page: Page) {
+    private fun stealthInitScripts(page: Page) {
         for (script in cfScripts) {
             page.addInitScript(script)
         }
     }
 
     // ref: https://github.com/vvanglro/cf-clearance/blob/44124a8f06d8d0ecf2bf558a027082ff88dab435/cf_clearance/retry.py#L21
-    fun cloudflareRetry(page: Page, tries: Int = 30): Boolean {
+    private fun cloudflareRetry(page: Page, tries: Int = 3): Boolean {
         for (i in 0 until tries) {
-            page.waitForTimeout(1000.0)
+            page.waitForTimeout(10.seconds.toDouble(DurationUnit.MILLISECONDS))
             val success = try {
                 page.querySelector("#challenge-form") == null
             } catch (e: Exception) {
+                logger.debug(e) { "Error?" }
                 false
             }
             if (success) return true
