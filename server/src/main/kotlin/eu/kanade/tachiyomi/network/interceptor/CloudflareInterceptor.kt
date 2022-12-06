@@ -16,8 +16,6 @@ import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
-import java.nio.file.Files
-import java.nio.file.Paths
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 
@@ -70,19 +68,14 @@ object CFClearance {
     private val logger = KotlinLogging.logger {}
     private val network: NetworkHelper by injectLazy()
 
-    private fun validatePlaywrightPath() {
-        val cliPath = System.getProperty("playwright.cli.dir")
-        if (cliPath != null && Files.exists(Paths.get(cliPath))) return
-        val driverJar = DriverJar()
-        driverJar.extractDriverToTempDir()
-        System.setProperty("playwright.cli.dir", driverJar.driverDir().toString())
+    init {
+        System.setProperty("playwright.driver.impl", "eu.kanade.tachiyomi.network.interceptor.DriverJar")
     }
 
     fun resolveWithWebView(originalRequest: Request): Request {
         val url = originalRequest.url.toString()
 
         logger.debug { "resolveWithWebView($url)" }
-        validatePlaywrightPath()
         val cookies = Playwright.create().use { playwright ->
             playwright.chromium().launch(
                 LaunchOptions()
