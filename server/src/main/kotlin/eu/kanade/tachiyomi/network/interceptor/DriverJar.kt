@@ -5,7 +5,7 @@ import java.io.IOException
 import java.net.URI
 import java.net.URISyntaxException
 import java.nio.file.FileSystem
-import java.nio.file.FileSystemNotFoundException
+import java.nio.file.FileSystemAlreadyExistsException
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
@@ -96,11 +96,11 @@ class DriverJar : Driver() {
     }
 
     @Throws(IOException::class)
-    private fun initFileSystem(uri: URI): FileSystem {
+    private fun initFileSystem(uri: URI): FileSystem? {
         return try {
-            FileSystems.getFileSystem(uri)
-        } catch (e: FileSystemNotFoundException) {
             FileSystems.newFileSystem(uri, emptyMap<String, Any>())
+        } catch (e: FileSystemAlreadyExistsException) {
+            null
         }
     }
 
@@ -111,7 +111,7 @@ class DriverJar : Driver() {
             "driver/" + platformDir()
         )!!.toURI()
         val uri = maybeExtractNestedJar(originalUri)
-        (if ("jar" == uri.scheme) initFileSystem(uri) else null).use { fileSystem ->
+        (if ("jar" == uri.scheme) initFileSystem(uri) else null).use {
             val srcRoot = Paths.get(uri)
             // jar file system's .relativize gives wrong results when used with
             // spring-boot-maven-plugin, convert to the default filesystem to
