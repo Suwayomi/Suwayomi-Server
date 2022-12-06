@@ -69,6 +69,8 @@ object CFClearance {
     private val network: NetworkHelper by injectLazy()
 
     init {
+        // Fix the default DriverJar issue by providing our own implementation
+        // ref: https://github.com/microsoft/playwright-java/issues/1138
         System.setProperty("playwright.driver.impl", "eu.kanade.tachiyomi.network.interceptor.DriverJar")
     }
 
