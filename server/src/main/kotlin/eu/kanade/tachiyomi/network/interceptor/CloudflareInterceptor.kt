@@ -76,6 +76,7 @@ object CFClearance {
         val url = originalRequest.url.toString()
 
         logger.debug { "resolveWithWebView($url)" }
+
         val cookies = Playwright.create().use { playwright ->
             playwright.chromium().launch(
                 LaunchOptions()
