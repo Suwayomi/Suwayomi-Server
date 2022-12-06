@@ -2,7 +2,11 @@ package eu.kanade.tachiyomi.network.interceptor
 
 import com.microsoft.playwright.impl.driver.Driver
 import java.io.IOException
+import java.net.URI
 import java.net.URISyntaxException
+import java.nio.file.FileSystem
+import java.nio.file.FileSystemNotFoundException
+import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -91,51 +95,88 @@ class DriverJar : Driver() {
         }
     }
 
+    @Throws(IOException::class)
+    private fun initFileSystem(uri: URI): FileSystem {
+        return try {
+            FileSystems.getFileSystem(uri)
+        } catch (e: FileSystemNotFoundException) {
+            FileSystems.newFileSystem(uri, emptyMap<String, Any>())
+        }
+    }
+
     @Throws(URISyntaxException::class, IOException::class)
     fun extractDriverToTempDir() {
         val classloader = Thread.currentThread().contextClassLoader
-        val uri = classloader.getResource(
+        val originalUri = classloader.getResource(
             "driver/" + platformDir()
         )!!.toURI()
-        /*if ("jar" == uri.scheme) FileSystems.newFileSystem(
-            uri,
-            emptyMap<String, Any>()
-        ) else null.use { fileSystem ->*/
-        val srcRoot = Paths.get(uri)
-        // jar file system's .relativize gives wrong results when used with
-        // spring-boot-maven-plugin, convert to the default filesystem to
-        // have predictable results.
-        // See https://github.com/microsoft/playwright-java/issues/306
-        val srcRootDefaultFs = Paths.get(srcRoot.toString())
-        Files.walk(srcRoot)
-            .forEach { fromPath: Path ->
-                if (preinstalledNodePath != null) {
-                    val fileName = fromPath.fileName.toString()
-                    if ("node.exe" == fileName || "node" == fileName) {
-                        return@forEach
-                    }
-                }
-                val relative =
-                    srcRootDefaultFs.relativize(Paths.get(fromPath.toString()))
-                val toPath = driverTempDir.resolve(relative.toString())
-                try {
-                    if (Files.isDirectory(fromPath)) {
-                        Files.createDirectories(toPath)
-                    } else {
-                        Files.copy(fromPath, toPath)
-                        if (isExecutable(toPath)) {
-                            toPath.toFile().setExecutable(true, true)
+        val uri = maybeExtractNestedJar(originalUri)
+        (if ("jar" == uri.scheme) initFileSystem(uri) else null).use { fileSystem ->
+            val srcRoot = Paths.get(uri)
+            // jar file system's .relativize gives wrong results when used with
+            // spring-boot-maven-plugin, convert to the default filesystem to
+            // have predictable results.
+            // See https://github.com/microsoft/playwright-java/issues/306
+            val srcRootDefaultFs = Paths.get(srcRoot.toString())
+            Files.walk(srcRoot)
+                .forEach { fromPath: Path ->
+                    if (preinstalledNodePath != null) {
+                        val fileName = fromPath.fileName.toString()
+                        if ("node.exe" == fileName || "node" == fileName) {
+                            return@forEach
                         }
                     }
-                    toPath.toFile().deleteOnExit()
-                } catch (e: IOException) {
-                    throw RuntimeException(
-                        "Failed to extract driver from $uri, full uri: '$'originalUri",
-                        e
-                    )
+                    val relative =
+                        srcRootDefaultFs.relativize(Paths.get(fromPath.toString()))
+                    val toPath = driverTempDir.resolve(relative.toString())
+                    try {
+                        if (Files.isDirectory(fromPath)) {
+                            Files.createDirectories(toPath)
+                        } else {
+                            Files.copy(fromPath, toPath)
+                            if (isExecutable(toPath)) {
+                                toPath.toFile().setExecutable(true, true)
+                            }
+                        }
+                        toPath.toFile().deleteOnExit()
+                    } catch (e: IOException) {
+                        throw RuntimeException(
+                            "Failed to extract driver from $uri, full uri: $originalUri",
+                            e
+                        )
+                    }
                 }
-                // }
+        }
+    }
+
+    @Throws(URISyntaxException::class)
+    private fun maybeExtractNestedJar(uri: URI): URI {
+        if ("jar" != uri.scheme) {
+            return uri
+        }
+        val JAR_URL_SEPARATOR = "!/"
+        val parts = uri.toString().split("!/".toRegex()).dropLastWhile { it.isEmpty() }
+            .toTypedArray()
+        if (parts.size != 3) {
+            return uri
+        }
+        val innerJar = java.lang.String.join(JAR_URL_SEPARATOR, parts[0], parts[1])
+        val jarUri = URI(innerJar)
+        try {
+            FileSystems.newFileSystem(jarUri, emptyMap<String, Any>()).use { fs ->
+                val fromPath = Paths.get(jarUri)
+                val toPath =
+                    driverTempDir.resolve(fromPath.fileName.toString())
+                Files.copy(fromPath, toPath)
+                toPath.toFile().deleteOnExit()
+                return URI("jar:" + toPath.toUri() + JAR_URL_SEPARATOR + parts[2])
             }
+        } catch (e: IOException) {
+            throw RuntimeException(
+                "Failed to extract driver's nested .jar from $jarUri; full uri: $uri",
+                e
+            )
+        }
     }
 
     public override fun driverDir(): Path {
