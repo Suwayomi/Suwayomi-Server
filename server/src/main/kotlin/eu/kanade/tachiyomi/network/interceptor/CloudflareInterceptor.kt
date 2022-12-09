@@ -68,6 +68,12 @@ object CFClearance {
     private val logger = KotlinLogging.logger {}
     private val network: NetworkHelper by injectLazy()
 
+    init {
+        // Fix the default DriverJar issue by providing our own implementation
+        // ref: https://github.com/microsoft/playwright-java/issues/1138
+        System.setProperty("playwright.driver.impl", "eu.kanade.tachiyomi.network.interceptor.DriverJar")
+    }
+
     fun resolveWithWebView(originalRequest: Request): Request {
         val url = originalRequest.url.toString()
 
