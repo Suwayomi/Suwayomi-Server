@@ -81,7 +81,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - debian-all
+#          - debian-all
           - linux-assets
           - linux-x64
           - macOS-x64
@@ -131,10 +131,10 @@ jobs:
         with:
           name: jar
           path: release
-      - uses: actions/download-artifact@v3
-        with:
-          name: debian-all
-          path: release
+#      - uses: actions/download-artifact@v3
+#        with:
+#          name: debian-all
+#          path: release
       - uses: actions/download-artifact@v3
         with:
           name: linux-assets
