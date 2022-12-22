@@ -87,8 +87,10 @@ object Manga {
                     it[MangaTable.description] = truncate(sManga.description, 4096)
                     it[MangaTable.genre] = sManga.genre
                     it[MangaTable.status] = sManga.status
-                    if (sManga.thumbnail_url != null && sManga.thumbnail_url.orEmpty().isNotEmpty()) {
+                    if (!sManga.thumbnail_url.isNullOrEmpty() && sManga.thumbnail_url != mangaEntry[MangaTable.thumbnail_url]) {
                         it[MangaTable.thumbnail_url] = sManga.thumbnail_url
+                        it[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
+                        clearMangaThumbnail(mangaId)
                     }
 
                     it[MangaTable.realUrl] = runCatching {
@@ -99,8 +101,6 @@ object Manga {
                 }
             }
 
-            clearMangaThumbnail(mangaId)
-
             mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
 
             MangaDataClass(
@@ -110,6 +110,7 @@ object Manga {
                 mangaEntry[MangaTable.url],
                 mangaEntry[MangaTable.title],
                 proxyThumbnailUrl(mangaId),
+                mangaEntry[MangaTable.thumbnailUrlLastFetched],
 
                 true,
 
@@ -171,6 +172,7 @@ object Manga {
         mangaEntry[MangaTable.url],
         mangaEntry[MangaTable.title],
         proxyThumbnailUrl(mangaId),
+        mangaEntry[MangaTable.thumbnailUrlLastFetched],
 
         true,
 

@@ -18,6 +18,7 @@ data class MangaDataClass(
     val url: String,
     val title: String,
     val thumbnailUrl: String? = null,
+    val thumbnailUrlLastFetched: Long = 0,
 
     val initialized: Boolean = false,
 

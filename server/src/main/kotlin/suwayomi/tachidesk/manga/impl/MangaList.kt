@@ -76,6 +76,7 @@ object MangaList {
                         manga.url,
                         manga.title,
                         proxyThumbnailUrl(mangaId),
+                        mangaEntry[MangaTable.thumbnailUrlLastFetched],
 
                         manga.initialized,
 
@@ -101,6 +102,7 @@ object MangaList {
                         manga.url,
                         manga.title,
                         proxyThumbnailUrl(mangaId),
+                        mangaEntry[MangaTable.thumbnailUrlLastFetched],
 
                         true,
 
