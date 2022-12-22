@@ -28,6 +28,7 @@ object MangaTable : IntIdTable() {
 
     val status = integer("status").default(SManga.UNKNOWN)
     val thumbnail_url = varchar("thumbnail_url", 2048).nullable()
+    val thumbnailUrlLastFetched = long("thumbnail_url_last_fetched").default(0)
 
     val inLibrary = bool("in_library").default(false)
     val defaultCategory = bool("default_category").default(true)
@@ -51,6 +52,7 @@ fun MangaTable.toDataClass(mangaEntry: ResultRow) =
         mangaEntry[url],
         mangaEntry[title],
         proxyThumbnailUrl(mangaEntry[this.id].value),
+        mangaEntry[MangaTable.thumbnailUrlLastFetched],
 
         mangaEntry[initialized],
 
