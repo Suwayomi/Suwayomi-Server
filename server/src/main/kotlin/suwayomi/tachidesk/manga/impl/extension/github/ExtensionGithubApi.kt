@@ -7,11 +7,12 @@ package suwayomi.tachidesk.manga.impl.extension.github
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.await
 import eu.kanade.tachiyomi.network.parseAs
 import kotlinx.serialization.Serializable
-import okhttp3.Request
+import mu.KotlinLogging
 import suwayomi.tachidesk.manga.impl.util.PackageTools.LIB_VERSION_MAX
 import suwayomi.tachidesk.manga.impl.util.PackageTools.LIB_VERSION_MIN
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
@@ -19,6 +20,8 @@ import uy.kohesive.injekt.injectLazy
 
 object ExtensionGithubApi {
     private const val REPO_URL_PREFIX = "https://raw.githubusercontent.com/tachiyomiorg/tachiyomi-extensions/repo/"
+    private const val FALLBACK_REPO_URL_PREFIX = "https://gcore.jsdelivr.net/gh/tachiyomiorg/tachiyomi-extensions@repo/"
+    private val logger = KotlinLogging.logger {}
 
     @Serializable
     private data class ExtensionJsonObject(
@@ -42,13 +45,26 @@ object ExtensionGithubApi {
         val baseUrl: String
     )
 
-    suspend fun findExtensions(): List<OnlineExtension> {
-        val request = Request.Builder()
-            .url("$REPO_URL_PREFIX/index.min.json")
-            .build()
+    private var requiresFallbackSource = false
 
-        return client.newCall(request)
-            .await()
+    suspend fun findExtensions(): List<OnlineExtension> {
+        val githubResponse = if (requiresFallbackSource) {
+            null
+        } else {
+            try {
+                client.newCall(GET("${REPO_URL_PREFIX}index.min.json")).await()
+            } catch (e: Throwable) {
+                logger.error(e) { "Failed to get extensions from GitHub" }
+                requiresFallbackSource = true
+                null
+            }
+        }
+
+        val response = githubResponse ?: run {
+            client.newCall(GET("${FALLBACK_REPO_URL_PREFIX}index.min.json")).await()
+        }
+
+        return response
             .parseAs<List<ExtensionJsonObject>>()
             .toExtensions()
     }

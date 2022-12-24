@@ -22,6 +22,7 @@ import suwayomi.tachidesk.manga.impl.extension.github.OnlineExtension
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration.Companion.seconds
 
 object ExtensionsList {
     private val logger = KotlinLogging.logger {}
@@ -29,12 +30,9 @@ object ExtensionsList {
     var lastUpdateCheck: Long = 0
     var updateMap = ConcurrentHashMap<String, OnlineExtension>()
 
-    /** 60,000 milliseconds = 60 seconds */
-    private const val ExtensionUpdateDelayTime = 60 * 1000
-
     suspend fun getExtensionList(): List<ExtensionDataClass> {
-        // update if {ExtensionUpdateDelayTime} seconds has passed or requested offline and database is empty
-        if (lastUpdateCheck + ExtensionUpdateDelayTime < System.currentTimeMillis()) {
+        // update if 60 seconds has passed or requested offline and database is empty
+        if (lastUpdateCheck + 60.seconds.inWholeMilliseconds < System.currentTimeMillis()) {
             logger.debug("Getting extensions list from the internet")
             lastUpdateCheck = System.currentTimeMillis()
 
@@ -80,14 +78,14 @@ object ExtensionsList {
                                 updateMap.putIfAbsent(foundExtension.pkgName, foundExtension)
                             }
                             foundExtension.versionCode < extensionRecord[ExtensionTable.versionCode] -> {
-                                // some how the user installed an invalid version
+                                // somehow the user installed an invalid version
                                 ExtensionTable.update({ ExtensionTable.pkgName eq foundExtension.pkgName }) {
                                     it[isObsolete] = true
                                 }
                             }
                         }
                     } else {
-                        // extension is not installed so we can overwrite the data without a care
+                        // extension is not installed, so we can overwrite the data without a care
                         ExtensionTable.update({ ExtensionTable.pkgName eq foundExtension.pkgName }) {
                             it[name] = foundExtension.name
                             it[versionName] = foundExtension.versionName
@@ -117,14 +115,14 @@ object ExtensionsList {
             ExtensionTable.selectAll().forEach { extensionRecord ->
                 val foundExtension = foundExtensions.find { it.pkgName == extensionRecord[ExtensionTable.pkgName] }
                 if (foundExtension == null) {
-                    // not in the repo, so this extensions is obsolete
+                    // not in the repo, so these extensions are obsolete
                     if (extensionRecord[ExtensionTable.isInstalled]) {
                         // is installed so we should mark it as obsolete
                         ExtensionTable.update({ ExtensionTable.pkgName eq extensionRecord[ExtensionTable.pkgName] }) {
                             it[isObsolete] = true
                         }
                     } else {
-                        // is not installed so we can remove the record without a care
+                        // is not installed, so we can remove the record without a care
                         ExtensionTable.deleteWhere { ExtensionTable.pkgName eq extensionRecord[ExtensionTable.pkgName] }
                     }
                 }
