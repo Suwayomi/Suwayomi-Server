@@ -25,10 +25,10 @@ import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.manga.MangaAPI
+import suwayomi.tachidesk.server.database.DBManager.databaseForUser
 import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.setupWebInterface
 import java.io.IOException
-import java.lang.IllegalArgumentException
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
 
@@ -66,6 +66,8 @@ object JavalinSetup {
                     ctx.header("WWW-Authenticate", "Basic")
                     ctx.status(401).json("Unauthorized")
                 } else {
+                    val username = if (serverConfig.basicAuthEnabled) serverConfig.basicAuthUsername else "default-user"
+                    ctx.attribute("db", databaseForUser(username))
                     handler.handle(ctx)
                 }
             }
