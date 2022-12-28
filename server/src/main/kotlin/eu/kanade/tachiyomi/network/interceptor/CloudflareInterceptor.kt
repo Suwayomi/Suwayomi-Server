@@ -4,6 +4,7 @@ import com.microsoft.playwright.Browser
 import com.microsoft.playwright.BrowserType.LaunchOptions
 import com.microsoft.playwright.Page
 import com.microsoft.playwright.Playwright
+import com.microsoft.playwright.PlaywrightException
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.interceptor.CFClearance.resolveWithWebView
 import mu.KotlinLogging
@@ -135,17 +136,22 @@ object CFClearance {
     }
 
     fun getWebViewUserAgent(): String {
-        Playwright.create().use { playwright ->
-            playwright.chromium().launch(
-                LaunchOptions()
-                    .setHeadless(true)
-            ).use { browser ->
-                browser.newPage().use { page ->
-                    val userAgent = page.evaluate("() => {return navigator.userAgent}") as String
-                    logger.debug { "WebView User-Agent is $userAgent" }
-                    return userAgent
+        return try {
+            Playwright.create().use { playwright ->
+                playwright.chromium().launch(
+                    LaunchOptions()
+                        .setHeadless(true)
+                ).use { browser ->
+                    browser.newPage().use { page ->
+                        val userAgent = page.evaluate("() => {return navigator.userAgent}") as String
+                        logger.debug { "WebView User-Agent is $userAgent" }
+                        return userAgent
+                    }
                 }
             }
+        } catch (e: PlaywrightException) {
+            // Playwright might fail on headless environments like docker
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
         }
     }
 
