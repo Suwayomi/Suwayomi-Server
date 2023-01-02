@@ -12,7 +12,7 @@ import org.jetbrains.exposed.sql.ReferenceOption
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable.ref
 
 /**
- * Metadata storage for clients, about Chapter with id == [ref].
+ * Metadata storage for clients, about Category with id == [ref].
  */
 object CategoryMetaTable : IntIdTable() {
     val key = varchar("key", 256)
