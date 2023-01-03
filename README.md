@@ -42,17 +42,17 @@ Tachidesk-Server is as multi-platform as you can get. Any platform that runs jav
 Ability to sync with Tachiyomi is a planned feature.
 
 # Tachidesk client projects
-**You need a client/user interface app as a front-end for Tachidesk-Server, if you Directly Download Tachidesk-Server you'll get a bundled version of [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI) with it.**
+**You need a client/user interface app as a front-end for Tachidesk-Server, if you [Directly Download Tachidesk-Server](https://github.com/Suwayomi/Tachidesk-Server/releases/latest) you'll get a bundled version of [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI) with it.**
 
 Here's a list of known clients/user interfaces for Tachidesk-Server:
 ##### Actively Developed Cients
-- [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI): The web/ElectronJS front-end that Tachidesk-Server is traditionally shipped with.
+- [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI): The web/ElectronJS front-end that Tachidesk-Server ships with by default.
 - [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): The native desktop front-end for Tachidesk-Server. Currently the most advanced.
-- [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): A C++/Qt front-end for mobile devices(Android/linux), in super early stage of development.
-- [Tachidesk-Sorayomi](https://github.com/Suwayomi/Tachidesk-Sorayomi): A Flutter front-end for Desktop(Linux, windows, etc.), Web and Android. UI and UX similar to Tachiyomi.
+- [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): A C++/Qt front-end for mobile devices(Android/linux), feature support is basic.
+- [Tachidesk-Sorayomi](https://github.com/Suwayomi/Tachidesk-Sorayomi): A Flutter front-end for Desktop(Linux, windows, etc.), Web and Android with a User Inerface inspired by Tachiyomi.
 ##### Inctive/Abandoned Cients
-- [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js, in super early stage of development.
-- [Tachidesk-GTK](https://github.com/mahor1221/Tachidesk-GTK): A native Rust/GTK desktop client, in super early stage of development.
+- [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js.
+- [Tachidesk-GTK](https://github.com/mahor1221/Tachidesk-GTK): A native Rust/GTK desktop client.
 
 ## Is this application usable? Should I test it?
 Here is a list of current features:
