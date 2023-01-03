@@ -36,7 +36,7 @@ Tachidesk is an independent Tachiyomi compatible software and is **not a Fork of
 
 Tachidesk-Server is as multi-platform as you can get. Any platform that runs java and/or has a modern browser can run it. This includes Windows, Linux, macOS, chrome OS, etc. Follow [Downloading and Running the app](#downloading-and-running-the-app) for installation instructions.
 
-Ability to sync with Tachiyomi is a planned feature, for more infor look [here](#syncing-with-tachiyomi).
+Ability to sync with Tachiyomi is a planned feature, for more info look [here](#syncing-with-tachiyomi).
 
 # Tachidesk client projects
 **You need a client/user interface app as a front-end for Tachidesk-Server, if you [Directly Download Tachidesk-Server](https://github.com/Suwayomi/Tachidesk-Server/releases/latest) you'll get a bundled version of [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI) with it.**
