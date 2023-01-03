@@ -34,12 +34,9 @@ A free and open source manga reader server that runs extensions built for [Tachi
 
 Tachidesk is an independent Tachiyomi compatible software and is **not a Fork of** Tachiyomi.
 
-`Tachidesk` is a general term used to describe the combination of Tachidesk-Server(this project) and one of our clients. 
-Think of it roughly like the concept of "distribution" in GNU/Linux distributions, in which Linux(Tachidesk-Server) is the kernel and the difference is which desktop environment(Tachidesk client) you get with it. 
-
 Tachidesk-Server is as multi-platform as you can get. Any platform that runs java and/or has a modern browser can run it. This includes Windows, Linux, macOS, chrome OS, etc. Follow [Downloading and Running the app](#downloading-and-running-the-app) for installation instructions.
 
-Ability to sync with Tachiyomi is a planned feature.
+Ability to sync with Tachiyomi is a planned feature, look at [#159](https://github.com/Suwayomi/Tachidesk-Server/issues/159).
 
 # Tachidesk client projects
 **You need a client/user interface app as a front-end for Tachidesk-Server, if you [Directly Download Tachidesk-Server](https://github.com/Suwayomi/Tachidesk-Server/releases/latest) you'll get a bundled version of [Tachidesk-WebUI](https://github.com/Suwayomi/Tachidesk-WebUI) with it.**
