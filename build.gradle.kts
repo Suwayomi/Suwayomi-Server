@@ -10,6 +10,17 @@ plugins {
     id("de.undercouch.download") version "5.3.0"
 }
 
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.guardsquare:proguard-gradle:7.2.1") {
+            exclude("com.android.tools.build")
+        }
+    }
+}
+
 allprojects {
     group = "suwayomi"
 
@@ -110,3 +121,4 @@ configure(projects) {
         implementation("com.fasterxml.jackson.core:jackson-annotations:2.12.4")
     }
 }
+

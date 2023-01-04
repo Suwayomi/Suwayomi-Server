@@ -1,4 +1,5 @@
 import de.undercouch.gradle.tasks.download.Download
+import proguard.gradle.ProGuardTask
 import java.time.Instant
 
 plugins {
@@ -181,5 +182,26 @@ tasks {
                 "-Dsuwayomi.tachidesk.config.server.electronPath=/usr/bin/electron"
             )
         }
+    }
+
+    register<ProGuardTask>("optimizeShadowJar") {
+        group = "shadow"
+        val shadowJar = getByName("shadowJar")
+        dependsOn(shadowJar)
+        val shadowJars = shadowJar.outputs.files.onEach { println(it.absolutePath) }
+        injars(shadowJars)
+        outjars(
+            shadowJars.map { file ->
+                File(file.parentFile, "min/" + file.name)
+            }
+        )
+        val javaHome = System.getProperty("java.home")
+        if (JavaVersion.current().isJava9Compatible) {
+            libraryjars("$javaHome/jmods")
+        } else {
+            libraryjars("$javaHome/lib/rt.jar")
+            //libraryjars("$javaHome/lib/jce.jar")
+        }
+        configuration("proguard-rules.pro")
     }
 }
