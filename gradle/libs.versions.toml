@@ -10,6 +10,7 @@ dex2jar = "v56"
 rhino = "1.7.14"
 settings = "1.0.0-RC"
 twelvemonkeys = "3.9.4"
+playwright = "1.28.0"
 
 [libraries]
 # Kotlin
@@ -98,7 +99,7 @@ zip4j = "net.lingala.zip4j:zip4j:2.11.2"
 junrar = "com.github.junrar:junrar:7.5.3"
 
 # CloudflareInterceptor
-playwright = "com.microsoft.playwright:playwright:1.28.0"
+playwright = { module = "com.microsoft.playwright:playwright", version.ref = "playwright" }
 
 # AES/CBC/PKCS7Padding Cypher provider
 bouncycastle = "org.bouncycastle:bcprov-jdk18on:1.72"

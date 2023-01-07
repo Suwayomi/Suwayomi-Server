@@ -26,22 +26,9 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-/*
-  exact copy of https://github.com/microsoft/playwright-java/blob/4d278c391e3c50738ddea6c3e324a4bbbf719d86/driver-bundle/src/main/java/com/microsoft/playwright/impl/driver/jar/DriverJar.java
-  with diff:
-  108a109,116
-  >
-  >   private FileSystem initFileSystem(URI uri) throws IOException {
-  >     try {
-  >       return FileSystems.newFileSystem(uri, Collections.emptyMap());
-  >     } catch (FileSystemAlreadyExistsException e) {
-  >       return null;
-  >     }
-  >   }
-  116c124
-  <     try (FileSystem fileSystem = "jar".equals(uri.getScheme()) ? FileSystems.newFileSystem(uri, Collections.emptyMap()) : null) {
-  ---
-  >     try (FileSystem fileSystem = "jar".equals(uri.getScheme()) ? initFileSystem(uri) : null) {
+/**
+ * Copy of <a href="https://github.com/microsoft/playwright-java/blob/8c0231b0f739656e8a86bc58fca9ee778ddc571b/driver-bundle/src/main/java/com/microsoft/playwright/impl/driver/jar/DriverJar.java">DriverJar</a>
+ * with support for pre-installing chromium and only supports chromium playwright
  */
 public class DriverJar extends Driver {
   private static final String PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD";
@@ -56,8 +43,8 @@ public class DriverJar extends Driver {
     String alternativeTmpdir = System.getProperty("playwright.driver.tmpdir");
     String prefix = "playwright-java-";
     driverTempDir = alternativeTmpdir == null
-      ? Files.createTempDirectory(prefix)
-      : Files.createTempDirectory(Paths.get(alternativeTmpdir), prefix);
+            ? Files.createTempDirectory(prefix)
+            : Files.createTempDirectory(Paths.get(alternativeTmpdir), prefix);
     driverTempDir.toFile().deleteOnExit();
     String nodePath = System.getProperty("playwright.nodejs.path");
     if (nodePath != null) {
@@ -99,12 +86,14 @@ public class DriverJar extends Driver {
       logMessage("Skipping browsers download because `SELENIUM_REMOTE_URL` env variable is set");
       return;
     }
+    Chromium.preinstall(platformDir());
     Path driver = driverPath();
     if (!Files.exists(driver)) {
       throw new RuntimeException("Failed to find driver: " + driver);
     }
     ProcessBuilder pb = createProcessBuilder();
     pb.command().add("install");
+    pb.command().add("chromium");
     pb.redirectError(ProcessBuilder.Redirect.INHERIT);
     pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
     Process p = pb.start();
@@ -123,7 +112,6 @@ public class DriverJar extends Driver {
     return name.endsWith(".sh") || name.endsWith(".exe") || !name.contains(".");
   }
 
-
   private FileSystem initFileSystem(URI uri) throws IOException {
     try {
       return FileSystems.newFileSystem(uri, Collections.emptyMap());
@@ -131,10 +119,14 @@ public class DriverJar extends Driver {
       return null;
     }
   }
-  void extractDriverToTempDir() throws URISyntaxException, IOException {
+
+  public static URI getDriverResourceURI() throws URISyntaxException {
     ClassLoader classloader = Thread.currentThread().getContextClassLoader();
-    URI originalUri = classloader.getResource(
-      "driver/" + platformDir()).toURI();
+    return classloader.getResource("driver/" + platformDir()).toURI();
+  }
+
+  void extractDriverToTempDir() throws URISyntaxException, IOException {
+    URI originalUri = getDriverResourceURI();
     URI uri = maybeExtractNestedJar(originalUri);
 
     // Create zip filesystem if loading from jar.
