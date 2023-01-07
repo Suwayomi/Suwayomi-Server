@@ -1,0 +1,217 @@
+[versions]
+kotlin = "1.7.20"
+coroutines = "1.6.4"
+serialization = "1.4.1"
+okhttp = "4.10.0" # Major version is locked by Tachiyomi extensions
+javalin = "4.6.6" # Javalin 5.0.0+ requires Java 11
+jackson = "2.13.3" # jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
+exposed = "0.40.1"
+dex2jar = "v56"
+rhino = "1.7.14"
+settings = "1.0.0-RC"
+twelvemonkeys = "3.9.4"
+
+[libraries]
+# Kotlin
+kotlin-stdlib-jdk8 = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlin" }
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
+kotlin-test-junit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5", version.ref = "kotlin" }
+
+# Coroutines
+coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+coroutines-jdk8 = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8", version.ref = "coroutines" }
+coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+
+# Serialization
+serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+serialization-protobuf = { module = "org.jetbrains.kotlinx:kotlinx-serialization-protobuf", version.ref = "serialization" }
+
+# Logging
+# Stuck on old versions since
+# 1. Logback 1.3.0+ requires Java 9
+# 2. Slf4j 2.0.0+ doesn't register older versions of Logback
+# 3. Kotlin-logging 3.0.2+ requires Java 11, but this is probably a bug
+slf4japi = "org.slf4j:slf4j-api:1.7.32"
+logback = "ch.qos.logback:logback-classic:1.2.6"
+kotlinlogging = "io.github.microutils:kotlin-logging:2.1.21"
+
+# OkHttp
+okhttp-core = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+okhttp-logging = { module = "com.squareup.okhttp3:logging-interceptor", version.ref = "okhttp" }
+okhttp-dnsoverhttps = { module = "com.squareup.okhttp3:okhttp-dnsoverhttps", version.ref = "okhttp" }
+okio = "com.squareup.okio:okio:3.2.0"
+
+# Javalin api
+javalin-core = { module = "io.javalin:javalin", version.ref = "javalin" }
+javalin-openapi = { module = "io.javalin:javalin-openapi", version.ref = "javalin" }
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
+jackson-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
+jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations", version.ref = "jackson" }
+
+# Exposed ORM
+exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
+exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposed" }
+exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
+exposed-javatime = { module = "org.jetbrains.exposed:exposed-java-time", version.ref = "exposed" }
+h2 = "com.h2database:h2:1.4.200" # current database driver, can't update to h2 v2 without sql migration
+
+# Exposed Migrations
+exposed-migrations = "com.github.Suwayomi:exposed-migrations:3.2.0"
+
+# Dependency Injection
+kodein = "org.kodein.di:kodein-di-conf-jvm:7.15.0"
+
+# tray icon
+systemtray-core = "com.dorkbox:SystemTray:4.1"
+systemtray-utils = "com.dorkbox:Utilities:1.9" # version locked by SystemTray
+
+# dependencies of Tachiyomi extensions
+injekt = "com.github.inorichi.injekt:injekt-core:65b0440"
+rxjava = "io.reactivex:rxjava:1.3.8"
+jsoup = "org.jsoup:jsoup:1.15.3"
+
+# Config
+config = "com.typesafe:config:1.4.2"
+config4k = "io.github.config4k:config4k:0.5.0"
+
+# Sort
+sort = "com.github.gpanther:java-nat-sort:natural-comparator-1.1"
+
+# Android stub library
+android-stubs = "com.github.Suwayomi:android-jar:1.0.0"
+
+# Asm modificiation
+asm = "org.ow2.asm:asm:9.4" # version locked by Dex2Jar
+dex2jar-translator = { module = "com.github.ThexXTURBOXx.dex2jar:dex-translator", version.ref = "dex2jar" }
+dex2jar-tools = { module = "com.github.ThexXTURBOXx.dex2jar:dex-tools", version.ref = "dex2jar" }
+
+# APK
+apk-parser = "net.dongliu:apk-parser:2.6.10"
+apksig = "com.android.tools.build:apksig:7.2.1"
+
+# Xml
+xmlpull = "xmlpull:xmlpull:1.1.3.4a"
+
+# Disk & File
+appdirs = "net.harawata:appdirs:1.2.1"
+zip4j = "net.lingala.zip4j:zip4j:2.11.2"
+junrar = "com.github.junrar:junrar:7.5.3"
+
+# CloudflareInterceptor
+playwright = "com.microsoft.playwright:playwright:1.28.0"
+
+# AES/CBC/PKCS7Padding Cypher provider
+bouncycastle = "org.bouncycastle:bcprov-jdk18on:1.72"
+
+# AndroidX annotations
+android-annotations = "androidx.annotation:annotation:1.5.0"
+
+# Substitute for duktape-android
+rhino-runtime = { module = "org.mozilla:rhino-runtime", version.ref = "rhino" }  # slimmer version of 'org.mozilla:rhino'
+rhino-engine = { module = "org.mozilla:rhino-engine", version.ref = "rhino" } # provides the same interface as 'javax.script' a.k.a Nashorn
+
+# Settings
+settings-core = { module = "com.russhwolf:multiplatform-settings-jvm", version.ref = "settings" }
+settings-serialization = { module = "com.russhwolf:multiplatform-settings-serialization-jvm", version.ref = "settings" }
+
+# ICU4J
+icu4j = "com.ibm.icu:icu4j:72.1"
+
+# Image Decoding implementation provider
+twelvemonkeys-common-lang = { module = "com.twelvemonkeys.common:common-lang", version.ref = "twelvemonkeys" }
+twelvemonkeys-common-io = { module = "com.twelvemonkeys.common:common-io", version.ref = "twelvemonkeys" }
+twelvemonkeys-common-image = { module = "com.twelvemonkeys.common:common-image", version.ref = "twelvemonkeys" }
+twelvemonkeys-imageio-core = { module = "com.twelvemonkeys.imageio:imageio-core", version.ref = "twelvemonkeys" }
+twelvemonkeys-imageio-metadata = { module = "com.twelvemonkeys.imageio:imageio-metadata", version.ref = "twelvemonkeys" }
+twelvemonkeys-imageio-jpeg = { module = "com.twelvemonkeys.imageio:imageio-jpeg", version.ref = "twelvemonkeys" }
+twelvemonkeys-imageio-webp = { module = "com.twelvemonkeys.imageio:imageio-webp", version.ref = "twelvemonkeys" }
+
+# Testing
+mockk = "io.mockk:mockk:1.13.2"
+
+[plugins]
+# Kotlin
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin"}
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin"}
+
+# Linter
+kotlinter = { id = "org.jmailen.kotlinter", version = "3.12.0"}
+
+# Build config
+buildconfig = { id = "com.github.gmazzo.buildconfig", version = "3.1.0"}
+
+# Download
+download = { id = "de.undercouch.download", version = "5.3.0"}
+
+# ShadowJar
+shadowjar = { id = "com.github.johnrengelman.shadow", version = "7.1.2"}
+
+[bundles]
+shared = [
+    "kotlin-stdlib-jdk8",
+    "kotlin-reflect",
+    "coroutines-core",
+    "coroutines-jdk8",
+    "serialization-json",
+    "serialization-protobuf",
+    "kodein",
+    "slf4japi",
+    "logback",
+    "kotlinlogging",
+    "appdirs",
+    "rxjava",
+    "jsoup",
+    "config",
+    "config4k",
+    "dex2jar-translator",
+    "dex2jar-tools",
+    "apk-parser",
+    "jackson-annotations"
+]
+
+sharedTest = [
+    "kotlin-test-junit5",
+    "coroutines-test",
+]
+
+okhttp = [
+    "okhttp-core",
+    "okhttp-logging",
+    "okhttp-dnsoverhttps",
+]
+javalin = [
+    "javalin-core",
+    "javalin-openapi",
+]
+jackson = [
+    "jackson-databind",
+    "jackson-kotlin",
+    "jackson-annotations",
+]
+exposed = [
+    "exposed-core",
+    "exposed-dao",
+    "exposed-jdbc",
+    "exposed-javatime",
+]
+systemtray = [
+    "systemtray-core",
+    "systemtray-utils",
+]
+rhino = [
+    "rhino-runtime",
+    "rhino-engine",
+]
+settings = [
+    "settings-core",
+    "settings-serialization",
+]
+twelvemonkeys = [
+    "twelvemonkeys-common-lang",
+    "twelvemonkeys-common-io",
+    "twelvemonkeys-common-image",
+    "twelvemonkeys-imageio-core",
+    "twelvemonkeys-imageio-metadata",
+    "twelvemonkeys-imageio-jpeg",
+    "twelvemonkeys-imageio-webp",
+]

@@ -1,80 +1,70 @@
 import de.undercouch.gradle.tasks.download.Download
 import java.time.Instant
 
+@Suppress("DSL_SCOPE_VIOLATION")
 plugins {
+    id(libs.plugins.kotlin.jvm.get().pluginId)
+    id(libs.plugins.kotlin.serialization.get().pluginId)
+    id(libs.plugins.kotlinter.get().pluginId)
     application
-    id("com.github.johnrengelman.shadow") version "7.1.2"
-    id("com.github.gmazzo.buildconfig")
+    alias(libs.plugins.shadowjar)
+    id(libs.plugins.buildconfig.get().pluginId)
 }
 
 dependencies {
-    // okhttp
-    val okhttpVersion = "4.10.0" // Major version is locked by Tachiyomi extensions
-    implementation("com.squareup.okhttp3:okhttp:$okhttpVersion")
-    implementation("com.squareup.okhttp3:logging-interceptor:$okhttpVersion")
-    implementation("com.squareup.okhttp3:okhttp-dnsoverhttps:$okhttpVersion")
-    implementation("com.squareup.okio:okio:3.2.0")
+    // Shared
+    implementation(libs.bundles.shared)
+    testImplementation(libs.bundles.sharedTest)
+
+    // OkHttp
+    implementation(libs.bundles.okhttp)
+    implementation(libs.okio)
 
     // Javalin api
-    // Javalin 5.0.0+ requires Java 11
-    implementation("io.javalin:javalin:4.6.6")
-    implementation("io.javalin:javalin-openapi:4.6.6")
-    // jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
-    val jacksonVersion = "2.13.3"
-    implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
+    implementation(libs.bundles.javalin)
+    implementation(libs.bundles.jackson)
 
     // Exposed ORM
-    val exposedVersion = "0.40.1"
-    implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
-    implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
-    implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
-    implementation("org.jetbrains.exposed:exposed-java-time:$exposedVersion")
-    // current database driver, can't update to h2 v2 without sql migration
-    implementation("com.h2database:h2:1.4.200")
+    implementation(libs.bundles.exposed)
+    implementation(libs.h2)
 
     // Exposed Migrations
-    implementation("com.github.Suwayomi:exposed-migrations:3.2.0")
+    implementation(libs.exposed.migrations)
 
     // tray icon
-    implementation("com.dorkbox:SystemTray:4.1")
-    implementation("com.dorkbox:Utilities:1.9") // version locked by SystemTray
+    implementation(libs.bundles.systemtray)
 
     // dependencies of Tachiyomi extensions, some are duplicate, keeping it here for reference
-    implementation("com.github.inorichi.injekt:injekt-core:65b0440")
-    implementation("com.squareup.okhttp3:okhttp:$okhttpVersion")
-    implementation("io.reactivex:rxjava:1.3.8")
-    implementation("org.jsoup:jsoup:1.15.3")
+    implementation(libs.injekt)
+    implementation(libs.okhttp.core)
+    implementation(libs.rxjava)
+    implementation(libs.jsoup)
 
     // Sort
-    implementation("com.github.gpanther:java-nat-sort:natural-comparator-1.1")
+    implementation(libs.sort)
 
     // asm for ByteCodeEditor(fixing SimpleDateFormat) (must match Dex2Jar version)
-    implementation("org.ow2.asm:asm:9.4")
+    implementation(libs.asm)
 
     // Disk & File
-    implementation("net.lingala.zip4j:zip4j:2.11.2")
-    implementation("com.github.junrar:junrar:7.5.3")
+    implementation(libs.zip4j)
+    implementation(libs.junrar)
 
     // CloudflareInterceptor
-    implementation("com.microsoft.playwright:playwright:1.28.0")
+    implementation(libs.playwright)
 
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
-    implementation("org.bouncycastle:bcprov-jdk18on:1.72")
-
-    // Source models and interfaces from Tachiyomi 1.x
-    // using source class from tachiyomi commit 9493577de27c40ce8b2b6122cc447d025e34c477 to not depend on tachiyomi.sourceapi
-//    implementation("tachiyomi.sourceapi:source-api:1.1")
+    implementation(libs.bouncycastle)
 
     // AndroidCompat
-    implementation(project(":AndroidCompat"))
-    implementation(project(":AndroidCompat:Config"))
+    implementation(projects.androidCompat)
+    implementation(projects.androidCompat.config)
 
     // uncomment to test extensions directly
 //    implementation(fileTree("lib/"))
     implementation(kotlin("script-runtime"))
 
-    testImplementation("io.mockk:mockk:1.13.2")
+    testImplementation(libs.mockk)
 }
 
 application {
