@@ -117,7 +117,7 @@ settings-serialization = { module = "com.russhwolf:multiplatform-settings-serial
 # ICU4J
 icu4j = "com.ibm.icu:icu4j:72.1"
 
-# Image Decoding
+# Image Decoding implementation provider
 twelvemonkeys-common-lang = { module = "com.twelvemonkeys.common:common-lang", version.ref = "twelvemonkeys" }
 twelvemonkeys-common-io = { module = "com.twelvemonkeys.common:common-io", version.ref = "twelvemonkeys" }
 twelvemonkeys-common-image = { module = "com.twelvemonkeys.common:common-image", version.ref = "twelvemonkeys" }
