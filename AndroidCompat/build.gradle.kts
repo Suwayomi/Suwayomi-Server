@@ -1,37 +1,39 @@
+@Suppress("DSL_SCOPE_VIOLATION")
+plugins {
+    id(libs.plugins.kotlin.jvm.get().pluginId)
+    id(libs.plugins.kotlin.serialization.get().pluginId)
+    id(libs.plugins.kotlinter.get().pluginId)
+}
+
 dependencies {
+    // Shared
+    implementation(libs.bundles.shared)
+    testImplementation(libs.bundles.sharedTest)
+
     // Android stub library
-    implementation("com.github.Suwayomi:android-jar:1.0.0")
+    implementation(libs.android.stubs)
 
     // XML
-    compileOnly("xmlpull:xmlpull:1.1.3.4a")
+    compileOnly(libs.xmlpull)
 
     // Config API
-    implementation(project(":AndroidCompat:Config"))
+    implementation(projects.androidCompat.config)
 
     // APK sig verifier
-    compileOnly("com.android.tools.build:apksig:7.2.1")
+    compileOnly(libs.apksig)
 
     // AndroidX annotations
-    compileOnly("androidx.annotation:annotation:1.5.0")
+    compileOnly(libs.android.annotations)
 
     // substitute for duktape-android
-    implementation("org.mozilla:rhino-runtime:1.7.14") // slimmer version of 'org.mozilla:rhino'
-    implementation("org.mozilla:rhino-engine:1.7.14") // provides the same interface as 'javax.script' a.k.a Nashorn
+    implementation(libs.bundles.rhino)
 
     // Kotlin wrapper around Java Preferences, makes certain things easier
-    val multiplatformSettingsVersion = "1.0.0-RC"
-    implementation("com.russhwolf:multiplatform-settings-jvm:$multiplatformSettingsVersion")
-    implementation("com.russhwolf:multiplatform-settings-serialization-jvm:$multiplatformSettingsVersion")
+    implementation(libs.bundles.settings)
 
     // Android version of SimpleDateFormat
-    implementation("com.ibm.icu:icu4j:72.1")
+    implementation(libs.icu4j)
 
     // OpenJDK lacks native JPEG encoder and native WEBP decoder
-    implementation("com.twelvemonkeys.common:common-lang:3.9.4")
-    implementation("com.twelvemonkeys.common:common-io:3.9.4")
-    implementation("com.twelvemonkeys.common:common-image:3.9.4")
-    implementation("com.twelvemonkeys.imageio:imageio-core:3.9.4")
-    implementation("com.twelvemonkeys.imageio:imageio-metadata:3.9.4")
-    implementation("com.twelvemonkeys.imageio:imageio-jpeg:3.4.1")
-    implementation("com.twelvemonkeys.imageio:imageio-webp:3.9.4")
+    implementation(libs.bundles.twelvemonkeys)
 }
