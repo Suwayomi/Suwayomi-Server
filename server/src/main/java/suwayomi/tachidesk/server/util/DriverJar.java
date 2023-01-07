@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package eu.kanade.tachiyomi.network.interceptor;
+package suwayomi.tachidesk.server.util;
 
 import com.microsoft.playwright.impl.driver.Driver;
 

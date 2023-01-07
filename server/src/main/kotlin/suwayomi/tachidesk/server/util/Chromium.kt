@@ -1,4 +1,4 @@
-package eu.kanade.tachiyomi.network.interceptor
+package suwayomi.tachidesk.server.util
 
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json

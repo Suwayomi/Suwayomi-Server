@@ -72,7 +72,7 @@ object CFClearance {
     init {
         // Fix the default DriverJar issue by providing our own implementation
         // ref: https://github.com/microsoft/playwright-java/issues/1138
-        System.setProperty("playwright.driver.impl", "eu.kanade.tachiyomi.network.interceptor.DriverJar")
+        System.setProperty("playwright.driver.impl", "suwayomi.tachidesk.server.util.DriverJar")
     }
 
     fun resolveWithWebView(originalRequest: Request): Request {
