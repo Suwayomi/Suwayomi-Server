@@ -42,7 +42,7 @@ object Chromium {
         if (chromePath.exists() || chromiumZip.notExists()) return
         chromePath.createDirectories()
 
-        FileSystems.newFileSystem(chromiumZip, null).use {
+        FileSystems.newFileSystem(chromiumZip, null as ClassLoader?).use {
             val src = it.getPath("/")
             Files.walk(src)
                 .asSequence()
