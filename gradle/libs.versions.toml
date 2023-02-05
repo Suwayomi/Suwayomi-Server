@@ -6,7 +6,7 @@ okhttp = "4.10.0" # Major version is locked by Tachiyomi extensions
 javalin = "4.6.6" # Javalin 5.0.0+ requires Java 11
 jackson = "2.13.3" # jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
 exposed = "0.40.1"
-dex2jar = "v56"
+dex2jar = "v59"
 rhino = "1.7.14"
 settings = "1.0.0-RC"
 twelvemonkeys = "3.9.4"
@@ -63,8 +63,9 @@ exposed-migrations = "com.github.Suwayomi:exposed-migrations:3.2.0"
 kodein = "org.kodein.di:kodein-di-conf-jvm:7.15.0"
 
 # tray icon
-systemtray-core = "com.dorkbox:SystemTray:4.2"
-systemtray-utils = "com.dorkbox:Utilities:1.39" # version locked by SystemTray
+systemtray-core = "com.dorkbox:SystemTray:4.1"
+systemtray-utils = "com.dorkbox:Utilities:1.9" # version locked by SystemTray
+systemtray-desktop = "com.dorkbox:Desktop:1.0"
 
 # dependencies of Tachiyomi extensions
 injekt = "com.github.inorichi.injekt:injekt-core:65b0440"
@@ -198,6 +199,7 @@ exposed = [
 systemtray = [
     "systemtray-core",
     "systemtray-utils",
+    "systemtray-desktop"
 ]
 rhino = [
     "rhino-runtime",
