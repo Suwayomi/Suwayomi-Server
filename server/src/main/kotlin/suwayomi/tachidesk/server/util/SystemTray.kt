@@ -51,8 +51,6 @@ object SystemTray {
                 }
             )
 
-            systemTray.installShutdownHook()
-
             return systemTray
         } catch (e: Exception) {
             e.printStackTrace()
