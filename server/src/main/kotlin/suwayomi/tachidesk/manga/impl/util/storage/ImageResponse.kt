@@ -44,24 +44,27 @@ object ImageResponse {
         val response = fetcher()
 
         if (response.code == 200) {
-            val tmpSavePath = "$filePath.tmp"
-            val tmpSaveFile = File(tmpSavePath)
-            response.body!!.source().saveTo(tmpSaveFile)
-
-            // find image type
-            val imageType = response.headers["content-type"]
-                ?: ImageUtil.findImageType { tmpSaveFile.inputStream() }?.mime
-                ?: "image/jpeg"
-
-            val actualSavePath = "$filePath.${imageType.substringAfter("/")}"
-
-            tmpSaveFile.renameTo(File(actualSavePath))
-
+            val (actualSavePath, imageType) = saveImage(filePath, response.body!!.byteStream())
             return pathToInputStream(actualSavePath) to imageType
         } else {
             response.closeQuietly()
             throw Exception("request error! ${response.code}")
         }
+    }
+
+    fun saveImage(filePath: String, image: InputStream): Pair<String, String> {
+        val tmpSavePath = "$filePath.tmp"
+        val tmpSaveFile = File(tmpSavePath)
+        image.use { input -> tmpSaveFile.outputStream().use { output -> input.copyTo(output) } }
+
+        // find image type
+        val imageType = ImageUtil.findImageType { tmpSaveFile.inputStream() }?.mime
+            ?: "image/jpeg"
+
+        val actualSavePath = "$filePath.${imageType.substringAfter("/")}"
+
+        tmpSaveFile.renameTo(File(actualSavePath))
+        return Pair(actualSavePath, imageType)
     }
 
     fun clearCachedImage(saveDir: String, fileName: String) {
@@ -101,7 +104,7 @@ object ImageResponse {
         var saveDir = ""
         if (useCache) {
             saveDir = getChapterDir(mangaId, chapterId, true)
-            File(saveDir).mkdir()
+            File(saveDir).mkdirs()
         }
         return getImageResponse(saveDir, fileName, useCache, fetcher)
     }

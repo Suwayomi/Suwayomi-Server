@@ -23,6 +23,7 @@ import mu.KotlinLogging
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.Page.getPageImage
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
@@ -99,7 +100,7 @@ class Downloader(
                 for (pageNum in 0 until pageCount) {
                     var pageProgressJob: Job? = null
                     try {
-                        getPageImage(
+                        val image = getPageImage(
                             mangaId = download.mangaId,
                             chapterIndex = download.chapterIndex,
                             index = pageNum,
@@ -113,7 +114,9 @@ class Downloader(
                                     }
                                     .launchIn(scope)
                             }
-                        ).first.close()
+                        ).first
+                        ChapterDownloadHelper.putImage(download.mangaId, download.chapter.id, pageNum, image)
+                        image.close()
                     } finally {
                         // always cancel the page progress job even if it throws an exception to avoid memory leaks
                         pageProgressJob?.cancel()

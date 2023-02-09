@@ -15,7 +15,6 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SortOrder.ASC
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.util.getChapterDir
@@ -312,9 +311,7 @@ object Chapter {
                 ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }
                     .first()[ChapterTable.id].value
 
-            val chapterDir = getChapterDir(mangaId, chapterId)
-
-            File(chapterDir).deleteRecursively()
+            ChapterDownloadHelper.delete(mangaId, chapterId)
 
             ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }) {
                 it[isDownloaded] = false
