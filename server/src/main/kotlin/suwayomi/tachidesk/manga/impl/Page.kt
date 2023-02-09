@@ -86,7 +86,7 @@ object Page {
         File(chapterDir).mkdirs()
         val fileName = getPageName(index)
 
-        return getImageResponse(chapterDir, fileName, useCache) {
+        return getImageResponse(mangaId, chapterId, fileName, useCache) {
             source.fetchImage(tachiyomiPage).awaitSingle()
         }
     }
