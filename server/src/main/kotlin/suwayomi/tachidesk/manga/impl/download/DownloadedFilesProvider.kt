@@ -11,8 +11,4 @@ abstract class DownloadedFilesProvider(val mangaId: Int, val chapterId: Int) {
     abstract fun putImage(index: Int, image: InputStream): Boolean
 
     abstract fun delete(): Boolean
-
-    private fun getPageName(index: Int): String {
-        return String.format("%03d", index + 1)
-    }
 }
