@@ -30,7 +30,7 @@ fun GET(
 fun GET(
     url: HttpUrl,
     headers: Headers = DEFAULT_HEADERS,
-    cache: CacheControl = DEFAULT_CACHE_CONTROL,
+    cache: CacheControl = DEFAULT_CACHE_CONTROL
 ): Request {
     return Request.Builder()
         .url(url)

@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.manga.impl.backup.proto.models
 
+import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
 import suwayomi.tachidesk.manga.impl.backup.models.ChapterImpl
@@ -35,7 +36,8 @@ data class BackupManga(
     @ProtoNumber(101) var chapterFlags: Int = 0,
     @ProtoNumber(102) var brokenHistory: List<BrokenBackupHistory> = emptyList(),
     @ProtoNumber(103) var viewer_flags: Int? = null,
-    @ProtoNumber(104) var history: List<BackupHistory> = emptyList()
+    @ProtoNumber(104) var history: List<BackupHistory> = emptyList(),
+    @ProtoNumber(105) var updateStrategy: UpdateStrategy = UpdateStrategy.ALWAYS_UPDATE
 ) {
     fun getMangaImpl(): MangaImpl {
         return MangaImpl().apply {
@@ -52,6 +54,7 @@ data class BackupManga(
             date_added = this@BackupManga.dateAdded
             viewer_flags = this@BackupManga.viewer_flags ?: this@BackupManga.viewer
             chapter_flags = this@BackupManga.chapterFlags
+            update_strategy = this@BackupManga.updateStrategy
         }
     }
 
