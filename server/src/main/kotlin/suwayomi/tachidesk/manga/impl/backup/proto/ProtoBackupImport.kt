@@ -145,6 +145,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                     it[genre] = manga.genre
                     it[status] = manga.status
                     it[thumbnail_url] = manga.thumbnail_url
+                    it[updateStrategy] = manga.update_strategy.name
 
                     it[sourceReference] = manga.source
 
@@ -193,6 +194,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                     it[genre] = manga.genre ?: dbManga[genre]
                     it[status] = manga.status
                     it[thumbnail_url] = manga.thumbnail_url ?: dbManga[thumbnail_url]
+                    it[updateStrategy] = manga.update_strategy.name
 
                     it[initialized] = dbManga[initialized] || manga.description != null
 
