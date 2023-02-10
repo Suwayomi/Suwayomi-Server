@@ -1,14 +1,14 @@
 package suwayomi.tachidesk.manga.impl.download
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.Page.getPageName
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
@@ -39,28 +39,30 @@ class FolderProvider(mangaId: Int, chapterId: Int) : DownloadedFilesProvider(man
         step: KSuspendFunction2<DownloadChapter?, Boolean, Unit>
     ): Boolean {
         val pageCount = download.chapter.pageCount
+        val chapterDir = getChapterDir(mangaId, chapterId)
+        val folder = File(chapterDir)
+        folder.mkdirs()
+
         for (pageNum in 0 until pageCount) {
             var pageProgressJob: Job? = null
+            val fileName = getPageName(pageNum) // might have to change this to index stored in database
+            if (isExistingFile(folder, fileName)) continue
             try {
                 val image = Page.getPageImage(
                     mangaId = download.mangaId,
                     chapterIndex = download.chapterIndex,
-                    index = pageNum,
-                    progressFlow = { flow ->
-                        pageProgressJob = flow
-                            .sample(100)
-                            .distinctUntilChanged()
-                            .onEach {
-                                download.progress = (pageNum.toFloat() + (it.toFloat() * 0.01f)) / pageCount
-                                step(null, false) // don't throw on canceled download here since we can't do anything
-                            }
-                            .launchIn(scope)
-                    }
-                ).first
-                val chapterDir = getChapterDir(mangaId, chapterId)
-                val folder = File(chapterDir)
-                folder.mkdirs()
-                val fileName = getPageName(pageNum) // might have to change this to index stored in database
+                    index = pageNum
+                ) { flow ->
+                    pageProgressJob = flow
+                        .sample(100)
+                        .distinctUntilChanged()
+                        .onEach {
+                            download.progress = (pageNum.toFloat() + (it.toFloat() * 0.01f)) / pageCount
+                            step(null, false) // don't throw on canceled download here since we can't do anything
+                        }
+                        .launchIn(scope)
+                }.first
+
                 val filePath = "$chapterDir/$fileName"
                 ImageResponse.saveImage(filePath, image)
                 withContext(Dispatchers.IO) {
@@ -80,5 +82,12 @@ class FolderProvider(mangaId: Int, chapterId: Int) : DownloadedFilesProvider(man
     override fun delete(): Boolean {
         val chapterDir = getChapterDir(mangaId, chapterId)
         return File(chapterDir).deleteRecursively()
+    }
+
+    private fun isExistingFile(folder: File, fileName: String): Boolean {
+        val existingFile = folder.listFiles { file ->
+            file.isFile && file.name.startsWith(fileName)
+        }?.firstOrNull()
+        return existingFile?.exists() == true
     }
 }
