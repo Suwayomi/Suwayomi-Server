@@ -1,8 +1,11 @@
 package suwayomi.tachidesk.manga.impl
 
+import kotlinx.coroutines.CoroutineScope
 import suwayomi.tachidesk.manga.impl.download.DownloadedFilesProvider
 import suwayomi.tachidesk.manga.impl.download.FolderProvider
+import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import java.io.InputStream
+import kotlin.reflect.KSuspendFunction2
 
 object ChapterDownloadHelper {
     fun getImage(mangaId: Int, chapterId: Int, index: Int): Pair<InputStream, String> {
@@ -13,8 +16,14 @@ object ChapterDownloadHelper {
         return provider(mangaId, chapterId).delete()
     }
 
-    fun putImage(mangaId: Int, chapterId: Int, index: Int, image: InputStream): Boolean {
-        return provider(mangaId, chapterId).putImage(index, image)
+    suspend fun download(
+        mangaId: Int,
+        chapterId: Int,
+        download: DownloadChapter,
+        scope: CoroutineScope,
+        step: KSuspendFunction2<DownloadChapter?, Boolean, Unit>
+    ): Boolean {
+        return provider(mangaId, chapterId).download(download, scope, step)
     }
 
     // return the appropriate provider based on how the download was saved. For the logic is simple but will evolve when new types of downloads are available
