@@ -95,7 +95,7 @@ object Manga {
                     }
 
                     it[MangaTable.realUrl] = runCatching {
-                        (source as? HttpSource)?.mangaDetailsRequest(sManga)?.url?.toString()
+                        (source as? HttpSource)?.getMangaUrl(sManga)
                     }.getOrNull()
 
                     it[MangaTable.lastFetchedAt] = Instant.now().epochSecond

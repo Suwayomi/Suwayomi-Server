@@ -13,6 +13,7 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Chapter.getChapterMetaMap
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
+import suwayomi.tachidesk.manga.model.table.MangaTable.nullable
 
 object ChapterTable : IntIdTable() {
     val url = varchar("url", 2048)
@@ -29,6 +30,9 @@ object ChapterTable : IntIdTable() {
 
     val sourceOrder = integer("source_order")
 
+    /** the real url of a chapter used for the "open in WebView" feature */
+    val realUrl = varchar("real_url", 2048).nullable()
+
     val isDownloaded = bool("is_downloaded").default(false)
 
     val pageCount = integer("page_count").default(-1)
@@ -38,21 +42,22 @@ object ChapterTable : IntIdTable() {
 
 fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
     ChapterDataClass(
-        chapterEntry[id].value,
-        chapterEntry[url],
-        chapterEntry[name],
-        chapterEntry[date_upload],
-        chapterEntry[chapter_number],
-        chapterEntry[scanlator],
-        chapterEntry[manga].value,
-        chapterEntry[isRead],
-        chapterEntry[isBookmarked],
-        chapterEntry[lastPageRead],
-        chapterEntry[lastReadAt],
-        chapterEntry[sourceOrder],
-        chapterEntry[fetchedAt],
-        chapterEntry[isDownloaded],
-        chapterEntry[pageCount],
-        transaction { ChapterTable.select { manga eq chapterEntry[manga].value }.count().toInt() },
-        getChapterMetaMap(chapterEntry[id])
+        id = chapterEntry[id].value,
+        url = chapterEntry[url],
+        name = chapterEntry[name],
+        uploadDate = chapterEntry[date_upload],
+        chapterNumber = chapterEntry[chapter_number],
+        scanlator = chapterEntry[scanlator],
+        mangaId = chapterEntry[manga].value,
+        read = chapterEntry[isRead],
+        bookmarked = chapterEntry[isBookmarked],
+        lastPageRead = chapterEntry[lastPageRead],
+        lastReadAt = chapterEntry[lastReadAt],
+        index = chapterEntry[sourceOrder],
+        fetchedAt = chapterEntry[fetchedAt],
+        realUrl = chapterEntry[realUrl],
+        downloaded = chapterEntry[isDownloaded],
+        pageCount = chapterEntry[pageCount],
+        chapterCount = transaction { ChapterTable.select { manga eq chapterEntry[manga].value }.count().toInt() },
+        meta = getChapterMetaMap(chapterEntry[id])
     )
