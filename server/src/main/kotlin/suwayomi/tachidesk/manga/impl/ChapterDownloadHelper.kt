@@ -5,7 +5,6 @@ import suwayomi.tachidesk.manga.impl.download.DownloadedFilesProvider
 import suwayomi.tachidesk.manga.impl.download.FolderProvider
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import java.io.InputStream
-import kotlin.reflect.KSuspendFunction2
 
 object ChapterDownloadHelper {
     fun getImage(mangaId: Int, chapterId: Int, index: Int): Pair<InputStream, String> {
@@ -21,7 +20,7 @@ object ChapterDownloadHelper {
         chapterId: Int,
         download: DownloadChapter,
         scope: CoroutineScope,
-        step: KSuspendFunction2<DownloadChapter?, Boolean, Unit>
+        step: suspend (DownloadChapter?, Boolean) -> Unit
     ): Boolean {
         return provider(mangaId, chapterId).download(download, scope, step)
     }
