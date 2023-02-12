@@ -19,17 +19,8 @@ class ServerConfig(config: Config, moduleName: String = MODULE_NAME) : SystemPro
 
     // proxy
     val socksProxyEnabled: Boolean by overridableConfig
-
     val socksProxyHost: String by overridableConfig
     val socksProxyPort: String by overridableConfig
-
-    // downloader
-    val downloadAsCbz: Boolean by overridableConfig
-
-    // misc
-    val debugLogsEnabled: Boolean = debugLogsEnabled(GlobalConfigManager.config)
-    val systemTrayEnabled: Boolean by overridableConfig
-    val downloadsPath: String by overridableConfig
 
     // webUI
     val webUIEnabled: Boolean by overridableConfig
@@ -38,10 +29,18 @@ class ServerConfig(config: Config, moduleName: String = MODULE_NAME) : SystemPro
     val webUIInterface: String by overridableConfig
     val electronPath: String by overridableConfig
 
+    // downloader
+    val downloadAsCbz: Boolean by overridableConfig
+    val downloadsPath: String by overridableConfig
+
     // Authentication
     val basicAuthEnabled: Boolean by overridableConfig
     val basicAuthUsername: String by overridableConfig
     val basicAuthPassword: String by overridableConfig
+
+    // misc
+    val debugLogsEnabled: Boolean = debugLogsEnabled(GlobalConfigManager.config)
+    val systemTrayEnabled: Boolean by overridableConfig
 
     companion object {
         fun register(config: Config) = ServerConfig(config.getConfig(MODULE_NAME))

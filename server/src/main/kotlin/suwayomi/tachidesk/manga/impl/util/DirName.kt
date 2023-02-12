@@ -56,8 +56,6 @@ fun getChapterCachePath(mangaId: Int, chapterId: Int): String {
     return applicationDirs.tempMangaCacheRoot + "/" + getChapterDir(mangaId, chapterId)
 }
 
-// (if (useTempCache) applicationDirs.tempCacheRoot else )
-
 /** return value says if rename/move was successful */
 fun updateMangaDownloadDir(mangaId: Int, newTitle: String): Boolean {
     val mangaEntry = getMangaEntry(mangaId)
