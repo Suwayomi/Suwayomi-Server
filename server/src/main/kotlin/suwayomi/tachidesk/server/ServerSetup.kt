@@ -36,7 +36,8 @@ import java.util.Locale
 private val logger = KotlinLogging.logger {}
 
 class ApplicationDirs(
-    val dataRoot: String = ApplicationRootDir
+    val dataRoot: String = ApplicationRootDir,
+    val tempRoot: String = "${System.getProperty("java.io.tmpdir")}/Tachidesk"
 ) {
     val cacheRoot = System.getProperty("java.io.tmpdir") + "/tachidesk"
     val extensionsRoot = "$dataRoot/extensions"
@@ -44,6 +45,8 @@ class ApplicationDirs(
     val mangaDownloadsRoot = serverConfig.downloadsPath.ifBlank { "$dataRoot/downloads" }
     val localMangaRoot = "$dataRoot/local"
     val webUIRoot = "$dataRoot/webUI"
+
+    val tempMangaCacheRoot = "$tempRoot/manga-cache"
 }
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }

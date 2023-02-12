@@ -16,7 +16,7 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Page.getPageName
-import suwayomi.tachidesk.manga.impl.util.getChapterDir
+import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
@@ -133,7 +133,7 @@ private class ChapterForDownload(
     private fun firstPageExists(): Boolean {
         val chapterId = chapterEntry[ChapterTable.id].value
 
-        val chapterDir = getChapterDir(mangaId, chapterId)
+        val chapterDir = getChapterDownloadPath(mangaId, chapterId)
 
         println(chapterDir)
         println(getPageName(0))

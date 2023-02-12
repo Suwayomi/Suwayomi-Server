@@ -22,16 +22,16 @@ import java.io.File
 
 private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
-fun getMangaDir(mangaId: Int, cache: Boolean = false): String {
+private fun getMangaDir(mangaId: Int): String {
     val mangaEntry = getMangaEntry(mangaId)
     val source = GetCatalogueSource.getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
-    val sourceDir = source.toString()
+    val sourceDir = SafePath.buildValidFilename(source.toString())
     val mangaDir = SafePath.buildValidFilename(mangaEntry[MangaTable.title])
-    return (if (cache) applicationDirs.cacheRoot else applicationDirs.mangaDownloadsRoot) + "/$sourceDir/$mangaDir"
+    return "$sourceDir/$mangaDir"
 }
 
-fun getChapterDir(mangaId: Int, chapterId: Int, cache: Boolean = false): String {
+private fun getChapterDir(mangaId: Int, chapterId: Int): String {
     val chapterEntry = transaction { ChapterTable.select { ChapterTable.id eq chapterId }.first() }
 
     val chapterDir = SafePath.buildValidFilename(
@@ -41,8 +41,17 @@ fun getChapterDir(mangaId: Int, chapterId: Int, cache: Boolean = false): String 
         }
     )
 
-    return getMangaDir(mangaId, cache) + "/$chapterDir"
+    return getMangaDir(mangaId) + "/$chapterDir"
 }
+
+fun getChapterDownloadPath(mangaId: Int, chapterId: Int): String {
+    return applicationDirs.mangaDownloadsRoot + "/" + getChapterDir(mangaId, chapterId)
+}
+fun getChapterCachePath(mangaId: Int, chapterId: Int): String {
+    return applicationDirs.tempMangaCacheRoot + "/" + getChapterDir(mangaId, chapterId)
+}
+
+// (if (useTempCache) applicationDirs.tempCacheRoot else )
 
 /** return value says if rename/move was successful */
 fun updateMangaDownloadDir(mangaId: Int, newTitle: String): Boolean {

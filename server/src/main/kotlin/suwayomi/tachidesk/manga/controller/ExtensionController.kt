@@ -15,7 +15,6 @@ import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
-import suwayomi.tachidesk.server.util.queryParam
 import suwayomi.tachidesk.server.util.withOperation
 
 object ExtensionController {
@@ -141,16 +140,15 @@ object ExtensionController {
     /** icon for extension named `apkName` */
     val icon = handler(
         pathParam<String>("apkName"),
-        queryParam("useCache", true),
         documentWith = {
             withOperation {
                 summary("Extension icon")
                 description("Icon for extension named `apkName`")
             }
         },
-        behaviorOf = { ctx, apkName, useCache ->
+        behaviorOf = { ctx, apkName ->
             ctx.future(
-                future { Extension.getExtensionIcon(apkName, useCache) }
+                future { Extension.getExtensionIcon(apkName) }
                     .thenApply {
                         ctx.header("content-type", it.second)
                         it.first

@@ -31,7 +31,7 @@ import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogue
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.source.StubSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
-import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getCachedImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.impl.util.updateMangaDownloadDir
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
@@ -91,7 +91,7 @@ object Manga {
                     if (!sManga.thumbnail_url.isNullOrEmpty() && sManga.thumbnail_url != mangaEntry[MangaTable.thumbnail_url]) {
                         it[MangaTable.thumbnail_url] = sManga.thumbnail_url
                         it[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
-                        clearMangaThumbnail(mangaId)
+                        clearMangaThumbnailCache(mangaId)
                     }
 
                     it[MangaTable.realUrl] = runCatching {
@@ -225,15 +225,15 @@ object Manga {
 
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
     private val network: NetworkHelper by injectLazy()
-    suspend fun getMangaThumbnail(mangaId: Int, useCache: Boolean): Pair<InputStream, String> {
-        val saveDir = applicationDirs.thumbnailsRoot
+    suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
+        val cacheSaveDir = applicationDirs.thumbnailsRoot
         val fileName = mangaId.toString()
 
         val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
         val sourceId = mangaEntry[MangaTable.sourceReference]
 
         return when (val source = getCatalogueSourceOrStub(sourceId)) {
-            is HttpSource -> getImageResponse(saveDir, fileName, useCache) {
+            is HttpSource -> getCachedImageResponse(cacheSaveDir, fileName) {
                 val thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
                     ?: if (!mangaEntry[MangaTable.initialized]) {
                         // initialize then try again
@@ -265,7 +265,7 @@ object Manga {
                 imageFile.inputStream() to contentType
             }
 
-            is StubSource -> getImageResponse(saveDir, fileName, useCache) {
+            is StubSource -> getCachedImageResponse(cacheSaveDir, fileName) {
                 val thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
                     ?: throw NullPointerException("No thumbnail found")
                 network.client.newCall(
@@ -277,7 +277,7 @@ object Manga {
         }
     }
 
-    private fun clearMangaThumbnail(mangaId: Int) {
+    private fun clearMangaThumbnailCache(mangaId: Int) {
         val saveDir = applicationDirs.thumbnailsRoot
         val fileName = mangaId.toString()
 

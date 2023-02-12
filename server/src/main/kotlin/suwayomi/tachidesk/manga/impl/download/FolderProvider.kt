@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.sample
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.Page.getPageName
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
-import suwayomi.tachidesk.manga.impl.util.getChapterDir
+import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import java.io.File
 import java.io.FileInputStream
@@ -21,7 +21,7 @@ import java.io.InputStream
 * */
 class FolderProvider(mangaId: Int, chapterId: Int) : DownloadedFilesProvider(mangaId, chapterId) {
     override fun getImage(index: Int): Pair<InputStream, String> {
-        val chapterDir = getChapterDir(mangaId, chapterId)
+        val chapterDir = getChapterDownloadPath(mangaId, chapterId)
         val folder = File(chapterDir)
         folder.mkdirs()
         val file = folder.listFiles()?.get(index)
@@ -36,7 +36,7 @@ class FolderProvider(mangaId: Int, chapterId: Int) : DownloadedFilesProvider(man
         step: suspend (DownloadChapter?, Boolean) -> Unit
     ): Boolean {
         val pageCount = download.chapter.pageCount
-        val chapterDir = getChapterDir(mangaId, chapterId)
+        val chapterDir = getChapterDownloadPath(mangaId, chapterId)
         val folder = File(chapterDir)
         folder.mkdirs()
 
@@ -74,7 +74,7 @@ class FolderProvider(mangaId: Int, chapterId: Int) : DownloadedFilesProvider(man
     }
 
     override fun delete(): Boolean {
-        val chapterDir = getChapterDir(mangaId, chapterId)
+        val chapterDir = getChapterDownloadPath(mangaId, chapterId)
         return File(chapterDir).deleteRecursively()
     }
 
