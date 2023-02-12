@@ -38,6 +38,10 @@ class CloudflareInterceptor : Interceptor {
             return originalResponse
         }
 
+        if (!serverConfig.webviewEnabled) {
+            throw IOException("playwrite is diabled")
+        }
+
         logger.debug { "Cloudflare anti-bot is on, CloudflareInterceptor is kicking in..." }
 
         return try {
@@ -137,6 +141,10 @@ object CFClearance {
 
     fun getWebViewUserAgent(): String {
         return try {
+            if (!serverConfig.webviewEnabled) {
+                throw PlaywrightException("Webview is disabled")
+            }
+
             Playwright.create().use { playwright ->
                 playwright.chromium().launch(
                     LaunchOptions()
