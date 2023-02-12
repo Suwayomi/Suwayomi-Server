@@ -43,9 +43,14 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : DownloadedFilesProvider(ma
             if (chapterFolder.isDirectory) {
                 chapterFolder.listFiles()?.sortedBy { it.name }?.forEach {
                     val entry = ZipEntry(it.name)
-                    zipOut.putNextEntry(entry)
-                    it.inputStream().copyTo(zipOut)
-                    zipOut.closeEntry()
+                    try {
+                        zipOut.putNextEntry(entry)
+                        it.inputStream().use { inputStream ->
+                            inputStream.copyTo(zipOut)
+                        }
+                    } finally {
+                        zipOut.closeEntry()
+                    }
                 }
             }
         }
