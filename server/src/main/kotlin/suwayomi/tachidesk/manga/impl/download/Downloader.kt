@@ -13,17 +13,13 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import suwayomi.tachidesk.manga.impl.Page.getPageImage
+import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
@@ -95,33 +91,7 @@ class Downloader(
                 download.chapter = getChapterDownloadReady(download.chapterIndex, download.mangaId)
                 step(download, false)
 
-                val pageCount = download.chapter.pageCount
-                for (pageNum in 0 until pageCount) {
-                    var pageProgressJob: Job? = null
-                    try {
-                        getPageImage(
-                            mangaId = download.mangaId,
-                            chapterIndex = download.chapterIndex,
-                            index = pageNum,
-                            progressFlow = { flow ->
-                                pageProgressJob = flow
-                                    .sample(100)
-                                    .distinctUntilChanged()
-                                    .onEach {
-                                        download.progress = (pageNum.toFloat() + (it.toFloat() * 0.01f)) / pageCount
-                                        step(null, false) // don't throw on canceled download here since we can't do anything
-                                    }
-                                    .launchIn(scope)
-                            }
-                        ).first.close()
-                    } finally {
-                        // always cancel the page progress job even if it throws an exception to avoid memory leaks
-                        pageProgressJob?.cancel()
-                    }
-                    // TODO: retry on error with 2,4,8 seconds of wait
-                    download.progress = ((pageNum + 1).toFloat()) / pageCount
-                    step(download, false)
-                }
+                ChapterDownloadHelper.download(download.mangaId, download.chapter.id, download, scope, this::step)
                 download.state = Finished
                 transaction {
                     ChapterTable.update({ (ChapterTable.manga eq download.mangaId) and (ChapterTable.sourceOrder eq download.chapterIndex) }) {

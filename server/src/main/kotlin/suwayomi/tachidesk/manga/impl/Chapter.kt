@@ -327,9 +327,7 @@ object Chapter {
                 ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }
                     .first()[ChapterTable.id].value
 
-            val chapterDir = getChapterDir(mangaId, chapterId)
-
-            File(chapterDir).deleteRecursively()
+            ChapterDownloadHelper.delete(mangaId, chapterId)
 
             ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }) {
                 it[isDownloaded] = false

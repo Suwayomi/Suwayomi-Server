@@ -15,7 +15,6 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import suwayomi.tachidesk.manga.impl.util.getChapterDir
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
@@ -82,11 +81,13 @@ object Page {
             }
         }
 
-        val chapterDir = getChapterDir(mangaId, chapterId)
-        File(chapterDir).mkdirs()
         val fileName = getPageName(index)
 
-        return getImageResponse(chapterDir, fileName, useCache) {
+        if (chapterEntry[ChapterTable.isDownloaded]) {
+            return ChapterDownloadHelper.getImage(mangaId, chapterId, index)
+        }
+
+        return getImageResponse(mangaId, chapterId, fileName, useCache) {
             source.fetchImage(tachiyomiPage).awaitSingle()
         }
     }

@@ -38,6 +38,7 @@ private val logger = KotlinLogging.logger {}
 class ApplicationDirs(
     val dataRoot: String = ApplicationRootDir
 ) {
+    val cacheRoot = System.getProperty("java.io.tmpdir") + "/tachidesk"
     val extensionsRoot = "$dataRoot/extensions"
     val thumbnailsRoot = "$dataRoot/thumbnails"
     val mangaDownloadsRoot = serverConfig.downloadsPath.ifBlank { "$dataRoot/downloads" }

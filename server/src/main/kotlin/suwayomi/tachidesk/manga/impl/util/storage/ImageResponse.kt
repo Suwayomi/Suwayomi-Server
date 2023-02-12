@@ -9,6 +9,7 @@ package suwayomi.tachidesk.manga.impl.util.storage
 
 import okhttp3.Response
 import okhttp3.internal.closeQuietly
+import suwayomi.tachidesk.manga.impl.util.getChapterDir
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
@@ -29,7 +30,7 @@ object ImageResponse {
     }
 
     /** fetch a cached image response, calls `fetcher` if cache fails */
-    suspend fun getCachedImageResponse(saveDir: String, fileName: String, fetcher: suspend () -> Response): Pair<InputStream, String> {
+    private suspend fun getCachedImageResponse(saveDir: String, fileName: String, fetcher: suspend () -> Response): Pair<InputStream, String> {
         val cachedFile = findFileNameStartingWith(saveDir, fileName)
         val filePath = "$saveDir/$fileName"
         if (cachedFile != null) {
@@ -43,24 +44,27 @@ object ImageResponse {
         val response = fetcher()
 
         if (response.code == 200) {
-            val tmpSavePath = "$filePath.tmp"
-            val tmpSaveFile = File(tmpSavePath)
-            response.body!!.source().saveTo(tmpSaveFile)
-
-            // find image type
-            val imageType = response.headers["content-type"]
-                ?: ImageUtil.findImageType { tmpSaveFile.inputStream() }?.mime
-                ?: "image/jpeg"
-
-            val actualSavePath = "$filePath.${imageType.substringAfter("/")}"
-
-            tmpSaveFile.renameTo(File(actualSavePath))
-
+            val (actualSavePath, imageType) = saveImage(filePath, response.body!!.byteStream())
             return pathToInputStream(actualSavePath) to imageType
         } else {
             response.closeQuietly()
             throw Exception("request error! ${response.code}")
         }
+    }
+
+    fun saveImage(filePath: String, image: InputStream): Pair<String, String> {
+        val tmpSavePath = "$filePath.tmp"
+        val tmpSaveFile = File(tmpSavePath)
+        image.use { input -> tmpSaveFile.outputStream().use { output -> input.copyTo(output) } }
+
+        // find image type
+        val imageType = ImageUtil.findImageType { tmpSaveFile.inputStream() }?.mime
+            ?: "image/jpeg"
+
+        val actualSavePath = "$filePath.${imageType.substringAfter("/")}"
+
+        tmpSaveFile.renameTo(File(actualSavePath))
+        return Pair(actualSavePath, imageType)
     }
 
     fun clearCachedImage(saveDir: String, fileName: String) {
@@ -70,7 +74,7 @@ object ImageResponse {
         }
     }
 
-    suspend fun getNoCacheImageResponse(fetcher: suspend () -> Response): Pair<InputStream, String> {
+    private suspend fun getNoCacheImageResponse(fetcher: suspend () -> Response): Pair<InputStream, String> {
         val response = fetcher()
 
         if (response.code == 200) {
@@ -88,11 +92,20 @@ object ImageResponse {
         }
     }
 
-    suspend fun getImageResponse(saveDir: String, fileName: String, useCache: Boolean = false, fetcher: suspend () -> Response): Pair<InputStream, String> {
+    suspend fun getImageResponse(saveDir: String, fileName: String, useCache: Boolean, fetcher: suspend () -> Response): Pair<InputStream, String> {
         return if (useCache) {
             getCachedImageResponse(saveDir, fileName, fetcher)
         } else {
             getNoCacheImageResponse(fetcher)
         }
+    }
+
+    suspend fun getImageResponse(mangaId: Int, chapterId: Int, fileName: String, useCache: Boolean, fetcher: suspend () -> Response): Pair<InputStream, String> {
+        var saveDir = ""
+        if (useCache) {
+            saveDir = getChapterDir(mangaId, chapterId, true)
+            File(saveDir).mkdirs()
+        }
+        return getImageResponse(saveDir, fileName, useCache, fetcher)
     }
 }
