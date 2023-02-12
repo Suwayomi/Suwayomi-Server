@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.model.table
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.manga.impl.Manga.getMangaMetaMap
@@ -42,31 +43,34 @@ object MangaTable : IntIdTable() {
 
     val lastFetchedAt = long("last_fetched_at").default(0)
     val chaptersLastFetchedAt = long("chapters_last_fetched_at").default(0)
+
+    val updateStrategy = varchar("update_strategy", 256).default(UpdateStrategy.ALWAYS_UPDATE.name)
 }
 
 fun MangaTable.toDataClass(mangaEntry: ResultRow) =
     MangaDataClass(
-        mangaEntry[this.id].value,
-        mangaEntry[sourceReference].toString(),
+        id = mangaEntry[this.id].value,
+        sourceId = mangaEntry[sourceReference].toString(),
 
-        mangaEntry[url],
-        mangaEntry[title],
-        proxyThumbnailUrl(mangaEntry[this.id].value),
-        mangaEntry[MangaTable.thumbnailUrlLastFetched],
+        url = mangaEntry[url],
+        title = mangaEntry[title],
+        thumbnailUrl = proxyThumbnailUrl(mangaEntry[this.id].value),
+        thumbnailUrlLastFetched = mangaEntry[thumbnailUrlLastFetched],
 
-        mangaEntry[initialized],
+        initialized = mangaEntry[initialized],
 
-        mangaEntry[artist],
-        mangaEntry[author],
-        mangaEntry[description],
-        mangaEntry[genre].toGenreList(),
-        Companion.valueOf(mangaEntry[status]).name,
-        mangaEntry[inLibrary],
-        mangaEntry[inLibraryAt],
+        artist = mangaEntry[artist],
+        author = mangaEntry[author],
+        description = mangaEntry[description],
+        genre = mangaEntry[genre].toGenreList(),
+        status = Companion.valueOf(mangaEntry[status]).name,
+        inLibrary = mangaEntry[inLibrary],
+        inLibraryAt = mangaEntry[inLibraryAt],
         meta = getMangaMetaMap(mangaEntry[id].value),
         realUrl = mangaEntry[realUrl],
         lastFetchedAt = mangaEntry[lastFetchedAt],
-        chaptersLastFetchedAt = mangaEntry[chaptersLastFetchedAt]
+        chaptersLastFetchedAt = mangaEntry[chaptersLastFetchedAt],
+        updateStrategy = UpdateStrategy.valueOf(mangaEntry[updateStrategy])
     )
 
 enum class MangaStatus(val value: Int) {

@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.impl.backup.proto
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import okio.buffer
 import okio.gzip
 import okio.sink
@@ -59,17 +60,18 @@ object ProtoBackupExport : ProtoBackupBase() {
     private fun backupManga(databaseManga: Query, flags: BackupFlags): List<BackupManga> {
         return databaseManga.map { mangaRow ->
             val backupManga = BackupManga(
-                mangaRow[MangaTable.sourceReference],
-                mangaRow[MangaTable.url],
-                mangaRow[MangaTable.title],
-                mangaRow[MangaTable.artist],
-                mangaRow[MangaTable.author],
-                mangaRow[MangaTable.description],
-                mangaRow[MangaTable.genre]?.split(", ") ?: emptyList(),
-                MangaStatus.valueOf(mangaRow[MangaTable.status]).value,
-                mangaRow[MangaTable.thumbnail_url],
-                TimeUnit.SECONDS.toMillis(mangaRow[MangaTable.inLibraryAt]),
-                0 // not supported in Tachidesk
+                source = mangaRow[MangaTable.sourceReference],
+                url = mangaRow[MangaTable.url],
+                title = mangaRow[MangaTable.title],
+                artist = mangaRow[MangaTable.artist],
+                author = mangaRow[MangaTable.author],
+                description = mangaRow[MangaTable.description],
+                genre = mangaRow[MangaTable.genre]?.split(", ") ?: emptyList(),
+                status = MangaStatus.valueOf(mangaRow[MangaTable.status]).value,
+                thumbnailUrl = mangaRow[MangaTable.thumbnail_url],
+                dateAdded = TimeUnit.SECONDS.toMillis(mangaRow[MangaTable.inLibraryAt]),
+                viewer = 0, // not supported in Tachidesk
+                updateStrategy = UpdateStrategy.valueOf(mangaRow[MangaTable.updateStrategy])
             )
 
             val mangaId = mangaRow[MangaTable.id].value

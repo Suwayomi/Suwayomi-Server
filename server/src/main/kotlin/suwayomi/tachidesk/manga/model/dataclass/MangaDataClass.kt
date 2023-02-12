@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.model.dataclass
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import suwayomi.tachidesk.manga.impl.util.lang.trimAll
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import java.time.Instant
@@ -37,6 +38,8 @@ data class MangaDataClass(
     val realUrl: String? = null,
     var lastFetchedAt: Long? = 0,
     var chaptersLastFetchedAt: Long? = 0,
+
+    var updateStrategy: UpdateStrategy = UpdateStrategy.ALWAYS_UPDATE,
 
     val freshData: Boolean = false,
     var unreadCount: Long? = null,

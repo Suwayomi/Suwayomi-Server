@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.MangasPage
+import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
@@ -61,6 +62,7 @@ object MangaList {
                         it[genre] = manga.genre
                         it[status] = manga.status
                         it[thumbnail_url] = manga.thumbnail_url
+                        it[updateStrategy] = manga.update_strategy.name
 
                         it[sourceReference] = sourceId
                     }.value
@@ -70,53 +72,55 @@ object MangaList {
                     }.first()
 
                     MangaDataClass(
-                        mangaId,
-                        sourceId.toString(),
+                        id = mangaId,
+                        sourceId = sourceId.toString(),
 
-                        manga.url,
-                        manga.title,
-                        proxyThumbnailUrl(mangaId),
-                        mangaEntry[MangaTable.thumbnailUrlLastFetched],
+                        url = manga.url,
+                        title = manga.title,
+                        thumbnailUrl = proxyThumbnailUrl(mangaId),
+                        thumbnailUrlLastFetched = mangaEntry[MangaTable.thumbnailUrlLastFetched],
 
-                        manga.initialized,
+                        initialized = manga.initialized,
 
-                        manga.artist,
-                        manga.author,
-                        manga.description,
-                        manga.genre.toGenreList(),
-                        MangaStatus.valueOf(manga.status).name,
-                        false, // It's a new manga entry
-                        0,
+                        artist = manga.artist,
+                        author = manga.author,
+                        description = manga.description,
+                        genre = manga.genre.toGenreList(),
+                        status = MangaStatus.valueOf(manga.status).name,
+                        inLibrary = false, // It's a new manga entry
+                        inLibraryAt = 0,
                         meta = getMangaMetaMap(mangaId),
                         realUrl = mangaEntry[MangaTable.realUrl],
                         lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
                         chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
+                        updateStrategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy]),
                         freshData = true
                     )
                 } else {
                     val mangaId = mangaEntry[MangaTable.id].value
                     MangaDataClass(
-                        mangaId,
-                        sourceId.toString(),
+                        id = mangaId,
+                        sourceId = sourceId.toString(),
 
-                        manga.url,
-                        manga.title,
-                        proxyThumbnailUrl(mangaId),
-                        mangaEntry[MangaTable.thumbnailUrlLastFetched],
+                        url = manga.url,
+                        title = manga.title,
+                        thumbnailUrl = proxyThumbnailUrl(mangaId),
+                        thumbnailUrlLastFetched = mangaEntry[MangaTable.thumbnailUrlLastFetched],
 
-                        true,
+                        initialized = true,
 
-                        mangaEntry[MangaTable.artist],
-                        mangaEntry[MangaTable.author],
-                        mangaEntry[MangaTable.description],
-                        mangaEntry[MangaTable.genre].toGenreList(),
-                        MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
-                        mangaEntry[MangaTable.inLibrary],
-                        mangaEntry[MangaTable.inLibraryAt],
+                        artist = mangaEntry[MangaTable.artist],
+                        author = mangaEntry[MangaTable.author],
+                        description = mangaEntry[MangaTable.description],
+                        genre = mangaEntry[MangaTable.genre].toGenreList(),
+                        status = MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
+                        inLibrary = mangaEntry[MangaTable.inLibrary],
+                        inLibraryAt = mangaEntry[MangaTable.inLibraryAt],
                         meta = getMangaMetaMap(mangaId),
                         realUrl = mangaEntry[MangaTable.realUrl],
                         lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
                         chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
+                        updateStrategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy]),
                         freshData = false
                     )
                 }

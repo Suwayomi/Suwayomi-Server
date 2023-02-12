@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.manga.impl.backup.models
 
+import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.manga.model.table.MangaTable
 
@@ -24,6 +25,8 @@ open class MangaImpl : Manga {
     override var status: Int = 0
 
     override var thumbnail_url: String? = null
+
+    override var update_strategy: UpdateStrategy = UpdateStrategy.ALWAYS_UPDATE
 
     override var favorite: Boolean = false
 
