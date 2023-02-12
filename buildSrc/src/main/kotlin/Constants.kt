@@ -10,9 +10,9 @@ import java.io.BufferedReader
 const val MainClass = "suwayomi.tachidesk.MainKt"
 
 // should be bumped with each stable release
-val tachideskVersion = System.getenv("ProductVersion") ?: "v0.6.6"
+val tachideskVersion = System.getenv("ProductVersion") ?: "v0.7.0"
 
-val webUIRevisionTag = System.getenv("WebUIRevision") ?: "r963"
+val webUIRevisionTag = System.getenv("WebUIRevision") ?: "r983"
 
 // counts commits on the master branch
 val tachideskRevision = runCatching {
