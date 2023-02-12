@@ -47,6 +47,11 @@ private fun getChapterDir(mangaId: Int, chapterId: Int): String {
 fun getChapterDownloadPath(mangaId: Int, chapterId: Int): String {
     return applicationDirs.mangaDownloadsRoot + "/" + getChapterDir(mangaId, chapterId)
 }
+
+fun getChapterCbzPath(mangaId: Int, chapterId: Int): String {
+    return getChapterDownloadPath(mangaId, chapterId) + ".cbz"
+}
+
 fun getChapterCachePath(mangaId: Int, chapterId: Int): String {
     return applicationDirs.tempMangaCacheRoot + "/" + getChapterDir(mangaId, chapterId)
 }

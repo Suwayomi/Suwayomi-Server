@@ -16,6 +16,7 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Page.getPageName
+import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
@@ -25,6 +26,7 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import java.io.File
 
 suspend fun getChapterDownloadReady(chapterIndex: Int, mangaId: Int): ChapterDataClass {
     val chapter = ChapterForDownload(chapterIndex, mangaId)
@@ -127,7 +129,10 @@ private class ChapterForDownload(
     }
 
     private fun isNotCompletelyDownloaded(): Boolean {
-        return !(chapterEntry[ChapterTable.isDownloaded] && firstPageExists())
+        return !(
+            chapterEntry[ChapterTable.isDownloaded] &&
+                (firstPageExists() || File(getChapterCbzPath(mangaId, chapterEntry[ChapterTable.id].value)).exists())
+            )
     }
 
     private fun firstPageExists(): Boolean {

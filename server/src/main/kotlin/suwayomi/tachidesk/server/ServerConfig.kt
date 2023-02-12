@@ -23,6 +23,9 @@ class ServerConfig(config: Config, moduleName: String = MODULE_NAME) : SystemPro
     val socksProxyHost: String by overridableConfig
     val socksProxyPort: String by overridableConfig
 
+    // downloader
+    val downloadAsCbz: Boolean by overridableConfig
+
     // misc
     val debugLogsEnabled: Boolean = debugLogsEnabled(GlobalConfigManager.config)
     val systemTrayEnabled: Boolean by overridableConfig
