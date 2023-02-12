@@ -16,6 +16,7 @@ package eu.kanade.tachiyomi
 // import eu.kanade.tachiyomi.data.track.TrackManager
 // import eu.kanade.tachiyomi.extension.ExtensionManager
 import android.app.Application
+import eu.kanade.tachiyomi.network.JavaScriptEngine
 import eu.kanade.tachiyomi.network.NetworkHelper
 import kotlinx.serialization.json.Json
 import rx.Observable
@@ -40,6 +41,8 @@ class AppModule(val app: Application) : InjektModule {
 //        addSingletonFactory { CoverCache(app) }
 
         addSingletonFactory { NetworkHelper(app) }
+
+        addSingletonFactory { JavaScriptEngine(app) }
 
 //        addSingletonFactory { SourceManager(app).also { get<ExtensionManager>().init(it) } }
 //

@@ -35,6 +35,9 @@ data class ChapterDataClass(
     /** the date we fist saw this chapter*/
     val fetchedAt: Long,
 
+    /** the website url of this chapter*/
+    val realUrl: String? = null,
+
     /** is chapter downloaded */
     val downloaded: Boolean,
 

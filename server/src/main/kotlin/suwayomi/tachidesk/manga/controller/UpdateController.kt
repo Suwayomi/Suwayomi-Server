@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.manga.controller
 
+import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import io.javalin.http.HttpCode
 import io.javalin.websocket.WsConfig
 import mu.KotlinLogging
@@ -96,6 +97,7 @@ object UpdateController {
             .flatMap { CategoryManga.getCategoryMangaList(it.id) }
             .distinctBy { it.id }
             .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, MangaDataClass::title))
+            .filter { it.updateStrategy == UpdateStrategy.ALWAYS_UPDATE }
             .forEach { manga ->
                 updater.addMangaToQueue(manga)
             }

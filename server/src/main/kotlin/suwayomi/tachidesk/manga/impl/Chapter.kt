@@ -12,11 +12,16 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SortOrder.ASC
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.util.getChapterDir
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
@@ -27,6 +32,7 @@ import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
 import suwayomi.tachidesk.manga.model.dataclass.paginatedFrom
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterTable.scanlator
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
@@ -85,6 +91,10 @@ object Chapter {
                         it[sourceOrder] = index + 1
                         it[fetchedAt] = now++
                         it[ChapterTable.manga] = mangaId
+
+                        it[realUrl] = runCatching {
+                            (source as? HttpSource)?.getChapterUrl(fetchedChapter)
+                        }.getOrNull()
                     }
                 } else {
                     ChapterTable.update({ ChapterTable.url eq fetchedChapter.url }) {
@@ -95,6 +105,10 @@ object Chapter {
 
                         it[sourceOrder] = index + 1
                         it[ChapterTable.manga] = mangaId
+
+                        it[realUrl] = runCatching {
+                            (source as? HttpSource)?.getChapterUrl(fetchedChapter)
+                        }.getOrNull()
                     }
                 }
             }
@@ -138,26 +152,27 @@ object Chapter {
             val dbChapter = dbChapterMap.getValue(it.url)
 
             ChapterDataClass(
-                dbChapter[ChapterTable.id].value,
-                it.url,
-                it.name,
-                it.date_upload,
-                it.chapter_number,
-                it.scanlator,
-                mangaId,
+                id = dbChapter[ChapterTable.id].value,
+                url = it.url,
+                name = it.name,
+                uploadDate = it.date_upload,
+                chapterNumber = it.chapter_number,
+                scanlator = it.scanlator,
+                mangaId = mangaId,
 
-                dbChapter[ChapterTable.isRead],
-                dbChapter[ChapterTable.isBookmarked],
-                dbChapter[ChapterTable.lastPageRead],
-                dbChapter[ChapterTable.lastReadAt],
+                read = dbChapter[ChapterTable.isRead],
+                bookmarked = dbChapter[ChapterTable.isBookmarked],
+                lastPageRead = dbChapter[ChapterTable.lastPageRead],
+                lastReadAt = dbChapter[ChapterTable.lastReadAt],
 
-                chapterCount - index,
-                dbChapter[ChapterTable.fetchedAt],
-                dbChapter[ChapterTable.isDownloaded],
+                index = chapterCount - index,
+                fetchedAt = dbChapter[ChapterTable.fetchedAt],
+                realUrl = dbChapter[ChapterTable.realUrl],
+                downloaded = dbChapter[ChapterTable.isDownloaded],
 
-                dbChapter[ChapterTable.pageCount],
+                pageCount = dbChapter[ChapterTable.pageCount],
 
-                chapterList.size,
+                chapterCount = chapterList.size,
                 meta = chapterMetas.getValue(dbChapter[ChapterTable.id])
             )
         }
