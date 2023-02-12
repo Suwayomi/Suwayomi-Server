@@ -9,7 +9,6 @@ package suwayomi.tachidesk.manga.impl.util.storage
 
 import okhttp3.Response
 import okhttp3.internal.closeQuietly
-import suwayomi.tachidesk.manga.impl.util.getChapterDir
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
@@ -19,6 +18,7 @@ object ImageResponse {
         return FileInputStream(path).buffered()
     }
 
+    /** find file with name when file extension is not known */
     fun findFileNameStartingWith(directoryPath: String, fileName: String): String? {
         val target = "$fileName."
         File(directoryPath).listFiles().orEmpty().forEach { file ->
@@ -29,8 +29,17 @@ object ImageResponse {
         return null
     }
 
-    /** fetch a cached image response, calls `fetcher` if cache fails */
-    private suspend fun getCachedImageResponse(saveDir: String, fileName: String, fetcher: suspend () -> Response): Pair<InputStream, String> {
+    /**
+     * Get a cached image response
+     *
+     * Note: The caller should also call [clearCachedImage] when appropriate
+     *
+     * @param cacheSavePath where to save the cached image. Caller should decide to use perma cache or temp cache (OS temp dir)
+     * @param fileName what the saved cache file should be named
+     */
+    suspend fun getCachedImageResponse(saveDir: String, fileName: String, fetcher: suspend () -> Response): Pair<InputStream, String> {
+        File(saveDir).mkdirs()
+
         val cachedFile = findFileNameStartingWith(saveDir, fileName)
         val filePath = "$saveDir/$fileName"
         if (cachedFile != null) {
@@ -52,6 +61,7 @@ object ImageResponse {
         }
     }
 
+    /** Save image safely */
     fun saveImage(filePath: String, image: InputStream): Pair<String, String> {
         val tmpSavePath = "$filePath.tmp"
         val tmpSaveFile = File(tmpSavePath)
@@ -72,40 +82,5 @@ object ImageResponse {
         cachedFile?.also {
             File(it).delete()
         }
-    }
-
-    private suspend fun getNoCacheImageResponse(fetcher: suspend () -> Response): Pair<InputStream, String> {
-        val response = fetcher()
-
-        if (response.code == 200) {
-            val responseBytes = response.body!!.bytes()
-
-            // find image type
-            val imageType = response.headers["content-type"]
-                ?: ImageUtil.findImageType { responseBytes.inputStream() }?.mime
-                ?: "image/jpeg"
-
-            return responseBytes.inputStream() to imageType
-        } else {
-            response.closeQuietly()
-            throw Exception("request error! ${response.code}")
-        }
-    }
-
-    suspend fun getImageResponse(saveDir: String, fileName: String, useCache: Boolean, fetcher: suspend () -> Response): Pair<InputStream, String> {
-        return if (useCache) {
-            getCachedImageResponse(saveDir, fileName, fetcher)
-        } else {
-            getNoCacheImageResponse(fetcher)
-        }
-    }
-
-    suspend fun getImageResponse(mangaId: Int, chapterId: Int, fileName: String, useCache: Boolean, fetcher: suspend () -> Response): Pair<InputStream, String> {
-        var saveDir = ""
-        if (useCache) {
-            saveDir = getChapterDir(mangaId, chapterId, true)
-            File(saveDir).mkdirs()
-        }
-        return getImageResponse(saveDir, fileName, useCache, fetcher)
     }
 }

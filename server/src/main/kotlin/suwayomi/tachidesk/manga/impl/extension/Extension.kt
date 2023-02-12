@@ -40,7 +40,7 @@ import suwayomi.tachidesk.manga.impl.util.PackageTools.getPackageInfo
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
-import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getCachedImageResponse
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -266,16 +266,16 @@ object Extension {
         return installExtension(pkgName)
     }
 
-    suspend fun getExtensionIcon(apkName: String, useCache: Boolean): Pair<InputStream, String> {
+    suspend fun getExtensionIcon(apkName: String): Pair<InputStream, String> {
         val iconUrl = if (apkName == "localSource") {
             ""
         } else {
             transaction { ExtensionTable.select { ExtensionTable.apkName eq apkName }.first() }[ExtensionTable.iconUrl]
         }
 
-        val saveDir = "${applicationDirs.extensionsRoot}/icon"
+        val cacheSaveDir = "${applicationDirs.extensionsRoot}/icon"
 
-        return getImageResponse(saveDir, apkName, useCache) {
+        return getCachedImageResponse(cacheSaveDir, apkName) {
             network.client.newCall(
                 GET(iconUrl)
             ).await()

@@ -81,16 +81,15 @@ object MangaController {
     /** manga thumbnail */
     val thumbnail = handler(
         pathParam<Int>("mangaId"),
-        queryParam("useCache", true),
         documentWith = {
             withOperation {
                 summary("Get a manga thumbnail")
                 description("Get a manga thumbnail from the source or the cache.")
             }
         },
-        behaviorOf = { ctx, mangaId, useCache ->
+        behaviorOf = { ctx, mangaId ->
             ctx.future(
-                future { Manga.getMangaThumbnail(mangaId, useCache) }
+                future { Manga.getMangaThumbnail(mangaId) }
                     .thenApply {
                         ctx.header("content-type", it.second)
                         val httpCacheSeconds = 1.days.inWholeSeconds
@@ -375,16 +374,15 @@ object MangaController {
         pathParam<Int>("mangaId"),
         pathParam<Int>("chapterIndex"),
         pathParam<Int>("index"),
-        queryParam("useCache", true),
         documentWith = {
             withOperation {
                 summary("Get a chapter page")
                 description("Get a chapter page for a given index. Cache use can be disabled so it only retrieves it directly from the source.")
             }
         },
-        behaviorOf = { ctx, mangaId, chapterIndex, index, useCache ->
+        behaviorOf = { ctx, mangaId, chapterIndex, index ->
             ctx.future(
-                future { Page.getPageImage(mangaId, chapterIndex, index, useCache) }
+                future { Page.getPageImage(mangaId, chapterIndex, index) }
                     .thenApply {
                         ctx.header("content-type", it.second)
                         val httpCacheSeconds = 1.days.inWholeSeconds

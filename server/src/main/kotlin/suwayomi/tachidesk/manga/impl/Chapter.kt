@@ -23,7 +23,6 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Manga.getManga
-import suwayomi.tachidesk.manga.impl.util.getChapterDir
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
@@ -36,7 +35,6 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable.scanlator
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
-import java.io.File
 import java.time.Instant
 
 object Chapter {
@@ -345,8 +343,7 @@ object Chapter {
                     .forEach { row ->
                         val chapterMangaId = row[ChapterTable.manga].value
                         val chapterId = row[ChapterTable.id].value
-                        val chapterDir = getChapterDir(chapterMangaId, chapterId)
-                        File(chapterDir).deleteRecursively()
+                        ChapterDownloadHelper.delete(chapterMangaId, chapterId)
                     }
 
                 ChapterTable.update({ ChapterTable.id inList chapterIds }) {
@@ -359,8 +356,8 @@ object Chapter {
                     .select { (ChapterTable.sourceOrder inList input.chapterIndexes) and (ChapterTable.manga eq mangaId) }
                     .map { row ->
                         val chapterId = row[ChapterTable.id].value
-                        val chapterDir = getChapterDir(mangaId, chapterId)
-                        File(chapterDir).deleteRecursively()
+                        ChapterDownloadHelper.delete(mangaId, chapterId)
+
                         chapterId
                     }
 
