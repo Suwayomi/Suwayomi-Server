@@ -9,7 +9,6 @@ package xyz.nulldev.androidcompat.io.sharedprefs
 
 import android.content.SharedPreferences
 import com.russhwolf.settings.ExperimentalSettingsApi
-import com.russhwolf.settings.ExperimentalSettingsImplementation
 import com.russhwolf.settings.PreferencesSettings
 import com.russhwolf.settings.serialization.decodeValue
 import com.russhwolf.settings.serialization.decodeValueOrNull
@@ -21,7 +20,7 @@ import kotlinx.serialization.builtins.serializer
 import java.util.prefs.PreferenceChangeListener
 import java.util.prefs.Preferences
 
-@OptIn(ExperimentalSettingsImplementation::class, ExperimentalSerializationApi::class, ExperimentalSettingsApi::class)
+@OptIn(ExperimentalSerializationApi::class, ExperimentalSettingsApi::class)
 class JavaSharedPreferences(key: String) : SharedPreferences {
     private val javaPreferences = Preferences.userRoot().node("suwayomi/tachidesk/$key")
     private val preferences = PreferencesSettings(javaPreferences)
