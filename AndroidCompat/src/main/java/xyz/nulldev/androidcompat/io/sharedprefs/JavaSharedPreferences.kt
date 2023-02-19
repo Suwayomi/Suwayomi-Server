@@ -163,7 +163,7 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
                         /**
                          * Set<String> are stored like
                          * key.0 = value1
-                         * key.1 = valuer2
+                         * key.1 = value2
                          * key.size = 2
                          */
                         preferences.keys.forEach { key ->
