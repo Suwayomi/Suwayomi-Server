@@ -81,6 +81,14 @@ object CategoryManga {
 
         val transform: (ResultRow) -> MangaDataClass = {
             val dataClass = MangaTable.toDataClass(it)
+            dataClass.lastChapterRead = ChapterTable.toDataClass(
+                transaction {
+                    ChapterTable
+                        .select { (ChapterTable.manga eq it[MangaTable.id].value) }
+                        .orderBy(ChapterTable.lastReadAt, SortOrder.DESC)
+                        .first()
+                }
+            )
             dataClass.unreadCount = it[unreadExpression]
             dataClass.downloadCount = it[downloadExpression]
             dataClass.chapterCount = it[chapterCountExpression]
