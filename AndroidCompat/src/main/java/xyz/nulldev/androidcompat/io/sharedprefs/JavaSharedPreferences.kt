@@ -158,7 +158,20 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
                         is Double -> preferences.putDouble(it.key, value)
                         is Boolean -> preferences.putBoolean(it.key, value)
                     }
-                    is Action.Remove -> preferences.remove(it.key)
+                    is Action.Remove -> {
+                        preferences.remove(it.key)
+                        /**
+                         * Set<String> are stored like
+                         * key.0 = value1
+                         * key.1 = valuer2
+                         * key.size = 2
+                         */
+                        preferences.keys.forEach { key ->
+                            if (key.startsWith(it.key + ".")) {
+                                preferences.remove(key)
+                            }
+                        }
+                    }
                     Action.Clear -> preferences.clear()
                 }
             }
