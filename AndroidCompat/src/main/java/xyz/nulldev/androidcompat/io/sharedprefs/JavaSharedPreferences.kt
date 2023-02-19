@@ -147,6 +147,7 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
 
         private fun addToPreferences() {
             actions.forEach {
+                @Suppress("UNCHECKED_CAST")
                 when (it) {
                     is Action.Add -> when (val value = it.value) {
                         is Set<*> -> preferences.encodeValue(SetSerializer(String.serializer()), it.key, value as Set<String>)
