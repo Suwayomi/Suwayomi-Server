@@ -33,7 +33,6 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : DownloadedFilesProvider(ma
         val chapterFolder = File(chapterDir)
         if (outputFile.exists()) handleExistingCbzFile(outputFile, chapterFolder)
 
-
         FolderProvider(mangaId, chapterId).download(download, scope, step)
 
         withContext(Dispatchers.IO) {
