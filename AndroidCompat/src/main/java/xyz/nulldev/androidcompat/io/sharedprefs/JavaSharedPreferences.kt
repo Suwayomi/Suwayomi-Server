@@ -9,7 +9,6 @@ package xyz.nulldev.androidcompat.io.sharedprefs
 
 import android.content.SharedPreferences
 import com.russhwolf.settings.ExperimentalSettingsApi
-import com.russhwolf.settings.ExperimentalSettingsImplementation
 import com.russhwolf.settings.PreferencesSettings
 import com.russhwolf.settings.serialization.decodeValue
 import com.russhwolf.settings.serialization.decodeValueOrNull
@@ -21,7 +20,7 @@ import kotlinx.serialization.builtins.serializer
 import java.util.prefs.PreferenceChangeListener
 import java.util.prefs.Preferences
 
-@OptIn(ExperimentalSettingsImplementation::class, ExperimentalSerializationApi::class, ExperimentalSettingsApi::class)
+@OptIn(ExperimentalSerializationApi::class, ExperimentalSettingsApi::class)
 class JavaSharedPreferences(key: String) : SharedPreferences {
     private val javaPreferences = Preferences.userRoot().node("suwayomi/tachidesk/$key")
     private val preferences = PreferencesSettings(javaPreferences)
@@ -77,13 +76,19 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
     }
 
     class Editor(private val preferences: PreferencesSettings) : SharedPreferences.Editor {
-        val itemsToAdd = mutableMapOf<String, Any>()
+        private val actions = mutableListOf<Action>()
+
+        private sealed class Action {
+            data class Add(val key: String, val value: Any) : Action()
+            data class Remove(val key: String) : Action()
+            object Clear : Action()
+        }
 
         override fun putString(key: String, value: String?): SharedPreferences.Editor {
             if (value != null) {
-                itemsToAdd[key] = value
+                actions += Action.Add(key, value)
             } else {
-                remove(key)
+                actions += Action.Remove(key)
             }
             return this
         }
@@ -93,40 +98,40 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
             values: MutableSet<String>?
         ): SharedPreferences.Editor {
             if (values != null) {
-                itemsToAdd[key] = values
+                actions += Action.Add(key, values)
             } else {
-                remove(key)
+                actions += Action.Remove(key)
             }
             return this
         }
 
         override fun putInt(key: String, value: Int): SharedPreferences.Editor {
-            itemsToAdd[key] = value
+            actions += Action.Add(key, value)
             return this
         }
 
         override fun putLong(key: String, value: Long): SharedPreferences.Editor {
-            itemsToAdd[key] = value
+            actions += Action.Add(key, value)
             return this
         }
 
         override fun putFloat(key: String, value: Float): SharedPreferences.Editor {
-            itemsToAdd[key] = value
+            actions += Action.Add(key, value)
             return this
         }
 
         override fun putBoolean(key: String, value: Boolean): SharedPreferences.Editor {
-            itemsToAdd[key] = value
+            actions += Action.Add(key, value)
             return this
         }
 
         override fun remove(key: String): SharedPreferences.Editor {
-            itemsToAdd.remove(key)
+            actions += Action.Remove(key)
             return this
         }
 
         override fun clear(): SharedPreferences.Editor {
-            itemsToAdd.clear()
+            actions.add(Action.Clear)
             return this
         }
 
@@ -140,16 +145,33 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
         }
 
         private fun addToPreferences() {
-            itemsToAdd.forEach { (key, value) ->
+            actions.forEach {
                 @Suppress("UNCHECKED_CAST")
-                when (value) {
-                    is Set<*> -> preferences.encodeValue(SetSerializer(String.serializer()), key, value as Set<String>)
-                    is String -> preferences.putString(key, value)
-                    is Int -> preferences.putInt(key, value)
-                    is Long -> preferences.putLong(key, value)
-                    is Float -> preferences.putFloat(key, value)
-                    is Double -> preferences.putDouble(key, value)
-                    is Boolean -> preferences.putBoolean(key, value)
+                when (it) {
+                    is Action.Add -> when (val value = it.value) {
+                        is Set<*> -> preferences.encodeValue(SetSerializer(String.serializer()), it.key, value as Set<String>)
+                        is String -> preferences.putString(it.key, value)
+                        is Int -> preferences.putInt(it.key, value)
+                        is Long -> preferences.putLong(it.key, value)
+                        is Float -> preferences.putFloat(it.key, value)
+                        is Double -> preferences.putDouble(it.key, value)
+                        is Boolean -> preferences.putBoolean(it.key, value)
+                    }
+                    is Action.Remove -> {
+                        preferences.remove(it.key)
+                        /**
+                         * Set<String> are stored like
+                         * key.0 = value1
+                         * key.1 = value2
+                         * key.size = 2
+                         */
+                        preferences.keys.forEach { key ->
+                            if (key.startsWith(it.key + ".")) {
+                                preferences.remove(key)
+                            }
+                        }
+                    }
+                    Action.Clear -> preferences.clear()
                 }
             }
         }
