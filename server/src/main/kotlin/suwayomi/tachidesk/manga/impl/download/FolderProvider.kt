@@ -24,7 +24,7 @@ class FolderProvider(mangaId: Int, chapterId: Int) : DownloadedFilesProvider(man
         val chapterDir = getChapterDownloadPath(mangaId, chapterId)
         val folder = File(chapterDir)
         folder.mkdirs()
-        val file = folder.listFiles()?.get(index)
+        val file = folder.listFiles()?.sortedBy { it.name }?.get(index)
         val fileType = file!!.name.substringAfterLast(".")
         return Pair(FileInputStream(file).buffered(), "image/$fileType")
     }
