@@ -16,6 +16,7 @@ import org.jetbrains.exposed.sql.count
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.leftJoin
+import org.jetbrains.exposed.sql.max
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -66,22 +67,16 @@ object CategoryManga {
         val unreadCountEx = ChapterTable.isRead.count().alias("unread_count")
         val downloadedCount = ChapterTable.isDownloaded.count().alias("download_count")
         val chapterCount = ChapterTable.id.count().alias("chapter_count")
-        val selectedColumns = MangaTable.columns + unreadCountEx + downloadedCount + chapterCount
+        val lastReadAt = ChapterTable.lastReadAt.max().alias("last_read_at")
+        val selectedColumns = MangaTable.columns + unreadCountEx + downloadedCount + chapterCount + lastReadAt
 
         val transform: (ResultRow) -> MangaDataClass = {
             // Map the data from the result row to the MangaDataClass
             val dataClass = MangaTable.toDataClass(it)
-            dataClass.lastChapterRead = ChapterTable.toDataClass(
-                transaction {
-                    ChapterTable
-                        .select { (ChapterTable.manga eq it[MangaTable.id].value) }
-                        .orderBy(ChapterTable.lastReadAt, SortOrder.DESC)
-                        .first()
-                }
-            )
+            dataClass.lastReadAt = it[lastReadAt]
             dataClass.unreadCount = it[unreadCountEx]
             dataClass.downloadCount = it[downloadedCount]
-            dataClass.chapterCount = it[chapterCount] as Long
+            dataClass.chapterCount = it[chapterCount]
             dataClass
         }
 
