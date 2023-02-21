@@ -20,6 +20,7 @@ import org.jetbrains.exposed.sql.max
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.sql.wrapAsExpression
 import suwayomi.tachidesk.manga.impl.Category.DEFAULT_CATEGORY_ID
 import suwayomi.tachidesk.manga.impl.util.lang.isEmpty
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
@@ -64,17 +65,22 @@ object CategoryManga {
      */
     fun getCategoryMangaList(categoryId: Int): List<MangaDataClass> {
         // Select the required columns from the MangaTable and add the aggregate functions to compute unread, download, and chapter counts
-        val unreadCountEx = ChapterTable.isRead.count().alias("unread_count")
-        val downloadedCount = ChapterTable.isDownloaded.count().alias("download_count")
+        val unreadCount = wrapAsExpression<Long>(
+            ChapterTable.slice(ChapterTable.id.count()).select((ChapterTable.isRead eq false) and (ChapterTable.manga eq MangaTable.id))
+        )
+        val downloadedCount = wrapAsExpression<Long>(
+            ChapterTable.slice(ChapterTable.id.count()).select((ChapterTable.isDownloaded eq true) and (ChapterTable.manga eq MangaTable.id))
+        )
+
         val chapterCount = ChapterTable.id.count().alias("chapter_count")
         val lastReadAt = ChapterTable.lastReadAt.max().alias("last_read_at")
-        val selectedColumns = MangaTable.columns + unreadCountEx + downloadedCount + chapterCount + lastReadAt
+        val selectedColumns = MangaTable.columns + unreadCount + downloadedCount + chapterCount + lastReadAt
 
         val transform: (ResultRow) -> MangaDataClass = {
             // Map the data from the result row to the MangaDataClass
             val dataClass = MangaTable.toDataClass(it)
             dataClass.lastReadAt = it[lastReadAt]
-            dataClass.unreadCount = it[unreadCountEx]
+            dataClass.unreadCount = it[unreadCount]
             dataClass.downloadCount = it[downloadedCount]
             dataClass.chapterCount = it[chapterCount]
             dataClass
