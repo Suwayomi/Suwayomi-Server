@@ -27,7 +27,14 @@ class Updater : IUpdater {
     override val status = _status.asStateFlow()
 
     private val tracker = ConcurrentHashMap<Int, UpdateJob>()
-    private var updateChannel = createUpdateChannel()
+    private val updateChannels = ConcurrentHashMap<String, Channel<UpdateJob>>()
+
+    private fun getOrCreateUpdateChannelFor(source: String): Channel<UpdateJob> {
+        return updateChannels.getOrPut(source) {
+            logger.debug { "getOrCreateUpdateChannelFor: created channel for $source - channels: ${updateChannels.size + 1}" }
+            createUpdateChannel()
+        }
+    }
 
     private fun createUpdateChannel(): Channel<UpdateJob> {
         val channel = Channel<UpdateJob>(Channel.UNLIMITED)
@@ -49,7 +56,7 @@ class Updater : IUpdater {
         tracker[job.manga.id] = job.copy(status = JobStatus.RUNNING)
         _status.update { UpdateStatus(tracker.values.toList(), true) }
         tracker[job.manga.id] = try {
-            logger.info { "Updating ${job.manga.title}" }
+            logger.info { "Updating \"${job.manga.title}\" (source: ${job.manga.sourceId})" }
             Chapter.getChapterList(job.manga.id, true)
             job.copy(status = JobStatus.COMPLETE)
         } catch (e: Exception) {
@@ -61,6 +68,7 @@ class Updater : IUpdater {
     }
 
     override fun addMangaToQueue(manga: MangaDataClass) {
+        val updateChannel = getOrCreateUpdateChannelFor(manga.sourceId)
         scope.launch {
             updateChannel.send(UpdateJob(manga))
         }
@@ -72,7 +80,7 @@ class Updater : IUpdater {
         scope.coroutineContext.cancelChildren()
         tracker.clear()
         _status.update { UpdateStatus() }
-        updateChannel.cancel()
-        updateChannel = createUpdateChannel()
+        updateChannels.forEach { (_, channel) -> channel.cancel() }
+        updateChannels.clear()
     }
 }
