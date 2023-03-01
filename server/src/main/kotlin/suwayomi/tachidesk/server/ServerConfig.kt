@@ -33,6 +33,9 @@ class ServerConfig(config: Config, moduleName: String = MODULE_NAME) : SystemPro
     val downloadAsCbz: Boolean by overridableConfig
     val downloadsPath: String by overridableConfig
 
+    // updater
+    val maxParallelUpdateRequests: Int by overridableConfig
+
     // Authentication
     val basicAuthEnabled: Boolean by overridableConfig
     val basicAuthUsername: String by overridableConfig
