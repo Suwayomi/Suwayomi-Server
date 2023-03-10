@@ -38,8 +38,6 @@ class CloudflareInterceptor : Interceptor {
             return originalResponse
         }
 
-        throw IOException("playwrite is diabled for v0.6.7")
-
         logger.debug { "Cloudflare anti-bot is on, CloudflareInterceptor is kicking in..." }
 
         return try {
@@ -139,8 +137,7 @@ object CFClearance {
 
     fun getWebViewUserAgent(): String {
         return try {
-            throw PlaywrightException("playwrite is diabled for v0.6.7")
-
+            
             Playwright.create().use { playwright ->
                 playwright.chromium().launch(
                     LaunchOptions()
