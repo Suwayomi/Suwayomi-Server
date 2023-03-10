@@ -14,9 +14,12 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import mu.KotlinLogging
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.server.serverConfig
 import java.util.concurrent.ConcurrentHashMap
 
 class Updater : IUpdater {
@@ -27,18 +30,29 @@ class Updater : IUpdater {
     override val status = _status.asStateFlow()
 
     private val tracker = ConcurrentHashMap<Int, UpdateJob>()
-    private var updateChannel = createUpdateChannel()
+    private val updateChannels = ConcurrentHashMap<String, Channel<UpdateJob>>()
+
+    private val semaphore = Semaphore(serverConfig.maxParallelUpdateRequests)
+
+    private fun getOrCreateUpdateChannelFor(source: String): Channel<UpdateJob> {
+        return updateChannels.getOrPut(source) {
+            logger.debug { "getOrCreateUpdateChannelFor: created channel for $source - channels: ${updateChannels.size + 1}" }
+            createUpdateChannel()
+        }
+    }
 
     private fun createUpdateChannel(): Channel<UpdateJob> {
         val channel = Channel<UpdateJob>(Channel.UNLIMITED)
         channel.consumeAsFlow()
             .onEach { job ->
-                _status.value = UpdateStatus(
-                    process(job),
-                    tracker.any { (_, job) ->
-                        job.status == JobStatus.PENDING || job.status == JobStatus.RUNNING
-                    }
-                )
+                semaphore.withPermit {
+                    _status.value = UpdateStatus(
+                        process(job),
+                        tracker.any { (_, job) ->
+                            job.status == JobStatus.PENDING || job.status == JobStatus.RUNNING
+                        }
+                    )
+                }
             }
             .catch { logger.error(it) { "Error during updates" } }
             .launchIn(scope)
@@ -49,7 +63,7 @@ class Updater : IUpdater {
         tracker[job.manga.id] = job.copy(status = JobStatus.RUNNING)
         _status.update { UpdateStatus(tracker.values.toList(), true) }
         tracker[job.manga.id] = try {
-            logger.info { "Updating ${job.manga.title}" }
+            logger.info { "Updating \"${job.manga.title}\" (source: ${job.manga.sourceId})" }
             Chapter.getChapterList(job.manga.id, true)
             job.copy(status = JobStatus.COMPLETE)
         } catch (e: Exception) {
@@ -61,6 +75,7 @@ class Updater : IUpdater {
     }
 
     override fun addMangaToQueue(manga: MangaDataClass) {
+        val updateChannel = getOrCreateUpdateChannelFor(manga.sourceId)
         scope.launch {
             updateChannel.send(UpdateJob(manga))
         }
@@ -72,7 +87,7 @@ class Updater : IUpdater {
         scope.coroutineContext.cancelChildren()
         tracker.clear()
         _status.update { UpdateStatus() }
-        updateChannel.cancel()
-        updateChannel = createUpdateChannel()
+        updateChannels.forEach { (_, channel) -> channel.cancel() }
+        updateChannels.clear()
     }
 }
