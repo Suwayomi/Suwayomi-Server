@@ -23,5 +23,6 @@ fun CategoryTable.toDataClass(categoryEntry: ResultRow) = CategoryDataClass(
     categoryEntry[order],
     categoryEntry[name],
     categoryEntry[isDefault],
+    Category.getCategorySize(categoryEntry[id].value),
     Category.getCategoryMetaMap(categoryEntry[id].value)
 )
