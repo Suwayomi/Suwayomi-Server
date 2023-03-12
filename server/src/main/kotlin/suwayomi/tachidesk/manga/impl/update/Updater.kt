@@ -74,13 +74,17 @@ class Updater : IUpdater {
         return tracker.values.toList()
     }
 
-    override fun addMangaToQueue(manga: MangaDataClass) {
+    override fun addMangasToQueue(mangas: List<MangaDataClass>) {
+        mangas.forEach { tracker[it.id] = UpdateJob(it) }
+        _status.update { UpdateStatus(tracker.values.toList(), true) }
+        mangas.forEach { addMangaToQueue(it) }
+    }
+
+    private fun addMangaToQueue(manga: MangaDataClass) {
         val updateChannel = getOrCreateUpdateChannelFor(manga.sourceId)
         scope.launch {
             updateChannel.send(UpdateJob(manga))
         }
-        tracker[manga.id] = UpdateJob(manga)
-        _status.update { UpdateStatus(tracker.values.toList(), true) }
     }
 
     override fun reset() {
