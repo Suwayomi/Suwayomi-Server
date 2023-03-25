@@ -13,8 +13,8 @@ class TestUpdater : IUpdater {
     private val _status = MutableStateFlow(UpdateStatus())
     override val status: StateFlow<UpdateStatus> = _status.asStateFlow()
 
-    override fun addMangaToQueue(manga: MangaDataClass) {
-        updateQueue.add(UpdateJob(manga))
+    override fun addMangasToQueue(mangas: List<MangaDataClass>) {
+        mangas.forEach { updateQueue.add(UpdateJob(it)) }
         isRunning = true
         updateStatus()
     }

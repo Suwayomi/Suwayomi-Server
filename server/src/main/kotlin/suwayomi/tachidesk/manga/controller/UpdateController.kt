@@ -93,14 +93,13 @@ object UpdateController {
         if (clear) {
             updater.reset()
         }
-        categories
-            .flatMap { CategoryManga.getCategoryMangaList(it.id) }
-            .distinctBy { it.id }
-            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, MangaDataClass::title))
-            .filter { it.updateStrategy == UpdateStrategy.ALWAYS_UPDATE }
-            .forEach { manga ->
-                updater.addMangaToQueue(manga)
-            }
+        updater.addMangasToQueue(
+            categories
+                .flatMap { CategoryManga.getCategoryMangaList(it.id) }
+                .distinctBy { it.id }
+                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, MangaDataClass::title))
+                .filter { it.updateStrategy == UpdateStrategy.ALWAYS_UPDATE }
+        )
     }
 
     fun categoryUpdateWS(ws: WsConfig) {
