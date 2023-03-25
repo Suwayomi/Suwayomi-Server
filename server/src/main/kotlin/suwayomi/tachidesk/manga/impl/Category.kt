@@ -18,7 +18,6 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.CategoryManga.removeMangaFromCategory
-import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
@@ -98,12 +97,14 @@ object Category {
 
     const val DEFAULT_CATEGORY_ID = 0
     const val DEFAULT_CATEGORY_NAME = "Default"
-    private fun addDefaultIfNecessary(categories: List<CategoryDataClass>): List<CategoryDataClass> =
-        if (MangaTable.select { (MangaTable.inLibrary eq true) and (MangaTable.defaultCategory eq true) }.isNotEmpty()) {
-            listOf(CategoryDataClass(DEFAULT_CATEGORY_ID, 0, DEFAULT_CATEGORY_NAME, true)) + categories
+    private fun addDefaultIfNecessary(categories: List<CategoryDataClass>): List<CategoryDataClass> {
+        val defaultCategorySize = MangaTable.select { (MangaTable.inLibrary eq true) and (MangaTable.defaultCategory eq true) }.count().toInt()
+        return if (defaultCategorySize > 0) {
+            listOf(CategoryDataClass(DEFAULT_CATEGORY_ID, 0, DEFAULT_CATEGORY_NAME, true, defaultCategorySize)) + categories
         } else {
             categories
         }
+    }
 
     fun getCategoryList(): List<CategoryDataClass> {
         return transaction {
@@ -120,6 +121,14 @@ object Category {
             CategoryTable.select { CategoryTable.id eq categoryId }.firstOrNull()?.let {
                 CategoryTable.toDataClass(it)
             }
+        }
+    }
+
+    fun getCategorySize(categoryId: Int): Int {
+        return transaction {
+            CategoryMangaTable.select {
+                CategoryMangaTable.category eq categoryId
+            }.count().toInt()
         }
     }
 
