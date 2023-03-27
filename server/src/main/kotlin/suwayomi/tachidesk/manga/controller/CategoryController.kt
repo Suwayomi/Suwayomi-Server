@@ -61,14 +61,15 @@ object CategoryController {
         pathParam<Int>("categoryId"),
         formParam<String?>("name"),
         formParam<Boolean?>("default"),
+        formParam<Int?>("includeInUpdate"),
         documentWith = {
             withOperation {
                 summary("Category modify")
                 description("Modify a category")
             }
         },
-        behaviorOf = { ctx, categoryId, name, isDefault ->
-            Category.updateCategory(categoryId, name, isDefault)
+        behaviorOf = { ctx, categoryId, name, isDefault, includeInUpdate ->
+            Category.updateCategory(categoryId, name, isDefault, includeInUpdate)
             ctx.status(200)
         },
         withResults = {

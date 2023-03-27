@@ -116,4 +116,20 @@ object CategoryManga {
             }
         }
     }
+
+    fun getMangasCategories(mangaIDs: List<Int>): Map<Int, List<CategoryDataClass>> {
+        return buildMap {
+            transaction {
+                CategoryMangaTable.innerJoin(CategoryTable)
+                    .select { CategoryMangaTable.manga inList mangaIDs }
+                    .groupBy { it[CategoryMangaTable.manga] }
+                    .forEach {
+                        val mangaId = it.key.value
+                        val categories = it.value
+
+                        set(mangaId, categories.map { category -> CategoryTable.toDataClass(category) })
+                    }
+            }
+        }
+    }
 }

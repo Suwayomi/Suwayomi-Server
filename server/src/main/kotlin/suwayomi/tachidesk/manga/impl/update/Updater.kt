@@ -76,7 +76,7 @@ class Updater : IUpdater {
 
     override fun addMangasToQueue(mangas: List<MangaDataClass>) {
         mangas.forEach { tracker[it.id] = UpdateJob(it) }
-        _status.update { UpdateStatus(tracker.values.toList(), true) }
+        _status.update { UpdateStatus(tracker.values.toList(), mangas.isNotEmpty()) }
         mangas.forEach { addMangaToQueue(it) }
     }
 

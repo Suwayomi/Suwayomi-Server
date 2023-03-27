@@ -13,10 +13,7 @@ import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.UpdateStatus
 import suwayomi.tachidesk.manga.impl.update.UpdaterSocket
-import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
-import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
-import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
-import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
+import suwayomi.tachidesk.manga.model.dataclass.*
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.util.formParam
 import suwayomi.tachidesk.server.util.handler
@@ -94,11 +91,21 @@ object UpdateController {
             updater.reset()
         }
 
-        val mangasToUpdate = categories
-                .flatMap { CategoryManga.getCategoryMangaList(it.id) }
-                .distinctBy { it.id }
-                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, MangaDataClass::title))
-                .filter { it.updateStrategy == UpdateStrategy.ALWAYS_UPDATE }
+        val includeInUpdateStatusToCategoryMap = categories.groupBy { it.includeInUpdate }
+        val excludedCategories = includeInUpdateStatusToCategoryMap[IncludeInUpdate.EXCLUDE].orEmpty()
+        val includedCategories = includeInUpdateStatusToCategoryMap[IncludeInUpdate.INCLUDE].orEmpty()
+        val unsetCategories = includeInUpdateStatusToCategoryMap[IncludeInUpdate.UNSET].orEmpty()
+        val categoriesToUpdate = includedCategories.ifEmpty { unsetCategories }
+
+        logger.debug { "Updating categories: '${categoriesToUpdate.joinToString("', '") { it.name }}'" }
+
+        val categoriesToUpdateMangas = categoriesToUpdate
+            .flatMap { CategoryManga.getCategoryMangaList(it.id) }
+            .distinctBy { it.id }
+        val mangasToCategoriesMap = CategoryManga.getMangasCategories(categoriesToUpdateMangas.map { it.id })
+        val mangasToUpdate = categoriesToUpdateMangas
+            .filter { it.updateStrategy == UpdateStrategy.ALWAYS_UPDATE }
+            .filter { !excludedCategories.any { category -> mangasToCategoriesMap[it.id]?.contains(category) == true } }
 
         // In case no manga gets updated and no update job was running before, the client would never receive an info about its update request
         if (mangasToUpdate.isEmpty()) {
@@ -106,7 +113,10 @@ object UpdateController {
             return
         }
 
-        updater.addMangasToQueue(mangasToUpdate)
+        updater.addMangasToQueue(
+            mangasToUpdate
+                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, MangaDataClass::title)),
+        )
     }
 
     fun categoryUpdateWS(ws: WsConfig) {
