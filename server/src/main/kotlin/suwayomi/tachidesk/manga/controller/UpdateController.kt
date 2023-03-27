@@ -93,13 +93,20 @@ object UpdateController {
         if (clear) {
             updater.reset()
         }
-        updater.addMangasToQueue(
-            categories
+
+        val mangasToUpdate = categories
                 .flatMap { CategoryManga.getCategoryMangaList(it.id) }
                 .distinctBy { it.id }
                 .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, MangaDataClass::title))
                 .filter { it.updateStrategy == UpdateStrategy.ALWAYS_UPDATE }
-        )
+
+        // In case no manga gets updated and no update job was running before, the client would never receive an info about its update request
+        if (mangasToUpdate.isEmpty()) {
+            UpdaterSocket.notifyAllClients(UpdateStatus())
+            return
+        }
+
+        updater.addMangasToQueue(mangasToUpdate)
     }
 
     fun categoryUpdateWS(ws: WsConfig) {
