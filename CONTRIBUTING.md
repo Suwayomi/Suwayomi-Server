@@ -2,9 +2,10 @@
 ## Where should I start?
 Checkout [This Kanban Board](https://github.com/Suwayomi/Tachidesk/projects/1) to see the rough development roadmap.
 
-**Note 1:** Notify the developers on [Suwayomi discord](https://discord.gg/DDZdqZWaHA) (#tachidesk-server and #tachidesk-webui channels) or open a WIP pull request before starting if you decide to take on working on anything from/not from the roadmap in order to avoid parallel efforts on the same issue/feature.
-
-**Note 2:** Your pull request will be squashed into a single commit.
+### Important notes
+- Notify the developers on [Suwayomi discord](https://discord.gg/DDZdqZWaHA) (#tachidesk-server and #tachidesk-webui channels) or open a WIP pull request before starting if you decide to take on working on anything from/not from the roadmap in order to avoid parallel efforts on the same issue/feature.
+- Your pull request will be squashed into a single commit.
+- We hate big pull requests, make them as small as possible, change one meaningfull thing. Spam pull requests, we don't mind.
 
 ### Project goals and vision
 - Porting Tachiyomi and covering it's features
