@@ -7,14 +7,14 @@
 
 package suwayomi.tachidesk.graphql.server.subscriptions
 
-import reactor.core.publisher.Flux
-import reactor.core.publisher.FluxSink
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
-class FluxSubscriptionSource<T : Any>() {
-    private var sink: FluxSink<T>? = null
-    val emitter: Flux<T> = Flux.create<T> { emitter -> sink = emitter }
+class FlowSubscriptionSource<T : Any> {
+    private val mutableSharedFlow = MutableSharedFlow<T>()
+    val emitter = mutableSharedFlow.asSharedFlow()
 
     fun publish(value: T) {
-        sink?.next(value)
+        mutableSharedFlow.tryEmit(value)
     }
 }

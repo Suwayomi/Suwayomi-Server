@@ -9,7 +9,7 @@ package suwayomi.tachidesk.graphql.server
 
 import com.expediagroup.graphql.generator.SchemaGeneratorConfig
 import com.expediagroup.graphql.generator.TopLevelObject
-import com.expediagroup.graphql.generator.hooks.SchemaGeneratorHooks
+import com.expediagroup.graphql.generator.hooks.FlowSubscriptionSchemaGeneratorHooks
 import com.expediagroup.graphql.generator.toSchema
 import graphql.scalars.ExtendedScalars
 import graphql.schema.GraphQLType
@@ -21,10 +21,10 @@ import suwayomi.tachidesk.graphql.subscriptions.DownloadSubscription
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
-class CustomSchemaGeneratorHooks : SchemaGeneratorHooks {
+class CustomSchemaGeneratorHooks : FlowSubscriptionSchemaGeneratorHooks() {
     override fun willGenerateGraphQLType(type: KType): GraphQLType? = when (type.classifier as? KClass<*>) {
         Long::class -> ExtendedScalars.GraphQLLong
-        else -> null
+        else -> super.willGenerateGraphQLType(type)
     }
 }
 

@@ -15,6 +15,9 @@ import graphql.GraphQL
 import io.javalin.http.Context
 import io.javalin.websocket.WsCloseContext
 import io.javalin.websocket.WsMessageContext
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import suwayomi.tachidesk.graphql.server.subscriptions.ApolloSubscriptionProtocolHandler
 import suwayomi.tachidesk.graphql.server.subscriptions.GraphQLSubscriptionHandler
 
@@ -31,7 +34,7 @@ class TachideskGraphQLServer(
         subscriptionProtocolHandler.handleMessage(context)
             .map { objectMapper.writeValueAsString(it) }
             .map { context.send(it) }
-            .subscribe()
+            .launchIn(GlobalScope)
     }
 
     fun handleSubscriptionDisconnect(context: WsCloseContext) {
