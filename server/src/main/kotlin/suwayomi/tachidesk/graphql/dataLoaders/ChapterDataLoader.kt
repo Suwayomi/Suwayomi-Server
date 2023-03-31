@@ -16,12 +16,12 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
-import java.util.concurrent.CompletableFuture
+import suwayomi.tachidesk.server.JavalinSetup.future
 
 class ChapterDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "ChapterDataLoader"
     override fun getDataLoader(): DataLoader<Int, ChapterType> = DataLoaderFactory.newDataLoader<Int, ChapterType> { ids ->
-        CompletableFuture.supplyAsync {
+        future {
             transaction {
                 addLogger(StdOutSqlLogger)
                 ChapterTable.select { ChapterTable.id inList ids }
@@ -34,7 +34,7 @@ class ChapterDataLoader : KotlinDataLoader<Int, ChapterType> {
 class ChaptersForMangaDataLoader : KotlinDataLoader<Int, List<ChapterType>> {
     override val dataLoaderName = "ChaptersForMangaDataLoader"
     override fun getDataLoader(): DataLoader<Int, List<ChapterType>> = DataLoaderFactory.newDataLoader<Int, List<ChapterType>> { ids ->
-        CompletableFuture.supplyAsync {
+        future {
             transaction {
                 addLogger(StdOutSqlLogger)
                 val chaptersByMangaId = ChapterTable.select { ChapterTable.manga inList ids }

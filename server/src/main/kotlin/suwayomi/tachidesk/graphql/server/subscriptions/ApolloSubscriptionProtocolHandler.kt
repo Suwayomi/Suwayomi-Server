@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
-import org.slf4j.LoggerFactory
+import mu.KotlinLogging
 import suwayomi.tachidesk.graphql.server.TachideskGraphQLContextFactory
 import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ClientMessages.*
 import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ServerMessages.*
@@ -43,15 +43,14 @@ class ApolloSubscriptionProtocolHandler(
     private val objectMapper: ObjectMapper
 ) {
     private val sessionState = ApolloSubscriptionSessionState()
-    private val logger = LoggerFactory.getLogger(ApolloSubscriptionProtocolHandler::class.java)
+    private val logger = KotlinLogging.logger {}
     private val keepAliveMessage = SubscriptionOperationMessage(type = GQL_CONNECTION_KEEP_ALIVE.type)
     private val basicConnectionErrorMessage = SubscriptionOperationMessage(type = GQL_CONNECTION_ERROR.type)
     private val acknowledgeMessage = SubscriptionOperationMessage(GQL_CONNECTION_ACK.type)
 
-    @Suppress("Detekt.TooGenericExceptionCaught")
     fun handleMessage(context: WsMessageContext): Flow<SubscriptionOperationMessage> {
         val operationMessage = convertToMessageOrNull(context.message()) ?: return flowOf(basicConnectionErrorMessage)
-        logger.debug("GraphQL subscription client message, sessionId=${context.sessionId} operationMessage=$operationMessage")
+        logger.debug { "GraphQL subscription client message, sessionId=${context.sessionId} operationMessage=$operationMessage" }
 
         return try {
             when (operationMessage.type) {
@@ -70,7 +69,6 @@ class ApolloSubscriptionProtocolHandler(
         onDisconnect(context)
     }
 
-    @Suppress("Detekt.TooGenericExceptionCaught")
     private fun convertToMessageOrNull(payload: String): SubscriptionOperationMessage? {
         return try {
             objectMapper.readValue(payload)

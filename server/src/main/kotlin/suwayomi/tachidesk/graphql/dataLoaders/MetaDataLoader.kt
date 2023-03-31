@@ -13,12 +13,12 @@ import suwayomi.tachidesk.graphql.types.MangaMetaItem
 import suwayomi.tachidesk.graphql.types.MetaType
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
-import java.util.concurrent.CompletableFuture
+import suwayomi.tachidesk.server.JavalinSetup.future
 
 class ChapterMetaDataLoader : KotlinDataLoader<Int, MetaType> {
     override val dataLoaderName = "ChapterMetaDataLoader"
     override fun getDataLoader(): DataLoader<Int, MetaType> = DataLoaderFactory.newDataLoader<Int, MetaType> { ids ->
-        CompletableFuture.supplyAsync {
+        future {
             transaction {
                 addLogger(StdOutSqlLogger)
                 val metasByRefId = ChapterMetaTable.select { ChapterMetaTable.ref inList ids }
@@ -33,7 +33,7 @@ class ChapterMetaDataLoader : KotlinDataLoader<Int, MetaType> {
 class MangaMetaDataLoader : KotlinDataLoader<Int, MetaType> {
     override val dataLoaderName = "MangaMetaDataLoader"
     override fun getDataLoader(): DataLoader<Int, MetaType> = DataLoaderFactory.newDataLoader<Int, MetaType> { ids ->
-        CompletableFuture.supplyAsync {
+        future {
             transaction {
                 addLogger(StdOutSqlLogger)
                 val metasByRefId = MangaMetaTable.select { MangaMetaTable.ref inList ids }
@@ -48,7 +48,7 @@ class MangaMetaDataLoader : KotlinDataLoader<Int, MetaType> {
 class CategoryMetaDataLoader : KotlinDataLoader<Int, MetaType> {
     override val dataLoaderName = "CategoryMetaDataLoader"
     override fun getDataLoader(): DataLoader<Int, MetaType> = DataLoaderFactory.newDataLoader<Int, MetaType> { ids ->
-        CompletableFuture.supplyAsync {
+        future {
             transaction {
                 addLogger(StdOutSqlLogger)
                 val metasByRefId = MangaMetaTable.select { MangaMetaTable.ref inList ids }
