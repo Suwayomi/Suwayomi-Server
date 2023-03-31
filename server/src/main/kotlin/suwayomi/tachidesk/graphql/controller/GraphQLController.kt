@@ -25,18 +25,10 @@ object GraphQLController {
     }
 
     fun playground(ctx: Context) {
-        val playgroundHtml = javaClass.getResource("/graphql-playground.html")
-
-        val body = playgroundHtml.openStream().bufferedReader().use { reader ->
-            val graphQLEndpoint = "graphql"
-            val subscriptionsEndpoint = "graphql"
-
+        val body = javaClass.getResourceAsStream("/graphql-playground.html")!!.bufferedReader().use { reader ->
             reader.readText()
-                .replace("\${graphQLEndpoint}", graphQLEndpoint)
-                .replace("\${subscriptionsEndpoint}", subscriptionsEndpoint)
         }
-
-        ctx.html(body ?: "Could not load playground")
+        ctx.html(body)
     }
 
     fun webSocket(ws: WsConfig) {
