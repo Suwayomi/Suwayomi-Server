@@ -21,7 +21,9 @@ class TachideskDataLoaderRegistryFactory {
                 MangaMetaDataLoader(),
                 MangaForCategoryDataLoader(),
                 CategoryMetaDataLoader(),
-                CategoriesForMangaDataLoader()
+                CategoriesForMangaDataLoader(),
+                SourceDataLoader(),
+                SourceForMangaDataLoader()
             )
         }
     }
