@@ -10,7 +10,7 @@ package suwayomi.tachidesk.graphql.dataLoaders
 import com.expediagroup.graphql.dataloader.KotlinDataLoader
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
-import org.jetbrains.exposed.sql.StdOutSqlLogger
+import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -23,7 +23,7 @@ class ChapterDataLoader : KotlinDataLoader<Int, ChapterType> {
     override fun getDataLoader(): DataLoader<Int, ChapterType> = DataLoaderFactory.newDataLoader<Int, ChapterType> { ids ->
         future {
             transaction {
-                addLogger(StdOutSqlLogger)
+                addLogger(Slf4jSqlDebugLogger)
                 ChapterTable.select { ChapterTable.id inList ids }
                     .map { ChapterType(it) }
             }
@@ -36,7 +36,7 @@ class ChaptersForMangaDataLoader : KotlinDataLoader<Int, List<ChapterType>> {
     override fun getDataLoader(): DataLoader<Int, List<ChapterType>> = DataLoaderFactory.newDataLoader<Int, List<ChapterType>> { ids ->
         future {
             transaction {
-                addLogger(StdOutSqlLogger)
+                addLogger(Slf4jSqlDebugLogger)
                 val chaptersByMangaId = ChapterTable.select { ChapterTable.manga inList ids }
                     .map { ChapterType(it) }
                     .groupBy { it.mangaId }

@@ -23,6 +23,7 @@ import java.util.concurrent.CompletableFuture
  * - Filter by downloaded
  * - Filter by scanlators
  * - Sort? Upload date, source order, last read, chapter number
+ * - Get page list?
  *
  * TODO Mutations
  * - Last page read

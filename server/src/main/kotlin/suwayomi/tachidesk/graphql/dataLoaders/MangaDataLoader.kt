@@ -10,8 +10,7 @@ package suwayomi.tachidesk.graphql.dataLoaders
 import com.expediagroup.graphql.dataloader.KotlinDataLoader
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.StdOutSqlLogger
+import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -25,7 +24,7 @@ class MangaDataLoader : KotlinDataLoader<Int, MangaType> {
     override fun getDataLoader(): DataLoader<Int, MangaType> = DataLoaderFactory.newDataLoader<Int, MangaType> { ids ->
         future {
             transaction {
-                addLogger(StdOutSqlLogger)
+                addLogger(Slf4jSqlDebugLogger)
                 MangaTable.select { MangaTable.id inList ids }
                     .map { MangaType(it) }
             }
@@ -38,7 +37,7 @@ class MangaForCategoryDataLoader : KotlinDataLoader<Int, List<MangaType>> {
     override fun getDataLoader(): DataLoader<Int, List<MangaType>> = DataLoaderFactory.newDataLoader<Int, List<MangaType>> { ids ->
         future {
             transaction {
-                addLogger(StdOutSqlLogger)
+                addLogger(Slf4jSqlDebugLogger)
                 val itemsByRef = CategoryMangaTable.innerJoin(MangaTable).select { CategoryMangaTable.category inList ids }
                     .map { Pair(it[CategoryMangaTable.category].value, MangaType(it)) }
                     .groupBy { it.first }

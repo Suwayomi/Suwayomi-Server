@@ -7,7 +7,9 @@
 
 package suwayomi.tachidesk.graphql
 
-import io.javalin.apibuilder.ApiBuilder.*
+import io.javalin.apibuilder.ApiBuilder.get
+import io.javalin.apibuilder.ApiBuilder.post
+import io.javalin.apibuilder.ApiBuilder.ws
 import suwayomi.tachidesk.graphql.controller.GraphQLController
 
 object GraphQL {

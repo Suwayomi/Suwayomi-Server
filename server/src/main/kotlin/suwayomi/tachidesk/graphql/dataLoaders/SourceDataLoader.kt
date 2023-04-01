@@ -10,8 +10,7 @@ package suwayomi.tachidesk.graphql.dataLoaders
 import com.expediagroup.graphql.dataloader.KotlinDataLoader
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.StdOutSqlLogger
+import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -26,6 +25,7 @@ class SourceDataLoader : KotlinDataLoader<Long, SourceType?> {
     override fun getDataLoader(): DataLoader<Long, SourceType?> = DataLoaderFactory.newDataLoader { ids ->
         future {
             transaction {
+                addLogger(Slf4jSqlDebugLogger)
                 SourceTable.select { SourceTable.id inList ids }.map {
                     SourceType(it)
                 }
@@ -39,7 +39,7 @@ class SourceForMangaDataLoader : KotlinDataLoader<Int, SourceType?> {
     override fun getDataLoader(): DataLoader<Int, SourceType?> = DataLoaderFactory.newDataLoader { ids ->
         future {
             transaction {
-                addLogger(StdOutSqlLogger)
+                addLogger(Slf4jSqlDebugLogger)
 
                 val itemsByRef = MangaTable.innerJoin(SourceTable)
                     .select { MangaTable.id inList ids }
@@ -68,7 +68,7 @@ class SourcesForExtensionDataLoader : KotlinDataLoader<String, List<SourceType>>
     override fun getDataLoader(): DataLoader<String, List<SourceType>> = DataLoaderFactory.newDataLoader { ids ->
         future {
             transaction {
-                addLogger(StdOutSqlLogger)
+                addLogger(Slf4jSqlDebugLogger)
 
                 val sourcesByExtensionPkg = SourceTable.innerJoin(ExtensionTable)
                     .select { ExtensionTable.pkgName inList ids }

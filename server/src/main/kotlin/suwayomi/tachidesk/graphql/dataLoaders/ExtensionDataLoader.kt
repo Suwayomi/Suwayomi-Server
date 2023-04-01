@@ -10,7 +10,7 @@ package suwayomi.tachidesk.graphql.dataLoaders
 import com.expediagroup.graphql.dataloader.KotlinDataLoader
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
-import org.jetbrains.exposed.sql.StdOutSqlLogger
+import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -24,7 +24,7 @@ class ExtensionDataLoader : KotlinDataLoader<String, ExtensionType> {
     override fun getDataLoader(): DataLoader<String, ExtensionType> = DataLoaderFactory.newDataLoader { ids ->
         future {
             transaction {
-                addLogger(StdOutSqlLogger)
+                addLogger(Slf4jSqlDebugLogger)
                 ExtensionTable.select { ExtensionTable.pkgName inList ids }
                     .map { ExtensionType(it) }
             }
@@ -37,7 +37,7 @@ class ExtensionForSourceDataLoader : KotlinDataLoader<Long, ExtensionType> {
     override fun getDataLoader(): DataLoader<Long, ExtensionType> = DataLoaderFactory.newDataLoader { ids ->
         future {
             transaction {
-                addLogger(StdOutSqlLogger)
+                addLogger(Slf4jSqlDebugLogger)
                 ExtensionTable.innerJoin(SourceTable)
                     .select { SourceTable.id inList ids }
                     .map { ExtensionType(it) }

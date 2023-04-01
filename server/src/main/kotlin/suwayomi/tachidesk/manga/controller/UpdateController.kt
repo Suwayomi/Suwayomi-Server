@@ -115,7 +115,7 @@ object UpdateController {
 
         updater.addMangasToQueue(
             mangasToUpdate
-                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, MangaDataClass::title)),
+                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, MangaDataClass::title))
         )
     }
 
