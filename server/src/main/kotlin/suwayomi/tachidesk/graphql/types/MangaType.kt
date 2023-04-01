@@ -19,7 +19,7 @@ import java.util.concurrent.CompletableFuture
 
 class MangaType(
     val id: Int,
-    val sourceId: String,
+    val sourceId: Long,
     val url: String,
     val title: String,
     val thumbnailUrl: String?,
@@ -37,7 +37,7 @@ class MangaType(
 ) {
     constructor(row: ResultRow) : this(
         row[MangaTable.id].value,
-        row[MangaTable.sourceReference].toString(),
+        row[MangaTable.sourceReference],
         row[MangaTable.url],
         row[MangaTable.title],
         row[MangaTable.thumbnail_url],
@@ -56,7 +56,7 @@ class MangaType(
 
     constructor(dataClass: MangaDataClass) : this(
         dataClass.id,
-        dataClass.sourceId,
+        dataClass.sourceId.toLong(),
         dataClass.url,
         dataClass.title,
         dataClass.thumbnailUrl,

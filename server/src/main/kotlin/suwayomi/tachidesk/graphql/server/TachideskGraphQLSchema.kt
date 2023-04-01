@@ -11,7 +11,7 @@ import com.expediagroup.graphql.generator.SchemaGeneratorConfig
 import com.expediagroup.graphql.generator.TopLevelObject
 import com.expediagroup.graphql.generator.hooks.FlowSubscriptionSchemaGeneratorHooks
 import com.expediagroup.graphql.generator.toSchema
-import graphql.scalars.ExtendedScalars
+import graphql.Scalars
 import graphql.schema.GraphQLType
 import suwayomi.tachidesk.graphql.mutations.ChapterMutation
 import suwayomi.tachidesk.graphql.queries.CategoryQuery
@@ -24,7 +24,7 @@ import kotlin.reflect.KType
 
 class CustomSchemaGeneratorHooks : FlowSubscriptionSchemaGeneratorHooks() {
     override fun willGenerateGraphQLType(type: KType): GraphQLType? = when (type.classifier as? KClass<*>) {
-        Long::class -> ExtendedScalars.GraphQLLong
+        Long::class -> Scalars.GraphQLString // encode to string for JS
         else -> super.willGenerateGraphQLType(type)
     }
 }
