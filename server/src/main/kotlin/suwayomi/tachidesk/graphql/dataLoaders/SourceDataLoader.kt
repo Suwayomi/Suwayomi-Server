@@ -16,6 +16,7 @@ import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.types.SourceType
+import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -57,6 +58,25 @@ class SourceForMangaDataLoader : KotlinDataLoader<Int, SourceType?> {
                     }
 
                 ids.map { itemsByRef[it] }
+            }
+        }
+    }
+}
+
+class SourcesForExtensionDataLoader : KotlinDataLoader<String, List<SourceType>> {
+    override val dataLoaderName = "SourcesForExtensionDataLoader"
+    override fun getDataLoader(): DataLoader<String, List<SourceType>> = DataLoaderFactory.newDataLoader { ids ->
+        future {
+            transaction {
+                addLogger(StdOutSqlLogger)
+
+                val sourcesByExtensionPkg = SourceTable.innerJoin(ExtensionTable)
+                    .select { ExtensionTable.pkgName inList ids }
+                    .map { Pair(it[ExtensionTable.pkgName], SourceType(it)) }
+                    .groupBy { it.first }
+                    .mapValues { it.value.mapNotNull { pair -> pair.second } }
+
+                ids.map { sourcesByExtensionPkg[it] ?: emptyList() }
             }
         }
     }

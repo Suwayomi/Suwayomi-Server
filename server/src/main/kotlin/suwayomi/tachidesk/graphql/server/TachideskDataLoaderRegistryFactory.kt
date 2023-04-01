@@ -23,7 +23,10 @@ class TachideskDataLoaderRegistryFactory {
                 CategoryMetaDataLoader(),
                 CategoriesForMangaDataLoader(),
                 SourceDataLoader(),
-                SourceForMangaDataLoader()
+                SourceForMangaDataLoader(),
+                SourcesForExtensionDataLoader(),
+                ExtensionDataLoader(),
+                ExtensionForSourceDataLoader()
             )
         }
     }

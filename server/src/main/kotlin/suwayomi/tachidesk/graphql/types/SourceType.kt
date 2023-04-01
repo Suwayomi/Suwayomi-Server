@@ -55,14 +55,23 @@ class SourceType(
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<MangaType>> {
         return dataFetchingEnvironment.getValueFromDataLoader<Long, List<MangaType>>("MangaForSourceDataLoader", id)
     }
+
+    fun extension(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ExtensionType> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Long, ExtensionType>("ExtensionForSourceDataLoader", id)
+    }
 }
 
 fun SourceType(row: ResultRow): SourceType? {
     val catalogueSource = GetCatalogueSource
         .getCatalogueSourceOrNull(row[SourceTable.id].value)
         ?: return null
-    val sourceExtension = ExtensionTable
-        .select { ExtensionTable.id eq row[SourceTable.extension] }
-        .first()
+    val sourceExtension = if (row.hasValue(ExtensionTable.id)) {
+        row
+    } else {
+        ExtensionTable
+            .select { ExtensionTable.id eq row[SourceTable.extension] }
+            .first()
+    }
+
     return SourceType(row, sourceExtension, catalogueSource)
 }
