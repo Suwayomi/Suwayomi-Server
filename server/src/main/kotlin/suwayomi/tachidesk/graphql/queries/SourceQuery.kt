@@ -9,16 +9,22 @@ package suwayomi.tachidesk.graphql.queries
 
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.types.SourceType
-import suwayomi.tachidesk.manga.impl.Source
+import suwayomi.tachidesk.manga.model.table.SourceTable
 import java.util.concurrent.CompletableFuture
 
 class SourceQuery {
-    fun source(dataFetchingEnvironment: DataFetchingEnvironment, id: Long): CompletableFuture<SourceType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Long, SourceType>("SourceDataLoader", id)
+    fun source(dataFetchingEnvironment: DataFetchingEnvironment, id: Long): CompletableFuture<SourceType?> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Long, SourceType?>("SourceDataLoader", id)
     }
 
     fun sources(): List<SourceType> {
-        return Source.getSourceList().map { SourceType(it) }
+        val results = transaction {
+            SourceTable.selectAll().toList().mapNotNull { SourceType(it) }
+        }
+
+        return results
     }
 }

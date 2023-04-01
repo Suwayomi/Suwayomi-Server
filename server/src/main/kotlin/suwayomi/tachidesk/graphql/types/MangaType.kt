@@ -96,7 +96,7 @@ class MangaType(
         return dataFetchingEnvironment.getValueFromDataLoader<Int, List<CategoryType>>("CategoriesForMangaDataLoader", id)
     }
 
-    fun source(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<SourceType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, SourceType>("SourceForMangaDataLoader", id)
+    fun source(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<SourceType?> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, SourceType?>("SourceForMangaDataLoader", id)
     }
 }
