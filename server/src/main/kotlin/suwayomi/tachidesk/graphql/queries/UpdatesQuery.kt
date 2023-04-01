@@ -20,6 +20,7 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 
 /**
  * TODO Queries
+ * - Maybe replace with a chapter query with a sort
  *
  * TODO Mutations
  * - Update the library
