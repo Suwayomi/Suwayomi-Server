@@ -15,6 +15,18 @@ import suwayomi.tachidesk.graphql.types.SourceType
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import java.util.concurrent.CompletableFuture
 
+/**
+ * TODO Queries
+ * - Filter by languages
+ * - Filter by name
+ * - Filter by NSFW
+ * - Sort?
+ *
+ * TODO Mutations
+ * - Browse with filters
+ * - Configure settings
+ *
+ */
 class SourceQuery {
     fun source(dataFetchingEnvironment: DataFetchingEnvironment, id: Long): CompletableFuture<SourceType?> {
         return dataFetchingEnvironment.getValueFromDataLoader<Long, SourceType?>("SourceDataLoader", id)

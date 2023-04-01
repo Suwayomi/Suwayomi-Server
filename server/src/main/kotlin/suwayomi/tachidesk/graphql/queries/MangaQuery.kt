@@ -18,6 +18,19 @@ import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.util.concurrent.CompletableFuture
 
+/**
+ * TODO Queries
+ * - Query options(optionally query the title, description, or/and)
+ * - Sort?
+ *
+ * TODO Mutations
+ * - Favorite
+ * - Unfavorite
+ * - Add to category
+ * - Remove from category
+ * - Check for updates
+ * - Download x(all = -1) chapters
+ */
 class MangaQuery {
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<MangaType> {
         return dataFetchingEnvironment.getValueFromDataLoader<Int, MangaType>("MangaDataLoader", id)

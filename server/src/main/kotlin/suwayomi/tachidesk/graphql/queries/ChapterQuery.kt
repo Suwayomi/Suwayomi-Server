@@ -16,6 +16,21 @@ import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import java.util.concurrent.CompletableFuture
 
+/**
+ * TODO Queries
+ * - Filter by read
+ * - Filter by bookmarked
+ * - Filter by downloaded
+ * - Filter by scanlators
+ * - Sort? Upload date, source order, last read, chapter number
+ *
+ * TODO Mutations
+ * - Last page read
+ * - Read status
+ * - bookmark status
+ * - Check for updates?
+ * - Download
+ */
 class ChapterQuery {
     fun chapter(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<ChapterType> {
         return dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterType>("ChapterDataLoader", id)
