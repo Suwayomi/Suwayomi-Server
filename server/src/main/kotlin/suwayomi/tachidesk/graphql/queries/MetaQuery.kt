@@ -16,6 +16,15 @@ import suwayomi.tachidesk.graphql.types.GlobalMetaItem
 import suwayomi.tachidesk.graphql.types.MetaItem
 import java.util.concurrent.CompletableFuture
 
+/**
+ * TODO Queries
+ * - In list of keys
+ *
+ * TODO Mutations
+ * - Add/update meta
+ * - Delete meta
+ *
+ */
 class MetaQuery {
     fun meta(dataFetchingEnvironment: DataFetchingEnvironment, key: String): CompletableFuture<MetaItem?> {
         return dataFetchingEnvironment.getValueFromDataLoader<String, MetaItem?>("GlobalMetaDataLoader", key)

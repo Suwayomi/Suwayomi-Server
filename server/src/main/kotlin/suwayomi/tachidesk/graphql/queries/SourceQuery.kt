@@ -20,6 +20,7 @@ import java.util.concurrent.CompletableFuture
  * - Filter by languages
  * - Filter by name
  * - Filter by NSFW
+ * - In list of ids
  * - Sort?
  *
  * TODO Mutations

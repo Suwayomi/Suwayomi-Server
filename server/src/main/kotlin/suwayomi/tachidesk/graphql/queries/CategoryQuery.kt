@@ -26,6 +26,10 @@ import java.util.concurrent.CompletableFuture
  * - Name
  * - Order
  * - Default
+ * - Create
+ * - Delete
+ * - Add/update meta
+ * - Delete meta
  */
 class CategoryQuery {
     fun category(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<CategoryType> {

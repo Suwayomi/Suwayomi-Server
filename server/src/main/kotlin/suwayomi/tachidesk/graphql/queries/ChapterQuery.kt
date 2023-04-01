@@ -31,6 +31,7 @@ import java.util.concurrent.CompletableFuture
  * - bookmark status
  * - Check for updates?
  * - Download
+ * - Delete download
  */
 class ChapterQuery {
     fun chapter(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<ChapterType> {
