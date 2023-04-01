@@ -35,6 +35,9 @@ class ServerConfig(getConfig: () -> Config, moduleName: String = MODULE_NAME) : 
 
     // updater
     var maxParallelUpdateRequests: Int by overridableConfig
+    var excludeUnreadChapters: Boolean by overridableConfig
+    var excludeNotStarted: Boolean by overridableConfig
+    var excludeCompleted: Boolean by overridableConfig
 
     // Authentication
     var basicAuthEnabled: Boolean by overridableConfig
