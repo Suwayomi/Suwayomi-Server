@@ -20,6 +20,7 @@ import suwayomi.tachidesk.graphql.queries.ExtensionQuery
 import suwayomi.tachidesk.graphql.queries.MangaQuery
 import suwayomi.tachidesk.graphql.queries.MetaQuery
 import suwayomi.tachidesk.graphql.queries.SourceQuery
+import suwayomi.tachidesk.graphql.queries.UpdatesQuery
 import suwayomi.tachidesk.graphql.subscriptions.DownloadSubscription
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
@@ -43,7 +44,8 @@ val schema = toSchema(
         TopLevelObject(CategoryQuery()),
         TopLevelObject(SourceQuery()),
         TopLevelObject(ExtensionQuery()),
-        TopLevelObject(MetaQuery())
+        TopLevelObject(MetaQuery()),
+        TopLevelObject(UpdatesQuery())
     ),
     mutations = listOf(
         TopLevelObject(ChapterMutation())
