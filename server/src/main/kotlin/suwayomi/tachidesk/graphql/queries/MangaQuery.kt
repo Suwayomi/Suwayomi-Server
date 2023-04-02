@@ -9,10 +9,13 @@ package suwayomi.tachidesk.graphql.queries
 
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.queries.util.GreaterOrLessThanLong
+import suwayomi.tachidesk.graphql.queries.util.andWhereGreaterOrLessThen
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -21,7 +24,6 @@ import java.util.concurrent.CompletableFuture
 /**
  * TODO Queries
  * - Query options(optionally query the title, description, or/and)
- * - Sort?
  *
  * TODO Mutations
  * - Favorite
@@ -39,9 +41,21 @@ class MangaQuery {
         return dataFetchingEnvironment.getValueFromDataLoader<Int, MangaType>("MangaDataLoader", id)
     }
 
+    enum class MangaSort {
+        ID,
+        TITLE,
+        IN_LIBRARY_AT,
+        LAST_FETCHED_AT
+    }
+
     data class MangaQueryInput(
         val ids: List<Int>? = null,
         val categoryIds: List<Int>? = null,
+        val sourceIds: List<Long>? = null,
+        val inLibrary: Boolean? = null,
+        val inLibraryAt: GreaterOrLessThanLong? = null,
+        val sort: MangaSort? = null,
+        val sortOrder: SortOrder? = null,
         val page: Int? = null,
         val count: Int? = null
     )
@@ -57,6 +71,27 @@ class MangaQuery {
                 }
                 if (input.ids != null) {
                     res.andWhere { MangaTable.id inList input.ids }
+                }
+                if (input.sourceIds != null) {
+                    res.andWhere { MangaTable.sourceReference inList input.sourceIds }
+                }
+                if (input.inLibrary != null) {
+                    res.andWhere { MangaTable.inLibrary eq input.inLibrary }
+                }
+                if (input.inLibraryAt != null) {
+                    res.andWhereGreaterOrLessThen(
+                        column = MangaTable.inLibraryAt,
+                        greaterOrLessThan = input.inLibraryAt
+                    )
+                }
+                if (input.sort != null) {
+                    val orderBy = when (input.sort) {
+                        MangaSort.ID -> MangaTable.id
+                        MangaSort.TITLE -> MangaTable.title
+                        MangaSort.IN_LIBRARY_AT -> MangaTable.inLibraryAt
+                        MangaSort.LAST_FETCHED_AT -> MangaTable.lastFetchedAt
+                    }
+                    res.orderBy(orderBy, order = input.sortOrder ?: SortOrder.ASC)
                 }
                 if (input.count != null) {
                     val offset = if (input.page == null) 0 else (input.page * input.count).toLong()
