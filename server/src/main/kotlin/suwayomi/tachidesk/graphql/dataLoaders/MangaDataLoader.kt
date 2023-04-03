@@ -14,6 +14,8 @@ import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.types.MangaNodeList
+import suwayomi.tachidesk.graphql.types.MangaNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -32,9 +34,9 @@ class MangaDataLoader : KotlinDataLoader<Int, MangaType> {
     }
 }
 
-class MangaForCategoryDataLoader : KotlinDataLoader<Int, List<MangaType>> {
+class MangaForCategoryDataLoader : KotlinDataLoader<Int, MangaNodeList> {
     override val dataLoaderName = "MangaForCategoryDataLoader"
-    override fun getDataLoader(): DataLoader<Int, List<MangaType>> = DataLoaderFactory.newDataLoader<Int, List<MangaType>> { ids ->
+    override fun getDataLoader(): DataLoader<Int, MangaNodeList> = DataLoaderFactory.newDataLoader<Int, MangaNodeList> { ids ->
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
@@ -42,7 +44,7 @@ class MangaForCategoryDataLoader : KotlinDataLoader<Int, List<MangaType>> {
                     .map { Pair(it[CategoryMangaTable.category].value, MangaType(it)) }
                     .groupBy { it.first }
                     .mapValues { it.value.map { pair -> pair.second } }
-                ids.map { itemsByRef[it] ?: emptyList() }
+                ids.map { (itemsByRef[it] ?: emptyList()).toNodeList() }
             }
         }
     }

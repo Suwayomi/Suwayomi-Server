@@ -13,7 +13,8 @@ import suwayomi.tachidesk.graphql.types.ChapterMetaItem
 import suwayomi.tachidesk.graphql.types.GlobalMetaItem
 import suwayomi.tachidesk.graphql.types.MangaMetaItem
 import suwayomi.tachidesk.graphql.types.MetaItem
-import suwayomi.tachidesk.graphql.types.MetaType
+import suwayomi.tachidesk.graphql.types.MetaNodeList
+import suwayomi.tachidesk.graphql.types.MetaNodeList.Companion.toNodeList
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -33,46 +34,46 @@ class GlobalMetaDataLoader : KotlinDataLoader<String, MetaItem?> {
     }
 }
 
-class ChapterMetaDataLoader : KotlinDataLoader<Int, MetaType> {
+class ChapterMetaDataLoader : KotlinDataLoader<Int, MetaNodeList> {
     override val dataLoaderName = "ChapterMetaDataLoader"
-    override fun getDataLoader(): DataLoader<Int, MetaType> = DataLoaderFactory.newDataLoader<Int, MetaType> { ids ->
+    override fun getDataLoader(): DataLoader<Int, MetaNodeList> = DataLoaderFactory.newDataLoader<Int, MetaNodeList> { ids ->
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
                 val metasByRefId = ChapterMetaTable.select { ChapterMetaTable.ref inList ids }
                     .map { ChapterMetaItem(it) }
                     .groupBy { it.ref }
-                ids.map { metasByRefId[it] ?: emptyList() }
+                ids.map { (metasByRefId[it] ?: emptyList()).toNodeList() }
             }
         }
     }
 }
 
-class MangaMetaDataLoader : KotlinDataLoader<Int, MetaType> {
+class MangaMetaDataLoader : KotlinDataLoader<Int, MetaNodeList> {
     override val dataLoaderName = "MangaMetaDataLoader"
-    override fun getDataLoader(): DataLoader<Int, MetaType> = DataLoaderFactory.newDataLoader<Int, MetaType> { ids ->
+    override fun getDataLoader(): DataLoader<Int, MetaNodeList> = DataLoaderFactory.newDataLoader<Int, MetaNodeList> { ids ->
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
                 val metasByRefId = MangaMetaTable.select { MangaMetaTable.ref inList ids }
                     .map { MangaMetaItem(it) }
                     .groupBy { it.ref }
-                ids.map { metasByRefId[it] ?: emptyList() }
+                ids.map { (metasByRefId[it] ?: emptyList()).toNodeList() }
             }
         }
     }
 }
 
-class CategoryMetaDataLoader : KotlinDataLoader<Int, MetaType> {
+class CategoryMetaDataLoader : KotlinDataLoader<Int, MetaNodeList> {
     override val dataLoaderName = "CategoryMetaDataLoader"
-    override fun getDataLoader(): DataLoader<Int, MetaType> = DataLoaderFactory.newDataLoader<Int, MetaType> { ids ->
+    override fun getDataLoader(): DataLoader<Int, MetaNodeList> = DataLoaderFactory.newDataLoader<Int, MetaNodeList> { ids ->
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
                 val metasByRefId = MangaMetaTable.select { MangaMetaTable.ref inList ids }
                     .map { CategoryMetaItem(it) }
                     .groupBy { it.ref }
-                ids.map { metasByRefId[it] ?: emptyList() }
+                ids.map { (metasByRefId[it] ?: emptyList()).toNodeList() }
             }
         }
     }

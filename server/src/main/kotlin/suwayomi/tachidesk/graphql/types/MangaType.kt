@@ -34,7 +34,7 @@ class MangaType(
     val realUrl: String?,
     var lastFetchedAt: Long?,
     var chaptersLastFetchedAt: Long?
-) {
+) : Node {
     constructor(row: ResultRow) : this(
         row[MangaTable.id].value,
         row[MangaTable.sourceReference],
@@ -88,15 +88,46 @@ class MangaType(
         return Instant.now().epochSecond.minus(chaptersLastFetchedAt!!)
     }
 
-    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MetaType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, MetaType>("MangaMetaDataLoader", id)
+    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MetaNodeList> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, MetaNodeList>("MangaMetaDataLoader", id)
     }
 
-    fun categories(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<CategoryType>> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, List<CategoryType>>("CategoriesForMangaDataLoader", id)
+    fun categories(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<CategoryNodeList> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, CategoryNodeList>("CategoriesForMangaDataLoader", id)
     }
 
     fun source(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<SourceType?> {
         return dataFetchingEnvironment.getValueFromDataLoader<Int, SourceType?>("SourceForMangaDataLoader", id)
+    }
+}
+
+data class MangaNodeList(
+    override val nodes: List<MangaType>,
+    override val edges: MangaEdges,
+    override val pageInfo: PageInfo,
+    override val totalCount: Int
+) : NodeList() {
+    data class MangaEdges(
+        override val cursor: Cursor,
+        override val node: MangaType?
+    ) : Edges()
+
+    companion object {
+        fun List<MangaType>.toNodeList(): MangaNodeList {
+            return MangaNodeList(
+                nodes = this,
+                edges = MangaEdges(
+                    cursor = lastIndex,
+                    node = lastOrNull()
+                ),
+                pageInfo = PageInfo(
+                    hasNextPage = false,
+                    hasPreviousPage = false,
+                    startCursor = 0,
+                    endCursor = lastIndex
+                ),
+                totalCount = size
+            )
+        }
     }
 }

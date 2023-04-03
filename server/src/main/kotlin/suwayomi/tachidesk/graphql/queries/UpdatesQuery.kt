@@ -11,6 +11,8 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.types.UpdatesNodeList
+import suwayomi.tachidesk.graphql.types.UpdatesNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.UpdatesType
 import suwayomi.tachidesk.manga.model.dataclass.PaginationFactor
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -31,7 +33,7 @@ class UpdatesQuery {
         val page: Int
     )
 
-    fun updates(input: UpdatesQueryInput): List<UpdatesType> {
+    fun updates(input: UpdatesQueryInput): UpdatesNodeList {
         val results = transaction {
             ChapterTable.innerJoin(MangaTable)
                 .select { (MangaTable.inLibrary eq true) and (ChapterTable.fetchedAt greater MangaTable.inLibraryAt) }
@@ -42,6 +44,6 @@ class UpdatesQuery {
                 }
         }
 
-        return results
+        return results.toNodeList() // todo paged
     }
 }

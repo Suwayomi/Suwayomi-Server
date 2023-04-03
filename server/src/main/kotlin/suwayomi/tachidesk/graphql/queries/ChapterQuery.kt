@@ -13,6 +13,8 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.types.ChapterNodeList
+import suwayomi.tachidesk.graphql.types.ChapterNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import java.util.concurrent.CompletableFuture
@@ -56,7 +58,7 @@ class ChapterQuery {
         val count: Int? = null
     )
 
-    fun chapters(input: ChapterQueryInput? = null): List<ChapterType> {
+    fun chapters(input: ChapterQueryInput? = null): ChapterNodeList {
         val results = transaction {
             var res = ChapterTable.selectAll()
 
@@ -97,6 +99,6 @@ class ChapterQuery {
             res.toList()
         }
 
-        return results.map { ChapterType(it) }
+        return results.map { ChapterType(it) }.toNodeList() // todo paged
     }
 }

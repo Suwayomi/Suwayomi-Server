@@ -18,7 +18,7 @@ class CategoryType(
     val order: Int,
     val name: String,
     val default: Boolean
-) {
+) : Node {
     constructor(row: ResultRow) : this(
         row[CategoryTable.id].value,
         row[CategoryTable.order],
@@ -26,11 +26,42 @@ class CategoryType(
         row[CategoryTable.isDefault]
     )
 
-    fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<MangaType>> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, List<MangaType>>("MangaForCategoryDataLoader", id)
+    fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, MangaNodeList>("MangaForCategoryDataLoader", id)
     }
 
-    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MetaType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, MetaType>("CategoryMetaDataLoader", id)
+    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MetaNodeList> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, MetaNodeList>("CategoryMetaDataLoader", id)
+    }
+}
+
+data class CategoryNodeList(
+    override val nodes: List<CategoryType>,
+    override val edges: CategoryEdges,
+    override val pageInfo: PageInfo,
+    override val totalCount: Int
+) : NodeList() {
+    data class CategoryEdges(
+        override val cursor: Cursor,
+        override val node: CategoryType?
+    ) : Edges()
+
+    companion object {
+        fun List<CategoryType>.toNodeList(): CategoryNodeList {
+            return CategoryNodeList(
+                nodes = this,
+                edges = CategoryEdges(
+                    cursor = lastIndex,
+                    node = lastOrNull()
+                ),
+                pageInfo = PageInfo(
+                    hasNextPage = false,
+                    hasPreviousPage = false,
+                    startCursor = 0,
+                    endCursor = lastIndex
+                ),
+                totalCount = size
+            )
+        }
     }
 }

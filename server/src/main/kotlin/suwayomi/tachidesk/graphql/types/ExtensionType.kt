@@ -27,7 +27,7 @@ class ExtensionType(
     val installed: Boolean,
     val hasUpdate: Boolean,
     val obsolete: Boolean
-) {
+) : Node {
     constructor(row: ResultRow) : this(
         apkName = row[ExtensionTable.apkName],
         iconUrl = row[ExtensionTable.iconUrl],
@@ -42,7 +42,38 @@ class ExtensionType(
         obsolete = row[ExtensionTable.isObsolete]
     )
 
-    fun source(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<SourceType>> {
-        return dataFetchingEnvironment.getValueFromDataLoader<String, List<SourceType>>("SourcesForExtensionDataLoader", pkgName)
+    fun source(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<SourceNodeList> {
+        return dataFetchingEnvironment.getValueFromDataLoader<String, SourceNodeList>("SourcesForExtensionDataLoader", pkgName)
+    }
+}
+
+data class ExtensionNodeList(
+    override val nodes: List<ExtensionType>,
+    override val edges: ExtensionEdges,
+    override val pageInfo: PageInfo,
+    override val totalCount: Int
+) : NodeList() {
+    data class ExtensionEdges(
+        override val cursor: Cursor,
+        override val node: ExtensionType?
+    ) : Edges()
+
+    companion object {
+        fun List<ExtensionType>.toNodeList(): ExtensionNodeList {
+            return ExtensionNodeList(
+                nodes = this,
+                edges = ExtensionEdges(
+                    cursor = lastIndex,
+                    node = lastOrNull()
+                ),
+                pageInfo = PageInfo(
+                    hasNextPage = false,
+                    hasPreviousPage = false,
+                    startCursor = 0,
+                    endCursor = lastIndex
+                ),
+                totalCount = size
+            )
+        }
     }
 }

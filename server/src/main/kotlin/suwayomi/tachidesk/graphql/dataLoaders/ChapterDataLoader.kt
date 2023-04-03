@@ -14,6 +14,8 @@ import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.types.ChapterNodeList
+import suwayomi.tachidesk.graphql.types.ChapterNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -31,16 +33,16 @@ class ChapterDataLoader : KotlinDataLoader<Int, ChapterType> {
     }
 }
 
-class ChaptersForMangaDataLoader : KotlinDataLoader<Int, List<ChapterType>> {
+class ChaptersForMangaDataLoader : KotlinDataLoader<Int, ChapterNodeList> {
     override val dataLoaderName = "ChaptersForMangaDataLoader"
-    override fun getDataLoader(): DataLoader<Int, List<ChapterType>> = DataLoaderFactory.newDataLoader<Int, List<ChapterType>> { ids ->
+    override fun getDataLoader(): DataLoader<Int, ChapterNodeList> = DataLoaderFactory.newDataLoader<Int, ChapterNodeList> { ids ->
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
                 val chaptersByMangaId = ChapterTable.select { ChapterTable.manga inList ids }
                     .map { ChapterType(it) }
                     .groupBy { it.mangaId }
-                ids.map { chaptersByMangaId[it] ?: emptyList() }
+                ids.map { (chaptersByMangaId[it] ?: emptyList()).toNodeList() }
             }
         }
     }

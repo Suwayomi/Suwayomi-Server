@@ -11,6 +11,8 @@ import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.types.SourceNodeList
+import suwayomi.tachidesk.graphql.types.SourceNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.SourceType
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import java.util.concurrent.CompletableFuture
@@ -33,11 +35,11 @@ class SourceQuery {
         return dataFetchingEnvironment.getValueFromDataLoader<Long, SourceType?>("SourceDataLoader", id)
     }
 
-    fun sources(): List<SourceType> {
+    fun sources(): SourceNodeList {
         val results = transaction {
             SourceTable.selectAll().toList().mapNotNull { SourceType(it) }
         }
 
-        return results
+        return results.toNodeList()
     }
 }

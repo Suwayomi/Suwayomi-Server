@@ -11,6 +11,8 @@ import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.types.ExtensionNodeList
+import suwayomi.tachidesk.graphql.types.ExtensionNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.ExtensionType
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import java.util.concurrent.CompletableFuture
@@ -37,11 +39,11 @@ class ExtensionQuery {
         return dataFetchingEnvironment.getValueFromDataLoader<String, ExtensionType>("ExtensionDataLoader", pkgName)
     }
 
-    fun extensions(): List<ExtensionType> {
+    fun extensions(): ExtensionNodeList {
         val results = transaction {
             ExtensionTable.selectAll().toList()
         }
 
-        return results.map { ExtensionType(it) }
+        return results.map { ExtensionType(it) }.toNodeList()
     }
 }

@@ -24,7 +24,7 @@ class DownloadType(
     var mangaDataClass: MangaDataClass,
     @GraphQLIgnore
     var chapterDataClass: ChapterDataClass
-) {
+) : Node {
     constructor(downloadChapter: DownloadChapter) : this(
         downloadChapter.chapter.id,
         downloadChapter.chapterIndex,
@@ -42,5 +42,36 @@ class DownloadType(
 
     fun chapter(): ChapterType {
         return ChapterType(chapterDataClass)
+    }
+}
+
+data class DownloadNodeList(
+    override val nodes: List<DownloadType>,
+    override val edges: DownloadEdges,
+    override val pageInfo: PageInfo,
+    override val totalCount: Int
+) : NodeList() {
+    data class DownloadEdges(
+        override val cursor: Cursor,
+        override val node: DownloadType?
+    ) : Edges()
+
+    companion object {
+        fun List<DownloadType>.toNodeList(): DownloadNodeList {
+            return DownloadNodeList(
+                nodes = this,
+                edges = DownloadEdges(
+                    cursor = lastIndex,
+                    node = lastOrNull()
+                ),
+                pageInfo = PageInfo(
+                    hasNextPage = false,
+                    hasPreviousPage = false,
+                    startCursor = 0,
+                    endCursor = lastIndex
+                ),
+                totalCount = size
+            )
+        }
     }
 }

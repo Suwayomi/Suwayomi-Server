@@ -14,6 +14,8 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
 import suwayomi.tachidesk.graphql.types.GlobalMetaItem
 import suwayomi.tachidesk.graphql.types.MetaItem
+import suwayomi.tachidesk.graphql.types.MetaNodeList
+import suwayomi.tachidesk.graphql.types.MetaNodeList.Companion.toNodeList
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -30,11 +32,11 @@ class MetaQuery {
         return dataFetchingEnvironment.getValueFromDataLoader<String, MetaItem?>("GlobalMetaDataLoader", key)
     }
 
-    fun metas(): List<GlobalMetaItem> {
+    fun metas(): MetaNodeList {
         val results = transaction {
             GlobalMetaTable.selectAll().toList()
         }
 
-        return results.map { GlobalMetaItem(it) }
+        return results.map { GlobalMetaItem(it) }.toNodeList()
     }
 }

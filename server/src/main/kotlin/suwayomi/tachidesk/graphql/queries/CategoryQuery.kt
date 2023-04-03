@@ -13,6 +13,8 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.types.CategoryNodeList
+import suwayomi.tachidesk.graphql.types.CategoryNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.CategoryType
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import java.util.concurrent.CompletableFuture
@@ -48,7 +50,7 @@ class CategoryQuery {
         val query: String? = null
     )
 
-    fun categories(input: CategoriesQueryInput? = null): List<CategoryType> {
+    fun categories(input: CategoriesQueryInput? = null): CategoryNodeList {
         val results = transaction {
             val res = CategoryTable.selectAll()
 
@@ -72,6 +74,6 @@ class CategoryQuery {
             res.toList()
         }
 
-        return results.map { CategoryType(it) }
+        return results.map { CategoryType(it) }.toNodeList()
     }
 }

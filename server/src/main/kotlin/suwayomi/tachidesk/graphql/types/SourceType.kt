@@ -29,7 +29,7 @@ class SourceType(
     val isConfigurable: Boolean,
     val isNsfw: Boolean,
     val displayName: String
-) {
+) : Node {
     constructor(source: SourceDataClass) : this(
         id = source.id.toLong(),
         name = source.name,
@@ -52,8 +52,8 @@ class SourceType(
         displayName = catalogueSource.toString()
     )
 
-    fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<MangaType>> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Long, List<MangaType>>("MangaForSourceDataLoader", id)
+    fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Long, MangaNodeList>("MangaForSourceDataLoader", id)
     }
 
     fun extension(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ExtensionType> {
@@ -74,4 +74,35 @@ fun SourceType(row: ResultRow): SourceType? {
     }
 
     return SourceType(row, sourceExtension, catalogueSource)
+}
+
+data class SourceNodeList(
+    override val nodes: List<SourceType>,
+    override val edges: SourceEdges,
+    override val pageInfo: PageInfo,
+    override val totalCount: Int
+) : NodeList() {
+    data class SourceEdges(
+        override val cursor: Cursor,
+        override val node: SourceType?
+    ) : Edges()
+
+    companion object {
+        fun List<SourceType>.toNodeList(): SourceNodeList {
+            return SourceNodeList(
+                nodes = this,
+                edges = SourceEdges(
+                    cursor = lastIndex,
+                    node = lastOrNull()
+                ),
+                pageInfo = PageInfo(
+                    hasNextPage = false,
+                    hasPreviousPage = false,
+                    startCursor = 0,
+                    endCursor = lastIndex
+                ),
+                totalCount = size
+            )
+        }
+    }
 }

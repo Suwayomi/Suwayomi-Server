@@ -16,6 +16,8 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.queries.util.GreaterOrLessThanLong
 import suwayomi.tachidesk.graphql.queries.util.andWhereGreaterOrLessThen
+import suwayomi.tachidesk.graphql.types.MangaNodeList
+import suwayomi.tachidesk.graphql.types.MangaNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -60,7 +62,7 @@ class MangaQuery {
         val count: Int? = null
     )
 
-    fun mangas(input: MangaQueryInput? = null): List<MangaType> {
+    fun mangas(input: MangaQueryInput? = null): MangaNodeList {
         val results = transaction {
             var res = MangaTable.selectAll()
 
@@ -102,6 +104,6 @@ class MangaQuery {
             res.toList()
         }
 
-        return results.map { MangaType(it) }
+        return results.map { MangaType(it) }.toNodeList() // todo paged
     }
 }

@@ -31,7 +31,7 @@ class ChapterType(
     val isDownloaded: Boolean,
     val pageCount: Int
 //    val chapterCount: Int?,
-) {
+) : Node {
     constructor(row: ResultRow) : this(
         row[ChapterTable.id].value,
         row[ChapterTable.url],
@@ -73,7 +73,38 @@ class ChapterType(
         return dataFetchingEnvironment.getValueFromDataLoader<Int, MangaType>("MangaDataLoader", mangaId)
     }
 
-    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MetaType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, MetaType>("ChapterMetaDataLoader", id)
+    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MetaNodeList> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, MetaNodeList>("ChapterMetaDataLoader", id)
+    }
+}
+
+data class ChapterNodeList(
+    override val nodes: List<ChapterType>,
+    override val edges: ChapterEdges,
+    override val pageInfo: PageInfo,
+    override val totalCount: Int
+) : NodeList() {
+    data class ChapterEdges(
+        override val cursor: Cursor,
+        override val node: ChapterType?
+    ) : Edges()
+
+    companion object {
+        fun List<ChapterType>.toNodeList(): ChapterNodeList {
+            return ChapterNodeList(
+                nodes = this,
+                edges = ChapterEdges(
+                    cursor = lastIndex,
+                    node = lastOrNull()
+                ),
+                pageInfo = PageInfo(
+                    hasNextPage = false,
+                    hasPreviousPage = false,
+                    startCursor = 0,
+                    endCursor = lastIndex
+                ),
+                totalCount = size
+            )
+        }
     }
 }
