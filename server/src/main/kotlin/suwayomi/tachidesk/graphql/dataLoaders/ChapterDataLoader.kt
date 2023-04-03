@@ -20,14 +20,16 @@ import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 
-class ChapterDataLoader : KotlinDataLoader<Int, ChapterType> {
+class ChapterDataLoader : KotlinDataLoader<Int, ChapterType?> {
     override val dataLoaderName = "ChapterDataLoader"
-    override fun getDataLoader(): DataLoader<Int, ChapterType> = DataLoaderFactory.newDataLoader<Int, ChapterType> { ids ->
+    override fun getDataLoader(): DataLoader<Int, ChapterType?> = DataLoaderFactory.newDataLoader<Int, ChapterType> { ids ->
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
-                ChapterTable.select { ChapterTable.id inList ids }
+                val chapters = ChapterTable.select { ChapterTable.id inList ids }
                     .map { ChapterType(it) }
+                    .associateBy { it.id }
+                ids.map { chapters[it] }
             }
         }
     }

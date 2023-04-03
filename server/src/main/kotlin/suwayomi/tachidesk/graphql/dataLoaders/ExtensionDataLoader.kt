@@ -19,28 +19,44 @@ import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 
-class ExtensionDataLoader : KotlinDataLoader<String, ExtensionType> {
+class ExtensionDataLoader : KotlinDataLoader<String, ExtensionType?> {
     override val dataLoaderName = "ExtensionDataLoader"
-    override fun getDataLoader(): DataLoader<String, ExtensionType> = DataLoaderFactory.newDataLoader { ids ->
+    override fun getDataLoader(): DataLoader<String, ExtensionType?> = DataLoaderFactory.newDataLoader { ids ->
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
-                ExtensionTable.select { ExtensionTable.pkgName inList ids }
+                val extensions = ExtensionTable.select { ExtensionTable.pkgName inList ids }
                     .map { ExtensionType(it) }
+                    .associateBy { it.pkgName }
+                ids.map { extensions[it] }
             }
         }
     }
 }
 
-class ExtensionForSourceDataLoader : KotlinDataLoader<Long, ExtensionType> {
+class ExtensionForSourceDataLoader : KotlinDataLoader<Long, ExtensionType?> {
     override val dataLoaderName = "ExtensionForSourceDataLoader"
-    override fun getDataLoader(): DataLoader<Long, ExtensionType> = DataLoaderFactory.newDataLoader { ids ->
+    override fun getDataLoader(): DataLoader<Long, ExtensionType?> = DataLoaderFactory.newDataLoader { ids ->
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
-                ExtensionTable.innerJoin(SourceTable)
+                val extensions = ExtensionTable.innerJoin(SourceTable)
                     .select { SourceTable.id inList ids }
-                    .map { ExtensionType(it) }
+                    .toList()
+                    .map { Triple(it[SourceTable.id].value, it[ExtensionTable.pkgName], it) }
+                    .let { triples ->
+                        val sources = buildMap {
+                            triples.forEach {
+                                if (!containsKey(it.second)) {
+                                    put(it.second, ExtensionType(it.third))
+                                }
+                            }
+                        }
+                        triples.associate {
+                            it.first to sources[it.second]
+                        }
+                    }
+                ids.map { extensions[it] }
             }
         }
     }

@@ -35,8 +35,8 @@ import java.util.concurrent.CompletableFuture
  * - Check for updates (global mutation?)
  */
 class ExtensionQuery {
-    fun extension(dataFetchingEnvironment: DataFetchingEnvironment, pkgName: String): CompletableFuture<ExtensionType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<String, ExtensionType>("ExtensionDataLoader", pkgName)
+    fun extension(dataFetchingEnvironment: DataFetchingEnvironment, pkgName: String): CompletableFuture<ExtensionType?> {
+        return dataFetchingEnvironment.getValueFromDataLoader("ExtensionDataLoader", pkgName)
     }
 
     fun extensions(): ExtensionNodeList {

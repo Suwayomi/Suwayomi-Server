@@ -28,9 +28,10 @@ class SourceDataLoader : KotlinDataLoader<Long, SourceType?> {
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
-                SourceTable.select { SourceTable.id inList ids }.map {
-                    SourceType(it)
-                }
+                val source = SourceTable.select { SourceTable.id inList ids }
+                    .mapNotNull { SourceType(it) }
+                    .associateBy { it.id }
+                ids.map { source[it] }
             }
         }
     }

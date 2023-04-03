@@ -33,8 +33,8 @@ import java.util.concurrent.CompletableFuture
  * - Delete download
  */
 class ChapterQuery {
-    fun chapter(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<ChapterType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterType>("ChapterDataLoader", id)
+    fun chapter(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<ChapterType?> {
+        return dataFetchingEnvironment.getValueFromDataLoader("ChapterDataLoader", id)
     }
 
     enum class ChapterSort {

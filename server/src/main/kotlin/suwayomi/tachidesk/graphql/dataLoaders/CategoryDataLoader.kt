@@ -21,14 +21,16 @@ import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 
-class CategoryDataLoader : KotlinDataLoader<Int, CategoryType> {
+class CategoryDataLoader : KotlinDataLoader<Int, CategoryType?> {
     override val dataLoaderName = "CategoryDataLoader"
-    override fun getDataLoader(): DataLoader<Int, CategoryType> = DataLoaderFactory.newDataLoader<Int, CategoryType> { ids ->
+    override fun getDataLoader(): DataLoader<Int, CategoryType?> = DataLoaderFactory.newDataLoader { ids ->
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
-                CategoryTable.select { CategoryTable.id inList ids }
+                val categories = CategoryTable.select { CategoryTable.id inList ids }
                     .map { CategoryType(it) }
+                    .associateBy { it.id }
+                ids.map { categories[it] }
             }
         }
     }

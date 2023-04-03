@@ -33,8 +33,8 @@ import java.util.concurrent.CompletableFuture
  * - Delete meta
  */
 class CategoryQuery {
-    fun category(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<CategoryType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, CategoryType>("CategoryDataLoader", id)
+    fun category(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<CategoryType?> {
+        return dataFetchingEnvironment.getValueFromDataLoader("CategoryDataLoader", id)
     }
 
     enum class CategorySort {

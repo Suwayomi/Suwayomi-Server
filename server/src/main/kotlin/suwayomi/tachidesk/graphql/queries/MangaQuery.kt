@@ -39,8 +39,8 @@ import java.util.concurrent.CompletableFuture
  * - Delete meta
  */
 class MangaQuery {
-    fun manga(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<MangaType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, MangaType>("MangaDataLoader", id)
+    fun manga(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<MangaType?> {
+        return dataFetchingEnvironment.getValueFromDataLoader("MangaDataLoader", id)
     }
 
     enum class MangaSort {

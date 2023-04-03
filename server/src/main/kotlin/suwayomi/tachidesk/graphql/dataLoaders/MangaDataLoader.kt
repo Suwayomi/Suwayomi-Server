@@ -21,14 +21,16 @@ import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 
-class MangaDataLoader : KotlinDataLoader<Int, MangaType> {
+class MangaDataLoader : KotlinDataLoader<Int, MangaType?> {
     override val dataLoaderName = "MangaDataLoader"
-    override fun getDataLoader(): DataLoader<Int, MangaType> = DataLoaderFactory.newDataLoader<Int, MangaType> { ids ->
+    override fun getDataLoader(): DataLoader<Int, MangaType?> = DataLoaderFactory.newDataLoader { ids ->
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
-                MangaTable.select { MangaTable.id inList ids }
+                val manga = MangaTable.select { MangaTable.id inList ids }
                     .map { MangaType(it) }
+                    .associateBy { it.id }
+                ids.map { manga[it] }
             }
         }
     }
