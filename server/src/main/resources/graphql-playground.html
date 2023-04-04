@@ -40,6 +40,15 @@
      -->
     <link href="https://unpkg.com/graphiql/graphiql.min.css" rel="stylesheet"/>
     <link href="https://unpkg.com/@graphiql/plugin-explorer/dist/style.min.css" rel="stylesheet"/>
+    <style>
+        .doc-explorer-contents {
+            height: 100%;
+            padding-bottom: 40px;
+        }
+        .graphiql-explorer-root {
+            padding-bottom: 40px;
+        }
+    </style>
 </head>
 
 <body>
@@ -60,7 +69,17 @@
 
         function GraphiQLWithExplorer() {
             const [query, setQuery] = React.useState(
-                'query AllCategories {\n  categories {\n    manga {\n      title\n    }\n  }\n}',
+                'query AllCategories {\n' +
+                '  categories {\n' +
+                '    nodes {\n' +
+                '      manga {\n' +
+                '        nodes {\n' +
+                '          title\n' +
+                '        }\n' +
+                '      }\n' +
+                '    }\n' +
+                '  }\n' +
+                '}',
             );
             const explorerPlugin = GraphiQLPluginExplorer.useExplorerPlugin({
                 query: query,
