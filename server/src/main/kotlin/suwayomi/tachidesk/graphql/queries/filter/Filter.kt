@@ -5,7 +5,6 @@ import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.ComparisonOp
 import org.jetbrains.exposed.sql.Expression
 import org.jetbrains.exposed.sql.ExpressionWithColumnType
-import org.jetbrains.exposed.sql.LikeEscapeOp
 import org.jetbrains.exposed.sql.LikePattern
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.QueryBuilder
@@ -29,10 +28,10 @@ class ILikeEscapeOp(expr1: Expression<*>, expr2: Expression<*>, like: Boolean, v
     }
 
     companion object {
-        fun <T : String?> iLike(expression: Expression<T>, pattern: String): LikeEscapeOp = iLike(expression, LikePattern(pattern))
-        fun <T : String?> iNotLike(expression: Expression<T>, pattern: String): LikeEscapeOp = iNotLike(expression, LikePattern(pattern))
-        fun <T : String?> iLike(expression: Expression<T>, pattern: LikePattern): LikeEscapeOp = LikeEscapeOp(expression, stringParam(pattern.pattern), true, pattern.escapeChar)
-        fun <T : String?> iNotLike(expression: Expression<T>, pattern: LikePattern): LikeEscapeOp = LikeEscapeOp(expression, stringParam(pattern.pattern), false, pattern.escapeChar)
+        fun <T : String?> iLike(expression: Expression<T>, pattern: String): ILikeEscapeOp = iLike(expression, LikePattern(pattern))
+        fun <T : String?> iNotLike(expression: Expression<T>, pattern: String): ILikeEscapeOp = iNotLike(expression, LikePattern(pattern))
+        fun <T : String?> iLike(expression: Expression<T>, pattern: LikePattern): ILikeEscapeOp = ILikeEscapeOp(expression, stringParam(pattern.pattern), true, pattern.escapeChar)
+        fun <T : String?> iNotLike(expression: Expression<T>, pattern: LikePattern): ILikeEscapeOp = ILikeEscapeOp(expression, stringParam(pattern.pattern), false, pattern.escapeChar)
     }
 }
 
