@@ -13,6 +13,11 @@ import eu.kanade.tachiyomi.source.ConfigurableSource
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.select
+import suwayomi.tachidesk.graphql.server.primitives.Cursor
+import suwayomi.tachidesk.graphql.server.primitives.Edges
+import suwayomi.tachidesk.graphql.server.primitives.Node
+import suwayomi.tachidesk.graphql.server.primitives.NodeList
+import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
@@ -84,7 +89,7 @@ data class SourceNodeList(
 ) : NodeList() {
     data class SourceEdges(
         override val cursor: Cursor,
-        override val node: SourceType?
+        override val node: SourceType
     ) : Edges()
 
     companion object {
@@ -92,14 +97,14 @@ data class SourceNodeList(
             return SourceNodeList(
                 nodes = this,
                 edges = SourceEdges(
-                    cursor = lastIndex,
-                    node = lastOrNull()
+                    cursor = Cursor(lastIndex.toString()),
+                    node = last()
                 ),
                 pageInfo = PageInfo(
                     hasNextPage = false,
                     hasPreviousPage = false,
-                    startCursor = 0,
-                    endCursor = lastIndex
+                    startCursor = Cursor(0.toString()),
+                    endCursor = Cursor(lastIndex.toString())
                 ),
                 totalCount = size
             )

@@ -173,6 +173,7 @@ data class StringFilter(
     val greaterThanOrEqualToInsensitive: String? = null
 ) : ComparableScalarFilter<String>
 
+@Suppress("UNCHECKED_CAST")
 fun <T : String?> andFilterWithCompareString(
     column: Column<T>,
     filter: StringFilter?

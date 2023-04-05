@@ -8,6 +8,11 @@
 package suwayomi.tachidesk.graphql.types
 
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
+import suwayomi.tachidesk.graphql.server.primitives.Cursor
+import suwayomi.tachidesk.graphql.server.primitives.Edges
+import suwayomi.tachidesk.graphql.server.primitives.Node
+import suwayomi.tachidesk.graphql.server.primitives.NodeList
+import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
@@ -53,7 +58,7 @@ data class DownloadNodeList(
 ) : NodeList() {
     data class DownloadEdges(
         override val cursor: Cursor,
-        override val node: DownloadType?
+        override val node: DownloadType
     ) : Edges()
 
     companion object {
@@ -61,14 +66,14 @@ data class DownloadNodeList(
             return DownloadNodeList(
                 nodes = this,
                 edges = DownloadEdges(
-                    cursor = lastIndex,
-                    node = lastOrNull()
+                    cursor = Cursor(lastIndex.toString()),
+                    node = last()
                 ),
                 pageInfo = PageInfo(
                     hasNextPage = false,
                     hasPreviousPage = false,
-                    startCursor = 0,
-                    endCursor = lastIndex
+                    startCursor = Cursor(0.toString()),
+                    endCursor = Cursor(lastIndex.toString())
                 ),
                 totalCount = size
             )

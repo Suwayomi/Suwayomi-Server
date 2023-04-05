@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.graphql.server
+package suwayomi.tachidesk.graphql.server.primitives
 
 import graphql.GraphQLContext
 import graphql.execution.CoercedVariables

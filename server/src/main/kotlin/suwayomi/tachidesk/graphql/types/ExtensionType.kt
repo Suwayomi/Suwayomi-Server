@@ -10,6 +10,11 @@ package suwayomi.tachidesk.graphql.types
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.ResultRow
+import suwayomi.tachidesk.graphql.server.primitives.Cursor
+import suwayomi.tachidesk.graphql.server.primitives.Edges
+import suwayomi.tachidesk.graphql.server.primitives.Node
+import suwayomi.tachidesk.graphql.server.primitives.NodeList
+import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import java.util.concurrent.CompletableFuture
 
@@ -55,7 +60,7 @@ data class ExtensionNodeList(
 ) : NodeList() {
     data class ExtensionEdges(
         override val cursor: Cursor,
-        override val node: ExtensionType?
+        override val node: ExtensionType
     ) : Edges()
 
     companion object {
@@ -63,14 +68,14 @@ data class ExtensionNodeList(
             return ExtensionNodeList(
                 nodes = this,
                 edges = ExtensionEdges(
-                    cursor = lastIndex,
-                    node = lastOrNull()
+                    cursor = Cursor(lastIndex.toString()),
+                    node = last()
                 ),
                 pageInfo = PageInfo(
                     hasNextPage = false,
                     hasPreviousPage = false,
-                    startCursor = 0,
-                    endCursor = lastIndex
+                    startCursor = Cursor(0.toString()),
+                    endCursor = Cursor(lastIndex.toString())
                 ),
                 totalCount = size
             )

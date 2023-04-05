@@ -10,6 +10,11 @@ package suwayomi.tachidesk.graphql.types
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.ResultRow
+import suwayomi.tachidesk.graphql.server.primitives.Cursor
+import suwayomi.tachidesk.graphql.server.primitives.Edges
+import suwayomi.tachidesk.graphql.server.primitives.Node
+import suwayomi.tachidesk.graphql.server.primitives.NodeList
+import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.MangaStatus
@@ -109,7 +114,7 @@ data class MangaNodeList(
 ) : NodeList() {
     data class MangaEdges(
         override val cursor: Cursor,
-        override val node: MangaType?
+        override val node: MangaType
     ) : Edges()
 
     companion object {
@@ -117,14 +122,14 @@ data class MangaNodeList(
             return MangaNodeList(
                 nodes = this,
                 edges = MangaEdges(
-                    cursor = lastIndex,
-                    node = lastOrNull()
+                    cursor = Cursor(lastIndex.toString()),
+                    node = last()
                 ),
                 pageInfo = PageInfo(
                     hasNextPage = false,
                     hasPreviousPage = false,
-                    startCursor = 0,
-                    endCursor = lastIndex
+                    startCursor = Cursor(0.toString()),
+                    endCursor = Cursor(lastIndex.toString())
                 ),
                 totalCount = size
             )

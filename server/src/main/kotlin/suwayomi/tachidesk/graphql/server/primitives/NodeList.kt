@@ -1,10 +1,8 @@
-package suwayomi.tachidesk.graphql.types
+package suwayomi.tachidesk.graphql.server.primitives
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 
 interface Node
-
-typealias Cursor = Int
 
 abstract class NodeList {
     @GraphQLDescription("A list of [T] objects.")
@@ -36,5 +34,5 @@ abstract class Edges {
     abstract val cursor: Cursor
 
     @GraphQLDescription("The [T] at the end of the edge.")
-    abstract val node: Node?
+    abstract val node: Node
 }

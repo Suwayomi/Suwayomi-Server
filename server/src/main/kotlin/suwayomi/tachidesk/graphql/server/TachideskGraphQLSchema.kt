@@ -20,6 +20,9 @@ import suwayomi.tachidesk.graphql.queries.MangaQuery
 import suwayomi.tachidesk.graphql.queries.MetaQuery
 import suwayomi.tachidesk.graphql.queries.SourceQuery
 import suwayomi.tachidesk.graphql.queries.UpdatesQuery
+import suwayomi.tachidesk.graphql.server.primitives.Cursor
+import suwayomi.tachidesk.graphql.server.primitives.GraphQLCursor
+import suwayomi.tachidesk.graphql.server.primitives.GraphQLLongAsString
 import suwayomi.tachidesk.graphql.subscriptions.DownloadSubscription
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
@@ -27,6 +30,7 @@ import kotlin.reflect.KType
 class CustomSchemaGeneratorHooks : FlowSubscriptionSchemaGeneratorHooks() {
     override fun willGenerateGraphQLType(type: KType): GraphQLType? = when (type.classifier as? KClass<*>) {
         Long::class -> GraphQLLongAsString // encode to string for JS
+        Cursor::class -> GraphQLCursor
         else -> super.willGenerateGraphQLType(type)
     }
 }

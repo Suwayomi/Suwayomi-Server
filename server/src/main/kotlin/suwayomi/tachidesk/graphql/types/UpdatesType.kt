@@ -8,6 +8,11 @@
 package suwayomi.tachidesk.graphql.types
 
 import org.jetbrains.exposed.sql.ResultRow
+import suwayomi.tachidesk.graphql.server.primitives.Cursor
+import suwayomi.tachidesk.graphql.server.primitives.Edges
+import suwayomi.tachidesk.graphql.server.primitives.Node
+import suwayomi.tachidesk.graphql.server.primitives.NodeList
+import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 
 class UpdatesType(
     val manga: MangaType,
@@ -27,7 +32,7 @@ data class UpdatesNodeList(
 ) : NodeList() {
     data class UpdatesEdges(
         override val cursor: Cursor,
-        override val node: UpdatesType?
+        override val node: UpdatesType
     ) : Edges()
 
     companion object {
@@ -35,14 +40,14 @@ data class UpdatesNodeList(
             return UpdatesNodeList(
                 nodes = this,
                 edges = UpdatesEdges(
-                    cursor = lastIndex,
-                    node = lastOrNull()
+                    cursor = Cursor(lastIndex.toString()),
+                    node = last()
                 ),
                 pageInfo = PageInfo(
                     hasNextPage = false,
                     hasPreviousPage = false,
-                    startCursor = 0,
-                    endCursor = lastIndex
+                    startCursor = Cursor(0.toString()),
+                    endCursor = Cursor(lastIndex.toString())
                 ),
                 totalCount = size
             )
