@@ -4,7 +4,7 @@ import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
-import suwayomi.tachidesk.graphql.server.primitives.Edges
+import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
@@ -37,23 +37,20 @@ class GlobalMetaItem(
 
 data class MetaNodeList(
     override val nodes: List<MetaItem>,
-    override val edges: MetaEdges,
+    override val edges: List<MetaEdge>,
     override val pageInfo: PageInfo,
     override val totalCount: Int
 ) : NodeList() {
-    data class MetaEdges(
+    data class MetaEdge(
         override val cursor: Cursor,
         override val node: MetaItem
-    ) : Edges()
+    ) : Edge()
 
     companion object {
         fun List<MetaItem>.toNodeList(): MetaNodeList {
             return MetaNodeList(
                 nodes = this,
-                edges = MetaEdges(
-                    cursor = Cursor(lastIndex.toString()),
-                    node = last()
-                ),
+                edges = getEdges(),
                 pageInfo = PageInfo(
                     hasNextPage = false,
                     hasPreviousPage = false,
@@ -61,6 +58,20 @@ data class MetaNodeList(
                     endCursor = Cursor(lastIndex.toString())
                 ),
                 totalCount = size
+            )
+        }
+
+        private fun List<MetaItem>.getEdges(): List<MetaEdge> {
+            if (isEmpty()) return emptyList()
+            return listOf(
+                MetaEdge(
+                    cursor = Cursor("0"),
+                    node = first()
+                ),
+                MetaEdge(
+                    cursor = Cursor(lastIndex.toString()),
+                    node = last()
+                )
             )
         }
     }

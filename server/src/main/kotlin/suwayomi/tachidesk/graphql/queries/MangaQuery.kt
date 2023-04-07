@@ -259,15 +259,29 @@ class MangaQuery {
 
         return MangaNodeList(
             resultsAsType,
-            MangaNodeList.MangaEdges(
-                cursor = getAsCursor(orderBy, resultsAsType.last()),
-                node = resultsAsType.last()
-            ),
+            if (resultsAsType.isEmpty()) {
+                emptyList()
+            } else {
+                listOf(
+                    resultsAsType.first().let {
+                        MangaNodeList.MangaEdge(
+                            getAsCursor(orderBy, it),
+                            it
+                        )
+                    },
+                    resultsAsType.last().let {
+                        MangaNodeList.MangaEdge(
+                            getAsCursor(orderBy, it),
+                            it
+                        )
+                    }
+                )
+            },
             pageInfo = PageInfo(
                 hasNextPage = queryResults.lastKey != resultsAsType.last().id,
                 hasPreviousPage = queryResults.firstKey != resultsAsType.first().id,
-                startCursor = getAsCursor(orderBy, resultsAsType.first()),
-                endCursor = getAsCursor(orderBy, resultsAsType.last())
+                startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(orderBy, it) },
+                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(orderBy, it) }
             ),
             totalCount = queryResults.total.toInt()
         )

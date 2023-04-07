@@ -9,7 +9,7 @@ package suwayomi.tachidesk.graphql.types
 
 import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
-import suwayomi.tachidesk.graphql.server.primitives.Edges
+import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
@@ -26,23 +26,20 @@ class UpdatesType(
 
 data class UpdatesNodeList(
     override val nodes: List<UpdatesType>,
-    override val edges: UpdatesEdges,
+    override val edges: List<UpdatesEdge>,
     override val pageInfo: PageInfo,
     override val totalCount: Int
 ) : NodeList() {
-    data class UpdatesEdges(
+    data class UpdatesEdge(
         override val cursor: Cursor,
         override val node: UpdatesType
-    ) : Edges()
+    ) : Edge()
 
     companion object {
         fun List<UpdatesType>.toNodeList(): UpdatesNodeList {
             return UpdatesNodeList(
                 nodes = this,
-                edges = UpdatesEdges(
-                    cursor = Cursor(lastIndex.toString()),
-                    node = last()
-                ),
+                edges = getEdges(),
                 pageInfo = PageInfo(
                     hasNextPage = false,
                     hasPreviousPage = false,
@@ -50,6 +47,20 @@ data class UpdatesNodeList(
                     endCursor = Cursor(lastIndex.toString())
                 ),
                 totalCount = size
+            )
+        }
+
+        private fun List<UpdatesType>.getEdges(): List<UpdatesEdge> {
+            if (isEmpty()) return emptyList()
+            return listOf(
+                UpdatesEdge(
+                    cursor = Cursor("0"),
+                    node = first()
+                ),
+                UpdatesEdge(
+                    cursor = Cursor(lastIndex.toString()),
+                    node = last()
+                )
             )
         }
     }

@@ -14,7 +14,7 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.select
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
-import suwayomi.tachidesk.graphql.server.primitives.Edges
+import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
@@ -83,23 +83,20 @@ fun SourceType(row: ResultRow): SourceType? {
 
 data class SourceNodeList(
     override val nodes: List<SourceType>,
-    override val edges: SourceEdges,
+    override val edges: List<SourceEdge>,
     override val pageInfo: PageInfo,
     override val totalCount: Int
 ) : NodeList() {
-    data class SourceEdges(
+    data class SourceEdge(
         override val cursor: Cursor,
         override val node: SourceType
-    ) : Edges()
+    ) : Edge()
 
     companion object {
         fun List<SourceType>.toNodeList(): SourceNodeList {
             return SourceNodeList(
                 nodes = this,
-                edges = SourceEdges(
-                    cursor = Cursor(lastIndex.toString()),
-                    node = last()
-                ),
+                edges = getEdges(),
                 pageInfo = PageInfo(
                     hasNextPage = false,
                     hasPreviousPage = false,
@@ -107,6 +104,20 @@ data class SourceNodeList(
                     endCursor = Cursor(lastIndex.toString())
                 ),
                 totalCount = size
+            )
+        }
+
+        private fun List<SourceType>.getEdges(): List<SourceEdge> {
+            if (isEmpty()) return emptyList()
+            return listOf(
+                SourceEdge(
+                    cursor = Cursor("0"),
+                    node = first()
+                ),
+                SourceEdge(
+                    cursor = Cursor(lastIndex.toString()),
+                    node = last()
+                )
             )
         }
     }

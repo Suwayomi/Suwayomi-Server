@@ -11,7 +11,7 @@ import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
-import suwayomi.tachidesk.graphql.server.primitives.Edges
+import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
@@ -42,23 +42,20 @@ class CategoryType(
 
 data class CategoryNodeList(
     override val nodes: List<CategoryType>,
-    override val edges: CategoryEdges,
+    override val edges: List<CategoryEdge>,
     override val pageInfo: PageInfo,
     override val totalCount: Int
 ) : NodeList() {
-    data class CategoryEdges(
+    data class CategoryEdge(
         override val cursor: Cursor,
         override val node: CategoryType
-    ) : Edges()
+    ) : Edge()
 
     companion object {
         fun List<CategoryType>.toNodeList(): CategoryNodeList {
             return CategoryNodeList(
                 nodes = this,
-                edges = CategoryEdges(
-                    cursor = Cursor(lastIndex.toString()),
-                    node = last()
-                ),
+                edges = getEdges(),
                 pageInfo = PageInfo(
                     hasNextPage = false,
                     hasPreviousPage = false,
@@ -66,6 +63,20 @@ data class CategoryNodeList(
                     endCursor = Cursor(lastIndex.toString())
                 ),
                 totalCount = size
+            )
+        }
+
+        private fun List<CategoryType>.getEdges(): List<CategoryEdge> {
+            if (isEmpty()) return emptyList()
+            return listOf(
+                CategoryEdge(
+                    cursor = Cursor("0"),
+                    node = first()
+                ),
+                CategoryEdge(
+                    cursor = Cursor(lastIndex.toString()),
+                    node = last()
+                )
             )
         }
     }

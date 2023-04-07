@@ -9,7 +9,7 @@ abstract class NodeList {
     abstract val nodes: List<Node>
 
     @GraphQLDescription("A list of edges which contains the [T] and cursor to aid in pagination.")
-    abstract val edges: Edges
+    abstract val edges: List<Edge>
 
     @GraphQLDescription("Information to aid in pagination.")
     abstract val pageInfo: PageInfo
@@ -24,12 +24,12 @@ data class PageInfo(
     @GraphQLDescription("When paginating backwards, are there more items?")
     val hasPreviousPage: Boolean,
     @GraphQLDescription("When paginating backwards, the cursor to continue.")
-    val startCursor: Cursor,
+    val startCursor: Cursor?,
     @GraphQLDescription("When paginating forwards, the cursor to continue.")
-    val endCursor: Cursor
+    val endCursor: Cursor?
 )
 
-abstract class Edges {
+abstract class Edge {
     @GraphQLDescription("A cursor for use in pagination.")
     abstract val cursor: Cursor
 

@@ -9,7 +9,7 @@ package suwayomi.tachidesk.graphql.types
 
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
-import suwayomi.tachidesk.graphql.server.primitives.Edges
+import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
@@ -52,23 +52,20 @@ class DownloadType(
 
 data class DownloadNodeList(
     override val nodes: List<DownloadType>,
-    override val edges: DownloadEdges,
+    override val edges: List<DownloadEdge>,
     override val pageInfo: PageInfo,
     override val totalCount: Int
 ) : NodeList() {
-    data class DownloadEdges(
+    data class DownloadEdge(
         override val cursor: Cursor,
         override val node: DownloadType
-    ) : Edges()
+    ) : Edge()
 
     companion object {
         fun List<DownloadType>.toNodeList(): DownloadNodeList {
             return DownloadNodeList(
                 nodes = this,
-                edges = DownloadEdges(
-                    cursor = Cursor(lastIndex.toString()),
-                    node = last()
-                ),
+                edges = getEdges(),
                 pageInfo = PageInfo(
                     hasNextPage = false,
                     hasPreviousPage = false,
@@ -76,6 +73,20 @@ data class DownloadNodeList(
                     endCursor = Cursor(lastIndex.toString())
                 ),
                 totalCount = size
+            )
+        }
+
+        private fun List<DownloadType>.getEdges(): List<DownloadEdge> {
+            if (isEmpty()) return emptyList()
+            return listOf(
+                DownloadEdge(
+                    cursor = Cursor("0"),
+                    node = first()
+                ),
+                DownloadEdge(
+                    cursor = Cursor(lastIndex.toString()),
+                    node = last()
+                )
             )
         }
     }
