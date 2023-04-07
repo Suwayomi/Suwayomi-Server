@@ -63,12 +63,12 @@ class MangaQuery {
         LAST_FETCHED_AT
     }
 
-    private fun getAsCursor(orderBy: MangaOrderBy?, manga: MangaType): Cursor {
+    private fun getAsCursor(orderBy: MangaOrderBy?, type: MangaType): Cursor {
         val value = when (orderBy) {
-            MangaOrderBy.ID, null -> manga.id.toString()
-            MangaOrderBy.TITLE -> manga.title
-            MangaOrderBy.IN_LIBRARY_AT -> manga.inLibraryAt.toString()
-            MangaOrderBy.LAST_FETCHED_AT -> manga.lastFetchedAt.toString()
+            MangaOrderBy.ID, null -> type.id.toString()
+            MangaOrderBy.TITLE -> type.title
+            MangaOrderBy.IN_LIBRARY_AT -> type.inLibraryAt.toString()
+            MangaOrderBy.LAST_FETCHED_AT -> type.lastFetchedAt.toString()
         }
         return Cursor(value)
     }
