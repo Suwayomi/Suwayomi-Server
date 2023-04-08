@@ -38,7 +38,6 @@ import java.util.concurrent.CompletableFuture
 
 /**
  * TODO Queries
- * - In list of keys
  *
  * TODO Mutations
  * - Add/update meta
@@ -71,7 +70,7 @@ class MetaQuery {
         override fun asCursor(type: MetaItem): Cursor {
             val value = when (this) {
                 KEY -> type.key
-                VALUE -> type.key + "-" + type.value
+                VALUE -> type.key + "\\-" + type.value
             }
             return Cursor(value)
         }

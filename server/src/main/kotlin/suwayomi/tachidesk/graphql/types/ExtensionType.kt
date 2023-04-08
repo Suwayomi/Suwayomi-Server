@@ -29,9 +29,9 @@ class ExtensionType(
     val lang: String,
     val isNsfw: Boolean,
 
-    val installed: Boolean,
+    val isInstalled: Boolean,
     val hasUpdate: Boolean,
-    val obsolete: Boolean
+    val isObsolete: Boolean
 ) : Node {
     constructor(row: ResultRow) : this(
         apkName = row[ExtensionTable.apkName],
@@ -42,9 +42,9 @@ class ExtensionType(
         versionCode = row[ExtensionTable.versionCode],
         lang = row[ExtensionTable.lang],
         isNsfw = row[ExtensionTable.isNsfw],
-        installed = row[ExtensionTable.isInstalled],
+        isInstalled = row[ExtensionTable.isInstalled],
         hasUpdate = row[ExtensionTable.hasUpdate],
-        obsolete = row[ExtensionTable.isObsolete]
+        isObsolete = row[ExtensionTable.isObsolete]
     )
 
     fun source(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<SourceNodeList> {
