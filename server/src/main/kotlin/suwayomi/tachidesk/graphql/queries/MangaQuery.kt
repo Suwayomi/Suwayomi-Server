@@ -12,9 +12,12 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -35,7 +38,6 @@ import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
-import suwayomi.tachidesk.graphql.types.CategoryType
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
@@ -71,27 +73,51 @@ class MangaQuery {
         override fun greater(cursor: Cursor): Op<Boolean> {
             return when (this) {
                 ID -> MangaTable.id greater cursor.value.toInt()
-                TITLE -> MangaTable.title greater cursor.value
-                IN_LIBRARY_AT -> MangaTable.inLibraryAt greater cursor.value.toLong()
-                LAST_FETCHED_AT -> MangaTable.lastFetchedAt greater cursor.value.toLong()
+                TITLE -> {
+                    val id = cursor.value.substringBefore('-').toInt()
+                    val value = cursor.value.substringAfter('-')
+                    (MangaTable.title greater value) or ((MangaTable.title eq value) and (MangaTable.id greater id))
+                }
+                IN_LIBRARY_AT -> {
+                    val id = cursor.value.substringBefore('-').toInt()
+                    val value = cursor.value.substringAfter('-').toLong()
+                    (MangaTable.inLibraryAt greater value) or ((MangaTable.inLibraryAt eq value) and (MangaTable.id greater id))
+                }
+                LAST_FETCHED_AT -> {
+                    val id = cursor.value.substringBefore('-').toInt()
+                    val value = cursor.value.substringAfter('-').toLong()
+                    (MangaTable.lastFetchedAt greater value) or ((MangaTable.lastFetchedAt eq value) and (MangaTable.id greater id))
+                }
             }
         }
 
         override fun less(cursor: Cursor): Op<Boolean> {
             return when (this) {
                 ID -> MangaTable.id less cursor.value.toInt()
-                TITLE -> MangaTable.title less cursor.value
-                IN_LIBRARY_AT -> MangaTable.inLibraryAt less cursor.value.toLong()
-                LAST_FETCHED_AT -> MangaTable.lastFetchedAt less cursor.value.toLong()
+                TITLE -> {
+                    val id = cursor.value.substringBefore('-').toInt()
+                    val value = cursor.value.substringAfter('-')
+                    (MangaTable.title less value) or ((MangaTable.title eq value) and (MangaTable.id less id))
+                }
+                IN_LIBRARY_AT -> {
+                    val id = cursor.value.substringBefore('-').toInt()
+                    val value = cursor.value.substringAfter('-').toLong()
+                    (MangaTable.inLibraryAt less value) or ((MangaTable.inLibraryAt eq value) and (MangaTable.id less id))
+                }
+                LAST_FETCHED_AT -> {
+                    val id = cursor.value.substringBefore('-').toInt()
+                    val value = cursor.value.substringAfter('-').toLong()
+                    (MangaTable.lastFetchedAt less value) or ((MangaTable.lastFetchedAt eq value) and (MangaTable.id less id))
+                }
             }
         }
 
         override fun asCursor(type: MangaType): Cursor {
             val value = when (this) {
                 ID -> type.id.toString()
-                TITLE -> type.title
-                IN_LIBRARY_AT -> type.inLibraryAt.toString()
-                LAST_FETCHED_AT -> type.lastFetchedAt.toString()
+                TITLE -> type.id.toString() + "-" + type.title
+                IN_LIBRARY_AT -> type.id.toString() + "-" + type.inLibraryAt.toString()
+                LAST_FETCHED_AT -> type.id.toString() + "-" + type.lastFetchedAt.toString()
             }
             return Cursor(value)
         }
@@ -161,7 +187,7 @@ class MangaQuery {
             lessThan = lessThan?.value,
             lessThanOrEqualTo = lessThanOrEqualTo?.value,
             greaterThan = greaterThan?.value,
-            greaterThanOrEqualTo = greaterThanOrEqualTo?.value,
+            greaterThanOrEqualTo = greaterThanOrEqualTo?.value
 
         )
     }
@@ -237,7 +263,14 @@ class MangaQuery {
                 val orderByColumn = orderBy?.column ?: MangaTable.id
                 val orderType = orderByType.maybeSwap(last ?: before)
 
-                res.orderBy(orderByColumn, order = orderType)
+                if (orderBy == MangaOrderBy.ID || orderBy == null) {
+                    res.orderBy(orderByColumn to orderType)
+                } else {
+                    res.orderBy(
+                        orderByColumn to orderType,
+                        MangaTable.id to SortOrder.ASC
+                    )
+                }
             }
 
             val total = res.count()

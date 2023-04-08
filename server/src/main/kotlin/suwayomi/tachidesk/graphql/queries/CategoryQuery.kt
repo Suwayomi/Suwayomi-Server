@@ -12,9 +12,12 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
@@ -39,7 +42,6 @@ import java.util.concurrent.CompletableFuture
 
 /**
  * TODO Queries
- * - Paged queries
  *
  * TODO Mutations
  * - Name
@@ -63,24 +65,40 @@ class CategoryQuery {
         override fun greater(cursor: Cursor): Op<Boolean> {
             return when (this) {
                 ID -> CategoryTable.id greater cursor.value.toInt()
-                NAME -> CategoryTable.name greater cursor.value
-                ORDER -> CategoryTable.order greater cursor.value.toInt()
+                NAME -> {
+                    val id = cursor.value.substringBefore('-').toInt()
+                    val value = cursor.value.substringAfter('-')
+                    (CategoryTable.name greater value) or ((CategoryTable.name eq value) and (CategoryTable.id greater id))
+                }
+                ORDER -> {
+                    val id = cursor.value.substringBefore('-').toInt()
+                    val value = cursor.value.substringAfter('-').toInt()
+                    (CategoryTable.order greater value) or ((CategoryTable.order eq value) and (CategoryTable.id greater id))
+                }
             }
         }
 
         override fun less(cursor: Cursor): Op<Boolean> {
             return when (this) {
                 ID -> CategoryTable.id less cursor.value.toInt()
-                NAME -> CategoryTable.name less cursor.value
-                ORDER -> CategoryTable.order less cursor.value.toInt()
+                NAME -> {
+                    val id = cursor.value.substringBefore('-').toInt()
+                    val value = cursor.value.substringAfter('-')
+                    (CategoryTable.name less value) or ((CategoryTable.name eq value) and (CategoryTable.id less id))
+                }
+                ORDER -> {
+                    val id = cursor.value.substringBefore('-').toInt()
+                    val value = cursor.value.substringAfter('-').toInt()
+                    (CategoryTable.order less value) or ((CategoryTable.order eq value) and (CategoryTable.id less id))
+                }
             }
         }
 
         override fun asCursor(type: CategoryType): Cursor {
             val value = when (this) {
                 ID -> type.id.toString()
-                NAME -> type.name
-                ORDER -> type.order.toString()
+                NAME -> type.id.toString() + "-" + type.name
+                ORDER -> type.id.toString() + "-" + type.order
             }
             return Cursor(value)
         }
@@ -142,7 +160,14 @@ class CategoryQuery {
                 val orderByColumn = orderBy?.column ?: CategoryTable.id
                 val orderType = orderByType.maybeSwap(last ?: before)
 
-                res.orderBy(orderByColumn, order = orderType)
+                if (orderBy == CategoryOrderBy.ID || orderBy == null) {
+                    res.orderBy(orderByColumn to orderType)
+                } else {
+                    res.orderBy(
+                        orderByColumn to orderType,
+                        CategoryTable.id to SortOrder.ASC
+                    )
+                }
             }
 
             val total = res.count()
