@@ -9,16 +9,18 @@ package suwayomi.tachidesk.graphql.queries
 
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
-import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
+import suwayomi.tachidesk.graphql.queries.filter.HasGetOp
 import suwayomi.tachidesk.graphql.queries.filter.IntFilter
 import suwayomi.tachidesk.graphql.queries.filter.LongFilter
 import suwayomi.tachidesk.graphql.queries.filter.OpAnd
@@ -26,10 +28,13 @@ import suwayomi.tachidesk.graphql.queries.filter.StringFilter
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompare
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
-import suwayomi.tachidesk.graphql.queries.filter.getOp
+import suwayomi.tachidesk.graphql.queries.filter.applyOps
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
+import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
+import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
+import suwayomi.tachidesk.graphql.types.CategoryType
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
@@ -56,21 +61,39 @@ class MangaQuery {
         return dataFetchingEnvironment.getValueFromDataLoader("MangaDataLoader", id)
     }
 
-    enum class MangaOrderBy {
-        ID,
-        TITLE,
-        IN_LIBRARY_AT,
-        LAST_FETCHED_AT
-    }
+    enum class MangaOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<MangaType> {
+        ID(MangaTable.id),
+        TITLE(MangaTable.title),
+        IN_LIBRARY_AT(MangaTable.inLibraryAt),
+        LAST_FETCHED_AT(MangaTable.lastFetchedAt);
 
-    private fun getAsCursor(orderBy: MangaOrderBy?, type: MangaType): Cursor {
-        val value = when (orderBy) {
-            MangaOrderBy.ID, null -> type.id.toString()
-            MangaOrderBy.TITLE -> type.title
-            MangaOrderBy.IN_LIBRARY_AT -> type.inLibraryAt.toString()
-            MangaOrderBy.LAST_FETCHED_AT -> type.lastFetchedAt.toString()
+        override fun greater(cursor: Cursor): Op<Boolean> {
+            return when (this) {
+                ID -> MangaTable.id greater cursor.value.toInt()
+                TITLE -> MangaTable.title greater cursor.value
+                IN_LIBRARY_AT -> MangaTable.inLibraryAt greater cursor.value.toLong()
+                LAST_FETCHED_AT -> MangaTable.lastFetchedAt greater cursor.value.toLong()
+            }
         }
-        return Cursor(value)
+
+        override fun less(cursor: Cursor): Op<Boolean> {
+            return when (this) {
+                ID -> MangaTable.id less cursor.value.toInt()
+                TITLE -> MangaTable.title less cursor.value
+                IN_LIBRARY_AT -> MangaTable.inLibraryAt less cursor.value.toLong()
+                LAST_FETCHED_AT -> MangaTable.lastFetchedAt less cursor.value.toLong()
+            }
+        }
+
+        override fun asCursor(type: MangaType): Cursor {
+            val value = when (this) {
+                ID -> type.id.toString()
+                TITLE -> type.title
+                IN_LIBRARY_AT -> type.inLibraryAt.toString()
+                LAST_FETCHED_AT -> type.lastFetchedAt.toString()
+            }
+            return Cursor(value)
+        }
     }
 
     data class MangaCondition(
@@ -88,29 +111,27 @@ class MangaQuery {
         val inLibrary: Boolean? = null,
         val inLibraryAt: Long? = null,
         val realUrl: String? = null,
-        var lastFetchedAt: Long? = null,
-        var chaptersLastFetchedAt: Long? = null
-    ) {
-        fun getOp(): Op<Boolean>? {
+        val lastFetchedAt: Long? = null,
+        val chaptersLastFetchedAt: Long? = null
+    ) : HasGetOp {
+        override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
-            fun <T> eq(value: T?, column: Column<T>) = opAnd.andWhere(value) { column eq it }
-            fun <T : Comparable<T>> eq(value: T?, column: Column<EntityID<T>>) = opAnd.andWhere(value) { column eq it }
-            eq(id, MangaTable.id)
-            eq(sourceId, MangaTable.sourceReference)
-            eq(url, MangaTable.url)
-            eq(title, MangaTable.title)
-            eq(thumbnailUrl, MangaTable.thumbnail_url)
-            eq(initialized, MangaTable.initialized)
-            eq(artist, MangaTable.artist)
-            eq(author, MangaTable.author)
-            eq(description, MangaTable.description)
-            eq(genre?.joinToString(), MangaTable.genre)
-            eq(status?.value, MangaTable.status)
-            eq(inLibrary, MangaTable.inLibrary)
-            eq(inLibraryAt, MangaTable.inLibraryAt)
-            eq(realUrl, MangaTable.realUrl)
-            eq(lastFetchedAt, MangaTable.lastFetchedAt)
-            eq(chaptersLastFetchedAt, MangaTable.chaptersLastFetchedAt)
+            opAnd.eq(id, MangaTable.id)
+            opAnd.eq(sourceId, MangaTable.sourceReference)
+            opAnd.eq(url, MangaTable.url)
+            opAnd.eq(title, MangaTable.title)
+            opAnd.eq(thumbnailUrl, MangaTable.thumbnail_url)
+            opAnd.eq(initialized, MangaTable.initialized)
+            opAnd.eq(artist, MangaTable.artist)
+            opAnd.eq(author, MangaTable.author)
+            opAnd.eq(description, MangaTable.description)
+            opAnd.eq(genre?.joinToString(), MangaTable.genre)
+            opAnd.eq(status?.value, MangaTable.status)
+            opAnd.eq(inLibrary, MangaTable.inLibrary)
+            opAnd.eq(inLibraryAt, MangaTable.inLibraryAt)
+            opAnd.eq(realUrl, MangaTable.realUrl)
+            opAnd.eq(lastFetchedAt, MangaTable.lastFetchedAt)
+            opAnd.eq(chaptersLastFetchedAt, MangaTable.chaptersLastFetchedAt)
 
             return opAnd.op
         }
@@ -131,8 +152,8 @@ class MangaQuery {
         val inLibrary: BooleanFilter? = null,
         val inLibraryAt: LongFilter? = null,
         val realUrl: StringFilter? = null,
-        var lastFetchedAt: LongFilter? = null,
-        var chaptersLastFetchedAt: LongFilter? = null,
+        val lastFetchedAt: LongFilter? = null,
+        val chaptersLastFetchedAt: LongFilter? = null,
         val category: IntFilter? = null,
         override val and: List<MangaFilter>? = null,
         override val or: List<MangaFilter>? = null,
@@ -179,70 +200,27 @@ class MangaQuery {
                 res = MangaTable.innerJoin(CategoryMangaTable)
                     .select { categoryOp }
             }
-            val conditionOp = condition?.getOp()
-            if (conditionOp != null) {
-                res.andWhere { conditionOp }
-            }
-            val filterOp = filter?.getOp()
-            if (filterOp != null) {
-                res.andWhere { filterOp }
-            }
+
+            res.applyOps(condition, filter)
+
             if (orderBy != null || (last != null || before != null)) {
-                val orderByColumn = when (orderBy) {
-                    MangaOrderBy.ID, null -> MangaTable.id
-                    MangaOrderBy.TITLE -> MangaTable.title
-                    MangaOrderBy.IN_LIBRARY_AT -> MangaTable.inLibraryAt
-                    MangaOrderBy.LAST_FETCHED_AT -> MangaTable.lastFetchedAt
-                }
-                val orderType = if (last != null || before != null) {
-                    when (orderByType) {
-                        SortOrder.ASC -> SortOrder.DESC
-                        SortOrder.DESC -> SortOrder.ASC
-                        SortOrder.ASC_NULLS_FIRST -> SortOrder.DESC_NULLS_LAST
-                        SortOrder.DESC_NULLS_FIRST -> SortOrder.ASC_NULLS_LAST
-                        SortOrder.ASC_NULLS_LAST -> SortOrder.DESC_NULLS_FIRST
-                        SortOrder.DESC_NULLS_LAST -> SortOrder.ASC_NULLS_FIRST
-                        null -> SortOrder.DESC
-                    }
-                } else {
-                    orderByType ?: SortOrder.ASC
-                }
+                val orderByColumn = orderBy?.column ?: MangaTable.id
+                val orderType = orderByType.maybeSwap(last ?: before)
+
                 res.orderBy(orderByColumn, order = orderType)
             }
 
             val total = res.count()
-            val firstResult = res.first()[MangaTable.id].value
-            val lastResult = res.last()[MangaTable.id].value
+            val firstResult = res.firstOrNull()?.get(MangaTable.id)?.value
+            val lastResult = res.lastOrNull()?.get(MangaTable.id)?.value
 
             if (after != null) {
-                when (orderBy) {
-                    MangaOrderBy.ID, null -> res.andWhere {
-                        MangaTable.id greater after.value.toInt()
-                    }
-                    MangaOrderBy.TITLE -> res.andWhere {
-                        MangaTable.title greater after.value
-                    }
-                    MangaOrderBy.IN_LIBRARY_AT -> res.andWhere {
-                        MangaTable.inLibraryAt greater after.value.toLong()
-                    }
-                    MangaOrderBy.LAST_FETCHED_AT -> res.andWhere {
-                        MangaTable.lastFetchedAt greater after.value.toLong()
-                    }
+                res.andWhere {
+                    (orderBy ?: MangaOrderBy.ID).greater(after)
                 }
             } else if (before != null) {
-                when (orderBy) {
-                    MangaOrderBy.ID, null -> res.andWhere {
-                        MangaTable.id less before.value.toInt()
-                    }
-                    MangaOrderBy.TITLE -> res.andWhere {
-                        MangaTable.title less before.value
-                    }
-                    MangaOrderBy.IN_LIBRARY_AT -> res.andWhere {
-                        MangaTable.inLibraryAt less before.value.toLong()
-                    }
-                    MangaOrderBy.LAST_FETCHED_AT -> res.andWhere {
-                        MangaTable.lastFetchedAt less before.value.toLong()
-                    }
+                res.andWhere {
+                    (orderBy ?: MangaOrderBy.ID).less(before)
                 }
             }
 
@@ -255,6 +233,8 @@ class MangaQuery {
             QueryResults(total, firstResult, lastResult, res.toList())
         }
 
+        val getAsCursor: (MangaType) -> Cursor = (orderBy ?: MangaOrderBy.ID)::asCursor
+
         val resultsAsType = queryResults.results.map { MangaType(it) }
 
         return MangaNodeList(
@@ -262,26 +242,26 @@ class MangaQuery {
             if (resultsAsType.isEmpty()) {
                 emptyList()
             } else {
-                listOf(
-                    resultsAsType.first().let {
+                listOfNotNull(
+                    resultsAsType.firstOrNull()?.let {
                         MangaNodeList.MangaEdge(
-                            getAsCursor(orderBy, it),
+                            getAsCursor(it),
                             it
                         )
                     },
-                    resultsAsType.last().let {
+                    resultsAsType.lastOrNull()?.let {
                         MangaNodeList.MangaEdge(
-                            getAsCursor(orderBy, it),
+                            getAsCursor(it),
                             it
                         )
                     }
                 )
             },
             pageInfo = PageInfo(
-                hasNextPage = queryResults.lastKey != resultsAsType.last().id,
-                hasPreviousPage = queryResults.firstKey != resultsAsType.first().id,
-                startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(orderBy, it) },
-                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(orderBy, it) }
+                hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.id,
+                hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.id,
+                startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
+                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) }
             ),
             totalCount = queryResults.total.toInt()
         )

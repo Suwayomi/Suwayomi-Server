@@ -7,10 +7,13 @@ import org.jetbrains.exposed.sql.Expression
 import org.jetbrains.exposed.sql.ExpressionWithColumnType
 import org.jetbrains.exposed.sql.LikePattern
 import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.QueryBuilder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.wrap
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.not
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.stringParam
@@ -68,12 +71,57 @@ class DistinctFromOp(expr1: Expression<*>, expr2: Expression<*>, not: Boolean) :
     }
 }
 
-interface Filter<T : Filter<T>> {
+interface HasGetOp {
+    fun getOp(): Op<Boolean>?
+}
+
+fun Query.applyOps(vararg ops: HasGetOp?) {
+    ops.mapNotNull { it?.getOp() }.forEach {
+        andWhere { it }
+    }
+}
+
+interface Filter<T : Filter<T>> : HasGetOp {
     val and: List<T>?
     val or: List<T>?
     val not: T?
 
     fun getOpList(): List<Op<Boolean>>
+
+    override fun getOp(): Op<Boolean>? {
+        var op: Op<Boolean>? = null
+        fun newOp(
+            otherOp: Op<Boolean>?,
+            operator: (Op<Boolean>, Op<Boolean>) -> Op<Boolean>
+        ) {
+            when {
+                op == null && otherOp == null -> Unit
+                op == null && otherOp != null -> op = otherOp
+                op != null && otherOp == null -> Unit
+                op != null && otherOp != null -> op = operator(op!!, otherOp)
+            }
+        }
+        fun andOp(andOp: Op<Boolean>?) {
+            newOp(andOp, Op<Boolean>::and)
+        }
+        fun orOp(orOp: Op<Boolean>?) {
+            newOp(orOp, Op<Boolean>::or)
+        }
+        getOpList().forEach {
+            andOp(it)
+        }
+        and?.forEach {
+            andOp(it.getOp())
+        }
+        or?.forEach {
+            orOp(it.getOp())
+        }
+        if (not != null) {
+            andOp(not!!.getOp()?.let(::not))
+        }
+        return op
+    }
+
 }
 
 interface ScalarFilter<T> {
@@ -220,6 +268,9 @@ class OpAnd(var op: Op<Boolean>? = null) {
         val expr = Op.build { andPart(value) }
         op = if (op == null) expr else (op!! and expr)
     }
+
+    fun <T> eq(value: T?, column: Column<T>) = andWhere(value) { column eq it }
+    fun <T : Comparable<T>> eq(value: T?, column: Column<EntityID<T>>) = andWhere(value) { column eq it }
 }
 
 fun <T : Comparable<T>> andFilterWithCompare(
@@ -292,38 +343,4 @@ fun <T : Comparable<T>> andFilterEntity(
         opAnd.andWhere(filter.notIn) { column notInList filter.notIn!! }
     }
     return opAnd.op
-}
-
-fun <T : Filter<T>> Filter<T>.getOp(): Op<Boolean>? {
-    var op: Op<Boolean>? = null
-    fun newOp(
-        otherOp: Op<Boolean>?,
-        operator: (Op<Boolean>, Op<Boolean>) -> Op<Boolean>
-    ) {
-        when {
-            op == null && otherOp == null -> Unit
-            op == null && otherOp != null -> op = otherOp
-            op != null && otherOp == null -> Unit
-            op != null && otherOp != null -> op = operator(op!!, otherOp)
-        }
-    }
-    fun andOp(andOp: Op<Boolean>?) {
-        newOp(andOp, Op<Boolean>::and)
-    }
-    fun orOp(orOp: Op<Boolean>?) {
-        newOp(orOp, Op<Boolean>::or)
-    }
-    getOpList().forEach {
-        andOp(it)
-    }
-    and?.forEach {
-        andOp(it.getOp())
-    }
-    or?.forEach {
-        orOp(it.getOp())
-    }
-    if (not != null) {
-        andOp(not!!.getOp()?.let(::not))
-    }
-    return op
 }
