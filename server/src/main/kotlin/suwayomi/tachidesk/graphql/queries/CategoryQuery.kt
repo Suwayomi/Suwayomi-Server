@@ -12,12 +12,9 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
-import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
@@ -34,6 +31,8 @@ import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
+import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
+import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.CategoryNodeList
 import suwayomi.tachidesk.graphql.types.CategoryType
@@ -65,32 +64,16 @@ class CategoryQuery {
         override fun greater(cursor: Cursor): Op<Boolean> {
             return when (this) {
                 ID -> CategoryTable.id greater cursor.value.toInt()
-                NAME -> {
-                    val id = cursor.value.substringBefore('-').toInt()
-                    val value = cursor.value.substringAfter('-')
-                    (CategoryTable.name greater value) or ((CategoryTable.name eq value) and (CategoryTable.id greater id))
-                }
-                ORDER -> {
-                    val id = cursor.value.substringBefore('-').toInt()
-                    val value = cursor.value.substringAfter('-').toInt()
-                    (CategoryTable.order greater value) or ((CategoryTable.order eq value) and (CategoryTable.id greater id))
-                }
+                NAME -> greaterNotUnique(CategoryTable.name, CategoryTable.id, cursor, String::toString)
+                ORDER -> greaterNotUnique(CategoryTable.order, CategoryTable.id, cursor, String::toInt)
             }
         }
 
         override fun less(cursor: Cursor): Op<Boolean> {
             return when (this) {
                 ID -> CategoryTable.id less cursor.value.toInt()
-                NAME -> {
-                    val id = cursor.value.substringBefore('-').toInt()
-                    val value = cursor.value.substringAfter('-')
-                    (CategoryTable.name less value) or ((CategoryTable.name eq value) and (CategoryTable.id less id))
-                }
-                ORDER -> {
-                    val id = cursor.value.substringBefore('-').toInt()
-                    val value = cursor.value.substringAfter('-').toInt()
-                    (CategoryTable.order less value) or ((CategoryTable.order eq value) and (CategoryTable.id less id))
-                }
+                NAME -> lessNotUnique(CategoryTable.name, CategoryTable.id, cursor, String::toString)
+                ORDER -> lessNotUnique(CategoryTable.order, CategoryTable.id, cursor, String::toInt)
             }
         }
 

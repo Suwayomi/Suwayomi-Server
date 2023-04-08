@@ -12,12 +12,9 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
-import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -37,6 +34,8 @@ import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
+import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
+import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
@@ -73,42 +72,18 @@ class MangaQuery {
         override fun greater(cursor: Cursor): Op<Boolean> {
             return when (this) {
                 ID -> MangaTable.id greater cursor.value.toInt()
-                TITLE -> {
-                    val id = cursor.value.substringBefore('-').toInt()
-                    val value = cursor.value.substringAfter('-')
-                    (MangaTable.title greater value) or ((MangaTable.title eq value) and (MangaTable.id greater id))
-                }
-                IN_LIBRARY_AT -> {
-                    val id = cursor.value.substringBefore('-').toInt()
-                    val value = cursor.value.substringAfter('-').toLong()
-                    (MangaTable.inLibraryAt greater value) or ((MangaTable.inLibraryAt eq value) and (MangaTable.id greater id))
-                }
-                LAST_FETCHED_AT -> {
-                    val id = cursor.value.substringBefore('-').toInt()
-                    val value = cursor.value.substringAfter('-').toLong()
-                    (MangaTable.lastFetchedAt greater value) or ((MangaTable.lastFetchedAt eq value) and (MangaTable.id greater id))
-                }
+                TITLE -> greaterNotUnique(MangaTable.title, MangaTable.id, cursor, String::toString)
+                IN_LIBRARY_AT -> greaterNotUnique(MangaTable.inLibraryAt, MangaTable.id, cursor, String::toLong)
+                LAST_FETCHED_AT -> greaterNotUnique(MangaTable.lastFetchedAt, MangaTable.id, cursor, String::toLong)
             }
         }
 
         override fun less(cursor: Cursor): Op<Boolean> {
             return when (this) {
                 ID -> MangaTable.id less cursor.value.toInt()
-                TITLE -> {
-                    val id = cursor.value.substringBefore('-').toInt()
-                    val value = cursor.value.substringAfter('-')
-                    (MangaTable.title less value) or ((MangaTable.title eq value) and (MangaTable.id less id))
-                }
-                IN_LIBRARY_AT -> {
-                    val id = cursor.value.substringBefore('-').toInt()
-                    val value = cursor.value.substringAfter('-').toLong()
-                    (MangaTable.inLibraryAt less value) or ((MangaTable.inLibraryAt eq value) and (MangaTable.id less id))
-                }
-                LAST_FETCHED_AT -> {
-                    val id = cursor.value.substringBefore('-').toInt()
-                    val value = cursor.value.substringAfter('-').toLong()
-                    (MangaTable.lastFetchedAt less value) or ((MangaTable.lastFetchedAt eq value) and (MangaTable.id less id))
-                }
+                TITLE -> lessNotUnique(MangaTable.title, MangaTable.id, cursor, String::toString)
+                IN_LIBRARY_AT -> lessNotUnique(MangaTable.inLibraryAt, MangaTable.id, cursor, String::toLong)
+                LAST_FETCHED_AT -> lessNotUnique(MangaTable.lastFetchedAt, MangaTable.id, cursor, String::toLong)
             }
         }
 

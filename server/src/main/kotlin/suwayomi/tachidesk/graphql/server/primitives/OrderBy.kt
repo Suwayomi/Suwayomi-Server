@@ -1,8 +1,14 @@
 package suwayomi.tachidesk.graphql.server.primitives
 
+import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.or
 
 interface OrderBy<T> {
     val column: Column<out Comparable<*>>
@@ -28,4 +34,16 @@ fun SortOrder?.maybeSwap(value: Any?): SortOrder {
     } else {
         this ?: SortOrder.ASC
     }
+}
+
+fun <T: Comparable<T>> greaterNotUnique(column: Column<T>, idColumn: Column<EntityID<Int>>, cursor: Cursor, toValue: (String) -> T): Op<Boolean> {
+    val id = cursor.value.substringBefore('-').toInt()
+    val value = toValue(cursor.value.substringAfter('-'))
+    return (column greater value) or ((column eq value) and (idColumn greater id))
+}
+
+fun <T: Comparable<T>> lessNotUnique(column: Column<T>, idColumn: Column<EntityID<Int>>, cursor: Cursor, toValue: (String) -> T): Op<Boolean> {
+    val id = cursor.value.substringBefore('-').toInt()
+    val value = toValue(cursor.value.substringAfter('-'))
+    return (column less value) or ((column eq value) and (idColumn less id))
 }
