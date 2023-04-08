@@ -19,6 +19,7 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
+import suwayomi.tachidesk.graphql.queries.filter.ComparableScalarFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
 import suwayomi.tachidesk.graphql.queries.filter.HasGetOp
 import suwayomi.tachidesk.graphql.queries.filter.IntFilter
@@ -137,6 +138,34 @@ class MangaQuery {
         }
     }
 
+    data class MangaStatusFilter(
+        override val isNull: Boolean? = null,
+        override val equalTo: MangaStatus? = null,
+        override val notEqualTo: MangaStatus? = null,
+        override val distinctFrom: MangaStatus? = null,
+        override val notDistinctFrom: MangaStatus? = null,
+        override val `in`: List<MangaStatus>? = null,
+        override val notIn: List<MangaStatus>? = null,
+        override val lessThan: MangaStatus? = null,
+        override val lessThanOrEqualTo: MangaStatus? = null,
+        override val greaterThan: MangaStatus? = null,
+        override val greaterThanOrEqualTo: MangaStatus? = null
+    ) : ComparableScalarFilter<MangaStatus> {
+        fun asIntFilter() = IntFilter(
+            equalTo = equalTo?.value,
+            notEqualTo = notEqualTo?.value,
+            distinctFrom = distinctFrom?.value,
+            notDistinctFrom = notDistinctFrom?.value,
+            `in` = `in`?.map { it.value },
+            notIn = notIn?.map { it.value },
+            lessThan = lessThan?.value,
+            lessThanOrEqualTo = lessThanOrEqualTo?.value,
+            greaterThan = greaterThan?.value,
+            greaterThanOrEqualTo = greaterThanOrEqualTo?.value,
+
+        )
+    }
+
     data class MangaFilter(
         val id: IntFilter? = null,
         val sourceId: LongFilter? = null,
@@ -148,7 +177,7 @@ class MangaQuery {
         val author: StringFilter? = null,
         val description: StringFilter? = null,
         // val genre: List<String>? = null, // todo
-        // val status: MangaStatus? = null, // todo
+        val status: MangaStatusFilter? = null,
         val inLibrary: BooleanFilter? = null,
         val inLibraryAt: LongFilter? = null,
         val realUrl: StringFilter? = null,
@@ -170,6 +199,7 @@ class MangaQuery {
                 andFilterWithCompareString(MangaTable.artist, artist),
                 andFilterWithCompareString(MangaTable.author, author),
                 andFilterWithCompareString(MangaTable.description, description),
+                andFilterWithCompare(MangaTable.status, status?.asIntFilter()),
                 andFilterWithCompare(MangaTable.inLibrary, inLibrary),
                 andFilterWithCompare(MangaTable.inLibraryAt, inLibraryAt),
                 andFilterWithCompareString(MangaTable.realUrl, realUrl),
