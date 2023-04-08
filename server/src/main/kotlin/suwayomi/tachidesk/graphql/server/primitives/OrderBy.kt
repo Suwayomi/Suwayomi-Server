@@ -36,14 +36,38 @@ fun SortOrder?.maybeSwap(value: Any?): SortOrder {
     }
 }
 
-fun <T: Comparable<T>> greaterNotUnique(column: Column<T>, idColumn: Column<EntityID<Int>>, cursor: Cursor, toValue: (String) -> T): Op<Boolean> {
+fun <T : Comparable<T>> greaterNotUnique(column: Column<T>, idColumn: Column<EntityID<Int>>, cursor: Cursor, toValue: (String) -> T): Op<Boolean> {
     val id = cursor.value.substringBefore('-').toInt()
     val value = toValue(cursor.value.substringAfter('-'))
     return (column greater value) or ((column eq value) and (idColumn greater id))
 }
 
-fun <T: Comparable<T>> lessNotUnique(column: Column<T>, idColumn: Column<EntityID<Int>>, cursor: Cursor, toValue: (String) -> T): Op<Boolean> {
+@JvmName("greaterNotUniqueStringKey")
+fun <T : Comparable<T>> greaterNotUnique(
+    column: Column<T>,
+    idColumn: Column<String>,
+    cursor: Cursor,
+    toValue: (String) -> T
+): Op<Boolean> {
+    val id = cursor.value.substringBefore('-')
+    val value = toValue(cursor.value.substringAfter('-'))
+    return (column greater value) or ((column eq value) and (idColumn greater id))
+}
+
+fun <T : Comparable<T>> lessNotUnique(column: Column<T>, idColumn: Column<EntityID<Int>>, cursor: Cursor, toValue: (String) -> T): Op<Boolean> {
     val id = cursor.value.substringBefore('-').toInt()
+    val value = toValue(cursor.value.substringAfter('-'))
+    return (column less value) or ((column eq value) and (idColumn less id))
+}
+
+@JvmName("lessNotUniqueStringKey")
+fun <T : Comparable<T>> lessNotUnique(
+    column: Column<T>,
+    idColumn: Column<String>,
+    cursor: Cursor,
+    toValue: (String) -> T
+): Op<Boolean> {
+    val id = cursor.value.substringBefore('-')
     val value = toValue(cursor.value.substringAfter('-'))
     return (column less value) or ((column eq value) and (idColumn less id))
 }

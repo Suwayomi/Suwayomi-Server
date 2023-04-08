@@ -37,8 +37,8 @@ class MangaType(
     val inLibrary: Boolean,
     val inLibraryAt: Long,
     val realUrl: String?,
-    var lastFetchedAt: Long?, //todo
-    var chaptersLastFetchedAt: Long? //todo
+    var lastFetchedAt: Long?, // todo
+    var chaptersLastFetchedAt: Long? // todo
 ) : Node {
     constructor(row: ResultRow) : this(
         row[MangaTable.id].value,
