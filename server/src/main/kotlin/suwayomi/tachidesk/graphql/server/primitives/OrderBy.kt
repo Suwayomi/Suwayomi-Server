@@ -14,7 +14,6 @@ interface OrderBy<T> {
     fun less(cursor: Cursor): Op<Boolean>
 }
 
-
 fun SortOrder?.maybeSwap(value: Any?): SortOrder {
     return if (value != null) {
         when (this) {

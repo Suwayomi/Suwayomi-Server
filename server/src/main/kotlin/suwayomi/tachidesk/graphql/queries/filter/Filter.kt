@@ -121,7 +121,6 @@ interface Filter<T : Filter<T>> : HasGetOp {
         }
         return op
     }
-
 }
 
 interface ScalarFilter<T> {
