@@ -10,8 +10,6 @@ import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.QueryBuilder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.wrap
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.not
@@ -140,6 +138,12 @@ interface ComparableScalarFilter<T : Comparable<T>> : ScalarFilter<T> {
     val greaterThanOrEqualTo: T?
 }
 
+interface ListScalarFilter<T, R : List<T>> : ScalarFilter<T> {
+    val hasAny: List<T>?
+    val hasAll: List<T>?
+    val hasNone: List<T>?
+}
+
 data class LongFilter(
     override val isNull: Boolean? = null,
     override val equalTo: Long? = null,
@@ -182,6 +186,20 @@ data class IntFilter(
     override val greaterThanOrEqualTo: Int? = null
 ) : ComparableScalarFilter<Int>
 
+data class FloatFilter(
+    override val isNull: Boolean? = null,
+    override val equalTo: Float? = null,
+    override val notEqualTo: Float? = null,
+    override val distinctFrom: Float? = null,
+    override val notDistinctFrom: Float? = null,
+    override val `in`: List<Float>? = null,
+    override val notIn: List<Float>? = null,
+    override val lessThan: Float? = null,
+    override val lessThanOrEqualTo: Float? = null,
+    override val greaterThan: Float? = null,
+    override val greaterThanOrEqualTo: Float? = null
+) : ComparableScalarFilter<Float>
+
 data class StringFilter(
     override val isNull: Boolean? = null,
     override val equalTo: String? = null,
@@ -219,6 +237,22 @@ data class StringFilter(
     val greaterThanInsensitive: String? = null,
     val greaterThanOrEqualToInsensitive: String? = null
 ) : ComparableScalarFilter<String>
+
+data class StringListFilter(
+    override val isNull: Boolean? = null,
+    override val equalTo: String? = null,
+    override val notEqualTo: String? = null,
+    override val distinctFrom: String? = null,
+    override val notDistinctFrom: String? = null,
+    override val `in`: List<String>? = null,
+    override val notIn: List<String>? = null,
+    override val hasAny: List<String>? = null,
+    override val hasAll: List<String>? = null,
+    override val hasNone: List<String>? = null,
+    val hasAnyInsensitive: List<String>? = null,
+    val hasAllInsensitive: List<String>? = null,
+    val hasNoneInsensitive: List<String>? = null
+) : ListScalarFilter<String, List<String>>
 
 @Suppress("UNCHECKED_CAST")
 fun <T : String?> andFilterWithCompareString(

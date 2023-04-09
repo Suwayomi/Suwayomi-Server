@@ -32,6 +32,7 @@ class ChapterType(
     val lastPageRead: Int,
     val lastReadAt: Long,
     val sourceOrder: Int,
+    val realUrl: String?,
     val fetchedAt: Long,
     val isDownloaded: Boolean,
     val pageCount: Int
@@ -50,6 +51,7 @@ class ChapterType(
         row[ChapterTable.lastPageRead],
         row[ChapterTable.lastReadAt],
         row[ChapterTable.sourceOrder],
+        row[ChapterTable.realUrl],
         row[ChapterTable.fetchedAt],
         row[ChapterTable.isDownloaded],
         row[ChapterTable.pageCount]
@@ -69,6 +71,7 @@ class ChapterType(
         dataClass.lastPageRead,
         dataClass.lastReadAt,
         dataClass.index,
+        dataClass.realUrl,
         dataClass.fetchedAt,
         dataClass.downloaded,
         dataClass.pageCount
