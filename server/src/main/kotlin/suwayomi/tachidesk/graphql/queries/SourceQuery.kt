@@ -41,11 +41,6 @@ import java.util.concurrent.CompletableFuture
 
 /**
  * TODO Queries
- * - Filter by languages
- * - Filter by name
- * - Filter by NSFW
- * - In list of ids
- * - Sort?
  *
  * TODO Mutations
  * - Browse with filters
