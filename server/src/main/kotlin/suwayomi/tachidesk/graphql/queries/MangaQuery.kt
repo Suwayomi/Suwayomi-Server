@@ -15,7 +15,6 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
@@ -224,12 +223,14 @@ class MangaQuery {
         offset: Int? = null
     ): MangaNodeList {
         val queryResults = transaction {
-            var res = MangaTable.selectAll()
+            val res = MangaTable.selectAll()
 
             val categoryOp = filter?.getCategoryOp()
             if (categoryOp != null) {
-                res = MangaTable.innerJoin(CategoryMangaTable)
-                    .select { categoryOp }
+                res.adjustColumnSet {
+                    innerJoin(CategoryMangaTable)
+                }
+                res.andWhere { categoryOp }
             }
 
             res.applyOps(condition, filter)

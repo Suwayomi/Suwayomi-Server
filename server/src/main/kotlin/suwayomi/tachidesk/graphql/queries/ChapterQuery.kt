@@ -39,6 +39,7 @@ import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.ChapterNodeList
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -164,6 +165,7 @@ class ChapterQuery {
         val fetchedAt: LongFilter? = null,
         val isDownloaded: BooleanFilter? = null,
         val pageCount: IntFilter? = null,
+        val inLibrary: BooleanFilter? = null,
         override val and: List<ChapterFilter>? = null,
         override val or: List<ChapterFilter>? = null,
         override val not: ChapterFilter? = null
@@ -188,6 +190,8 @@ class ChapterQuery {
                 andFilterWithCompare(ChapterTable.pageCount, pageCount)
             )
         }
+
+        fun getLibraryOp() = andFilterWithCompare(MangaTable.inLibrary, inLibrary)
     }
 
     fun chapters(
@@ -203,6 +207,14 @@ class ChapterQuery {
     ): ChapterNodeList {
         val queryResults = transaction {
             val res = ChapterTable.selectAll()
+
+            val libraryOp = filter?.getLibraryOp()
+            if (libraryOp != null) {
+                res.adjustColumnSet {
+                    innerJoin(MangaTable)
+                }
+                res.andWhere { libraryOp }
+            }
 
             res.applyOps(condition, filter)
 
