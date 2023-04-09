@@ -19,7 +19,6 @@ import suwayomi.tachidesk.graphql.queries.ExtensionQuery
 import suwayomi.tachidesk.graphql.queries.MangaQuery
 import suwayomi.tachidesk.graphql.queries.MetaQuery
 import suwayomi.tachidesk.graphql.queries.SourceQuery
-import suwayomi.tachidesk.graphql.queries.UpdatesQuery
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLCursor
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLLongAsString
@@ -47,8 +46,7 @@ val schema = toSchema(
         TopLevelObject(CategoryQuery()),
         TopLevelObject(SourceQuery()),
         TopLevelObject(ExtensionQuery()),
-        TopLevelObject(MetaQuery()),
-        TopLevelObject(UpdatesQuery())
+        TopLevelObject(MetaQuery())
     ),
     mutations = listOf(
         TopLevelObject(ChapterMutation())
