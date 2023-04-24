@@ -44,7 +44,7 @@ class ServerConfig(config: Config, moduleName: String = MODULE_NAME) : SystemPro
     // misc
     val debugLogsEnabled: Boolean = debugLogsEnabled(GlobalConfigManager.config)
     val systemTrayEnabled: Boolean by overridableConfig
-    val webviewEnabled : Boolean by overridableConfig
+    val webviewEnabled: Boolean by overridableConfig
 
     companion object {
         fun register(config: Config) = ServerConfig(config.getConfig(MODULE_NAME))

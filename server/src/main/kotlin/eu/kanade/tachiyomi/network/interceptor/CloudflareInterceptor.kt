@@ -40,8 +40,9 @@ class CloudflareInterceptor : Interceptor {
 
         logger.debug { "Cloudflare anti-bot is on, CloudflareInterceptor is kicking in..." }
 
-        if (!serverConfig.webviewEnabled)
+        if (!serverConfig.webviewEnabled) {
             throw CloudflareBypassException("Webview is disabled, enable it in server config")
+        }
 
         return try {
             originalResponse.close()
@@ -72,7 +73,12 @@ object CFClearance {
     private val logger = KotlinLogging.logger {}
     private val network: NetworkHelper by injectLazy()
 
-    init {
+    private var undetectedChromeInitialized = false
+
+    fun initializeUndetectedChrome() {
+        if (undetectedChromeInitialized) {
+            return
+        }
         SharedInterpreter().use { jep ->
             val uc = "/home/armor/programming/github-clones/undetected-chromedriver"
 
@@ -81,6 +87,7 @@ object CFClearance {
 
             jep.exec("import undetected_chromedriver") // Cache import
         }
+        undetectedChromeInitialized = true
     }
 
     fun resolveWithWebView(originalRequest: Request): Request {
@@ -88,6 +95,7 @@ object CFClearance {
 
         logger.debug { "resolveWithWebView($url)" }
 
+        initializeUndetectedChrome()
         val cookies = SharedInterpreter().use { jep ->
             try {
                 jep.exec("import undetected_chromedriver as uc")
@@ -110,7 +118,7 @@ object CFClearance {
 //                }
                 jep.exec("driver.get('$url')")
 
-                getCookies(jep, url)
+                getCookies(jep)
             } finally {
                 jep.exec("driver.quit()")
             }
@@ -152,15 +160,17 @@ object CFClearance {
 
     fun getWebViewUserAgent(): String {
         return try {
-            if (!serverConfig.webviewEnabled)
+            if (!serverConfig.webviewEnabled) {
                 throw CloudflareBypassException("Webview is disabled, enable it in server config")
+            }
 
+            initializeUndetectedChrome()
             SharedInterpreter().use { jep ->
                 jep.exec("import undetected_chromedriver as uc")
 
                 jep.exec("options = uc.ChromeOptions()")
-                jep.exec("options.add_argument('--headless')")
-                jep.exec("options.add_argument('--disable-gpu')")
+//                jep.exec("options.add_argument('--headless')")
+//                jep.exec("options.add_argument('--disable-gpu')")
                 jep.exec("driver = uc.Chrome(options=options)")
 
                 jep.exec("userAgent = driver.execute_script('return navigator.userAgent')")
@@ -188,7 +198,7 @@ object CFClearance {
     )
 
     private val json by DI.global.instance<Json>()
-    private fun getCookies(jep: SharedInterpreter, url: String): List<Cookie> {
+    private fun getCookies(jep: SharedInterpreter): List<Cookie> {
         val challengeResolved = waitForChallengeResolve(jep)
 
         return if (challengeResolved) {
@@ -238,4 +248,3 @@ object CFClearance {
     }
 }
 private class CloudflareBypassException(message: String?) : Exception(message)
-
