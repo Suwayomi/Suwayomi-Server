@@ -1,24 +1,24 @@
 package eu.kanade.tachiyomi.network.interceptor
 
-import com.microsoft.playwright.Browser
-import com.microsoft.playwright.BrowserType.LaunchOptions
-import com.microsoft.playwright.Page
-import com.microsoft.playwright.Playwright
-import com.microsoft.playwright.PlaywrightException
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.interceptor.CFClearance.resolveWithWebView
+import jep.SharedInterpreter
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import okhttp3.Cookie
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.Request
 import okhttp3.Response
-import suwayomi.tachidesk.server.ServerConfig
+import org.kodein.di.DI
+import org.kodein.di.conf.global
+import org.kodein.di.instance
 import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.DurationUnit
+import java.util.concurrent.TimeUnit
 
 class CloudflareInterceptor : Interceptor {
     private val logger = KotlinLogging.logger {}
@@ -38,9 +38,10 @@ class CloudflareInterceptor : Interceptor {
             return originalResponse
         }
 
-        throw IOException("playwrite is diabled for v0.6.7")
-
         logger.debug { "Cloudflare anti-bot is on, CloudflareInterceptor is kicking in..." }
+
+        if (!serverConfig.webviewEnabled)
+            throw CloudflareBypassException("Webview is disabled, enable it in server config")
 
         return try {
             originalResponse.close()
@@ -72,9 +73,14 @@ object CFClearance {
     private val network: NetworkHelper by injectLazy()
 
     init {
-        // Fix the default DriverJar issue by providing our own implementation
-        // ref: https://github.com/microsoft/playwright-java/issues/1138
-        System.setProperty("playwright.driver.impl", "suwayomi.tachidesk.server.util.DriverJar")
+        SharedInterpreter().use { jep ->
+            val uc = "/home/armor/programming/github-clones/undetected-chromedriver"
+
+            jep.exec("import sys")
+            jep.exec("sys.path.insert(0,'$uc')")
+
+            jep.exec("import undetected_chromedriver") // Cache import
+        }
     }
 
     fun resolveWithWebView(originalRequest: Request): Request {
@@ -82,24 +88,31 @@ object CFClearance {
 
         logger.debug { "resolveWithWebView($url)" }
 
-        val cookies = Playwright.create().use { playwright ->
-            playwright.chromium().launch(
-                LaunchOptions()
-                    .setHeadless(false)
-                    .apply {
-                        if (serverConfig.socksProxyEnabled) {
-                            setProxy("socks5://${serverConfig.socksProxyHost}:${serverConfig.socksProxyPort}")
-                        }
-                    }
-            ).use { browser ->
-                val userAgent = originalRequest.header("User-Agent")
-                if (userAgent != null) {
-                    browser.newContext(Browser.NewContextOptions().setUserAgent(userAgent)).use { browserContext ->
-                        browserContext.newPage().use { getCookies(it, url) }
-                    }
-                } else {
-                    browser.newPage().use { getCookies(it, url) }
+        val cookies = SharedInterpreter().use { jep ->
+            try {
+                jep.exec("import undetected_chromedriver as uc")
+
+                jep.exec("options = uc.ChromeOptions()")
+
+                if (serverConfig.socksProxyEnabled) {
+                    val proxy = "socks5://${serverConfig.socksProxyHost}:${serverConfig.socksProxyPort}"
+                    jep.exec("options.add_argument('--proxy-server=$proxy')")
                 }
+                jep.exec("driver = uc.Chrome(options=options)")
+//                val userAgent = originalRequest.header("User-Agent")
+
+//                if (userAgent != null) {
+//                    browser.newContext(Browser.NewContextOptions().setUserAgent(userAgent)).use { browserContext ->
+//                        browserContext.newPage().use { getCookies(it, url) }
+//                    }
+//                } else {
+//                    browser.newPage().use { getCookies(it, url) }
+//                }
+                jep.exec("driver.get('$url')")
+
+                getCookies(jep, url)
+            } finally {
+                jep.exec("driver.quit()")
             }
         }
 
@@ -139,44 +152,62 @@ object CFClearance {
 
     fun getWebViewUserAgent(): String {
         return try {
-            throw PlaywrightException("playwrite is diabled for v0.6.7")
+            if (!serverConfig.webviewEnabled)
+                throw CloudflareBypassException("Webview is disabled, enable it in server config")
 
-            Playwright.create().use { playwright ->
-                playwright.chromium().launch(
-                    LaunchOptions()
-                        .setHeadless(true)
-                ).use { browser ->
-                    browser.newPage().use { page ->
-                        val userAgent = page.evaluate("() => {return navigator.userAgent}") as String
-                        logger.debug { "WebView User-Agent is $userAgent" }
-                        return userAgent
-                    }
-                }
+            SharedInterpreter().use { jep ->
+                jep.exec("import undetected_chromedriver as uc")
+
+                jep.exec("options = uc.ChromeOptions()")
+                jep.exec("options.add_argument('--headless')")
+                jep.exec("options.add_argument('--disable-gpu')")
+                jep.exec("driver = uc.Chrome(options=options)")
+
+                jep.exec("userAgent = driver.execute_script('return navigator.userAgent')")
+                val userAgent = jep.getValue("userAgent", java.lang.String::class.java).toString()
+                jep.exec("driver.quit()")
+
+                userAgent
             }
-        } catch (e: PlaywrightException) {
-            // Playwright might fail on headless environments like docker
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
+        } catch (e: Exception) {
+            // Webview might fail on headless environments like docker
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36"
         }
     }
 
-    private fun getCookies(page: Page, url: String): List<Cookie> {
-        applyStealthInitScripts(page)
-        page.navigate(url)
-        val challengeResolved = waitForChallengeResolve(page)
+    @Serializable
+    data class PythonSeleniumCookie(
+        val domain: String,
+        val expiry: Long?,
+        val httpOnly: Boolean,
+        val name: String,
+        val path: String,
+        val sameSite: String,
+        val secure: Boolean,
+        val value: String
+    )
+
+    private val json by DI.global.instance<Json>()
+    private fun getCookies(jep: SharedInterpreter, url: String): List<Cookie> {
+        val challengeResolved = waitForChallengeResolve(jep)
 
         return if (challengeResolved) {
-            val cookies = page.context().cookies()
+            jep.exec("import json")
+            jep.exec("cookies = json.dumps(driver.get_cookies())")
+            val cookiesJson = jep.getValue("cookies", java.lang.String::class.java).toString()
+            val cookies = json.decodeFromString<List<PythonSeleniumCookie>>(cookiesJson)
 
             logger.debug {
-                val userAgent = page.evaluate("() => {return navigator.userAgent}")
-                "Playwright User-Agent is $userAgent"
+                jep.exec("userAgent = driver.execute_script('return navigator.userAgent')")
+                val userAgent = jep.getValue("userAgent", java.lang.String::class.java).toString()
+                "Webview User-Agent is $userAgent"
             }
 
-            // Convert PlayWright cookies to OkHttp cookies
+            // Convert Webview cookies to OkHttp cookies
             cookies.map {
                 Cookie.Builder()
                     .domain(it.domain.removePrefix("."))
-                    .expiresAt(it.expires?.times(1000)?.toLong() ?: Long.MAX_VALUE)
+                    .expiresAt(it.expiry?.times(1000) ?: Long.MAX_VALUE)
                     .name(it.name)
                     .path(it.path)
                     .value(it.value).apply {
@@ -185,39 +216,18 @@ object CFClearance {
                     }.build()
             }
         } else {
-            logger.debug { "Cloudflare challenge failed to resolve" }
-            throw CloudflareBypassException()
+            throw CloudflareBypassException("Cloudflare challenge failed to resolve")
         }
     }
 
-    // ref: https://github.com/vvanglro/cf-clearance/blob/44124a8f06d8d0ecf2bf558a027082ff88dab435/cf_clearance/stealth.py#L18
-    private val stealthInitScripts by lazy {
-        arrayOf(
-            ServerConfig::class.java.getResource("/cloudflare-js/canvas.fingerprinting.js")!!.readText(),
-            ServerConfig::class.java.getResource("/cloudflare-js/chrome.global.js")!!.readText(),
-            ServerConfig::class.java.getResource("/cloudflare-js/emulate.touch.js")!!.readText(),
-            ServerConfig::class.java.getResource("/cloudflare-js/navigator.permissions.js")!!.readText(),
-            ServerConfig::class.java.getResource("/cloudflare-js/navigator.webdriver.js")!!.readText(),
-            ServerConfig::class.java.getResource("/cloudflare-js/chrome.runtime.js")!!.readText(),
-            ServerConfig::class.java.getResource("/cloudflare-js/chrome.plugin.js")!!.readText()
-        )
-    }
-
-    // ref: https://github.com/vvanglro/cf-clearance/blob/44124a8f06d8d0ecf2bf558a027082ff88dab435/cf_clearance/stealth.py#L76
-    private fun applyStealthInitScripts(page: Page) {
-        for (script in stealthInitScripts) {
-            page.addInitScript(script)
-        }
-    }
-
-    // ref: https://github.com/vvanglro/cf-clearance/blob/44124a8f06d8d0ecf2bf558a027082ff88dab435/cf_clearance/retry.py#L21
-    private fun waitForChallengeResolve(page: Page): Boolean {
-        // sometimes the user has to solve the captcha challenge manually, potentially wait a long time
+    private fun waitForChallengeResolve(jep: SharedInterpreter): Boolean {
+        // sometimes the user has to solve the captcha challenge manually and multiple times, potentially wait a long time
         val timeoutSeconds = 120
         repeat(timeoutSeconds) {
-            page.waitForTimeout(1.seconds.toDouble(DurationUnit.MILLISECONDS))
+            TimeUnit.SECONDS.sleep(1)
             val success = try {
-                page.querySelector("#challenge-form") == null
+                jep.exec("r = driver.execute_script('return document.querySelector(\"#challenge-form\") == null')")
+                jep.getValue("r", java.lang.Boolean::class.java).toString().toBoolean()
             } catch (e: Exception) {
                 logger.debug(e) { "query Error" }
                 false
@@ -226,6 +236,6 @@ object CFClearance {
         }
         return false
     }
-
-    private class CloudflareBypassException : Exception()
 }
+private class CloudflareBypassException(message: String?) : Exception(message)
+
