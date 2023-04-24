@@ -168,7 +168,7 @@ tasks {
             application.applicationDefaultJvmArgs = listOf(
                 "-Dsuwayomi.tachidesk.config.server.webUIInterface=electron",
                 // Change this to the installed electron application
-                "-Dsuwayomi.tachidesk.config.server.electronPath=/usr/bin/electron",
+                "-Dsuwayomi.tachidesk.config.server.electronPath=/usr/bin/electron"
             )
         }
     }
