@@ -169,7 +169,6 @@ tasks {
                 "-Dsuwayomi.tachidesk.config.server.webUIInterface=electron",
                 // Change this to the installed electron application
                 "-Dsuwayomi.tachidesk.config.server.electronPath=/usr/bin/electron",
-//                "-Djava.library.path=/home/armor/programming/github-clones/undetected-chromedriver/venv/lib/python3.10/site-packages/jep"
             )
         }
     }
