@@ -94,9 +94,6 @@ appdirs = "net.harawata:appdirs:1.2.1"
 zip4j = "net.lingala.zip4j:zip4j:2.11.2"
 junrar = "com.github.junrar:junrar:7.5.3"
 
-# CloudflareInterceptor WebView
-jep = "black.ninia:jep:4.1.1"
-
 # AES/CBC/PKCS7Padding Cypher provider
 bouncycastle = "org.bouncycastle:bcprov-jdk18on:1.72"
 

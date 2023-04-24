@@ -44,7 +44,10 @@ class ServerConfig(config: Config, moduleName: String = MODULE_NAME) : SystemPro
     // misc
     val debugLogsEnabled: Boolean = debugLogsEnabled(GlobalConfigManager.config)
     val systemTrayEnabled: Boolean by overridableConfig
+
+    // Webview
     val webviewEnabled: Boolean by overridableConfig
+    val undetectedChromePath: String by overridableConfig
 
     companion object {
         fun register(config: Config) = ServerConfig(config.getConfig(MODULE_NAME))

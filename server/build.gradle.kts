@@ -50,9 +50,6 @@ dependencies {
     implementation(libs.zip4j)
     implementation(libs.junrar)
 
-    // CloudflareInterceptor
-    implementation(libs.jep)
-
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
     implementation(libs.bouncycastle)
 

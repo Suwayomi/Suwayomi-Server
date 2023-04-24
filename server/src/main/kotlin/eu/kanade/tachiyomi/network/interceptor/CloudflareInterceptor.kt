@@ -1,8 +1,7 @@
 package eu.kanade.tachiyomi.network.interceptor
 
 import eu.kanade.tachiyomi.network.NetworkHelper
-import eu.kanade.tachiyomi.network.interceptor.CFClearance.resolveWithWebView
-import jep.SharedInterpreter
+import eu.kanade.tachiyomi.network.interceptor.CloudflareBypasser.resolveWithWebView
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -17,7 +16,12 @@ import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
+import java.io.BufferedReader
+import java.io.Closeable
+import java.io.File
 import java.io.IOException
+import java.io.InputStreamReader
+import java.io.PrintWriter
 import java.util.concurrent.TimeUnit
 
 class CloudflareInterceptor : Interceptor {
@@ -65,48 +69,28 @@ class CloudflareInterceptor : Interceptor {
     }
 }
 
-/*
- * This class is ported from https://github.com/vvanglro/cf-clearance
- * The original code is licensed under Apache 2.0
-*/
-object CFClearance {
+object CloudflareBypasser {
     private val logger = KotlinLogging.logger {}
     private val network: NetworkHelper by injectLazy()
-
-    private var undetectedChromeInitialized = false
-
-    fun initializeUndetectedChrome() {
-        if (undetectedChromeInitialized) {
-            return
-        }
-        SharedInterpreter().use { jep ->
-            val uc = "/home/armor/programming/github-clones/undetected-chromedriver"
-
-            jep.exec("import sys")
-            jep.exec("sys.path.insert(0,'$uc')")
-
-            jep.exec("import undetected_chromedriver") // Cache import
-        }
-        undetectedChromeInitialized = true
-    }
 
     fun resolveWithWebView(originalRequest: Request): Request {
         val url = originalRequest.url.toString()
 
         logger.debug { "resolveWithWebView($url)" }
 
-        initializeUndetectedChrome()
-        val cookies = SharedInterpreter().use { jep ->
+        val cookies = PythonInterpreter.create().use { py ->
             try {
-                jep.exec("import undetected_chromedriver as uc")
+                py.exec("import undetected_chromedriver as uc")
 
-                jep.exec("options = uc.ChromeOptions()")
+                py.exec("options = uc.ChromeOptions()")
 
                 if (serverConfig.socksProxyEnabled) {
                     val proxy = "socks5://${serverConfig.socksProxyHost}:${serverConfig.socksProxyPort}"
-                    jep.exec("options.add_argument('--proxy-server=$proxy')")
+                    py.exec("options.add_argument('--proxy-server=$proxy')")
                 }
-                jep.exec("driver = uc.Chrome(options=options)")
+                py.exec("driver = uc.Chrome(options=options)")
+
+                // TODO: handle custom userAgent
 //                val userAgent = originalRequest.header("User-Agent")
 
 //                if (userAgent != null) {
@@ -116,11 +100,11 @@ object CFClearance {
 //                } else {
 //                    browser.newPage().use { getCookies(it, url) }
 //                }
-                jep.exec("driver.get('$url')")
+                py.exec("driver.get('$url')")
 
-                getCookies(jep)
+                getCookies(py)
             } finally {
-                jep.exec("driver.quit()")
+                py.exec("driver.quit()")
             }
         }
 
@@ -164,18 +148,17 @@ object CFClearance {
                 throw CloudflareBypassException("Webview is disabled, enable it in server config")
             }
 
-            initializeUndetectedChrome()
-            SharedInterpreter().use { jep ->
-                jep.exec("import undetected_chromedriver as uc")
+            PythonInterpreter.create().use { py ->
+                py.exec("import undetected_chromedriver as uc")
 
-                jep.exec("options = uc.ChromeOptions()")
-//                jep.exec("options.add_argument('--headless')")
-//                jep.exec("options.add_argument('--disable-gpu')")
-                jep.exec("driver = uc.Chrome(options=options)")
+                py.exec("options = uc.ChromeOptions()")
+                py.exec("options.add_argument('--headless')")
+                py.exec("options.add_argument('--disable-gpu')")
+                py.exec("driver = uc.Chrome(options=options)")
 
-                jep.exec("userAgent = driver.execute_script('return navigator.userAgent')")
-                val userAgent = jep.getValue("userAgent", java.lang.String::class.java).toString()
-                jep.exec("driver.quit()")
+                py.exec("userAgent = driver.execute_script('return navigator.userAgent')")
+                val userAgent = py.getValue("userAgent")
+                py.exec("driver.quit()")
 
                 userAgent
             }
@@ -198,18 +181,18 @@ object CFClearance {
     )
 
     private val json by DI.global.instance<Json>()
-    private fun getCookies(jep: SharedInterpreter): List<Cookie> {
-        val challengeResolved = waitForChallengeResolve(jep)
+    private fun getCookies(py: PythonInterpreter): List<Cookie> {
+        val challengeResolved = waitForChallengeResolve(py)
 
         return if (challengeResolved) {
-            jep.exec("import json")
-            jep.exec("cookies = json.dumps(driver.get_cookies())")
-            val cookiesJson = jep.getValue("cookies", java.lang.String::class.java).toString()
+            py.exec("import json")
+            py.exec("cookies = json.dumps(driver.get_cookies())")
+            val cookiesJson = py.getValue("cookies")
             val cookies = json.decodeFromString<List<PythonSeleniumCookie>>(cookiesJson)
 
             logger.debug {
-                jep.exec("userAgent = driver.execute_script('return navigator.userAgent')")
-                val userAgent = jep.getValue("userAgent", java.lang.String::class.java).toString()
+                py.exec("userAgent = driver.execute_script('return navigator.userAgent')")
+                val userAgent = py.getValue("userAgent")
                 "Webview User-Agent is $userAgent"
             }
 
@@ -230,14 +213,14 @@ object CFClearance {
         }
     }
 
-    private fun waitForChallengeResolve(jep: SharedInterpreter): Boolean {
+    private fun waitForChallengeResolve(py: PythonInterpreter): Boolean {
         // sometimes the user has to solve the captcha challenge manually and multiple times, potentially wait a long time
         val timeoutSeconds = 120
         repeat(timeoutSeconds) {
             TimeUnit.SECONDS.sleep(1)
             val success = try {
-                jep.exec("r = driver.execute_script('return document.querySelector(\"#challenge-form\") == null')")
-                jep.getValue("r", java.lang.Boolean::class.java).toString().toBoolean()
+                py.exec("r = driver.execute_script('return document.querySelector(\"#challenge-form\") == null')")
+                py.getValue("r").lowercase().toBoolean()
             } catch (e: Exception) {
                 logger.debug(e) { "query Error" }
                 false
@@ -248,3 +231,99 @@ object CFClearance {
     }
 }
 private class CloudflareBypassException(message: String?) : Exception(message)
+
+class PythonInterpreter private constructor(private val process: Process) : Closeable {
+    private val logger = KotlinLogging.logger {}
+
+    private val stdin = process.outputStream
+    private val stdout = process.inputStream
+    private val stderr = process.errorStream
+
+    private val stdinWriter = PrintWriter(stdin)
+    private val stdoutReader = BufferedReader(InputStreamReader(stdout))
+    private val stderrReader = BufferedReader(InputStreamReader(stderr))
+
+    private fun rawExec(command: String) {
+        stdinWriter.println(command)
+        stdinWriter.flush()
+    }
+
+    val BUFF_SIZE = 102400
+    fun exec(command: String) {
+        logger.debug { "Python Command: $command" }
+        rawExec(command)
+        makeSureExecDone()
+    }
+
+    private val commandOutputs = mutableListOf<String>()
+
+    fun makeSureExecDone() {
+        val makeSureString = "PYTHON_IS_READY"
+
+        rawExec("print('$makeSureString')")
+        var line: String?
+        do {
+            line = stdoutReader.readLine()
+            if (line != makeSureString) {
+                commandOutputs.add(line)
+            }
+        } while (line != makeSureString)
+
+        val pyError = buildString {
+            while (stderrReader.ready())
+                append(stderr.read().toChar())
+        }
+        if (pyError.isNotEmpty()) {
+            println("Python STDERR: $pyError")
+        }
+    }
+
+    fun getValue(variableName: String): String {
+        exec("print($variableName)")
+        return commandOutputs.last()
+    }
+
+    private fun flushStdoutReader() {
+        var line: String?
+        while (stdoutReader.ready()) {
+            val line = stdoutReader.readLine()
+        }
+    }
+
+    fun destroy() {
+        stdinWriter.close()
+        stdoutReader.close()
+        stderr.close()
+        process.destroy()
+    }
+    override fun close() {
+        destroy()
+    }
+    companion object {
+        fun create(pythonPath: String, workingDir: String, pythonStartupFile: String? = null): PythonInterpreter {
+            val processBuilder = ProcessBuilder()
+                .command(pythonPath, "-i", "-q")
+            processBuilder.directory(File(workingDir))
+
+            if (pythonStartupFile != null) {
+                val environment = processBuilder.environment()
+                environment["PYTHONSTARTUP"] = pythonStartupFile
+            }
+
+            val process = processBuilder.start()
+
+            val pythonInterpreter = PythonInterpreter(process)
+
+            return pythonInterpreter
+        }
+
+        fun create(): PythonInterpreter {
+            val uc = serverConfig.undetectedChromePath
+            return create(
+                "$uc/venv/bin/python",
+                uc,
+                "$uc/console.py"
+            )
+        }
+    }
+}
