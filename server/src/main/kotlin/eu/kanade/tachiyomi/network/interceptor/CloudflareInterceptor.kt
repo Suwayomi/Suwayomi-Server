@@ -89,6 +89,7 @@ object CloudflareBypasser {
                     py.exec("options.add_argument('--proxy-server=$proxy')")
                 }
                 py.exec("driver = uc.Chrome(options=options)")
+                py.exec("driver = uc.Chrome(options=options, driver_executable_path='${py.chromedriverPath.replace("\\","\\\\")}')")
 
                 // TODO: handle custom userAgent
 //                val userAgent = originalRequest.header("User-Agent")
@@ -155,6 +156,7 @@ object CloudflareBypasser {
                 py.exec("options.add_argument('--headless')")
                 py.exec("options.add_argument('--disable-gpu')")
                 py.exec("driver = uc.Chrome(options=options)")
+//                py.exec("driver = uc.Chrome(options=options, driver_executable_path='${py.chromedriverPath.replace("\\","\\\\")}')")
 
                 py.exec("userAgent = driver.execute_script('return navigator.userAgent')")
                 val userAgent = py.getValue("userAgent")
@@ -232,7 +234,8 @@ object CloudflareBypasser {
 }
 private class CloudflareBypassException(message: String?) : Exception(message)
 
-class PythonInterpreter private constructor(private val process: Process) : Closeable {
+class PythonInterpreter
+private constructor(private val process: Process, val chromedriverPath: String) : Closeable {
     private val logger = KotlinLogging.logger {}
 
     private val stdin = process.outputStream
@@ -300,29 +303,39 @@ class PythonInterpreter private constructor(private val process: Process) : Clos
         destroy()
     }
     companion object {
-        fun create(pythonPath: String, workingDir: String, pythonStartupFile: String? = null): PythonInterpreter {
+        fun create(pythonPath: String, workingDir: String, pythonStartupFile: String, chromedriverPath: String): PythonInterpreter {
             val processBuilder = ProcessBuilder()
                 .command(pythonPath, "-i", "-q")
             processBuilder.directory(File(workingDir))
 
-            if (pythonStartupFile != null) {
-                val environment = processBuilder.environment()
-                environment["PYTHONSTARTUP"] = pythonStartupFile
-            }
+            val environment = processBuilder.environment()
+            environment["PYTHONSTARTUP"] = pythonStartupFile
 
             val process = processBuilder.start()
 
-            val pythonInterpreter = PythonInterpreter(process)
-
-            return pythonInterpreter
+            return PythonInterpreter(process, chromedriverPath)
         }
 
         fun create(): PythonInterpreter {
             val uc = serverConfig.undetectedChromePath
+
+            val pythonPath = if (System.getProperty("os.name").startsWith("Windows")) {
+                "$uc\\venv\\Scripts\\python.exe"
+            } else {
+                "$uc/venv/bin/python"
+            }
+
+            val chromedriverPath = if (System.getProperty("os.name").startsWith("Windows")) {
+                "$uc\\chromedriver.exe"
+            } else {
+                "$uc/chromedriver"
+            }
+
             return create(
-                "$uc/venv/bin/python",
+                pythonPath,
                 uc,
-                "$uc/console.py"
+                "$uc/console.py",
+                chromedriverPath
             )
         }
     }
