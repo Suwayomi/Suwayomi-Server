@@ -317,18 +317,18 @@ private constructor(private val process: Process, val chromedriverPath: String) 
         }
 
         fun create(): PythonInterpreter {
-            val uc = serverConfig.undetectedChromePath
+            val uc = File(serverConfig.undetectedChromePath).absolutePath
 
-            val pythonPath = if (System.getProperty("os.name").startsWith("Windows")) {
-                "$uc\\venv\\Scripts\\python.exe"
+            val (pythonPath, chromedriverPath) = if (System.getProperty("os.name").startsWith("Windows")) {
+                arrayOf(
+                    "$uc\\venv\\Scripts\\python.exe",
+                    "$uc\\chromedriver.exe"
+                )
             } else {
-                "$uc/venv/bin/python"
-            }
-
-            val chromedriverPath = if (System.getProperty("os.name").startsWith("Windows")) {
-                "$uc\\chromedriver.exe"
-            } else {
-                "$uc/chromedriver"
+                arrayOf(
+                    "$uc/venv/bin/python",
+                    "$uc/chromedriver"
+                )
             }
 
             return create(
