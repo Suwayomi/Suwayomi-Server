@@ -137,6 +137,12 @@ fun applicationSetup() {
 
     databaseUp()
 
+    Settings.init()
+
+    Settings.setup()
+
+    Settings.update(Settings.fromConfig(serverConfig))
+
     LocalSource.register()
 
     // create system tray
