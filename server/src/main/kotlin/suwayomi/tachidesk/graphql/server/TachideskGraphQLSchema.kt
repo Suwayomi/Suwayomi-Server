@@ -13,6 +13,7 @@ import com.expediagroup.graphql.generator.hooks.FlowSubscriptionSchemaGeneratorH
 import com.expediagroup.graphql.generator.toSchema
 import graphql.schema.GraphQLType
 import suwayomi.tachidesk.graphql.mutations.ChapterMutation
+import suwayomi.tachidesk.graphql.mutations.MangaMutation
 import suwayomi.tachidesk.graphql.queries.CategoryQuery
 import suwayomi.tachidesk.graphql.queries.ChapterQuery
 import suwayomi.tachidesk.graphql.queries.ExtensionQuery
@@ -49,7 +50,8 @@ val schema = toSchema(
         TopLevelObject(MetaQuery())
     ),
     mutations = listOf(
-        TopLevelObject(ChapterMutation())
+        TopLevelObject(ChapterMutation()),
+        TopLevelObject(MangaMutation())
     ),
     subscriptions = listOf(
         TopLevelObject(DownloadSubscription())

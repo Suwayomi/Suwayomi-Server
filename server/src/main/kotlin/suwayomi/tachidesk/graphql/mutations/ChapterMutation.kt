@@ -28,7 +28,7 @@ class ChapterMutation {
         val chapter: ChapterType
     )
     data class UpdateChapterInput(
-        val clientMutationId: String?,
+        val clientMutationId: String? = null,
         val id: Int,
         val patch: UpdateChapterPatch
     )
@@ -38,7 +38,7 @@ class ChapterMutation {
         val chapters: List<ChapterType>
     )
     data class UpdateChaptersInput(
-        val clientMutationId: String?,
+        val clientMutationId: String? = null,
         val ids: List<Int>,
         val patch: UpdateChapterPatch
     )

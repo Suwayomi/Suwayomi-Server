@@ -45,17 +45,6 @@ import java.util.concurrent.CompletableFuture
 
 /**
  * TODO Queries
- *
- * TODO Mutations
- * - Favorite
- * - Unfavorite
- * - Add to category
- * - Remove from category
- * - Check for updates
- * - Download x(all = -1) chapters
- * - Delete read/all downloaded chapters
- * - Add/update meta
- * - Delete meta
  */
 class MangaQuery {
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<MangaType?> {
