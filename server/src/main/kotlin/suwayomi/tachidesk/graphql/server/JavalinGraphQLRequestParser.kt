@@ -14,10 +14,10 @@ import java.io.IOException
 
 class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
 
-    @Suppress("BlockingMethodInNonBlockingContext", "PARAMETER_NAME_CHANGED_ON_OVERRIDE")
-    override suspend fun parseRequest(context: Context): GraphQLServerRequest = try {
+    @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
+    override suspend fun parseRequest(context: Context): GraphQLServerRequest? = try {
         context.bodyAsClass(GraphQLServerRequest::class.java)
     } catch (e: IOException) {
-        throw IOException("Unable to parse GraphQL payload.")
+        null
     }
 }
