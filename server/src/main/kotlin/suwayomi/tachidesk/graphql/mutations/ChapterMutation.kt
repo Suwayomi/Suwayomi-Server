@@ -1,76 +1,91 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import com.expediagroup.graphql.server.extensions.getValuesFromDataLoader
 import graphql.schema.DataFetchingEnvironment
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.ChapterType
-import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
 
+/**
+ * TODO Mutations
+ * - Check for updates?
+ * - Download
+ * - Delete download
+ */
 class ChapterMutation {
-    data class MetaTypeInput(
-        val key: String,
-        val value: String?
-    )
-
-    data class ChapterAttributesInput(
+    data class UpdateChapterPatch(
         val isBookmarked: Boolean? = null,
         val isRead: Boolean? = null,
-        val lastPageRead: Int? = null,
-        val meta: List<MetaTypeInput>? = null
+        val lastPageRead: Int? = null
     )
 
+    data class UpdateChapterPayload(
+        val clientMutationId: String?,
+        val chapter: ChapterType
+    )
     data class UpdateChapterInput(
-        val ids: List<Int>,
-        val attributes: ChapterAttributesInput
+        val clientMutationId: String?,
+        val id: Int,
+        val patch: UpdateChapterPatch
     )
 
-    fun updateChapters(dataFetchingEnvironment: DataFetchingEnvironment, input: UpdateChapterInput): CompletableFuture<List<ChapterType>> {
-        val (ids, attributes) = input
+    data class UpdateChaptersPayload(
+        val clientMutationId: String?,
+        val chapters: List<ChapterType>
+    )
+    data class UpdateChaptersInput(
+        val clientMutationId: String?,
+        val ids: List<Int>,
+        val patch: UpdateChapterPatch
+    )
 
+    private fun updateChapters(ids: List<Int>, patch: UpdateChapterPatch) {
         transaction {
-            if (attributes.isRead != null || attributes.isBookmarked != null || attributes.lastPageRead != null) {
+            if (patch.isRead != null || patch.isBookmarked != null || patch.lastPageRead != null) {
                 val now = Instant.now().epochSecond
                 ChapterTable.update({ ChapterTable.id inList ids }) { update ->
-                    attributes.isRead?.also {
+                    patch.isRead?.also {
                         update[isRead] = it
                     }
-                    attributes.isBookmarked?.also {
+                    patch.isBookmarked?.also {
                         update[isBookmarked] = it
                     }
-                    attributes.lastPageRead?.also {
+                    patch.lastPageRead?.also {
                         update[lastPageRead] = it
                         update[lastReadAt] = now
                     }
                 }
             }
-
-            if (attributes.meta != null) {
-                attributes.meta.forEach { metaItem ->
-                    // Delete any existing values
-                    // Even when updating, it is easier to just delete all and create new
-                    ChapterMetaTable.deleteWhere {
-                        (key eq metaItem.key) and (ref inList ids)
-                    }
-                    if (metaItem.value != null) {
-                        ChapterMetaTable.batchInsert(ids) { chapterId ->
-                            this[ChapterMetaTable.ref] = chapterId
-                            this[ChapterMetaTable.key] = metaItem.key
-                            this[ChapterMetaTable.value] = metaItem.value
-                        }
-                    }
-                }
-            }
         }
+    }
 
-        return dataFetchingEnvironment.getValuesFromDataLoader<Int, ChapterType>("ChapterDataLoader", ids)
+    fun updateChapter(dataFetchingEnvironment: DataFetchingEnvironment, input: UpdateChapterInput): CompletableFuture<UpdateChapterPayload> {
+        val (clientMutationId, id, patch) = input
+
+        updateChapters(listOf(id), patch)
+
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterType>("ChapterDataLoader", id).thenApply { chapter ->
+            UpdateChapterPayload(
+                clientMutationId = clientMutationId,
+                chapter = chapter
+            )
+        }
+    }
+
+    fun updateChapters(dataFetchingEnvironment: DataFetchingEnvironment, input: UpdateChaptersInput): CompletableFuture<UpdateChaptersPayload> {
+        val (clientMutationId, ids, patch) = input
+
+        updateChapters(ids, patch)
+
+        return dataFetchingEnvironment.getValuesFromDataLoader<Int, ChapterType>("ChapterDataLoader", ids).thenApply { chapters ->
+            UpdateChaptersPayload(
+                clientMutationId = clientMutationId,
+                chapters = chapters
+            )
+        }
     }
 }

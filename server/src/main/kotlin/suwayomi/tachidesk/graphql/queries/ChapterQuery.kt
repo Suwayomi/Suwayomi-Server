@@ -46,14 +46,6 @@ import java.util.concurrent.CompletableFuture
  * TODO Queries
  * - Filter in library
  * - Get page list?
- *
- * TODO Mutations
- * - Last page read
- * - Read status
- * - bookmark status
- * - Check for updates?
- * - Download
- * - Delete download
  */
 class ChapterQuery {
     fun chapter(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<ChapterType?> {
