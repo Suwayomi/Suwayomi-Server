@@ -7,6 +7,8 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -18,9 +20,10 @@ interface ISetting<Type> {
     val requiresRestart: Boolean?
 }
 
+@Serializable
 data class PartialSetting<Type>(
     override val value: Type,
-    override val requiresRestart: Boolean? = null
+    @Transient override val requiresRestart: Boolean? = null
 ) : ISetting<Type>
 
 data class Setting<Type>(
@@ -49,6 +52,7 @@ interface IServerSettings {
     val systemTrayEnabled: ISetting<Boolean>?
 }
 
+@Serializable
 data class PartialServerSettings(
     override val ip: PartialSetting<String>? = null,
     override val port: PartialSetting<Int>? = null,

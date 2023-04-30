@@ -20,6 +20,8 @@ object GlobalAPI {
             patch("", GlobalMetaController.modifyMeta)
         }
         path("settings") {
+            get("", SettingsController.serverSettings)
+            patch("", SettingsController.modifyServerSettings)
             get("about", SettingsController.about)
             get("check-update", SettingsController.checkUpdate)
         }
