@@ -145,9 +145,11 @@ Check out [this wiki page](https://github.com/Suwayomi/Tachidesk-Server/wiki/Con
 If you face issues with your setup then we are happy to provide help, just join our discord server(a discord badge is on the top of the page, you are just a click clack away!).
 
 ## Syncing With Tachiyomi
-### The Tachidesk extension
-- You can install the `Tachidesk` extension inside tachiyomi.
-- The extension will load Tachidesk library. 
+### The Suwayomi extension and tracker
+- You can install the `Suwayomi` extension inside tachiyomi.
+- The extension will load your Tachidesk library.
+- You can enable the Suwayomi tracker to track your reading progress with your Tachidesk server.
+  - Note: Tachiyomi only allowes tracking one way, meaning that read chapters through other clients won't be propagated to tachiyomi.
 - By manipulating filters you can browse your categories.
 
 ### Other methods
