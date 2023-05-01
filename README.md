@@ -148,9 +148,9 @@ If you face issues with your setup then we are happy to provide help, just join 
 ### The Suwayomi extension and tracker
 - You can install the `Suwayomi` extension inside tachiyomi.
 - The extension will load your Tachidesk library.
-- You can enable the Suwayomi tracker to track your reading progress with your Tachidesk server.
-  - Note: Tachiyomi only allowes tracking one way, meaning that read chapters through other clients won't be propagated to tachiyomi.
-- By manipulating filters you can browse your categories.
+- By manipulating extension search filters you can browse your categories.
+- You can enable the Suwayomi tracker to track reading progress with your Tachidesk server.
+  - Note: Tachiyomi [only allowes tracking one way](https://github.com/tachiyomiorg/tachiyomi/issues/1626), meaning that read chapter status from other clients won't be propagated to tachiyomi.
 
 ### Other methods
 Checkout [this issue](https://github.com/Suwayomi/Tachidesk-Server/issues/159) for tracking progress.
