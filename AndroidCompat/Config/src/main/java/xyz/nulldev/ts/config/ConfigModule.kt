@@ -26,6 +26,10 @@ abstract class SystemPropertyOverridableConfigModule(getConfig: () -> Config, mo
 
 /** Defines a config property that is overridable with jvm `-D` commandline arguments prefixed with [CONFIG_PREFIX] */
 class SystemPropertyOverrideDelegate(val getConfig: () -> Config, val moduleName: String) {
+    operator fun <R> setValue(thisRef: R, property: KProperty<*>, value: Any) {
+        GlobalConfigManager.updateValue("$moduleName.${property.name}", value)
+    }
+
     inline operator fun <R, reified T> getValue(thisRef: R, property: KProperty<*>): T {
         val configValue: T = getConfig().getValue(thisRef, property)
 

@@ -14,36 +14,36 @@ import xyz.nulldev.ts.config.debugLogsEnabled
 
 private const val MODULE_NAME = "server"
 class ServerConfig(getConfig: () -> Config, moduleName: String = MODULE_NAME) : SystemPropertyOverridableConfigModule(getConfig, moduleName) {
-    val ip: String by overridableConfig
-    val port: Int by overridableConfig
+    var ip: String by overridableConfig
+    var port: Int by overridableConfig
 
     // proxy
-    val socksProxyEnabled: Boolean by overridableConfig
-    val socksProxyHost: String by overridableConfig
-    val socksProxyPort: String by overridableConfig
+    var socksProxyEnabled: Boolean by overridableConfig
+    var socksProxyHost: String by overridableConfig
+    var socksProxyPort: String by overridableConfig
 
     // webUI
-    val webUIEnabled: Boolean by overridableConfig
-    val webUIFlavor: String by overridableConfig
-    val initialOpenInBrowserEnabled: Boolean by overridableConfig
-    val webUIInterface: String by overridableConfig
-    val electronPath: String by overridableConfig
+    var webUIEnabled: Boolean by overridableConfig
+    var webUIFlavor: String by overridableConfig
+    var initialOpenInBrowserEnabled: Boolean by overridableConfig
+    var webUIInterface: String by overridableConfig
+    var electronPath: String by overridableConfig
 
     // downloader
-    val downloadAsCbz: Boolean by overridableConfig
-    val downloadsPath: String by overridableConfig
+    var downloadAsCbz: Boolean by overridableConfig
+    var downloadsPath: String by overridableConfig
 
     // updater
-    val maxParallelUpdateRequests: Int by overridableConfig
+    var maxParallelUpdateRequests: Int by overridableConfig
 
     // Authentication
-    val basicAuthEnabled: Boolean by overridableConfig
-    val basicAuthUsername: String by overridableConfig
-    val basicAuthPassword: String by overridableConfig
+    var basicAuthEnabled: Boolean by overridableConfig
+    var basicAuthUsername: String by overridableConfig
+    var basicAuthPassword: String by overridableConfig
 
     // misc
-    val debugLogsEnabled: Boolean = debugLogsEnabled(GlobalConfigManager.config)
-    val systemTrayEnabled: Boolean by overridableConfig
+    var debugLogsEnabled: Boolean = debugLogsEnabled(GlobalConfigManager.config)
+    var systemTrayEnabled: Boolean by overridableConfig
 
     companion object {
         fun register(getConfig: () -> Config) = ServerConfig({ getConfig().getConfig(MODULE_NAME) })
