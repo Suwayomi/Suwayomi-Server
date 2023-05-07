@@ -1,0 +1,14 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+# # create symlinks for server.conf
+# ln -s /defaults/server.conf /config/server.conf
+
+# Pre-stage some files & directories for permissions purposes
+mkdir -p /app/
+
+# permissions
+lsiown -R abc:abc \
+    /config \
+    /home \
+    /app/tachidesk
