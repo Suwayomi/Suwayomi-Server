@@ -8,12 +8,12 @@ import xyz.nulldev.ts.config.ConfigModule
  * Application info config.
  */
 
-class ApplicationInfoConfigModule(config: Config) : ConfigModule(config) {
-    val packageName: String by config
-    val debug: Boolean by config
+class ApplicationInfoConfigModule(getConfig: () -> Config) : ConfigModule(getConfig) {
+    val packageName: String by getConfig()
+    val debug: Boolean by getConfig()
 
     companion object {
         fun register(config: Config) =
-            ApplicationInfoConfigModule(config.getConfig("android.app"))
+            ApplicationInfoConfigModule { config.getConfig("android.app") }
     }
 }

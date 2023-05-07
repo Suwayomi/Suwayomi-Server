@@ -13,7 +13,7 @@ import xyz.nulldev.ts.config.SystemPropertyOverridableConfigModule
 import xyz.nulldev.ts.config.debugLogsEnabled
 
 private const val MODULE_NAME = "server"
-class ServerConfig(config: Config, moduleName: String = MODULE_NAME) : SystemPropertyOverridableConfigModule(config, moduleName) {
+class ServerConfig(getConfig: () -> Config, moduleName: String = MODULE_NAME) : SystemPropertyOverridableConfigModule(getConfig, moduleName) {
     val ip: String by overridableConfig
     val port: Int by overridableConfig
 
@@ -46,6 +46,6 @@ class ServerConfig(config: Config, moduleName: String = MODULE_NAME) : SystemPro
     val systemTrayEnabled: Boolean by overridableConfig
 
     companion object {
-        fun register(config: Config) = ServerConfig(config.getConfig(MODULE_NAME))
+        fun register(getConfig: () -> Config) = ServerConfig({ getConfig().getConfig(MODULE_NAME) })
     }
 }
