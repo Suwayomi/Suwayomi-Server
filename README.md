@@ -132,11 +132,11 @@ Mount the volune `/config` to where you want you persistent data to be.
 Example:
 
 ```
-    $ docker build -t tachidesk-app-lastest .
+    $ docker build -t tachidesk-app-latest .
 ```
 Run Container from the command line:
 ```
-    $ docker run -e PUID=1000 -e PGID=1000 -d -p 8085:4567 tachidesk-app-lastest
+    $ docker run -e PUID=1000 -e PGID=1000 -d -p 8085:4567 tachidesk-app-latest
 ```
 
 ## Advanced Methods
