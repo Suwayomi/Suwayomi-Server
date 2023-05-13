@@ -13,7 +13,11 @@ import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.UpdateStatus
 import suwayomi.tachidesk.manga.impl.update.UpdaterSocket
-import suwayomi.tachidesk.manga.model.dataclass.*
+import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
+import suwayomi.tachidesk.manga.model.dataclass.IncludeInUpdate
+import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
+import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.util.formParam
 import suwayomi.tachidesk.server.util.handler
@@ -115,7 +119,7 @@ object UpdateController {
 
         updater.addMangasToQueue(
             mangasToUpdate
-                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, MangaDataClass::title)),
+                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, MangaDataClass::title))
         )
     }
 

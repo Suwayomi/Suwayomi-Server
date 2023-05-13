@@ -64,6 +64,10 @@ dependencies {
 //    implementation(fileTree("lib/"))
     implementation(kotlin("script-runtime"))
 
+    implementation("com.expediagroup:graphql-kotlin-server:6.4.0")
+    implementation("com.expediagroup:graphql-kotlin-schema-generator:6.4.0")
+    implementation("com.graphql-java:graphql-java-extended-scalars:20.0")
+
     testImplementation(libs.mockk)
 }
 
