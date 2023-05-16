@@ -78,8 +78,8 @@ class MangaType(
         dataClass.chaptersLastFetchedAt
     )
 
-    fun chapters(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<ChapterType>> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, List<ChapterType>>("ChaptersForMangaDataLoader", id)
+    fun chapters(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterNodeList> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterNodeList>("ChaptersForMangaDataLoader", id)
     }
 
     fun age(): Long? {
@@ -102,7 +102,7 @@ class MangaType(
     }
 
     fun source(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<SourceType?> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, SourceType?>("SourceForMangaDataLoader", id)
+        return dataFetchingEnvironment.getValueFromDataLoader<Long, SourceType?>("SourceDataLoader", sourceId)
     }
 }
 
