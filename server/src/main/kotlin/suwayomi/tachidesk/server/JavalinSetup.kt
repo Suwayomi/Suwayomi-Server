@@ -106,11 +106,13 @@ object JavalinSetup {
         }
 
         app.routes {
-            path("api/v1/") {
-                GlobalAPI.defineEndpoints()
-                MangaAPI.defineEndpoints()
+            path("api/") {
+                path("v1/") {
+                    GlobalAPI.defineEndpoints()
+                    MangaAPI.defineEndpoints()
+                }
+                GraphQL.defineEndpoints()
             }
-            GraphQL.defineEndpoints()
         }
     }
 
