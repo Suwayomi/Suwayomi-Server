@@ -18,7 +18,6 @@ import suwayomi.tachidesk.graphql.types.SourceNodeList
 import suwayomi.tachidesk.graphql.types.SourceNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.SourceType
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
-import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 
@@ -32,35 +31,6 @@ class SourceDataLoader : KotlinDataLoader<Long, SourceType?> {
                     .mapNotNull { SourceType(it) }
                     .associateBy { it.id }
                 ids.map { source[it] }
-            }
-        }
-    }
-}
-
-class SourceForMangaDataLoader : KotlinDataLoader<Int, SourceType?> {
-    override val dataLoaderName = "SourceForMangaDataLoader"
-    override fun getDataLoader(): DataLoader<Int, SourceType?> = DataLoaderFactory.newDataLoader { ids ->
-        future {
-            transaction {
-                addLogger(Slf4jSqlDebugLogger)
-
-                val itemsByRef = MangaTable.innerJoin(SourceTable)
-                    .select { MangaTable.id inList ids }
-                    .map { Triple(it[MangaTable.id].value, it[MangaTable.sourceReference], it) }
-                    .let { triples ->
-                        val sources = buildMap {
-                            triples.forEach {
-                                if (!containsKey(it.second)) {
-                                    put(it.second, SourceType(it.third))
-                                }
-                            }
-                        }
-                        triples.associate {
-                            it.first to sources[it.second]
-                        }
-                    }
-
-                ids.map { itemsByRef[it] }
             }
         }
     }

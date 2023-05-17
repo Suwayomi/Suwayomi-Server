@@ -39,7 +39,7 @@ class MangaMutation {
         val mangas: List<MangaType>
     )
     data class UpdateMangasInput(
-        val clientMutationId: String?? = null,
+        val clientMutationId: String? = null,
         val ids: List<Int>,
         val patch: UpdateMangaPatch
     )
