@@ -7,7 +7,8 @@
 
 package suwayomi.tachidesk.graphql.types
 
-import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
+import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
+import graphql.schema.DataFetchingEnvironment
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
@@ -15,38 +16,29 @@ import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState
-import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
-import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
+import java.util.concurrent.CompletableFuture
 
 class DownloadType(
     val chapterId: Int,
-    val chapterIndex: Int,
     val mangaId: Int,
     var state: DownloadState = DownloadState.Queued,
     var progress: Float = 0f,
-    var tries: Int = 0,
-    @GraphQLIgnore
-    var mangaDataClass: MangaDataClass,
-    @GraphQLIgnore
-    var chapterDataClass: ChapterDataClass
+    var tries: Int = 0
 ) : Node {
     constructor(downloadChapter: DownloadChapter) : this(
         downloadChapter.chapter.id,
-        downloadChapter.chapterIndex,
         downloadChapter.mangaId,
         downloadChapter.state,
         downloadChapter.progress,
-        downloadChapter.tries,
-        downloadChapter.manga,
-        downloadChapter.chapter
+        downloadChapter.tries
     )
 
-    fun manga(): MangaType {
-        return MangaType(mangaDataClass)
+    fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, MangaType>("MangaDataLoader", mangaId)
     }
 
-    fun chapter(): ChapterType {
-        return ChapterType(chapterDataClass)
+    fun chapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterType>("ChapterDataLoader", chapterId)
     }
 }
 
