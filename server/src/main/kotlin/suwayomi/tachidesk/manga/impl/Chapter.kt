@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
@@ -31,7 +32,6 @@ import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
 import suwayomi.tachidesk.manga.model.dataclass.paginatedFrom
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
-import suwayomi.tachidesk.manga.model.table.ChapterTable.scanlator
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
@@ -56,6 +56,48 @@ object Chapter {
     }
 
     private suspend fun getSourceChapters(mangaId: Int): List<ChapterDataClass> {
+        val chapterList = fetchChapterList(mangaId)
+
+        val dbChapterMap = transaction {
+            ChapterTable.select { ChapterTable.manga eq mangaId }
+                .associateBy({ it[ChapterTable.url] }, { it })
+        }
+
+        val chapterIds = chapterList.map { dbChapterMap.getValue(it.url)[ChapterTable.id] }
+        val chapterMetas = getChaptersMetaMaps(chapterIds)
+
+        return chapterList.mapIndexed { index, it ->
+
+            val dbChapter = dbChapterMap.getValue(it.url)
+
+            ChapterDataClass(
+                id = dbChapter[ChapterTable.id].value,
+                url = it.url,
+                name = it.name,
+                uploadDate = it.date_upload,
+                chapterNumber = it.chapter_number,
+                scanlator = it.scanlator,
+                mangaId = mangaId,
+
+                read = dbChapter[ChapterTable.isRead],
+                bookmarked = dbChapter[ChapterTable.isBookmarked],
+                lastPageRead = dbChapter[ChapterTable.lastPageRead],
+                lastReadAt = dbChapter[ChapterTable.lastReadAt],
+
+                index = chapterList.size - index,
+                fetchedAt = dbChapter[ChapterTable.fetchedAt],
+                realUrl = dbChapter[ChapterTable.realUrl],
+                downloaded = dbChapter[ChapterTable.isDownloaded],
+
+                pageCount = dbChapter[ChapterTable.pageCount],
+
+                chapterCount = chapterList.size,
+                meta = chapterMetas.getValue(dbChapter[ChapterTable.id])
+            )
+        }
+    }
+
+    suspend fun fetchChapterList(mangaId: Int): List<SChapter> {
         val manga = getManga(mangaId)
         val source = getCatalogueSourceOrStub(manga.sourceId.toLong())
 
@@ -72,7 +114,6 @@ object Chapter {
             ChapterRecognition.parseChapterNumber(it, sManga)
         }
 
-        val chapterCount = chapterList.count()
         var now = Instant.now().epochSecond
 
         transaction {
@@ -118,9 +159,10 @@ object Chapter {
 
         // clear any orphaned/duplicate chapters that are in the db but not in `chapterList`
         val dbChapterCount = transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.count() }
-        if (dbChapterCount > chapterCount) { // we got some clean up due
+        if (dbChapterCount > chapterList.size) { // we got some clean up due
             val dbChapterList = transaction {
-                ChapterTable.select { ChapterTable.manga eq mangaId }.orderBy(ChapterTable.url to ASC).toList()
+                ChapterTable.select { ChapterTable.manga eq mangaId }
+                    .orderBy(ChapterTable.url to ASC).toList()
             }
             val chapterUrls = chapterList.map { it.url }.toSet()
 
@@ -137,43 +179,7 @@ object Chapter {
             }
         }
 
-        val dbChapterMap = transaction {
-            ChapterTable.select { ChapterTable.manga eq mangaId }
-                .associateBy({ it[ChapterTable.url] }, { it })
-        }
-
-        val chapterIds = chapterList.map { dbChapterMap.getValue(it.url)[ChapterTable.id] }
-        val chapterMetas = getChaptersMetaMaps(chapterIds)
-
-        return chapterList.mapIndexed { index, it ->
-
-            val dbChapter = dbChapterMap.getValue(it.url)
-
-            ChapterDataClass(
-                id = dbChapter[ChapterTable.id].value,
-                url = it.url,
-                name = it.name,
-                uploadDate = it.date_upload,
-                chapterNumber = it.chapter_number,
-                scanlator = it.scanlator,
-                mangaId = mangaId,
-
-                read = dbChapter[ChapterTable.isRead],
-                bookmarked = dbChapter[ChapterTable.isBookmarked],
-                lastPageRead = dbChapter[ChapterTable.lastPageRead],
-                lastReadAt = dbChapter[ChapterTable.lastReadAt],
-
-                index = chapterCount - index,
-                fetchedAt = dbChapter[ChapterTable.fetchedAt],
-                realUrl = dbChapter[ChapterTable.realUrl],
-                downloaded = dbChapter[ChapterTable.isDownloaded],
-
-                pageCount = dbChapter[ChapterTable.pageCount],
-
-                chapterCount = chapterList.size,
-                meta = chapterMetas.getValue(dbChapter[ChapterTable.id])
-            )
-        }
+        return chapterList
     }
 
     fun modifyChapter(

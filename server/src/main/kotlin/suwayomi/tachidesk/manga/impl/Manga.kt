@@ -60,49 +60,10 @@ object Manga {
     suspend fun getManga(mangaId: Int, onlineFetch: Boolean = false): MangaDataClass {
         var mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
 
-        return if (mangaEntry[MangaTable.initialized] && !onlineFetch) {
+        return if (!onlineFetch && mangaEntry[MangaTable.initialized]) {
             getMangaDataClass(mangaId, mangaEntry)
         } else { // initialize manga
-            val source = getCatalogueSourceOrNull(mangaEntry[MangaTable.sourceReference])
-                ?: return getMangaDataClass(mangaId, mangaEntry)
-            val sManga = SManga.create().apply {
-                url = mangaEntry[MangaTable.url]
-                title = mangaEntry[MangaTable.title]
-            }
-            val networkManga = source.fetchMangaDetails(sManga).awaitSingle()
-            sManga.copyFrom(networkManga)
-
-            transaction {
-                MangaTable.update({ MangaTable.id eq mangaId }) {
-                    if (sManga.title != mangaEntry[MangaTable.title]) {
-                        val canUpdateTitle = updateMangaDownloadDir(mangaId, sManga.title)
-
-                        if (canUpdateTitle) {
-                            it[MangaTable.title] = sManga.title
-                        }
-                    }
-                    it[MangaTable.initialized] = true
-
-                    it[MangaTable.artist] = sManga.artist
-                    it[MangaTable.author] = sManga.author
-                    it[MangaTable.description] = truncate(sManga.description, 4096)
-                    it[MangaTable.genre] = sManga.genre
-                    it[MangaTable.status] = sManga.status
-                    if (!sManga.thumbnail_url.isNullOrEmpty() && sManga.thumbnail_url != mangaEntry[MangaTable.thumbnail_url]) {
-                        it[MangaTable.thumbnail_url] = sManga.thumbnail_url
-                        it[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
-                        clearMangaThumbnailCache(mangaId)
-                    }
-
-                    it[MangaTable.realUrl] = runCatching {
-                        (source as? HttpSource)?.getMangaUrl(sManga)
-                    }.getOrNull()
-
-                    it[MangaTable.lastFetchedAt] = Instant.now().epochSecond
-
-                    it[MangaTable.updateStrategy] = sManga.update_strategy.name
-                }
-            }
+            val sManga = fetchManga(mangaId) ?: return getMangaDataClass(mangaId, mangaEntry)
 
             mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
 
@@ -133,6 +94,53 @@ object Manga {
                 freshData = true
             )
         }
+    }
+
+    suspend fun fetchManga(mangaId: Int): SManga? {
+        val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
+
+        val source = getCatalogueSourceOrNull(mangaEntry[MangaTable.sourceReference])
+            ?: return null
+        val sManga = SManga.create().apply {
+            url = mangaEntry[MangaTable.url]
+            title = mangaEntry[MangaTable.title]
+        }
+        val networkManga = source.fetchMangaDetails(sManga).awaitSingle()
+        sManga.copyFrom(networkManga)
+
+        transaction {
+            MangaTable.update({ MangaTable.id eq mangaId }) {
+                if (sManga.title != mangaEntry[MangaTable.title]) {
+                    val canUpdateTitle = updateMangaDownloadDir(mangaId, sManga.title)
+
+                    if (canUpdateTitle) {
+                        it[MangaTable.title] = sManga.title
+                    }
+                }
+                it[MangaTable.initialized] = true
+
+                it[MangaTable.artist] = sManga.artist
+                it[MangaTable.author] = sManga.author
+                it[MangaTable.description] = truncate(sManga.description, 4096)
+                it[MangaTable.genre] = sManga.genre
+                it[MangaTable.status] = sManga.status
+                if (!sManga.thumbnail_url.isNullOrEmpty() && sManga.thumbnail_url != mangaEntry[MangaTable.thumbnail_url]) {
+                    it[MangaTable.thumbnail_url] = sManga.thumbnail_url
+                    it[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
+                    clearMangaThumbnailCache(mangaId)
+                }
+
+                it[MangaTable.realUrl] = runCatching {
+                    (source as? HttpSource)?.getMangaUrl(sManga)
+                }.getOrNull()
+
+                it[MangaTable.lastFetchedAt] = Instant.now().epochSecond
+
+                it[MangaTable.updateStrategy] = sManga.update_strategy.name
+            }
+        }
+
+        return sManga
     }
 
     suspend fun getMangaFull(mangaId: Int, onlineFetch: Boolean = false): MangaDataClass {
