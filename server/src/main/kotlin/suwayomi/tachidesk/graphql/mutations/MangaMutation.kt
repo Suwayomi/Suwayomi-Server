@@ -3,10 +3,14 @@ package suwayomi.tachidesk.graphql.mutations
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import com.expediagroup.graphql.server.extensions.getValuesFromDataLoader
 import graphql.schema.DataFetchingEnvironment
+import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import suwayomi.tachidesk.graphql.queries.MangaQuery
 import suwayomi.tachidesk.graphql.types.MangaType
+import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -78,6 +82,33 @@ class MangaMutation {
             UpdateMangasPayload(
                 clientMutationId = clientMutationId,
                 mangas = mangas
+            )
+        }
+    }
+
+    data class FetchMangaInput(
+        val clientMutationId: String? = null,
+        val id: Int
+    )
+    data class FetchMangaPayload(
+        val clientMutationId: String?,
+        val manga: MangaType
+    )
+
+    fun fetchManga(
+        input: FetchMangaInput
+    ): CompletableFuture<FetchMangaPayload> {
+        val (clientMutationId, id) = input
+
+        return future {
+            Manga.fetchManga(id)
+        }.thenApply {
+            val manga = transaction {
+                MangaTable.select { MangaTable.id eq id }.first()
+            }
+            FetchMangaPayload(
+                clientMutationId = clientMutationId,
+                manga = MangaType(manga)
             )
         }
     }
