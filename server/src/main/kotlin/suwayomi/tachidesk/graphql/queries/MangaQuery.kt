@@ -38,7 +38,6 @@ import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
-import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.util.concurrent.CompletableFuture
@@ -172,7 +171,6 @@ class MangaQuery {
         val realUrl: StringFilter? = null,
         val lastFetchedAt: LongFilter? = null,
         val chaptersLastFetchedAt: LongFilter? = null,
-        val category: IntFilter? = null,
         override val and: List<MangaFilter>? = null,
         override val or: List<MangaFilter>? = null,
         override val not: MangaFilter? = null
@@ -196,8 +194,6 @@ class MangaQuery {
                 andFilterWithCompare(MangaTable.inLibraryAt, chaptersLastFetchedAt)
             )
         }
-
-        fun getCategoryOp() = andFilterWithCompareEntity(CategoryMangaTable.category, category)
     }
 
     fun mangas(
@@ -213,14 +209,6 @@ class MangaQuery {
     ): MangaNodeList {
         val queryResults = transaction {
             val res = MangaTable.selectAll()
-
-            val categoryOp = filter?.getCategoryOp()
-            if (categoryOp != null) {
-                res.adjustColumnSet {
-                    innerJoin(CategoryMangaTable)
-                }
-                res.andWhere { categoryOp }
-            }
 
             res.applyOps(condition, filter)
 
