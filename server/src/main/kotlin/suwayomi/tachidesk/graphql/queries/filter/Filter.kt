@@ -131,7 +131,7 @@ interface ScalarFilter<T> {
     val notIn: List<T>?
 }
 
-interface ComparableScalarFilter<T : Comparable<T>> : ScalarFilter<T> {
+interface ComparableScalarFilter<T : Comparable<T>?> : ScalarFilter<T> {
     val lessThan: T?
     val lessThanOrEqualTo: T?
     val greaterThan: T?
@@ -255,12 +255,30 @@ data class StringListFilter(
 ) : ListScalarFilter<String, List<String>>
 
 @Suppress("UNCHECKED_CAST")
-fun <T : String?> andFilterWithCompareString(
-    column: Column<T>,
+fun <T : String, S : T?> andFilterWithCompareString(
+    column: Column<S>,
     filter: StringFilter?
 ): Op<Boolean>? {
     filter ?: return null
     val opAnd = OpAnd()
+
+    opAnd.andWhere(filter.isNull) { if (it) column.isNull() else column.isNotNull() }
+    opAnd.andWhere(filter.equalTo) { column eq it as S }
+    opAnd.andWhere(filter.notEqualTo) { column neq it as S }
+    opAnd.andWhere(filter.distinctFrom) { DistinctFromOp.distinctFrom(column, it as S) }
+    opAnd.andWhere(filter.notDistinctFrom) { DistinctFromOp.notDistinctFrom(column, it as S) }
+    if (!filter.`in`.isNullOrEmpty()) {
+        opAnd.andWhere(filter.`in`) { column inList it as List<S> }
+    }
+    if (!filter.notIn.isNullOrEmpty()) {
+        opAnd.andWhere(filter.notIn) { column notInList it as List<S> }
+    }
+
+    opAnd.andWhere(filter.lessThan) { column less it }
+    opAnd.andWhere(filter.lessThanOrEqualTo) { column lessEq it }
+    opAnd.andWhere(filter.greaterThan) { column greater it }
+    opAnd.andWhere(filter.greaterThanOrEqualTo) { column greaterEq it }
+
     opAnd.andWhere(filter.includes) { column like "%$it%" }
     opAnd.andWhere(filter.notIncludes) { column notLike "%$it%" }
     opAnd.andWhere(filter.includesInsensitive) { ILikeEscapeOp.iLike(column, "%$it%") }
@@ -281,11 +299,11 @@ fun <T : String?> andFilterWithCompareString(
     opAnd.andWhere(filter.likeInsensitive) { ILikeEscapeOp.iLike(column, it) }
     opAnd.andWhere(filter.notLikeInsensitive) { ILikeEscapeOp.iNotLike(column, it) }
 
-    opAnd.andWhere(filter.distinctFromInsensitive) { DistinctFromOp.distinctFrom(column.upperCase(), it.uppercase() as T) }
-    opAnd.andWhere(filter.notDistinctFromInsensitive) { DistinctFromOp.notDistinctFrom(column.upperCase(), it.uppercase() as T) }
+    opAnd.andWhere(filter.distinctFromInsensitive) { DistinctFromOp.distinctFrom(column.upperCase(), it.uppercase() as S) }
+    opAnd.andWhere(filter.notDistinctFromInsensitive) { DistinctFromOp.notDistinctFrom(column.upperCase(), it.uppercase() as S) }
 
-    opAnd.andWhere(filter.inInsensitive) { column.upperCase() inList (it.map { it.uppercase() } as List<T>) }
-    opAnd.andWhere(filter.notInInsensitive) { column.upperCase() notInList (it.map { it.uppercase() } as List<T>) }
+    opAnd.andWhere(filter.inInsensitive) { column.upperCase() inList (it.map { it.uppercase() } as List<S>) }
+    opAnd.andWhere(filter.notInInsensitive) { column.upperCase() notInList (it.map { it.uppercase() } as List<S>) }
 
     opAnd.andWhere(filter.lessThanInsensitive) { column.upperCase() less it.uppercase() }
     opAnd.andWhere(filter.lessThanOrEqualToInsensitive) { column.upperCase() lessEq it.uppercase() }
@@ -296,7 +314,7 @@ fun <T : String?> andFilterWithCompareString(
 }
 
 class OpAnd(var op: Op<Boolean>? = null) {
-    fun <T> andWhere(value: T?, andPart: SqlExpressionBuilder.(T) -> Op<Boolean>) {
+    fun <T> andWhere(value: T?, andPart: SqlExpressionBuilder.(T & Any) -> Op<Boolean>) {
         value ?: return
         val expr = Op.build { andPart(value) }
         op = if (op == null) expr else (op!! and expr)
