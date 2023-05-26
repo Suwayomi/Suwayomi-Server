@@ -12,6 +12,7 @@ import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.sql.addLogger
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.types.MangaNodeList
@@ -42,10 +43,23 @@ class MangaForCategoryDataLoader : KotlinDataLoader<Int, MangaNodeList> {
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
-                val itemsByRef = CategoryMangaTable.innerJoin(MangaTable).select { CategoryMangaTable.category inList ids }
+                val itemsByRef = if (ids.contains(0)) {
+                    MangaTable
+                        .leftJoin(CategoryMangaTable)
+                        .select { MangaTable.inLibrary eq true }
+                        .andWhere { CategoryMangaTable.manga.isNull() }
+                        .map { MangaType(it) }
+                        .let {
+                            mapOf(0 to it)
+                        }
+                } else {
+                    emptyMap()
+                } + CategoryMangaTable.innerJoin(MangaTable)
+                    .select { CategoryMangaTable.category inList ids }
                     .map { Pair(it[CategoryMangaTable.category].value, MangaType(it)) }
                     .groupBy { it.first }
                     .mapValues { it.value.map { pair -> pair.second } }
+
                 ids.map { (itemsByRef[it] ?: emptyList()).toNodeList() }
             }
         }

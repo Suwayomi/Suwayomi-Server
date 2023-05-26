@@ -10,6 +10,7 @@ package suwayomi.tachidesk.manga.impl
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
@@ -19,7 +20,6 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.CategoryManga.removeMangaFromCategory
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
-import suwayomi.tachidesk.manga.model.dataclass.IncludeInUpdate
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
@@ -54,7 +54,7 @@ object Category {
         transaction {
             CategoryTable.update({ CategoryTable.id eq categoryId }) {
                 if (name != null && !name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)) it[CategoryTable.name] = name
-                if (isDefault != null) it[CategoryTable.isDefault] = isDefault
+                if (isDefault != null && categoryId != DEFAULT_CATEGORY_ID) it[CategoryTable.isDefault] = isDefault
                 if (includeInUpdate != null) it[CategoryTable.includeInUpdate] = includeInUpdate
             }
         }
@@ -64,6 +64,7 @@ object Category {
      * Move the category from order number `from` to `to`
      */
     fun reorderCategory(from: Int, to: Int) {
+        if (from == 0 || to == 0) return
         transaction {
             val categories = CategoryTable.selectAll().orderBy(CategoryTable.order to SortOrder.ASC).toMutableList()
             categories.add(to - 1, categories.removeAt(from - 1))
@@ -76,6 +77,7 @@ object Category {
     }
 
     fun removeCategory(categoryId: Int) {
+        if (categoryId == DEFAULT_CATEGORY_ID) return
         transaction {
             CategoryMangaTable.select { CategoryMangaTable.category eq categoryId }.forEach {
                 removeMangaFromCategory(it[CategoryMangaTable.manga].value, categoryId)
@@ -97,24 +99,32 @@ object Category {
         }
     }
 
+    private fun needsDefaultCategory() = transaction {
+        MangaTable
+            .leftJoin(CategoryMangaTable)
+            .select { MangaTable.inLibrary eq true }
+            .andWhere { CategoryMangaTable.manga.isNull() }
+            .empty()
+            .not()
+    }
+
     const val DEFAULT_CATEGORY_ID = 0
     const val DEFAULT_CATEGORY_NAME = "Default"
-    private fun addDefaultIfNecessary(categories: List<CategoryDataClass>): List<CategoryDataClass> {
-        val defaultCategorySize = MangaTable.select { (MangaTable.inLibrary eq true) and (MangaTable.defaultCategory eq true) }.count().toInt()
-        return if (defaultCategorySize > 0) {
-            listOf(CategoryDataClass(DEFAULT_CATEGORY_ID, 0, DEFAULT_CATEGORY_NAME, true, defaultCategorySize, IncludeInUpdate.UNSET)) + categories
-        } else {
-            categories
-        }
-    }
 
     fun getCategoryList(): List<CategoryDataClass> {
         return transaction {
-            val categories = CategoryTable.selectAll().orderBy(CategoryTable.order to SortOrder.ASC).map {
-                CategoryTable.toDataClass(it)
-            }
-
-            addDefaultIfNecessary(categories)
+            CategoryTable.selectAll()
+                .orderBy(CategoryTable.order to SortOrder.ASC)
+                .let {
+                    if (needsDefaultCategory()) {
+                        it
+                    } else {
+                        it.andWhere { CategoryTable.id neq DEFAULT_CATEGORY_ID }
+                    }
+                }
+                .map {
+                    CategoryTable.toDataClass(it)
+                }
         }
     }
 
