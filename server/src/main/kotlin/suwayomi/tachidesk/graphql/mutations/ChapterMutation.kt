@@ -1,8 +1,5 @@
 package suwayomi.tachidesk.graphql.mutations
 
-import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
-import com.expediagroup.graphql.server.extensions.getValuesFromDataLoader
-import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
@@ -71,35 +68,37 @@ class ChapterMutation {
     }
 
     fun updateChapter(
-        dataFetchingEnvironment: DataFetchingEnvironment,
         input: UpdateChapterInput
-    ): CompletableFuture<UpdateChapterPayload> {
+    ): UpdateChapterPayload {
         val (clientMutationId, id, patch) = input
 
         updateChapters(listOf(id), patch)
 
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterType>("ChapterDataLoader", id).thenApply { chapter ->
-            UpdateChapterPayload(
-                clientMutationId = clientMutationId,
-                chapter = chapter
-            )
+        val chapter = transaction {
+            ChapterType(ChapterTable.select { ChapterTable.id eq id }.first())
         }
+
+        return UpdateChapterPayload(
+            clientMutationId = clientMutationId,
+            chapter = chapter
+        )
     }
 
     fun updateChapters(
-        dataFetchingEnvironment: DataFetchingEnvironment,
         input: UpdateChaptersInput
-    ): CompletableFuture<UpdateChaptersPayload> {
+    ): UpdateChaptersPayload {
         val (clientMutationId, ids, patch) = input
 
         updateChapters(ids, patch)
 
-        return dataFetchingEnvironment.getValuesFromDataLoader<Int, ChapterType>("ChapterDataLoader", ids).thenApply { chapters ->
-            UpdateChaptersPayload(
-                clientMutationId = clientMutationId,
-                chapters = chapters
-            )
+        val chapters = transaction {
+            ChapterTable.select { ChapterTable.id inList ids }.map { ChapterType(it) }
         }
+
+        return UpdateChaptersPayload(
+            clientMutationId = clientMutationId,
+            chapters = chapters
+        )
     }
 
     data class FetchChaptersInput(

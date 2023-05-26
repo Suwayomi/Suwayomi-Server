@@ -1,8 +1,5 @@
 package suwayomi.tachidesk.graphql.mutations
 
-import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
-import com.expediagroup.graphql.server.extensions.getValuesFromDataLoader
-import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
@@ -61,30 +58,34 @@ class MangaMutation {
         }
     }
 
-    fun updateManga(dataFetchingEnvironment: DataFetchingEnvironment, input: UpdateMangaInput): CompletableFuture<UpdateMangaPayload> {
+    fun updateManga(input: UpdateMangaInput): UpdateMangaPayload {
         val (clientMutationId, id, patch) = input
 
         updateMangas(listOf(id), patch)
 
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, MangaType>("MangaDataLoader", id).thenApply { manga ->
-            UpdateMangaPayload(
-                clientMutationId = clientMutationId,
-                manga = manga
-            )
+        val manga = transaction {
+            MangaType(MangaTable.select { MangaTable.id eq id }.first())
         }
+
+        return UpdateMangaPayload(
+            clientMutationId = clientMutationId,
+            manga = manga
+        )
     }
 
-    fun updateMangas(dataFetchingEnvironment: DataFetchingEnvironment, input: UpdateMangasInput): CompletableFuture<UpdateMangasPayload> {
+    fun updateMangas(input: UpdateMangasInput): UpdateMangasPayload {
         val (clientMutationId, ids, patch) = input
 
         updateMangas(ids, patch)
 
-        return dataFetchingEnvironment.getValuesFromDataLoader<Int, MangaType>("MangaDataLoader", ids).thenApply { mangas ->
-            UpdateMangasPayload(
-                clientMutationId = clientMutationId,
-                mangas = mangas
-            )
+        val mangas = transaction {
+            MangaTable.select { MangaTable.id inList ids }.map { MangaType(it) }
         }
+
+        return UpdateMangasPayload(
+            clientMutationId = clientMutationId,
+            mangas = mangas
+        )
     }
 
     data class FetchMangaInput(
