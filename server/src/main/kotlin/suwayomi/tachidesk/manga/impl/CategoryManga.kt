@@ -33,6 +33,7 @@ import suwayomi.tachidesk.manga.model.table.toDataClass
 
 object CategoryManga {
     fun addMangaToCategory(mangaId: Int, categoryId: Int) {
+        if (categoryId == DEFAULT_CATEGORY_ID) return
         fun notAlreadyInCategory() = CategoryMangaTable.select { (CategoryMangaTable.category eq categoryId) and (CategoryMangaTable.manga eq mangaId) }.isEmpty()
 
         transaction {
@@ -50,6 +51,7 @@ object CategoryManga {
     }
 
     fun removeMangaFromCategory(mangaId: Int, categoryId: Int) {
+        if (categoryId == DEFAULT_CATEGORY_ID) return
         transaction {
             CategoryMangaTable.deleteWhere { (CategoryMangaTable.category eq categoryId) and (CategoryMangaTable.manga eq mangaId) }
             if (CategoryMangaTable.select { CategoryMangaTable.manga eq mangaId }.count() == 0L) {
