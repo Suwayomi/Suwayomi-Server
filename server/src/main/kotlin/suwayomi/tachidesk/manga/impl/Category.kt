@@ -138,8 +138,15 @@ object Category {
 
     fun getCategorySize(categoryId: Int): Int {
         return transaction {
-            CategoryMangaTable.select {
-                CategoryMangaTable.category eq categoryId
+            if (categoryId == DEFAULT_CATEGORY_ID) {
+                MangaTable
+                    .leftJoin(CategoryMangaTable)
+                    .select { MangaTable.inLibrary eq true }
+                    .andWhere { CategoryMangaTable.manga.isNull() }
+            } else {
+                CategoryMangaTable.select {
+                    CategoryMangaTable.category eq categoryId
+                }
             }.count().toInt()
         }
     }
