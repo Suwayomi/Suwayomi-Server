@@ -93,8 +93,8 @@ class MangaType(
         return Instant.now().epochSecond.minus(chaptersLastFetchedAt!!)
     }
 
-    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MetaNodeList> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, MetaNodeList>("MangaMetaDataLoader", id)
+    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<MangaMetaType>> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, List<MangaMetaType>>("MangaMetaDataLoader", id)
     }
 
     fun categories(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<CategoryNodeList> {

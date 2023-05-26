@@ -3,11 +3,16 @@ package suwayomi.tachidesk.graphql.mutations
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import com.expediagroup.graphql.server.extensions.getValuesFromDataLoader
 import graphql.schema.DataFetchingEnvironment
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.impl.Chapter
+import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.time.Instant
@@ -15,7 +20,6 @@ import java.util.concurrent.CompletableFuture
 
 /**
  * TODO Mutations
- * - Check for updates?
  * - Download
  * - Delete download
  */
@@ -123,5 +127,53 @@ class ChapterMutation {
                 chapters = chapters
             )
         }
+    }
+
+    data class SetChapterMetaInput(
+        val clientMutationId: String? = null,
+        val meta: ChapterMetaType
+    )
+    data class SetChapterMetaPayload(
+        val clientMutationId: String?,
+        val meta: ChapterMetaType
+    )
+    fun setChapterMeta(
+        input: SetChapterMetaInput
+    ): SetChapterMetaPayload {
+        val (clientMutationId, meta) = input
+
+        Chapter.modifyChapterMeta(meta.chapterId, meta.key, meta.value)
+
+        return SetChapterMetaPayload(clientMutationId, meta)
+    }
+
+    data class DeleteChapterMetaInput(
+        val clientMutationId: String? = null,
+        val chapterId: Int,
+        val key: String
+    )
+    data class DeleteChapterMetaPayload(
+        val clientMutationId: String?,
+        val meta: ChapterMetaType?
+    )
+    fun deleteChapterMeta(
+        input: DeleteChapterMetaInput
+    ): DeleteChapterMetaPayload {
+        val (clientMutationId, chapterId, key) = input
+
+        val meta = transaction {
+            val meta = ChapterMetaTable.select { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
+                .firstOrNull()
+
+            ChapterMetaTable.deleteWhere { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
+
+            if (meta != null) {
+                ChapterMetaType(meta)
+            } else {
+                null
+            }
+        }
+
+        return DeleteChapterMetaPayload(clientMutationId, meta)
     }
 }

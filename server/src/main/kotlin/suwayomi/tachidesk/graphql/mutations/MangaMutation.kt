@@ -3,12 +3,16 @@ package suwayomi.tachidesk.graphql.mutations
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import com.expediagroup.graphql.server.extensions.getValuesFromDataLoader
 import graphql.schema.DataFetchingEnvironment
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import suwayomi.tachidesk.graphql.queries.MangaQuery
+import suwayomi.tachidesk.graphql.types.MangaMetaType
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.impl.Manga
+import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
@@ -17,11 +21,8 @@ import java.util.concurrent.CompletableFuture
  * TODO Mutations
  * - Add to category
  * - Remove from category
- * - Check for updates
  * - Download x(all = -1) chapters
  * - Delete read/all downloaded chapters
- * - Add/update meta
- * - Delete meta
  */
 class MangaMutation {
     data class UpdateMangaPatch(
@@ -111,5 +112,53 @@ class MangaMutation {
                 manga = MangaType(manga)
             )
         }
+    }
+
+    data class SetMangaMetaInput(
+        val clientMutationId: String? = null,
+        val meta: MangaMetaType
+    )
+    data class SetMangaMetaPayload(
+        val clientMutationId: String?,
+        val meta: MangaMetaType
+    )
+    fun setMangaMeta(
+        input: SetMangaMetaInput
+    ): SetMangaMetaPayload {
+        val (clientMutationId, meta) = input
+
+        Manga.modifyMangaMeta(meta.mangaId, meta.key, meta.value)
+
+        return SetMangaMetaPayload(clientMutationId, meta)
+    }
+
+    data class DeleteMangaMetaInput(
+        val clientMutationId: String? = null,
+        val mangaId: Int,
+        val key: String
+    )
+    data class DeleteMangaMetaPayload(
+        val clientMutationId: String?,
+        val meta: MangaMetaType?
+    )
+    fun deleteMangaMeta(
+        input: DeleteMangaMetaInput
+    ): DeleteMangaMetaPayload {
+        val (clientMutationId, mangaId, key) = input
+
+        val meta = transaction {
+            val meta = MangaMetaTable.select { (MangaMetaTable.ref eq mangaId) and (MangaMetaTable.key eq key) }
+                .firstOrNull()
+
+            MangaMetaTable.deleteWhere { (MangaMetaTable.ref eq mangaId) and (MangaMetaTable.key eq key) }
+
+            if (meta != null) {
+                MangaMetaType(meta)
+            } else {
+                null
+            }
+        }
+
+        return DeleteMangaMetaPayload(clientMutationId, meta)
     }
 }

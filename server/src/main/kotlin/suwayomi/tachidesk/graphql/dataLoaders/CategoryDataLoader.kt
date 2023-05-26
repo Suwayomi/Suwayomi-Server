@@ -21,9 +21,9 @@ import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 
-class CategoryDataLoader : KotlinDataLoader<Int, CategoryType?> {
+class CategoryDataLoader : KotlinDataLoader<Int, CategoryType> {
     override val dataLoaderName = "CategoryDataLoader"
-    override fun getDataLoader(): DataLoader<Int, CategoryType?> = DataLoaderFactory.newDataLoader { ids ->
+    override fun getDataLoader(): DataLoader<Int, CategoryType> = DataLoaderFactory.newDataLoader { ids ->
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)

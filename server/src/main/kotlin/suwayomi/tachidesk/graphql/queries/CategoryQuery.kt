@@ -39,18 +39,6 @@ import suwayomi.tachidesk.graphql.types.CategoryType
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import java.util.concurrent.CompletableFuture
 
-/**
- * TODO Queries
- *
- * TODO Mutations
- * - Name
- * - Order
- * - Default
- * - Create
- * - Delete
- * - Add/update meta
- * - Delete meta
- */
 class CategoryQuery {
     fun category(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<CategoryType?> {
         return dataFetchingEnvironment.getValueFromDataLoader("CategoryDataLoader", id)

@@ -31,25 +31,16 @@ import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
-import suwayomi.tachidesk.graphql.types.GlobalMetaItem
-import suwayomi.tachidesk.graphql.types.MetaItem
-import suwayomi.tachidesk.graphql.types.MetaNodeList
+import suwayomi.tachidesk.graphql.types.GlobalMetaNodeList
+import suwayomi.tachidesk.graphql.types.GlobalMetaType
 import java.util.concurrent.CompletableFuture
 
-/**
- * TODO Queries
- *
- * TODO Mutations
- * - Add/update meta
- * - Delete meta
- *
- */
 class MetaQuery {
-    fun meta(dataFetchingEnvironment: DataFetchingEnvironment, key: String): CompletableFuture<MetaItem?> {
-        return dataFetchingEnvironment.getValueFromDataLoader<String, MetaItem?>("GlobalMetaDataLoader", key)
+    fun meta(dataFetchingEnvironment: DataFetchingEnvironment, key: String): CompletableFuture<GlobalMetaType?> {
+        return dataFetchingEnvironment.getValueFromDataLoader<String, GlobalMetaType?>("GlobalMetaDataLoader", key)
     }
 
-    enum class MetaOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<MetaItem> {
+    enum class MetaOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<GlobalMetaType> {
         KEY(GlobalMetaTable.key),
         VALUE(GlobalMetaTable.value);
 
@@ -67,7 +58,7 @@ class MetaQuery {
             }
         }
 
-        override fun asCursor(type: MetaItem): Cursor {
+        override fun asCursor(type: GlobalMetaType): Cursor {
             val value = when (this) {
                 KEY -> type.key
                 VALUE -> type.key + "\\-" + type.value
@@ -114,7 +105,7 @@ class MetaQuery {
         first: Int? = null,
         last: Int? = null,
         offset: Int? = null
-    ): MetaNodeList {
+    ): GlobalMetaNodeList {
         val queryResults = transaction {
             val res = GlobalMetaTable.selectAll()
 
@@ -157,24 +148,24 @@ class MetaQuery {
             QueryResults(total, firstResult, lastResult, res.toList())
         }
 
-        val getAsCursor: (MetaItem) -> Cursor = (orderBy ?: MetaOrderBy.KEY)::asCursor
+        val getAsCursor: (GlobalMetaType) -> Cursor = (orderBy ?: MetaOrderBy.KEY)::asCursor
 
-        val resultsAsType = queryResults.results.map { GlobalMetaItem(it) }
+        val resultsAsType = queryResults.results.map { GlobalMetaType(it) }
 
-        return MetaNodeList(
+        return GlobalMetaNodeList(
             resultsAsType,
             if (resultsAsType.isEmpty()) {
                 emptyList()
             } else {
                 listOfNotNull(
                     resultsAsType.firstOrNull()?.let {
-                        MetaNodeList.MetaEdge(
+                        GlobalMetaNodeList.MetaEdge(
                             getAsCursor(it),
                             it
                         )
                     },
                     resultsAsType.lastOrNull()?.let {
-                        MetaNodeList.MetaEdge(
+                        GlobalMetaNodeList.MetaEdge(
                             getAsCursor(it),
                             it
                         )
