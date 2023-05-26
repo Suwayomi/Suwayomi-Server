@@ -41,6 +41,22 @@
     <link href="https://unpkg.com/graphiql/graphiql.min.css" rel="stylesheet"/>
     <link href="https://unpkg.com/@graphiql/plugin-explorer/dist/style.min.css" rel="stylesheet"/>
     <style>
+        .docExplorerWrap {
+            width: 100% !important;
+            padding-bottom: 20px;
+        }
+        .docExplorerHide {
+            display: none;
+        }
+
+        /*noinspection CssUnresolvedCustomProperty*/
+        .doc-explorer-title {
+            font-weight: var(--font-weight-medium);
+            font-size: var(--font-size-h2);
+            overflow-x: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
         .doc-explorer-contents {
             height: 100%;
             padding-bottom: 40px;
