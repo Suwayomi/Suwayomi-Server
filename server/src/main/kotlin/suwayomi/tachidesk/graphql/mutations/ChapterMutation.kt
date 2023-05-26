@@ -119,9 +119,12 @@ class ChapterMutation {
         return future {
             Chapter.fetchChapterList(mangaId)
         }.thenApply {
-            val chapters = ChapterTable.select { ChapterTable.manga eq mangaId }
-                .orderBy(ChapterTable.sourceOrder)
-                .map { ChapterType(it) }
+            val chapters = transaction {
+                ChapterTable.select { ChapterTable.manga eq mangaId }
+                    .orderBy(ChapterTable.sourceOrder)
+                    .map { ChapterType(it) }
+            }
+
             FetchChaptersPayload(
                 clientMutationId = clientMutationId,
                 chapters = chapters
