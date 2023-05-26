@@ -307,6 +307,12 @@ object Chapter {
             val chapterId =
                 ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }
                     .first()[ChapterTable.id].value
+            modifyChapterMeta(chapterId, key, value)
+        }
+    }
+
+    fun modifyChapterMeta(chapterId: Int, key: String, value: String) {
+        transaction {
             val meta =
                 ChapterMetaTable.select { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
                     .firstOrNull()

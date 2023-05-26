@@ -35,8 +35,8 @@ class CategoryType(
         return dataFetchingEnvironment.getValueFromDataLoader<Int, MangaNodeList>("MangaForCategoryDataLoader", id)
     }
 
-    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MetaNodeList> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, MetaNodeList>("CategoryMetaDataLoader", id)
+    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<CategoryMetaType>> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, List<CategoryMetaType>>("CategoryMetaDataLoader", id)
     }
 }
 

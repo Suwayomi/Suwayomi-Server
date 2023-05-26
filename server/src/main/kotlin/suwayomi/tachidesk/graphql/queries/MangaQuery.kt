@@ -42,9 +42,6 @@ import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.util.concurrent.CompletableFuture
 
-/**
- * TODO Queries
- */
 class MangaQuery {
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<MangaType?> {
         return dataFetchingEnvironment.getValueFromDataLoader("MangaDataLoader", id)

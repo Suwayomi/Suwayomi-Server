@@ -38,15 +38,6 @@ import suwayomi.tachidesk.graphql.types.ExtensionType
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import java.util.concurrent.CompletableFuture
 
-/**
- * TODO Queries
- *
- * TODO Mutations
- * - Install
- * - Update
- * - Uninstall
- * - Check for updates (global mutation?)
- */
 class ExtensionQuery {
     fun extension(dataFetchingEnvironment: DataFetchingEnvironment, pkgName: String): CompletableFuture<ExtensionType?> {
         return dataFetchingEnvironment.getValueFromDataLoader("ExtensionDataLoader", pkgName)

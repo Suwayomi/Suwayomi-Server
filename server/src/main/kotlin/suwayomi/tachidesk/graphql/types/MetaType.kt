@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.graphql.types
 
-import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
+import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
+import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
@@ -11,44 +12,85 @@ import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
+import java.util.concurrent.CompletableFuture
 
-open class MetaItem(
-    val key: String,
-    val value: String,
-    @GraphQLIgnore
-    val ref: Int?
-) : Node
+interface MetaType : Node {
+    val key: String
+    val value: String
+}
 
-class ChapterMetaItem(
-    private val row: ResultRow
-) : MetaItem(row[ChapterMetaTable.key], row[ChapterMetaTable.value], row[ChapterMetaTable.ref].value)
+class ChapterMetaType(
+    override val key: String,
+    override val value: String,
+    val chapterId: Int
+) : MetaType {
+    constructor(row: ResultRow) : this(
+        key = row[ChapterMetaTable.key],
+        value = row[ChapterMetaTable.value],
+        chapterId = row[ChapterMetaTable.ref].value
+    )
 
-class MangaMetaItem(
-    private val row: ResultRow
-) : MetaItem(row[MangaMetaTable.key], row[MangaMetaTable.value], row[MangaMetaTable.ref].value)
+    fun chapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterType>("ChapterDataLoader", chapterId)
+    }
+}
 
-class CategoryMetaItem(
-    private val row: ResultRow
-) : MetaItem(row[CategoryMetaTable.key], row[CategoryMetaTable.value], row[CategoryMetaTable.ref].value)
+class MangaMetaType(
+    override val key: String,
+    override val value: String,
+    val mangaId: Int
+) : MetaType {
+    constructor(row: ResultRow) : this(
+        key = row[MangaMetaTable.key],
+        value = row[MangaMetaTable.value],
+        mangaId = row[MangaMetaTable.ref].value
+    )
 
-class GlobalMetaItem(
-    private val row: ResultRow
-) : MetaItem(row[GlobalMetaTable.key], row[GlobalMetaTable.value], null)
+    fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, MangaType>("MangaDataLoader", mangaId)
+    }
+}
 
-data class MetaNodeList(
-    override val nodes: List<MetaItem>,
+class CategoryMetaType(
+    override val key: String,
+    override val value: String,
+    val categoryId: Int
+) : MetaType {
+    constructor(row: ResultRow) : this(
+        key = row[CategoryMetaTable.key],
+        value = row[CategoryMetaTable.value],
+        categoryId = row[CategoryMetaTable.ref].value
+    )
+
+    fun category(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<CategoryType> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, CategoryType>("CategoryDataLoader", categoryId)
+    }
+}
+
+class GlobalMetaType(
+    override val key: String,
+    override val value: String
+) : MetaType {
+    constructor(row: ResultRow) : this(
+        key = row[GlobalMetaTable.key],
+        value = row[GlobalMetaTable.value]
+    )
+}
+
+data class GlobalMetaNodeList(
+    override val nodes: List<GlobalMetaType>,
     override val edges: List<MetaEdge>,
     override val pageInfo: PageInfo,
     override val totalCount: Int
 ) : NodeList() {
     data class MetaEdge(
         override val cursor: Cursor,
-        override val node: MetaItem
+        override val node: GlobalMetaType
     ) : Edge()
 
     companion object {
-        fun List<MetaItem>.toNodeList(): MetaNodeList {
-            return MetaNodeList(
+        fun List<GlobalMetaType>.toNodeList(): GlobalMetaNodeList {
+            return GlobalMetaNodeList(
                 nodes = this,
                 edges = getEdges(),
                 pageInfo = PageInfo(
@@ -61,7 +103,7 @@ data class MetaNodeList(
             )
         }
 
-        private fun List<MetaItem>.getEdges(): List<MetaEdge> {
+        private fun List<GlobalMetaType>.getEdges(): List<MetaEdge> {
             if (isEmpty()) return emptyList()
             return listOf(
                 MetaEdge(
