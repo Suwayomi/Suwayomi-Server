@@ -30,7 +30,7 @@ object ExtensionsList {
     var lastUpdateCheck: Long = 0
     var updateMap = ConcurrentHashMap<String, OnlineExtension>()
 
-    suspend fun getExtensionList(): List<ExtensionDataClass> {
+    suspend fun fetchExtensions() {
         // update if 60 seconds has passed or requested offline and database is empty
         if (lastUpdateCheck + 60.seconds.inWholeMilliseconds < System.currentTimeMillis()) {
             logger.debug("Getting extensions list from the internet")
@@ -41,7 +41,10 @@ object ExtensionsList {
         } else {
             logger.debug("used cached extension list")
         }
+    }
 
+    suspend fun getExtensionList(): List<ExtensionDataClass> {
+        fetchExtensions()
         return extensionTableAsDataClass()
     }
 

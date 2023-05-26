@@ -8,12 +8,14 @@
 package suwayomi.tachidesk.graphql.queries
 
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
+import eu.kanade.tachiyomi.source.local.LocalSource
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -150,6 +152,8 @@ class ExtensionQuery {
     ): ExtensionNodeList {
         val queryResults = transaction {
             val res = ExtensionTable.selectAll()
+
+            res.adjustWhere { ExtensionTable.name neq LocalSource.EXTENSION_NAME }
 
             res.applyOps(condition, filter)
 
