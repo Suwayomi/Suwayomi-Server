@@ -7,6 +7,7 @@
 
 package suwayomi.tachidesk.graphql.controller
 
+import io.javalin.http.ContentType
 import io.javalin.http.Context
 import io.javalin.websocket.WsConfig
 import suwayomi.tachidesk.graphql.server.TachideskGraphQLServer
@@ -25,10 +26,8 @@ object GraphQLController {
     }
 
     fun playground(ctx: Context) {
-        val body = javaClass.getResourceAsStream("/graphql-playground.html")!!.bufferedReader().use { reader ->
-            reader.readText()
-        }
-        ctx.html(body)
+        ctx.contentType(ContentType.TEXT_HTML)
+        ctx.result(javaClass.getResourceAsStream("/graphql-playground.html")!!)
     }
 
     fun webSocket(ws: WsConfig) {
