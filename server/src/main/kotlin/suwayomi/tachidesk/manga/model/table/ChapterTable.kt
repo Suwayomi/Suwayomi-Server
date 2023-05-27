@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.model.table
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -37,7 +38,7 @@ object ChapterTable : IntIdTable() {
 
     val pageCount = integer("page_count").default(-1)
 
-    val manga = reference("manga", MangaTable)
+    val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
 }
 
 fun ChapterTable.toDataClass(chapterEntry: ResultRow) =

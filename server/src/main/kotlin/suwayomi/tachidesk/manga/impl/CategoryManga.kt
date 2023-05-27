@@ -19,7 +19,6 @@ import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.max
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.wrapAsExpression
 import suwayomi.tachidesk.manga.impl.Category.DEFAULT_CATEGORY_ID
 import suwayomi.tachidesk.manga.impl.util.lang.isEmpty
@@ -42,10 +41,6 @@ object CategoryManga {
                     it[CategoryMangaTable.category] = categoryId
                     it[CategoryMangaTable.manga] = mangaId
                 }
-
-                MangaTable.update({ MangaTable.id eq mangaId }) {
-                    it[MangaTable.defaultCategory] = false
-                }
             }
         }
     }
@@ -54,11 +49,6 @@ object CategoryManga {
         if (categoryId == DEFAULT_CATEGORY_ID) return
         transaction {
             CategoryMangaTable.deleteWhere { (CategoryMangaTable.category eq categoryId) and (CategoryMangaTable.manga eq mangaId) }
-            if (CategoryMangaTable.select { CategoryMangaTable.manga eq mangaId }.count() == 0L) {
-                MangaTable.update({ MangaTable.id eq mangaId }) {
-                    it[MangaTable.defaultCategory] = true
-                }
-            }
         }
     }
 
@@ -93,8 +83,9 @@ object CategoryManga {
             val query = if (categoryId == DEFAULT_CATEGORY_ID) {
                 MangaTable
                     .leftJoin(ChapterTable, { MangaTable.id }, { ChapterTable.manga })
+                    .leftJoin(CategoryMangaTable)
                     .slice(columns = selectedColumns)
-                    .select { (MangaTable.inLibrary eq true) and (MangaTable.defaultCategory eq true) }
+                    .select { (MangaTable.inLibrary eq true) and CategoryMangaTable.category.isNull() }
             } else {
                 MangaTable
                     .innerJoin(CategoryMangaTable)

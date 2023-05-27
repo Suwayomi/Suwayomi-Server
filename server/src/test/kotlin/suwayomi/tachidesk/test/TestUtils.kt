@@ -38,7 +38,6 @@ fun createLibraryManga(
             it[title] = _title
             it[url] = _title
             it[sourceReference] = 1
-            it[defaultCategory] = true
             it[inLibrary] = true
         }.value
     }

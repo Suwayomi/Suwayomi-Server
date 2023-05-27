@@ -79,9 +79,6 @@ object Category {
     fun removeCategory(categoryId: Int) {
         if (categoryId == DEFAULT_CATEGORY_ID) return
         transaction {
-            CategoryMangaTable.select { CategoryMangaTable.category eq categoryId }.forEach {
-                removeMangaFromCategory(it[CategoryMangaTable.manga].value, categoryId)
-            }
             CategoryTable.deleteWhere { CategoryTable.id eq categoryId }
             normalizeCategories()
         }

@@ -31,7 +31,6 @@ object Library {
                 MangaTable.update({ MangaTable.id eq manga.id }) {
                     it[inLibrary] = true
                     it[inLibraryAt] = Instant.now().epochSecond
-                    it[defaultCategory] = defaultCategories.isEmpty() && existingCategories.isEmpty()
                 }
 
                 if (existingCategories.isEmpty()) {
