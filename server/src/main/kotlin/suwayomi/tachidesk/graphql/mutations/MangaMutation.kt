@@ -140,26 +140,31 @@ class MangaMutation {
     )
     data class DeleteMangaMetaPayload(
         val clientMutationId: String?,
-        val meta: MangaMetaType?
+        val meta: MangaMetaType?,
+        val manga: MangaType
     )
     fun deleteMangaMeta(
         input: DeleteMangaMetaInput
     ): DeleteMangaMetaPayload {
         val (clientMutationId, mangaId, key) = input
 
-        val meta = transaction {
+        val (meta, manga) = transaction {
             val meta = MangaMetaTable.select { (MangaMetaTable.ref eq mangaId) and (MangaMetaTable.key eq key) }
                 .firstOrNull()
 
             MangaMetaTable.deleteWhere { (MangaMetaTable.ref eq mangaId) and (MangaMetaTable.key eq key) }
 
+            val manga = transaction {
+                MangaType(MangaTable.select { MangaTable.id eq mangaId }.first())
+            }
+
             if (meta != null) {
                 MangaMetaType(meta)
             } else {
                 null
-            }
+            } to manga
         }
 
-        return DeleteMangaMetaPayload(clientMutationId, meta)
+        return DeleteMangaMetaPayload(clientMutationId, meta, manga)
     }
 }
