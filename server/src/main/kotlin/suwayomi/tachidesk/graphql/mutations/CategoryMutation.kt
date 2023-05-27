@@ -6,8 +6,10 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.types.CategoryMetaType
+import suwayomi.tachidesk.graphql.types.CategoryType
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
+import suwayomi.tachidesk.manga.model.table.CategoryTable
 
 /**
  * TODO Mutations
@@ -43,26 +45,31 @@ class CategoryMutation {
     )
     data class DeleteCategoryMetaPayload(
         val clientMutationId: String?,
-        val meta: CategoryMetaType?
+        val meta: CategoryMetaType?,
+        val category: CategoryType
     )
     fun deleteCategoryMeta(
         input: DeleteCategoryMetaInput
     ): DeleteCategoryMetaPayload {
         val (clientMutationId, categoryId, key) = input
 
-        val meta = transaction {
+        val (meta, category) = transaction {
             val meta = CategoryMetaTable.select { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
                 .firstOrNull()
 
             CategoryMetaTable.deleteWhere { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
 
+            val category= transaction {
+                CategoryType(CategoryTable.select { CategoryTable.id eq categoryId }.first())
+            }
+
             if (meta != null) {
                 CategoryMetaType(meta)
             } else {
                 null
-            }
+            } to category
         }
 
-        return DeleteCategoryMetaPayload(clientMutationId, meta)
+        return DeleteCategoryMetaPayload(clientMutationId, meta, category)
     }
 }

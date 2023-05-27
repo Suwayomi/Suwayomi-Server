@@ -156,26 +156,31 @@ class ChapterMutation {
     )
     data class DeleteChapterMetaPayload(
         val clientMutationId: String?,
-        val meta: ChapterMetaType?
+        val meta: ChapterMetaType?,
+        val chapter: ChapterType
     )
     fun deleteChapterMeta(
         input: DeleteChapterMetaInput
     ): DeleteChapterMetaPayload {
         val (clientMutationId, chapterId, key) = input
 
-        val meta = transaction {
+        val (meta, chapter) = transaction {
             val meta = ChapterMetaTable.select { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
                 .firstOrNull()
 
             ChapterMetaTable.deleteWhere { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
 
+            val chapter= transaction {
+                ChapterType(ChapterTable.select { ChapterTable.id eq chapterId }.first())
+            }
+
             if (meta != null) {
                 ChapterMetaType(meta)
             } else {
                 null
-            }
+            } to chapter
         }
 
-        return DeleteChapterMetaPayload(clientMutationId, meta)
+        return DeleteChapterMetaPayload(clientMutationId, meta, chapter)
     }
 }
