@@ -7,7 +7,6 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.global.impl.GlobalMeta
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
 import suwayomi.tachidesk.graphql.types.GlobalMetaType
-import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 
 class MetaMutation {
 
@@ -43,7 +42,7 @@ class MetaMutation {
         val (clientMutationId, key) = input
 
         val meta = transaction {
-            val meta = GlobalMetaTable.select { MangaMetaTable.key eq key }
+            val meta = GlobalMetaTable.select { GlobalMetaTable.key eq key }
                 .firstOrNull()
 
             GlobalMetaTable.deleteWhere { GlobalMetaTable.key eq key }
