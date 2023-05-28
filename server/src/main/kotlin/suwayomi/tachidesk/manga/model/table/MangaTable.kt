@@ -32,7 +32,6 @@ object MangaTable : IntIdTable() {
     val thumbnailUrlLastFetched = long("thumbnail_url_last_fetched").default(0)
 
     val inLibrary = bool("in_library").default(false)
-    val defaultCategory = bool("default_category").default(true)
     val inLibraryAt = long("in_library_at").default(0)
 
     // the [source] field name is used by some ancestor of IntIdTable

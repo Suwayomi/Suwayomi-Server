@@ -59,7 +59,7 @@ class CategoryMutation {
 
             CategoryMetaTable.deleteWhere { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
 
-            val category= transaction {
+            val category = transaction {
                 CategoryType(CategoryTable.select { CategoryTable.id eq categoryId }.first())
             }
 

@@ -8,8 +8,9 @@ package suwayomi.tachidesk.manga.model.table
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.ReferenceOption
 
 object CategoryMangaTable : IntIdTable() {
-    val category = reference("category", CategoryTable)
-    val manga = reference("manga", MangaTable)
+    val category = reference("category", CategoryTable, ReferenceOption.CASCADE)
+    val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
 }

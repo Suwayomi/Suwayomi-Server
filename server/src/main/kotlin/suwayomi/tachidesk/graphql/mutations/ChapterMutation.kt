@@ -170,7 +170,7 @@ class ChapterMutation {
 
             ChapterMetaTable.deleteWhere { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
 
-            val chapter= transaction {
+            val chapter = transaction {
                 ChapterType(ChapterTable.select { ChapterTable.id eq chapterId }.first())
             }
 

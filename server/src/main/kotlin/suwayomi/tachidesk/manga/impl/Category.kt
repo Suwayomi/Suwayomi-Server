@@ -53,8 +53,8 @@ object Category {
     fun updateCategory(categoryId: Int, name: String?, isDefault: Boolean?, includeInUpdate: Int?) {
         transaction {
             CategoryTable.update({ CategoryTable.id eq categoryId }) {
-                if (name != null && !name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)) it[CategoryTable.name] = name
-                if (isDefault != null && categoryId != DEFAULT_CATEGORY_ID) it[CategoryTable.isDefault] = isDefault
+                if (categoryId != DEFAULT_CATEGORY_ID && name != null && !name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)) it[CategoryTable.name] = name
+                if (categoryId != DEFAULT_CATEGORY_ID && isDefault != null) it[CategoryTable.isDefault] = isDefault
                 if (includeInUpdate != null) it[CategoryTable.includeInUpdate] = includeInUpdate
             }
         }
@@ -79,9 +79,6 @@ object Category {
     fun removeCategory(categoryId: Int) {
         if (categoryId == DEFAULT_CATEGORY_ID) return
         transaction {
-            CategoryMangaTable.select { CategoryMangaTable.category eq categoryId }.forEach {
-                removeMangaFromCategory(it[CategoryMangaTable.manga].value, categoryId)
-            }
             CategoryTable.deleteWhere { CategoryTable.id eq categoryId }
             normalizeCategories()
         }
@@ -90,12 +87,14 @@ object Category {
     /** make sure category order numbers starts from 1 and is consecutive */
     private fun normalizeCategories() {
         transaction {
-            val categories = CategoryTable.selectAll().orderBy(CategoryTable.order to SortOrder.ASC)
-            categories.forEachIndexed { index, cat ->
-                CategoryTable.update({ CategoryTable.id eq cat[CategoryTable.id].value }) {
-                    it[CategoryTable.order] = index + 1
+            CategoryTable.selectAll()
+                .orderBy(CategoryTable.order to SortOrder.ASC)
+                .sortedWith(compareBy({ it[CategoryTable.id].value != 0 }, { it[CategoryTable.order] }))
+                .forEachIndexed { index, cat ->
+                    CategoryTable.update({ CategoryTable.id eq cat[CategoryTable.id].value }) {
+                        it[CategoryTable.order] = index
+                    }
                 }
-            }
         }
     }
 
