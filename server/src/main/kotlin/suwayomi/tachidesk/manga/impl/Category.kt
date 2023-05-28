@@ -87,12 +87,14 @@ object Category {
     /** make sure category order numbers starts from 1 and is consecutive */
     private fun normalizeCategories() {
         transaction {
-            val categories = CategoryTable.selectAll().orderBy(CategoryTable.order to SortOrder.ASC)
-            categories.forEachIndexed { index, cat ->
-                CategoryTable.update({ CategoryTable.id eq cat[CategoryTable.id].value }) {
-                    it[CategoryTable.order] = index + 1
+            CategoryTable.selectAll()
+                .orderBy(CategoryTable.order to SortOrder.ASC)
+                .sortedWith(compareBy({ it[CategoryTable.id].value != 0 }, { it[CategoryTable.order] }))
+                .forEachIndexed { index, cat ->
+                    CategoryTable.update({ CategoryTable.id eq cat[CategoryTable.id].value }) {
+                        it[CategoryTable.order] = index
+                    }
                 }
-            }
         }
     }
 
