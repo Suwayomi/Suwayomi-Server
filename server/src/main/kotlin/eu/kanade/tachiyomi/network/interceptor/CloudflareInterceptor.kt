@@ -22,6 +22,7 @@ import java.io.File
 import java.io.IOException
 import java.io.InputStreamReader
 import java.io.PrintWriter
+import java.nio.file.Paths
 import java.util.concurrent.TimeUnit
 
 class CloudflareInterceptor : Interceptor {
@@ -88,8 +89,8 @@ object CloudflareBypasser {
                     val proxy = "socks5://${serverConfig.socksProxyHost}:${serverConfig.socksProxyPort}"
                     py.exec("options.add_argument('--proxy-server=$proxy')")
                 }
-                py.exec("driver = uc.Chrome(options=options)")
-                py.exec("driver = uc.Chrome(options=options, driver_executable_path='${py.chromedriverPath.replace("\\","\\\\")}')")
+//                py.exec("driver = uc.Chrome(options=options)")
+                py.exec("driver = uc.Chrome(options=options, driver_executable_path='${py.chromedriverPath.replace("\\","\\\\")}', version_main=111)")
 
                 // TODO: handle custom userAgent
 //                val userAgent = originalRequest.header("User-Agent")
@@ -155,8 +156,8 @@ object CloudflareBypasser {
                 py.exec("options = uc.ChromeOptions()")
                 py.exec("options.add_argument('--headless')")
                 py.exec("options.add_argument('--disable-gpu')")
-                py.exec("driver = uc.Chrome(options=options)")
-//                py.exec("driver = uc.Chrome(options=options, driver_executable_path='${py.chromedriverPath.replace("\\","\\\\")}')")
+//                py.exec("driver = uc.Chrome(options=options)")
+                py.exec("driver = uc.Chrome(options=options, driver_executable_path='${py.chromedriverPath.replace("\\","\\\\")}', version_main=111)")
 
                 py.exec("userAgent = driver.execute_script('return navigator.userAgent')")
                 val userAgent = py.getValue("userAgent")
@@ -236,8 +237,6 @@ private class CloudflareBypassException(message: String?) : Exception(message)
 
 class PythonInterpreter
 private constructor(private val process: Process, val chromedriverPath: String) : Closeable {
-    private val logger = KotlinLogging.logger {}
-
     private val stdin = process.outputStream
     private val stdout = process.inputStream
     private val stderr = process.errorStream
@@ -303,6 +302,8 @@ private constructor(private val process: Process, val chromedriverPath: String) 
         destroy()
     }
     companion object {
+        private val logger = KotlinLogging.logger {}
+
         fun create(pythonPath: String, workingDir: String, pythonStartupFile: String, chromedriverPath: String): PythonInterpreter {
             val processBuilder = ProcessBuilder()
                 .command(pythonPath, "-i", "-q")
@@ -317,7 +318,8 @@ private constructor(private val process: Process, val chromedriverPath: String) 
         }
 
         fun create(): PythonInterpreter {
-            val uc = File(serverConfig.undetectedChromePath).absolutePath
+            val uc = Paths.get(serverConfig.undetectedChromePath).toAbsolutePath().toString()
+            logger.debug { "absolute path to undetected-chromedriver: $uc" }
 
             val (pythonPath, chromedriverPath) = if (System.getProperty("os.name").startsWith("Windows")) {
                 arrayOf(

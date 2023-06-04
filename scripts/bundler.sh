@@ -26,8 +26,6 @@ main() {
   set -- "${POSITIONAL_ARGS[@]}"
 
   OS="$1"
-  PLAYWRIGHT_VERSION="$(cat gradle/libs.versions.toml | grep -oP "playwright = \"\K([0-9\.]*)(?=\")")"
-  PLAYWRIGHT_REVISION="$(curl --silent "https://raw.githubusercontent.com/microsoft/playwright/v$PLAYWRIGHT_VERSION/packages/playwright-core/browsers.json" 2>&1 | grep -ozP "\"name\": \"chromium\",\n *\"revision\": \"\K[0-9]*")"
   JAR="$(ls server/build/*.jar | tail -n1)"
   RELEASE_NAME="$(echo "${JAR%.*}" | xargs basename)-$OS"
   RELEASE_VERSION="$(tmp="${JAR%-*}"; echo "${tmp##*-}" | tr -d v)"
@@ -127,8 +125,9 @@ main() {
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_jre_and_electron
 
-      PLAYWRIGHT_PLATFORM="win64"
-      setup_playwright
+      PYTHON=Winpython64-3.10.9.0dot.exe
+      PYTHON_URL=https://github.com/winpython/winpython/releases/download/5.3.20221233/Winpython64-3.10.9.0dot.exe
+      setup_undetected_chromedriver_and_python
 
       RELEASE="$RELEASE_NAME.zip"
       make_windows_bundle
@@ -285,9 +284,23 @@ make_windows_package() {
     "$RELEASE_NAME/jre.wxs" "$RELEASE_NAME/electron.wxs" -o "$RELEASE"
 }
 
-setup_playwright() {
-  mkdir "$RELEASE_NAME/bin"
-  curl -L "https://playwright.azureedge.net/builds/chromium/$PLAYWRIGHT_REVISION/chromium-$PLAYWRIGHT_PLATFORM.zip" -o "$RELEASE_NAME/bin/chromium.zip"
+setup_python() {
+  mkdir "$RELEASE_NAME/"
+  curl -L "$PYTHON_URL" -o "$PYTHON"
+  7z x $PYTHON
+  mv WPy64-31090/python-3.10.9.amd64 "$RELEASE_NAME/python"
+}
+
+setup_undetected_chromedriver() {
+  curl -L "https://github.com/Suwayomi/undetected-chromedriver/archive/refs/heads/master.zip" -o undetected-chromedriver-master.zip
+  unzip undetected-chromedriver-master.zip
+  mv undetected-chromedriver-master "$RELEASE_NAME/undetected-chromedriver"
+}
+
+
+setup_undetected_chromedriver_and_python() {
+  setup_python
+  setup_undetected_chromedriver
 }
 
 # Error handler
