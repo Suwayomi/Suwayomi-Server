@@ -24,14 +24,6 @@ import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 
-/**
- * TODO Mutations
- * - Name
- * - Order
- * - Default
- * - Create
- * - Delete
- */
 class CategoryMutation {
     data class SetCategoryMetaInput(
         val clientMutationId: String? = null,

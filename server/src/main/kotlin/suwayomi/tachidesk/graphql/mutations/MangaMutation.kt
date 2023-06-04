@@ -16,8 +16,6 @@ import java.util.concurrent.CompletableFuture
 
 /**
  * TODO Mutations
- * - Add to category
- * - Remove from category
  * - Download x(all = -1) chapters
  * - Delete read/all downloaded chapters
  */
