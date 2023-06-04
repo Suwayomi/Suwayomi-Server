@@ -18,7 +18,6 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import suwayomi.tachidesk.manga.impl.CategoryManga.removeMangaFromCategory
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
@@ -85,7 +84,7 @@ object Category {
     }
 
     /** make sure category order numbers starts from 1 and is consecutive */
-    private fun normalizeCategories() {
+    fun normalizeCategories() {
         transaction {
             CategoryTable.selectAll()
                 .orderBy(CategoryTable.order to SortOrder.ASC)
