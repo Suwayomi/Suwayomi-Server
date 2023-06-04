@@ -125,7 +125,7 @@ object Search {
         return filterList
     }
 
-    private fun buildFilterList(sourceId: Long, changes: List<FilterChange>): FilterList {
+    fun buildFilterList(sourceId: Long, changes: List<FilterChange>): FilterList {
         val source = getCatalogueSourceOrStub(sourceId)
         val filterList = source.getFilterList()
         return updateFilterList(filterList, changes)

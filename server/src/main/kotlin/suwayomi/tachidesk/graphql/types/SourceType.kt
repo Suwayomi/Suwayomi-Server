@@ -18,6 +18,8 @@ import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.manga.impl.Search
+import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
@@ -63,6 +65,14 @@ class SourceType(
 
     fun extension(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ExtensionType> {
         return dataFetchingEnvironment.getValueFromDataLoader<Long, ExtensionType>("ExtensionForSourceDataLoader", id)
+    }
+
+    fun preferences(): List<PreferenceObject> {
+        return Source.getSourcePreferences(id).map { PreferenceObject(it.type, it.props) }
+    }
+
+    fun filters(): List<FilterObject> {
+        return Search.getFilterList(id, false).map { FilterObject(it.type, it.filter) }
     }
 }
 
@@ -122,3 +132,13 @@ data class SourceNodeList(
         }
     }
 }
+
+data class PreferenceObject(
+    val type: String,
+    val props: Any
+)
+
+data class FilterObject(
+    val type: String,
+    val filter: Any
+)
