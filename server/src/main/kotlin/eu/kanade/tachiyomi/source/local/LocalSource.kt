@@ -212,6 +212,12 @@ class LocalSource : CatalogueSource {
                 manga.status = obj["status"]?.jsonPrimitive?.intOrNull ?: manga.status
             }
 
+        // update the cover
+        val cover = getCoverFile(File("${applicationDirs.localMangaRoot}/${manga.url}"))
+        if (cover != null && cover.exists()) {
+            manga.thumbnail_url = cover.absolutePath
+        }
+
         return Observable.just(manga)
     }
 
