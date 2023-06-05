@@ -3,7 +3,7 @@ package eu.kanade.tachiyomi.source.local.loader
 import eu.kanade.tachiyomi.util.lang.compareToCaseInsensitiveNaturalOrder
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import java.io.File
-import java.util.zip.ZipFile
+import org.apache.commons.compress.archivers.zip.ZipFile
 
 class ZipPageLoader(file: File) : PageLoader {
     /**
@@ -16,7 +16,7 @@ class ZipPageLoader(file: File) : PageLoader {
      * comparator.
      */
     override fun getPages(): List<ReaderPage> {
-        return zip.entries().toList()
+        return zip.entries.toList()
             .filter { !it.isDirectory && ImageUtil.isImage(it.name) { zip.getInputStream(it) } }
             .sortedWith { f1, f2 -> f1.name.compareToCaseInsensitiveNaturalOrder(f2.name) }
             .mapIndexed { i, entry ->
