@@ -2,6 +2,8 @@ package eu.kanade.tachiyomi.util.storage
 
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
+import org.apache.commons.compress.archivers.zip.ZipFile
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.io.Closeable
@@ -10,8 +12,6 @@ import java.io.InputStream
 import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.Locale
-import java.util.zip.ZipEntry
-import java.util.zip.ZipFile
 
 /**
  * Wrapper over ZipFile to load files in epub format.
@@ -38,14 +38,14 @@ class EpubFile(file: File) : Closeable {
     /**
      * Returns an input stream for reading the contents of the specified zip file entry.
      */
-    fun getInputStream(entry: ZipEntry): InputStream {
+    fun getInputStream(entry: ZipArchiveEntry): InputStream {
         return zip.getInputStream(entry)
     }
 
     /**
      * Returns the zip file entry for the specified name, or null if not found.
      */
-    fun getEntry(name: String): ZipEntry? {
+    fun getEntry(name: String): ZipArchiveEntry? {
         return zip.getEntry(name)
     }
 
