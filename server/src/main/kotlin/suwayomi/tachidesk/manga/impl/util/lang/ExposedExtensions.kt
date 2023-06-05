@@ -9,6 +9,6 @@ package suwayomi.tachidesk.manga.impl.util.lang
 
 import org.jetbrains.exposed.sql.Query
 
-fun Query.isEmpty() = this.count() == 0L
+fun Query.isEmpty() = this.empty()
 
 fun Query.isNotEmpty() = !this.isEmpty()

@@ -84,7 +84,7 @@ object Category {
     }
 
     /** make sure category order numbers starts from 1 and is consecutive */
-    private fun normalizeCategories() {
+    fun normalizeCategories() {
         transaction {
             CategoryTable.selectAll()
                 .orderBy(CategoryTable.order to SortOrder.ASC)

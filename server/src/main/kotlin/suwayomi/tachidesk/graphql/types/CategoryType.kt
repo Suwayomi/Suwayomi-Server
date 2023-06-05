@@ -15,6 +15,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.manga.model.dataclass.IncludeInUpdate
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import java.util.concurrent.CompletableFuture
 
@@ -22,13 +23,15 @@ class CategoryType(
     val id: Int,
     val order: Int,
     val name: String,
-    val default: Boolean
+    val default: Boolean,
+    val includeInUpdate: IncludeInUpdate
 ) : Node {
     constructor(row: ResultRow) : this(
         row[CategoryTable.id].value,
         row[CategoryTable.order],
         row[CategoryTable.name],
-        row[CategoryTable.isDefault]
+        row[CategoryTable.isDefault],
+        IncludeInUpdate.fromValue(row[CategoryTable.includeInUpdate])
     )
 
     fun mangas(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> {
