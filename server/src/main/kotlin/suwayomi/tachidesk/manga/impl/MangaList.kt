@@ -44,6 +44,34 @@ object MangaList {
         return mangasPage.processEntries(sourceId)
     }
 
+    fun MangasPage.insertOrGet(sourceId: Long): List<Int> {
+        return transaction {
+            mangas.map { manga ->
+                val mangaEntry = MangaTable.select {
+                    (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq sourceId)
+                }.firstOrNull()
+                if (mangaEntry == null) { // create manga entry
+                    MangaTable.insertAndGetId {
+                        it[url] = manga.url
+                        it[title] = manga.title
+
+                        it[artist] = manga.artist
+                        it[author] = manga.author
+                        it[description] = manga.description
+                        it[genre] = manga.genre
+                        it[status] = manga.status
+                        it[thumbnail_url] = manga.thumbnail_url
+                        it[updateStrategy] = manga.update_strategy.name
+
+                        it[sourceReference] = sourceId
+                    }.value
+                } else {
+                    mangaEntry[MangaTable.id].value
+                }
+            }
+        }
+    }
+
     fun MangasPage.processEntries(sourceId: Long): PagedMangaListDataClass {
         val mangasPage = this
         val mangaList = transaction {
