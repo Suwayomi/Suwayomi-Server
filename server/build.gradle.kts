@@ -48,6 +48,7 @@ dependencies {
 
     // Disk & File
     implementation(libs.zip4j)
+    implementation(libs.commonscompress)
     implementation(libs.junrar)
 
     // CloudflareInterceptor
