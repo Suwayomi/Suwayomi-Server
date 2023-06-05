@@ -4,19 +4,19 @@ import com.typesafe.config.Config
 import io.github.config4k.getValue
 import xyz.nulldev.ts.config.ConfigModule
 
-class SystemConfigModule(val config: Config) : ConfigModule(config) {
-    val isDebuggable: Boolean by config
+class SystemConfigModule(val getConfig: () -> Config) : ConfigModule(getConfig) {
+    val isDebuggable: Boolean by getConfig()
 
     val propertyPrefix = "properties."
 
-    fun getStringProperty(property: String) = config.getString("$propertyPrefix$property")!!
-    fun getIntProperty(property: String) = config.getInt("$propertyPrefix$property")
-    fun getLongProperty(property: String) = config.getLong("$propertyPrefix$property")
-    fun getBooleanProperty(property: String) = config.getBoolean("$propertyPrefix$property")
-    fun hasProperty(property: String) = config.hasPath("$propertyPrefix$property")
+    fun getStringProperty(property: String) = getConfig().getString("$propertyPrefix$property")!!
+    fun getIntProperty(property: String) = getConfig().getInt("$propertyPrefix$property")
+    fun getLongProperty(property: String) = getConfig().getLong("$propertyPrefix$property")
+    fun getBooleanProperty(property: String) = getConfig().getBoolean("$propertyPrefix$property")
+    fun hasProperty(property: String) = getConfig().hasPath("$propertyPrefix$property")
 
     companion object {
         fun register(config: Config) =
-            SystemConfigModule(config.getConfig("android.system"))
+            SystemConfigModule { config.getConfig("android.system") }
     }
 }

@@ -11,6 +11,9 @@ import ch.qos.logback.classic.Level
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import com.typesafe.config.ConfigRenderOptions
+import com.typesafe.config.ConfigValue
+import com.typesafe.config.ConfigValueFactory
+import com.typesafe.config.parser.ConfigDocumentFactory
 import mu.KotlinLogging
 import java.io.File
 
@@ -18,14 +21,16 @@ import java.io.File
  * Manages app config.
  */
 open class ConfigManager {
+    val logger = KotlinLogging.logger {}
     private val generatedModules = mutableMapOf<Class<out ConfigModule>, ConfigModule>()
-    val config by lazy { loadConfigs() }
+    private val userConfigFile = File(ApplicationRootDir, "server.conf")
+    private var internalConfig = loadConfigs()
+    val config: Config
+        get() = internalConfig
 
     // Public read-only view of modules
     val loadedModules: Map<Class<out ConfigModule>, ConfigModule>
         get() = generatedModules
-
-    val logger = KotlinLogging.logger {}
 
     /**
      * Get a config module
@@ -54,7 +59,7 @@ open class ConfigManager {
 
         // Load user config
         val userConfig =
-            File(ApplicationRootDir, "server.conf").let {
+            userConfigFile.let {
                 ConfigFactory.parseFile(it)
             }
 
@@ -85,6 +90,20 @@ open class ConfigManager {
         modules.forEach {
             registerModule(it)
         }
+    }
+
+    private fun updateUserConfigFile(path: String, value: ConfigValue) {
+        val userConfigDoc = ConfigDocumentFactory.parseFile(userConfigFile)
+        val updatedConfigDoc = userConfigDoc.withValue(path, value)
+        val newFileContent = updatedConfigDoc.render()
+        userConfigFile.writeText(newFileContent)
+    }
+
+    fun updateValue(path: String, value: Any) {
+        val configValue = ConfigValueFactory.fromAnyRef(value)
+
+        updateUserConfigFile(path, configValue)
+        internalConfig = internalConfig.withValue(path, configValue)
     }
 }
 

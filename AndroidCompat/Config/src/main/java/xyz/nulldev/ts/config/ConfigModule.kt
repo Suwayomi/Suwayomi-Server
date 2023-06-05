@@ -15,19 +15,23 @@ import kotlin.reflect.KProperty
  * Abstract config module.
  */
 @Suppress("UNUSED_PARAMETER")
-abstract class ConfigModule(config: Config)
+abstract class ConfigModule(getConfig: () -> Config)
 
 /**
  * Abstract jvm-commandline-argument-overridable config module.
  */
-abstract class SystemPropertyOverridableConfigModule(config: Config, moduleName: String) : ConfigModule(config) {
-    val overridableConfig = SystemPropertyOverrideDelegate(config, moduleName)
+abstract class SystemPropertyOverridableConfigModule(getConfig: () -> Config, moduleName: String) : ConfigModule(getConfig) {
+    val overridableConfig = SystemPropertyOverrideDelegate(getConfig, moduleName)
 }
 
 /** Defines a config property that is overridable with jvm `-D` commandline arguments prefixed with [CONFIG_PREFIX] */
-class SystemPropertyOverrideDelegate(val config: Config, val moduleName: String) {
+class SystemPropertyOverrideDelegate(val getConfig: () -> Config, val moduleName: String) {
+    operator fun <R> setValue(thisRef: R, property: KProperty<*>, value: Any) {
+        GlobalConfigManager.updateValue("$moduleName.${property.name}", value)
+    }
+
     inline operator fun <R, reified T> getValue(thisRef: R, property: KProperty<*>): T {
-        val configValue: T = config.getValue(thisRef, property)
+        val configValue: T = getConfig().getValue(thisRef, property)
 
         val combined = System.getProperty(
             "$CONFIG_PREFIX.$moduleName.${property.name}",

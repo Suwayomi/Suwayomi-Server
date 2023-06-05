@@ -8,27 +8,27 @@ import xyz.nulldev.ts.config.ConfigModule
  * Files configuration modules. Specifies where to store the Android files.
  */
 
-class FilesConfigModule(config: Config) : ConfigModule(config) {
-    val dataDir: String by config
-    val filesDir: String by config
-    val noBackupFilesDir: String by config
-    val externalFilesDirs: MutableList<String> by config
-    val obbDirs: MutableList<String> by config
-    val cacheDir: String by config
-    val codeCacheDir: String by config
-    val externalCacheDirs: MutableList<String> by config
-    val externalMediaDirs: MutableList<String> by config
-    val rootDir: String by config
-    val externalStorageDir: String by config
-    val downloadCacheDir: String by config
-    val databasesDir: String by config
+class FilesConfigModule(getConfig: () -> Config) : ConfigModule(getConfig) {
+    val dataDir: String by getConfig()
+    val filesDir: String by getConfig()
+    val noBackupFilesDir: String by getConfig()
+    val externalFilesDirs: MutableList<String> by getConfig()
+    val obbDirs: MutableList<String> by getConfig()
+    val cacheDir: String by getConfig()
+    val codeCacheDir: String by getConfig()
+    val externalCacheDirs: MutableList<String> by getConfig()
+    val externalMediaDirs: MutableList<String> by getConfig()
+    val rootDir: String by getConfig()
+    val externalStorageDir: String by getConfig()
+    val downloadCacheDir: String by getConfig()
+    val databasesDir: String by getConfig()
 
-    val prefsDir: String by config
+    val prefsDir: String by getConfig()
 
-    val packageDir: String by config
+    val packageDir: String by getConfig()
 
     companion object {
         fun register(config: Config) =
-            FilesConfigModule(config.getConfig("android.files"))
+            FilesConfigModule { config.getConfig("android.files") }
     }
 }
