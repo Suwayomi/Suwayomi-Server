@@ -26,6 +26,7 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import mu.KotlinLogging
+import org.apache.commons.compress.archivers.zip.ZipFile
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
@@ -45,7 +46,6 @@ import java.io.FileInputStream
 import java.io.InputStream
 import java.util.Locale
 import java.util.concurrent.TimeUnit
-import java.util.zip.ZipFile
 
 class LocalSource : CatalogueSource {
     companion object {
@@ -356,7 +356,7 @@ class LocalSource : CatalogueSource {
             }
             is Format.Zip -> {
                 ZipFile(format.file).use { zip ->
-                    val entry = zip.entries().toList()
+                    val entry = zip.entries.toList()
                         .sortedWith { f1, f2 -> f1.name.compareToCaseInsensitiveNaturalOrder(f2.name) }
                         .find { !it.isDirectory && ImageUtil.isImage(it.name) { zip.getInputStream(it) } }
 

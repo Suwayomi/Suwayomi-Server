@@ -1,9 +1,9 @@
 package eu.kanade.tachiyomi.source.local.loader
 
 import eu.kanade.tachiyomi.util.lang.compareToCaseInsensitiveNaturalOrder
+import org.apache.commons.compress.archivers.zip.ZipFile
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import java.io.File
-import org.apache.commons.compress.archivers.zip.ZipFile
 
 class ZipPageLoader(file: File) : PageLoader {
     /**
