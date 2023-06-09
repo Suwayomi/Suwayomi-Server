@@ -32,8 +32,9 @@ import suwayomi.tachidesk.manga.model.table.toDataClass
 
 object CategoryManga {
     fun addMangaToCategory(mangaId: Int, categoryId: Int) {
-        if (categoryId == DEFAULT_CATEGORY_ID) return
-        fun notAlreadyInCategory() = CategoryMangaTable.select { (CategoryMangaTable.category eq categoryId) and (CategoryMangaTable.manga eq mangaId) }.isEmpty()
+        fun notAlreadyInCategory() =
+            CategoryMangaTable.select { (CategoryMangaTable.category eq categoryId) and (CategoryMangaTable.manga eq mangaId) }
+                .isEmpty()
 
         transaction {
             if (notAlreadyInCategory()) {
@@ -46,7 +47,6 @@ object CategoryManga {
     }
 
     fun removeMangaFromCategory(mangaId: Int, categoryId: Int) {
-        if (categoryId == DEFAULT_CATEGORY_ID) return
         transaction {
             CategoryMangaTable.deleteWhere { (CategoryMangaTable.category eq categoryId) and (CategoryMangaTable.manga eq mangaId) }
         }
@@ -80,19 +80,11 @@ object CategoryManga {
 
         return transaction {
             // Fetch data from the MangaTable and join with the CategoryMangaTable, if a category is specified
-            val query = if (categoryId == DEFAULT_CATEGORY_ID) {
-                MangaTable
-                    .leftJoin(ChapterTable, { MangaTable.id }, { ChapterTable.manga })
-                    .leftJoin(CategoryMangaTable)
-                    .slice(columns = selectedColumns)
-                    .select { (MangaTable.inLibrary eq true) and CategoryMangaTable.category.isNull() }
-            } else {
-                MangaTable
-                    .innerJoin(CategoryMangaTable)
-                    .leftJoin(ChapterTable, { MangaTable.id }, { ChapterTable.manga })
-                    .slice(columns = selectedColumns)
-                    .select { (MangaTable.inLibrary eq true) and (CategoryMangaTable.category eq categoryId) }
-            }
+            val query = MangaTable
+                .innerJoin(CategoryMangaTable)
+                .leftJoin(ChapterTable, { MangaTable.id }, { ChapterTable.manga })
+                .slice(columns = selectedColumns)
+                .select { (MangaTable.inLibrary eq true) and (CategoryMangaTable.category eq categoryId) }
 
             // Join with the ChapterTable to fetch the last read chapter for each manga
             query.groupBy(*MangaTable.columns.toTypedArray()).map(transform)

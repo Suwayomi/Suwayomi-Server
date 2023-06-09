@@ -21,7 +21,6 @@ import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
-import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 
 object Category {
@@ -118,15 +117,8 @@ object Category {
 
     fun getCategorySize(categoryId: Int): Int {
         return transaction {
-            if (categoryId == DEFAULT_CATEGORY_ID) {
-                MangaTable
-                    .leftJoin(CategoryMangaTable)
-                    .select { MangaTable.inLibrary eq true }
-                    .andWhere { CategoryMangaTable.manga.isNull() }
-            } else {
-                CategoryMangaTable.select {
-                    CategoryMangaTable.category eq categoryId
-                }
+            CategoryMangaTable.select {
+                CategoryMangaTable.category eq categoryId
             }.count().toInt()
         }
     }
