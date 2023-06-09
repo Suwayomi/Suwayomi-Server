@@ -47,8 +47,15 @@ object CategoryManga {
     }
 
     fun removeMangaFromCategory(mangaId: Int, categoryId: Int) {
+        val mangaCategories = getMangaCategories(mangaId)
+        val addToDefaultCategory = mangaCategories.size == 1
+
         transaction {
             CategoryMangaTable.deleteWhere { (CategoryMangaTable.category eq categoryId) and (CategoryMangaTable.manga eq mangaId) }
+        }
+
+        if (addToDefaultCategory) {
+            addMangaToCategory(mangaId, DEFAULT_CATEGORY_ID)
         }
     }
 
