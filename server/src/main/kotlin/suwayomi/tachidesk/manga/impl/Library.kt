@@ -7,7 +7,6 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -23,9 +22,8 @@ object Library {
         val manga = getManga(mangaId)
         if (!manga.inLibrary) {
             transaction {
-                val defaultCategories = CategoryTable.select {
-                    (CategoryTable.isDefault eq true) and (CategoryTable.id neq Category.DEFAULT_CATEGORY_ID)
-                }.toList()
+                val defaultCategory = CategoryTable.select { (CategoryTable.id eq Category.DEFAULT_CATEGORY_ID) }
+                val defaultCategories = CategoryTable.select { (CategoryTable.isDefault eq true) }.toList().ifEmpty { defaultCategory }
                 val existingCategories = CategoryMangaTable.select { CategoryMangaTable.manga eq mangaId }.toList()
 
                 MangaTable.update({ MangaTable.id eq manga.id }) {
