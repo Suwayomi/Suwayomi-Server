@@ -1,6 +1,8 @@
 package eu.kanade.tachiyomi.util.lang
 
 import net.greypanther.natsort.CaseInsensitiveSimpleNaturalComparator
+import org.jsoup.Jsoup
+import org.jsoup.safety.Safelist
 import kotlin.math.floor
 
 /**
@@ -55,4 +57,11 @@ fun String.takeBytes(n: Int): String {
     } else {
         bytes.decodeToString(endIndex = n).replace("\uFFFD", "")
     }
+}
+
+/**
+ * HTML-decode the string
+ */
+fun String.htmlDecode(): String {
+    return Jsoup.clean(this, Safelist.none()).toString()
 }

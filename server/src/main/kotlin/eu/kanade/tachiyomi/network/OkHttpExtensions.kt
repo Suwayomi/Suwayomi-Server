@@ -89,6 +89,11 @@ suspend fun Call.await(): Response {
     }
 }
 
+suspend fun Call.awaitSuccess(): Response {
+    // awaitSuccess is a renamed version of our await, they added a new await that allows non-success error codes
+    return await()
+}
+
 fun Call.asObservableSuccess(): Observable<Response> {
     return asObservable()
         .doOnNext { response ->
