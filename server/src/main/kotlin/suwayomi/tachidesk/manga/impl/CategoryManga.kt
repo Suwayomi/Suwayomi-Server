@@ -48,13 +48,18 @@ object CategoryManga {
 
     fun removeMangaFromCategory(mangaId: Int, categoryId: Int) {
         val mangaCategories = getMangaCategories(mangaId)
-        val addToDefaultCategory = mangaCategories.size == 1
+        val willHaveNoCategoryAfterRemoval = mangaCategories.size == 1
+        val isOnlyInDefaultCategory = willHaveNoCategoryAfterRemoval && mangaCategories[0].id == DEFAULT_CATEGORY_ID
+
+        if (isOnlyInDefaultCategory) {
+            throw IllegalArgumentException("Default category can not be removed if it is the only category")
+        }
 
         transaction {
             CategoryMangaTable.deleteWhere { (CategoryMangaTable.category eq categoryId) and (CategoryMangaTable.manga eq mangaId) }
         }
 
-        if (addToDefaultCategory) {
+        if (willHaveNoCategoryAfterRemoval) {
             addMangaToCategory(mangaId, DEFAULT_CATEGORY_ID)
         }
     }
