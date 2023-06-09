@@ -87,7 +87,7 @@ object Category {
         transaction {
             CategoryTable.selectAll()
                 .orderBy(CategoryTable.order to SortOrder.ASC)
-                .sortedWith(compareBy({ it[CategoryTable.id].value != 0 }, { it[CategoryTable.order] }))
+                .sortedWith(compareBy { it[CategoryTable.order] })
                 .forEachIndexed { index, cat ->
                     CategoryTable.update({ CategoryTable.id eq cat[CategoryTable.id].value }) {
                         it[CategoryTable.order] = index
