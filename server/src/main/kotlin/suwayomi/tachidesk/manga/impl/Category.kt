@@ -10,7 +10,6 @@ package suwayomi.tachidesk.manga.impl
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
@@ -97,15 +96,6 @@ object Category {
         }
     }
 
-    private fun needsDefaultCategory() = transaction {
-        MangaTable
-            .leftJoin(CategoryMangaTable)
-            .select { MangaTable.inLibrary eq true }
-            .andWhere { CategoryMangaTable.manga.isNull() }
-            .empty()
-            .not()
-    }
-
     const val DEFAULT_CATEGORY_ID = 0
     const val DEFAULT_CATEGORY_NAME = "Default"
 
@@ -113,13 +103,6 @@ object Category {
         return transaction {
             CategoryTable.selectAll()
                 .orderBy(CategoryTable.order to SortOrder.ASC)
-                .let {
-                    if (needsDefaultCategory()) {
-                        it
-                    } else {
-                        it.andWhere { CategoryTable.id neq DEFAULT_CATEGORY_ID }
-                    }
-                }
                 .map {
                     CategoryTable.toDataClass(it)
                 }
