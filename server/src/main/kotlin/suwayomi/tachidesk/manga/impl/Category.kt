@@ -142,9 +142,8 @@ object Category {
                     .select { MangaTable.inLibrary eq true }
                     .andWhere { CategoryMangaTable.manga.isNull() }
             } else {
-                CategoryMangaTable.select {
-                    CategoryMangaTable.category eq categoryId
-                }
+                CategoryMangaTable.leftJoin(MangaTable).select { CategoryMangaTable.category eq categoryId }
+                    .andWhere { MangaTable.inLibrary eq true }
             }.count().toInt()
         }
     }
