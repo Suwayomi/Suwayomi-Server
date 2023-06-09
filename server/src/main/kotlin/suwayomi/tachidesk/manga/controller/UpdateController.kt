@@ -18,7 +18,9 @@ import suwayomi.tachidesk.manga.model.dataclass.IncludeInUpdate
 import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
+import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.util.formParam
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
@@ -108,8 +110,13 @@ object UpdateController {
             .distinctBy { it.id }
         val mangasToCategoriesMap = CategoryManga.getMangasCategories(categoriesToUpdateMangas.map { it.id })
         val mangasToUpdate = categoriesToUpdateMangas
+            .asSequence()
             .filter { it.updateStrategy == UpdateStrategy.ALWAYS_UPDATE }
+            .filter { if (serverConfig.excludeUnreadChapters) { (it.unreadCount ?: 0L) == 0L } else true }
+            .filter { if (serverConfig.excludeNotStarted) { it.lastReadAt != null } else true }
+            .filter { if (serverConfig.excludeCompleted) { it.status != MangaStatus.COMPLETED.name } else true }
             .filter { !excludedCategories.any { category -> mangasToCategoriesMap[it.id]?.contains(category) == true } }
+            .toList()
 
         // In case no manga gets updated and no update job was running before, the client would never receive an info about its update request
         if (mangasToUpdate.isEmpty()) {
