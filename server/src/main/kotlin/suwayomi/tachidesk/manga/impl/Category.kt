@@ -62,7 +62,6 @@ object Category {
      * Move the category from order number `from` to `to`
      */
     fun reorderCategory(from: Int, to: Int) {
-        if (from == 0 || to == 0) return
         transaction {
             val categories = CategoryTable.selectAll().orderBy(CategoryTable.order to SortOrder.ASC).toMutableList()
             categories.add(to - 1, categories.removeAt(from - 1))
