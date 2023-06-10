@@ -83,8 +83,6 @@ private class ChapterForDownload(
 
     private fun updateDatabasePages(pageList: List<Page>) {
         val chapterId = chapterEntry[ChapterTable.id].value
-        val chapterIndex = chapterEntry[ChapterTable.sourceOrder]
-        val mangaId = chapterEntry[ChapterTable.manga].value
 
         transaction {
             pageList.forEach { page ->
@@ -108,7 +106,7 @@ private class ChapterForDownload(
             }
         }
 
-        updatePageCount(pageList, mangaId, chapterIndex)
+        updatePageCount(pageList, chapterId)
 
         // chapter was updated
         chapterEntry = freshChapterEntry()
@@ -116,13 +114,12 @@ private class ChapterForDownload(
 
     private fun updatePageCount(
         pageList: List<Page>,
-        mangaId: Int,
-        chapterIndex: Int
+        chapterId: Int
     ) {
         val pageCount = pageList.count()
 
         transaction {
-            ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }) {
+            ChapterTable.update({ ChapterTable.id eq chapterId }) {
                 it[ChapterTable.pageCount] = pageCount
             }
         }
