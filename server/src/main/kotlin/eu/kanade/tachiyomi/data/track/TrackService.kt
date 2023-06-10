@@ -34,8 +34,7 @@ abstract class TrackService(val id: Long) {
         get() = networkService.client
 
     // Name of the manga sync service to display
-//    @StringRes
-//    abstract fun nameRes(): String
+    abstract val name: String
 
     // Application and remote support for reading dates
     open val supportsReadingDates: Boolean = false

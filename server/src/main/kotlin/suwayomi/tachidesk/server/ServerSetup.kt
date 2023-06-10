@@ -8,6 +8,7 @@ package suwayomi.tachidesk.server
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.App
+import eu.kanade.tachiyomi.data.track.TrackManager
 import eu.kanade.tachiyomi.source.local.LocalSource
 import io.javalin.plugin.json.JavalinJackson
 import io.javalin.plugin.json.JsonMapper
@@ -54,6 +55,8 @@ val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 val systemTrayInstance by lazy { systemTray() }
 
 val androidCompat by lazy { AndroidCompat() }
+
+val trackManager by lazy { TrackManager() }
 
 fun applicationSetup() {
     logger.info("Running Tachidesk ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")

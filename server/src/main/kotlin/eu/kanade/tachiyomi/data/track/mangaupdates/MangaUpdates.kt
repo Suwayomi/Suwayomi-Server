@@ -23,8 +23,7 @@ class MangaUpdates(id: Long) : TrackService(id) {
 
     private val api by lazy { MangaUpdatesApi(interceptor, client) }
 
-//    @StringRes
-//    override fun nameRes(): String = R.string.tracker_manga_updates
+    override val name: String = "MangaUpdates"
 
 //    override fun getLogo(): Int = R.drawable.ic_manga_updates
 
@@ -36,11 +35,11 @@ class MangaUpdates(id: Long) : TrackService(id) {
 
 //    @StringRes
     override fun getStatus(status: Int): String? = when (status) {
-        READING_LIST -> "R.string.reading_list"
-        WISH_LIST -> "R.string.wish_list"
-        COMPLETE_LIST -> "R.string.complete_list"
-        ON_HOLD_LIST -> "R.string.on_hold_list"
-        UNFINISHED_LIST -> "R.string.unfinished_list"
+        READING_LIST -> "Reading List"
+        WISH_LIST -> "Wish List"
+        COMPLETE_LIST -> "Complete List"
+        ON_HOLD_LIST -> ">On Hold List"
+        UNFINISHED_LIST -> "Unfinished List"
         else -> null
     }
 
