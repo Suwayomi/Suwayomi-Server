@@ -9,6 +9,7 @@ package suwayomi.tachidesk.manga.impl
 
 import android.app.Application
 import android.content.Context
+import androidx.preference.Preference
 import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.getPreferenceKey
@@ -96,6 +97,12 @@ object Source {
      *  Gets a source's PreferenceScreen, puts the result into [preferenceScreenMap]
      */
     fun getSourcePreferences(sourceId: Long): List<PreferenceObject> {
+        return getSourcePreferencesRaw(sourceId).map {
+            PreferenceObject(it::class.java.simpleName, it)
+        }
+    }
+
+    fun getSourcePreferencesRaw(sourceId: Long): List<Preference> {
         val source = getCatalogueSourceOrStub(sourceId)
 
         if (source is ConfigurableSource) {
@@ -109,9 +116,7 @@ object Source {
 
             preferenceScreenMap[sourceId] = screen
 
-            return screen.preferences.map {
-                PreferenceObject(it::class.java.simpleName, it)
-            }
+            return screen.preferences
         }
         return emptyList()
     }
@@ -123,18 +128,25 @@ object Source {
 
     private val jsonMapper by DI.global.instance<JsonMapper>()
 
-    @Suppress("IMPLICIT_CAST_TO_ANY", "UNCHECKED_CAST")
-    fun setSourcePreference(sourceId: Long, change: SourcePreferenceChange) {
-        val screen = preferenceScreenMap[sourceId]!!
-        val pref = screen.preferences[change.position]
-
-        println(jsonMapper::class.java.name)
-        val newValue = when (pref.defaultValueType) {
-            "String" -> change.value
-            "Boolean" -> change.value.toBoolean()
-            "Set<String>" -> jsonMapper.fromJsonString(change.value, List::class.java as Class<List<String>>).toSet()
-            else -> throw RuntimeException("Unsupported type conversion")
+    fun setSourcePreference(
+        sourceId: Long,
+        position: Int,
+        value: String,
+        getValue: (Preference) -> Any = { pref ->
+            println(jsonMapper::class.java.name)
+            @Suppress("UNCHECKED_CAST")
+            when (pref.defaultValueType) {
+                "String" -> value
+                "Boolean" -> value.toBoolean()
+                "Set<String>" -> jsonMapper.fromJsonString(value, List::class.java as Class<List<String>>).toSet()
+                else -> throw RuntimeException("Unsupported type conversion")
+            }
         }
+    ) {
+        val screen = preferenceScreenMap[sourceId]!!
+        val pref = screen.preferences[position]
+
+        val newValue = getValue(pref)
 
         pref.saveNewValue(newValue)
         pref.callChangeListener(newValue)

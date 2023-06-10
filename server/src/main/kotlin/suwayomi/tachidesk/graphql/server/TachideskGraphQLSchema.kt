@@ -11,7 +11,6 @@ import com.expediagroup.graphql.generator.SchemaGeneratorConfig
 import com.expediagroup.graphql.generator.TopLevelObject
 import com.expediagroup.graphql.generator.hooks.FlowSubscriptionSchemaGeneratorHooks
 import com.expediagroup.graphql.generator.toSchema
-import graphql.scalars.ExtendedScalars
 import graphql.schema.GraphQLType
 import suwayomi.tachidesk.graphql.mutations.CategoryMutation
 import suwayomi.tachidesk.graphql.mutations.ChapterMutation
@@ -36,7 +35,6 @@ class CustomSchemaGeneratorHooks : FlowSubscriptionSchemaGeneratorHooks() {
     override fun willGenerateGraphQLType(type: KType): GraphQLType? = when (type.classifier as? KClass<*>) {
         Long::class -> GraphQLLongAsString // encode to string for JS
         Cursor::class -> GraphQLCursor
-        Any::class -> ExtendedScalars.Json
         else -> super.willGenerateGraphQLType(type)
     }
 }
