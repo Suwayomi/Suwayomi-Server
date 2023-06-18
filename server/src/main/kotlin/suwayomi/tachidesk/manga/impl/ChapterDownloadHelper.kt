@@ -13,7 +13,7 @@ import java.io.InputStream
 
 object ChapterDownloadHelper {
     fun getImage(mangaId: Int, chapterId: Int, index: Int): Pair<InputStream, String> {
-        return provider(mangaId, chapterId).getImage(index)
+        return provider(mangaId, chapterId).getImage().execute(index)
     }
 
     fun delete(mangaId: Int, chapterId: Int): Boolean {
@@ -27,7 +27,7 @@ object ChapterDownloadHelper {
         scope: CoroutineScope,
         step: suspend (DownloadChapter?, Boolean) -> Unit
     ): Boolean {
-        return provider(mangaId, chapterId).download(download, scope, step)
+        return provider(mangaId, chapterId).download().execute(download, scope, step)
     }
 
     // return the appropriate provider based on how the download was saved. For the logic is simple but will evolve when new types of downloads are available

@@ -15,7 +15,7 @@ import java.io.File
 import java.io.InputStream
 
 class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mangaId, chapterId) {
-    override fun getImage(index: Int): Pair<InputStream, String> {
+    override fun getImageImpl(index: Int): Pair<InputStream, String> {
         val cbzPath = getChapterCbzPath(mangaId, chapterId)
         val zipFile = ZipFile(cbzPath)
         val zipEntry = zipFile.entries.toList().sortedWith(compareBy({ it.name }, { it.name }))[index]
@@ -24,7 +24,7 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mang
         return Pair(inputStream.buffered(), "image/$fileType")
     }
 
-    override suspend fun download(
+    override suspend fun downloadImpl(
         download: DownloadChapter,
         scope: CoroutineScope,
         step: suspend (DownloadChapter?, Boolean) -> Unit
@@ -34,7 +34,7 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mang
         val chapterFolder = File(chapterDir)
         if (outputFile.exists()) handleExistingCbzFile(outputFile, chapterFolder)
 
-        FolderProvider(mangaId, chapterId).download(download, scope, step)
+        FolderProvider(mangaId, chapterId).download().execute(download, scope, step)
 
         withContext(Dispatchers.IO) {
             outputFile.createNewFile()

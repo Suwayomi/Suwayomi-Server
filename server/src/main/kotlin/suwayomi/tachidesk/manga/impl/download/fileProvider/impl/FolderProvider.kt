@@ -21,7 +21,7 @@ import java.io.InputStream
 * Provides downloaded files when pages were downloaded into folders
 * */
 class FolderProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mangaId, chapterId) {
-    override fun getImage(index: Int): Pair<InputStream, String> {
+    override fun getImageImpl(index: Int): Pair<InputStream, String> {
         val chapterDir = getChapterDownloadPath(mangaId, chapterId)
         val folder = File(chapterDir)
         folder.mkdirs()
@@ -31,7 +31,7 @@ class FolderProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(manga
     }
 
     @OptIn(FlowPreview::class)
-    override suspend fun download(
+    override suspend fun downloadImpl(
         download: DownloadChapter,
         scope: CoroutineScope,
         step: suspend (DownloadChapter?, Boolean) -> Unit
