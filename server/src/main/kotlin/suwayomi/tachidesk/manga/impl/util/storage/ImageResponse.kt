@@ -38,7 +38,7 @@ object ImageResponse {
      * @param cacheSavePath where to save the cached image. Caller should decide to use perma cache or temp cache (OS temp dir)
      * @param fileName what the saved cache file should be named
      */
-    suspend fun getCachedImageResponse(
+    suspend fun getImageResponse(
         saveDir: String,
         fileName: String,
         fetcher: suspend () -> Response

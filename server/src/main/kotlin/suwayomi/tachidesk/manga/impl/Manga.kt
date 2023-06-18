@@ -30,7 +30,7 @@ import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogue
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.source.StubSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
-import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getCachedImageResponse
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.impl.util.updateMangaDownloadDir
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
@@ -240,7 +240,7 @@ object Manga {
         val sourceId = mangaEntry[MangaTable.sourceReference]
 
         return when (val source = getCatalogueSourceOrStub(sourceId)) {
-            is HttpSource -> getCachedImageResponse(cacheSaveDir, fileName) {
+            is HttpSource -> getImageResponse(cacheSaveDir, fileName) {
                 val thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
                     ?: if (!mangaEntry[MangaTable.initialized]) {
                         // initialize then try again
@@ -272,7 +272,7 @@ object Manga {
                 imageFile.inputStream() to contentType
             }
 
-            is StubSource -> getCachedImageResponse(cacheSaveDir, fileName) {
+            is StubSource -> getImageResponse(cacheSaveDir, fileName) {
                 val thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
                     ?: throw NullPointerException("No thumbnail found")
                 network.client.newCall(
