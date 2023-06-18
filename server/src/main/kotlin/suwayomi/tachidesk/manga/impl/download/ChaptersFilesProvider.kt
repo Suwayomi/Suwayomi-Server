@@ -7,7 +7,7 @@ import java.io.InputStream
 /*
 * Base class for downloaded chapter files provider, example: Folder, Archive
 * */
-abstract class DownloadedFilesProvider(val mangaId: Int, val chapterId: Int) {
+abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) {
     abstract fun getImage(index: Int): Pair<InputStream, String>
 
     abstract suspend fun download(

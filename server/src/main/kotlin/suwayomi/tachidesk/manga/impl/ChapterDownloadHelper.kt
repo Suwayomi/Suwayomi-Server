@@ -2,7 +2,7 @@ package suwayomi.tachidesk.manga.impl
 
 import kotlinx.coroutines.CoroutineScope
 import suwayomi.tachidesk.manga.impl.download.ArchiveProvider
-import suwayomi.tachidesk.manga.impl.download.DownloadedFilesProvider
+import suwayomi.tachidesk.manga.impl.download.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.FolderProvider
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
@@ -31,7 +31,7 @@ object ChapterDownloadHelper {
     }
 
     // return the appropriate provider based on how the download was saved. For the logic is simple but will evolve when new types of downloads are available
-    private fun provider(mangaId: Int, chapterId: Int): DownloadedFilesProvider {
+    private fun provider(mangaId: Int, chapterId: Int): ChaptersFilesProvider {
         val chapterFolder = File(getChapterDownloadPath(mangaId, chapterId))
         val cbzFile = File(getChapterCbzPath(mangaId, chapterId))
         if (cbzFile.exists()) return ArchiveProvider(mangaId, chapterId)

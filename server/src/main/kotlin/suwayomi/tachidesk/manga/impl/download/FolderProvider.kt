@@ -19,7 +19,7 @@ import java.io.InputStream
 /*
 * Provides downloaded files when pages were downloaded into folders
 * */
-class FolderProvider(mangaId: Int, chapterId: Int) : DownloadedFilesProvider(mangaId, chapterId) {
+class FolderProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mangaId, chapterId) {
     override fun getImage(index: Int): Pair<InputStream, String> {
         val chapterDir = getChapterDownloadPath(mangaId, chapterId)
         val folder = File(chapterDir)

@@ -13,7 +13,7 @@ import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import java.io.File
 import java.io.InputStream
 
-class ArchiveProvider(mangaId: Int, chapterId: Int) : DownloadedFilesProvider(mangaId, chapterId) {
+class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mangaId, chapterId) {
     override fun getImage(index: Int): Pair<InputStream, String> {
         val cbzPath = getChapterCbzPath(mangaId, chapterId)
         val zipFile = ZipFile(cbzPath)
