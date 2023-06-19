@@ -54,6 +54,7 @@ class ApplicationDirs(
     val tempMangaCacheRoot = "$tempRoot/manga-cache"
 
     val thumbnailDownloadsRoot = "$downloadsRoot/thumbnails"
+    val mangaDownloadsRoot = "$downloadsRoot/mangas"
 }
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
