@@ -45,12 +45,12 @@ class ApplicationDirs(
 ) {
     val cacheRoot = System.getProperty("java.io.tmpdir") + "/tachidesk"
     val extensionsRoot = "$dataRoot/extensions"
-    val thumbnailsRoot = "$dataRoot/thumbnails"
     val mangaDownloadsRoot = serverConfig.downloadsPath.ifBlank { "$dataRoot/downloads" }
     val localMangaRoot = serverConfig.localSourcePath.ifBlank { "$dataRoot/local" }
     val webUIRoot = "$dataRoot/webUI"
     val automatedBackupRoot = serverConfig.backupPath.ifBlank { "$dataRoot/backups" }
 
+    val tempThumbnailCacheRoot = "$tempRoot/thumbnails"
     val tempMangaCacheRoot = "$tempRoot/manga-cache"
 
     val thumbnailDownloadsRoot = "$mangaDownloadsRoot/thumbnails"
@@ -98,7 +98,7 @@ fun applicationSetup() {
     logger.debug("Data Root directory is set to: ${applicationDirs.dataRoot}")
 
     // Migrate Directories from old versions
-    File("$ApplicationRootDir/manga-thumbnails").renameTo(applicationDirs.thumbnailsRoot)
+    File("$ApplicationRootDir/manga-thumbnails").renameTo(applicationDirs.tempThumbnailCacheRoot)
     File("$ApplicationRootDir/manga-local").renameTo(applicationDirs.localMangaRoot)
     File("$ApplicationRootDir/anime-thumbnails").delete()
 
@@ -107,7 +107,7 @@ fun applicationSetup() {
         applicationDirs.dataRoot,
         applicationDirs.extensionsRoot,
         applicationDirs.extensionsRoot + "/icon",
-        applicationDirs.thumbnailsRoot,
+        applicationDirs.tempThumbnailCacheRoot,
         applicationDirs.mangaDownloadsRoot,
         applicationDirs.localMangaRoot
     ).forEach {

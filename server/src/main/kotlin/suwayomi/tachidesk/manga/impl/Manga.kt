@@ -235,7 +235,7 @@ object Manga {
     private val network: NetworkHelper by injectLazy()
 
     suspend fun fetchMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
-        val cacheSaveDir = applicationDirs.thumbnailsRoot
+        val cacheSaveDir = applicationDirs.tempThumbnailCacheRoot
         val fileName = mangaId.toString()
 
         val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
@@ -302,7 +302,7 @@ object Manga {
     }
 
     private fun clearMangaThumbnailCache(mangaId: Int) {
-        val saveDir = applicationDirs.thumbnailsRoot
+        val saveDir = applicationDirs.tempThumbnailCacheRoot
         val fileName = mangaId.toString()
 
         clearCachedImage(saveDir, fileName)
