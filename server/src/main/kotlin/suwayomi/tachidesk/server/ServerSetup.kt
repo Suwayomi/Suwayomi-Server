@@ -45,7 +45,7 @@ class ApplicationDirs(
 ) {
     val cacheRoot = System.getProperty("java.io.tmpdir") + "/tachidesk"
     val extensionsRoot = "$dataRoot/extensions"
-    val mangaDownloadsRoot = serverConfig.downloadsPath.ifBlank { "$dataRoot/downloads" }
+    val downloadsRoot = serverConfig.downloadsPath.ifBlank { "$dataRoot/downloads" }
     val localMangaRoot = serverConfig.localSourcePath.ifBlank { "$dataRoot/local" }
     val webUIRoot = "$dataRoot/webUI"
     val automatedBackupRoot = serverConfig.backupPath.ifBlank { "$dataRoot/backups" }
@@ -53,7 +53,7 @@ class ApplicationDirs(
     val tempThumbnailCacheRoot = "$tempRoot/thumbnails"
     val tempMangaCacheRoot = "$tempRoot/manga-cache"
 
-    val thumbnailDownloadsRoot = "$mangaDownloadsRoot/thumbnails"
+    val thumbnailDownloadsRoot = "$downloadsRoot/thumbnails"
 }
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
@@ -108,7 +108,7 @@ fun applicationSetup() {
         applicationDirs.extensionsRoot,
         applicationDirs.extensionsRoot + "/icon",
         applicationDirs.tempThumbnailCacheRoot,
-        applicationDirs.mangaDownloadsRoot,
+        applicationDirs.downloadsRoot,
         applicationDirs.localMangaRoot
     ).forEach {
         File(it).mkdirs()

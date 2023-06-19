@@ -49,7 +49,7 @@ fun getThumbnailDownloadPath(mangaId: Int): String {
 }
 
 fun getChapterDownloadPath(mangaId: Int, chapterId: Int): String {
-    return applicationDirs.mangaDownloadsRoot + "/" + getChapterDir(mangaId, chapterId)
+    return applicationDirs.downloadsRoot + "/" + getChapterDir(mangaId, chapterId)
 }
 
 fun getChapterCbzPath(mangaId: Int, chapterId: Int): String {
@@ -70,8 +70,8 @@ fun updateMangaDownloadDir(mangaId: Int, newTitle: String): Boolean {
 
     val newMangaDir = SafePath.buildValidFilename(newTitle)
 
-    val oldDir = "${applicationDirs.mangaDownloadsRoot}/$sourceDir/$mangaDir"
-    val newDir = "${applicationDirs.mangaDownloadsRoot}/$sourceDir/$newMangaDir"
+    val oldDir = "${applicationDirs.downloadsRoot}/$sourceDir/$mangaDir"
+    val newDir = "${applicationDirs.downloadsRoot}/$sourceDir/$newMangaDir"
 
     val oldDirFile = File(oldDir)
     val newDirFile = File(newDir)
