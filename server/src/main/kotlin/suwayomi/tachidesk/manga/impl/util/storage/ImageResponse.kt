@@ -11,6 +11,7 @@ import okhttp3.Response
 import okhttp3.internal.closeQuietly
 import java.io.File
 import java.io.FileInputStream
+import java.io.IOException
 import java.io.InputStream
 
 object ImageResponse {
@@ -37,12 +38,18 @@ object ImageResponse {
      * @param cacheSavePath where to save the cached image. Caller should decide to use perma cache or temp cache (OS temp dir)
      * @param fileName what the saved cache file should be named
      */
-    suspend fun getCachedImageResponse(saveDir: String, fileName: String, fetcher: suspend () -> Response): Pair<InputStream, String> {
+    suspend fun getCachedImageResponse(
+        saveDir: String,
+        fileName: String,
+        fetcher: suspend () -> Response
+    ): Pair<InputStream, String> {
         File(saveDir).mkdirs()
 
         val cachedFile = findFileNameStartingWith(saveDir, fileName)
         val filePath = "$saveDir/$fileName"
-        if (cachedFile != null) {
+
+        // in case the cached file is a ".tmp" file something went wrong with the previous download, and it has to be downloaded again
+        if (cachedFile != null && !cachedFile.endsWith(".tmp")) {
             val fileType = cachedFile.substringAfter("$filePath.")
             return Pair(
                 pathToInputStream(cachedFile),
@@ -52,12 +59,19 @@ object ImageResponse {
 
         val response = fetcher()
 
-        if (response.code == 200) {
-            val (actualSavePath, imageType) = saveImage(filePath, response.body!!.byteStream())
-            return pathToInputStream(actualSavePath) to imageType
-        } else {
+        try {
+            if (response.code == 200) {
+                val (actualSavePath, imageType) = saveImage(filePath, response.body.byteStream())
+                return pathToInputStream(actualSavePath) to imageType
+            } else {
+                throw Exception("request error! ${response.code}")
+            }
+        } catch (e: IOException) {
+            // make sure no partial download remains
+            clearCachedImage(saveDir, fileName)
+            throw e
+        } finally {
             response.closeQuietly()
-            throw Exception("request error! ${response.code}")
         }
     }
 
