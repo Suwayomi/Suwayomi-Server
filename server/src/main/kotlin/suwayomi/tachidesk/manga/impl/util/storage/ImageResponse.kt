@@ -57,6 +57,7 @@ object ImageResponse {
             return pathToInputStream(actualSavePath) to imageType
         } else {
             response.closeQuietly()
+            clearCachedImage(saveDir, fileName)
             throw Exception("request error! ${response.code}")
         }
     }
