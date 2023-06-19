@@ -30,6 +30,14 @@ object ImageResponse {
         return null
     }
 
+    fun getCachedImageResponse(cachedFile: String, filePath: String): Pair<InputStream, String> {
+        val fileType = cachedFile.substringAfter("$filePath.")
+        return Pair(
+            pathToInputStream(cachedFile),
+            "image/$fileType"
+        )
+    }
+
     /**
      * Get a cached image response
      *
@@ -50,11 +58,7 @@ object ImageResponse {
 
         // in case the cached file is a ".tmp" file something went wrong with the previous download, and it has to be downloaded again
         if (cachedFile != null && !cachedFile.endsWith(".tmp")) {
-            val fileType = cachedFile.substringAfter("$filePath.")
-            return Pair(
-                pathToInputStream(cachedFile),
-                "image/$fileType"
-            )
+            return getCachedImageResponse(cachedFile, filePath)
         }
 
         val response = fetcher()
