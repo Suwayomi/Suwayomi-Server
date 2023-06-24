@@ -1,11 +1,18 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import androidx.preference.CheckBoxPreference
+import androidx.preference.EditTextPreference
+import androidx.preference.ListPreference
+import androidx.preference.MultiSelectListPreference
+import androidx.preference.SwitchPreferenceCompat
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.types.FilterChange
 import suwayomi.tachidesk.graphql.types.MangaType
-import suwayomi.tachidesk.graphql.types.PreferenceObject
+import suwayomi.tachidesk.graphql.types.Preference
+import suwayomi.tachidesk.graphql.types.preferenceOf
+import suwayomi.tachidesk.graphql.types.updateFilterList
 import suwayomi.tachidesk.manga.impl.MangaList.insertOrGet
-import suwayomi.tachidesk.manga.impl.Search
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
@@ -20,10 +27,6 @@ class SourceMutation {
         POPULAR,
         LATEST
     }
-    data class FilterChange(
-        val position: Int,
-        val state: String
-    )
     data class FetchSourceMangaInput(
         val clientMutationId: String? = null,
         val source: Long,
@@ -50,11 +53,7 @@ class SourceMutation {
                     source.fetchSearchManga(
                         page = page,
                         query = query.orEmpty(),
-                        filters = Search.buildFilterList(
-                            sourceId = sourceId,
-                            changes = filters?.map { Search.FilterChange(it.position, it.state) }
-                                .orEmpty()
-                        )
+                        filters = updateFilterList(source, filters)
                     ).awaitSingle()
                 }
                 FetchSourceMangaType.POPULAR -> {
@@ -85,7 +84,11 @@ class SourceMutation {
 
     data class SourcePreferenceChange(
         val position: Int,
-        val state: String
+        val switchState: Boolean? = null,
+        val checkBoxState: Boolean? = null,
+        val editTextState: String? = null,
+        val listState: String? = null,
+        val multiSelectState: List<String>? = null
     )
     data class UpdateSourcePreferenceInput(
         val clientMutationId: String? = null,
@@ -94,7 +97,7 @@ class SourceMutation {
     )
     data class UpdateSourcePreferencePayload(
         val clientMutationId: String?,
-        val preferences: List<PreferenceObject>
+        val preferences: List<Preference>
     )
 
     fun updateSourcePreference(
@@ -102,11 +105,20 @@ class SourceMutation {
     ): UpdateSourcePreferencePayload {
         val (clientMutationId, sourceId, change) = input
 
-        Source.setSourcePreference(sourceId, Source.SourcePreferenceChange(change.position, change.state))
+        Source.setSourcePreference(sourceId, change.position, "") { preference ->
+            when (preference) {
+                is SwitchPreferenceCompat -> change.switchState
+                is CheckBoxPreference -> change.checkBoxState
+                is EditTextPreference -> change.editTextState
+                is ListPreference -> change.listState
+                is MultiSelectListPreference -> change.multiSelectState?.toSet()
+                else -> throw RuntimeException("sealed class cannot have more subtypes!")
+            } ?: throw Exception("Expected change to ${preference::class.simpleName}")
+        }
 
         return UpdateSourcePreferencePayload(
             clientMutationId = clientMutationId,
-            preferences = Source.getSourcePreferences(sourceId).map { PreferenceObject(it.type, it.props) }
+            preferences = Source.getSourcePreferencesRaw(sourceId).map { preferenceOf(it) }
         )
     }
 }
