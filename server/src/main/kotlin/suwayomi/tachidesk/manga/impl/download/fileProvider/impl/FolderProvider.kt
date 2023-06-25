@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.manga.impl.download
+package suwayomi.tachidesk.manga.impl.download.fileProvider.impl
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.Page.getPageName
+import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse

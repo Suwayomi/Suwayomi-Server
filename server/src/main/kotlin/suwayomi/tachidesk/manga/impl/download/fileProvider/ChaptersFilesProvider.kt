@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.manga.impl.download
+package suwayomi.tachidesk.manga.impl.download.fileProvider
 
 import kotlinx.coroutines.CoroutineScope
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter

@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.manga.impl.download
+package suwayomi.tachidesk.manga.impl.download.fileProvider.impl
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -7,6 +7,7 @@ import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream
 import org.apache.commons.compress.archivers.zip.ZipFile
+import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath

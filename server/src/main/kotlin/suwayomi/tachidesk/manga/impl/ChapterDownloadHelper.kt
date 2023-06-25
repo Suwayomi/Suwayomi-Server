@@ -1,9 +1,9 @@
 package suwayomi.tachidesk.manga.impl
 
 import kotlinx.coroutines.CoroutineScope
-import suwayomi.tachidesk.manga.impl.download.ArchiveProvider
-import suwayomi.tachidesk.manga.impl.download.ChaptersFilesProvider
-import suwayomi.tachidesk.manga.impl.download.FolderProvider
+import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
+import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.ArchiveProvider
+import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.FolderProvider
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
