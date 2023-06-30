@@ -65,7 +65,7 @@ object Category {
     fun reorderCategory(from: Int, to: Int) {
         if (from == 0 || to == 0) return
         transaction {
-            val categories = CategoryTable.selectAll().orderBy(CategoryTable.order to SortOrder.ASC).toMutableList()
+            val categories = CategoryTable.select { CategoryTable.id neq DEFAULT_CATEGORY_ID }.orderBy(CategoryTable.order to SortOrder.ASC).toMutableList()
             categories.add(to - 1, categories.removeAt(from - 1))
             categories.forEachIndexed { index, cat ->
                 CategoryTable.update({ CategoryTable.id eq cat[CategoryTable.id].value }) {
