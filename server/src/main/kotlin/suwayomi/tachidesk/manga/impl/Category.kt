@@ -72,6 +72,7 @@ object Category {
                     it[CategoryTable.order] = index + 1
                 }
             }
+            normalizeCategories()
         }
     }
 
