@@ -246,7 +246,7 @@ fun updateFilterList(source: CatalogueSource, changes: List<FilterChange>?): Fil
     val filterList = source.getFilterList()
 
     changes?.forEach { change ->
-        when (val filter = filterList[1]) {
+        when (val filter = filterList[change.position]) {
             is SourceFilter.Header -> {
                 // NOOP
             }
@@ -268,7 +268,7 @@ fun updateFilterList(source: CatalogueSource, changes: List<FilterChange>?): Fil
             is SourceFilter.Group<*> -> {
                 val groupChange = change.groupChange ?: throw Exception("Expected group change at position ${change.position}")
 
-                when (val groupFilter = filter.state[1]) {
+                when (val groupFilter = filter.state[groupChange.position]) {
                     is SourceFilter.CheckBox -> {
                         groupFilter.state = groupChange.checkBoxState ?: throw Exception("Expected checkbox state change at position ${change.position}")
                     }
