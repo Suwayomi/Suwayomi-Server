@@ -196,6 +196,10 @@ object WebInterfaceManager {
         try {
             val webUIZipURL = "${getDownloadUrlFor(latestCompatibleVersion)}/$webUIZip"
             downloadVersion(webUIZipURL, webUIZipFile)
+
+            if (!isDownloadValid(webUIZip, webUIZipPath)) {
+                throw Exception("Download is invalid")
+            }
         } catch (e: Exception) {
             val retry = retryCount < 3
             logger.error { "Download failed${if (retry) ", retrying ${retryCount + 1}/3" else ""} - error: $e" }
@@ -247,6 +251,18 @@ object WebInterfaceManager {
                 logger.info { "Downloading WebUI Done." }
             }
         }
+    }
+
+    private fun isDownloadValid(zipFileName: String, zipFilePath: String): Boolean {
+        val tempUnzippedWebUIFolderPath = zipFileName.replace(".zip", "")
+
+        extractDownload(zipFilePath, tempUnzippedWebUIFolderPath)
+
+        val isDownloadValid = isLocalWebUIValid(tempUnzippedWebUIFolderPath)
+
+        File(tempUnzippedWebUIFolderPath).deleteRecursively()
+
+        return isDownloadValid
     }
 
     private fun extractDownload(zipFilePath: String, targetPath: String) {
