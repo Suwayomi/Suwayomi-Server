@@ -35,7 +35,7 @@ import java.io.InputStream
 import java.util.concurrent.TimeUnit
 
 object ProtoBackupExport : ProtoBackupBase() {
-    suspend fun createBackup(flags: BackupFlags): InputStream {
+    fun createBackup(flags: BackupFlags): InputStream {
         // Create root object
 
         val databaseManga = transaction { MangaTable.select { MangaTable.inLibrary eq true } }
