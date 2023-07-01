@@ -65,3 +65,18 @@ class MangaForCategoryDataLoader : KotlinDataLoader<Int, MangaNodeList> {
         }
     }
 }
+
+class MangaForSourceDataLoader : KotlinDataLoader<Long, MangaNodeList> {
+    override val dataLoaderName = "MangaForSourceDataLoader"
+    override fun getDataLoader(): DataLoader<Long, MangaNodeList> = DataLoaderFactory.newDataLoader<Long, MangaNodeList> { ids ->
+        future {
+            transaction {
+                addLogger(Slf4jSqlDebugLogger)
+                val mangaBySourceId = MangaTable.select { MangaTable.sourceReference inList ids }
+                    .map { MangaType(it) }
+                    .groupBy { it.sourceId }
+                ids.map { (mangaBySourceId[it] ?: emptyList()).toNodeList() }
+            }
+        }
+    }
+}
