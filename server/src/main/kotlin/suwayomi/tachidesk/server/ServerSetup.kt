@@ -104,7 +104,7 @@ fun applicationSetup() {
     // start app
     androidCompat.startApp(App())
 
-    // create conf file if doesn't exist
+    // create or update conf file if doesn't exist
     try {
         val dataConfFile = File("${applicationDirs.dataRoot}/server.conf")
         if (!dataConfFile.exists()) {
@@ -113,6 +113,9 @@ fun applicationSetup() {
                     input.copyTo(output)
                 }
             }
+        } else {
+            // make sure the user config file is up-to-date
+            GlobalConfigManager.updateUserConfig()
         }
     } catch (e: Exception) {
         logger.error("Exception while creating initial server.conf", e)
