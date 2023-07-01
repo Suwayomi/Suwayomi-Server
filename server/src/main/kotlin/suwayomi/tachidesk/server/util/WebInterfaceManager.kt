@@ -174,7 +174,7 @@ object WebInterfaceManager {
         throw Exception("No compatible webUI version found")
     }
 
-    fun downloadLatestCompatibleVersion() {
+    fun downloadLatestCompatibleVersion(retryCount: Int = 0) {
         val latestCompatibleVersion = try {
             val version = getLatestCompatibleVersion()
 
@@ -187,18 +187,27 @@ object WebInterfaceManager {
             BuildConfig.WEBUI_TAG
         }
 
-        File(applicationDirs.webUIRoot).deleteRecursively()
-
         val webUIZip = "Tachidesk-WebUI-$latestCompatibleVersion.zip"
         val webUIZipPath = "$tmpDir/$webUIZip"
         val webUIZipFile = File(webUIZipPath)
 
-        // download webUI zip
-        val webUIZipURL = "${getDownloadUrlFor(latestCompatibleVersion)}/$webUIZip"
-        webUIZipFile.delete()
-
         logger.info { "Downloading WebUI (version \"$latestCompatibleVersion\") zip from the Internet..." }
-        downloadVersion(webUIZipURL, webUIZipFile)
+
+        try {
+            val webUIZipURL = "${getDownloadUrlFor(latestCompatibleVersion)}/$webUIZip"
+            downloadVersion(webUIZipURL, webUIZipFile)
+        } catch (e: Exception) {
+            val retry = retryCount < 3
+            logger.error { "Download failed${if (retry) ", retrying ${retryCount + 1}/3" else ""} - error: $e" }
+
+            if (retry) {
+                return downloadLatestCompatibleVersion(retryCount + 1)
+            }
+
+            return
+        }
+
+        File(applicationDirs.webUIRoot).deleteRecursively()
 
         // extract webUI zip
         logger.info { "Extracting WebUI zip..." }
