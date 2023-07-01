@@ -55,23 +55,12 @@ object WebInterfaceManager {
             return
         }
 
-        // check if we have webUI installed and is correct version
-        val webUIRevisionFile = File(applicationDirs.webUIRoot + "/revision")
-        val webUIExists = webUIRevisionFile.exists()
-
-        if (webUIExists) {
-            val currentVersion = webUIRevisionFile.readText().trim()
+        if (doesLocalWebUIExist(applicationDirs.webUIRoot)) {
+            val currentVersion = getLocalVersion(applicationDirs.webUIRoot)
 
             logger.info { "WebUI Static files exists, version= $currentVersion" }
-            logger.info { "Verifying WebUI Static files..." }
 
-            val localMD5Sum = getLocalMD5Sum(applicationDirs.webUIRoot)
-            val currentVersionMD5Sum = fetchMD5SumFor(currentVersion)
-            val validationFailed = currentVersionMD5Sum != localMD5Sum
-
-            logger.info { "Validation ${if (validationFailed) "failed" else "succeeded"} - md5: local= $localMD5Sum; expected= $currentVersionMD5Sum" }
-
-            if (validationFailed) {
+            if (!isLocalWebUIValid(applicationDirs.webUIRoot)) {
                 downloadLatestCompatibleVersion()
                 return
             }
@@ -90,6 +79,33 @@ object WebInterfaceManager {
 
     private fun getDownloadUrlFor(version: String): String {
         return if (version == webUIPreviewVersion) downloadLatestVersionBaseUrl else "$downloadSpecificVersionBaseUrl/$version"
+    }
+
+    private fun getLocalVersion(path: String): String {
+        return File("$path/revision").readText().trim()
+    }
+
+    private fun doesLocalWebUIExist(path: String): Boolean {
+        // check if we have webUI installed and is correct version
+        val webUIRevisionFile = File("$path/revision")
+        return webUIRevisionFile.exists()
+    }
+
+    private fun isLocalWebUIValid(path: String): Boolean {
+        if (!doesLocalWebUIExist(path)) {
+            return false
+        }
+
+        logger.info { "Verifying WebUI files..." }
+
+        val currentVersion = getLocalVersion(path)
+        val localMD5Sum = getLocalMD5Sum(path)
+        val currentVersionMD5Sum = fetchMD5SumFor(currentVersion)
+        val validationSucceeded = currentVersionMD5Sum == localMD5Sum
+
+        logger.info { "Validation ${if (validationSucceeded) "succeeded" else "failed"} - md5: local= $localMD5Sum; expected= $currentVersionMD5Sum" }
+
+        return validationSucceeded
     }
 
     private fun getLocalMD5Sum(fileDir: String): String {
@@ -182,11 +198,21 @@ object WebInterfaceManager {
         webUIZipFile.delete()
 
         logger.info { "Downloading WebUI (version \"$latestCompatibleVersion\") zip from the Internet..." }
+        downloadVersion(webUIZipURL, webUIZipFile)
+
+        // extract webUI zip
+        logger.info { "Extracting WebUI zip..." }
+        extractDownload(webUIZipPath, applicationDirs.webUIRoot)
+        logger.info { "Extracting WebUI zip Done." }
+    }
+
+    private fun downloadVersion(url: String, zipFile: File) {
+        zipFile.delete()
         val data = ByteArray(1024)
 
-        webUIZipFile.outputStream().use { webUIZipFileOut ->
+        zipFile.outputStream().use { webUIZipFileOut ->
 
-            val connection = URL(webUIZipURL).openConnection() as HttpURLConnection
+            val connection = URL(url).openConnection() as HttpURLConnection
             connection.connect()
             val contentLength = connection.contentLength
 
@@ -212,12 +238,11 @@ object WebInterfaceManager {
                 logger.info { "Downloading WebUI Done." }
             }
         }
+    }
 
-        // extract webUI zip
-        logger.info { "Extracting WebUI zip..." }
-        File(applicationDirs.webUIRoot).mkdirs()
-        ZipFile(webUIZipPath).extractAll(applicationDirs.webUIRoot)
-        logger.info { "Extracting WebUI zip Done." }
+    private fun extractDownload(zipFilePath: String, targetPath: String) {
+        File(targetPath).mkdirs()
+        ZipFile(zipFilePath).extractAll(targetPath)
     }
 
     fun isUpdateAvailable(currentVersion: String): Boolean {
