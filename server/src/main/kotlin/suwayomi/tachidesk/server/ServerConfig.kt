@@ -38,6 +38,8 @@ class ServerConfig(getConfig: () -> Config, moduleName: String = MODULE_NAME) : 
     var excludeUnreadChapters: Boolean by overridableConfig
     var excludeNotStarted: Boolean by overridableConfig
     var excludeCompleted: Boolean by overridableConfig
+    var automaticallyTriggerGlobalUpdate: Boolean by overridableConfig
+    var globalUpdateInterval: Double by overridableConfig
 
     // Authentication
     var basicAuthEnabled: Boolean by overridableConfig
