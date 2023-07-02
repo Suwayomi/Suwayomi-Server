@@ -12,12 +12,15 @@ import com.expediagroup.graphql.generator.TopLevelObject
 import com.expediagroup.graphql.generator.hooks.FlowSubscriptionSchemaGeneratorHooks
 import com.expediagroup.graphql.generator.toSchema
 import graphql.schema.GraphQLType
+import io.javalin.http.UploadedFile
+import suwayomi.tachidesk.graphql.mutations.BackupMutation
 import suwayomi.tachidesk.graphql.mutations.CategoryMutation
 import suwayomi.tachidesk.graphql.mutations.ChapterMutation
 import suwayomi.tachidesk.graphql.mutations.ExtensionMutation
 import suwayomi.tachidesk.graphql.mutations.MangaMutation
 import suwayomi.tachidesk.graphql.mutations.MetaMutation
 import suwayomi.tachidesk.graphql.mutations.SourceMutation
+import suwayomi.tachidesk.graphql.queries.BackupQuery
 import suwayomi.tachidesk.graphql.queries.CategoryQuery
 import suwayomi.tachidesk.graphql.queries.ChapterQuery
 import suwayomi.tachidesk.graphql.queries.ExtensionQuery
@@ -27,6 +30,7 @@ import suwayomi.tachidesk.graphql.queries.SourceQuery
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLCursor
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLLongAsString
+import suwayomi.tachidesk.graphql.server.primitives.GraphQLUpload
 import suwayomi.tachidesk.graphql.subscriptions.DownloadSubscription
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
@@ -35,6 +39,7 @@ class CustomSchemaGeneratorHooks : FlowSubscriptionSchemaGeneratorHooks() {
     override fun willGenerateGraphQLType(type: KType): GraphQLType? = when (type.classifier as? KClass<*>) {
         Long::class -> GraphQLLongAsString // encode to string for JS
         Cursor::class -> GraphQLCursor
+        UploadedFile::class -> GraphQLUpload
         else -> super.willGenerateGraphQLType(type)
     }
 }
@@ -46,6 +51,7 @@ val schema = toSchema(
         hooks = CustomSchemaGeneratorHooks()
     ),
     queries = listOf(
+        TopLevelObject(BackupQuery()),
         TopLevelObject(CategoryQuery()),
         TopLevelObject(ChapterQuery()),
         TopLevelObject(ExtensionQuery()),
@@ -54,6 +60,7 @@ val schema = toSchema(
         TopLevelObject(SourceQuery())
     ),
     mutations = listOf(
+        TopLevelObject(BackupMutation()),
         TopLevelObject(CategoryMutation()),
         TopLevelObject(ChapterMutation()),
         TopLevelObject(ExtensionMutation()),

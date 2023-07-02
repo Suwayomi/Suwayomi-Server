@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.impl.backup.proto
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import okio.buffer
 import okio.gzip
 import okio.source
@@ -21,7 +22,9 @@ object ProtoBackupValidator {
     data class ValidationResult(
         val missingSources: List<String>,
         val missingTrackers: List<String>,
-        val mangasMissingSources: List<String>
+        val mangasMissingSources: List<String>,
+        @JsonIgnore
+        val missingSourceIds: List<Pair<Long, String>>
     )
 
     fun validate(backup: Backup): ValidationResult {
@@ -32,17 +35,8 @@ object ProtoBackupValidator {
         val sources = backup.getSourceMap()
 
         val missingSources = transaction {
-            sources
-                .filter { SourceTable.select { SourceTable.id eq it.key }.firstOrNull() == null }
-                .map { "${it.value} (${it.key})" }
-                .sorted()
+            sources.filter { SourceTable.select { SourceTable.id eq it.key }.firstOrNull() == null }
         }
-
-        val brokenSourceIds = backup.brokenBackupSources.map { it.sourceId }
-
-        val mangasMissingSources = backup.backupManga
-            .filter { it.source in brokenSourceIds }
-            .map { manga -> "${manga.title} (from ${backup.brokenBackupSources.first { it.sourceId == manga.source }.name})" }
 
 //        val trackers = backup.backupManga
 //            .flatMap { it.tracking }
@@ -56,10 +50,17 @@ object ProtoBackupValidator {
 //            .map { context.getString(it.nameRes()) }
 //            .sorted()
 
-        return ValidationResult(missingSources, missingTrackers, mangasMissingSources)
+        return ValidationResult(
+            missingSources
+                .map { "${it.value} (${it.key})" }
+                .sorted(),
+            missingTrackers,
+            emptyList(),
+            missingSources.toList()
+        )
     }
 
-    suspend fun validate(sourceStream: InputStream): ValidationResult {
+    fun validate(sourceStream: InputStream): ValidationResult {
         val backupString = sourceStream.source().gzip().buffer().use { it.readByteArray() }
         val backup = ProtoBackupImport.parser.decodeFromByteArray(BackupSerializer, backupString)
 
