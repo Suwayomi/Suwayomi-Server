@@ -13,6 +13,7 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.config.ConfigRenderOptions
 import com.typesafe.config.ConfigValue
 import com.typesafe.config.ConfigValueFactory
+import com.typesafe.config.parser.ConfigDocument
 import com.typesafe.config.parser.ConfigDocumentFactory
 import mu.KotlinLogging
 import java.io.File
@@ -43,6 +44,12 @@ open class ConfigManager {
     @Suppress("UNCHECKED_CAST")
     fun <T : ConfigModule> module(type: Class<T>): T = loadedModules[type] as T
 
+    private fun getUserConfig(): Config {
+        return userConfigFile.let {
+            ConfigFactory.parseFile(it)
+        }
+    }
+
     /**
      * Load configs
      */
@@ -58,10 +65,7 @@ open class ConfigManager {
             )
 
         // Load user config
-        val userConfig =
-            userConfigFile.let {
-                ConfigFactory.parseFile(it)
-            }
+        val userConfig = getUserConfig()
 
         val config = ConfigFactory.empty()
             .withFallback(baseConfig)
@@ -104,6 +108,35 @@ open class ConfigManager {
 
         updateUserConfigFile(path, configValue)
         internalConfig = internalConfig.withValue(path, configValue)
+    }
+
+    /**
+     * Makes sure the "UserConfig" is up-to-date.
+     *
+     *  - adds missing settings
+     *  - removes outdated settings
+     */
+    fun updateUserConfig() {
+        val serverConfigFile = File(javaClass.classLoader.getResource("server-reference.conf")?.file ?: return)
+        val serverConfig = ConfigFactory.parseFile(serverConfigFile)
+        val userConfig = getUserConfig()
+
+        val hasMissingSettings = serverConfig.entrySet().any { !userConfig.hasPath(it.key) }
+        val hasOutdatedSettings = userConfig.entrySet().any { !serverConfig.hasPath(it.key) }
+        val isUserConfigOutdated = hasMissingSettings || hasOutdatedSettings
+        if (!isUserConfigOutdated) {
+            return
+        }
+
+        logger.debug { "user config is out of date, updating... (missingSettings= $hasMissingSettings, outdatedSettings= $hasOutdatedSettings" }
+
+        val serverConfigDoc = ConfigDocumentFactory.parseFile(serverConfigFile)
+        userConfigFile.writeText(serverConfigDoc.render())
+
+        var newUserConfigDoc: ConfigDocument = serverConfigDoc
+        userConfig.entrySet().filter { serverConfig.hasPath(it.key) }.forEach { newUserConfigDoc = newUserConfigDoc.withValue(it.key, it.value) }
+
+        userConfigFile.writeText(newUserConfigDoc.render())
     }
 }
 
