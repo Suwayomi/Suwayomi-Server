@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.manga.impl.update
 
+import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,8 +18,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import mu.KotlinLogging
+import org.kodein.di.DI
+import org.kodein.di.conf.global
+import org.kodein.di.instance
+import suwayomi.tachidesk.manga.controller.UpdateController
+import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
+import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
+import suwayomi.tachidesk.manga.model.dataclass.IncludeInUpdate
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.server.serverConfig
 import java.util.concurrent.ConcurrentHashMap
 
@@ -74,7 +83,46 @@ class Updater : IUpdater {
         return tracker.values.toList()
     }
 
-    override fun addMangasToQueue(mangas: List<MangaDataClass>) {
+    override fun addCategoriesToUpdateQueue(categories: List<CategoryDataClass>, clear: Boolean?) {
+        val updater by DI.global.instance<IUpdater>()
+        if (clear == true) {
+            updater.reset()
+        }
+
+        val includeInUpdateStatusToCategoryMap = categories.groupBy { it.includeInUpdate }
+        val excludedCategories = includeInUpdateStatusToCategoryMap[IncludeInUpdate.EXCLUDE].orEmpty()
+        val includedCategories = includeInUpdateStatusToCategoryMap[IncludeInUpdate.INCLUDE].orEmpty()
+        val unsetCategories = includeInUpdateStatusToCategoryMap[IncludeInUpdate.UNSET].orEmpty()
+        val categoriesToUpdate = includedCategories.ifEmpty { unsetCategories }
+
+        logger.debug { "Updating categories: '${categoriesToUpdate.joinToString("', '") { it.name }}'" }
+
+        val categoriesToUpdateMangas = categoriesToUpdate
+            .flatMap { CategoryManga.getCategoryMangaList(it.id) }
+            .distinctBy { it.id }
+        val mangasToCategoriesMap = CategoryManga.getMangasCategories(categoriesToUpdateMangas.map { it.id })
+        val mangasToUpdate = categoriesToUpdateMangas
+            .asSequence()
+            .filter { it.updateStrategy == UpdateStrategy.ALWAYS_UPDATE }
+            .filter { if (serverConfig.excludeUnreadChapters) { (it.unreadCount ?: 0L) == 0L } else true }
+            .filter { if (serverConfig.excludeNotStarted) { it.lastReadAt != null } else true }
+            .filter { if (serverConfig.excludeCompleted) { it.status != MangaStatus.COMPLETED.name } else true }
+            .filter { !excludedCategories.any { category -> mangasToCategoriesMap[it.id]?.contains(category) == true } }
+            .toList()
+
+        // In case no manga gets updated and no update job was running before, the client would never receive an info about its update request
+        if (mangasToUpdate.isEmpty()) {
+            UpdaterSocket.notifyAllClients(UpdateStatus())
+            return
+        }
+
+        addMangasToQueue(
+            mangasToUpdate
+                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, MangaDataClass::title))
+        )
+    }
+
+    private fun addMangasToQueue(mangas: List<MangaDataClass>) {
         mangas.forEach { tracker[it.id] = UpdateJob(it) }
         _status.update { UpdateStatus(tracker.values.toList(), mangas.isNotEmpty()) }
         mangas.forEach { addMangaToQueue(it) }
