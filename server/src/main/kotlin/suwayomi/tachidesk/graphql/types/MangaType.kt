@@ -15,6 +15,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.manga.impl.MangaList
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.MangaStatus
@@ -45,7 +46,7 @@ class MangaType(
         row[MangaTable.sourceReference],
         row[MangaTable.url],
         row[MangaTable.title],
-        row[MangaTable.thumbnail_url],
+        row[MangaTable.thumbnail_url]?.let { MangaList.proxyThumbnailUrl(row[MangaTable.id].value) },
         row[MangaTable.initialized],
         row[MangaTable.artist],
         row[MangaTable.author],
