@@ -117,8 +117,8 @@ open class ConfigManager {
      *  - removes outdated settings
      */
     fun updateUserConfig() {
-        val serverConfigFile = File(javaClass.classLoader.getResource("server-reference.conf")?.file ?: return)
-        val serverConfig = ConfigFactory.parseFile(serverConfigFile)
+        val serverConfigFileContent = this::class.java.getResource("/server-reference.conf")?.readText()
+        val serverConfig = ConfigFactory.parseResources("server-reference.conf")
         val userConfig = getUserConfig()
 
         val hasMissingSettings = serverConfig.entrySet().any { !userConfig.hasPath(it.key) }
@@ -130,7 +130,7 @@ open class ConfigManager {
 
         logger.debug { "user config is out of date, updating... (missingSettings= $hasMissingSettings, outdatedSettings= $hasOutdatedSettings" }
 
-        val serverConfigDoc = ConfigDocumentFactory.parseFile(serverConfigFile)
+        val serverConfigDoc = ConfigDocumentFactory.parseString(serverConfigFileContent)
         userConfigFile.writeText(serverConfigDoc.render())
 
         var newUserConfigDoc: ConfigDocument = serverConfigDoc
