@@ -59,7 +59,6 @@ enum class WebUI(val repoUrl: String, val versionMappingUrl: String, val latestR
 
 const val DEFAULT_WEB_UI = "WebUI"
 
-
 object WebInterfaceManager {
     private val logger = KotlinLogging.logger {}
     private const val webUIPreviewVersion = "PREVIEW"
@@ -109,7 +108,7 @@ object WebInterfaceManager {
         if (doesLocalWebUIExist(applicationDirs.webUIRoot)) {
             val currentVersion = getLocalVersion(applicationDirs.webUIRoot)
 
-            logger.info { "WebUI Static files exists, version= $currentVersion" }
+            logger.info { "setupWebUI: found webUI files - flavor= ${serverConfig.webUIFlavor}, version= $currentVersion" }
 
             if (!isLocalWebUIValid(applicationDirs.webUIRoot)) {
                 doInitialSetup()
@@ -123,10 +122,9 @@ object WebInterfaceManager {
             return
         }
 
-        logger.info { "No WebUI Static files found, starting download..." }
+        logger.warn { "setupWebUI: no webUI files found, starting download..." }
         doInitialSetup()
     }
-
 
     /**
      * Tries to download the latest compatible version for the selected webUI and falls back to the default webUI in case of errors.
@@ -140,7 +138,7 @@ object WebInterfaceManager {
         }
 
         if (serverConfig.webUIFlavor != DEFAULT_WEB_UI) {
-            logger.info { "doInitialSetup: fallback to default webUI \"$DEFAULT_WEB_UI\"" }
+            logger.warn { "doInitialSetup: fallback to default webUI \"$DEFAULT_WEB_UI\"" }
 
             serverConfig.webUIFlavor = DEFAULT_WEB_UI
 
@@ -150,15 +148,16 @@ object WebInterfaceManager {
             }
         }
 
-        logger.error { "doInitialSetup: fallback to bundled default webUI \"$DEFAULT_WEB_UI\"" }
+        logger.warn { "doInitialSetup: fallback to bundled default webUI \"$DEFAULT_WEB_UI\"" }
 
         extractBundledWebUI()
     }
 
     private fun extractBundledWebUI() {
-        val resourceWebUI: InputStream = BuildConfig::class.java.getResourceAsStream("/WebUI.zip") ?: throw Error("No bundled webUI version found")
+        val resourceWebUI: InputStream = BuildConfig::class.java.getResourceAsStream("/WebUI.zip") ?: throw Error("extractBundledWebUI: No bundled webUI version found")
 
-        logger.info { "Using the bundled WebUI zip..." }
+        logger.info { "extractBundledWebUI: Using the bundled WebUI zip..." }
+
         val webUIZip = WebUI.WEBUI.baseFileName
         val webUIZipPath = "$tmpDir/$webUIZip"
         val webUIZipFile = File(webUIZipPath)
@@ -173,11 +172,15 @@ object WebInterfaceManager {
     }
 
     private fun checkForUpdate() {
-        if (isUpdateAvailable(getLocalVersion(applicationDirs.webUIRoot))) {
-            logger.info { "An update is available, starting download..." }
-            downloadLatestCompatibleVersion()
-            preferences.putLong(lastWebUIUpdateCheckKey, System.currentTimeMillis())
+        val localVersion = getLocalVersion(applicationDirs.webUIRoot)
+        if (!isUpdateAvailable(localVersion)) {
+            logger.debug { "checkForUpdate(${serverConfig.webUIFlavor}, $localVersion): local version is the latest one" }
+            return
         }
+
+        logger.info { "checkForUpdate(${serverConfig.webUIFlavor}, $localVersion): An update is available, starting download..." }
+        downloadLatestCompatibleVersion()
+        preferences.putLong(lastWebUIUpdateCheckKey, System.currentTimeMillis())
     }
 
     private fun getDownloadUrlFor(version: String): String {
@@ -203,14 +206,14 @@ object WebInterfaceManager {
             return false
         }
 
-        logger.info { "Verifying WebUI files..." }
+        logger.info { "isLocalWebUIValid: Verifying WebUI files..." }
 
         val currentVersion = getLocalVersion(path)
         val localMD5Sum = getLocalMD5Sum(path)
         val currentVersionMD5Sum = fetchMD5SumFor(currentVersion)
         val validationSucceeded = currentVersionMD5Sum == localMD5Sum
 
-        logger.info { "Validation ${if (validationSucceeded) "succeeded" else "failed"} - md5: local= $localMD5Sum; expected= $currentVersionMD5Sum" }
+        logger.info { "isLocalWebUIValid: Validation ${if (validationSucceeded) "succeeded" else "failed"} - md5: local= $localMD5Sum; expected= $currentVersionMD5Sum" }
 
         return validationSucceeded
     }
@@ -253,13 +256,14 @@ object WebInterfaceManager {
 
     private fun getLatestCompatibleVersion(): String {
         if (WebUIChannel.doesConfigChannelEqual(WebUIChannel.BUNDLED)) {
+            logger.debug { "getLatestCompatibleVersion: Channel is \"${WebUIChannel.BUNDLED}\", do not check for update" }
             return BuildConfig.WEBUI_TAG
         }
 
         val currentServerVersionNumber = extractVersion(BuildConfig.REVISION)
         val webUIToServerVersionMappings = JSONArray(URL(WebUI.WEBUI.versionMappingUrl).readText())
 
-        logger.debug { "webUIChannel= ${serverConfig.webUIChannel} currentServerVersion= ${BuildConfig.REVISION}, mappingFile= $webUIToServerVersionMappings" }
+        logger.debug { "getLatestCompatibleVersion: webUIChannel= ${serverConfig.webUIChannel}, currentServerVersion= ${BuildConfig.REVISION}, mappingFile= $webUIToServerVersionMappings" }
 
         for (i in 0 until webUIToServerVersionMappings.length()) {
             val webUIToServerVersionEntry = webUIToServerVersionMappings.getJSONObject(i)
@@ -298,7 +302,7 @@ object WebInterfaceManager {
         val webUIZipPath = "$tmpDir/$webUIZip"
         val webUIZipFile = File(webUIZipPath)
 
-        logger.info { "Downloading WebUI (version \"$latestCompatibleVersion\") zip from the Internet..." }
+        logger.info { "downloadLatestCompatibleVersion: Downloading WebUI (flavor= ${serverConfig.webUIFlavor}, version \"$latestCompatibleVersion\") zip from the Internet..." }
 
         try {
             val webUIZipURL = "${getDownloadUrlFor(latestCompatibleVersion)}/$webUIZip"
@@ -309,7 +313,7 @@ object WebInterfaceManager {
             }
         } catch (e: Exception) {
             val retry = retryCount < 3
-            logger.error { "Download failed${if (retry) ", retrying ${retryCount + 1}/3" else ""} - error: $e" }
+            logger.error { "downloadLatestCompatibleVersion: Download failed${if (retry) ", retrying ${retryCount + 1}/3" else ""} - error: $e" }
 
             if (retry) {
                 return downloadLatestCompatibleVersion(retryCount + 1)
@@ -321,9 +325,9 @@ object WebInterfaceManager {
         File(applicationDirs.webUIRoot).deleteRecursively()
 
         // extract webUI zip
-        logger.info { "Extracting WebUI zip..." }
+        logger.info { "downloadLatestCompatibleVersion: Extracting WebUI zip..." }
         extractDownload(webUIZipPath, applicationDirs.webUIRoot)
-        logger.info { "Extracting WebUI zip Done." }
+        logger.info { "downloadLatestCompatibleVersion: Extracting WebUI zip Done." }
 
         return true
     }
@@ -341,7 +345,7 @@ object WebInterfaceManager {
             connection.inputStream.buffered().use { inp ->
                 var totalCount = 0
 
-                print("Download progress: % 00")
+                print("downloadVersion: Download progress: % 00")
                 while (true) {
                     val count = inp.read(data, 0, 1024)
 
@@ -357,7 +361,7 @@ object WebInterfaceManager {
                     webUIZipFileOut.write(data, 0, count)
                 }
                 println()
-                logger.info { "Downloading WebUI Done." }
+                logger.info { "downloadVersion: Downloading WebUI Done." }
             }
         }
     }
@@ -384,6 +388,7 @@ object WebInterfaceManager {
             val latestCompatibleVersion = getLatestCompatibleVersion()
             latestCompatibleVersion != currentVersion
         } catch (e: Exception) {
+            logger.debug { "isUpdateAvailable: check failed due to $e" }
             false
         }
     }
