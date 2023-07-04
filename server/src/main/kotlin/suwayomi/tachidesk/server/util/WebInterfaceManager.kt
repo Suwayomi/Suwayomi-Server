@@ -17,14 +17,19 @@ import org.json.JSONArray
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
+import suwayomi.tachidesk.manga.impl.update.Updater
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.util.HAScheduler
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.util.Date
+import java.util.prefs.Preferences
+import kotlin.time.Duration.Companion.hours
 
 private val applicationDirs by DI.global.instance<ApplicationDirs>()
 private val tmpDir = System.getProperty("java.io.tmpdir")
@@ -49,6 +54,43 @@ object WebInterfaceManager {
     private const val baseReleasesUrl = "${BuildConfig.WEBUI_REPO}/releases"
     private const val downloadSpecificVersionBaseUrl = "$baseReleasesUrl/download"
     private const val downloadLatestVersionBaseUrl = "$baseReleasesUrl/latest/download"
+    private const val lastWebUIUpdateCheckKey = "lastWebUIUpdateCheckKey"
+    private val preferences = Preferences.userNodeForPackage(WebInterfaceManager::class.java)
+
+    private var currentUpdateTaskId: String = ""
+
+    init {
+        scheduleWebUIUpdateCheck()
+    }
+
+    private fun isAutoUpdateEnabled(): Boolean {
+        return serverConfig.webUIUpdateCheckInterval.toInt() != 0
+    }
+
+    private fun scheduleWebUIUpdateCheck() {
+        HAScheduler.deschedule(currentUpdateTaskId)
+
+        val isAutoUpdateDisabled = !isAutoUpdateEnabled() || serverConfig.webUIFlavor == "Custom"
+        if (isAutoUpdateDisabled) {
+            return
+        }
+
+        val updateInterval = serverConfig.webUIUpdateCheckInterval.hours.coerceAtLeast(1.hours).coerceAtMost(23.hours)
+        val lastAutomatedUpdate = preferences.getLong(lastWebUIUpdateCheckKey, System.currentTimeMillis())
+
+        val task = {
+            logger.debug { "Checking for webUI update (channel= ${serverConfig.webUIChannel}, interval= ${serverConfig.webUIUpdateCheckInterval}h, lastAutomatedUpdate= ${Date(lastAutomatedUpdate)})" }
+            checkForUpdate()
+        }
+
+        val wasPreviousUpdateCheckTriggered = (System.currentTimeMillis() - lastAutomatedUpdate) < updateInterval.inWholeMilliseconds
+        if (!wasPreviousUpdateCheckTriggered) {
+            task()
+        }
+
+        HAScheduler.deschedule(currentUpdateTaskId)
+        currentUpdateTaskId = HAScheduler.schedule(task, "0 */${updateInterval.inWholeHours} * * *", "webUI-update-checker")
+    }
 
     fun setupWebUI() {
         if (serverConfig.webUIFlavor == "Custom") {
@@ -65,9 +107,8 @@ object WebInterfaceManager {
                 return
             }
 
-            if (serverConfig.webUIAutoUpdate && isUpdateAvailable(currentVersion)) {
-                logger.info { "An update is available, starting download..." }
-                downloadLatestCompatibleVersion()
+            if (isAutoUpdateEnabled()) {
+                checkForUpdate()
             }
 
             return
@@ -75,6 +116,14 @@ object WebInterfaceManager {
 
         logger.info { "No WebUI Static files found, starting download..." }
         downloadLatestCompatibleVersion()
+    }
+
+    private fun checkForUpdate() {
+        if (isUpdateAvailable(getLocalVersion(applicationDirs.webUIRoot))) {
+            logger.info { "An update is available, starting download..." }
+            downloadLatestCompatibleVersion()
+            preferences.putLong(lastWebUIUpdateCheckKey, System.currentTimeMillis())
+        }
     }
 
     private fun getDownloadUrlFor(version: String): String {
