@@ -17,12 +17,12 @@ import org.json.JSONArray
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
-import suwayomi.tachidesk.manga.impl.update.Updater
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.HAScheduler
 import java.io.File
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
@@ -37,7 +37,7 @@ private val tmpDir = System.getProperty("java.io.tmpdir")
 private fun ByteArray.toHex(): String = joinToString(separator = "") { eachByte -> "%02x".format(eachByte) }
 
 enum class WebUIChannel {
-    BUNDLED, // the version bundled with the server release
+    BUNDLED, // the default webUI version bundled with the server release
     STABLE,
     PREVIEW;
 
@@ -48,12 +48,21 @@ enum class WebUIChannel {
     }
 }
 
+enum class WebUI(val repoUrl: String, val versionMappingUrl: String, val latestReleaseInfoUrl: String, val baseFileName: String) {
+    WEBUI(
+        "https://github.com/Suwayomi/Tachidesk-WebUI-preview",
+        "https://raw.githubusercontent.com/Suwayomi/Tachidesk-WebUI/master/versionToServerVersionMapping.json",
+        "https://api.github.com/repos/Suwayomi/Tachidesk-WebUI-preview/releases/latest",
+        "Tachidesk-WebUI"
+    );
+}
+
+const val DEFAULT_WEB_UI = "WebUI"
+
+
 object WebInterfaceManager {
     private val logger = KotlinLogging.logger {}
     private const val webUIPreviewVersion = "PREVIEW"
-    private const val baseReleasesUrl = "${BuildConfig.WEBUI_REPO}/releases"
-    private const val downloadSpecificVersionBaseUrl = "$baseReleasesUrl/download"
-    private const val downloadLatestVersionBaseUrl = "$baseReleasesUrl/latest/download"
     private const val lastWebUIUpdateCheckKey = "lastWebUIUpdateCheckKey"
     private val preferences = Preferences.userNodeForPackage(WebInterfaceManager::class.java)
 
@@ -103,7 +112,7 @@ object WebInterfaceManager {
             logger.info { "WebUI Static files exists, version= $currentVersion" }
 
             if (!isLocalWebUIValid(applicationDirs.webUIRoot)) {
-                downloadLatestCompatibleVersion()
+                doInitialSetup()
                 return
             }
 
@@ -115,7 +124,52 @@ object WebInterfaceManager {
         }
 
         logger.info { "No WebUI Static files found, starting download..." }
-        downloadLatestCompatibleVersion()
+        doInitialSetup()
+    }
+
+
+    /**
+     * Tries to download the latest compatible version for the selected webUI and falls back to the default webUI in case of errors.
+     */
+    private fun doInitialSetup() {
+        val downloadSucceeded = downloadLatestCompatibleVersion()
+
+        val fallbackToDefaultWebUI = !downloadSucceeded
+        if (!fallbackToDefaultWebUI) {
+            return
+        }
+
+        if (serverConfig.webUIFlavor != DEFAULT_WEB_UI) {
+            logger.info { "doInitialSetup: fallback to default webUI \"$DEFAULT_WEB_UI\"" }
+
+            serverConfig.webUIFlavor = DEFAULT_WEB_UI
+
+            val fallbackToBundledVersion = !downloadLatestCompatibleVersion()
+            if (!fallbackToBundledVersion) {
+                return
+            }
+        }
+
+        logger.error { "doInitialSetup: fallback to bundled default webUI \"$DEFAULT_WEB_UI\"" }
+
+        extractBundledWebUI()
+    }
+
+    private fun extractBundledWebUI() {
+        val resourceWebUI: InputStream = BuildConfig::class.java.getResourceAsStream("/WebUI.zip") ?: throw Error("No bundled webUI version found")
+
+        logger.info { "Using the bundled WebUI zip..." }
+        val webUIZip = WebUI.WEBUI.baseFileName
+        val webUIZipPath = "$tmpDir/$webUIZip"
+        val webUIZipFile = File(webUIZipPath)
+        resourceWebUI.use { input ->
+            webUIZipFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+
+        File(applicationDirs.webUIRoot).deleteRecursively()
+        extractDownload(webUIZipPath, applicationDirs.webUIRoot)
     }
 
     private fun checkForUpdate() {
@@ -127,6 +181,10 @@ object WebInterfaceManager {
     }
 
     private fun getDownloadUrlFor(version: String): String {
+        val baseReleasesUrl = "${WebUI.WEBUI.repoUrl}/releases"
+        val downloadSpecificVersionBaseUrl = "$baseReleasesUrl/download"
+        val downloadLatestVersionBaseUrl = "$baseReleasesUrl/latest/download"
+
         return if (version == webUIPreviewVersion) downloadLatestVersionBaseUrl else "$downloadSpecificVersionBaseUrl/$version"
     }
 
@@ -189,7 +247,7 @@ object WebInterfaceManager {
     }
 
     private fun fetchPreviewVersion(): String {
-        val releaseInfoJson = URL(BuildConfig.WEBUI_LATEST_RELEASE_INFO_URL).readText()
+        val releaseInfoJson = URL(WebUI.WEBUI.latestReleaseInfoUrl).readText()
         return Json.decodeFromString<JsonObject>(releaseInfoJson)["tag_name"]?.jsonPrimitive?.content ?: ""
     }
 
@@ -199,7 +257,7 @@ object WebInterfaceManager {
         }
 
         val currentServerVersionNumber = extractVersion(BuildConfig.REVISION)
-        val webUIToServerVersionMappings = JSONArray(URL(BuildConfig.WEBUI_VERSION_MAPPING_URL).readText())
+        val webUIToServerVersionMappings = JSONArray(URL(WebUI.WEBUI.versionMappingUrl).readText())
 
         logger.debug { "webUIChannel= ${serverConfig.webUIChannel} currentServerVersion= ${BuildConfig.REVISION}, mappingFile= $webUIToServerVersionMappings" }
 
@@ -223,7 +281,7 @@ object WebInterfaceManager {
         throw Exception("No compatible webUI version found")
     }
 
-    fun downloadLatestCompatibleVersion(retryCount: Int = 0) {
+    fun downloadLatestCompatibleVersion(retryCount: Int = 0): Boolean {
         val latestCompatibleVersion = try {
             val version = getLatestCompatibleVersion()
 
@@ -236,7 +294,7 @@ object WebInterfaceManager {
             BuildConfig.WEBUI_TAG
         }
 
-        val webUIZip = "Tachidesk-WebUI-$latestCompatibleVersion.zip"
+        val webUIZip = "${WebUI.WEBUI.baseFileName}-$latestCompatibleVersion.zip"
         val webUIZipPath = "$tmpDir/$webUIZip"
         val webUIZipFile = File(webUIZipPath)
 
@@ -257,7 +315,7 @@ object WebInterfaceManager {
                 return downloadLatestCompatibleVersion(retryCount + 1)
             }
 
-            return
+            return false
         }
 
         File(applicationDirs.webUIRoot).deleteRecursively()
@@ -266,6 +324,8 @@ object WebInterfaceManager {
         logger.info { "Extracting WebUI zip..." }
         extractDownload(webUIZipPath, applicationDirs.webUIRoot)
         logger.info { "Extracting WebUI zip Done." }
+
+        return true
     }
 
     private fun downloadVersion(url: String, zipFile: File) {
