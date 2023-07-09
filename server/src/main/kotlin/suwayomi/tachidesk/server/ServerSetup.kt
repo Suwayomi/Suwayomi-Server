@@ -18,6 +18,7 @@ import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.conf.global
 import org.kodein.di.singleton
+import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.Updater
 import suwayomi.tachidesk.manga.impl.util.lang.renameTo
@@ -45,6 +46,7 @@ class ApplicationDirs(
     val mangaDownloadsRoot = serverConfig.downloadsPath.ifBlank { "$dataRoot/downloads" }
     val localMangaRoot = "$dataRoot/local"
     val webUIRoot = "$dataRoot/webUI"
+    val automatedBackupRoot = serverConfig.backupPath.ifBlank { "$dataRoot/backups" }
 
     val tempMangaCacheRoot = "$tempRoot/manga-cache"
 }
@@ -165,4 +167,7 @@ fun applicationSetup() {
 
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
     Security.addProvider(BouncyCastleProvider())
+
+    // start automated backups
+    ProtoBackupExport.scheduleAutomatedBackupTask()
 }

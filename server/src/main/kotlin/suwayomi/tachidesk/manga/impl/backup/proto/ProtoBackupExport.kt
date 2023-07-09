@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.impl.backup.proto
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import mu.KotlinLogging
 import okio.buffer
 import okio.gzip
 import okio.sink
@@ -16,6 +17,9 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.kodein.di.DI
+import org.kodein.di.conf.global
+import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
@@ -30,11 +34,80 @@ import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import suwayomi.tachidesk.server.ApplicationDirs
+import suwayomi.tachidesk.server.serverConfig
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.InputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Timer
+import java.util.TimerTask
 import java.util.concurrent.TimeUnit
+import java.util.prefs.Preferences
+import kotlin.time.Duration.Companion.days
 
 object ProtoBackupExport : ProtoBackupBase() {
+    private val logger = KotlinLogging.logger { }
+    private val applicationDirs by DI.global.instance<ApplicationDirs>()
+    private const val lastAutomatedBackupKey = "lastAutomatedBackupKey"
+    private val preferences = Preferences.userNodeForPackage(ProtoBackupExport::class.java)
+
+    private val backupTimer = Timer()
+    private var currentAutomatedBackupTask: TimerTask? = null
+
+    fun scheduleAutomatedBackupTask() {
+        if (!serverConfig.automatedBackups) {
+            currentAutomatedBackupTask?.cancel()
+            return
+        }
+
+        val minInterval = 1.days
+        val interval = serverConfig.backupInterval.days
+        val backupInterval = interval.coerceAtLeast(minInterval).inWholeMilliseconds
+
+        val lastAutomatedBackup = preferences.getLong(lastAutomatedBackupKey, 0)
+        val initialDelay =
+            backupInterval - (System.currentTimeMillis() - lastAutomatedBackup) % backupInterval
+
+        currentAutomatedBackupTask?.cancel()
+        currentAutomatedBackupTask = object : TimerTask() {
+            override fun run() {
+                createAutomatedBackup()
+                preferences.putLong(lastAutomatedBackupKey, System.currentTimeMillis())
+            }
+        }
+
+        backupTimer.scheduleAtFixedRate(
+            currentAutomatedBackupTask,
+            initialDelay,
+            backupInterval
+        )
+    }
+
+    private fun createAutomatedBackup() {
+        logger.info { "Creating automated backup..." }
+
+        createBackup(
+            BackupFlags(
+                includeManga = true,
+                includeCategories = true,
+                includeChapters = true,
+                includeTracking = true,
+                includeHistory = true
+            )
+        ).use { input ->
+            val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
+            automatedBackupDir.mkdirs()
+
+            val currentDate = SimpleDateFormat("yyyy-MM-dd_HH-mm").format(Date())
+            val backupFile = File(applicationDirs.automatedBackupRoot, "tachidesk_$currentDate.proto.gz")
+
+            backupFile.outputStream().use { output -> input.copyTo(output) }
+        }
+
+    }
+
     fun createBackup(flags: BackupFlags): InputStream {
         // Create root object
 
