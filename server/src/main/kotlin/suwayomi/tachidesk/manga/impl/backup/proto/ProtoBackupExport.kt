@@ -101,8 +101,7 @@ object ProtoBackupExport : ProtoBackupBase() {
             val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
             automatedBackupDir.mkdirs()
 
-            val currentDate = SimpleDateFormat("yyyy-MM-dd_HH-mm").format(Date())
-            val backupFile = File(applicationDirs.automatedBackupRoot, "tachidesk_$currentDate.proto.gz")
+            val backupFile = File(applicationDirs.automatedBackupRoot, getBackupFilename())
 
             backupFile.outputStream().use { output -> input.copyTo(output) }
         }
@@ -137,6 +136,11 @@ object ProtoBackupExport : ProtoBackupBase() {
         if (isTTLReached) {
             file.delete()
         }
+    }
+
+    fun getBackupFilename(): String {
+        val currentDate = SimpleDateFormat("yyyy-MM-dd_HH-mm").format(Date())
+        return "tachidesk_$currentDate.proto.gz"
     }
 
     fun createBackup(flags: BackupFlags): InputStream {

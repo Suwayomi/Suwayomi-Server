@@ -14,8 +14,6 @@ import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 import suwayomi.tachidesk.server.JavalinSetup.future
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
 
@@ -62,8 +60,7 @@ class BackupMutation {
     fun createBackup(
         input: CreateBackupInput? = null
     ): CreateBackupPayload {
-        val currentDate = SimpleDateFormat("yyyy-MM-dd_HH-mm").format(Date())
-        val filename = "tachidesk_$currentDate.proto.gz"
+        val filename = ProtoBackupExport.getBackupFilename()
 
         val backup = ProtoBackupExport.createBackup(
             BackupFlags(
