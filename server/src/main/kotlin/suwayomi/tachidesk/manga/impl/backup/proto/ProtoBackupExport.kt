@@ -73,6 +73,7 @@ object ProtoBackupExport : ProtoBackupBase() {
         currentAutomatedBackupTask?.cancel()
         currentAutomatedBackupTask = object : TimerTask() {
             override fun run() {
+                cleanupAutomatedBackups()
                 createAutomatedBackup()
                 preferences.putLong(lastAutomatedBackupKey, System.currentTimeMillis())
             }
@@ -106,6 +107,36 @@ object ProtoBackupExport : ProtoBackupBase() {
             backupFile.outputStream().use { output -> input.copyTo(output) }
         }
 
+    }
+
+    private fun cleanupAutomatedBackups() {
+        logger.debug { "Cleanup automated backups" }
+
+        val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
+        if (!automatedBackupDir.isDirectory) {
+            return
+        }
+
+        automatedBackupDir.walkTopDown().forEach { file ->
+            try {
+                cleanupAutomatedBackupFile(file)
+            } catch (e: Exception) {
+                // ignore, will be retried on next cleanup
+            }
+        }
+    }
+
+    private fun cleanupAutomatedBackupFile(file: File) {
+        if (!file.isFile) {
+            return
+        }
+
+        val lastAccessTime = file.lastModified()
+        val isTTLReached =
+            System.currentTimeMillis() - lastAccessTime >= serverConfig.backupTTL.days.inWholeMilliseconds
+        if (isTTLReached) {
+            file.delete()
+        }
     }
 
     fun createBackup(flags: BackupFlags): InputStream {
