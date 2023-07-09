@@ -47,7 +47,7 @@ object JavalinSetup {
     fun javalinSetup() {
         val app = Javalin.create { config ->
             if (serverConfig.webUIEnabled) {
-                WebInterfaceManager.setupWebInterface()
+                WebInterfaceManager.setupWebUI()
 
                 logger.info { "Serving web static files for ${serverConfig.webUIFlavor}" }
                 config.addStaticFiles(applicationDirs.webUIRoot, Location.EXTERNAL)

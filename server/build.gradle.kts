@@ -108,6 +108,8 @@ buildConfig {
 
     buildConfigField("String", "WEBUI_REPO", quoteWrap("https://github.com/Suwayomi/Tachidesk-WebUI-preview"))
     buildConfigField("String", "WEBUI_TAG", quoteWrap(webUIRevisionTag))
+    buildConfigField("String", "WEBUI_VERSION_MAPPING_URL", quoteWrap("https://raw.githubusercontent.com/Suwayomi/Tachidesk-WebUI/master/src/versionToServerVersionMapping.json"))
+    buildConfigField("String", "WEBUI_LATEST_RELEASE_INFO_URL", quoteWrap("https://api.github.com/repos/Suwayomi/Tachidesk-WebUI-preview/releases/latest"))
 
 
     buildConfigField("String", "GITHUB", quoteWrap("https://github.com/Suwayomi/Tachidesk-Server"))
