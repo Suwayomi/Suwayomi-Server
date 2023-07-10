@@ -32,6 +32,7 @@ class ServerConfig(getConfig: () -> Config, moduleName: String = MODULE_NAME) : 
     // downloader
     var downloadAsCbz: Boolean by overridableConfig
     var downloadsPath: String by overridableConfig
+    var autoDownloadNewChapters: Boolean by overridableConfig
 
     // updater
     var maxParallelUpdateRequests: Int by overridableConfig

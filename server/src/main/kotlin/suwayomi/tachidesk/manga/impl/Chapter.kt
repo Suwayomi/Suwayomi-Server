@@ -12,8 +12,10 @@ import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
 import kotlinx.serialization.Serializable
+import mu.KotlinLogging
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SortOrder.ASC
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -24,6 +26,8 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Manga.getManga
+import suwayomi.tachidesk.manga.impl.download.DownloadManager
+import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
@@ -35,9 +39,12 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import suwayomi.tachidesk.server.serverConfig
 import java.time.Instant
 
 object Chapter {
+    private val logger = KotlinLogging.logger { }
+
     /** get chapter list when showing a manga */
     suspend fun getChapterList(mangaId: Int, onlineFetch: Boolean = false): List<ChapterDataClass> {
         return if (onlineFetch) {
@@ -106,6 +113,8 @@ object Chapter {
             url = manga.url
         }
 
+        val numberOfCurrentChapters =
+            transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.count().toInt() }
         val chapterList = source.fetchChapterList(sManga).awaitSingle()
 
         // Recognize number for new chapters.
@@ -157,8 +166,13 @@ object Chapter {
             }
         }
 
+        val newChapters = transaction {
+            ChapterTable.select { ChapterTable.manga eq mangaId }
+                .orderBy(ChapterTable.sourceOrder to SortOrder.DESC).toList()
+        }
+
         // clear any orphaned/duplicate chapters that are in the db but not in `chapterList`
-        val dbChapterCount = transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.count() }
+        val dbChapterCount = newChapters.count()
         if (dbChapterCount > chapterList.size) { // we got some clean up due
             val dbChapterList = transaction {
                 ChapterTable.select { ChapterTable.manga eq mangaId }
@@ -179,7 +193,37 @@ object Chapter {
             }
         }
 
+        downloadNewChapters(mangaId, numberOfCurrentChapters, newChapters)
+
         return chapterList
+    }
+
+    fun downloadNewChapters(mangaId: Int, prevNumberOfChapters: Int, newChapters: List<ResultRow>) {
+        // convert numbers to be index based
+        val currentNumberOfChapters = (prevNumberOfChapters - 1).coerceAtLeast(0)
+        val updatedNumberOfChapters = (newChapters.size - 1).coerceAtLeast(0)
+
+        val areNewChaptersAvailable = currentNumberOfChapters < updatedNumberOfChapters
+        val wasInitialFetch = currentNumberOfChapters == 0
+
+        // make sure to ignore initial fetch
+        val downloadNewChapters = serverConfig.autoDownloadNewChapters && !wasInitialFetch && areNewChaptersAvailable
+        if (!downloadNewChapters) {
+            return
+        }
+
+        val numberOfNewChapters = updatedNumberOfChapters - currentNumberOfChapters
+        val chapterIdsToDownload = newChapters.subList(0, numberOfNewChapters)
+            .filter { !it[ChapterTable.isRead] && !it[ChapterTable.isDownloaded] }.map { it[ChapterTable.id].value }
+
+        if (chapterIdsToDownload.isEmpty()) {
+            return
+        }
+
+        logger.info { "downloadNewChapters($mangaId): Downloading \"${chapterIdsToDownload.size}\" new chapter(s)..." }
+
+        DownloadManager.enqueue(EnqueueInput(chapterIdsToDownload))
+        DownloadManager.start()
     }
 
     fun modifyChapter(
