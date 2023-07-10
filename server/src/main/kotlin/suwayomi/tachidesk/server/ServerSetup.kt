@@ -68,10 +68,12 @@ fun applicationSetup() {
     // Application dirs
     val applicationDirs = ApplicationDirs()
 
+    val updater = Updater()
+
     DI.global.addImport(
         DI.Module("Server") {
             bind<ApplicationDirs>() with singleton { applicationDirs }
-            bind<IUpdater>() with singleton { Updater() }
+            bind<IUpdater>() with singleton { updater }
             bind<JsonMapper>() with singleton { JavalinJackson() }
             bind<Json>() with singleton { Json { ignoreUnknownKeys = true } }
         }

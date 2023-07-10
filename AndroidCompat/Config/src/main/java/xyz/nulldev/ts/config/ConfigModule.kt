@@ -41,6 +41,7 @@ class SystemPropertyOverrideDelegate(val getConfig: () -> Config, val moduleName
         return when (T::class.simpleName) {
             "Int" -> combined.toInt()
             "Boolean" -> combined.toBoolean()
+            "Double" -> combined.toDouble()
             // add more types as needed
             else -> combined // covers String
         } as T

@@ -1,10 +1,10 @@
 package suwayomi.tachidesk.manga.impl.update
 
 import kotlinx.coroutines.flow.StateFlow
-import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 
 interface IUpdater {
-    fun addMangasToQueue(mangas: List<MangaDataClass>)
+    fun addCategoriesToUpdateQueue(categories: List<CategoryDataClass>, clear: Boolean?)
     val status: StateFlow<UpdateStatus>
     fun reset()
 }
