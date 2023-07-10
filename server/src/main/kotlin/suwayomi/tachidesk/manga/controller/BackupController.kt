@@ -8,8 +8,6 @@ import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.withOperation
-import java.text.SimpleDateFormat
-import java.util.Date
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -105,9 +103,8 @@ object BackupController {
         },
         behaviorOf = { ctx ->
             ctx.contentType("application/octet-stream")
-            val currentDate = SimpleDateFormat("yyyy-MM-dd_HH-mm").format(Date())
 
-            ctx.header("Content-Disposition", """attachment; filename="tachidesk_$currentDate.proto.gz"""")
+            ctx.header("Content-Disposition", """attachment; filename="${ProtoBackupExport.getBackupFilename()}"""")
             ctx.future(
                 future {
                     ProtoBackupExport.createBackup(
