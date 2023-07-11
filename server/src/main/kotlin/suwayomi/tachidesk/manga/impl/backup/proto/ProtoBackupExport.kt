@@ -136,7 +136,7 @@ object ProtoBackupExport : ProtoBackupBase() {
 
         val lastAccessTime = file.lastModified()
         val isTTLReached =
-            System.currentTimeMillis() - lastAccessTime >= serverConfig.backupTTL.days.inWholeMilliseconds
+            System.currentTimeMillis() - lastAccessTime >= serverConfig.backupTTL.days.coerceAtLeast(1.days).inWholeMilliseconds
         if (isTTLReached) {
             file.delete()
         }
