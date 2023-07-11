@@ -105,11 +105,15 @@ object ProtoBackupExport : ProtoBackupBase() {
 
             backupFile.outputStream().use { output -> input.copyTo(output) }
         }
-
     }
 
     private fun cleanupAutomatedBackups() {
-        logger.debug { "Cleanup automated backups" }
+        logger.debug { "Cleanup automated backups (ttl= ${serverConfig.backupTTL})" }
+
+        val isCleanupDisabled = serverConfig.backupTTL == 0
+        if (isCleanupDisabled) {
+            return
+        }
 
         val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
         if (!automatedBackupDir.isDirectory) {
