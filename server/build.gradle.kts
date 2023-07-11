@@ -70,6 +70,8 @@ dependencies {
     implementation("com.graphql-java:graphql-java-extended-scalars:20.0")
 
     testImplementation(libs.mockk)
+
+    implementation(libs.cron4j)
 }
 
 application {

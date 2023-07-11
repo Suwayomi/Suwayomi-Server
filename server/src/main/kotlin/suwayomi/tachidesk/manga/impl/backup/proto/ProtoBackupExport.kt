@@ -8,6 +8,9 @@ package suwayomi.tachidesk.manga.impl.backup.proto
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import it.sauronsoftware.cron4j.Scheduler
+import it.sauronsoftware.cron4j.Task
+import it.sauronsoftware.cron4j.TaskExecutionContext
 import mu.KotlinLogging
 import okio.buffer
 import okio.gzip
@@ -41,8 +44,6 @@ import java.io.File
 import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Timer
-import java.util.TimerTask
 import java.util.concurrent.TimeUnit
 import java.util.prefs.Preferences
 import kotlin.time.Duration.Companion.days
@@ -50,39 +51,46 @@ import kotlin.time.Duration.Companion.days
 object ProtoBackupExport : ProtoBackupBase() {
     private val logger = KotlinLogging.logger { }
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
+    private var backupSchedulerJobId: String = ""
     private const val lastAutomatedBackupKey = "lastAutomatedBackupKey"
     private val preferences = Preferences.userNodeForPackage(ProtoBackupExport::class.java)
 
-    private val backupTimer = Timer()
-    private var currentAutomatedBackupTask: TimerTask? = null
+    private val scheduler = Scheduler()
 
     fun scheduleAutomatedBackupTask() {
+        scheduler.deschedule(backupSchedulerJobId)
+
         if (!serverConfig.automatedBackups) {
-            currentAutomatedBackupTask?.cancel()
             return
         }
 
-        val minInterval = 1.days
-        val interval = serverConfig.backupInterval.days
-        val backupInterval = interval.coerceAtLeast(minInterval).inWholeMilliseconds
+        if (!scheduler.isStarted) {
+            scheduler.start()
+        }
 
-        val lastAutomatedBackup = preferences.getLong(lastAutomatedBackupKey, 0)
-        val initialDelay =
-            backupInterval - (System.currentTimeMillis() - lastAutomatedBackup) % backupInterval
-
-        currentAutomatedBackupTask?.cancel()
-        currentAutomatedBackupTask = object : TimerTask() {
-            override fun run() {
+        val task = object : Task() {
+            override fun execute(context: TaskExecutionContext?) {
                 cleanupAutomatedBackups()
                 createAutomatedBackup()
                 preferences.putLong(lastAutomatedBackupKey, System.currentTimeMillis())
             }
         }
 
-        backupTimer.scheduleAtFixedRate(
-            currentAutomatedBackupTask,
-            initialDelay,
-            backupInterval
+        val (hour, minute) = serverConfig.backupTime.split(":").map { it.toInt() }
+        val backupHour = hour.coerceAtLeast(0).coerceAtMost(23)
+        val backupMinute = minute.coerceAtLeast(0).coerceAtMost(59)
+        val backupInterval = serverConfig.backupInterval.days.coerceAtLeast(1.days)
+
+        // trigger last backup in case the server wasn't running on the scheduled time
+        val lastAutomatedBackup = preferences.getLong(lastAutomatedBackupKey, System.currentTimeMillis())
+        val wasPreviousBackupTriggered = (System.currentTimeMillis() - lastAutomatedBackup) < backupInterval.inWholeMilliseconds
+        if (!wasPreviousBackupTriggered) {
+            scheduler.launch(task)
+        }
+
+        backupSchedulerJobId = scheduler.schedule(
+            "$backupMinute $backupHour */${backupInterval.inWholeDays} * *",
+            task
         )
     }
 
