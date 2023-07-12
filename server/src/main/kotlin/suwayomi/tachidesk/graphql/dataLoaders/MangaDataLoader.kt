@@ -56,6 +56,7 @@ class MangaForCategoryDataLoader : KotlinDataLoader<Int, MangaNodeList> {
                     emptyMap()
                 } + CategoryMangaTable.innerJoin(MangaTable)
                     .select { CategoryMangaTable.category inList ids }
+                    .andWhere { MangaTable.inLibrary eq true }
                     .map { Pair(it[CategoryMangaTable.category].value, MangaType(it)) }
                     .groupBy { it.first }
                     .mapValues { it.value.map { pair -> pair.second } }
