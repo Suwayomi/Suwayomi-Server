@@ -8,6 +8,15 @@ interface RetrieveFile {
 }
 
 @FunctionalInterface
+interface RetrieveFile0Args : RetrieveFile {
+    fun execute(): Pair<InputStream, String>
+
+    override fun executeGetImage(vararg args: Any): Pair<InputStream, String> {
+        return execute()
+    }
+}
+
+@FunctionalInterface
 interface RetrieveFile1Args<A> : RetrieveFile {
     fun execute(a: A): Pair<InputStream, String>
 

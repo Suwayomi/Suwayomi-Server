@@ -6,6 +6,15 @@ interface FileDownload {
 }
 
 @FunctionalInterface
+interface FileDownload0Args : FileDownload {
+    suspend fun execute(): Boolean
+
+    override suspend fun executeDownload(vararg args: Any): Boolean {
+        return execute()
+    }
+}
+
+@FunctionalInterface
 interface FileDownload3Args<A, B, C> : FileDownload {
     suspend fun execute(a: A, b: B, c: C): Boolean
 

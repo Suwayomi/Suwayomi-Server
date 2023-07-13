@@ -25,6 +25,7 @@ import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.impl.Source.getSource
+import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.MissingThumbnailException
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
@@ -232,7 +233,8 @@ object Manga {
 
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
     private val network: NetworkHelper by injectLazy()
-    suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
+
+    suspend fun fetchMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
         val cacheSaveDir = applicationDirs.thumbnailsRoot
         val fileName = mangaId.toString()
 
@@ -282,6 +284,21 @@ object Manga {
 
             else -> throw IllegalArgumentException("Unknown source")
         }
+    }
+
+    suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
+        val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
+
+        if (mangaEntry[MangaTable.inLibrary]) {
+            return try {
+                ThumbnailDownloadHelper.getImage(mangaId)
+            } catch (_: MissingThumbnailException) {
+                ThumbnailDownloadHelper.download(mangaId)
+                ThumbnailDownloadHelper.getImage(mangaId)
+            }
+        }
+
+        return fetchMangaThumbnail(mangaId)
     }
 
     private fun clearMangaThumbnailCache(mangaId: Int) {
