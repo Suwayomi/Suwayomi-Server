@@ -7,6 +7,8 @@ package suwayomi.tachidesk.manga.impl.download
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.app.Application
+import android.content.Context
 import io.javalin.websocket.WsContext
 import io.javalin.websocket.WsMessageContext
 import kotlinx.coroutines.CoroutineScope
@@ -28,13 +30,18 @@ import suwayomi.tachidesk.graphql.subscriptions.downloadSubscriptionSource
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
+import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
+import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.reflect.jvm.jvmName
 import kotlin.time.Duration.Companion.seconds
 
 private val logger = KotlinLogging.logger {}
@@ -46,6 +53,29 @@ object DownloadManager {
     private val clients = ConcurrentHashMap<String, WsContext>()
     private val downloadQueue = CopyOnWriteArrayList<DownloadChapter>()
     private val downloaders = ConcurrentHashMap<Long, Downloader>()
+
+    private const val downloadQueueKey = "downloadQueueKey"
+    private val sharedPreferences =
+        Injekt.get<Application>().getSharedPreferences(DownloadManager::class.jvmName, Context.MODE_PRIVATE)
+
+    private fun loadDownloadQueue(): List<Int> {
+        return sharedPreferences.getStringSet(downloadQueueKey, emptySet())?.mapNotNull { it.toInt() } ?: emptyList()
+    }
+
+    private fun saveDownloadQueue() {
+        sharedPreferences.edit().putStringSet(downloadQueueKey, downloadQueue.map { it.chapter.id.toString() }.toSet())
+            .apply()
+    }
+
+    fun restoreAndResumeDownloads() {
+        logger.debug { "restoreAndResumeDownloads: Restore download queue..." }
+        enqueue(EnqueueInput(loadDownloadQueue()))
+
+        if (downloadQueue.size > 0) {
+            logger.info { "restoreAndResumeDownloads: Restored download queue, starting downloads..." }
+            start()
+        }
+    }
 
     fun addClient(ctx: WsContext) {
         clients[ctx.sessionId] = ctx
@@ -109,9 +139,9 @@ object DownloadManager {
     private fun getStatus(): DownloadStatus {
         return DownloadStatus(
             if (downloadQueue.none { it.state == Downloading }) {
-                "Stopped"
+                Status.Stopped
             } else {
-                "Started"
+                Status.Started
             },
             downloadQueue.toList()
         )
@@ -144,6 +174,7 @@ object DownloadManager {
     private fun refreshDownloaders() {
         scope.launch {
             downloaderWatch.emit(Unit)
+            saveDownloadQueue()
         }
     }
 
@@ -206,6 +237,7 @@ object DownloadManager {
         if (input.chapterIds.isNullOrEmpty()) return
 
         downloadQueue.removeIf { it.chapter.id in input.chapterIds }
+        saveDownloadQueue()
 
         notifyAllClients()
     }
@@ -238,6 +270,7 @@ object DownloadManager {
                 manga
             )
             downloadQueue.add(downloadChapter)
+            saveDownloadQueue()
             downloadSubscriptionSource.publish(downloadChapter)
             logger.debug { "Added chapter ${chapter.id} to download queue (${manga.title} | ${chapter.name})" }
             return downloadChapter
@@ -248,6 +281,7 @@ object DownloadManager {
 
     fun unqueue(chapterIndex: Int, mangaId: Int) {
         downloadQueue.removeIf { it.mangaId == mangaId && it.chapterIndex == chapterIndex }
+        saveDownloadQueue()
         notifyAllClients()
     }
 
@@ -257,6 +291,7 @@ object DownloadManager {
             ?: return
         downloadQueue -= download
         downloadQueue.add(to, download)
+        saveDownloadQueue()
     }
 
     fun start() {
@@ -279,6 +314,7 @@ object DownloadManager {
     suspend fun clear() {
         stop()
         downloadQueue.clear()
+        saveDownloadQueue()
         notifyAllClients()
     }
 }
