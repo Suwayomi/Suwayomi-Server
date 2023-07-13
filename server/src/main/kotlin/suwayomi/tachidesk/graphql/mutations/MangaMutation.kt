@@ -8,6 +8,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.MangaMetaType
 import suwayomi.tachidesk.graphql.types.MangaType
+import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -44,7 +45,7 @@ class MangaMutation {
         val patch: UpdateMangaPatch
     )
 
-    private fun updateMangas(ids: List<Int>, patch: UpdateMangaPatch) {
+    private suspend fun updateMangas(ids: List<Int>, patch: UpdateMangaPatch) {
         transaction {
             if (patch.inLibrary != null) {
                 MangaTable.update({ MangaTable.id inList ids }) { update ->
@@ -53,37 +54,47 @@ class MangaMutation {
                     }
                 }
             }
+        }.apply {
+            if (patch.inLibrary != null) {
+                ids.forEach {
+                    Library.handleMangaThumbnail(it, patch.inLibrary)
+                }
+            }
         }
     }
 
-    fun updateManga(input: UpdateMangaInput): UpdateMangaPayload {
+    fun updateManga(input: UpdateMangaInput): CompletableFuture<UpdateMangaPayload> {
         val (clientMutationId, id, patch) = input
 
-        updateMangas(listOf(id), patch)
+        return future {
+            updateMangas(listOf(id), patch)
+        }.thenApply {
+            val manga = transaction {
+                MangaType(MangaTable.select { MangaTable.id eq id }.first())
+            }
 
-        val manga = transaction {
-            MangaType(MangaTable.select { MangaTable.id eq id }.first())
+            UpdateMangaPayload(
+                clientMutationId = clientMutationId,
+                manga = manga
+            )
         }
-
-        return UpdateMangaPayload(
-            clientMutationId = clientMutationId,
-            manga = manga
-        )
     }
 
-    fun updateMangas(input: UpdateMangasInput): UpdateMangasPayload {
+    fun updateMangas(input: UpdateMangasInput): CompletableFuture<UpdateMangasPayload> {
         val (clientMutationId, ids, patch) = input
 
-        updateMangas(ids, patch)
+        return future {
+            updateMangas(ids, patch)
+        }.thenApply {
+            val mangas = transaction {
+                MangaTable.select { MangaTable.id inList ids }.map { MangaType(it) }
+            }
 
-        val mangas = transaction {
-            MangaTable.select { MangaTable.id inList ids }.map { MangaType(it) }
+            UpdateMangasPayload(
+                clientMutationId = clientMutationId,
+                mangas = mangas
+            )
         }
-
-        return UpdateMangasPayload(
-            clientMutationId = clientMutationId,
-            mangas = mangas
-        )
     }
 
     data class FetchMangaInput(
