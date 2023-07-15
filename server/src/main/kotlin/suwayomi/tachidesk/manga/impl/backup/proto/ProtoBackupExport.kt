@@ -8,9 +8,6 @@ package suwayomi.tachidesk.manga.impl.backup.proto
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
-import it.sauronsoftware.cron4j.Scheduler
-import it.sauronsoftware.cron4j.Task
-import it.sauronsoftware.cron4j.TaskExecutionContext
 import mu.KotlinLogging
 import okio.buffer
 import okio.gzip
@@ -39,6 +36,7 @@ import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.util.HAScheduler
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
@@ -55,25 +53,17 @@ object ProtoBackupExport : ProtoBackupBase() {
     private const val lastAutomatedBackupKey = "lastAutomatedBackupKey"
     private val preferences = Preferences.userNodeForPackage(ProtoBackupExport::class.java)
 
-    private val scheduler = Scheduler()
-
     fun scheduleAutomatedBackupTask() {
-        scheduler.deschedule(backupSchedulerJobId)
+        HAScheduler.deschedule(backupSchedulerJobId)
 
         if (!serverConfig.automatedBackups) {
             return
         }
 
-        if (!scheduler.isStarted) {
-            scheduler.start()
-        }
-
-        val task = object : Task() {
-            override fun execute(context: TaskExecutionContext?) {
-                cleanupAutomatedBackups()
-                createAutomatedBackup()
-                preferences.putLong(lastAutomatedBackupKey, System.currentTimeMillis())
-            }
+        val task = {
+            cleanupAutomatedBackups()
+            createAutomatedBackup()
+            preferences.putLong(lastAutomatedBackupKey, System.currentTimeMillis())
         }
 
         val (hour, minute) = serverConfig.backupTime.split(":").map { it.toInt() }
@@ -83,15 +73,13 @@ object ProtoBackupExport : ProtoBackupBase() {
 
         // trigger last backup in case the server wasn't running on the scheduled time
         val lastAutomatedBackup = preferences.getLong(lastAutomatedBackupKey, System.currentTimeMillis())
-        val wasPreviousBackupTriggered = (System.currentTimeMillis() - lastAutomatedBackup) < backupInterval.inWholeMilliseconds
+        val wasPreviousBackupTriggered =
+            (System.currentTimeMillis() - lastAutomatedBackup) < backupInterval.inWholeMilliseconds
         if (!wasPreviousBackupTriggered) {
-            scheduler.launch(task)
+            task()
         }
 
-        backupSchedulerJobId = scheduler.schedule(
-            "$backupMinute $backupHour */${backupInterval.inWholeDays} * *",
-            task
-        )
+        HAScheduler.schedule(task, "$backupMinute $backupHour */${backupInterval.inWholeDays} * *", "backup")
     }
 
     private fun createAutomatedBackup() {
