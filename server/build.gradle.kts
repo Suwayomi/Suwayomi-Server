@@ -72,6 +72,8 @@ dependencies {
     testImplementation(libs.mockk)
 
     implementation(libs.cron4j)
+
+    implementation(libs.cronUtils)
 }
 
 application {
