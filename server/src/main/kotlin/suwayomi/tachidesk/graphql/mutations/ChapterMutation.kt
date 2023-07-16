@@ -122,7 +122,7 @@ class ChapterMutation {
         val (clientMutationId, mangaId) = input
 
         return future {
-            val numberOfCurrentChapters = transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.count().toInt() }
+            val numberOfCurrentChapters = Chapter.getCountOfMangaChapters(mangaId)
             Chapter.fetchChapterList(mangaId)
             numberOfCurrentChapters
         }.thenApply { numberOfCurrentChapters ->

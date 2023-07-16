@@ -62,6 +62,10 @@ object Chapter {
         }
     }
 
+    fun getCountOfMangaChapters(mangaId: Int): Int {
+        return transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.count().toInt() }
+    }
+
     private suspend fun getSourceChapters(mangaId: Int): List<ChapterDataClass> {
         val chapterList = fetchChapterList(mangaId)
 
@@ -113,8 +117,7 @@ object Chapter {
             url = manga.url
         }
 
-        val numberOfCurrentChapters =
-            transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.count().toInt() }
+        val numberOfCurrentChapters = getCountOfMangaChapters(mangaId)
         val chapterList = source.fetchChapterList(sManga).awaitSingle()
 
         // Recognize number for new chapters.
