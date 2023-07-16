@@ -380,7 +380,7 @@ object WebInterfaceManager {
 
     private fun extractDownload(zipFilePath: String, targetPath: String) {
         File(targetPath).mkdirs()
-        ZipFile(zipFilePath).extractAll(targetPath)
+        ZipFile(zipFilePath).use { it.extractAll(targetPath) }
     }
 
     fun isUpdateAvailable(currentVersion: String): Boolean {
