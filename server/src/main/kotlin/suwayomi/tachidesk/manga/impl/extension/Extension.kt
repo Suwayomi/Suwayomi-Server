@@ -46,7 +46,11 @@ import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import java.io.File
+import java.io.FileOutputStream
 import java.io.InputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 
 object Extension {
     private val logger = KotlinLogging.logger {}
@@ -136,6 +140,7 @@ object Extension {
             logger.debug("Main class for extension is $className")
 
             dex2jar(apkFilePath, jarFilePath, fileNameWithoutType)
+            extractAssetsFromApk(apkFilePath, jarFilePath)
 
             // clean up
             File(apkFilePath).delete()
@@ -196,6 +201,55 @@ object Extension {
         } else {
             return 302 // extension was already installed
         }
+    }
+
+    private fun extractAssetsFromApk(apkPath: String, jarPath: String) {
+        val apkFile = File(apkPath)
+        val jarFile = File(jarPath)
+
+        val assetsFolder = File("${apkFile.parent}/${apkFile.nameWithoutExtension}_assets")
+        assetsFolder.mkdir()
+        ZipInputStream(apkFile.inputStream()).use { zipInputStream ->
+            var zipEntry = zipInputStream.nextEntry
+            while (zipEntry != null) {
+                if (zipEntry.name.startsWith("assets/")) {
+                    val assetFile = File(assetsFolder, zipEntry.name.substringAfter("assets/"))
+                    assetFile.parentFile.mkdirs()
+                    FileOutputStream(assetFile).use { outputStream ->
+                        zipInputStream.copyTo(outputStream)
+                    }
+                }
+                zipEntry = zipInputStream.nextEntry
+            }
+        }
+
+        val tempJarFile = File("${jarFile.parent}/${jarFile.nameWithoutExtension}_temp.jar")
+        ZipInputStream(jarFile.inputStream()).use { jarZipInputStream ->
+            ZipOutputStream(FileOutputStream(tempJarFile)).use { jarZipOutputStream ->
+                var zipEntry = jarZipInputStream.nextEntry
+                while (zipEntry != null) {
+                    if (!zipEntry.name.startsWith("META-INF/")) {
+                        jarZipOutputStream.putNextEntry(ZipEntry(zipEntry.name))
+                        jarZipInputStream.copyTo(jarZipOutputStream)
+                    }
+                    zipEntry = jarZipInputStream.nextEntry
+                }
+                assetsFolder.walkTopDown().forEach { file ->
+                    if (file.isFile) {
+                        jarZipOutputStream.putNextEntry(ZipEntry("assets/${file.relativeTo(assetsFolder)}"))
+                        file.inputStream().use { inputStream ->
+                            inputStream.copyTo(jarZipOutputStream)
+                        }
+                        jarZipOutputStream.closeEntry()
+                    }
+                }
+            }
+        }
+
+        jarFile.delete()
+        tempJarFile.renameTo(jarFile)
+
+        assetsFolder.deleteRecursively()
     }
 
     private val network: NetworkHelper by injectLazy()
