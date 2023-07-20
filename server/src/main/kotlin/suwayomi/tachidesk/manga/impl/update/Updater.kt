@@ -1,6 +1,8 @@
 package suwayomi.tachidesk.manga.impl.update
 
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import it.sauronsoftware.cron4j.Task
+import it.sauronsoftware.cron4j.TaskExecutionContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,11 +26,13 @@ import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
+import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.IncludeInUpdate
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.util.HAScheduler
 import java.util.Date
 import java.util.Timer
 import java.util.TimerTask
@@ -51,41 +55,46 @@ class Updater : IUpdater {
     private val lastAutomatedUpdateKey = "lastAutomatedUpdateKey"
     private val preferences = Preferences.userNodeForPackage(Updater::class.java)
 
-    private val updateTimer = Timer()
-    private var currentUpdateTask: TimerTask? = null
+    private var currentUpdateTaskId = ""
 
     init {
         scheduleUpdateTask()
     }
 
+
+    private fun autoUpdateTask() {
+        val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
+        preferences.putLong(lastAutomatedUpdateKey, System.currentTimeMillis())
+
+        if (status.value.running) {
+            logger.debug { "Global update is already in progress" }
+            return
+        }
+
+        logger.info { "Trigger global update (interval= ${serverConfig.globalUpdateInterval}h, lastAutomatedUpdate= ${Date(lastAutomatedUpdate)})" }
+        addCategoriesToUpdateQueue(Category.getCategoryList(), true)
+    }
+
     private fun scheduleUpdateTask() {
+        HAScheduler.deschedule(currentUpdateTaskId)
+
         if (!serverConfig.automaticallyTriggerGlobalUpdate) {
             return
         }
 
         val minInterval = 6.hours
         val interval = serverConfig.globalUpdateInterval.hours
-        val updateInterval = interval.coerceAtLeast(minInterval).inWholeMilliseconds
+        val updateInterval = interval.coerceAtLeast(minInterval)
+        val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, System.currentTimeMillis())
 
-        val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
-        val initialDelay = updateInterval - (System.currentTimeMillis() - lastAutomatedUpdate) % updateInterval
-
-        currentUpdateTask?.cancel()
-        currentUpdateTask = object : TimerTask() {
-            override fun run() {
-                preferences.putLong(lastAutomatedUpdateKey, System.currentTimeMillis())
-
-                if (status.value.running) {
-                    logger.debug { "Global update is already in progress, do not trigger global update" }
-                    return
-                }
-
-                logger.info { "Trigger global update (interval= ${serverConfig.globalUpdateInterval}h, lastAutomatedUpdate= ${Date(lastAutomatedUpdate)})" }
-                addCategoriesToUpdateQueue(Category.getCategoryList(), true)
-            }
+        // trigger update in case the server wasn't running on the scheduled time
+        val wasPreviousUpdateTriggered =
+            (System.currentTimeMillis() - lastAutomatedUpdate) < updateInterval.inWholeMilliseconds
+        if (!wasPreviousUpdateTriggered) {
+            autoUpdateTask()
         }
 
-        updateTimer.scheduleAtFixedRate(currentUpdateTask, initialDelay, updateInterval)
+        HAScheduler.schedule(::autoUpdateTask, "* */${updateInterval.inWholeHours} * * *", "global-update")
     }
 
     private fun getOrCreateUpdateChannelFor(source: String): Channel<UpdateJob> {

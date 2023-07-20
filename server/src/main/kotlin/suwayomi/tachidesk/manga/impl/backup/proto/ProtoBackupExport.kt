@@ -36,13 +36,12 @@ import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.util.HAScheduler
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Timer
-import java.util.TimerTask
 import java.util.concurrent.TimeUnit
 import java.util.prefs.Preferences
 import kotlin.time.Duration.Companion.days
@@ -50,40 +49,37 @@ import kotlin.time.Duration.Companion.days
 object ProtoBackupExport : ProtoBackupBase() {
     private val logger = KotlinLogging.logger { }
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
+    private var backupSchedulerJobId: String = ""
     private const val lastAutomatedBackupKey = "lastAutomatedBackupKey"
     private val preferences = Preferences.userNodeForPackage(ProtoBackupExport::class.java)
 
-    private val backupTimer = Timer()
-    private var currentAutomatedBackupTask: TimerTask? = null
-
     fun scheduleAutomatedBackupTask() {
+        HAScheduler.deschedule(backupSchedulerJobId)
+
         if (!serverConfig.automatedBackups) {
-            currentAutomatedBackupTask?.cancel()
             return
         }
 
-        val minInterval = 1.days
-        val interval = serverConfig.backupInterval.days
-        val backupInterval = interval.coerceAtLeast(minInterval).inWholeMilliseconds
-
-        val lastAutomatedBackup = preferences.getLong(lastAutomatedBackupKey, 0)
-        val initialDelay =
-            backupInterval - (System.currentTimeMillis() - lastAutomatedBackup) % backupInterval
-
-        currentAutomatedBackupTask?.cancel()
-        currentAutomatedBackupTask = object : TimerTask() {
-            override fun run() {
-                cleanupAutomatedBackups()
-                createAutomatedBackup()
-                preferences.putLong(lastAutomatedBackupKey, System.currentTimeMillis())
-            }
+        val task = {
+            cleanupAutomatedBackups()
+            createAutomatedBackup()
+            preferences.putLong(lastAutomatedBackupKey, System.currentTimeMillis())
         }
 
-        backupTimer.scheduleAtFixedRate(
-            currentAutomatedBackupTask,
-            initialDelay,
-            backupInterval
-        )
+        val (hour, minute) = serverConfig.backupTime.split(":").map { it.toInt() }
+        val backupHour = hour.coerceAtLeast(0).coerceAtMost(23)
+        val backupMinute = minute.coerceAtLeast(0).coerceAtMost(59)
+        val backupInterval = serverConfig.backupInterval.days.coerceAtLeast(1.days)
+
+        // trigger last backup in case the server wasn't running on the scheduled time
+        val lastAutomatedBackup = preferences.getLong(lastAutomatedBackupKey, System.currentTimeMillis())
+        val wasPreviousBackupTriggered =
+            (System.currentTimeMillis() - lastAutomatedBackup) < backupInterval.inWholeMilliseconds
+        if (!wasPreviousBackupTriggered) {
+            task()
+        }
+
+        HAScheduler.schedule(task, "$backupMinute $backupHour */${backupInterval.inWholeDays} * *", "backup")
     }
 
     private fun createAutomatedBackup() {
@@ -105,11 +101,15 @@ object ProtoBackupExport : ProtoBackupBase() {
 
             backupFile.outputStream().use { output -> input.copyTo(output) }
         }
-
     }
 
     private fun cleanupAutomatedBackups() {
-        logger.debug { "Cleanup automated backups" }
+        logger.debug { "Cleanup automated backups (ttl= ${serverConfig.backupTTL})" }
+
+        val isCleanupDisabled = serverConfig.backupTTL == 0
+        if (isCleanupDisabled) {
+            return
+        }
 
         val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
         if (!automatedBackupDir.isDirectory) {
@@ -132,7 +132,7 @@ object ProtoBackupExport : ProtoBackupBase() {
 
         val lastAccessTime = file.lastModified()
         val isTTLReached =
-            System.currentTimeMillis() - lastAccessTime >= serverConfig.backupTTL.days.inWholeMilliseconds
+            System.currentTimeMillis() - lastAccessTime >= serverConfig.backupTTL.days.coerceAtLeast(1.days).inWholeMilliseconds
         if (isTTLReached) {
             file.delete()
         }

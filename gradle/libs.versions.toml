@@ -128,6 +128,12 @@ twelvemonkeys-imageio-webp = { module = "com.twelvemonkeys.imageio:imageio-webp"
 # Testing
 mockk = "io.mockk:mockk:1.13.2"
 
+# cron scheduler
+cron4j = "it.sauronsoftware.cron4j:cron4j:2.2.5"
+
+# cron-utils
+cronUtils = "com.cronutils:cron-utils:9.2.0"
+
 [plugins]
 # Kotlin
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin"}
