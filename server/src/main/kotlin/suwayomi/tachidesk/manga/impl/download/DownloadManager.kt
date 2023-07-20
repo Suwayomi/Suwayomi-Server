@@ -122,7 +122,7 @@ object DownloadManager {
         scope.launch {
             downloaderWatch.sample(1.seconds).collect {
                 val runningDownloaders = downloaders.values.filter { it.isActive }
-                logger.info { "Running: ${runningDownloaders.size}" }
+                logger.info { "Running: ${runningDownloaders.size}, Queued: ${downloadQueue.size}" }
                 if (runningDownloaders.size < MAX_SOURCES_IN_PARAllEL) {
                     downloadQueue.asSequence()
                         .map { it.manga.sourceId.toLong() }
