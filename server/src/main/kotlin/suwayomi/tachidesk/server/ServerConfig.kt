@@ -28,6 +28,8 @@ class ServerConfig(getConfig: () -> Config, moduleName: String = MODULE_NAME) : 
     var initialOpenInBrowserEnabled: Boolean by overridableConfig
     var webUIInterface: String by overridableConfig
     var electronPath: String by overridableConfig
+    var webUIChannel: String by overridableConfig
+    var webUIUpdateCheckInterval: Double by overridableConfig
 
     // downloader
     var downloadAsCbz: Boolean by overridableConfig

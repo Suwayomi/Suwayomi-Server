@@ -27,7 +27,7 @@ import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
 import suwayomi.tachidesk.manga.MangaAPI
 import suwayomi.tachidesk.server.util.Browser
-import suwayomi.tachidesk.server.util.setupWebInterface
+import suwayomi.tachidesk.server.util.WebInterfaceManager
 import java.io.IOException
 import java.lang.IllegalArgumentException
 import java.util.concurrent.CompletableFuture
@@ -47,7 +47,7 @@ object JavalinSetup {
     fun javalinSetup() {
         val app = Javalin.create { config ->
             if (serverConfig.webUIEnabled) {
-                setupWebInterface()
+                WebInterfaceManager.setupWebUI()
 
                 logger.info { "Serving web static files for ${serverConfig.webUIFlavor}" }
                 config.addStaticFiles(applicationDirs.webUIRoot, Location.EXTERNAL)

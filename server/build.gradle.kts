@@ -105,10 +105,7 @@ buildConfig {
     buildConfigField("String", "BUILD_TYPE", quoteWrap(if (System.getenv("ProductBuildType") == "Stable") "Stable" else "Preview"))
     buildConfigField("long", "BUILD_TIME", Instant.now().epochSecond.toString())
 
-
-    buildConfigField("String", "WEBUI_REPO", quoteWrap("https://github.com/Suwayomi/Tachidesk-WebUI-preview"))
     buildConfigField("String", "WEBUI_TAG", quoteWrap(webUIRevisionTag))
-
 
     buildConfigField("String", "GITHUB", quoteWrap("https://github.com/Suwayomi/Tachidesk-Server"))
     buildConfigField("String", "DISCORD", quoteWrap("https://discord.gg/DDZdqZWaHA"))
