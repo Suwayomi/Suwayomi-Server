@@ -7,6 +7,7 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import com.typesafe.config.ConfigRenderOptions
 import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.source.local.LocalSource
 import io.javalin.plugin.json.JavalinJackson
@@ -30,6 +31,7 @@ import xyz.nulldev.androidcompat.AndroidCompatInitializer
 import xyz.nulldev.ts.config.ApplicationRootDir
 import xyz.nulldev.ts.config.ConfigKodeinModule
 import xyz.nulldev.ts.config.GlobalConfigManager
+import xyz.nulldev.ts.config.initLoggerConfig
 import java.io.File
 import java.security.Security
 import java.util.Locale
@@ -58,8 +60,6 @@ val systemTrayInstance by lazy { systemTray() }
 val androidCompat by lazy { AndroidCompat() }
 
 fun applicationSetup() {
-    logger.info("Running Tachidesk ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")
-
     // register Tachidesk's config which is dubbed "ServerConfig"
     GlobalConfigManager.registerModule(
         ServerConfig.register { GlobalConfigManager.config }
@@ -67,6 +67,14 @@ fun applicationSetup() {
 
     // Application dirs
     val applicationDirs = ApplicationDirs()
+
+    initLoggerConfig(applicationDirs.dataRoot)
+
+    logger.info("Running Tachidesk ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")
+
+    logger.debug {
+        "Loaded config:\n" + GlobalConfigManager.config.root().render(ConfigRenderOptions.concise().setFormatted(true))
+    }
 
     val updater = Updater()
 
