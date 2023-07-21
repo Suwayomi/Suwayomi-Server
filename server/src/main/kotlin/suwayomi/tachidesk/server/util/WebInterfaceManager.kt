@@ -251,7 +251,7 @@ object WebInterfaceManager {
 
     private fun fetchPreviewVersion(): String {
         val releaseInfoJson = URL(WebUI.WEBUI.latestReleaseInfoUrl).readText()
-        return Json.decodeFromString<JsonObject>(releaseInfoJson)["tag_name"]?.jsonPrimitive?.content ?: ""
+        return Json.decodeFromString<JsonObject>(releaseInfoJson)["tag_name"]?.jsonPrimitive?.content ?: throw Exception("Failed to get the preview version tag")
     }
 
     private fun getLatestCompatibleVersion(): String {
@@ -385,7 +385,13 @@ object WebInterfaceManager {
 
     fun isUpdateAvailable(currentVersion: String): Boolean {
         return try {
-            val latestCompatibleVersion = getLatestCompatibleVersion()
+            val version = getLatestCompatibleVersion()
+            val latestCompatibleVersion = if (version == webUIPreviewVersion) {
+                fetchPreviewVersion()
+            } else {
+                version
+            }
+
             latestCompatibleVersion != currentVersion
         } catch (e: Exception) {
             logger.debug { "isUpdateAvailable: check failed due to $e" }
