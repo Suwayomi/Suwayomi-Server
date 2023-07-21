@@ -1,8 +1,6 @@
 package suwayomi.tachidesk.manga.impl.update
 
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
-import it.sauronsoftware.cron4j.Task
-import it.sauronsoftware.cron4j.TaskExecutionContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +24,6 @@ import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
-import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.IncludeInUpdate
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
@@ -34,8 +31,6 @@ import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.HAScheduler
 import java.util.Date
-import java.util.Timer
-import java.util.TimerTask
 import java.util.concurrent.ConcurrentHashMap
 import java.util.prefs.Preferences
 import kotlin.time.Duration.Companion.hours
@@ -60,7 +55,6 @@ class Updater : IUpdater {
     init {
         scheduleUpdateTask()
     }
-
 
     private fun autoUpdateTask() {
         val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
@@ -94,7 +88,7 @@ class Updater : IUpdater {
             autoUpdateTask()
         }
 
-        HAScheduler.schedule(::autoUpdateTask, "* */${updateInterval.inWholeHours} * * *", "global-update")
+        HAScheduler.schedule(::autoUpdateTask, "0 */${updateInterval.inWholeHours} * * *", "global-update")
     }
 
     private fun getOrCreateUpdateChannelFor(source: String): Channel<UpdateJob> {
