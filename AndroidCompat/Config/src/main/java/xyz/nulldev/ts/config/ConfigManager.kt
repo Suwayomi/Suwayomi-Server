@@ -10,7 +10,6 @@ package xyz.nulldev.ts.config
 import ch.qos.logback.classic.Level
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
-import com.typesafe.config.ConfigRenderOptions
 import com.typesafe.config.ConfigValue
 import com.typesafe.config.ConfigValueFactory
 import com.typesafe.config.parser.ConfigDocument
@@ -77,10 +76,6 @@ open class ConfigManager {
         // set log level early
         if (debugLogsEnabled(config)) {
             setLogLevel(Level.DEBUG)
-        }
-
-        logger.debug {
-            "Loaded config:\n" + config.root().render(ConfigRenderOptions.concise().setFormatted(true))
         }
 
         return config
