@@ -17,6 +17,7 @@ package eu.kanade.tachiyomi.network
 import android.content.Context
 import eu.kanade.tachiyomi.network.interceptor.CloudflareInterceptor
 import eu.kanade.tachiyomi.network.interceptor.UserAgentInterceptor
+import mu.KotlinLogging
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import suwayomi.tachidesk.server.serverConfig
@@ -43,7 +44,13 @@ class NetworkHelper(context: Context) {
                 .addInterceptor(UserAgentInterceptor())
 
             if (serverConfig.debugLogsEnabled) {
-                val httpLoggingInterceptor = HttpLoggingInterceptor().apply {
+                val httpLoggingInterceptor = HttpLoggingInterceptor(object : HttpLoggingInterceptor.Logger {
+                    val logger = KotlinLogging.logger { }
+
+                    override fun log(message: String) {
+                        logger.debug { message }
+                    }
+                }).apply {
                     level = HttpLoggingInterceptor.Level.BASIC
                 }
                 builder.addInterceptor(httpLoggingInterceptor)
