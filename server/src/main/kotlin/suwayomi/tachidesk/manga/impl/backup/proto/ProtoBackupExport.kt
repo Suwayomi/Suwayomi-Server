@@ -54,7 +54,7 @@ object ProtoBackupExport : ProtoBackupBase() {
     private val preferences = Preferences.userNodeForPackage(ProtoBackupExport::class.java)
 
     fun scheduleAutomatedBackupTask() {
-        HAScheduler.deschedule(backupSchedulerJobId)
+        HAScheduler.descheduleCron(backupSchedulerJobId)
 
         if (!serverConfig.automatedBackups) {
             return
@@ -79,7 +79,7 @@ object ProtoBackupExport : ProtoBackupBase() {
             task()
         }
 
-        HAScheduler.schedule(task, "$backupMinute $backupHour */${backupInterval.inWholeDays} * *", "backup")
+        HAScheduler.scheduleCron(task, "$backupMinute $backupHour */${backupInterval.inWholeDays} * *", "backup")
     }
 
     private fun createAutomatedBackup() {

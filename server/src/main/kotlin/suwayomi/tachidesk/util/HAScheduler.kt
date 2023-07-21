@@ -79,7 +79,7 @@ object HAScheduler {
                             val triggerTask = missedExecution && taskThresholdMet
                             if (triggerTask) {
                                 logger.debug { "Task \"${it.name ?: it.id}\" missed its execution, executing now..." }
-                                reschedule(it.id, it.cronExpr)
+                                rescheduleCron(it.id, it.cronExpr)
                                 it.execute()
                             }
 
@@ -96,7 +96,7 @@ object HAScheduler {
         )
     }
 
-    fun schedule(execute: () -> Unit, cronExpr: String, name: String?): String {
+    fun scheduleCron(execute: () -> Unit, cronExpr: String, name: String?): String {
         if (!scheduler.isStarted) {
             scheduler.start()
         }
@@ -115,12 +115,12 @@ object HAScheduler {
         return taskId
     }
 
-    fun deschedule(taskId: String) {
+    fun descheduleCron(taskId: String) {
         scheduler.deschedule(taskId)
         scheduledTasks.removeIf { it.id == taskId }
     }
 
-    fun reschedule(taskId: String, cronExpr: String) {
+    fun rescheduleCron(taskId: String, cronExpr: String) {
         val task = scheduledTasks.find { it.id == taskId } ?: return
 
         scheduledTasks.remove(task)

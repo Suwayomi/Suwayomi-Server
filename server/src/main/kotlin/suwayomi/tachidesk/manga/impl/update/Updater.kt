@@ -70,7 +70,7 @@ class Updater : IUpdater {
     }
 
     private fun scheduleUpdateTask() {
-        HAScheduler.deschedule(currentUpdateTaskId)
+        HAScheduler.descheduleCron(currentUpdateTaskId)
 
         if (!serverConfig.automaticallyTriggerGlobalUpdate) {
             return
@@ -88,7 +88,7 @@ class Updater : IUpdater {
             autoUpdateTask()
         }
 
-        HAScheduler.schedule(::autoUpdateTask, "0 */${updateInterval.inWholeHours} * * *", "global-update")
+        HAScheduler.scheduleCron(::autoUpdateTask, "0 */${updateInterval.inWholeHours} * * *", "global-update")
     }
 
     private fun getOrCreateUpdateChannelFor(source: String): Channel<UpdateJob> {
