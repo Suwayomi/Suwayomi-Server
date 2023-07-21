@@ -19,23 +19,31 @@ import kotlin.time.Duration.Companion.seconds
 
 val cronParser = CronParser(CronDefinitionBuilder.instanceDefinitionFor(CRON4J))
 
-class HATask(val id: String, val cronExpr: String, val execute: () -> Unit, val name: String?) : Comparable<HATask> {
+abstract class BaseHATask(val id: String, val execute: () -> Unit, val name: String?) : Comparable<BaseHATask> {
+    abstract fun getLastExecutionTime(): Long
+
+    abstract fun getNextExecutionTime(): Long
+
+    abstract fun getTimeToNextExecution(): Long
+
+    override fun compareTo(other: BaseHATask): Int {
+        return getTimeToNextExecution().compareTo(other.getTimeToNextExecution())
+    }
+}
+
+class HACronTask(id: String, val cronExpr: String, execute: () -> Unit, name: String?) : BaseHATask(id, execute, name) {
     private val executionTime = ExecutionTime.forCron(cronParser.parse(cronExpr))
 
-    fun getLastExecutionTime(): Long {
+    override fun getLastExecutionTime(): Long {
         return executionTime.lastExecution(ZonedDateTime.now()).get().toEpochSecond().seconds.inWholeMilliseconds
     }
 
-    fun getNextExecutionTime(): Long {
+    override fun getNextExecutionTime(): Long {
         return executionTime.nextExecution(ZonedDateTime.now()).get().toEpochSecond().seconds.inWholeMilliseconds
     }
 
-    fun getTimeToNextExecution(): Long {
+    override fun getTimeToNextExecution(): Long {
         return executionTime.timeToNextExecution(ZonedDateTime.now()).get().toMillis()
-    }
-
-    override fun compareTo(other: HATask): Int {
-        return getTimeToNextExecution().compareTo(other.getTimeToNextExecution())
     }
 }
 
@@ -46,8 +54,10 @@ class HATask(val id: String, val cronExpr: String, val execute: () -> Unit, val 
 object HAScheduler {
     private val logger = KotlinLogging.logger { }
 
-    private val scheduledTasks = PriorityQueue<HATask>()
+    private val scheduledTasks = PriorityQueue<HACronTask>()
     private val scheduler = Scheduler()
+
+    private val timer = Timer()
 
     private val HIBERNATION_THRESHOLD = 10.seconds.inWholeMilliseconds
     private const val TASK_THRESHOLD = 0.1
@@ -57,7 +67,6 @@ object HAScheduler {
     }
 
     private fun scheduleHibernateCheckerTask(interval: Duration) {
-        val timer = Timer()
         timer.scheduleAtFixedRate(
             object : TimerTask() {
                 var lastExecutionTime = System.currentTimeMillis()
@@ -110,7 +119,7 @@ object HAScheduler {
             }
         )
 
-        scheduledTasks.add(HATask(taskId, cronExpr, execute, name))
+        scheduledTasks.add(HACronTask(taskId, cronExpr, execute, name))
 
         return taskId
     }
@@ -124,7 +133,7 @@ object HAScheduler {
         val task = scheduledTasks.find { it.id == taskId } ?: return
 
         scheduledTasks.remove(task)
-        scheduledTasks.add(HATask(taskId, cronExpr, task.execute, task.name))
+        scheduledTasks.add(HACronTask(taskId, cronExpr, task.execute, task.name))
 
         scheduler.reschedule(taskId, cronExpr)
     }
