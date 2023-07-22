@@ -20,6 +20,7 @@ import org.kodein.di.bind
 import org.kodein.di.conf.global
 import org.kodein.di.singleton
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
+import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.Updater
 import suwayomi.tachidesk.manga.impl.util.lang.renameTo
@@ -180,4 +181,7 @@ fun applicationSetup() {
 
     // start automated backups
     ProtoBackupExport.scheduleAutomatedBackupTask()
+
+    // start DownloadManager and restore + resume downloads
+    DownloadManager.restoreAndResumeDownloads()
 }
