@@ -13,29 +13,59 @@ import java.time.ZonedDateTime
 import java.util.PriorityQueue
 import java.util.Timer
 import java.util.TimerTask
+import java.util.UUID
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 val cronParser = CronParser(CronDefinitionBuilder.instanceDefinitionFor(CRON4J))
 
-class HATask(val id: String, val cronExpr: String, val execute: () -> Unit, val name: String?) : Comparable<HATask> {
+abstract class BaseHATask(val id: String, val execute: () -> Unit, val name: String?) : Comparable<BaseHATask> {
+    abstract fun getLastExecutionTime(): Long
+
+    abstract fun getNextExecutionTime(): Long
+
+    abstract fun getTimeToNextExecution(): Long
+
+    override fun compareTo(other: BaseHATask): Int {
+        return getTimeToNextExecution().compareTo(other.getTimeToNextExecution())
+    }
+}
+
+class HACronTask(id: String, val cronExpr: String, execute: () -> Unit, name: String?) : BaseHATask(id, execute, name) {
     private val executionTime = ExecutionTime.forCron(cronParser.parse(cronExpr))
 
-    fun getLastExecutionTime(): Long {
+    override fun getLastExecutionTime(): Long {
         return executionTime.lastExecution(ZonedDateTime.now()).get().toEpochSecond().seconds.inWholeMilliseconds
     }
 
-    fun getNextExecutionTime(): Long {
+    override fun getNextExecutionTime(): Long {
         return executionTime.nextExecution(ZonedDateTime.now()).get().toEpochSecond().seconds.inWholeMilliseconds
     }
 
-    fun getTimeToNextExecution(): Long {
+    override fun getTimeToNextExecution(): Long {
         return executionTime.timeToNextExecution(ZonedDateTime.now()).get().toMillis()
     }
+}
 
-    override fun compareTo(other: HATask): Int {
-        return getTimeToNextExecution().compareTo(other.getTimeToNextExecution())
+class HATask(id: String, val interval: Long, execute: () -> Unit, val timerTask: TimerTask, name: String?) : BaseHATask(id, execute, name) {
+    private val firstExecutionTime = System.currentTimeMillis() + interval
+
+    private fun getElapsedTimeOfCurrentInterval(): Long {
+        val timeSinceFirstExecution = System.currentTimeMillis() - firstExecutionTime
+        return timeSinceFirstExecution % interval
+    }
+
+    override fun getLastExecutionTime(): Long {
+        return System.currentTimeMillis() - getElapsedTimeOfCurrentInterval()
+    }
+
+    override fun getNextExecutionTime(): Long {
+        return System.currentTimeMillis() + getTimeToNextExecution()
+    }
+
+    override fun getTimeToNextExecution(): Long {
+        return interval - getElapsedTimeOfCurrentInterval()
     }
 }
 
@@ -46,8 +76,10 @@ class HATask(val id: String, val cronExpr: String, val execute: () -> Unit, val 
 object HAScheduler {
     private val logger = KotlinLogging.logger { }
 
-    private val scheduledTasks = PriorityQueue<HATask>()
+    private val scheduledTasks = PriorityQueue<BaseHATask>()
     private val scheduler = Scheduler()
+
+    private val timer = Timer()
 
     private val HIBERNATION_THRESHOLD = 10.seconds.inWholeMilliseconds
     private const val TASK_THRESHOLD = 0.1
@@ -57,7 +89,6 @@ object HAScheduler {
     }
 
     private fun scheduleHibernateCheckerTask(interval: Duration) {
-        val timer = Timer()
         timer.scheduleAtFixedRate(
             object : TimerTask() {
                 var lastExecutionTime = System.currentTimeMillis()
@@ -79,8 +110,14 @@ object HAScheduler {
                             val triggerTask = missedExecution && taskThresholdMet
                             if (triggerTask) {
                                 logger.debug { "Task \"${it.name ?: it.id}\" missed its execution, executing now..." }
-                                reschedule(it.id, it.cronExpr)
-                                it.execute()
+
+                                when (it) {
+                                    is HATask -> reschedule(it.id, it.interval)
+                                    is HACronTask -> {
+                                        rescheduleCron(it.id, it.cronExpr)
+                                        it.execute()
+                                    }
+                                }
                             }
 
                             // queue is ordered by next execution time, thus, loop can be exited early
@@ -96,7 +133,62 @@ object HAScheduler {
         )
     }
 
-    fun schedule(execute: () -> Unit, cronExpr: String, name: String?): String {
+    private fun createTimerTask(interval: Long, execute: () -> Unit): TimerTask {
+        return object : TimerTask() {
+            var lastExecutionTime: Long = 0
+
+            override fun run() {
+                // If a task scheduled via "Timer::scheduleAtFixedRate" is delayed for some reason, the Timer will
+                // trigger tasks in quick succession to "catch up" to the set interval.
+                //
+                // We want to prevent this, since we don't care about how many executions were missed and only want
+                // one execution to be triggered for these missed executions.
+                //
+                // The missed execution gets triggered by "HAScheduler::scheduleHibernateCheckerTask" and thus, we
+                // debounce this behaviour of "Timer::scheduleAtFixedRate".
+                val isCatchUpExecution = System.currentTimeMillis() - lastExecutionTime < interval - HIBERNATION_THRESHOLD
+                if (isCatchUpExecution) {
+                    return
+                }
+
+                lastExecutionTime = System.currentTimeMillis()
+                execute()
+            }
+        }
+    }
+
+    fun schedule(execute: () -> Unit, interval: Long, delay: Long, name: String?): String {
+        val taskId = UUID.randomUUID().toString()
+        val task = createTimerTask(interval, execute)
+
+        scheduledTasks.add(HATask(taskId, interval, execute, task, name))
+        timer.scheduleAtFixedRate(task, delay, interval)
+
+        return taskId
+    }
+
+    fun deschedule(taskId: String): HATask? {
+        val task = (scheduledTasks.find { it.id == taskId } ?: return null) as HATask
+        task.timerTask.cancel()
+        scheduledTasks.remove(task)
+
+        return task
+    }
+
+    fun reschedule(taskId: String, interval: Long) {
+        val task = deschedule(taskId) ?: return
+
+        val timerTask = createTimerTask(interval, task.execute)
+
+        val timeToNextExecution = task.getTimeToNextExecution()
+        val intervalDifference = interval - task.interval
+        val remainingTimeTillNextExecution = (timeToNextExecution + intervalDifference).coerceAtLeast(0)
+
+        scheduledTasks.add(HATask(taskId, interval, task.execute, timerTask, task.name))
+        timer.scheduleAtFixedRate(timerTask, remainingTimeTillNextExecution, interval)
+    }
+
+    fun scheduleCron(execute: () -> Unit, cronExpr: String, name: String?): String {
         if (!scheduler.isStarted) {
             scheduler.start()
         }
@@ -110,21 +202,21 @@ object HAScheduler {
             }
         )
 
-        scheduledTasks.add(HATask(taskId, cronExpr, execute, name))
+        scheduledTasks.add(HACronTask(taskId, cronExpr, execute, name))
 
         return taskId
     }
 
-    fun deschedule(taskId: String) {
+    fun descheduleCron(taskId: String) {
         scheduler.deschedule(taskId)
         scheduledTasks.removeIf { it.id == taskId }
     }
 
-    fun reschedule(taskId: String, cronExpr: String) {
+    fun rescheduleCron(taskId: String, cronExpr: String) {
         val task = scheduledTasks.find { it.id == taskId } ?: return
 
         scheduledTasks.remove(task)
-        scheduledTasks.add(HATask(taskId, cronExpr, task.execute, task.name))
+        scheduledTasks.add(HACronTask(taskId, cronExpr, task.execute, task.name))
 
         scheduler.reschedule(taskId, cronExpr)
     }

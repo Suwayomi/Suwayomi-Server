@@ -76,7 +76,7 @@ object WebInterfaceManager {
     }
 
     private fun scheduleWebUIUpdateCheck() {
-        HAScheduler.deschedule(currentUpdateTaskId)
+        HAScheduler.descheduleCron(currentUpdateTaskId)
 
         val isAutoUpdateDisabled = !isAutoUpdateEnabled() || serverConfig.webUIFlavor == "Custom"
         if (isAutoUpdateDisabled) {
@@ -96,8 +96,7 @@ object WebInterfaceManager {
             task()
         }
 
-        HAScheduler.deschedule(currentUpdateTaskId)
-        currentUpdateTaskId = HAScheduler.schedule(task, "0 */${updateInterval.inWholeHours} * * *", "webUI-update-checker")
+        currentUpdateTaskId = HAScheduler.scheduleCron(task, "0 */${updateInterval.inWholeHours} * * *", "webUI-update-checker")
     }
 
     fun setupWebUI() {
