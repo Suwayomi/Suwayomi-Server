@@ -72,7 +72,8 @@ class Updater : IUpdater {
     private fun scheduleUpdateTask() {
         HAScheduler.deschedule(currentUpdateTaskId)
 
-        if (!serverConfig.automaticallyTriggerGlobalUpdate) {
+        val isAutoUpdateDisabled = serverConfig.globalUpdateInterval == 0.0
+        if (isAutoUpdateDisabled) {
             return
         }
 
