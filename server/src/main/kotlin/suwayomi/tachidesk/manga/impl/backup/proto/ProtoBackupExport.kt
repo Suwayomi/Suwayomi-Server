@@ -56,7 +56,8 @@ object ProtoBackupExport : ProtoBackupBase() {
     fun scheduleAutomatedBackupTask() {
         HAScheduler.deschedule(backupSchedulerJobId)
 
-        if (!serverConfig.automatedBackups) {
+        val areAutomatedBackupsDisabled = serverConfig.backupInterval == 0
+        if (areAutomatedBackupsDisabled) {
             return
         }
 
