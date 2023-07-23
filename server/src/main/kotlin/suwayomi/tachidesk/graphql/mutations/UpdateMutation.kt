@@ -14,22 +14,22 @@ import suwayomi.tachidesk.manga.model.table.toDataClass
 class UpdateMutation {
     private val updater by DI.global.instance<IUpdater>()
 
-    data class UpdateGlobalMangaInput(
+    data class UpdateLibraryMangaInput(
         val clientMutationId: String? = null
     )
-    data class UpdateGlobalMangaPayload(
+    data class UpdateLibraryMangaPayload(
         val clientMutationId: String?,
         val updateStatus: UpdateStatus
     )
 
-    fun updateGlobalManga(input: UpdateGlobalMangaInput): UpdateGlobalMangaPayload {
+    fun updateLibraryManga(input: UpdateLibraryMangaInput): UpdateLibraryMangaPayload {
         updater.addCategoriesToUpdateQueue(
             Category.getCategoryList(),
             clear = true,
             forceAll = false
         )
 
-        return UpdateGlobalMangaPayload(input.clientMutationId, UpdateStatus(updater.status.value))
+        return UpdateLibraryMangaPayload(input.clientMutationId, UpdateStatus(updater.status.value))
     }
 
     data class UpdateCategoryMangaInput(
