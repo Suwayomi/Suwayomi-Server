@@ -394,21 +394,7 @@ object Chapter {
 
     private fun deleteChapters(input: MangaChapterBatchEditInput, mangaId: Int? = null) {
         if (input.chapterIds != null) {
-            val chapterIds = input.chapterIds
-
-            transaction {
-                ChapterTable.slice(ChapterTable.manga, ChapterTable.id)
-                    .select { ChapterTable.id inList chapterIds }
-                    .forEach { row ->
-                        val chapterMangaId = row[ChapterTable.manga].value
-                        val chapterId = row[ChapterTable.id].value
-                        ChapterDownloadHelper.delete(chapterMangaId, chapterId)
-                    }
-
-                ChapterTable.update({ ChapterTable.id inList chapterIds }) {
-                    it[isDownloaded] = false
-                }
-            }
+            deleteChapters(input.chapterIds)
         } else if (input.chapterIndexes != null && mangaId != null) {
             transaction {
                 val chapterIds = ChapterTable.slice(ChapterTable.manga, ChapterTable.id)
@@ -423,6 +409,22 @@ object Chapter {
                 ChapterTable.update({ ChapterTable.id inList chapterIds }) {
                     it[isDownloaded] = false
                 }
+            }
+        }
+    }
+
+    fun deleteChapters(chapterIds: List<Int>) {
+        transaction {
+            ChapterTable.slice(ChapterTable.manga, ChapterTable.id)
+                .select { ChapterTable.id inList chapterIds }
+                .forEach { row ->
+                    val chapterMangaId = row[ChapterTable.manga].value
+                    val chapterId = row[ChapterTable.id].value
+                    ChapterDownloadHelper.delete(chapterMangaId, chapterId)
+                }
+
+            ChapterTable.update({ ChapterTable.id inList chapterIds }) {
+                it[isDownloaded] = false
             }
         }
     }

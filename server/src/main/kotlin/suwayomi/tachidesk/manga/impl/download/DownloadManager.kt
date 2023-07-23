@@ -19,14 +19,16 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.sample
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.graphql.subscriptions.downloadSubscriptionSource
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
@@ -38,7 +40,6 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.reflect.jvm.jvmName
@@ -107,6 +108,12 @@ object DownloadManager {
     }
 
     private val notifyFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
+    val status = notifyFlow.sample(1.seconds)
+        .map {
+            getStatus()
+        }
+        .stateIn(scope, SharingStarted.Eagerly, getStatus())
 
     init {
         scope.launch {
@@ -271,7 +278,6 @@ object DownloadManager {
             )
             downloadQueue.add(downloadChapter)
             saveDownloadQueue()
-            downloadSubscriptionSource.publish(downloadChapter)
             logger.debug { "Added chapter ${chapter.id} to download queue (${manga.title} | ${chapter.name})" }
             return downloadChapter
         }
@@ -288,6 +294,15 @@ object DownloadManager {
     fun reorder(chapterIndex: Int, mangaId: Int, to: Int) {
         require(to >= 0) { "'to' must be over or equal to 0" }
         val download = downloadQueue.find { it.mangaId == mangaId && it.chapterIndex == chapterIndex }
+            ?: return
+        downloadQueue -= download
+        downloadQueue.add(to, download)
+        saveDownloadQueue()
+    }
+
+    fun reorder(chapterId: Int, to: Int) {
+        require(to >= 0) { "'to' must be over or equal to 0" }
+        val download = downloadQueue.find { it.chapter.id == chapterId }
             ?: return
         downloadQueue -= download
         downloadQueue.add(to, download)

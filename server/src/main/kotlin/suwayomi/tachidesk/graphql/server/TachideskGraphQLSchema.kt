@@ -16,6 +16,7 @@ import io.javalin.http.UploadedFile
 import suwayomi.tachidesk.graphql.mutations.BackupMutation
 import suwayomi.tachidesk.graphql.mutations.CategoryMutation
 import suwayomi.tachidesk.graphql.mutations.ChapterMutation
+import suwayomi.tachidesk.graphql.mutations.DownloadMutation
 import suwayomi.tachidesk.graphql.mutations.ExtensionMutation
 import suwayomi.tachidesk.graphql.mutations.MangaMutation
 import suwayomi.tachidesk.graphql.mutations.MetaMutation
@@ -23,6 +24,7 @@ import suwayomi.tachidesk.graphql.mutations.SourceMutation
 import suwayomi.tachidesk.graphql.queries.BackupQuery
 import suwayomi.tachidesk.graphql.queries.CategoryQuery
 import suwayomi.tachidesk.graphql.queries.ChapterQuery
+import suwayomi.tachidesk.graphql.queries.DownloadQuery
 import suwayomi.tachidesk.graphql.queries.ExtensionQuery
 import suwayomi.tachidesk.graphql.queries.MangaQuery
 import suwayomi.tachidesk.graphql.queries.MetaQuery
@@ -54,6 +56,7 @@ val schema = toSchema(
         TopLevelObject(BackupQuery()),
         TopLevelObject(CategoryQuery()),
         TopLevelObject(ChapterQuery()),
+        TopLevelObject(DownloadQuery()),
         TopLevelObject(ExtensionQuery()),
         TopLevelObject(MangaQuery()),
         TopLevelObject(MetaQuery()),
@@ -63,6 +66,7 @@ val schema = toSchema(
         TopLevelObject(BackupMutation()),
         TopLevelObject(CategoryMutation()),
         TopLevelObject(ChapterMutation()),
+        TopLevelObject(DownloadMutation()),
         TopLevelObject(ExtensionMutation()),
         TopLevelObject(MangaMutation()),
         TopLevelObject(MetaMutation()),
