@@ -105,7 +105,7 @@ object HAScheduler {
                             val missedExecution = currentTime - it.getLastExecutionTime() - elapsedTime < 0
                             val taskInterval = it.getNextExecutionTime() - it.getLastExecutionTime()
                             // in case the next task execution doesn't take long the missed execution can be ignored to prevent a double execution
-                            val taskThresholdMet = taskInterval * TASK_THRESHOLD > it.getTimeToNextExecution()
+                            val taskThresholdMet = taskInterval * TASK_THRESHOLD < it.getTimeToNextExecution()
 
                             val triggerTask = missedExecution && taskThresholdMet
                             if (triggerTask) {
