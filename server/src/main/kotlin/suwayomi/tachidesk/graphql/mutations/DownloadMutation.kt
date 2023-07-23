@@ -113,24 +113,24 @@ class DownloadMutation {
         }
     }
 
-    data class UnqueueChapterDownloadsInput(
+    data class DequeueChapterDownloadsInput(
         val clientMutationId: String? = null,
         val ids: List<Int>
     )
-    data class UnqueueChapterDownloadsPayload(
+    data class DequeueChapterDownloadsPayload(
         val clientMutationId: String?,
         val downloadStatus: DownloadStatus
     )
 
-    fun unqueueChapterDownloads(
-        input: UnqueueChapterDownloadsInput
-    ): CompletableFuture<UnqueueChapterDownloadsPayload> {
+    fun dequeueChapterDownloads(
+        input: DequeueChapterDownloadsInput
+    ): CompletableFuture<DequeueChapterDownloadsPayload> {
         val (clientMutationId, chapters) = input
 
         DownloadManager.unqueue(DownloadManager.EnqueueInput(chapters))
 
         return future {
-            UnqueueChapterDownloadsPayload(
+            DequeueChapterDownloadsPayload(
                 clientMutationId = clientMutationId,
                 downloadStatus = withTimeout(30.seconds) {
                     DownloadStatus(DownloadManager.status.first { it.queue.none { it.chapter.id in chapters } })
@@ -139,24 +139,24 @@ class DownloadMutation {
         }
     }
 
-    data class UnqueueChapterDownloadInput(
+    data class DequeueChapterDownloadInput(
         val clientMutationId: String? = null,
         val id: Int
     )
-    data class UnqueueChapterDownloadPayload(
+    data class DequeueChapterDownloadPayload(
         val clientMutationId: String?,
         val downloadStatus: DownloadStatus
     )
 
-    fun unqueueChapterDownload(
-        input: UnqueueChapterDownloadInput
-    ): CompletableFuture<UnqueueChapterDownloadPayload> {
+    fun dequeueChapterDownload(
+        input: DequeueChapterDownloadInput
+    ): CompletableFuture<DequeueChapterDownloadPayload> {
         val (clientMutationId, chapter) = input
 
         DownloadManager.unqueue(DownloadManager.EnqueueInput(listOf(chapter)))
 
         return future {
-            UnqueueChapterDownloadPayload(
+            DequeueChapterDownloadPayload(
                 clientMutationId = clientMutationId,
                 downloadStatus = withTimeout(30.seconds) {
                     DownloadStatus(DownloadManager.status.first { it.queue.none { it.chapter.id == chapter } })
