@@ -25,7 +25,7 @@ class DownloadMutation {
         val chapters: List<ChapterType>
     )
 
-    fun deleteChapters(input: DeleteChapterDownloadsInput): DeleteChapterDownloadsPayload {
+    fun deleteChapterDownloads(input: DeleteChapterDownloadsInput): DeleteChapterDownloadsPayload {
         val (clientMutationId, chapters) = input
 
         Chapter.deleteChapters(chapters)
@@ -48,7 +48,7 @@ class DownloadMutation {
         val chapters: ChapterType
     )
 
-    fun deleteChapter(input: DeleteChapterDownloadInput): DeleteChapterDownloadPayload {
+    fun deleteChapterDownload(input: DeleteChapterDownloadInput): DeleteChapterDownloadPayload {
         val (clientMutationId, chapter) = input
 
         Chapter.deleteChapters(listOf(chapter))
