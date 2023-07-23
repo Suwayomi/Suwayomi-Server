@@ -102,13 +102,8 @@ object HAScheduler {
                     if (systemWasInHibernation) {
                         logger.debug { "System hibernation detected, task was delayed by ${elapsedTime - interval.inWholeMilliseconds}ms" }
                         scheduledTasks.forEach {
-                            val missedExecution = currentTime - it.getLastExecutionTime() - elapsedTime < 0
-                            val taskInterval = it.getNextExecutionTime() - it.getLastExecutionTime()
-                            // in case the next task execution doesn't take long the missed execution can be ignored to prevent a double execution
-                            val taskThresholdMet = taskInterval * TASK_THRESHOLD > it.getTimeToNextExecution()
-
-                            val triggerTask = missedExecution && taskThresholdMet
-                            if (triggerTask) {
+                            val wasLastExecutionMissed = currentTime - it.getLastExecutionTime() - elapsedTime < 0
+                            if (wasLastExecutionMissed) {
                                 logger.debug { "Task \"${it.name ?: it.id}\" missed its execution, executing now..." }
 
                                 when (it) {
@@ -121,7 +116,7 @@ object HAScheduler {
                             }
 
                             // queue is ordered by next execution time, thus, loop can be exited early
-                            if (!missedExecution) {
+                            if (!wasLastExecutionMissed) {
                                 return@forEach
                             }
                         }
