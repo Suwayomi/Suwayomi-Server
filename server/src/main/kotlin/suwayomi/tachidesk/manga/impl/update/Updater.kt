@@ -66,7 +66,7 @@ class Updater : IUpdater {
         }
 
         logger.info { "Trigger global update (interval= ${serverConfig.globalUpdateInterval}h, lastAutomatedUpdate= ${Date(lastAutomatedUpdate)})" }
-        addCategoriesToUpdateQueue(Category.getCategoryList(), true)
+        addCategoriesToUpdateQueue(Category.getCategoryList(), clear = true, forceAll = false)
     }
 
     private fun scheduleUpdateTask() {
@@ -124,7 +124,7 @@ class Updater : IUpdater {
         return tracker.values.toList()
     }
 
-    override fun addCategoriesToUpdateQueue(categories: List<CategoryDataClass>, clear: Boolean?) {
+    override fun addCategoriesToUpdateQueue(categories: List<CategoryDataClass>, clear: Boolean?, forceAll: Boolean) {
         val updater by DI.global.instance<IUpdater>()
         if (clear == true) {
             updater.reset()
@@ -134,7 +134,11 @@ class Updater : IUpdater {
         val excludedCategories = includeInUpdateStatusToCategoryMap[IncludeInUpdate.EXCLUDE].orEmpty()
         val includedCategories = includeInUpdateStatusToCategoryMap[IncludeInUpdate.INCLUDE].orEmpty()
         val unsetCategories = includeInUpdateStatusToCategoryMap[IncludeInUpdate.UNSET].orEmpty()
-        val categoriesToUpdate = includedCategories.ifEmpty { unsetCategories }
+        val categoriesToUpdate = if (forceAll) {
+            categories
+        } else {
+            includedCategories.ifEmpty { unsetCategories }
+        }
 
         logger.debug { "Updating categories: '${categoriesToUpdate.joinToString("', '") { it.name }}'" }
 
@@ -148,7 +152,7 @@ class Updater : IUpdater {
             .filter { if (serverConfig.excludeUnreadChapters) { (it.unreadCount ?: 0L) == 0L } else true }
             .filter { if (serverConfig.excludeNotStarted) { it.lastReadAt != null } else true }
             .filter { if (serverConfig.excludeCompleted) { it.status != MangaStatus.COMPLETED.name } else true }
-            .filter { !excludedCategories.any { category -> mangasToCategoriesMap[it.id]?.contains(category) == true } }
+            .filter { forceAll || !excludedCategories.any { category -> mangasToCategoriesMap[it.id]?.contains(category) == true } }
             .toList()
 
         // In case no manga gets updated and no update job was running before, the client would never receive an info about its update request

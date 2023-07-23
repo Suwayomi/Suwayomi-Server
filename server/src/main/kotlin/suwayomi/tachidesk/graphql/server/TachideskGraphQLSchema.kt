@@ -20,6 +20,7 @@ import suwayomi.tachidesk.graphql.mutations.ExtensionMutation
 import suwayomi.tachidesk.graphql.mutations.MangaMutation
 import suwayomi.tachidesk.graphql.mutations.MetaMutation
 import suwayomi.tachidesk.graphql.mutations.SourceMutation
+import suwayomi.tachidesk.graphql.mutations.UpdateMutation
 import suwayomi.tachidesk.graphql.queries.BackupQuery
 import suwayomi.tachidesk.graphql.queries.CategoryQuery
 import suwayomi.tachidesk.graphql.queries.ChapterQuery
@@ -27,11 +28,13 @@ import suwayomi.tachidesk.graphql.queries.ExtensionQuery
 import suwayomi.tachidesk.graphql.queries.MangaQuery
 import suwayomi.tachidesk.graphql.queries.MetaQuery
 import suwayomi.tachidesk.graphql.queries.SourceQuery
+import suwayomi.tachidesk.graphql.queries.UpdateQuery
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLCursor
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLLongAsString
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLUpload
 import suwayomi.tachidesk.graphql.subscriptions.DownloadSubscription
+import suwayomi.tachidesk.graphql.subscriptions.UpdateSubscription
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
@@ -57,7 +60,8 @@ val schema = toSchema(
         TopLevelObject(ExtensionQuery()),
         TopLevelObject(MangaQuery()),
         TopLevelObject(MetaQuery()),
-        TopLevelObject(SourceQuery())
+        TopLevelObject(SourceQuery()),
+        TopLevelObject(UpdateQuery())
     ),
     mutations = listOf(
         TopLevelObject(BackupMutation()),
@@ -66,9 +70,11 @@ val schema = toSchema(
         TopLevelObject(ExtensionMutation()),
         TopLevelObject(MangaMutation()),
         TopLevelObject(MetaMutation()),
-        TopLevelObject(SourceMutation())
+        TopLevelObject(SourceMutation()),
+        TopLevelObject(UpdateMutation())
     ),
     subscriptions = listOf(
-        TopLevelObject(DownloadSubscription())
+        TopLevelObject(DownloadSubscription()),
+        TopLevelObject(UpdateSubscription())
     )
 )
