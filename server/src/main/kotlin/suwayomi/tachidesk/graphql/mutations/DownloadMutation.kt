@@ -16,21 +16,21 @@ import kotlin.time.Duration.Companion.seconds
 
 class DownloadMutation {
 
-    data class DeleteChapterDownloadsInput(
+    data class DeleteDownloadedChaptersInput(
         val clientMutationId: String? = null,
         val ids: List<Int>
     )
-    data class DeleteChapterDownloadsPayload(
+    data class DeleteDownloadedChaptersPayload(
         val clientMutationId: String?,
         val chapters: List<ChapterType>
     )
 
-    fun deleteChapterDownloads(input: DeleteChapterDownloadsInput): DeleteChapterDownloadsPayload {
+    fun deleteDownloadedChapters(input: DeleteDownloadedChaptersInput): DeleteDownloadedChaptersPayload {
         val (clientMutationId, chapters) = input
 
         Chapter.deleteChapters(chapters)
 
-        return DeleteChapterDownloadsPayload(
+        return DeleteDownloadedChaptersPayload(
             clientMutationId = clientMutationId,
             chapters = transaction {
                 ChapterTable.select { ChapterTable.id inList chapters }
@@ -39,21 +39,21 @@ class DownloadMutation {
         )
     }
 
-    data class DeleteChapterDownloadInput(
+    data class DeleteDownloadedChapterInput(
         val clientMutationId: String? = null,
         val id: Int
     )
-    data class DeleteChapterDownloadPayload(
+    data class DeleteDownloadedChapterPayload(
         val clientMutationId: String?,
         val chapters: ChapterType
     )
 
-    fun deleteChapterDownload(input: DeleteChapterDownloadInput): DeleteChapterDownloadPayload {
+    fun deleteDownloadedChapter(input: DeleteDownloadedChapterInput): DeleteDownloadedChapterPayload {
         val (clientMutationId, chapter) = input
 
         Chapter.deleteChapters(listOf(chapter))
 
-        return DeleteChapterDownloadPayload(
+        return DeleteDownloadedChapterPayload(
             clientMutationId = clientMutationId,
             chapters = transaction {
                 ChapterType(ChapterTable.select { ChapterTable.id eq chapter }.first())
