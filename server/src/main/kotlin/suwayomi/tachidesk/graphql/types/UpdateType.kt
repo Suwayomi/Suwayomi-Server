@@ -7,7 +7,7 @@ import suwayomi.tachidesk.manga.impl.update.JobStatus
 import suwayomi.tachidesk.manga.impl.update.UpdateStatus
 import java.util.concurrent.CompletableFuture
 
-data class UpdateStatus(
+class UpdateStatus(
     val isRunning: Boolean,
     val pendingJobs: UpdateStatusType,
     val runningJobs: UpdateStatusType,
@@ -23,7 +23,7 @@ data class UpdateStatus(
     )
 }
 
-data class UpdateStatusType(
+class UpdateStatusType(
     @get:GraphQLIgnore
     val mangaIds: List<Int>
 ) {
