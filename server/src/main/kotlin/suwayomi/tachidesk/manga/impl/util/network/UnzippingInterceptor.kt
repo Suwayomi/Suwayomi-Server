@@ -26,16 +26,12 @@ class UnzippingInterceptor : Interceptor {
 
     @Throws(IOException::class)
     private fun unzip(response: Response): Response {
-        if (response.body == null) {
-            return response
-        }
-
         // check if we have gzip response
         val contentEncoding: String? = response.headers["Content-Encoding"]
 
         // this is used to decompress gzipped responses
         return if (contentEncoding != null && contentEncoding == "gzip") {
-            val body = response.body!!
+            val body = response.body
             val contentLength: Long = body.contentLength()
             val responseBody = GzipSource(body.source())
             val strippedHeaders: Headers = response.headers.newBuilder().build()

@@ -24,6 +24,11 @@ dependencies {
     implementation(libs.bundles.javalin)
     implementation(libs.bundles.jackson)
 
+    // GraphQL
+    implementation(libs.graphql.kotlin.server)
+    implementation(libs.graphql.kotlin.scheme)
+    implementation(libs.graphql.scalars)
+
     // Exposed ORM
     implementation(libs.bundles.exposed)
     implementation(libs.h2)
@@ -64,10 +69,6 @@ dependencies {
     // uncomment to test extensions directly
 //    implementation(fileTree("lib/"))
     implementation(kotlin("script-runtime"))
-
-    implementation("com.expediagroup:graphql-kotlin-server:6.4.0")
-    implementation("com.expediagroup:graphql-kotlin-schema-generator:6.4.0")
-    implementation("com.graphql-java:graphql-java-extended-scalars:20.0")
 
     testImplementation(libs.mockk)
 

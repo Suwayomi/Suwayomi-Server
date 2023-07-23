@@ -45,7 +45,7 @@ object AppMutex {
             .build()
 
         val response = try {
-            client.newCall(request).execute().use { response -> response.body!!.string() }
+            client.newCall(request).execute().body.string()
         } catch (e: IOException) {
             return AppMutexState.Clear
         }

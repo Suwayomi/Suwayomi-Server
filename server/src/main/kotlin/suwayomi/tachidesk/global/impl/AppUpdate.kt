@@ -33,13 +33,13 @@ object AppUpdate {
         val stableJson = json.parseToJsonElement(
             network.client.newCall(
                 GET(LATEST_STABLE_CHANNEL_URL)
-            ).await().body!!.string()
+            ).await().body.string()
         ).jsonObject
 
         val previewJson = json.parseToJsonElement(
             network.client.newCall(
                 GET(LATEST_PREVIEW_CHANNEL_URL)
-            ).await().body!!.string()
+            ).await().body.string()
         ).jsonObject
 
         return listOf(
