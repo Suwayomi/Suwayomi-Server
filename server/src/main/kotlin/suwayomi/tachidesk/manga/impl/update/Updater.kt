@@ -52,10 +52,6 @@ class Updater : IUpdater {
 
     private var currentUpdateTaskId = ""
 
-    init {
-        scheduleUpdateTask()
-    }
-
     private fun autoUpdateTask() {
         val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
         preferences.putLong(lastAutomatedUpdateKey, System.currentTimeMillis())
@@ -69,7 +65,7 @@ class Updater : IUpdater {
         addCategoriesToUpdateQueue(Category.getCategoryList(), true)
     }
 
-    private fun scheduleUpdateTask() {
+    fun scheduleUpdateTask() {
         HAScheduler.deschedule(currentUpdateTaskId)
 
         val isAutoUpdateDisabled = serverConfig.globalUpdateInterval == 0.0
