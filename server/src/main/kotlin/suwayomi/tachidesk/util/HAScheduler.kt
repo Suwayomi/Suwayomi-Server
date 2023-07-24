@@ -48,8 +48,8 @@ class HACronTask(id: String, val cronExpr: String, execute: () -> Unit, name: St
     }
 }
 
-class HATask(id: String, val interval: Long, execute: () -> Unit, val timerTask: TimerTask, name: String?) : BaseHATask(id, execute, name) {
-    private val firstExecutionTime = System.currentTimeMillis() + interval
+class HATask(id: String, val interval: Long, execute: () -> Unit, val timerTask: TimerTask, name: String?, initialDelay: Long = interval) : BaseHATask(id, execute, name) {
+    private val firstExecutionTime = System.currentTimeMillis() + initialDelay
 
     private fun getElapsedTimeOfCurrentInterval(): Long {
         val timeSinceFirstExecution = System.currentTimeMillis() - firstExecutionTime
@@ -156,7 +156,7 @@ object HAScheduler {
         val taskId = UUID.randomUUID().toString()
         val task = createTimerTask(interval, execute)
 
-        scheduledTasks.add(HATask(taskId, interval, execute, task, name))
+        scheduledTasks.add(HATask(taskId, interval, execute, task, name, delay))
         timer.scheduleAtFixedRate(task, delay, interval)
 
         return taskId
@@ -179,7 +179,7 @@ object HAScheduler {
         val intervalDifference = interval - task.interval
         val remainingTimeTillNextExecution = (timeToNextExecution + intervalDifference).coerceAtLeast(0)
 
-        scheduledTasks.add(HATask(taskId, interval, task.execute, timerTask, task.name))
+        scheduledTasks.add(HATask(taskId, interval, task.execute, timerTask, task.name, initialDelay = remainingTimeTillNextExecution))
         timer.scheduleAtFixedRate(timerTask, remainingTimeTillNextExecution, interval)
     }
 
