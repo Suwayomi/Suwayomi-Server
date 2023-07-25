@@ -61,6 +61,11 @@ val systemTrayInstance by lazy { systemTray() }
 val androidCompat by lazy { AndroidCompat() }
 
 fun applicationSetup() {
+    Thread.setDefaultUncaughtExceptionHandler {
+            _, throwable ->
+        KotlinLogging.logger { }.error(throwable) { "unhandled exception" }
+    }
+
     // register Tachidesk's config which is dubbed "ServerConfig"
     GlobalConfigManager.registerModule(
         ServerConfig.register { GlobalConfigManager.config }
