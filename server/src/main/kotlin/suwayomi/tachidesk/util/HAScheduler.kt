@@ -10,6 +10,7 @@ import it.sauronsoftware.cron4j.Task
 import it.sauronsoftware.cron4j.TaskExecutionContext
 import mu.KotlinLogging
 import java.time.ZonedDateTime
+import java.util.Date
 import java.util.PriorityQueue
 import java.util.Timer
 import java.util.TimerTask
@@ -30,6 +31,10 @@ abstract class BaseHATask(val id: String, val execute: () -> Unit, val name: Str
     override fun compareTo(other: BaseHATask): Int {
         return getTimeToNextExecution().compareTo(other.getTimeToNextExecution())
     }
+
+    override fun toString(): String {
+        return "Task \"$name\" ($id) lastExecution= ${Date(getLastExecutionTime())} nextExecution= ${Date(getNextExecutionTime())}"
+    }
 }
 
 class HACronTask(id: String, val cronExpr: String, execute: () -> Unit, name: String?) : BaseHATask(id, execute, name) {
@@ -46,9 +51,13 @@ class HACronTask(id: String, val cronExpr: String, execute: () -> Unit, name: St
     override fun getTimeToNextExecution(): Long {
         return executionTime.timeToNextExecution(ZonedDateTime.now()).get().toMillis()
     }
+
+    override fun toString(): String {
+        return "${super.toString()} interval= $cronExpr"
+    }
 }
 
-class HATask(id: String, val interval: Long, execute: () -> Unit, val timerTask: TimerTask, name: String?, initialDelay: Long = interval) : BaseHATask(id, execute, name) {
+class HATask(id: String, val interval: Long, execute: () -> Unit, val timerTask: TimerTask, name: String?, val initialDelay: Long = interval) : BaseHATask(id, execute, name) {
     private val firstExecutionTime = System.currentTimeMillis() + initialDelay
 
     private fun getElapsedTimeOfCurrentInterval(): Long {
@@ -66,6 +75,10 @@ class HATask(id: String, val interval: Long, execute: () -> Unit, val timerTask:
 
     override fun getTimeToNextExecution(): Long {
         return interval - getElapsedTimeOfCurrentInterval()
+    }
+
+    override fun toString(): String {
+        return "${super.toString()} interval= $interval, initialDelay= $initialDelay"
     }
 }
 
@@ -104,7 +117,7 @@ object HAScheduler {
                         scheduledTasks.forEach {
                             val wasLastExecutionMissed = currentTime - it.getLastExecutionTime() - elapsedTime < 0
                             if (wasLastExecutionMissed) {
-                                logger.debug { "Task \"${it.name ?: it.id}\" missed its execution, executing now..." }
+                                logger.debug { "$it missed its execution, executing now..." }
 
                                 when (it) {
                                     is HATask -> reschedule(it.id, it.interval)
@@ -154,10 +167,13 @@ object HAScheduler {
 
     fun schedule(execute: () -> Unit, interval: Long, delay: Long, name: String?): String {
         val taskId = UUID.randomUUID().toString()
-        val task = createTimerTask(interval, execute)
+        val timerTask = createTimerTask(interval, execute)
 
-        scheduledTasks.add(HATask(taskId, interval, execute, task, name, delay))
-        timer.scheduleAtFixedRate(task, delay, interval)
+        val task = HATask(taskId, interval, execute, timerTask, name, delay)
+        scheduledTasks.add(task)
+        timer.scheduleAtFixedRate(timerTask, delay, interval)
+
+        logger.debug { "schedule: $task" }
 
         return taskId
     }
@@ -166,6 +182,8 @@ object HAScheduler {
         val task = (scheduledTasks.find { it.id == taskId } ?: return null) as HATask
         task.timerTask.cancel()
         scheduledTasks.remove(task)
+
+        logger.debug { "deschedule: $task" }
 
         return task
     }
@@ -179,8 +197,11 @@ object HAScheduler {
         val intervalDifference = interval - task.interval
         val remainingTimeTillNextExecution = (timeToNextExecution + intervalDifference).coerceAtLeast(0)
 
-        scheduledTasks.add(HATask(taskId, interval, task.execute, timerTask, task.name, initialDelay = remainingTimeTillNextExecution))
+        val updatedTask = HATask(taskId, interval, task.execute, timerTask, task.name, initialDelay = remainingTimeTillNextExecution)
+        scheduledTasks.add(updatedTask)
         timer.scheduleAtFixedRate(timerTask, remainingTimeTillNextExecution, interval)
+
+        logger.debug { "reschedule: new= $updatedTask, old= $task" }
     }
 
     fun scheduleCron(execute: () -> Unit, cronExpr: String, name: String?): String {
@@ -197,22 +218,31 @@ object HAScheduler {
             }
         )
 
-        scheduledTasks.add(HACronTask(taskId, cronExpr, execute, name))
+        val task = HACronTask(taskId, cronExpr, execute, name)
+        scheduledTasks.add(task)
+
+        logger.debug { "scheduleCron: $task" }
 
         return taskId
     }
 
     fun descheduleCron(taskId: String) {
         scheduler.deschedule(taskId)
-        scheduledTasks.removeIf { it.id == taskId }
+        val task = scheduledTasks.find { it.id == taskId } ?: return
+        scheduledTasks.remove(task)
+
+        logger.debug { "descheduleCron: $task" }
     }
 
     fun rescheduleCron(taskId: String, cronExpr: String) {
         val task = scheduledTasks.find { it.id == taskId } ?: return
 
+        val updatedTask = HACronTask(taskId, cronExpr, task.execute, task.name)
         scheduledTasks.remove(task)
-        scheduledTasks.add(HACronTask(taskId, cronExpr, task.execute, task.name))
+        scheduledTasks.add(updatedTask)
 
         scheduler.reschedule(taskId, cronExpr)
+
+        logger.debug { "rescheduleCron: new= $updatedTask, old= $task" }
     }
 }
