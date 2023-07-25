@@ -114,7 +114,7 @@ object HAScheduler {
                     val systemWasInHibernation = elapsedTime > interval.inWholeMilliseconds + HIBERNATION_THRESHOLD
                     if (systemWasInHibernation) {
                         logger.debug { "System hibernation detected, task was delayed by ${elapsedTime - interval.inWholeMilliseconds}ms" }
-                        scheduledTasks.forEach {
+                        scheduledTasks.toList().forEach {
                             val wasLastExecutionMissed = currentTime - it.getLastExecutionTime() - elapsedTime < 0
                             if (wasLastExecutionMissed) {
                                 logger.debug { "$it missed its execution, executing now..." }
