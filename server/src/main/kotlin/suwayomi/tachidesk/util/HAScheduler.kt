@@ -121,11 +121,10 @@ object HAScheduler {
 
                                 when (it) {
                                     is HATask -> reschedule(it.id, it.interval)
-                                    is HACronTask -> {
-                                        rescheduleCron(it.id, it.cronExpr)
-                                        it.execute()
-                                    }
+                                    is HACronTask -> rescheduleCron(it.id, it.cronExpr)
                                 }
+
+                                it.execute()
                             }
 
                             // queue is ordered by next execution time, thus, loop can be exited early
