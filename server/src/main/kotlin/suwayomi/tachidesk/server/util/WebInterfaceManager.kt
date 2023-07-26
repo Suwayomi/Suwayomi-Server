@@ -171,7 +171,9 @@ object WebInterfaceManager {
     }
 
     private fun checkForUpdate() {
+        preferences.putLong(lastWebUIUpdateCheckKey, System.currentTimeMillis())
         val localVersion = getLocalVersion(applicationDirs.webUIRoot)
+
         if (!isUpdateAvailable(localVersion)) {
             logger.debug { "checkForUpdate(${serverConfig.webUIFlavor}, $localVersion): local version is the latest one" }
             return
@@ -179,7 +181,6 @@ object WebInterfaceManager {
 
         logger.info { "checkForUpdate(${serverConfig.webUIFlavor}, $localVersion): An update is available, starting download..." }
         downloadLatestCompatibleVersion()
-        preferences.putLong(lastWebUIUpdateCheckKey, System.currentTimeMillis())
     }
 
     private fun getDownloadUrlFor(version: String): String {
