@@ -62,7 +62,7 @@ class HATask(id: String, val interval: Long, execute: () -> Unit, val timerTask:
 
     private fun getElapsedTimeOfCurrentInterval(): Long {
         val timeSinceFirstExecution = System.currentTimeMillis() - firstExecutionTime
-        return timeSinceFirstExecution % interval
+        return timeSinceFirstExecution.mod(interval)
     }
 
     override fun getLastExecutionTime(): Long {
