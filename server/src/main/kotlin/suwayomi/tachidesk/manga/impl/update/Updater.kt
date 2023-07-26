@@ -75,7 +75,7 @@ class Updater : IUpdater {
 
         val updateInterval = serverConfig.globalUpdateInterval.hours.coerceAtLeast(6.hours).inWholeMilliseconds
         val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
-        val timeToNextExecution = updateInterval - (System.currentTimeMillis() - lastAutomatedUpdate) % updateInterval
+        val timeToNextExecution = (updateInterval - (System.currentTimeMillis() - lastAutomatedUpdate)).mod(updateInterval)
 
         val wasPreviousUpdateTriggered = System.currentTimeMillis() - (if (lastAutomatedUpdate > 0) lastAutomatedUpdate else System.currentTimeMillis()) < updateInterval
         if (!wasPreviousUpdateTriggered) {
