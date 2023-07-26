@@ -184,6 +184,9 @@ fun applicationSetup() {
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
     Security.addProvider(BouncyCastleProvider())
 
+    // start automated global updates
+    updater.scheduleUpdateTask()
+
     // start automated backups
     ProtoBackupExport.scheduleAutomatedBackupTask()
 
