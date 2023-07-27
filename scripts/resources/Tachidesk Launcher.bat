@@ -1,0 +1,1 @@
+start "" jre/bin/javaw -jar Tachidesk-Launcher.jar

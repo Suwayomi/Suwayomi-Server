@@ -38,6 +38,8 @@ main() {
   trap "rm -rf $RELEASE_NAME/" RETURN
   mkdir "$RELEASE_NAME/"
 
+  download_launcher
+
   case "$OS" in
     debian-all)
       RELEASE="$RELEASE_NAME.deb"
@@ -152,6 +154,12 @@ move_release_to_output_dir() {
    mv "$RELEASE" "$OUTPUT_DIR/"
 }
 
+download_launcher() {
+  LAUNCHER_URL=$(curl -s "https://api.github.com/repos/Suwayomi/Tachidesk-Launcher/releases/latest" | grep "browser_download_url" | grep ".jar" | head -n 1 | cut -d '"' -f 4)
+  curl -L "$LAUNCHER_URL" -o "Tachidesk-Launcher.jar"
+  mv "Tachidesk-Launcher.jar" "$RELEASE_NAME/Tachidesk-Launcher.jar"
+}
+
 download_jre_and_electron() {
   if [ ! -f "$JRE" ]; then
     curl -L "$JRE_URL" -o "$JRE"
@@ -175,29 +183,23 @@ copy_linux_package_assets_to() {
   local output_dir
   output_dir="$(readlink -e "$1" || exit 1)"
 
-  cp "scripts/resources/pkg/tachidesk-server-browser-launcher.sh" "$output_dir/"
-  cp "scripts/resources/pkg/tachidesk-server-debug-launcher.sh" "$output_dir/"
-  cp "scripts/resources/pkg/tachidesk-server-electron-launcher.sh" "$output_dir/"
-  cp "scripts/resources/pkg/tachidesk-server.desktop" "$output_dir/"
+  cp "scripts/resources/pkg/tachidesk-launcher.sh" "$output_dir/"
+  cp "scripts/resources/pkg/tachidesk-launcher.desktop" "$output_dir/"
   cp "scripts/resources/pkg/systemd"/* "$output_dir/"
   cp "server/src/main/resources/icon/faviconlogo.png" \
     "$output_dir/tachidesk-server.png"
 }
 
 make_linux_bundle() {
-  cp "$JAR" "$RELEASE_NAME/Tachidesk-Server.jar"
-  cp "scripts/resources/tachidesk-server-browser-launcher.sh" "$RELEASE_NAME/"
-  cp "scripts/resources/tachidesk-server-debug-launcher.sh" "$RELEASE_NAME/"
-  cp "scripts/resources/tachidesk-server-electron-launcher.sh" "$RELEASE_NAME/"
+  cp "$JAR" "$RELEASE_NAME/bin/Tachidesk-Server.jar"
+  cp "scripts/resources/tachidesk-launcher.sh" "$RELEASE_NAME/"
 
   tar -I "gzip -9" -cvf "$RELEASE" "$RELEASE_NAME/"
 }
 
 make_macos_bundle() {
-  cp "$JAR" "$RELEASE_NAME/Tachidesk-Server.jar"
-  cp "scripts/resources/Tachidesk Browser Launcher.command" "$RELEASE_NAME/"
-  cp "scripts/resources/Tachidesk Debug Launcher.command" "$RELEASE_NAME/"
-  cp "scripts/resources/Tachidesk Electron Launcher.command" "$RELEASE_NAME/"
+  cp "$JAR" "$RELEASE_NAME/bin/Tachidesk-Server.jar"
+  cp "scripts/resources/Tachidesk Launcher.command" "$RELEASE_NAME/"
 
   zip -9 -r "$RELEASE" "$RELEASE_NAME/"
 }
@@ -257,10 +259,8 @@ make_windows_bundle() {
   #WINEARCH=win32 wine "$rcedit" "$RELEASE_NAME/electron/electron.exe" \
   #    --set-icon "$icon"
 
-  cp "$JAR" "$RELEASE_NAME/Tachidesk-Server.jar"
-  cp "scripts/resources/Tachidesk Browser Launcher.bat" "$RELEASE_NAME"
-  cp "scripts/resources/Tachidesk Debug Launcher.bat" "$RELEASE_NAME"
-  cp "scripts/resources/Tachidesk Electron Launcher.bat" "$RELEASE_NAME"
+  cp "$JAR" "$RELEASE_NAME/bin/Tachidesk-Server.jar"
+  cp "scripts/resources/Tachidesk Launcher.bat" "$RELEASE_NAME"
 
   zip -9 -r "$RELEASE" "$RELEASE_NAME"
 }
