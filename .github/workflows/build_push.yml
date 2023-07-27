@@ -3,7 +3,7 @@ name: CI build
 on:
   push:
     branches:
-      - master
+      - use_launcher
 
 jobs:
   check_wrapper:
@@ -123,80 +123,80 @@ jobs:
           path: upload/*
           if-no-files-found: error
 
-  release:
-    needs: bundle
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: jar
-          path: release
-      - uses: actions/download-artifact@v3
-        with:
-          name: debian-all
-          path: release
-      - uses: actions/download-artifact@v3
-        with:
-          name: linux-assets
-          path: release
-      - uses: actions/download-artifact@v3
-        with:
-          name: linux-x64
-          path: release
-      - uses: actions/download-artifact@v3
-        with:
-          name: macOS-x64
-          path: release
-      - uses: actions/download-artifact@v3
-        with:
-          name: macOS-arm64
-          path: release
-      - uses: actions/download-artifact@v3
-        with:
-          name: windows-x64
-          path: release
-      - uses: actions/download-artifact@v3
-        with:
-          name: windows-x86
-          path: release
-
-      - name: Checkout Preview branch
-        uses: actions/checkout@v3
-        with:
-          repository: "Suwayomi/Tachidesk-Server-preview"
-          ref: main
-          path: preview
-          token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
-
-      - name: Generate Tag Name
-        id: GenTagName
-        run: |
-          cd release
-          genTag=$(ls *.jar | sed -e's/Tachidesk-Server-\|.jar//g')
-          echo "$genTag"
-          echo "::set-output name=value::$genTag"
-
-      - name: Create Tag
-        run: |
-          TAG="${{ steps.GenTagName.outputs.value }}"
-          echo "tag: $TAG"
-          cd preview
-          echo "{ \"latest\": \"$TAG\" }" > index.json
-          git add index.json
-          git config --global user.email \
-            "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-          git commit -m "Updated to $TAG"
-          git push origin main
-
-          git tag $TAG
-          git push origin $TAG
-
-      - name: Upload Preview Release
-        uses: softprops/action-gh-release@v1
-        with:
-          token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
-          repository: "Suwayomi/Tachidesk-Server-preview"
-          tag_name:  ${{ steps.GenTagName.outputs.value }}
-          files: release/*
+#  release:
+#    needs: bundle
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/download-artifact@v3
+#        with:
+#          name: jar
+#          path: release
+#      - uses: actions/download-artifact@v3
+#        with:
+#          name: debian-all
+#          path: release
+#      - uses: actions/download-artifact@v3
+#        with:
+#          name: linux-assets
+#          path: release
+#      - uses: actions/download-artifact@v3
+#        with:
+#          name: linux-x64
+#          path: release
+#      - uses: actions/download-artifact@v3
+#        with:
+#          name: macOS-x64
+#          path: release
+#      - uses: actions/download-artifact@v3
+#        with:
+#          name: macOS-arm64
+#          path: release
+#      - uses: actions/download-artifact@v3
+#        with:
+#          name: windows-x64
+#          path: release
+#      - uses: actions/download-artifact@v3
+#        with:
+#          name: windows-x86
+#          path: release
+#
+#      - name: Checkout Preview branch
+#        uses: actions/checkout@v3
+#        with:
+#          repository: "Suwayomi/Tachidesk-Server-preview"
+#          ref: main
+#          path: preview
+#          token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
+#
+#      - name: Generate Tag Name
+#        id: GenTagName
+#        run: |
+#          cd release
+#          genTag=$(ls *.jar | sed -e's/Tachidesk-Server-\|.jar//g')
+#          echo "$genTag"
+#          echo "::set-output name=value::$genTag"
+#
+#      - name: Create Tag
+#        run: |
+#          TAG="${{ steps.GenTagName.outputs.value }}"
+#          echo "tag: $TAG"
+#          cd preview
+#          echo "{ \"latest\": \"$TAG\" }" > index.json
+#          git add index.json
+#          git config --global user.email \
+#            "github-actions[bot]@users.noreply.github.com"
+#          git config --global user.name "github-actions[bot]"
+#          git commit -m "Updated to $TAG"
+#          git push origin main
+#
+#          git tag $TAG
+#          git push origin $TAG
+#
+#      - name: Upload Preview Release
+#        uses: softprops/action-gh-release@v1
+#        with:
+#          token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
+#          repository: "Suwayomi/Tachidesk-Server-preview"
+#          tag_name:  ${{ steps.GenTagName.outputs.value }}
+#          files: release/*
 
