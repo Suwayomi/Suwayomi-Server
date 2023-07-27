@@ -213,6 +213,7 @@ make_deb_package() {
   local upstream_source="tachidesk-server_$RELEASE_VERSION.orig.tar.gz"
 
   mkdir "$RELEASE_NAME/$source_dir/"
+  mv "$RELEASE_NAME/Tachidesk-Launcher.jar" "$RELEASE_NAME/$source_dir/Tachidesk-Launcher.jar"
   cp "$JAR" "$RELEASE_NAME/$source_dir/Tachidesk-Server.jar"
   copy_linux_package_assets_to "$RELEASE_NAME/$source_dir/"
   tar -I "gzip" -C "$RELEASE_NAME/" -cvf "$upstream_source" "$source_dir"
