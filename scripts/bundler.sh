@@ -183,8 +183,8 @@ copy_linux_package_assets_to() {
   local output_dir
   output_dir="$(readlink -e "$1" || exit 1)"
 
-  cp "scripts/resources/pkg/tachidesk-launcher.sh" "$output_dir/"
-  cp "scripts/resources/pkg/tachidesk-launcher.desktop" "$output_dir/"
+  cp "scripts/resources/pkg/tachidesk-server.sh" "$output_dir/"
+  cp "scripts/resources/pkg/tachidesk-server.desktop" "$output_dir/"
   cp "scripts/resources/pkg/systemd"/* "$output_dir/"
   cp "server/src/main/resources/icon/faviconlogo.png" \
     "$output_dir/tachidesk-server.png"
@@ -278,12 +278,16 @@ make_windows_package() {
   | wixl-heat --var var.SourceDir -p "$RELEASE_NAME/" \
     --directory-ref electron --component-group electron >"$RELEASE_NAME/electron.wxs"
 
+  find "$RELEASE_NAME/bin" \
+  | wixl-heat --var var.SourceDir -p "$RELEASE_NAME/" \
+    --directory-ref bin --component-group bin >"$RELEASE_NAME/bin.wxs"
+
   local icon="server/src/main/resources/icon/faviconlogo.ico"
   local arch=${OS##*-}
 
   wixl -D ProductVersion="$RELEASE_VERSION" -D SourceDir="$RELEASE_NAME" \
     -D Icon="$icon" --arch "$arch" "scripts/resources/msi/tachidesk-server-$arch.wxs" \
-    "$RELEASE_NAME/jre.wxs" "$RELEASE_NAME/electron.wxs" -o "$RELEASE"
+    "$RELEASE_NAME/jre.wxs" "$RELEASE_NAME/electron.wxs" "$RELEASE_NAME/bin.wxs" -o "$RELEASE"
 }
 
 setup_playwright() {

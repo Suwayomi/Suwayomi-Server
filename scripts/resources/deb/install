@@ -8,4 +8,4 @@ tachidesk-server.service     usr/lib/systemd/system/
 tachidesk-server.sysusers => usr/lib/sysusers.d/tachidesk-server.conf
 tachidesk-server.tmpfiles => usr/lib/tmpfiles.d/tachidesk-server.conf
 tachidesk-server.conf     => etc/tachidesk/server.conf
-tachidesk-launcher.sh     => usr/bin/tachidesk-launcher
+tachidesk-server.sh       => usr/bin/tachidesk-server
