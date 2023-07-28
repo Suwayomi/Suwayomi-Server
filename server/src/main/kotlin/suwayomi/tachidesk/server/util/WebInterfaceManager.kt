@@ -118,6 +118,17 @@ object WebInterfaceManager {
                 checkForUpdate()
             }
 
+            // check if the bundled webUI version is a newer version than the current used version
+            // this could be the case in case no compatible webUI version is available and a newer server version was installed
+            val shouldUpdateToBundledVersion =
+                serverConfig.webUIFlavor == DEFAULT_WEB_UI && extractVersion(getLocalVersion(applicationDirs.webUIRoot)) < extractVersion(
+                    BuildConfig.WEBUI_TAG
+                )
+            if (shouldUpdateToBundledVersion) {
+                logger.debug { "Update to bundled version \"${BuildConfig.WEBUI_TAG}\"" }
+                extractBundledWebUI()
+            }
+
             return
         }
 
