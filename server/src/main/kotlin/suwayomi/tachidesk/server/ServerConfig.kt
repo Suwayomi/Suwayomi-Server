@@ -20,13 +20,14 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.SystemPropertyOverridableConfigModule
 import kotlin.reflect.KProperty
 
 val mutableConfigValueScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
 private const val MODULE_NAME = "server"
-class ServerConfig(getConfig: () -> Config, moduleName: String = MODULE_NAME) : SystemPropertyOverridableConfigModule(getConfig, moduleName) {
+class ServerConfig(getConfig: () -> Config, val moduleName: String = MODULE_NAME) : SystemPropertyOverridableConfigModule(getConfig, moduleName) {
     inner class OverrideConfigValue<T>(private val configAdapter: ConfigAdapter<T>) {
         private var flow: MutableStateFlow<T>? = null
 
@@ -40,8 +41,9 @@ class ServerConfig(getConfig: () -> Config, moduleName: String = MODULE_NAME) : 
             val stateFlow = MutableStateFlow(value)
             flow = stateFlow
 
-            stateFlow.drop(1).distinctUntilChanged().onEach { overridableConfig.setValue(thisRef, property, it as Any) }
-                .launchIn(mutableConfigValueScope)
+            stateFlow.drop(1).distinctUntilChanged().onEach {
+                GlobalConfigManager.updateValue("$moduleName.${property.name}", it as Any)
+            }.launchIn(mutableConfigValueScope)
 
             return stateFlow
         }
