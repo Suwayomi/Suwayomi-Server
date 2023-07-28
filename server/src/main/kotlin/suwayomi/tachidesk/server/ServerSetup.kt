@@ -28,7 +28,7 @@ import suwayomi.tachidesk.manga.impl.update.Updater
 import suwayomi.tachidesk.manga.impl.util.lang.renameTo
 import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
-import suwayomi.tachidesk.server.util.SystemTray.systemTray
+import suwayomi.tachidesk.server.util.SystemTray
 import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
 import xyz.nulldev.ts.config.ApplicationRootDir
@@ -61,8 +61,6 @@ class ApplicationDirs(
 }
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
-
-val systemTrayInstance by lazy { systemTray() }
 
 val androidCompat by lazy { AndroidCompat() }
 
@@ -174,13 +172,17 @@ fun applicationSetup() {
     LocalSource.register()
 
     // create system tray
-    if (serverConfig.systemTrayEnabled.value) {
+    serverConfig.subscribeTo(serverConfig.systemTrayEnabled, { systemTrayEnabled ->
         try {
-            systemTrayInstance
+            if (systemTrayEnabled) {
+                SystemTray.create()
+            } else {
+                SystemTray.remove()
+            }
         } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
             e.printStackTrace()
         }
-    }
+    }, ignoreInitialValue = false)
 
     // Disable jetty's logging
     System.setProperty("org.eclipse.jetty.util.log.announce", "false")

@@ -17,8 +17,10 @@ import suwayomi.tachidesk.server.util.Browser.openInBrowser
 import suwayomi.tachidesk.server.util.ExitCode.Success
 
 object SystemTray {
-    fun systemTray(): SystemTray? {
-        try {
+    private var instance: SystemTray? = null
+
+    fun create() {
+        instance = try {
             // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
             serverConfig.subscribeTo(
                 serverConfig.debugLogsEnabled,
@@ -32,7 +34,7 @@ object SystemTray {
                 SystemTray.FORCE_TRAY_TYPE = SystemTray.TrayType.Awt
             }
 
-            val systemTray = SystemTray.get(BuildConfig.NAME) ?: return null
+            val systemTray = SystemTray.get(BuildConfig.NAME)
             val mainMenu = systemTray.menu
 
             mainMenu.add(
@@ -55,10 +57,15 @@ object SystemTray {
                 }
             )
 
-            return systemTray
+            systemTray
         } catch (e: Exception) {
             e.printStackTrace()
-            return null
+            null
         }
+    }
+
+    fun remove() {
+        instance?.remove()
+        instance = null
     }
 }

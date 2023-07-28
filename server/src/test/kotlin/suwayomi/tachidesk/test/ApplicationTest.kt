@@ -127,7 +127,7 @@ open class ApplicationTest {
             // create system tray
             if (serverConfig.systemTrayEnabled.value) {
                 try {
-                    systemTrayInstance
+                    SystemTray.create()
                 } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
                     e.printStackTrace()
                 }
