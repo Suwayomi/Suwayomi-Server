@@ -129,9 +129,23 @@ object WebInterfaceManager {
      * Tries to download the latest compatible version for the selected webUI and falls back to the default webUI in case of errors.
      */
     private fun doInitialSetup() {
-        val downloadSucceeded = downloadLatestCompatibleVersion()
+        val isLocalWebUIValid = isLocalWebUIValid(applicationDirs.webUIRoot)
 
-        val fallbackToDefaultWebUI = !downloadSucceeded
+        /**
+         * Performs the download and returns if the download was successful.
+         *
+         * In case the download failed but the local webUI is valid the download is considered a success to prevent the fallback logic
+         */
+        val doDownload = {
+            try {
+                downloadLatestCompatibleVersion()
+            } catch (e: Exception) {
+                false
+            } || isLocalWebUIValid
+        }
+
+        // download the latest compatible version for the current selected webUI
+        val fallbackToDefaultWebUI = !doDownload()
         if (!fallbackToDefaultWebUI) {
             return
         }
@@ -141,7 +155,7 @@ object WebInterfaceManager {
 
             serverConfig.webUIFlavor = DEFAULT_WEB_UI
 
-            val fallbackToBundledVersion = !downloadLatestCompatibleVersion()
+            val fallbackToBundledVersion = !doDownload()
             if (!fallbackToBundledVersion) {
                 return
             }
@@ -287,11 +301,7 @@ object WebInterfaceManager {
     }
 
     fun downloadLatestCompatibleVersion(retryCount: Int = 0): Boolean {
-        val latestCompatibleVersion = try {
-            getLatestCompatibleVersion()
-        } catch (e: Exception) {
-            BuildConfig.WEBUI_TAG
-        }
+        val latestCompatibleVersion = getLatestCompatibleVersion()
 
         val webUIZip = "${WebUI.WEBUI.baseFileName}-$latestCompatibleVersion.zip"
         val webUIZipPath = "$tmpDir/$webUIZip"
