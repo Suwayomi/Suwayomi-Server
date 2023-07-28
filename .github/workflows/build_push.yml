@@ -30,8 +30,8 @@ jobs:
       - name: Checkout master branch
         uses: actions/checkout@v3
         with:
-          ref: use_launcher
-          path: use_launcher
+          ref: master
+          path: master
           fetch-depth: 0
 
       - name: Set up JDK 1.8
@@ -41,7 +41,7 @@ jobs:
 
       - name: Copy CI gradle.properties
         run: |
-          cd use_launcher
+          cd master
           mkdir -p ~/.gradle
           cp .github/runner-files/ci-gradle.properties ~/.gradle/gradle.properties
 
@@ -50,25 +50,25 @@ jobs:
         env:
           ProductBuildType: "Preview"
         with:
-          build-root-directory: use_launcher
+          build-root-directory: master
           arguments: :server:shadowJar --stacktrace
 
       - name: Upload Jar
         uses: actions/upload-artifact@v3
         with:
           name: jar
-          path: use_launcher/server/build/*.jar
+          path: master/server/build/*.jar
           if-no-files-found: error
 
       - name: Upload icons
         uses: actions/upload-artifact@v3
         with:
           name: icon
-          path: use_launcher/server/src/main/resources/icon
+          path: master/server/src/main/resources/icon
           if-no-files-found: error
 
       - name: Tar scripts dir to maintain file permissions
-        run: tar -cvzf scripts.tar.gz -C use_launcher/ scripts/
+        run: tar -cvzf scripts.tar.gz -C master/ scripts/
       - name: Upload scripts.tar.gz
         uses: actions/upload-artifact@v3
         with:
