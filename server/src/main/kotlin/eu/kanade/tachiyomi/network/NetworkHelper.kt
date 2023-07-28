@@ -20,7 +20,6 @@ import eu.kanade.tachiyomi.network.interceptor.UserAgentInterceptor
 import mu.KotlinLogging
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
-import suwayomi.tachidesk.server.serverConfig
 import java.net.CookieHandler
 import java.net.CookieManager
 import java.net.CookiePolicy
@@ -53,18 +52,16 @@ class NetworkHelper(context: Context) {
                 .callTimeout(2, TimeUnit.MINUTES)
                 .addInterceptor(UserAgentInterceptor())
 
-            if (serverConfig.debugLogsEnabled.value) {
-                val httpLoggingInterceptor = HttpLoggingInterceptor(object : HttpLoggingInterceptor.Logger {
-                    val logger = KotlinLogging.logger { }
+            val httpLoggingInterceptor = HttpLoggingInterceptor(object : HttpLoggingInterceptor.Logger {
+                val logger = KotlinLogging.logger { }
 
-                    override fun log(message: String) {
-                        logger.debug { message }
-                    }
-                }).apply {
-                    level = HttpLoggingInterceptor.Level.BASIC
+                override fun log(message: String) {
+                    logger.debug { message }
                 }
-                builder.addInterceptor(httpLoggingInterceptor)
+            }).apply {
+                level = HttpLoggingInterceptor.Level.BASIC
             }
+            builder.addInterceptor(httpLoggingInterceptor)
 
 //            when (preferences.dohProvider()) {
 //                PREF_DOH_CLOUDFLARE -> builder.dohCloudflare()
