@@ -12,6 +12,7 @@ import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.source.local.LocalSource
 import io.javalin.plugin.json.JavalinJackson
 import io.javalin.plugin.json.JsonMapper
+import kotlinx.coroutines.flow.combine
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -64,8 +65,7 @@ val systemTrayInstance by lazy { systemTray() }
 val androidCompat by lazy { AndroidCompat() }
 
 fun applicationSetup() {
-    Thread.setDefaultUncaughtExceptionHandler {
-            _, throwable ->
+    Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
         KotlinLogging.logger { }.error(throwable) { "unhandled exception" }
     }
 
@@ -178,11 +178,25 @@ fun applicationSetup() {
     System.setProperty("org.eclipse.jetty.LEVEL", "OFF")
 
     // socks proxy settings
-    if (serverConfig.socksProxyEnabled.value) {
-        System.getProperties()["socksProxyHost"] = serverConfig.socksProxyHost.value
-        System.getProperties()["socksProxyPort"] = serverConfig.socksProxyPort.value
-        logger.info("Socks Proxy is enabled to ${serverConfig.socksProxyHost.value}:${serverConfig.socksProxyPort.value}")
-    }
+    serverConfig.subscribeTo(
+        combine(
+            serverConfig.socksProxyEnabled,
+            serverConfig.socksProxyHost,
+            serverConfig.socksProxyPort
+        ) { proxyEnabled, proxyHost, proxyPort ->
+            Triple(proxyEnabled, proxyHost, proxyPort)
+        },
+        { (proxyEnabled, proxyHost, proxyPort) ->
+            logger.info("Socks Proxy changed - enabled= $proxyEnabled, proxy= $proxyHost:$proxyPort")
+            if (proxyEnabled) {
+                System.getProperties()["socksProxyHost"] = proxyHost
+                System.getProperties()["socksProxyPort"] = proxyPort
+            } else {
+                System.getProperties()["socksProxyHost"] = ""
+                System.getProperties()["socksProxyPort"] = ""
+            }
+        }
+    )
 
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
     Security.addProvider(BouncyCastleProvider())
