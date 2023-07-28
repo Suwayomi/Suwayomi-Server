@@ -185,6 +185,8 @@ copy_linux_package_assets_to() {
 
   cp "scripts/resources/pkg/tachidesk-server.sh" "$output_dir/"
   cp "scripts/resources/pkg/tachidesk-server.desktop" "$output_dir/"
+  cp "scripts/resources/pkg/tachidesk-launcher.sh" "$output_dir/"
+  cp "scripts/resources/pkg/tachidesk-launcher.desktop" "$output_dir/"
   cp "scripts/resources/pkg/systemd"/* "$output_dir/"
   cp "server/src/main/resources/icon/faviconlogo.png" \
     "$output_dir/tachidesk-server.png"
@@ -193,6 +195,7 @@ copy_linux_package_assets_to() {
 make_linux_bundle() {
   cp "$JAR" "$RELEASE_NAME/bin/Tachidesk-Server.jar"
   cp "scripts/resources/tachidesk-launcher.sh" "$RELEASE_NAME/"
+  cp "scripts/resources/tachidesk-server.sh" "$RELEASE_NAME/"
 
   tar -I "gzip -9" -cvf "$RELEASE" "$RELEASE_NAME/"
 }
