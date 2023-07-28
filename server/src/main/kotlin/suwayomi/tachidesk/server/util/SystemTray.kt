@@ -20,7 +20,11 @@ object SystemTray {
     fun systemTray(): SystemTray? {
         try {
             // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
-            SystemTray.DEBUG = serverConfig.debugLogsEnabled.value
+            serverConfig.subscribeTo(
+                serverConfig.debugLogsEnabled,
+                { debugLogsEnabled -> SystemTray.DEBUG = debugLogsEnabled },
+                ignoreInitialValue = false
+            )
 
             CacheUtil.clear(BuildConfig.NAME)
 

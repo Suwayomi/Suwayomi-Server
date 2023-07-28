@@ -7,6 +7,7 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import ch.qos.logback.classic.Level
 import com.typesafe.config.ConfigRenderOptions
 import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.source.local.LocalSource
@@ -34,6 +35,7 @@ import xyz.nulldev.ts.config.ApplicationRootDir
 import xyz.nulldev.ts.config.ConfigKodeinModule
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.initLoggerConfig
+import xyz.nulldev.ts.config.setLogLevel
 import java.io.File
 import java.security.Security
 import java.util.Locale
@@ -73,6 +75,14 @@ fun applicationSetup() {
     GlobalConfigManager.registerModule(
         ServerConfig.register { GlobalConfigManager.config }
     )
+
+    serverConfig.subscribeTo(serverConfig.debugLogsEnabled, { debugLogsEnabled ->
+        if (debugLogsEnabled) {
+            setLogLevel(Level.DEBUG)
+        } else {
+            setLogLevel(Level.INFO)
+        }
+    })
 
     // Application dirs
     val applicationDirs = ApplicationDirs()
