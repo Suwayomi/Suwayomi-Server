@@ -18,9 +18,12 @@ import io.swagger.v3.oas.models.info.Info
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.future.future
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
+import org.eclipse.jetty.server.Server
+import org.eclipse.jetty.server.ServerConnector
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
@@ -46,6 +49,25 @@ object JavalinSetup {
     }
 
     fun javalinSetup() {
+        val server = Server()
+        val connector = ServerConnector(server).apply {
+            host = serverConfig.ip.value
+            port = serverConfig.port.value
+        }
+        server.addConnector(connector)
+
+        serverConfig.subscribeTo(combine(serverConfig.ip, serverConfig.port) { ip, port -> Pair(ip, port) }, { (newIp, newPort) ->
+            val oldIp = connector.host
+            val oldPort = connector.port
+
+            connector.host = newIp
+            connector.port = newPort
+            connector.stop()
+            connector.start()
+
+            logger.info { "Server ip and/or port changed from $oldIp:$oldPort to $newIp:$newPort " }
+        })
+
         val app = Javalin.create { config ->
             if (serverConfig.webUIEnabled.value) {
                 runBlocking {
@@ -57,6 +79,8 @@ object JavalinSetup {
                 config.addSinglePageRoot("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
                 config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
             }
+
+            config.server { server }
 
             config.enableCorsForAllOrigins()
 
@@ -79,7 +103,7 @@ object JavalinSetup {
                     Browser.openInBrowser()
                 }
             }
-        }.start(serverConfig.ip.value, serverConfig.port.value)
+        }.start()
 
         // when JVM is prompted to shutdown, stop javalin gracefully
         Runtime.getRuntime().addShutdownHook(
