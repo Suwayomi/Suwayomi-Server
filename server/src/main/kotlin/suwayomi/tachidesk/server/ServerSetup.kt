@@ -45,10 +45,10 @@ class ApplicationDirs(
 ) {
     val cacheRoot = System.getProperty("java.io.tmpdir") + "/tachidesk"
     val extensionsRoot = "$dataRoot/extensions"
-    val downloadsRoot = serverConfig.downloadsPath.ifBlank { "$dataRoot/downloads" }
-    val localMangaRoot = serverConfig.localSourcePath.ifBlank { "$dataRoot/local" }
+    val downloadsRoot = serverConfig.downloadsPath.value.ifBlank { "$dataRoot/downloads" }
+    val localMangaRoot = serverConfig.localSourcePath.value.ifBlank { "$dataRoot/local" }
     val webUIRoot = "$dataRoot/webUI"
-    val automatedBackupRoot = serverConfig.backupPath.ifBlank { "$dataRoot/backups" }
+    val automatedBackupRoot = serverConfig.backupPath.value.ifBlank { "$dataRoot/backups" }
 
     val tempThumbnailCacheRoot = "$tempRoot/thumbnails"
     val tempMangaCacheRoot = "$tempRoot/manga-cache"
@@ -164,7 +164,7 @@ fun applicationSetup() {
     LocalSource.register()
 
     // create system tray
-    if (serverConfig.systemTrayEnabled) {
+    if (serverConfig.systemTrayEnabled.value) {
         try {
             systemTrayInstance
         } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
@@ -178,10 +178,10 @@ fun applicationSetup() {
     System.setProperty("org.eclipse.jetty.LEVEL", "OFF")
 
     // socks proxy settings
-    if (serverConfig.socksProxyEnabled) {
-        System.getProperties()["socksProxyHost"] = serverConfig.socksProxyHost
-        System.getProperties()["socksProxyPort"] = serverConfig.socksProxyPort
-        logger.info("Socks Proxy is enabled to ${serverConfig.socksProxyHost}:${serverConfig.socksProxyPort}")
+    if (serverConfig.socksProxyEnabled.value) {
+        System.getProperties()["socksProxyHost"] = serverConfig.socksProxyHost.value
+        System.getProperties()["socksProxyPort"] = serverConfig.socksProxyPort.value
+        logger.info("Socks Proxy is enabled to ${serverConfig.socksProxyHost.value}:${serverConfig.socksProxyPort.value}")
     }
 
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga

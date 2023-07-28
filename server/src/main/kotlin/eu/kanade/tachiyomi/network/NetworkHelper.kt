@@ -53,7 +53,7 @@ class NetworkHelper(context: Context) {
                 .callTimeout(2, TimeUnit.MINUTES)
                 .addInterceptor(UserAgentInterceptor())
 
-            if (serverConfig.debugLogsEnabled) {
+            if (serverConfig.debugLogsEnabled.value) {
                 val httpLoggingInterceptor = HttpLoggingInterceptor(object : HttpLoggingInterceptor.Logger {
                     val logger = KotlinLogging.logger { }
 

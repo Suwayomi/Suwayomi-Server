@@ -88,7 +88,7 @@ class ServerConfig(getConfig: () -> Config, moduleName: String = MODULE_NAME) : 
     val backupTTL: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
 
     // local source
-    val localSourcePath: String by overridableConfig
+    val localSourcePath: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
 
     companion object {
         fun register(getConfig: () -> Config) = ServerConfig({ getConfig().getConfig(MODULE_NAME) })

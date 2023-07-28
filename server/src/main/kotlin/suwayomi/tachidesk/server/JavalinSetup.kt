@@ -47,12 +47,12 @@ object JavalinSetup {
 
     fun javalinSetup() {
         val app = Javalin.create { config ->
-            if (serverConfig.webUIEnabled) {
+            if (serverConfig.webUIEnabled.value) {
                 runBlocking {
                     WebInterfaceManager.setupWebUI()
                 }
 
-                logger.info { "Serving web static files for ${serverConfig.webUIFlavor}" }
+                logger.info { "Serving web static files for ${serverConfig.webUIFlavor.value}" }
                 config.addStaticFiles(applicationDirs.webUIRoot, Location.EXTERNAL)
                 config.addSinglePageRoot("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
                 config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
@@ -63,10 +63,10 @@ object JavalinSetup {
             config.accessManager { handler, ctx, _ ->
                 fun credentialsValid(): Boolean {
                     val (username, password) = ctx.basicAuthCredentials()
-                    return username == serverConfig.basicAuthUsername && password == serverConfig.basicAuthPassword
+                    return username == serverConfig.basicAuthUsername.value && password == serverConfig.basicAuthPassword.value
                 }
 
-                if (serverConfig.basicAuthEnabled && !(ctx.basicAuthCredentialsExist() && credentialsValid())) {
+                if (serverConfig.basicAuthEnabled.value && !(ctx.basicAuthCredentialsExist() && credentialsValid())) {
                     ctx.header("WWW-Authenticate", "Basic")
                     ctx.status(401).json("Unauthorized")
                 } else {
@@ -75,11 +75,11 @@ object JavalinSetup {
             }
         }.events { event ->
             event.serverStarted {
-                if (serverConfig.initialOpenInBrowserEnabled) {
+                if (serverConfig.initialOpenInBrowserEnabled.value) {
                     Browser.openInBrowser()
                 }
             }
-        }.start(serverConfig.ip, serverConfig.port)
+        }.start(serverConfig.ip.value, serverConfig.port.value)
 
         // when JVM is prompted to shutdown, stop javalin gracefully
         Runtime.getRuntime().addShutdownHook(
