@@ -72,7 +72,6 @@ object DownloadManager {
 
         if (downloadQueue.size > 0) {
             logger.info { "restoreAndResumeDownloads: Restored download queue, starting downloads..." }
-            start()
         }
     }
 

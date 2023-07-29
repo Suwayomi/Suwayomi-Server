@@ -226,7 +226,6 @@ object Chapter {
         logger.info { "downloadNewChapters($mangaId): Downloading \"${chapterIdsToDownload.size}\" new chapter(s)..." }
 
         DownloadManager.enqueue(EnqueueInput(chapterIdsToDownload))
-        DownloadManager.start()
     }
 
     fun modifyChapter(
