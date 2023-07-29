@@ -29,6 +29,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.subscriptions.downloadSubscriptionSource
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
+import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Error
 import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
 import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
@@ -150,9 +151,12 @@ object DownloadManager {
         scope.launch {
             downloaderWatch.sample(1.seconds).collect {
                 val runningDownloaders = downloaders.values.filter { it.isActive }
-                logger.info { "Running: ${runningDownloaders.size}, Queued: ${downloadQueue.size}" }
+                val availableDownloads = downloadQueue.filter { it.state != Error }
+
+                logger.info { "Running: ${runningDownloaders.size}, Queued: ${availableDownloads.size}, Failed: ${downloadQueue.size - availableDownloads.size}" }
+
                 if (runningDownloaders.size < MAX_SOURCES_IN_PARAllEL) {
-                    downloadQueue.asSequence()
+                    availableDownloads.asSequence()
                         .map { it.manga.sourceId }
                         .distinct()
                         .minus(
