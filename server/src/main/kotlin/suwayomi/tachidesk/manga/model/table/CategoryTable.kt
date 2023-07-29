@@ -8,7 +8,9 @@ package suwayomi.tachidesk.manga.model.table
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.ResultRow
+import suwayomi.tachidesk.global.model.table.UserTable
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.IncludeInUpdate
@@ -18,6 +20,7 @@ object CategoryTable : IntIdTable() {
     val order = integer("order").default(0)
     val isDefault = bool("is_default").default(false)
     val includeInUpdate = integer("include_in_update").default(IncludeInUpdate.UNSET.value)
+    val user = reference("user", UserTable, ReferenceOption.CASCADE)
 }
 
 fun CategoryTable.toDataClass(categoryEntry: ResultRow) = CategoryDataClass(
@@ -25,7 +28,7 @@ fun CategoryTable.toDataClass(categoryEntry: ResultRow) = CategoryDataClass(
     categoryEntry[order],
     categoryEntry[name],
     categoryEntry[isDefault],
-    Category.getCategorySize(categoryEntry[id].value),
+    Category.getCategorySize(categoryEntry[user].value, categoryEntry[id].value),
     IncludeInUpdate.fromValue(categoryEntry[includeInUpdate]),
-    Category.getCategoryMetaMap(categoryEntry[id].value)
+    Category.getCategoryMetaMap(categoryEntry[user].value, categoryEntry[id].value)
 )

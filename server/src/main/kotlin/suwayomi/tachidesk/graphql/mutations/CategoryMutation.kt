@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
@@ -9,9 +10,9 @@ import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
-import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.CategoryMetaType
 import suwayomi.tachidesk.graphql.types.CategoryType
 import suwayomi.tachidesk.graphql.types.MangaType
@@ -23,6 +24,9 @@ import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.user.requireUser
 
 class CategoryMutation {
     data class SetCategoryMetaInput(
@@ -34,11 +38,13 @@ class CategoryMutation {
         val meta: CategoryMetaType
     )
     fun setCategoryMeta(
+        dataFetchingEnvironment: DataFetchingEnvironment,
         input: SetCategoryMetaInput
     ): SetCategoryMetaPayload {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, meta) = input
 
-        Category.modifyMeta(meta.categoryId, meta.key, meta.value)
+        Category.modifyMeta(userId, meta.categoryId, meta.key, meta.value)
 
         return SetCategoryMetaPayload(clientMutationId, meta)
     }
@@ -54,15 +60,24 @@ class CategoryMutation {
         val category: CategoryType
     )
     fun deleteCategoryMeta(
+        dataFetchingEnvironment: DataFetchingEnvironment,
         input: DeleteCategoryMetaInput
     ): DeleteCategoryMetaPayload {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, categoryId, key) = input
 
         val (meta, category) = transaction {
-            val meta = CategoryMetaTable.select { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
-                .firstOrNull()
+            val meta = CategoryMetaTable.select {
+                CategoryMetaTable.user eq userId and
+                    (CategoryMetaTable.ref eq categoryId) and
+                    (CategoryMetaTable.key eq key)
+            }.firstOrNull()
 
-            CategoryMetaTable.deleteWhere { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
+            CategoryMetaTable.deleteWhere {
+                CategoryMetaTable.user eq userId and
+                    (CategoryMetaTable.ref eq categoryId) and
+                    (CategoryMetaTable.key eq key)
+            }
 
             val category = transaction {
                 CategoryType(CategoryTable.select { CategoryTable.id eq categoryId }.first())
@@ -104,24 +119,24 @@ class CategoryMutation {
         val patch: UpdateCategoryPatch
     )
 
-    private fun updateCategories(ids: List<Int>, patch: UpdateCategoryPatch) {
+    private fun updateCategories(userId: Int, ids: List<Int>, patch: UpdateCategoryPatch) {
         transaction {
             if (patch.name != null) {
-                CategoryTable.update({ CategoryTable.id inList ids }) { update ->
+                CategoryTable.update({ CategoryTable.id inList ids and (CategoryTable.user eq userId) }) { update ->
                     patch.name.also {
                         update[name] = it
                     }
                 }
             }
             if (patch.default != null) {
-                CategoryTable.update({ CategoryTable.id inList ids }) { update ->
+                CategoryTable.update({ CategoryTable.id inList ids and (CategoryTable.user eq userId) }) { update ->
                     patch.default.also {
                         update[isDefault] = it
                     }
                 }
             }
             if (patch.includeInUpdate != null) {
-                CategoryTable.update({ CategoryTable.id inList ids }) { update ->
+                CategoryTable.update({ CategoryTable.id inList ids and (CategoryTable.user eq userId) }) { update ->
                     patch.includeInUpdate.also {
                         update[includeInUpdate] = it.value
                     }
@@ -130,10 +145,14 @@ class CategoryMutation {
         }
     }
 
-    fun updateCategory(input: UpdateCategoryInput): UpdateCategoryPayload {
+    fun updateCategory(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateCategoryInput
+    ): UpdateCategoryPayload {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, id, patch) = input
 
-        updateCategories(listOf(id), patch)
+        updateCategories(userId, listOf(id), patch)
 
         val category = transaction {
             CategoryType(CategoryTable.select { CategoryTable.id eq id }.first())
@@ -145,10 +164,14 @@ class CategoryMutation {
         )
     }
 
-    fun updateCategories(input: UpdateCategoriesInput): UpdateCategoriesPayload {
+    fun updateCategories(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateCategoriesInput
+    ): UpdateCategoriesPayload {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, ids, patch) = input
 
-        updateCategories(ids, patch)
+        updateCategories(userId, ids, patch)
 
         val categories = transaction {
             CategoryTable.select { CategoryTable.id inList ids }.map { CategoryType(it) }
@@ -170,7 +193,11 @@ class CategoryMutation {
         val position: Int
     )
 
-    fun updateCategoryOrder(input: UpdateCategoryOrderInput): UpdateCategoryOrderPayload {
+    fun updateCategoryOrder(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateCategoryOrderInput
+    ): UpdateCategoryOrderPayload {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, categoryId, position) = input
         require(position > 0) {
             "'order' must not be <= 0"
@@ -178,30 +205,30 @@ class CategoryMutation {
 
         transaction {
             val currentOrder = CategoryTable
-                .select { CategoryTable.id eq categoryId }
+                .select { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }
                 .first()[CategoryTable.order]
 
             if (currentOrder != position) {
                 if (position < currentOrder) {
-                    CategoryTable.update({ CategoryTable.order greaterEq position }) {
+                    CategoryTable.update({ CategoryTable.order greaterEq position and (CategoryTable.user eq userId) }) {
                         it[CategoryTable.order] = CategoryTable.order + 1
                     }
                 } else {
-                    CategoryTable.update({ CategoryTable.order lessEq position }) {
+                    CategoryTable.update({ CategoryTable.order lessEq position and (CategoryTable.user eq userId) }) {
                         it[CategoryTable.order] = CategoryTable.order - 1
                     }
                 }
 
-                CategoryTable.update({ CategoryTable.id eq categoryId }) {
+                CategoryTable.update({ CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }) {
                     it[CategoryTable.order] = position
                 }
             }
         }
 
-        Category.normalizeCategories()
+        Category.normalizeCategories(userId)
 
         val categories = transaction {
-            CategoryTable.selectAll().orderBy(CategoryTable.order).map { CategoryType(it) }
+            CategoryTable.select { CategoryTable.user eq userId }.orderBy(CategoryTable.order).map { CategoryType(it) }
         }
 
         return UpdateCategoryOrderPayload(
@@ -222,11 +249,13 @@ class CategoryMutation {
         val category: CategoryType
     )
     fun createCategory(
+        dataFetchingEnvironment: DataFetchingEnvironment,
         input: CreateCategoryInput
     ): CreateCategoryPayload {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, name, order, default, includeInUpdate) = input
         transaction {
-            require(CategoryTable.select { CategoryTable.name eq input.name }.isEmpty()) {
+            require(CategoryTable.select { CategoryTable.name eq input.name and (CategoryTable.user eq userId) }.isEmpty()) {
                 "'name' must be unique"
             }
         }
@@ -241,12 +270,13 @@ class CategoryMutation {
 
         val category = transaction {
             if (order != null) {
-                CategoryTable.update({ CategoryTable.order greaterEq order }) {
+                CategoryTable.update({ CategoryTable.order greaterEq order and (CategoryTable.user eq userId) }) {
                     it[CategoryTable.order] = CategoryTable.order + 1
                 }
             }
 
             val id = CategoryTable.insertAndGetId {
+                it[CategoryTable.user] = userId
                 it[CategoryTable.name] = input.name
                 it[CategoryTable.order] = order ?: Int.MAX_VALUE
                 if (default != null) {
@@ -257,9 +287,9 @@ class CategoryMutation {
                 }
             }
 
-            Category.normalizeCategories()
+            Category.normalizeCategories(userId)
 
-            CategoryType(CategoryTable.select { CategoryTable.id eq id }.first())
+            CategoryType(CategoryTable.select { CategoryTable.id eq id and (CategoryTable.user eq userId) }.first())
         }
 
         return CreateCategoryPayload(clientMutationId, category)
@@ -275,8 +305,10 @@ class CategoryMutation {
         val mangas: List<MangaType>
     )
     fun deleteCategory(
+        dataFetchingEnvironment: DataFetchingEnvironment,
         input: DeleteCategoryInput
     ): DeleteCategoryPayload {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, categoryId) = input
         if (categoryId == 0) { // Don't delete default category
             return DeleteCategoryPayload(
@@ -287,18 +319,18 @@ class CategoryMutation {
         }
 
         val (category, mangas) = transaction {
-            val category = CategoryTable.select { CategoryTable.id eq categoryId }
+            val category = CategoryTable.select { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }
                 .firstOrNull()
 
             val mangas = transaction {
-                MangaTable.innerJoin(CategoryMangaTable)
-                    .select { CategoryMangaTable.category eq categoryId }
+                MangaTable.getWithUserData(userId).innerJoin(CategoryMangaTable)
+                    .select { CategoryMangaTable.category eq categoryId and (CategoryMangaTable.user eq userId) }
                     .map { MangaType(it) }
             }
 
-            CategoryTable.deleteWhere { CategoryTable.id eq categoryId }
+            CategoryTable.deleteWhere { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }
 
-            Category.normalizeCategories()
+            Category.normalizeCategories(userId)
 
             if (category != null) {
                 CategoryType(category)
@@ -336,13 +368,15 @@ class CategoryMutation {
         val patch: UpdateMangaCategoriesPatch
     )
 
-    private fun updateMangas(ids: List<Int>, patch: UpdateMangaCategoriesPatch) {
+    private fun updateMangas(userId: Int, ids: List<Int>, patch: UpdateMangaCategoriesPatch) {
         transaction {
             if (patch.clearCategories == true) {
-                CategoryMangaTable.deleteWhere { CategoryMangaTable.manga inList ids }
+                CategoryMangaTable.deleteWhere { CategoryMangaTable.manga inList ids and (CategoryMangaTable.user eq userId) }
             } else if (!patch.removeFromCategories.isNullOrEmpty()) {
                 CategoryMangaTable.deleteWhere {
-                    (CategoryMangaTable.manga inList ids) and (CategoryMangaTable.category inList patch.removeFromCategories)
+                    (CategoryMangaTable.manga inList ids) and
+                        (CategoryMangaTable.category inList patch.removeFromCategories) and
+                        (CategoryMangaTable.user eq userId)
                 }
             }
             if (!patch.addToCategories.isNullOrEmpty()) {
@@ -350,7 +384,9 @@ class CategoryMutation {
                     ids.forEach { mangaId ->
                         patch.addToCategories.forEach { categoryId ->
                             val existingMapping = CategoryMangaTable.select {
-                                (CategoryMangaTable.manga eq mangaId) and (CategoryMangaTable.category eq categoryId)
+                                (CategoryMangaTable.manga eq mangaId) and
+                                    (CategoryMangaTable.category eq categoryId) and
+                                    (CategoryMangaTable.user eq userId)
                             }.isNotEmpty()
 
                             if (!existingMapping) {
@@ -363,18 +399,23 @@ class CategoryMutation {
                 CategoryMangaTable.batchInsert(newCategories) { (manga, category) ->
                     this[CategoryMangaTable.manga] = manga
                     this[CategoryMangaTable.category] = category
+                    this[CategoryMangaTable.user] = userId
                 }
             }
         }
     }
 
-    fun updateMangaCategories(input: UpdateMangaCategoriesInput): UpdateMangaCategoriesPayload {
+    fun updateMangaCategories(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateMangaCategoriesInput
+    ): UpdateMangaCategoriesPayload {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, id, patch) = input
 
-        updateMangas(listOf(id), patch)
+        updateMangas(userId, listOf(id), patch)
 
         val manga = transaction {
-            MangaType(MangaTable.select { MangaTable.id eq id }.first())
+            MangaType(MangaTable.getWithUserData(userId).select { MangaTable.id eq id }.first())
         }
 
         return UpdateMangaCategoriesPayload(
@@ -383,13 +424,17 @@ class CategoryMutation {
         )
     }
 
-    fun updateMangasCategories(input: UpdateMangasCategoriesInput): UpdateMangasCategoriesPayload {
+    fun updateMangasCategories(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateMangasCategoriesInput
+    ): UpdateMangasCategoriesPayload {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, ids, patch) = input
 
-        updateMangas(ids, patch)
+        updateMangas(userId, ids, patch)
 
         val mangas = transaction {
-            MangaTable.select { MangaTable.id inList ids }.map { MangaType(it) }
+            MangaTable.getWithUserData(userId).select { MangaTable.id inList ids }.map { MangaType(it) }
         }
 
         return UpdateMangasCategoriesPayload(

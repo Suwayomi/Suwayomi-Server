@@ -15,7 +15,7 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
 import suwayomi.tachidesk.graphql.queries.filter.Filter
@@ -24,6 +24,7 @@ import suwayomi.tachidesk.graphql.queries.filter.OpAnd
 import suwayomi.tachidesk.graphql.queries.filter.StringFilter
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
@@ -33,10 +34,13 @@ import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.GlobalMetaNodeList
 import suwayomi.tachidesk.graphql.types.GlobalMetaType
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class MetaQuery {
     fun meta(dataFetchingEnvironment: DataFetchingEnvironment, key: String): CompletableFuture<GlobalMetaType?> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         return dataFetchingEnvironment.getValueFromDataLoader<String, GlobalMetaType?>("GlobalMetaDataLoader", key)
     }
 
@@ -96,6 +100,7 @@ class MetaQuery {
     }
 
     fun metas(
+        dataFetchingEnvironment: DataFetchingEnvironment,
         condition: MetaCondition? = null,
         filter: MetaFilter? = null,
         orderBy: MetaOrderBy? = null,
@@ -106,8 +111,9 @@ class MetaQuery {
         last: Int? = null,
         offset: Int? = null
     ): GlobalMetaNodeList {
+        val userId = dataFetchingEnvironment.graphQlContext.getAttribute(Attribute.TachideskUser).requireUser()
         val queryResults = transaction {
-            val res = GlobalMetaTable.selectAll()
+            val res = GlobalMetaTable.select { GlobalMetaTable.user eq userId }
 
             res.applyOps(condition, filter)
 

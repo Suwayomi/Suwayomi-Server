@@ -7,35 +7,36 @@
 
 package suwayomi.tachidesk.graphql.server
 
-import com.expediagroup.graphql.generator.execution.GraphQLContext
+import com.expediagroup.graphql.generator.extensions.toGraphQLContext
 import com.expediagroup.graphql.server.execution.GraphQLContextFactory
+import graphql.GraphQLContext
+import graphql.schema.DataFetchingEnvironment
 import io.javalin.http.Context
 import io.javalin.websocket.WsContext
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 
 /**
  * Custom logic for how Tachidesk should create its context given the [Context]
  */
-class TachideskGraphQLContextFactory : GraphQLContextFactory<GraphQLContext, Context> {
-    override suspend fun generateContextMap(request: Context): Map<*, Any> = emptyMap<Any, Any>()
-//        mutableMapOf<Any, Any>(
-//            "user" to User(
-//                email = "fake@site.com",
-//                firstName = "Someone",
-//                lastName = "You Don't know",
-//                universityId = 4
-//            )
-//        ).also { map ->
-//            request.headers["my-custom-header"]?.let { customHeader ->
-//                map["customHeader"] = customHeader
-//            }
-//        }
+class TachideskGraphQLContextFactory : GraphQLContextFactory<Context> {
+    override suspend fun generateContext(request: Context): GraphQLContext {
+        return mapOf(
+            Context::class to request,
+            request.getPair(Attribute.TachideskUser)
+        ).toGraphQLContext()
+    }
+
+    private fun <T : Any> Context.getPair(attribute: Attribute<T>) =
+        attribute to getAttribute(attribute)
 
     fun generateContextMap(request: WsContext): Map<*, Any> = emptyMap<Any, Any>()
 }
 
-/**
- * Create a [GraphQLContext] from [this] map
- * @return a new [GraphQLContext]
- */
-fun Map<*, Any?>.toGraphQLContext(): graphql.GraphQLContext =
-    graphql.GraphQLContext.of(this)
+fun <T : Any> GraphQLContext.getAttribute(attribute: Attribute<T>): T {
+    return get(attribute)
+}
+
+fun <T : Any> DataFetchingEnvironment.getAttribute(attribute: Attribute<T>): T {
+    return graphQlContext.get(attribute)
+}

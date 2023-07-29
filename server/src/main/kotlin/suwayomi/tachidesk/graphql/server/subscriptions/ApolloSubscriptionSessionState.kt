@@ -7,6 +7,7 @@
 
 package suwayomi.tachidesk.graphql.server.subscriptions
 
+import com.expediagroup.graphql.generator.extensions.toGraphQLContext
 import graphql.GraphQLContext
 import io.javalin.websocket.WsContext
 import kotlinx.coroutines.Job
@@ -15,7 +16,6 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.onCompletion
 import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ServerMessages.GQL_COMPLETE
-import suwayomi.tachidesk.graphql.server.toGraphQLContext
 import java.util.concurrent.ConcurrentHashMap
 
 internal class ApolloSubscriptionSessionState {

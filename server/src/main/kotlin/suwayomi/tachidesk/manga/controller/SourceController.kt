@@ -21,7 +21,10 @@ import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.Source.SourcePreferenceChange
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.queryParam
@@ -37,6 +40,7 @@ object SourceController {
             }
         },
         behaviorOf = { ctx ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
             ctx.json(Source.getSourceList())
         },
         withResults = {
@@ -54,6 +58,7 @@ object SourceController {
             }
         },
         behaviorOf = { ctx, sourceId ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
             ctx.json(Source.getSource(sourceId)!!)
         },
         withResults = {
@@ -73,9 +78,10 @@ object SourceController {
             }
         },
         behaviorOf = { ctx, sourceId, pageNum ->
+            val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
             ctx.future(
                 future {
-                    MangaList.getMangaList(sourceId, pageNum, popular = true)
+                    MangaList.getMangaList(userId, sourceId, pageNum, popular = true)
                 }
             )
         },
@@ -95,9 +101,10 @@ object SourceController {
             }
         },
         behaviorOf = { ctx, sourceId, pageNum ->
+            val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
             ctx.future(
                 future {
-                    MangaList.getMangaList(sourceId, pageNum, popular = false)
+                    MangaList.getMangaList(userId, sourceId, pageNum, popular = false)
                 }
             )
         },
@@ -116,6 +123,7 @@ object SourceController {
             }
         },
         behaviorOf = { ctx, sourceId ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
             ctx.json(Source.getSourcePreferences(sourceId))
         },
         withResults = {
@@ -134,6 +142,7 @@ object SourceController {
             body<SourcePreferenceChange>()
         },
         behaviorOf = { ctx, sourceId ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
             val preferenceChange = ctx.bodyAsClass(SourcePreferenceChange::class.java)
             ctx.json(Source.setSourcePreference(sourceId, preferenceChange.position, preferenceChange.value))
         },
@@ -153,6 +162,7 @@ object SourceController {
             }
         },
         behaviorOf = { ctx, sourceId, reset ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
             ctx.json(Search.getFilterList(sourceId, reset))
         },
         withResults = {
@@ -174,6 +184,7 @@ object SourceController {
             body<Array<FilterChange>>()
         },
         behaviorOf = { ctx, sourceId ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
             val filterChange = try {
                 json.decodeFromString<List<FilterChange>>(ctx.body())
             } catch (e: Exception) {
@@ -199,7 +210,8 @@ object SourceController {
             }
         },
         behaviorOf = { ctx, sourceId, searchTerm, pageNum ->
-            ctx.future(future { Search.sourceSearch(sourceId, searchTerm, pageNum) })
+            val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+            ctx.future(future { Search.sourceSearch(userId, sourceId, searchTerm, pageNum) })
         },
         withResults = {
             json<PagedMangaListDataClass>(HttpCode.OK)
@@ -218,8 +230,9 @@ object SourceController {
             body<FilterData>()
         },
         behaviorOf = { ctx, sourceId, pageNum ->
+            val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
             val filter = json.decodeFromString<FilterData>(ctx.body())
-            ctx.future(future { Search.sourceFilter(sourceId, pageNum, filter) })
+            ctx.future(future { Search.sourceFilter(userId, sourceId, pageNum, filter) })
         },
         withResults = {
             json<PagedMangaListDataClass>(HttpCode.OK)

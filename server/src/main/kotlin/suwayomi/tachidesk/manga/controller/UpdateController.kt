@@ -13,7 +13,10 @@ import suwayomi.tachidesk.manga.impl.update.UpdateStatus
 import suwayomi.tachidesk.manga.impl.update.UpdaterSocket
 import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.formParam
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
@@ -39,9 +42,10 @@ object UpdateController {
             }
         },
         behaviorOf = { ctx, pageNum ->
+            val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
             ctx.future(
                 future {
-                    Chapter.getRecentChapters(pageNum)
+                    Chapter.getRecentChapters(userId, pageNum)
                 }
             )
         },
@@ -65,12 +69,13 @@ object UpdateController {
             }
         },
         behaviorOf = { ctx, categoryId ->
+            val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
             val updater by DI.global.instance<IUpdater>()
             if (categoryId == null) {
                 logger.info { "Adding Library to Update Queue" }
-                updater.addCategoriesToUpdateQueue(Category.getCategoryList(), true)
+                updater.addCategoriesToUpdateQueue(Category.getCategoryList(userId), true)
             } else {
-                val category = Category.getCategoryById(categoryId)
+                val category = Category.getCategoryById(userId, categoryId)
                 if (category != null) {
                     updater.addCategoriesToUpdateQueue(listOf(category), true)
                 } else {
@@ -105,6 +110,7 @@ object UpdateController {
             }
         },
         behaviorOf = { ctx ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
             val updater by DI.global.instance<IUpdater>()
             ctx.json(updater.status.value)
         },
@@ -121,6 +127,7 @@ object UpdateController {
             }
         },
         behaviorOf = { ctx ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
             val updater by DI.global.instance<IUpdater>()
             logger.info { "Resetting Updater" }
             ctx.future(

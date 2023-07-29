@@ -16,7 +16,10 @@ import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.withOperation
@@ -46,7 +49,8 @@ object DownloadController {
                 description("Start the downloader")
             }
         },
-        behaviorOf = {
+        behaviorOf = { ctx ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
             DownloadManager.start()
         },
         withResults = {
@@ -63,6 +67,7 @@ object DownloadController {
             }
         },
         behaviorOf = { ctx ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
             ctx.future(
                 future { DownloadManager.stop() }
             )
@@ -81,6 +86,7 @@ object DownloadController {
             }
         },
         behaviorOf = { ctx ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
             ctx.future(
                 future { DownloadManager.clear() }
             )
@@ -101,6 +107,7 @@ object DownloadController {
             }
         },
         behaviorOf = { ctx, chapterIndex, mangaId ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
             ctx.future(
                 future {
                     DownloadManager.enqueueWithChapterIndex(mangaId, chapterIndex)
@@ -122,6 +129,7 @@ object DownloadController {
             body<EnqueueInput>()
         },
         behaviorOf = { ctx ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
             val inputs = json.decodeFromString<EnqueueInput>(ctx.body())
             ctx.future(
                 future {
@@ -144,6 +152,7 @@ object DownloadController {
             body<EnqueueInput>()
         },
         behaviorOf = { ctx ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
             val input = json.decodeFromString<EnqueueInput>(ctx.body())
             ctx.future(
                 future {
@@ -167,6 +176,7 @@ object DownloadController {
             }
         },
         behaviorOf = { ctx, chapterIndex, mangaId ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
             DownloadManager.unqueue(chapterIndex, mangaId)
 
             ctx.status(200)
@@ -187,7 +197,8 @@ object DownloadController {
                 description("Reorder chapter in download queue")
             }
         },
-        behaviorOf = { _, chapterIndex, mangaId, to ->
+        behaviorOf = { ctx, chapterIndex, mangaId, to ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
             DownloadManager.reorder(chapterIndex, mangaId, to)
         },
         withResults = {

@@ -62,7 +62,7 @@ class Updater : IUpdater {
         }
 
         logger.info { "Trigger global update (interval= ${serverConfig.globalUpdateInterval}h, lastAutomatedUpdate= ${Date(lastAutomatedUpdate)})" }
-        addCategoriesToUpdateQueue(Category.getCategoryList(), true)
+        addCategoriesToUpdateQueue(Category.getCategoryList(1), true) // todo USER_ACCOUNTS: decide what do with updating user libraries
     }
 
     fun scheduleUpdateTask() {
@@ -115,7 +115,7 @@ class Updater : IUpdater {
         _status.update { UpdateStatus(tracker.values.toList(), true) }
         tracker[job.manga.id] = try {
             logger.info { "Updating \"${job.manga.title}\" (source: ${job.manga.sourceId})" }
-            Chapter.getChapterList(job.manga.id, true)
+            Chapter.getChapterList(0, job.manga.id, true)
             job.copy(status = JobStatus.COMPLETE)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
@@ -140,9 +140,9 @@ class Updater : IUpdater {
         logger.debug { "Updating categories: '${categoriesToUpdate.joinToString("', '") { it.name }}'" }
 
         val categoriesToUpdateMangas = categoriesToUpdate
-            .flatMap { CategoryManga.getCategoryMangaList(it.id) }
+            .flatMap { CategoryManga.getCategoryMangaList(1, it.id) } // todo USER_ACCOUNTS: decide what do with updating user libraries
             .distinctBy { it.id }
-        val mangasToCategoriesMap = CategoryManga.getMangasCategories(categoriesToUpdateMangas.map { it.id })
+        val mangasToCategoriesMap = CategoryManga.getMangasCategories(1, categoriesToUpdateMangas.map { it.id }) // todo USER_ACCOUNTS: decide what do with updating user libraries
         val mangasToUpdate = categoriesToUpdateMangas
             .asSequence()
             .filter { it.updateStrategy == UpdateStrategy.ALWAYS_UPDATE }

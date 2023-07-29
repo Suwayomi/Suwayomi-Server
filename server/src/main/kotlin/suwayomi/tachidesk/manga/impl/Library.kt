@@ -13,24 +13,38 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Manga.getManga
+import suwayomi.tachidesk.manga.impl.util.lang.isEmpty
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
-import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import java.time.Instant
 
 object Library {
-    suspend fun addMangaToLibrary(mangaId: Int) {
-        val manga = getManga(mangaId)
+    suspend fun addMangaToLibrary(userId: Int, mangaId: Int) {
+        val manga = getManga(userId, mangaId)
         if (!manga.inLibrary) {
             transaction {
                 val defaultCategories = CategoryTable.select {
-                    (CategoryTable.isDefault eq true) and (CategoryTable.id neq Category.DEFAULT_CATEGORY_ID)
+                    MangaUserTable.user eq userId and
+                        (CategoryTable.isDefault eq true) and
+                        (CategoryTable.id neq Category.DEFAULT_CATEGORY_ID)
                 }.toList()
-                val existingCategories = CategoryMangaTable.select { CategoryMangaTable.manga eq mangaId }.toList()
+                val existingCategories = CategoryMangaTable.select {
+                    MangaUserTable.user eq userId and (CategoryMangaTable.manga eq mangaId)
+                }.toList()
 
-                MangaTable.update({ MangaTable.id eq manga.id }) {
-                    it[inLibrary] = true
-                    it[inLibraryAt] = Instant.now().epochSecond
+                if (MangaUserTable.select { MangaUserTable.user eq userId and (MangaUserTable.manga eq mangaId) }.isEmpty()) {
+                    MangaUserTable.insert {
+                        it[MangaUserTable.manga] = mangaId
+                        it[MangaUserTable.user] = userId
+                        it[inLibrary] = true
+                        it[inLibraryAt] = Instant.now().epochSecond
+                    }
+                } else {
+                    MangaUserTable.update({ MangaUserTable.user eq userId and (MangaUserTable.manga eq mangaId) }) {
+                        it[inLibrary] = true
+                        it[inLibraryAt] = Instant.now().epochSecond
+                    }
                 }
 
                 if (existingCategories.isEmpty()) {
@@ -38,6 +52,7 @@ object Library {
                         CategoryMangaTable.insert {
                             it[CategoryMangaTable.category] = category[CategoryTable.id].value
                             it[CategoryMangaTable.manga] = mangaId
+                            it[CategoryMangaTable.user] = userId
                         }
                     }
                 }
@@ -45,11 +60,11 @@ object Library {
         }
     }
 
-    suspend fun removeMangaFromLibrary(mangaId: Int) {
-        val manga = getManga(mangaId)
+    suspend fun removeMangaFromLibrary(userId: Int, mangaId: Int) {
+        val manga = getManga(userId, mangaId)
         if (manga.inLibrary) {
             transaction {
-                MangaTable.update({ MangaTable.id eq manga.id }) {
+                MangaUserTable.update({ MangaUserTable.user eq userId and (MangaUserTable.manga eq mangaId) }) {
                     it[inLibrary] = false
                 }
             }

@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.graphql.dataLoaders
 
 import com.expediagroup.graphql.dataloader.KotlinDataLoader
+import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
@@ -19,7 +20,7 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 
 class GlobalMetaDataLoader : KotlinDataLoader<String, GlobalMetaType?> {
     override val dataLoaderName = "GlobalMetaDataLoader"
-    override fun getDataLoader(): DataLoader<String, GlobalMetaType?> = DataLoaderFactory.newDataLoader<String, GlobalMetaType?> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, GlobalMetaType?> = DataLoaderFactory.newDataLoader<String, GlobalMetaType?> { ids ->
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
@@ -34,7 +35,7 @@ class GlobalMetaDataLoader : KotlinDataLoader<String, GlobalMetaType?> {
 
 class ChapterMetaDataLoader : KotlinDataLoader<Int, List<ChapterMetaType>> {
     override val dataLoaderName = "ChapterMetaDataLoader"
-    override fun getDataLoader(): DataLoader<Int, List<ChapterMetaType>> = DataLoaderFactory.newDataLoader<Int, List<ChapterMetaType>> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, List<ChapterMetaType>> = DataLoaderFactory.newDataLoader<Int, List<ChapterMetaType>> { ids ->
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
@@ -49,7 +50,7 @@ class ChapterMetaDataLoader : KotlinDataLoader<Int, List<ChapterMetaType>> {
 
 class MangaMetaDataLoader : KotlinDataLoader<Int, List<MangaMetaType>> {
     override val dataLoaderName = "MangaMetaDataLoader"
-    override fun getDataLoader(): DataLoader<Int, List<MangaMetaType>> = DataLoaderFactory.newDataLoader<Int, List<MangaMetaType>> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, List<MangaMetaType>> = DataLoaderFactory.newDataLoader<Int, List<MangaMetaType>> { ids ->
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
@@ -64,7 +65,7 @@ class MangaMetaDataLoader : KotlinDataLoader<Int, List<MangaMetaType>> {
 
 class CategoryMetaDataLoader : KotlinDataLoader<Int, List<CategoryMetaType>> {
     override val dataLoaderName = "CategoryMetaDataLoader"
-    override fun getDataLoader(): DataLoader<Int, List<CategoryMetaType>> = DataLoaderFactory.newDataLoader<Int, List<CategoryMetaType>> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, List<CategoryMetaType>> = DataLoaderFactory.newDataLoader<Int, List<CategoryMetaType>> { ids ->
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)

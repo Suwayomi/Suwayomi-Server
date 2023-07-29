@@ -10,6 +10,7 @@ package suwayomi.tachidesk.manga.impl
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNull
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.count
@@ -17,6 +18,7 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.max
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.wrapAsExpression
@@ -27,50 +29,64 @@ import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
 
 object CategoryManga {
-    fun addMangaToCategory(mangaId: Int, categoryId: Int) {
+    fun addMangaToCategory(userId: Int, mangaId: Int, categoryId: Int) {
         if (categoryId == DEFAULT_CATEGORY_ID) return
-        fun notAlreadyInCategory() = CategoryMangaTable.select { (CategoryMangaTable.category eq categoryId) and (CategoryMangaTable.manga eq mangaId) }.isEmpty()
+        fun notAlreadyInCategory() = CategoryMangaTable.select {
+            (CategoryMangaTable.category eq categoryId) and
+                (CategoryMangaTable.manga eq mangaId) and
+                (CategoryMangaTable.user eq userId)
+        }.isEmpty()
 
         transaction {
             if (notAlreadyInCategory()) {
                 CategoryMangaTable.insert {
                     it[CategoryMangaTable.category] = categoryId
                     it[CategoryMangaTable.manga] = mangaId
+                    it[CategoryMangaTable.user] = userId
                 }
             }
         }
     }
 
-    fun removeMangaFromCategory(mangaId: Int, categoryId: Int) {
+    fun removeMangaFromCategory(userId: Int, mangaId: Int, categoryId: Int) {
         if (categoryId == DEFAULT_CATEGORY_ID) return
         transaction {
-            CategoryMangaTable.deleteWhere { (CategoryMangaTable.category eq categoryId) and (CategoryMangaTable.manga eq mangaId) }
+            CategoryMangaTable.deleteWhere {
+                (CategoryMangaTable.category eq categoryId) and
+                    (CategoryMangaTable.manga eq mangaId) and
+                    (CategoryMangaTable.user eq userId)
+            }
         }
     }
 
     /**
      * list of mangas that belong to a category
      */
-    fun getCategoryMangaList(categoryId: Int): List<MangaDataClass> {
+    fun getCategoryMangaList(userId: Int, categoryId: Int): List<MangaDataClass> {
         // Select the required columns from the MangaTable and add the aggregate functions to compute unread, download, and chapter counts
         val unreadCount = wrapAsExpression<Long>(
-            ChapterTable.slice(ChapterTable.id.count()).select((ChapterTable.isRead eq false) and (ChapterTable.manga eq MangaTable.id))
+            ChapterTable.getWithUserData(userId)
+                .slice(ChapterTable.id.count())
+                .select((ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull())) and (ChapterTable.manga eq MangaTable.id))
         )
         val downloadedCount = wrapAsExpression<Long>(
             ChapterTable.slice(ChapterTable.id.count()).select((ChapterTable.isDownloaded eq true) and (ChapterTable.manga eq MangaTable.id))
         )
 
         val chapterCount = ChapterTable.id.count().alias("chapter_count")
-        val lastReadAt = ChapterTable.lastReadAt.max().alias("last_read_at")
-        val selectedColumns = MangaTable.columns + unreadCount + downloadedCount + chapterCount + lastReadAt
+        val lastReadAt = ChapterUserTable.lastReadAt.max().alias("last_read_at")
+        val selectedColumns = MangaTable.getWithUserData(userId).columns + unreadCount + downloadedCount + chapterCount + lastReadAt
 
         val transform: (ResultRow) -> MangaDataClass = {
             // Map the data from the result row to the MangaDataClass
-            val dataClass = MangaTable.toDataClass(it)
+            val dataClass = MangaTable.toDataClass(userId, it)
             dataClass.lastReadAt = it[lastReadAt]
             dataClass.unreadCount = it[unreadCount]
             dataClass.downloadCount = it[downloadedCount]
@@ -81,17 +97,17 @@ object CategoryManga {
         return transaction {
             // Fetch data from the MangaTable and join with the CategoryMangaTable, if a category is specified
             val query = if (categoryId == DEFAULT_CATEGORY_ID) {
-                MangaTable
-                    .leftJoin(ChapterTable, { MangaTable.id }, { ChapterTable.manga })
+                MangaTable.getWithUserData(userId)
+                    .leftJoin(ChapterTable.getWithUserData(userId), { MangaTable.id }, { ChapterTable.manga })
                     .leftJoin(CategoryMangaTable)
                     .slice(columns = selectedColumns)
-                    .select { (MangaTable.inLibrary eq true) and CategoryMangaTable.category.isNull() }
+                    .select { (MangaUserTable.inLibrary eq true) and (CategoryMangaTable.user eq userId) and CategoryMangaTable.category.isNull() }
             } else {
-                MangaTable
+                MangaTable.getWithUserData(userId)
                     .innerJoin(CategoryMangaTable)
-                    .leftJoin(ChapterTable, { MangaTable.id }, { ChapterTable.manga })
+                    .leftJoin(ChapterTable.getWithUserData(userId), { MangaTable.id }, { ChapterTable.manga })
                     .slice(columns = selectedColumns)
-                    .select { (MangaTable.inLibrary eq true) and (CategoryMangaTable.category eq categoryId) }
+                    .select { (MangaUserTable.inLibrary eq true) and (CategoryMangaTable.category eq categoryId) }
             }
 
             // Join with the ChapterTable to fetch the last read chapter for each manga
@@ -102,19 +118,22 @@ object CategoryManga {
     /**
      * list of categories that a manga belongs to
      */
-    fun getMangaCategories(mangaId: Int): List<CategoryDataClass> {
+    fun getMangaCategories(userId: Int, mangaId: Int): List<CategoryDataClass> {
         return transaction {
-            CategoryMangaTable.innerJoin(CategoryTable).select { CategoryMangaTable.manga eq mangaId }.orderBy(CategoryTable.order to SortOrder.ASC).map {
-                CategoryTable.toDataClass(it)
-            }
+            CategoryMangaTable.innerJoin(CategoryTable)
+                .select { CategoryMangaTable.manga eq mangaId and (CategoryTable.user eq userId) and (CategoryMangaTable.user eq userId) }
+                .orderBy(CategoryTable.order to SortOrder.ASC)
+                .map {
+                    CategoryTable.toDataClass(it)
+                }
         }
     }
 
-    fun getMangasCategories(mangaIDs: List<Int>): Map<Int, List<CategoryDataClass>> {
+    fun getMangasCategories(userId: Int, mangaIDs: List<Int>): Map<Int, List<CategoryDataClass>> {
         return buildMap {
             transaction {
                 CategoryMangaTable.innerJoin(CategoryTable)
-                    .select { CategoryMangaTable.manga inList mangaIDs }
+                    .select { (CategoryTable.user eq userId) and (CategoryMangaTable.user eq userId) and (CategoryMangaTable.manga inList mangaIDs) }
                     .groupBy { it[CategoryMangaTable.manga] }
                     .forEach {
                         val mangaId = it.key.value

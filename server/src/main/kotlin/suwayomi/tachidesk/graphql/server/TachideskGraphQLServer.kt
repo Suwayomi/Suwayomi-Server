@@ -44,6 +44,7 @@ class TachideskGraphQLServer(
     companion object {
         private fun getGraphQLObject(): GraphQL = GraphQL.newGraphQL(schema)
             .subscriptionExecutionStrategy(FlowSubscriptionExecutionStrategy())
+            .defaultDataFetcherExceptionHandler(TachideskDataFetcherExceptionHandler())
             .build()
 
         fun create(): TachideskGraphQLServer {

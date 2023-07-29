@@ -21,17 +21,17 @@ import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogue
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 
 object Search {
-    suspend fun sourceSearch(sourceId: Long, searchTerm: String, pageNum: Int): PagedMangaListDataClass {
+    suspend fun sourceSearch(userId: Int, sourceId: Long, searchTerm: String, pageNum: Int): PagedMangaListDataClass {
         val source = getCatalogueSourceOrStub(sourceId)
         val searchManga = source.fetchSearchManga(pageNum, searchTerm, getFilterListOf(source)).awaitSingle()
-        return searchManga.processEntries(sourceId)
+        return searchManga.processEntries(userId, sourceId)
     }
 
-    suspend fun sourceFilter(sourceId: Long, pageNum: Int, filter: FilterData): PagedMangaListDataClass {
+    suspend fun sourceFilter(userId: Int, sourceId: Long, pageNum: Int, filter: FilterData): PagedMangaListDataClass {
         val source = getCatalogueSourceOrStub(sourceId)
         val filterList = if (filter.filter != null) buildFilterList(sourceId, filter.filter) else source.getFilterList()
         val searchManga = source.fetchSearchManga(pageNum, filter.searchTerm ?: "", filterList).awaitSingle()
-        return searchManga.processEntries(sourceId)
+        return searchManga.processEntries(userId, sourceId)
     }
 
     private val filterListCache = mutableMapOf<Long, FilterList>()

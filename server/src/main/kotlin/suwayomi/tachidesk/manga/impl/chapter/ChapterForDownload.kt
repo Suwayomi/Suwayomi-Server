@@ -25,16 +25,18 @@ import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import java.io.File
 
-suspend fun getChapterDownloadReady(chapterIndex: Int, mangaId: Int): ChapterDataClass {
-    val chapter = ChapterForDownload(chapterIndex, mangaId)
+suspend fun getChapterDownloadReady(userId: Int, chapterIndex: Int, mangaId: Int): ChapterDataClass {
+    val chapter = ChapterForDownload(userId, chapterIndex, mangaId)
 
     return chapter.asDownloadReady()
 }
 
 private class ChapterForDownload(
+    private val userId: Int,
     private val chapterIndex: Int,
     private val mangaId: Int
 ) {
@@ -50,12 +52,12 @@ private class ChapterForDownload(
         return asDataClass()
     }
 
-    private fun asDataClass() = ChapterTable.toDataClass(chapterEntry)
+    private fun asDataClass() = ChapterTable.toDataClass(userId, chapterEntry) // no need for user id
 
     var chapterEntry: ResultRow = freshChapterEntry()
 
     private fun freshChapterEntry() = transaction {
-        ChapterTable.select {
+        ChapterTable.getWithUserData(userId).select {
             (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId)
         }.first()
     }

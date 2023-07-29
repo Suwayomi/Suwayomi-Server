@@ -1,8 +1,8 @@
 package suwayomi.tachidesk.global.impl
 
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
-import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
@@ -15,28 +15,29 @@ import suwayomi.tachidesk.global.model.table.GlobalMetaTable
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 object GlobalMeta {
-    fun modifyMeta(key: String, value: String) {
+    fun modifyMeta(userId: Int, key: String, value: String) {
         transaction {
             val meta = transaction {
-                GlobalMetaTable.select { GlobalMetaTable.key eq key }
+                GlobalMetaTable.select { GlobalMetaTable.key eq key and (GlobalMetaTable.user eq userId) }
             }.firstOrNull()
 
             if (meta == null) {
                 GlobalMetaTable.insert {
                     it[GlobalMetaTable.key] = key
                     it[GlobalMetaTable.value] = value
+                    it[GlobalMetaTable.user] = userId
                 }
             } else {
-                GlobalMetaTable.update({ GlobalMetaTable.key eq key }) {
+                GlobalMetaTable.update({ GlobalMetaTable.key eq key and (GlobalMetaTable.user eq userId) }) {
                     it[GlobalMetaTable.value] = value
                 }
             }
         }
     }
 
-    fun getMetaMap(): Map<String, String> {
+    fun getMetaMap(userId: Int): Map<String, String> {
         return transaction {
-            GlobalMetaTable.selectAll()
+            GlobalMetaTable.select { GlobalMetaTable.user eq userId }
                 .associate { it[GlobalMetaTable.key] to it[GlobalMetaTable.value] }
         }
     }

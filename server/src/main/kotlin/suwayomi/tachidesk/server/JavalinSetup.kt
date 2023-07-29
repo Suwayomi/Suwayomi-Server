@@ -10,6 +10,8 @@ package suwayomi.tachidesk.server
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.path
 import io.javalin.core.security.RouteRole
+import io.javalin.http.Context
+import io.javalin.http.HttpCode
 import io.javalin.http.staticfiles.Location
 import io.javalin.plugin.openapi.OpenApiOptions
 import io.javalin.plugin.openapi.OpenApiPlugin
@@ -26,6 +28,9 @@ import org.kodein.di.instance
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
 import suwayomi.tachidesk.manga.MangaAPI
+import suwayomi.tachidesk.server.user.ForbiddenException
+import suwayomi.tachidesk.server.user.UnauthorizedException
+import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import java.io.IOException
@@ -105,6 +110,21 @@ object JavalinSetup {
             ctx.result(e.message ?: "Bad Request")
         }
 
+        app.exception(UnauthorizedException::class.java) { e, ctx ->
+            logger.info("UnauthorizedException while handling the request", e)
+            ctx.status(HttpCode.UNAUTHORIZED)
+            ctx.result(e.message ?: "Unauthorized")
+        }
+        app.exception(ForbiddenException::class.java) { e, ctx ->
+            logger.info("ForbiddenException while handling the request", e)
+            ctx.status(HttpCode.FORBIDDEN)
+            ctx.result(e.message ?: "Forbidden")
+        }
+
+        app.before {
+            it.setAttribute(Attribute.TachideskUser, UserType.Admin(1)) // todo connect to database
+        }
+
         app.routes {
             path("api/") {
                 path("v1/") {
@@ -133,5 +153,17 @@ object JavalinSetup {
 
     object Auth {
         enum class Role : RouteRole { ANYONE, USER_READ, USER_WRITE }
+    }
+
+    sealed class Attribute<T : Any>(val name: String) {
+        object TachideskUser : Attribute<UserType>("user")
+    }
+
+    private fun <T : Any> Context.setAttribute(attribute: Attribute<T>, value: T) {
+        attribute(attribute.name, value)
+    }
+
+    fun <T : Any> Context.getAttribute(attribute: Attribute<T>): T {
+        return attribute(attribute.name)!!
     }
 }

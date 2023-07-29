@@ -8,25 +8,32 @@
 package suwayomi.tachidesk.graphql.dataLoaders
 
 import com.expediagroup.graphql.dataloader.KotlinDataLoader
+import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.ChapterNodeList
 import suwayomi.tachidesk.graphql.types.ChapterNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
+import suwayomi.tachidesk.server.JavalinSetup
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.requireUser
 
 class ChapterDataLoader : KotlinDataLoader<Int, ChapterType?> {
     override val dataLoaderName = "ChapterDataLoader"
-    override fun getDataLoader(): DataLoader<Int, ChapterType?> = DataLoaderFactory.newDataLoader<Int, ChapterType> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType?> = DataLoaderFactory.newDataLoader<Int, ChapterType> { ids ->
         future {
+            val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
-                val chapters = ChapterTable.select { ChapterTable.id inList ids }
+                val chapters = ChapterTable.getWithUserData(userId)
+                    .select { ChapterTable.id inList ids }
                     .map { ChapterType(it) }
                     .associateBy { it.id }
                 ids.map { chapters[it] }
@@ -37,11 +44,13 @@ class ChapterDataLoader : KotlinDataLoader<Int, ChapterType?> {
 
 class ChaptersForMangaDataLoader : KotlinDataLoader<Int, ChapterNodeList> {
     override val dataLoaderName = "ChaptersForMangaDataLoader"
-    override fun getDataLoader(): DataLoader<Int, ChapterNodeList> = DataLoaderFactory.newDataLoader<Int, ChapterNodeList> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterNodeList> = DataLoaderFactory.newDataLoader<Int, ChapterNodeList> { ids ->
         future {
+            val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
-                val chaptersByMangaId = ChapterTable.select { ChapterTable.manga inList ids }
+                val chaptersByMangaId = ChapterTable.getWithUserData(userId)
+                    .select { ChapterTable.manga inList ids }
                     .map { ChapterType(it) }
                     .groupBy { it.mangaId }
                 ids.map { (chaptersByMangaId[it] ?: emptyList()).toNodeList() }

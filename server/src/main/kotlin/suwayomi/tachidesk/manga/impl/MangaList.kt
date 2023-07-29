@@ -21,13 +21,15 @@ import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 
 object MangaList {
     fun proxyThumbnailUrl(mangaId: Int): String {
         return "/api/v1/manga/$mangaId/thumbnail"
     }
 
-    suspend fun getMangaList(sourceId: Long, pageNum: Int = 1, popular: Boolean): PagedMangaListDataClass {
+    suspend fun getMangaList(userId: Int, sourceId: Long, pageNum: Int = 1, popular: Boolean): PagedMangaListDataClass {
         require(pageNum > 0) {
             "pageNum = $pageNum is not in valid range"
         }
@@ -41,7 +43,7 @@ object MangaList {
                 throw Exception("Source $source doesn't support latest")
             }
         }
-        return mangasPage.processEntries(sourceId)
+        return mangasPage.processEntries(userId, sourceId)
     }
 
     fun MangasPage.insertOrGet(sourceId: Long): List<Int> {
@@ -72,11 +74,11 @@ object MangaList {
         }
     }
 
-    fun MangasPage.processEntries(sourceId: Long): PagedMangaListDataClass {
+    fun MangasPage.processEntries(userId: Int, sourceId: Long): PagedMangaListDataClass {
         val mangasPage = this
         val mangaList = transaction {
             return@transaction mangasPage.mangas.map { manga ->
-                var mangaEntry = MangaTable.select {
+                var mangaEntry = MangaTable.getWithUserData(userId).select {
                     (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq sourceId)
                 }.firstOrNull()
                 if (mangaEntry == null) { // create manga entry
@@ -117,7 +119,7 @@ object MangaList {
                         status = MangaStatus.valueOf(manga.status).name,
                         inLibrary = false, // It's a new manga entry
                         inLibraryAt = 0,
-                        meta = getMangaMetaMap(mangaId),
+                        meta = getMangaMetaMap(userId, mangaId),
                         realUrl = mangaEntry[MangaTable.realUrl],
                         lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
                         chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
@@ -142,9 +144,9 @@ object MangaList {
                         description = mangaEntry[MangaTable.description],
                         genre = mangaEntry[MangaTable.genre].toGenreList(),
                         status = MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
-                        inLibrary = mangaEntry[MangaTable.inLibrary],
-                        inLibraryAt = mangaEntry[MangaTable.inLibraryAt],
-                        meta = getMangaMetaMap(mangaId),
+                        inLibrary = mangaEntry.getOrNull(MangaUserTable.inLibrary) ?: false,
+                        inLibraryAt = mangaEntry.getOrNull(MangaUserTable.inLibraryAt) ?: 0,
+                        meta = getMangaMetaMap(userId, mangaId),
                         realUrl = mangaEntry[MangaTable.realUrl],
                         lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
                         chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],

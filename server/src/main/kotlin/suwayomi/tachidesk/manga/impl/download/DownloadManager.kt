@@ -38,7 +38,6 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.reflect.jvm.jvmName
@@ -216,7 +215,7 @@ object DownloadManager {
 
         val mangas = transaction {
             chapters.distinctBy { chapter -> chapter[MangaTable.id] }
-                .map { MangaTable.toDataClass(it) }
+                .map { MangaTable.toDataClass(0, it) }
                 .associateBy { it.id }
         }
 
@@ -225,7 +224,7 @@ object DownloadManager {
                 Pair(
                     // this should be safe because mangas is created above from chapters
                     mangas[it[ChapterTable.manga].value]!!,
-                    ChapterTable.toDataClass(it)
+                    ChapterTable.toDataClass(0, it)
                 )
             }
         }

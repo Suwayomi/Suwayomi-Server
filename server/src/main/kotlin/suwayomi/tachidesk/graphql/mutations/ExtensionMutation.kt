@@ -1,13 +1,17 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import eu.kanade.tachiyomi.source.local.LocalSource
+import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.ExtensionType
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
+import suwayomi.tachidesk.server.JavalinSetup
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class ExtensionMutation {
@@ -62,7 +66,11 @@ class ExtensionMutation {
         }
     }
 
-    fun updateExtension(input: UpdateExtensionInput): CompletableFuture<UpdateExtensionPayload> {
+    fun updateExtension(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateExtensionInput
+    ): CompletableFuture<UpdateExtensionPayload> {
+        dataFetchingEnvironment.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
         val (clientMutationId, id, patch) = input
 
         return future {
@@ -79,7 +87,11 @@ class ExtensionMutation {
         }
     }
 
-    fun updateExtensions(input: UpdateExtensionsInput): CompletableFuture<UpdateExtensionsPayload> {
+    fun updateExtensions(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateExtensionsInput
+    ): CompletableFuture<UpdateExtensionsPayload> {
+        dataFetchingEnvironment.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
         val (clientMutationId, ids, patch) = input
 
         return future {
@@ -106,8 +118,10 @@ class ExtensionMutation {
     )
 
     fun fetchExtensions(
+        dataFetchingEnvironment: DataFetchingEnvironment,
         input: FetchExtensionsInput
     ): CompletableFuture<FetchExtensionsPayload> {
+        dataFetchingEnvironment.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
         val (clientMutationId) = input
 
         return future {

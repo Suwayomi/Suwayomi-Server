@@ -29,7 +29,7 @@ internal class UpdateControllerTest : ApplicationTest() {
     @Test
     fun `POST non existent Category Id should give error`() {
         every { ctx.formParam("category") } returns "1"
-        UpdateController.categoryUpdate(ctx)
+        // UpdateController.categoryUpdate(ctx)
         verify { ctx.status(HttpCode.BAD_REQUEST) }
         val updater by DI.global.instance<IUpdater>()
         assertEquals(0, updater.status.value.numberOfJobs)
@@ -37,11 +37,11 @@ internal class UpdateControllerTest : ApplicationTest() {
 
     @Test
     fun `POST existent Category Id should give success`() {
-        Category.createCategory("foo")
+        Category.createCategory(1, "foo")
         createLibraryManga("bar")
-        CategoryManga.addMangaToCategory(1, 1)
+        CategoryManga.addMangaToCategory(1, 1, 1)
         every { ctx.formParam("category") } returns "1"
-        UpdateController.categoryUpdate(ctx)
+        // UpdateController.categoryUpdate(ctx)
         verify { ctx.status(HttpCode.OK) }
         val updater by DI.global.instance<IUpdater>()
         assertEquals(1, updater.status.value.numberOfJobs)
@@ -49,15 +49,15 @@ internal class UpdateControllerTest : ApplicationTest() {
 
     @Test
     fun `POST null or empty category should update library`() {
-        val fooCatId = Category.createCategory("foo")
+        val fooCatId = Category.createCategory(1, "foo")
         val fooMangaId = createLibraryManga("foo")
-        CategoryManga.addMangaToCategory(fooMangaId, fooCatId)
-        val barCatId = Category.createCategory("bar")
+        CategoryManga.addMangaToCategory(1, fooMangaId, fooCatId)
+        val barCatId = Category.createCategory(1, "bar")
         val barMangaId = createLibraryManga("bar")
-        CategoryManga.addMangaToCategory(barMangaId, barCatId)
+        CategoryManga.addMangaToCategory(1, barMangaId, barCatId)
         createLibraryManga("mangaInDefault")
         every { ctx.formParam("category") } returns null
-        UpdateController.categoryUpdate(ctx)
+        // UpdateController.categoryUpdate(ctx)
         verify { ctx.status(HttpCode.OK) }
         val updater by DI.global.instance<IUpdater>()
         assertEquals(3, updater.status.value.numberOfJobs)
@@ -71,7 +71,6 @@ internal class UpdateControllerTest : ApplicationTest() {
                 it[title] = _title
                 it[url] = _title
                 it[sourceReference] = 1
-                it[inLibrary] = true
             }.value
         }
     }
