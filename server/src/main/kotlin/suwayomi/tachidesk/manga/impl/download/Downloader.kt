@@ -29,8 +29,6 @@ import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Queued
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import java.util.concurrent.CopyOnWriteArrayList
 
-private val logger = KotlinLogging.logger {}
-
 class Downloader(
     private val scope: CoroutineScope,
     val sourceId: String,
@@ -38,6 +36,8 @@ class Downloader(
     private val notifier: (immediate: Boolean) -> Unit,
     private val onComplete: () -> Unit
 ) {
+    private val logger = KotlinLogging.logger("${Downloader::class.java.name} source($sourceId)")
+
     private var job: Job? = null
     private val availableSourceDownloads
         get() = downloadQueue.filter { it.manga.sourceId == sourceId }
@@ -67,10 +67,12 @@ class Downloader(
             }.also { job ->
                 job.invokeOnCompletion {
                     if (it !is CancellationException) {
+                        logger.debug { "completed" }
                         onComplete()
                     }
                 }
             }
+            logger.debug { "started" }
         }
 
         notifier(false)
@@ -78,13 +80,19 @@ class Downloader(
 
     suspend fun stop() {
         job?.cancelAndJoin()
+        logger.debug { "stopped" }
     }
 
     private suspend fun run() {
         while (downloadQueue.isNotEmpty() && currentCoroutineContext().isActive) {
             val download = availableSourceDownloads.firstOrNull {
-                    (it.state == Queued || (it.state == Error && it.tries < 3)) // 3 re-tries per download
+                (it.state == Queued || (it.state == Error && it.tries < 3)) // 3 re-tries per download
             } ?: break
+
+            val logContext = "${logger.name} - downloadChapter(${download.manga.title} (${download.mangaId}) - ${download.chapter.name} (${download.chapter.id}))"
+            val downloadLogger = KotlinLogging.logger(logContext)
+
+            downloadLogger.debug { "start" }
 
             try {
                 download.state = Downloading
@@ -104,13 +112,15 @@ class Downloader(
 
                 downloadQueue.removeIf { it.mangaId == download.mangaId && it.chapterIndex == download.chapterIndex }
                 step(null, false)
+                downloadLogger.debug { "finished" }
             } catch (e: CancellationException) {
                 logger.debug("Downloader was stopped")
                 availableSourceDownloads.filter { it.state == Downloading }.forEach { it.state = Queued }
             } catch (e: PauseDownloadException) {
+                downloadLogger.debug { "paused" }
                 download.state = Queued
             } catch (e: Exception) {
-                logger.warn("Downloader faced an exception", e)
+                downloadLogger.warn("failed due to", e)
                 download.tries++
                 download.state = Error
             } finally {
