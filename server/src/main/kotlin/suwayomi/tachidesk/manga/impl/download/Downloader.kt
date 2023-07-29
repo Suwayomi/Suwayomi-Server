@@ -108,7 +108,7 @@ class Downloader(
             } catch (e: PauseDownloadException) {
                 download.state = Queued
             } catch (e: Exception) {
-                logger.info("Downloader faced an exception", e)
+                logger.warn("Downloader faced an exception", e)
                 download.tries++
                 download.state = Error
             } finally {
