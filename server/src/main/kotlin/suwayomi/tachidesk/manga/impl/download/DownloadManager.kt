@@ -38,7 +38,6 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.reflect.jvm.jvmName
@@ -52,7 +51,7 @@ object DownloadManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val clients = ConcurrentHashMap<String, WsContext>()
     private val downloadQueue = CopyOnWriteArrayList<DownloadChapter>()
-    private val downloaders = ConcurrentHashMap<Long, Downloader>()
+    private val downloaders = ConcurrentHashMap<String, Downloader>()
 
     private const val downloadQueueKey = "downloadQueueKey"
     private val sharedPreferences =
@@ -155,7 +154,7 @@ object DownloadManager {
                 logger.info { "Running: ${runningDownloaders.size}, Queued: ${downloadQueue.size}" }
                 if (runningDownloaders.size < MAX_SOURCES_IN_PARAllEL) {
                     downloadQueue.asSequence()
-                        .map { it.manga.sourceId.toLong() }
+                        .map { it.manga.sourceId }
                         .distinct()
                         .minus(
                             runningDownloaders.map { it.sourceId }.toSet()
@@ -178,7 +177,7 @@ object DownloadManager {
         }
     }
 
-    private fun getDownloader(sourceId: Long) = downloaders.getOrPut(sourceId) {
+    private fun getDownloader(sourceId: String) = downloaders.getOrPut(sourceId) {
         Downloader(
             scope = scope,
             sourceId = sourceId,

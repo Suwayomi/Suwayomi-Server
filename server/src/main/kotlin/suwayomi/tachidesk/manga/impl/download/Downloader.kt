@@ -33,7 +33,7 @@ private val logger = KotlinLogging.logger {}
 
 class Downloader(
     private val scope: CoroutineScope,
-    val sourceId: Long,
+    val sourceId: String,
     private val downloadQueue: CopyOnWriteArrayList<DownloadChapter>,
     private val notifier: (immediate: Boolean) -> Unit,
     private val onComplete: () -> Unit
@@ -45,7 +45,7 @@ class Downloader(
     private suspend fun step(download: DownloadChapter?, immediate: Boolean) {
         notifier(immediate)
         currentCoroutineContext().ensureActive()
-        if (download != null && download != downloadQueue.firstOrNull { it.manga.sourceId.toLong() == sourceId && it.state != Error }) {
+        if (download != null && download != downloadQueue.firstOrNull { it.manga.sourceId == sourceId && it.state != Error }) {
             if (download in downloadQueue) {
                 throw PauseDownloadException()
             } else {
@@ -80,7 +80,7 @@ class Downloader(
     private suspend fun run() {
         while (downloadQueue.isNotEmpty() && currentCoroutineContext().isActive) {
             val download = downloadQueue.firstOrNull {
-                it.manga.sourceId.toLong() == sourceId &&
+                it.manga.sourceId == sourceId &&
                     (it.state == Queued || (it.state == Error && it.tries < 3)) // 3 re-tries per download
             } ?: break
 
