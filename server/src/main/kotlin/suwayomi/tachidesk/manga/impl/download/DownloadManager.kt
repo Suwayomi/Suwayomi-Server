@@ -236,15 +236,6 @@ object DownloadManager {
         addMultipleToQueue(inputPairs)
     }
 
-    fun dequeue(input: EnqueueInput) {
-        if (input.chapterIds.isNullOrEmpty()) return
-
-        downloadQueue.removeIf { it.chapter.id in input.chapterIds }
-        saveDownloadQueue()
-
-        notifyAllClients()
-    }
-
     /**
      * Tries to add multiple inputs to queue
      * If any of inputs was actually added to queue, starts the queue
@@ -294,6 +285,15 @@ object DownloadManager {
 
         logger.debug { "Chapter ${chapter.id} already present in queue (${manga.title} | ${chapter.name})" }
         return null
+    }
+
+    fun dequeue(input: EnqueueInput) {
+        if (input.chapterIds.isNullOrEmpty()) return
+
+        downloadQueue.removeIf { it.chapter.id in input.chapterIds }
+        saveDownloadQueue()
+
+        notifyAllClients()
     }
 
     fun dequeue(chapterIndex: Int, mangaId: Int) {
