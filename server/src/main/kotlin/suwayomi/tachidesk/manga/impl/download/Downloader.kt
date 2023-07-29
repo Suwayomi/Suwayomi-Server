@@ -104,7 +104,7 @@ class Downloader(
                 step(null, false)
             } catch (e: CancellationException) {
                 logger.debug("Downloader was stopped")
-                downloadQueue.filter { it.state == Downloading }.forEach { it.state = Queued }
+                downloadQueue.filter { it.manga.sourceId == sourceId && it.state == Downloading }.forEach { it.state = Queued }
             } catch (e: PauseDownloadException) {
                 download.state = Queued
             } catch (e: Exception) {
