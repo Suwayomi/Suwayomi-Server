@@ -297,6 +297,8 @@ object DownloadManager {
     }
 
     private fun dequeue(chapterDownloads: Set<DownloadChapter>) {
+        logger.debug { "dequeue ${chapterDownloads.size} chapters [${chapterDownloads.joinToString(separator = ", ") { "${it.manga.title} (${it.mangaId}) - ${it.chapter.name} (${it.chapter.id})" }}]" }
+
         downloadQueue.removeAll(chapterDownloads)
         saveDownloadQueue()
 
@@ -307,18 +309,25 @@ object DownloadManager {
         require(to >= 0) { "'to' must be over or equal to 0" }
         val download = downloadQueue.find { it.mangaId == mangaId && it.chapterIndex == chapterIndex }
             ?: return
+
+        logger.debug { "reorder download ${download.manga.title} (${download.mangaId}) - ${download.chapter.name} (${download.chapter.id}) from ${downloadQueue.indexOf(download)} to $to" }
+
         downloadQueue -= download
         downloadQueue.add(to, download)
         saveDownloadQueue()
     }
 
     fun start() {
+        logger.debug { "start" }
+
         scope.launch {
             downloaderWatch.emit(Unit)
         }
     }
 
     suspend fun stop() {
+        logger.debug { "stop" }
+
         coroutineScope {
             downloaders.map { (_, downloader) ->
                 async {
@@ -330,6 +339,8 @@ object DownloadManager {
     }
 
     suspend fun clear() {
+        logger.debug { "clear" }
+
         stop()
         downloadQueue.clear()
         saveDownloadQueue()
