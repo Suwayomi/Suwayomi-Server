@@ -289,16 +289,17 @@ object DownloadManager {
 
     fun dequeue(input: EnqueueInput) {
         if (input.chapterIds.isNullOrEmpty()) return
-
-        downloadQueue.removeIf { it.chapter.id in input.chapterIds }
-        saveDownloadQueue()
-
-        notifyAllClients()
+        dequeue(downloadQueue.filter { it.chapter.id in input.chapterIds }.toSet())
     }
 
     fun dequeue(chapterIndex: Int, mangaId: Int) {
-        downloadQueue.removeIf { it.mangaId == mangaId && it.chapterIndex == chapterIndex }
+        dequeue(downloadQueue.filter { it.mangaId == mangaId && it.chapterIndex == chapterIndex }.toSet())
+    }
+
+    private fun dequeue(chapterDownloads: Set<DownloadChapter>) {
+        downloadQueue.removeAll(chapterDownloads)
         saveDownloadQueue()
+
         notifyAllClients()
     }
 
