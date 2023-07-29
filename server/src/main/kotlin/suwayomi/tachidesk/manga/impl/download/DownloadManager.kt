@@ -236,7 +236,7 @@ object DownloadManager {
         addMultipleToQueue(inputPairs)
     }
 
-    fun unqueue(input: EnqueueInput) {
+    fun dequeue(input: EnqueueInput) {
         if (input.chapterIds.isNullOrEmpty()) return
 
         downloadQueue.removeIf { it.chapter.id in input.chapterIds }
@@ -296,7 +296,7 @@ object DownloadManager {
         return null
     }
 
-    fun unqueue(chapterIndex: Int, mangaId: Int) {
+    fun dequeue(chapterIndex: Int, mangaId: Int) {
         downloadQueue.removeIf { it.mangaId == mangaId && it.chapterIndex == chapterIndex }
         saveDownloadQueue()
         notifyAllClients()

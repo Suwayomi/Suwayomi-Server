@@ -147,7 +147,7 @@ object DownloadController {
             val input = json.decodeFromString<EnqueueInput>(ctx.body())
             ctx.future(
                 future {
-                    DownloadManager.unqueue(input)
+                    DownloadManager.dequeue(input)
                 }
             )
         },
@@ -167,7 +167,7 @@ object DownloadController {
             }
         },
         behaviorOf = { ctx, chapterIndex, mangaId ->
-            DownloadManager.unqueue(chapterIndex, mangaId)
+            DownloadManager.dequeue(chapterIndex, mangaId)
 
             ctx.status(200)
         },
