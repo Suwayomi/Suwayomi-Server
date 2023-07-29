@@ -30,6 +30,7 @@ import suwayomi.tachidesk.graphql.subscriptions.downloadSubscriptionSource
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Error
+import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Queued
 import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
 import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
@@ -264,19 +265,33 @@ object DownloadManager {
      * If chapter is added, returns the created DownloadChapter, otherwise returns null
      */
     private fun addToQueue(manga: MangaDataClass, chapter: ChapterDataClass): DownloadChapter? {
-        if (downloadQueue.none { it.mangaId == manga.id && it.chapterIndex == chapter.index }) {
-            val downloadChapter = DownloadChapter(
+        val downloadChapter = downloadQueue.firstOrNull { it.mangaId == manga.id && it.chapterIndex == chapter.index }
+
+        val addToQueue = downloadChapter == null
+        if (addToQueue) {
+            val newDownloadChapter = DownloadChapter(
                 chapter.index,
                 manga.id,
                 chapter,
                 manga
             )
-            downloadQueue.add(downloadChapter)
+            downloadQueue.add(newDownloadChapter)
             saveDownloadQueue()
-            downloadSubscriptionSource.publish(downloadChapter)
+            downloadSubscriptionSource.publish(newDownloadChapter)
             logger.debug { "Added chapter ${chapter.id} to download queue (${manga.title} | ${chapter.name})" }
+            return newDownloadChapter
+        }
+
+        val retryDownload = downloadChapter?.state == Error
+        if (retryDownload) {
+            logger.debug { "Chapter ${chapter.id} download failed, retry download (${manga.title} | ${chapter.name})" }
+
+            downloadChapter?.state = Queued
+            downloadChapter?.progress = 0f
+
             return downloadChapter
         }
+
         logger.debug { "Chapter ${chapter.id} already present in queue (${manga.title} | ${chapter.name})" }
         return null
     }
