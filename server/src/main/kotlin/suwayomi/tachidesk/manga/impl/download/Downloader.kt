@@ -73,9 +73,8 @@ class Downloader(
                 }
             }
             logger.debug { "started" }
+            notifier(false)
         }
-
-        notifier(false)
     }
 
     suspend fun stop() {
