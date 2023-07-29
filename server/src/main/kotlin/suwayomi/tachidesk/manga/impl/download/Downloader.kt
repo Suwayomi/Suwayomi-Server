@@ -39,13 +39,16 @@ class Downloader(
     private val onComplete: () -> Unit
 ) {
     private var job: Job? = null
+    private val availableSourceDownloads
+        get() = downloadQueue.filter { it.manga.sourceId == sourceId }
+
     class StopDownloadException : Exception("Cancelled download")
     class PauseDownloadException : Exception("Pause download")
 
     private suspend fun step(download: DownloadChapter?, immediate: Boolean) {
         notifier(immediate)
         currentCoroutineContext().ensureActive()
-        if (download != null && download != downloadQueue.firstOrNull { it.manga.sourceId == sourceId && it.state != Error }) {
+        if (download != null && download != availableSourceDownloads.firstOrNull { it.state != Error }) {
             if (download in downloadQueue) {
                 throw PauseDownloadException()
             } else {
@@ -79,8 +82,7 @@ class Downloader(
 
     private suspend fun run() {
         while (downloadQueue.isNotEmpty() && currentCoroutineContext().isActive) {
-            val download = downloadQueue.firstOrNull {
-                it.manga.sourceId == sourceId &&
+            val download = availableSourceDownloads.firstOrNull {
                     (it.state == Queued || (it.state == Error && it.tries < 3)) // 3 re-tries per download
             } ?: break
 
@@ -104,7 +106,7 @@ class Downloader(
                 step(null, false)
             } catch (e: CancellationException) {
                 logger.debug("Downloader was stopped")
-                downloadQueue.filter { it.manga.sourceId == sourceId && it.state == Downloading }.forEach { it.state = Queued }
+                availableSourceDownloads.filter { it.state == Downloading }.forEach { it.state = Queued }
             } catch (e: PauseDownloadException) {
                 download.state = Queued
             } catch (e: Exception) {
