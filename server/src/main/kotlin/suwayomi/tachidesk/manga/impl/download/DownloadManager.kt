@@ -269,13 +269,13 @@ object DownloadManager {
             downloadQueue.add(newDownloadChapter)
             saveDownloadQueue()
             downloadSubscriptionSource.publish(newDownloadChapter)
-            logger.debug { "Added chapter ${chapter.id} to download queue (${manga.title} | ${chapter.name})" }
+            logger.debug { "Added chapter ${chapter.id} to download queue ($newDownloadChapter)" }
             return newDownloadChapter
         }
 
         val retryDownload = downloadChapter?.state == Error
         if (retryDownload) {
-            logger.debug { "Chapter ${chapter.id} download failed, retry download (${manga.title} | ${chapter.name})" }
+            logger.debug { "Chapter ${chapter.id} download failed, retry download ($downloadChapter)" }
 
             downloadChapter?.state = Queued
             downloadChapter?.progress = 0f
@@ -283,7 +283,7 @@ object DownloadManager {
             return downloadChapter
         }
 
-        logger.debug { "Chapter ${chapter.id} already present in queue (${manga.title} | ${chapter.name})" }
+        logger.debug { "Chapter ${chapter.id} already present in queue ($downloadChapter)" }
         return null
     }
 
@@ -297,7 +297,7 @@ object DownloadManager {
     }
 
     private fun dequeue(chapterDownloads: Set<DownloadChapter>) {
-        logger.debug { "dequeue ${chapterDownloads.size} chapters [${chapterDownloads.joinToString(separator = ", ") { "${it.manga.title} (${it.mangaId}) - ${it.chapter.name} (${it.chapter.id})" }}]" }
+        logger.debug { "dequeue ${chapterDownloads.size} chapters [${chapterDownloads.joinToString(separator = ", ") { "$it" }}]" }
 
         downloadQueue.removeAll(chapterDownloads)
         saveDownloadQueue()
@@ -310,7 +310,7 @@ object DownloadManager {
         val download = downloadQueue.find { it.mangaId == mangaId && it.chapterIndex == chapterIndex }
             ?: return
 
-        logger.debug { "reorder download ${download.manga.title} (${download.mangaId}) - ${download.chapter.name} (${download.chapter.id}) from ${downloadQueue.indexOf(download)} to $to" }
+        logger.debug { "reorder download $download from ${downloadQueue.indexOf(download)} to $to" }
 
         downloadQueue -= download
         downloadQueue.add(to, download)

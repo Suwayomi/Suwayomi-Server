@@ -88,7 +88,7 @@ class Downloader(
                 (it.state == Queued || (it.state == Error && it.tries < 3)) // 3 re-tries per download
             } ?: break
 
-            val logContext = "${logger.name} - downloadChapter(${download.manga.title} (${download.mangaId}) - ${download.chapter.name} (${download.chapter.id}))"
+            val logContext = "${logger.name} - downloadChapter($download))"
             val downloadLogger = KotlinLogging.logger(logContext)
 
             downloadLogger.debug { "start" }
