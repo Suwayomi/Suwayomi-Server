@@ -330,20 +330,16 @@ object WebInterfaceManager {
     fun downloadVersion(version: String, retryCount: Int = 0): Boolean {
         val webUIZip = "${WebUI.WEBUI.baseFileName}-$version.zip"
         val webUIZipPath = "$tmpDir/$webUIZip"
-        val webUIZipFile = File(webUIZipPath)
 
-        logger.info { "downloadVersion: Downloading WebUI (flavor= ${serverConfig.webUIFlavor}, version \"$version\") zip from the Internet..." }
+        val log = KotlinLogging.logger("${logger.name} downloadVersion(version= $version, flavor= ${serverConfig.webUIFlavor})")
+        log.info { "Downloading WebUI zip from the Internet..." }
 
         try {
             val webUIZipURL = "${getDownloadUrlFor(version)}/$webUIZip"
-            downloadVersionZipFile(webUIZipURL, webUIZipFile)
-
-            if (!isDownloadValid(webUIZip, webUIZipPath)) {
-                throw Exception("Download is invalid")
-            }
+            downloadVersionZipFile(webUIZipURL, webUIZipPath)
         } catch (e: Exception) {
             val retry = retryCount < 3
-            logger.error { "downloadVersion: Download failed${if (retry) ", retrying ${retryCount + 1}/3" else ""} - error: $e" }
+            log.error { "failed${if (retry) ", retrying ${retryCount + 1}/3" else ""} - error: $e" }
 
             if (retry) {
                 return downloadVersion(version, retryCount + 1)
@@ -355,15 +351,17 @@ object WebInterfaceManager {
         File(applicationDirs.webUIRoot).deleteRecursively()
 
         // extract webUI zip
-        logger.info { "downloadVersion: Extracting WebUI zip..." }
+        log.info { "Extracting WebUI zip..." }
         extractDownload(webUIZipPath, applicationDirs.webUIRoot)
-        logger.info { "downloadVersion: Extracting WebUI zip Done." }
+        log.info { "Extracting WebUI zip Done." }
 
         return true
     }
 
-    private fun downloadVersionZipFile(url: String, zipFile: File) {
+    private fun downloadVersionZipFile(url: String, filePath: String) {
+        val zipFile = File(filePath)
         zipFile.delete()
+
         val data = ByteArray(1024)
 
         zipFile.outputStream().use { webUIZipFileOut ->
@@ -393,6 +391,10 @@ object WebInterfaceManager {
                 println()
                 logger.info { "downloadVersionZipFile: Downloading WebUI Done." }
             }
+        }
+
+        if (!isDownloadValid(zipFile.name, filePath)) {
+            throw Exception("Download is invalid")
         }
     }
 
