@@ -11,6 +11,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import mu.KLogger
 import mu.KotlinLogging
 import net.lingala.zip4j.ZipFile
 import org.json.JSONArray
@@ -35,6 +36,8 @@ private val applicationDirs by DI.global.instance<ApplicationDirs>()
 private val tmpDir = System.getProperty("java.io.tmpdir")
 
 private fun ByteArray.toHex(): String = joinToString(separator = "") { eachByte -> "%02x".format(eachByte) }
+
+class BundledWebUIMissing : Exception("No bundled webUI version found")
 
 enum class WebUIChannel {
     BUNDLED, // the default webUI version bundled with the server release
@@ -147,16 +150,17 @@ object WebInterfaceManager {
          *
          * In case the download failed but the local webUI is valid the download is considered a success to prevent the fallback logic
          */
-        val doDownload = {
+        val doDownload: (getVersion: () -> String) -> Boolean = { getVersion ->
             try {
-                downloadLatestCompatibleVersion()
+                downloadVersion(getVersion())
+                true
             } catch (e: Exception) {
                 false
             } || isLocalWebUIValid
         }
 
         // download the latest compatible version for the current selected webUI
-        val fallbackToDefaultWebUI = !doDownload()
+        val fallbackToDefaultWebUI = !doDownload() { getLatestCompatibleVersion() }
         if (!fallbackToDefaultWebUI) {
             return
         }
@@ -166,7 +170,7 @@ object WebInterfaceManager {
 
             serverConfig.webUIFlavor = DEFAULT_WEB_UI
 
-            val fallbackToBundledVersion = !doDownload()
+            val fallbackToBundledVersion = !doDownload() { getLatestCompatibleVersion() }
             if (!fallbackToBundledVersion) {
                 return
             }
@@ -174,11 +178,21 @@ object WebInterfaceManager {
 
         logger.warn { "doInitialSetup: fallback to bundled default webUI \"$DEFAULT_WEB_UI\"" }
 
-        extractBundledWebUI()
+        try {
+            extractBundledWebUI()
+            return
+        } catch (e: BundledWebUIMissing) {
+            logger.warn(e) { "doInitialSetup: fallback to downloading the version of the bundled webUI" }
+        }
+
+        val downloadFailed = !doDownload() { BuildConfig.WEBUI_TAG }
+        if (downloadFailed) {
+            throw Exception("Unable to setup a webUI")
+        }
     }
 
     private fun extractBundledWebUI() {
-        val resourceWebUI: InputStream = BuildConfig::class.java.getResourceAsStream("/WebUI.zip") ?: throw Error("extractBundledWebUI: No bundled webUI version found")
+        val resourceWebUI: InputStream = BuildConfig::class.java.getResourceAsStream("/WebUI.zip") ?: throw BundledWebUIMissing()
 
         logger.info { "extractBundledWebUI: Using the bundled WebUI zip..." }
 
@@ -205,7 +219,11 @@ object WebInterfaceManager {
         }
 
         logger.info { "checkForUpdate(${serverConfig.webUIFlavor}, $localVersion): An update is available, starting download..." }
-        downloadLatestCompatibleVersion()
+        try {
+            downloadVersion(getLatestCompatibleVersion())
+        } catch (e: Exception) {
+            logger.warn(e) { "checkForUpdate: failed due to" }
+        }
     }
 
     private fun getDownloadUrlFor(version: String): String {
@@ -259,10 +277,26 @@ object WebInterfaceManager {
         return digest.toHex()
     }
 
+    private fun <T> executeWithRetry(log: KLogger, execute: () -> T, maxRetries: Int = 3, retryCount: Int = 0): T {
+        try {
+            return execute()
+        } catch (e: Exception) {
+            log.warn(e) { "(retry $retryCount/$maxRetries) failed due to" }
+
+            if (retryCount < maxRetries) {
+                return executeWithRetry(log, execute, maxRetries, retryCount + 1)
+            }
+
+            throw e
+        }
+    }
+
     private fun fetchMD5SumFor(version: String): String {
         return try {
-            val url = "${getDownloadUrlFor(version)}/md5sum"
-            URL(url).readText().trim()
+            executeWithRetry(KotlinLogging.logger("${logger.name} fetchMD5SumFor($version)"), {
+                val url = "${getDownloadUrlFor(version)}/md5sum"
+                URL(url).readText().trim()
+            })
         } catch (e: Exception) {
             ""
         }
@@ -274,8 +308,14 @@ object WebInterfaceManager {
     }
 
     private fun fetchPreviewVersion(): String {
-        val releaseInfoJson = URL(WebUI.WEBUI.latestReleaseInfoUrl).readText()
-        return Json.decodeFromString<JsonObject>(releaseInfoJson)["tag_name"]?.jsonPrimitive?.content ?: throw Exception("Failed to get the preview version tag")
+        return executeWithRetry(KotlinLogging.logger("${logger.name} fetchPreviewVersion"), {
+            val releaseInfoJson = URL(WebUI.WEBUI.latestReleaseInfoUrl).readText()
+            Json.decodeFromString<JsonObject>(releaseInfoJson)["tag_name"]?.jsonPrimitive?.content ?: throw Exception("Failed to get the preview version tag")
+        })
+    }
+
+    private fun fetchServerMappingFile(): JSONArray {
+        return executeWithRetry(KotlinLogging.logger("$logger fetchServerMappingFile"), { JSONArray(URL(WebUI.WEBUI.versionMappingUrl).readText()) })
     }
 
     private fun getLatestCompatibleVersion(): String {
@@ -285,7 +325,7 @@ object WebInterfaceManager {
         }
 
         val currentServerVersionNumber = extractVersion(BuildConfig.REVISION)
-        val webUIToServerVersionMappings = JSONArray(URL(WebUI.WEBUI.versionMappingUrl).readText())
+        val webUIToServerVersionMappings = fetchServerMappingFile()
 
         logger.debug { "getLatestCompatibleVersion: webUIChannel= ${serverConfig.webUIChannel}, currentServerVersion= ${BuildConfig.REVISION}, mappingFile= $webUIToServerVersionMappings" }
 
@@ -311,45 +351,27 @@ object WebInterfaceManager {
         throw Exception("No compatible webUI version found")
     }
 
-    fun downloadLatestCompatibleVersion(retryCount: Int = 0): Boolean {
-        val latestCompatibleVersion = getLatestCompatibleVersion()
-
-        val webUIZip = "${WebUI.WEBUI.baseFileName}-$latestCompatibleVersion.zip"
+    fun downloadVersion(version: String) {
+        val webUIZip = "${WebUI.WEBUI.baseFileName}-$version.zip"
         val webUIZipPath = "$tmpDir/$webUIZip"
-        val webUIZipFile = File(webUIZipPath)
+        val webUIZipURL = "${getDownloadUrlFor(version)}/$webUIZip"
 
-        logger.info { "downloadLatestCompatibleVersion: Downloading WebUI (flavor= ${serverConfig.webUIFlavor}, version \"$latestCompatibleVersion\") zip from the Internet..." }
+        val log = KotlinLogging.logger("${logger.name} downloadVersion(version= $version, flavor= ${serverConfig.webUIFlavor})")
+        log.info { "Downloading WebUI zip from the Internet..." }
 
-        try {
-            val webUIZipURL = "${getDownloadUrlFor(latestCompatibleVersion)}/$webUIZip"
-            downloadVersion(webUIZipURL, webUIZipFile)
-
-            if (!isDownloadValid(webUIZip, webUIZipPath)) {
-                throw Exception("Download is invalid")
-            }
-        } catch (e: Exception) {
-            val retry = retryCount < 3
-            logger.error { "downloadLatestCompatibleVersion: Download failed${if (retry) ", retrying ${retryCount + 1}/3" else ""} - error: $e" }
-
-            if (retry) {
-                return downloadLatestCompatibleVersion(retryCount + 1)
-            }
-
-            return false
-        }
-
+        executeWithRetry(log, { downloadVersionZipFile(webUIZipURL, webUIZipPath) })
         File(applicationDirs.webUIRoot).deleteRecursively()
 
         // extract webUI zip
-        logger.info { "downloadLatestCompatibleVersion: Extracting WebUI zip..." }
+        log.info { "Extracting WebUI zip..." }
         extractDownload(webUIZipPath, applicationDirs.webUIRoot)
-        logger.info { "downloadLatestCompatibleVersion: Extracting WebUI zip Done." }
-
-        return true
+        log.info { "Extracting WebUI zip Done." }
     }
 
-    private fun downloadVersion(url: String, zipFile: File) {
+    private fun downloadVersionZipFile(url: String, filePath: String) {
+        val zipFile = File(filePath)
         zipFile.delete()
+
         val data = ByteArray(1024)
 
         zipFile.outputStream().use { webUIZipFileOut ->
@@ -361,7 +383,7 @@ object WebInterfaceManager {
             connection.inputStream.buffered().use { inp ->
                 var totalCount = 0
 
-                print("downloadVersion: Download progress: % 00")
+                print("downloadVersionZipFile: Download progress: % 00")
                 while (true) {
                     val count = inp.read(data, 0, 1024)
 
@@ -377,8 +399,12 @@ object WebInterfaceManager {
                     webUIZipFileOut.write(data, 0, count)
                 }
                 println()
-                logger.info { "downloadVersion: Downloading WebUI Done." }
+                logger.info { "downloadVersionZipFile: Downloading WebUI Done." }
             }
+        }
+
+        if (!isDownloadValid(zipFile.name, filePath)) {
+            throw Exception("Download is invalid")
         }
     }
 
@@ -404,7 +430,7 @@ object WebInterfaceManager {
             val latestCompatibleVersion = getLatestCompatibleVersion()
             latestCompatibleVersion != currentVersion
         } catch (e: Exception) {
-            logger.debug { "isUpdateAvailable: check failed due to $e" }
+            logger.warn(e) { "isUpdateAvailable: check failed due to" }
             false
         }
     }
