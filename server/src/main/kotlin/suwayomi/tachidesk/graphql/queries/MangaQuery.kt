@@ -187,8 +187,8 @@ class MangaQuery {
                 andFilterWithCompare(MangaTable.inLibrary, inLibrary),
                 andFilterWithCompare(MangaTable.inLibraryAt, inLibraryAt),
                 andFilterWithCompareString(MangaTable.realUrl, realUrl),
-                andFilterWithCompare(MangaTable.inLibraryAt, lastFetchedAt),
-                andFilterWithCompare(MangaTable.inLibraryAt, chaptersLastFetchedAt)
+                andFilterWithCompare(MangaTable.lastFetchedAt, lastFetchedAt),
+                andFilterWithCompare(MangaTable.chaptersLastFetchedAt, chaptersLastFetchedAt)
             )
         }
     }
