@@ -149,16 +149,16 @@ object WebInterfaceManager {
          *
          * In case the download failed but the local webUI is valid the download is considered a success to prevent the fallback logic
          */
-        val doDownload: (version: String) -> Boolean = { version ->
+        val doDownload: (getVersion: () -> String) -> Boolean = { getVersion ->
             try {
-                downloadVersion(version)
+                downloadVersion(getVersion())
             } catch (e: Exception) {
                 false
             } || isLocalWebUIValid
         }
 
         // download the latest compatible version for the current selected webUI
-        val fallbackToDefaultWebUI = !doDownload(getLatestCompatibleVersion())
+        val fallbackToDefaultWebUI = !doDownload() { getLatestCompatibleVersion() }
         if (!fallbackToDefaultWebUI) {
             return
         }
@@ -168,7 +168,7 @@ object WebInterfaceManager {
 
             serverConfig.webUIFlavor = DEFAULT_WEB_UI
 
-            val fallbackToBundledVersion = !doDownload(getLatestCompatibleVersion())
+            val fallbackToBundledVersion = !doDownload() { getLatestCompatibleVersion() }
             if (!fallbackToBundledVersion) {
                 return
             }
@@ -183,7 +183,7 @@ object WebInterfaceManager {
             logger.warn(e) { "doInitialSetup: fallback to downloading the version of the bundled webUI" }
         }
 
-        val downloadFailed = !doDownload(BuildConfig.WEBUI_TAG)
+        val downloadFailed = !doDownload() { BuildConfig.WEBUI_TAG }
         if (downloadFailed) {
             throw Exception("Unable to setup a webUI")
         }
@@ -217,7 +217,11 @@ object WebInterfaceManager {
         }
 
         logger.info { "checkForUpdate(${serverConfig.webUIFlavor}, $localVersion): An update is available, starting download..." }
-        downloadVersion(getLatestCompatibleVersion())
+        try {
+            downloadVersion(getLatestCompatibleVersion())
+        } catch (e: Exception) {
+            logger.warn(e) { "checkForUpdate: failed due to" }
+        }
     }
 
     private fun getDownloadUrlFor(version: String): String {
