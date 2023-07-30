@@ -29,6 +29,8 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.subscriptions.downloadSubscriptionSource
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
+import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Error
+import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Queued
 import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
 import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
@@ -38,7 +40,6 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.reflect.jvm.jvmName
@@ -52,7 +53,7 @@ object DownloadManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val clients = ConcurrentHashMap<String, WsContext>()
     private val downloadQueue = CopyOnWriteArrayList<DownloadChapter>()
-    private val downloaders = ConcurrentHashMap<Long, Downloader>()
+    private val downloaders = ConcurrentHashMap<String, Downloader>()
 
     private const val downloadQueueKey = "downloadQueueKey"
     private val sharedPreferences =
@@ -73,7 +74,6 @@ object DownloadManager {
 
         if (downloadQueue.size > 0) {
             logger.info { "restoreAndResumeDownloads: Restored download queue, starting downloads..." }
-            start()
         }
     }
 
@@ -152,10 +152,13 @@ object DownloadManager {
         scope.launch {
             downloaderWatch.sample(1.seconds).collect {
                 val runningDownloaders = downloaders.values.filter { it.isActive }
-                logger.info { "Running: ${runningDownloaders.size}, Queued: ${downloadQueue.size}" }
+                val availableDownloads = downloadQueue.filter { it.state != Error }
+
+                logger.info { "Running: ${runningDownloaders.size}, Queued: ${availableDownloads.size}, Failed: ${downloadQueue.size - availableDownloads.size}" }
+
                 if (runningDownloaders.size < MAX_SOURCES_IN_PARAllEL) {
-                    downloadQueue.asSequence()
-                        .map { it.manga.sourceId.toLong() }
+                    availableDownloads.asSequence()
+                        .map { it.manga.sourceId }
                         .distinct()
                         .minus(
                             runningDownloaders.map { it.sourceId }.toSet()
@@ -178,7 +181,7 @@ object DownloadManager {
         }
     }
 
-    private fun getDownloader(sourceId: Long) = downloaders.getOrPut(sourceId) {
+    private fun getDownloader(sourceId: String) = downloaders.getOrPut(sourceId) {
         Downloader(
             scope = scope,
             sourceId = sourceId,
@@ -233,15 +236,6 @@ object DownloadManager {
         addMultipleToQueue(inputPairs)
     }
 
-    fun unqueue(input: EnqueueInput) {
-        if (input.chapterIds.isNullOrEmpty()) return
-
-        downloadQueue.removeIf { it.chapter.id in input.chapterIds }
-        saveDownloadQueue()
-
-        notifyAllClients()
-    }
-
     /**
      * Tries to add multiple inputs to queue
      * If any of inputs was actually added to queue, starts the queue
@@ -262,26 +256,52 @@ object DownloadManager {
      * If chapter is added, returns the created DownloadChapter, otherwise returns null
      */
     private fun addToQueue(manga: MangaDataClass, chapter: ChapterDataClass): DownloadChapter? {
-        if (downloadQueue.none { it.mangaId == manga.id && it.chapterIndex == chapter.index }) {
-            val downloadChapter = DownloadChapter(
+        val downloadChapter = downloadQueue.firstOrNull { it.mangaId == manga.id && it.chapterIndex == chapter.index }
+
+        val addToQueue = downloadChapter == null
+        if (addToQueue) {
+            val newDownloadChapter = DownloadChapter(
                 chapter.index,
                 manga.id,
                 chapter,
                 manga
             )
-            downloadQueue.add(downloadChapter)
+            downloadQueue.add(newDownloadChapter)
             saveDownloadQueue()
-            downloadSubscriptionSource.publish(downloadChapter)
-            logger.debug { "Added chapter ${chapter.id} to download queue (${manga.title} | ${chapter.name})" }
+            downloadSubscriptionSource.publish(newDownloadChapter)
+            logger.debug { "Added chapter ${chapter.id} to download queue ($newDownloadChapter)" }
+            return newDownloadChapter
+        }
+
+        val retryDownload = downloadChapter?.state == Error
+        if (retryDownload) {
+            logger.debug { "Chapter ${chapter.id} download failed, retry download ($downloadChapter)" }
+
+            downloadChapter?.state = Queued
+            downloadChapter?.progress = 0f
+
             return downloadChapter
         }
-        logger.debug { "Chapter ${chapter.id} already present in queue (${manga.title} | ${chapter.name})" }
+
+        logger.debug { "Chapter ${chapter.id} already present in queue ($downloadChapter)" }
         return null
     }
 
-    fun unqueue(chapterIndex: Int, mangaId: Int) {
-        downloadQueue.removeIf { it.mangaId == mangaId && it.chapterIndex == chapterIndex }
+    fun dequeue(input: EnqueueInput) {
+        if (input.chapterIds.isNullOrEmpty()) return
+        dequeue(downloadQueue.filter { it.chapter.id in input.chapterIds }.toSet())
+    }
+
+    fun dequeue(chapterIndex: Int, mangaId: Int) {
+        dequeue(downloadQueue.filter { it.mangaId == mangaId && it.chapterIndex == chapterIndex }.toSet())
+    }
+
+    private fun dequeue(chapterDownloads: Set<DownloadChapter>) {
+        logger.debug { "dequeue ${chapterDownloads.size} chapters [${chapterDownloads.joinToString(separator = ", ") { "$it" }}]" }
+
+        downloadQueue.removeAll(chapterDownloads)
         saveDownloadQueue()
+
         notifyAllClients()
     }
 
@@ -289,18 +309,25 @@ object DownloadManager {
         require(to >= 0) { "'to' must be over or equal to 0" }
         val download = downloadQueue.find { it.mangaId == mangaId && it.chapterIndex == chapterIndex }
             ?: return
+
+        logger.debug { "reorder download $download from ${downloadQueue.indexOf(download)} to $to" }
+
         downloadQueue -= download
         downloadQueue.add(to, download)
         saveDownloadQueue()
     }
 
     fun start() {
+        logger.debug { "start" }
+
         scope.launch {
             downloaderWatch.emit(Unit)
         }
     }
 
     suspend fun stop() {
+        logger.debug { "stop" }
+
         coroutineScope {
             downloaders.map { (_, downloader) ->
                 async {
@@ -312,6 +339,8 @@ object DownloadManager {
     }
 
     suspend fun clear() {
+        logger.debug { "clear" }
+
         stop()
         downloadQueue.clear()
         saveDownloadQueue()
