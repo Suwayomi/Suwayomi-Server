@@ -149,7 +149,7 @@ object WebInterfaceManager {
          */
         val doDownload = {
             try {
-                downloadVersion()
+                downloadVersion(getLatestCompatibleVersion())
             } catch (e: Exception) {
                 false
             } || isLocalWebUIValid
@@ -205,7 +205,7 @@ object WebInterfaceManager {
         }
 
         logger.info { "checkForUpdate(${serverConfig.webUIFlavor}, $localVersion): An update is available, starting download..." }
-        downloadVersion()
+        downloadVersion(getLatestCompatibleVersion())
     }
 
     private fun getDownloadUrlFor(version: String): String {
@@ -311,17 +311,15 @@ object WebInterfaceManager {
         throw Exception("No compatible webUI version found")
     }
 
-    fun downloadVersion(retryCount: Int = 0): Boolean {
-        val latestCompatibleVersion = getLatestCompatibleVersion()
-
-        val webUIZip = "${WebUI.WEBUI.baseFileName}-$latestCompatibleVersion.zip"
+    fun downloadVersion(version: String, retryCount: Int = 0): Boolean {
+        val webUIZip = "${WebUI.WEBUI.baseFileName}-$version.zip"
         val webUIZipPath = "$tmpDir/$webUIZip"
         val webUIZipFile = File(webUIZipPath)
 
-        logger.info { "downloadVersion: Downloading WebUI (flavor= ${serverConfig.webUIFlavor}, version \"$latestCompatibleVersion\") zip from the Internet..." }
+        logger.info { "downloadVersion: Downloading WebUI (flavor= ${serverConfig.webUIFlavor}, version \"$version\") zip from the Internet..." }
 
         try {
-            val webUIZipURL = "${getDownloadUrlFor(latestCompatibleVersion)}/$webUIZip"
+            val webUIZipURL = "${getDownloadUrlFor(version)}/$webUIZip"
             downloadVersionZipFile(webUIZipURL, webUIZipFile)
 
             if (!isDownloadValid(webUIZip, webUIZipPath)) {
@@ -332,7 +330,7 @@ object WebInterfaceManager {
             logger.error { "downloadVersion: Download failed${if (retry) ", retrying ${retryCount + 1}/3" else ""} - error: $e" }
 
             if (retry) {
-                return downloadVersion(retryCount + 1)
+                return downloadVersion(version, retryCount + 1)
             }
 
             return false
