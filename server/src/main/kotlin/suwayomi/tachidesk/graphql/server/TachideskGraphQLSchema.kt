@@ -24,6 +24,7 @@ import suwayomi.tachidesk.graphql.queries.BackupQuery
 import suwayomi.tachidesk.graphql.queries.CategoryQuery
 import suwayomi.tachidesk.graphql.queries.ChapterQuery
 import suwayomi.tachidesk.graphql.queries.ExtensionQuery
+import suwayomi.tachidesk.graphql.queries.InfoQuery
 import suwayomi.tachidesk.graphql.queries.MangaQuery
 import suwayomi.tachidesk.graphql.queries.MetaQuery
 import suwayomi.tachidesk.graphql.queries.SourceQuery
@@ -55,6 +56,7 @@ val schema = toSchema(
         TopLevelObject(CategoryQuery()),
         TopLevelObject(ChapterQuery()),
         TopLevelObject(ExtensionQuery()),
+        TopLevelObject(InfoQuery()),
         TopLevelObject(MangaQuery()),
         TopLevelObject(MetaQuery()),
         TopLevelObject(SourceQuery())
