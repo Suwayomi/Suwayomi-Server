@@ -36,6 +36,8 @@ private val tmpDir = System.getProperty("java.io.tmpdir")
 
 private fun ByteArray.toHex(): String = joinToString(separator = "") { eachByte -> "%02x".format(eachByte) }
 
+class BundledWebUIMissing : Exception("No bundled webUI version found")
+
 enum class WebUIChannel {
     BUNDLED, // the default webUI version bundled with the server release
     STABLE,
@@ -147,16 +149,16 @@ object WebInterfaceManager {
          *
          * In case the download failed but the local webUI is valid the download is considered a success to prevent the fallback logic
          */
-        val doDownload = {
+        val doDownload: (version: String) -> Boolean = { version ->
             try {
-                downloadVersion(getLatestCompatibleVersion())
+                downloadVersion(version)
             } catch (e: Exception) {
                 false
             } || isLocalWebUIValid
         }
 
         // download the latest compatible version for the current selected webUI
-        val fallbackToDefaultWebUI = !doDownload()
+        val fallbackToDefaultWebUI = !doDownload(getLatestCompatibleVersion())
         if (!fallbackToDefaultWebUI) {
             return
         }
@@ -166,7 +168,7 @@ object WebInterfaceManager {
 
             serverConfig.webUIFlavor = DEFAULT_WEB_UI
 
-            val fallbackToBundledVersion = !doDownload()
+            val fallbackToBundledVersion = !doDownload(getLatestCompatibleVersion())
             if (!fallbackToBundledVersion) {
                 return
             }
@@ -174,11 +176,21 @@ object WebInterfaceManager {
 
         logger.warn { "doInitialSetup: fallback to bundled default webUI \"$DEFAULT_WEB_UI\"" }
 
-        extractBundledWebUI()
+        try {
+            extractBundledWebUI()
+            return
+        } catch (e: BundledWebUIMissing) {
+            logger.warn(e) { "doInitialSetup: fallback to downloading the version of the bundled webUI" }
+        }
+
+        val downloadFailed = !doDownload(BuildConfig.WEBUI_TAG)
+        if (downloadFailed) {
+            throw Exception("Unable to setup a webUI")
+        }
     }
 
     private fun extractBundledWebUI() {
-        val resourceWebUI: InputStream = BuildConfig::class.java.getResourceAsStream("/WebUI.zip") ?: throw Error("extractBundledWebUI: No bundled webUI version found")
+        val resourceWebUI: InputStream = BuildConfig::class.java.getResourceAsStream("/WebUI.zip") ?: throw BundledWebUIMissing()
 
         logger.info { "extractBundledWebUI: Using the bundled WebUI zip..." }
 
