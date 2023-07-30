@@ -58,6 +58,9 @@ class ServerConfig(getConfig: () -> Config, moduleName: String = MODULE_NAME) : 
     var backupInterval: Int by overridableConfig
     var backupTTL: Int by overridableConfig
 
+    // local source
+    var localSourcePath: String by overridableConfig
+
     companion object {
         fun register(getConfig: () -> Config) = ServerConfig({ getConfig().getConfig(MODULE_NAME) })
     }
