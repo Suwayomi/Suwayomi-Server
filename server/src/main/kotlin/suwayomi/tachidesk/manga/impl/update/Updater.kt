@@ -52,10 +52,6 @@ class Updater : IUpdater {
 
     private var currentUpdateTaskId = ""
 
-    init {
-        scheduleUpdateTask()
-    }
-
     private fun autoUpdateTask() {
         val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
         preferences.putLong(lastAutomatedUpdateKey, System.currentTimeMillis())
@@ -69,7 +65,7 @@ class Updater : IUpdater {
         addCategoriesToUpdateQueue(Category.getCategoryList(), true)
     }
 
-    private fun scheduleUpdateTask() {
+    fun scheduleUpdateTask() {
         HAScheduler.deschedule(currentUpdateTaskId)
 
         val isAutoUpdateDisabled = serverConfig.globalUpdateInterval == 0.0
@@ -79,9 +75,14 @@ class Updater : IUpdater {
 
         val updateInterval = serverConfig.globalUpdateInterval.hours.coerceAtLeast(6.hours).inWholeMilliseconds
         val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
-        val initialDelay = updateInterval - (System.currentTimeMillis() - lastAutomatedUpdate) % updateInterval
+        val timeToNextExecution = (updateInterval - (System.currentTimeMillis() - lastAutomatedUpdate)).mod(updateInterval)
 
-        HAScheduler.schedule(::autoUpdateTask, updateInterval, initialDelay, "global-update")
+        val wasPreviousUpdateTriggered = System.currentTimeMillis() - (if (lastAutomatedUpdate > 0) lastAutomatedUpdate else System.currentTimeMillis()) < updateInterval
+        if (!wasPreviousUpdateTriggered) {
+            autoUpdateTask()
+        }
+
+        HAScheduler.schedule(::autoUpdateTask, updateInterval, timeToNextExecution, "global-update")
     }
 
     private fun getOrCreateUpdateChannelFor(source: String): Channel<UpdateJob> {

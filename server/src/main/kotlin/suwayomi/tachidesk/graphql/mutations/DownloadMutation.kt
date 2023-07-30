@@ -127,7 +127,7 @@ class DownloadMutation {
     ): CompletableFuture<DequeueChapterDownloadsPayload> {
         val (clientMutationId, chapters) = input
 
-        DownloadManager.unqueue(DownloadManager.EnqueueInput(chapters))
+        DownloadManager.dequeue(DownloadManager.EnqueueInput(chapters))
 
         return future {
             DequeueChapterDownloadsPayload(
@@ -153,7 +153,7 @@ class DownloadMutation {
     ): CompletableFuture<DequeueChapterDownloadPayload> {
         val (clientMutationId, chapter) = input
 
-        DownloadManager.unqueue(DownloadManager.EnqueueInput(listOf(chapter)))
+        DownloadManager.dequeue(DownloadManager.EnqueueInput(listOf(chapter)))
 
         return future {
             DequeueChapterDownloadPayload(

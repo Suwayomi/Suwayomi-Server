@@ -47,7 +47,7 @@ class ApplicationDirs(
     val extensionsRoot = "$dataRoot/extensions"
     val thumbnailsRoot = "$dataRoot/thumbnails"
     val mangaDownloadsRoot = serverConfig.downloadsPath.ifBlank { "$dataRoot/downloads" }
-    val localMangaRoot = "$dataRoot/local"
+    val localMangaRoot = serverConfig.localSourcePath.ifBlank { "$dataRoot/local" }
     val webUIRoot = "$dataRoot/webUI"
     val automatedBackupRoot = serverConfig.backupPath.ifBlank { "$dataRoot/backups" }
 
@@ -61,6 +61,11 @@ val systemTrayInstance by lazy { systemTray() }
 val androidCompat by lazy { AndroidCompat() }
 
 fun applicationSetup() {
+    Thread.setDefaultUncaughtExceptionHandler {
+            _, throwable ->
+        KotlinLogging.logger { }.error(throwable) { "unhandled exception" }
+    }
+
     // register Tachidesk's config which is dubbed "ServerConfig"
     GlobalConfigManager.registerModule(
         ServerConfig.register { GlobalConfigManager.config }
@@ -178,6 +183,9 @@ fun applicationSetup() {
 
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
     Security.addProvider(BouncyCastleProvider())
+
+    // start automated global updates
+    updater.scheduleUpdateTask()
 
     // start automated backups
     ProtoBackupExport.scheduleAutomatedBackupTask()
