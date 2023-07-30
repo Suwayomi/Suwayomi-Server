@@ -11,6 +11,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import mu.KLogger
 import mu.KotlinLogging
 import net.lingala.zip4j.ZipFile
 import org.json.JSONArray
@@ -292,8 +293,10 @@ object WebInterfaceManager {
 
     private fun fetchMD5SumFor(version: String): String {
         return try {
-            val url = "${getDownloadUrlFor(version)}/md5sum"
-            URL(url).readText().trim()
+            executeWithRetry(KotlinLogging.logger("${logger.name} fetchMD5SumFor($version)"), {
+                val url = "${getDownloadUrlFor(version)}/md5sum"
+                URL(url).readText().trim()
+            })
         } catch (e: Exception) {
             ""
         }
@@ -305,8 +308,14 @@ object WebInterfaceManager {
     }
 
     private fun fetchPreviewVersion(): String {
-        val releaseInfoJson = URL(WebUI.WEBUI.latestReleaseInfoUrl).readText()
-        return Json.decodeFromString<JsonObject>(releaseInfoJson)["tag_name"]?.jsonPrimitive?.content ?: throw Exception("Failed to get the preview version tag")
+        return executeWithRetry(KotlinLogging.logger("${logger.name} fetchPreviewVersion"), {
+            val releaseInfoJson = URL(WebUI.WEBUI.latestReleaseInfoUrl).readText()
+            Json.decodeFromString<JsonObject>(releaseInfoJson)["tag_name"]?.jsonPrimitive?.content ?: throw Exception("Failed to get the preview version tag")
+        })
+    }
+
+    private fun fetchServerMappingFile(): JSONArray {
+        return executeWithRetry(KotlinLogging.logger("$logger fetchServerMappingFile"), { JSONArray(URL(WebUI.WEBUI.versionMappingUrl).readText()) })
     }
 
     private fun getLatestCompatibleVersion(): String {
@@ -316,7 +325,7 @@ object WebInterfaceManager {
         }
 
         val currentServerVersionNumber = extractVersion(BuildConfig.REVISION)
-        val webUIToServerVersionMappings = JSONArray(URL(WebUI.WEBUI.versionMappingUrl).readText())
+        val webUIToServerVersionMappings = fetchServerMappingFile()
 
         logger.debug { "getLatestCompatibleVersion: webUIChannel= ${serverConfig.webUIChannel}, currentServerVersion= ${BuildConfig.REVISION}, mappingFile= $webUIToServerVersionMappings" }
 
