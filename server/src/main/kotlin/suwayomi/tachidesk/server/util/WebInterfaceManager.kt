@@ -152,6 +152,7 @@ object WebInterfaceManager {
         val doDownload: (getVersion: () -> String) -> Boolean = { getVersion ->
             try {
                 downloadVersion(getVersion())
+                true
             } catch (e: Exception) {
                 false
             } || isLocalWebUIValid
@@ -275,6 +276,20 @@ object WebInterfaceManager {
         return digest.toHex()
     }
 
+    private fun <T> executeWithRetry(log: KLogger, execute: () -> T, maxRetries: Int = 3, retryCount: Int = 0): T {
+        try {
+            return execute()
+        } catch (e: Exception) {
+            log.warn(e) { "(retry $retryCount/$maxRetries) failed due to" }
+
+            if (retryCount < maxRetries) {
+                return executeWithRetry(log, execute, maxRetries, retryCount + 1)
+            }
+
+            throw e
+        }
+    }
+
     private fun fetchMD5SumFor(version: String): String {
         return try {
             val url = "${getDownloadUrlFor(version)}/md5sum"
@@ -327,35 +342,21 @@ object WebInterfaceManager {
         throw Exception("No compatible webUI version found")
     }
 
-    fun downloadVersion(version: String, retryCount: Int = 0): Boolean {
+    fun downloadVersion(version: String) {
         val webUIZip = "${WebUI.WEBUI.baseFileName}-$version.zip"
         val webUIZipPath = "$tmpDir/$webUIZip"
+        val webUIZipURL = "${getDownloadUrlFor(version)}/$webUIZip"
 
         val log = KotlinLogging.logger("${logger.name} downloadVersion(version= $version, flavor= ${serverConfig.webUIFlavor})")
         log.info { "Downloading WebUI zip from the Internet..." }
 
-        try {
-            val webUIZipURL = "${getDownloadUrlFor(version)}/$webUIZip"
-            downloadVersionZipFile(webUIZipURL, webUIZipPath)
-        } catch (e: Exception) {
-            val retry = retryCount < 3
-            log.error { "failed${if (retry) ", retrying ${retryCount + 1}/3" else ""} - error: $e" }
-
-            if (retry) {
-                return downloadVersion(version, retryCount + 1)
-            }
-
-            return false
-        }
-
+        executeWithRetry(log, { downloadVersionZipFile(webUIZipURL, webUIZipPath) })
         File(applicationDirs.webUIRoot).deleteRecursively()
 
         // extract webUI zip
         log.info { "Extracting WebUI zip..." }
         extractDownload(webUIZipPath, applicationDirs.webUIRoot)
         log.info { "Extracting WebUI zip Done." }
-
-        return true
     }
 
     private fun downloadVersionZipFile(url: String, filePath: String) {
