@@ -149,7 +149,7 @@ object WebInterfaceManager {
          */
         val doDownload = {
             try {
-                downloadLatestCompatibleVersion()
+                downloadVersion()
             } catch (e: Exception) {
                 false
             } || isLocalWebUIValid
@@ -205,7 +205,7 @@ object WebInterfaceManager {
         }
 
         logger.info { "checkForUpdate(${serverConfig.webUIFlavor}, $localVersion): An update is available, starting download..." }
-        downloadLatestCompatibleVersion()
+        downloadVersion()
     }
 
     private fun getDownloadUrlFor(version: String): String {
@@ -311,28 +311,28 @@ object WebInterfaceManager {
         throw Exception("No compatible webUI version found")
     }
 
-    fun downloadLatestCompatibleVersion(retryCount: Int = 0): Boolean {
+    fun downloadVersion(retryCount: Int = 0): Boolean {
         val latestCompatibleVersion = getLatestCompatibleVersion()
 
         val webUIZip = "${WebUI.WEBUI.baseFileName}-$latestCompatibleVersion.zip"
         val webUIZipPath = "$tmpDir/$webUIZip"
         val webUIZipFile = File(webUIZipPath)
 
-        logger.info { "downloadLatestCompatibleVersion: Downloading WebUI (flavor= ${serverConfig.webUIFlavor}, version \"$latestCompatibleVersion\") zip from the Internet..." }
+        logger.info { "downloadVersion: Downloading WebUI (flavor= ${serverConfig.webUIFlavor}, version \"$latestCompatibleVersion\") zip from the Internet..." }
 
         try {
             val webUIZipURL = "${getDownloadUrlFor(latestCompatibleVersion)}/$webUIZip"
-            downloadVersion(webUIZipURL, webUIZipFile)
+            downloadVersionZipFile(webUIZipURL, webUIZipFile)
 
             if (!isDownloadValid(webUIZip, webUIZipPath)) {
                 throw Exception("Download is invalid")
             }
         } catch (e: Exception) {
             val retry = retryCount < 3
-            logger.error { "downloadLatestCompatibleVersion: Download failed${if (retry) ", retrying ${retryCount + 1}/3" else ""} - error: $e" }
+            logger.error { "downloadVersion: Download failed${if (retry) ", retrying ${retryCount + 1}/3" else ""} - error: $e" }
 
             if (retry) {
-                return downloadLatestCompatibleVersion(retryCount + 1)
+                return downloadVersion(retryCount + 1)
             }
 
             return false
@@ -341,14 +341,14 @@ object WebInterfaceManager {
         File(applicationDirs.webUIRoot).deleteRecursively()
 
         // extract webUI zip
-        logger.info { "downloadLatestCompatibleVersion: Extracting WebUI zip..." }
+        logger.info { "downloadVersion: Extracting WebUI zip..." }
         extractDownload(webUIZipPath, applicationDirs.webUIRoot)
-        logger.info { "downloadLatestCompatibleVersion: Extracting WebUI zip Done." }
+        logger.info { "downloadVersion: Extracting WebUI zip Done." }
 
         return true
     }
 
-    private fun downloadVersion(url: String, zipFile: File) {
+    private fun downloadVersionZipFile(url: String, zipFile: File) {
         zipFile.delete()
         val data = ByteArray(1024)
 
@@ -361,7 +361,7 @@ object WebInterfaceManager {
             connection.inputStream.buffered().use { inp ->
                 var totalCount = 0
 
-                print("downloadVersion: Download progress: % 00")
+                print("downloadVersionZipFile: Download progress: % 00")
                 while (true) {
                     val count = inp.read(data, 0, 1024)
 
@@ -377,7 +377,7 @@ object WebInterfaceManager {
                     webUIZipFileOut.write(data, 0, count)
                 }
                 println()
-                logger.info { "downloadVersion: Downloading WebUI Done." }
+                logger.info { "downloadVersionZipFile: Downloading WebUI Done." }
             }
         }
     }
