@@ -47,7 +47,7 @@ class ApplicationDirs(
     val extensionsRoot = "$dataRoot/extensions"
     val thumbnailsRoot = "$dataRoot/thumbnails"
     val mangaDownloadsRoot = serverConfig.downloadsPath.ifBlank { "$dataRoot/downloads" }
-    val localMangaRoot = "$dataRoot/local"
+    val localMangaRoot = serverConfig.localSourcePath.ifBlank { "$dataRoot/local" }
     val webUIRoot = "$dataRoot/webUI"
     val automatedBackupRoot = serverConfig.backupPath.ifBlank { "$dataRoot/backups" }
 
