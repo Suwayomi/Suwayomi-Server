@@ -430,7 +430,7 @@ object WebInterfaceManager {
             val latestCompatibleVersion = getLatestCompatibleVersion()
             latestCompatibleVersion != currentVersion
         } catch (e: Exception) {
-            logger.debug { "isUpdateAvailable: check failed due to $e" }
+            logger.warn(e) { "isUpdateAvailable: check failed due to" }
             false
         }
     }
