@@ -42,6 +42,7 @@ import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.concurrent.ConcurrentHashMap
@@ -50,8 +51,6 @@ import kotlin.reflect.jvm.jvmName
 import kotlin.time.Duration.Companion.seconds
 
 private val logger = KotlinLogging.logger {}
-
-private const val MAX_SOURCES_IN_PARAllEL = 5
 
 object DownloadManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -176,14 +175,14 @@ object DownloadManager {
 
                 logger.info { "Running: ${runningDownloaders.size}, Queued: ${availableDownloads.size}, Failed: ${downloadQueue.size - availableDownloads.size}" }
 
-                if (runningDownloaders.size < MAX_SOURCES_IN_PARAllEL) {
+                if (runningDownloaders.size < serverConfig.maxSourcesInParallel.value) {
                     availableDownloads.asSequence()
                         .map { it.manga.sourceId }
                         .distinct()
                         .minus(
                             runningDownloaders.map { it.sourceId }.toSet()
                         )
-                        .take(MAX_SOURCES_IN_PARAllEL - runningDownloaders.size)
+                        .take(serverConfig.maxSourcesInParallel.value - runningDownloaders.size)
                         .map { getDownloader(it) }
                         .forEach {
                             it.start()
