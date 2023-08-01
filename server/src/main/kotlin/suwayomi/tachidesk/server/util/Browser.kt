@@ -11,13 +11,17 @@ import dorkbox.desktop.Desktop
 import suwayomi.tachidesk.server.serverConfig
 
 object Browser {
-    private val appIP = if (serverConfig.ip.value == "0.0.0.0") "127.0.0.1" else serverConfig.ip.value
-    private val appBaseUrl = "http://$appIP:${serverConfig.port.value}"
-
     private val electronInstances = mutableListOf<Any>()
+
+    private fun getAppBaseUrl(): String {
+        val appIP = if (serverConfig.ip.value == "0.0.0.0") "127.0.0.1" else serverConfig.ip.value
+        return "http://$appIP:${serverConfig.port.value}"
+    }
 
     fun openInBrowser() {
         if (serverConfig.webUIEnabled.value) {
+            val appBaseUrl = getAppBaseUrl()
+
             if (serverConfig.webUIInterface.value == ("electron")) {
                 try {
                     val electronPath = serverConfig.electronPath.value
