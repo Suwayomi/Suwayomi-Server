@@ -33,6 +33,7 @@ import suwayomi.tachidesk.util.HAScheduler
 import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
 import java.util.prefs.Preferences
+import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.hours
 
 class Updater : IUpdater {
@@ -45,12 +46,35 @@ class Updater : IUpdater {
     private val tracker = ConcurrentHashMap<Int, UpdateJob>()
     private val updateChannels = ConcurrentHashMap<String, Channel<UpdateJob>>()
 
-    private val semaphore = Semaphore(serverConfig.maxParallelUpdateRequests.value)
+    private var maxParallelUpdateRequests = 20 // max permits, necessary to be set to be able to release up to 20 permits
+    private val semaphore = Semaphore(maxParallelUpdateRequests)
 
     private val lastAutomatedUpdateKey = "lastAutomatedUpdateKey"
     private val preferences = Preferences.userNodeForPackage(Updater::class.java)
 
     private var currentUpdateTaskId = ""
+
+    init {
+        serverConfig.subscribeTo(serverConfig.globalUpdateInterval, ::scheduleUpdateTask)
+        serverConfig.subscribeTo(
+            serverConfig.maxParallelUpdateRequests,
+            { value ->
+                val newMaxPermits = value.coerceAtLeast(1).coerceAtMost(20)
+                val permitDifference = maxParallelUpdateRequests - newMaxPermits
+                maxParallelUpdateRequests = newMaxPermits
+
+                val addMorePermits = permitDifference < 0
+                for (i in 1..permitDifference.absoluteValue) {
+                    if (addMorePermits) {
+                        semaphore.release()
+                    } else {
+                        semaphore.acquire()
+                    }
+                }
+            },
+            ignoreInitialValue = false
+        )
+    }
 
     private fun autoUpdateTask() {
         val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
