@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.impl.backup.proto
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import kotlinx.coroutines.flow.combine
 import mu.KotlinLogging
 import okio.buffer
 import okio.gzip
@@ -52,6 +53,18 @@ object ProtoBackupExport : ProtoBackupBase() {
     private var backupSchedulerJobId: String = ""
     private const val lastAutomatedBackupKey = "lastAutomatedBackupKey"
     private val preferences = Preferences.userNodeForPackage(ProtoBackupExport::class.java)
+
+    init {
+        serverConfig.subscribeTo(
+            combine(serverConfig.backupInterval, serverConfig.backupTime) { interval, timeOfDay ->
+                Pair(
+                    interval,
+                    timeOfDay
+                )
+            },
+            ::scheduleAutomatedBackupTask
+        )
+    }
 
     fun scheduleAutomatedBackupTask() {
         HAScheduler.descheduleCron(backupSchedulerJobId)
