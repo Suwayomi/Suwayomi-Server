@@ -11,7 +11,11 @@ import com.typesafe.config.Config
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
@@ -89,6 +93,38 @@ class ServerConfig(getConfig: () -> Config, moduleName: String = MODULE_NAME) : 
 
     // local source
     val localSourcePath: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+
+    fun <T> subscribeTo(flow: Flow<T>, onChange: suspend (value: T) -> Unit, ignoreInitialValue: Boolean = true) {
+        val actualFlow = if (ignoreInitialValue) {
+            flow.drop(1)
+        } else {
+            flow
+        }
+
+        val sharedFlow = MutableSharedFlow<T>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+        actualFlow.distinctUntilChanged().onEach { sharedFlow.emit(it) }.launchIn(mutableConfigValueScope)
+        sharedFlow.onEach { onChange(it) }.launchIn(mutableConfigValueScope)
+    }
+
+    fun <T> subscribeTo(flow: Flow<T>, onChange: suspend () -> Unit, ignoreInitialValue: Boolean = true) {
+        subscribeTo(flow, { _ -> onChange() }, ignoreInitialValue)
+    }
+
+    fun <T> subscribeTo(
+        mutableStateFlow: MutableStateFlow<T>,
+        onChange: suspend (value: T) -> Unit,
+        ignoreInitialValue: Boolean = true
+    ) {
+        subscribeTo(mutableStateFlow.asStateFlow(), onChange, ignoreInitialValue)
+    }
+
+    fun <T> subscribeTo(
+        mutableStateFlow: MutableStateFlow<T>,
+        onChange: suspend () -> Unit,
+        ignoreInitialValue: Boolean = true
+    ) {
+        subscribeTo(mutableStateFlow.asStateFlow(), { _ -> onChange() }, ignoreInitialValue)
+    }
 
     companion object {
         fun register(getConfig: () -> Config) = ServerConfig({ getConfig().getConfig(MODULE_NAME) })
