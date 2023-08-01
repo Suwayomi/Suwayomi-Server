@@ -71,8 +71,10 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = MODULE_NAME
     val downloadsPath: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
     val autoDownloadNewChapters: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
 
+    // requests
+    val maxSourcesInParallel: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
+
     // updater
-    val maxParallelUpdateRequests: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
     val excludeUnreadChapters: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val excludeNotStarted: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val excludeCompleted: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)

@@ -46,8 +46,8 @@ class Updater : IUpdater {
     private val tracker = ConcurrentHashMap<Int, UpdateJob>()
     private val updateChannels = ConcurrentHashMap<String, Channel<UpdateJob>>()
 
-    private var maxParallelUpdateRequests = 20 // max permits, necessary to be set to be able to release up to 20 permits
-    private val semaphore = Semaphore(maxParallelUpdateRequests)
+    private var maxSourcesInParallel = 20 // max permits, necessary to be set to be able to release up to 20 permits
+    private val semaphore = Semaphore(maxSourcesInParallel)
 
     private val lastAutomatedUpdateKey = "lastAutomatedUpdateKey"
     private val preferences = Preferences.userNodeForPackage(Updater::class.java)
@@ -57,11 +57,11 @@ class Updater : IUpdater {
     init {
         serverConfig.subscribeTo(serverConfig.globalUpdateInterval, ::scheduleUpdateTask)
         serverConfig.subscribeTo(
-            serverConfig.maxParallelUpdateRequests,
+            serverConfig.maxSourcesInParallel,
             { value ->
                 val newMaxPermits = value.coerceAtLeast(1).coerceAtMost(20)
-                val permitDifference = maxParallelUpdateRequests - newMaxPermits
-                maxParallelUpdateRequests = newMaxPermits
+                val permitDifference = maxSourcesInParallel - newMaxPermits
+                maxSourcesInParallel = newMaxPermits
 
                 val addMorePermits = permitDifference < 0
                 for (i in 1..permitDifference.absoluteValue) {
