@@ -168,6 +168,22 @@ object DownloadManager {
 
     private val downloaderWatch = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     init {
+        serverConfig.subscribeTo(serverConfig.maxSourcesInParallel, { maxSourcesInParallel ->
+            val runningDownloaders = downloaders.values.filter { it.isActive }
+            var downloadersToStop = runningDownloaders.size - maxSourcesInParallel
+
+            logger.debug { "Max sources in parallel changed to $maxSourcesInParallel (running downloaders ${runningDownloaders.size})" }
+
+            if (downloadersToStop > 0) {
+                runningDownloaders.takeWhile {
+                    it.stop()
+                    --downloadersToStop > 0
+                }
+            } else {
+                downloaderWatch.emit(Unit)
+            }
+        })
+
         scope.launch {
             downloaderWatch.sample(1.seconds).collect {
                 val runningDownloaders = downloaders.values.filter { it.isActive }
