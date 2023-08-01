@@ -31,6 +31,7 @@ import suwayomi.tachidesk.graphql.queries.ExtensionQuery
 import suwayomi.tachidesk.graphql.queries.InfoQuery
 import suwayomi.tachidesk.graphql.queries.MangaQuery
 import suwayomi.tachidesk.graphql.queries.MetaQuery
+import suwayomi.tachidesk.graphql.queries.SettingsQuery
 import suwayomi.tachidesk.graphql.queries.SourceQuery
 import suwayomi.tachidesk.graphql.queries.UpdateQuery
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
@@ -67,6 +68,7 @@ val schema = toSchema(
         TopLevelObject(InfoQuery()),
         TopLevelObject(MangaQuery()),
         TopLevelObject(MetaQuery()),
+        TopLevelObject(SettingsQuery()),
         TopLevelObject(SourceQuery()),
         TopLevelObject(UpdateQuery())
     ),

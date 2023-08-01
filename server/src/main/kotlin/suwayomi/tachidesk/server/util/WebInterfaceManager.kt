@@ -78,8 +78,10 @@ enum class WebUIChannel {
     PREVIEW;
 
     companion object {
+        fun from(channel: String): WebUIChannel = WebUIChannel.values().find { it.name.lowercase() == channel.lowercase() } ?: STABLE
+
         fun doesConfigChannelEqual(channel: WebUIChannel): Boolean {
-            return serverConfig.webUIChannel.value.equals(channel.toString(), true)
+            return serverConfig.webUIChannel.value.equals(channel.name, true)
         }
     }
 }
@@ -105,6 +107,10 @@ enum class WebUIFlavor(
         "latestReleaseInfoURL",
         "baseFileName"
     );
+
+    companion object {
+        fun from(value: String): WebUIFlavor = WebUIFlavor.values().find { it.name == value } ?: WEBUI
+    }
 }
 
 object WebInterfaceManager {
