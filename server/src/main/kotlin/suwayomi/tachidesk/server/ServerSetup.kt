@@ -46,18 +46,17 @@ class ApplicationDirs(
     val dataRoot: String = ApplicationRootDir,
     val tempRoot: String = "${System.getProperty("java.io.tmpdir")}/Tachidesk"
 ) {
-    val cacheRoot = System.getProperty("java.io.tmpdir") + "/tachidesk"
     val extensionsRoot = "$dataRoot/extensions"
-    val downloadsRoot = serverConfig.downloadsPath.value.ifBlank { "$dataRoot/downloads" }
-    val localMangaRoot = serverConfig.localSourcePath.value.ifBlank { "$dataRoot/local" }
+    val downloadsRoot get() = serverConfig.downloadsPath.value.ifBlank { "$dataRoot/downloads" }
+    val localMangaRoot get() = serverConfig.localSourcePath.value.ifBlank { "$dataRoot/local" }
     val webUIRoot = "$dataRoot/webUI"
-    val automatedBackupRoot = serverConfig.backupPath.value.ifBlank { "$dataRoot/backups" }
+    val automatedBackupRoot get() = serverConfig.backupPath.value.ifBlank { "$dataRoot/backups" }
 
     val tempThumbnailCacheRoot = "$tempRoot/thumbnails"
     val tempMangaCacheRoot = "$tempRoot/manga-cache"
 
-    val thumbnailDownloadsRoot = "$downloadsRoot/thumbnails"
-    val mangaDownloadsRoot = "$downloadsRoot/mangas"
+    val thumbnailDownloadsRoot get() = "$downloadsRoot/thumbnails"
+    val mangaDownloadsRoot get() = "$downloadsRoot/mangas"
 }
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
