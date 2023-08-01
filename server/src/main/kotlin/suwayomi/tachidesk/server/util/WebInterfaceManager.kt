@@ -122,7 +122,16 @@ object WebInterfaceManager {
         )
 
     init {
-        scheduleWebUIUpdateCheck()
+        serverConfig.subscribeTo(
+            combine(serverConfig.webUIUpdateCheckInterval, serverConfig.webUIFlavor) { interval, flavor ->
+                Pair(
+                    interval,
+                    flavor
+                )
+            },
+            ::scheduleWebUIUpdateCheck,
+            ignoreInitialValue = false
+        )
     }
 
     private fun isAutoUpdateEnabled(): Boolean {
