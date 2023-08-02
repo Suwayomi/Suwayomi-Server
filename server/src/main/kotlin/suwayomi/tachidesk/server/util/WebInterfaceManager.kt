@@ -63,6 +63,15 @@ private fun ByteArray.toHex(): String = joinToString(separator = "") { eachByte 
 
 class BundledWebUIMissing : Exception("No bundled webUI version found")
 
+enum class WebUIInterface {
+    BROWSER,
+    ELECTRON;
+
+    companion object {
+        fun from(value: String): WebUIInterface = WebUIInterface.values().find { it.name.lowercase() == value.lowercase() } ?: BROWSER
+    }
+}
+
 enum class WebUIChannel {
     BUNDLED, // the default webUI version bundled with the server release
     STABLE,
