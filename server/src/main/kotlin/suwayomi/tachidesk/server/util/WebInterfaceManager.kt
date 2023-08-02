@@ -76,20 +76,19 @@ enum class WebUIChannel {
 }
 
 enum class WebUI(
-    val repoUrl: String,
+    val uiName: String, val repoUrl: String,
     val versionMappingUrl: String,
     val latestReleaseInfoUrl: String,
     val baseFileName: String
 ) {
     WEBUI(
+        "WebUI",
         "https://github.com/Suwayomi/Tachidesk-WebUI-preview",
         "https://raw.githubusercontent.com/Suwayomi/Tachidesk-WebUI/master/versionToServerVersionMapping.json",
         "https://api.github.com/repos/Suwayomi/Tachidesk-WebUI-preview/releases/latest",
         "Tachidesk-WebUI"
     );
 }
-
-const val DEFAULT_WEB_UI = "WebUI"
 
 object WebInterfaceManager {
     private val logger = KotlinLogging.logger {}
@@ -195,7 +194,7 @@ object WebInterfaceManager {
             // check if the bundled webUI version is a newer version than the current used version
             // this could be the case in case no compatible webUI version is available and a newer server version was installed
             val shouldUpdateToBundledVersion =
-                serverConfig.webUIFlavor.value == DEFAULT_WEB_UI && extractVersion(getLocalVersion()) < extractVersion(
+                serverConfig.webUIFlavor.value == WebUI.WEBUI.uiName && extractVersion(getLocalVersion()) < extractVersion(
                     BuildConfig.WEBUI_TAG
                 )
             if (shouldUpdateToBundledVersion) {
@@ -241,10 +240,10 @@ object WebInterfaceManager {
             return
         }
 
-        if (serverConfig.webUIFlavor.value != DEFAULT_WEB_UI) {
-            logger.warn { "doInitialSetup: fallback to default webUI \"$DEFAULT_WEB_UI\"" }
+        if (serverConfig.webUIFlavor.value != WebUI.WEBUI.uiName) {
+            logger.warn { "doInitialSetup: fallback to default webUI \"${WebUI.WEBUI.uiName}\"" }
 
-            serverConfig.webUIFlavor.value = DEFAULT_WEB_UI
+            serverConfig.webUIFlavor.value = WebUI.WEBUI.uiName
 
             val fallbackToBundledVersion = !doDownload() { getLatestCompatibleVersion() }
             if (!fallbackToBundledVersion) {
@@ -252,7 +251,7 @@ object WebInterfaceManager {
             }
         }
 
-        logger.warn { "doInitialSetup: fallback to bundled default webUI \"$DEFAULT_WEB_UI\"" }
+        logger.warn { "doInitialSetup: fallback to bundled default webUI \"${WebUI.WEBUI.uiName}\"" }
 
         try {
             setupBundledWebUI()
