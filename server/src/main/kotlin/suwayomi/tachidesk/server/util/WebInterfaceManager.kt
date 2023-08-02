@@ -75,7 +75,7 @@ enum class WebUIChannel {
     }
 }
 
-enum class WebUI(
+enum class WebUIFlavor(
     val uiName: String, val repoUrl: String,
     val versionMappingUrl: String,
     val latestReleaseInfoUrl: String,
@@ -148,7 +148,7 @@ object WebInterfaceManager {
     private fun scheduleWebUIUpdateCheck() {
         HAScheduler.descheduleCron(currentUpdateTaskId)
 
-        val isAutoUpdateDisabled = !isAutoUpdateEnabled() || serverConfig.webUIFlavor.value == WebUI.CUSTOM.uiName
+        val isAutoUpdateDisabled = !isAutoUpdateEnabled() || serverConfig.webUIFlavor.value == WebUIFlavor.CUSTOM.uiName
         if (isAutoUpdateDisabled) {
             return
         }
@@ -181,7 +181,7 @@ object WebInterfaceManager {
     }
 
     suspend fun setupWebUI() {
-        if (serverConfig.webUIFlavor.value == WebUI.CUSTOM.uiName) {
+        if (serverConfig.webUIFlavor.value == WebUIFlavor.CUSTOM.uiName) {
             return
         }
 
@@ -202,7 +202,7 @@ object WebInterfaceManager {
             // check if the bundled webUI version is a newer version than the current used version
             // this could be the case in case no compatible webUI version is available and a newer server version was installed
             val shouldUpdateToBundledVersion =
-                serverConfig.webUIFlavor.value == WebUI.WEBUI.uiName && extractVersion(getLocalVersion()) < extractVersion(
+                serverConfig.webUIFlavor.value == WebUIFlavor.WEBUI.uiName && extractVersion(getLocalVersion()) < extractVersion(
                     BuildConfig.WEBUI_TAG
                 )
             if (shouldUpdateToBundledVersion) {
@@ -248,10 +248,10 @@ object WebInterfaceManager {
             return
         }
 
-        if (serverConfig.webUIFlavor.value != WebUI.WEBUI.uiName) {
-            logger.warn { "doInitialSetup: fallback to default webUI \"${WebUI.WEBUI.uiName}\"" }
+        if (serverConfig.webUIFlavor.value != WebUIFlavor.WEBUI.uiName) {
+            logger.warn { "doInitialSetup: fallback to default webUI \"${WebUIFlavor.WEBUI.uiName}\"" }
 
-            serverConfig.webUIFlavor.value = WebUI.WEBUI.uiName
+            serverConfig.webUIFlavor.value = WebUIFlavor.WEBUI.uiName
 
             val fallbackToBundledVersion = !doDownload() { getLatestCompatibleVersion() }
             if (!fallbackToBundledVersion) {
@@ -259,7 +259,7 @@ object WebInterfaceManager {
             }
         }
 
-        logger.warn { "doInitialSetup: fallback to bundled default webUI \"${WebUI.WEBUI.uiName}\"" }
+        logger.warn { "doInitialSetup: fallback to bundled default webUI \"${WebUIFlavor.WEBUI.uiName}\"" }
 
         try {
             setupBundledWebUI()
@@ -285,7 +285,7 @@ object WebInterfaceManager {
 
         logger.info { "extractBundledWebUI: Using the bundled WebUI zip..." }
 
-        val webUIZip = WebUI.WEBUI.baseFileName
+        val webUIZip = WebUIFlavor.WEBUI.baseFileName
         val webUIZipPath = "$tmpDir/$webUIZip"
         val webUIZipFile = File(webUIZipPath)
         resourceWebUI.use { input ->
@@ -316,7 +316,7 @@ object WebInterfaceManager {
     }
 
     private fun getDownloadUrlFor(version: String): String {
-        val baseReleasesUrl = "${WebUI.WEBUI.repoUrl}/releases"
+        val baseReleasesUrl = "${WebUIFlavor.WEBUI.repoUrl}/releases"
         val downloadSpecificVersionBaseUrl = "$baseReleasesUrl/download"
 
         return "$downloadSpecificVersionBaseUrl/$version"
@@ -406,7 +406,7 @@ object WebInterfaceManager {
 
     private suspend fun fetchPreviewVersion(): String {
         return executeWithRetry(KotlinLogging.logger("${logger.name} fetchPreviewVersion"), {
-            val releaseInfoJson = network.client.newCall(GET(WebUI.WEBUI.latestReleaseInfoUrl)).await().body.string()
+            val releaseInfoJson = network.client.newCall(GET(WebUIFlavor.WEBUI.latestReleaseInfoUrl)).await().body.string()
             Json.decodeFromString<JsonObject>(releaseInfoJson)["tag_name"]?.jsonPrimitive?.content
                 ?: throw Exception("Failed to get the preview version tag")
         })
@@ -417,7 +417,7 @@ object WebInterfaceManager {
             KotlinLogging.logger("$logger fetchServerMappingFile"),
             {
                 json.parseToJsonElement(
-                    network.client.newCall(GET(WebUI.WEBUI.versionMappingUrl)).await().body.string()
+                    network.client.newCall(GET(WebUIFlavor.WEBUI.versionMappingUrl)).await().body.string()
                 ).jsonArray
             }
         )
@@ -483,7 +483,7 @@ object WebInterfaceManager {
         emitStatus(version, DOWNLOADING, 0)
 
         try {
-            val webUIZip = "${WebUI.WEBUI.baseFileName}-$version.zip"
+            val webUIZip = "${WebUIFlavor.WEBUI.baseFileName}-$version.zip"
             val webUIZipPath = "$tmpDir/$webUIZip"
             val webUIZipURL = "${getDownloadUrlFor(version)}/$webUIZip"
 
