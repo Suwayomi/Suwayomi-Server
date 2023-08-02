@@ -8,12 +8,13 @@
 package suwayomi.tachidesk.graphql.types
 
 import suwayomi.tachidesk.graphql.server.primitives.Node
+import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.util.WebUIChannel
 import suwayomi.tachidesk.server.util.WebUIFlavor
 import suwayomi.tachidesk.server.util.WebUIInterface
 
-interface Settings {
+interface Settings : Node {
     val ip: String?
     val port: Int?
 
@@ -113,7 +114,7 @@ data class PartialSettingsType(
 
     // local source
     override val localSourcePath: String?
-) : Settings, Node
+) : Settings
 
 class SettingsType(
     override val ip: String,
@@ -163,45 +164,45 @@ class SettingsType(
 
     // local source
     override val localSourcePath: String
-) : Settings, Node {
-    constructor() : this(
-        serverConfig.ip.value,
-        serverConfig.port.value,
+) : Settings {
+    constructor(config: ServerConfig = serverConfig) : this(
+        config.ip.value,
+        config.port.value,
 
-        serverConfig.socksProxyEnabled.value,
-        serverConfig.socksProxyHost.value,
-        serverConfig.socksProxyPort.value,
+        config.socksProxyEnabled.value,
+        config.socksProxyHost.value,
+        config.socksProxyPort.value,
 
-        WebUIFlavor.from(serverConfig.webUIFlavor.value),
-        serverConfig.initialOpenInBrowserEnabled.value,
-        WebUIInterface.from(serverConfig.webUIInterface.value),
-        serverConfig.electronPath.value,
-        WebUIChannel.from(serverConfig.webUIChannel.value),
-        serverConfig.webUIUpdateCheckInterval.value,
+        WebUIFlavor.from(config.webUIFlavor.value),
+        config.initialOpenInBrowserEnabled.value,
+        WebUIInterface.from(config.webUIInterface.value),
+        config.electronPath.value,
+        WebUIChannel.from(config.webUIChannel.value),
+        config.webUIUpdateCheckInterval.value,
 
-        serverConfig.downloadAsCbz.value,
-        serverConfig.downloadsPath.value,
-        serverConfig.autoDownloadNewChapters.value,
+        config.downloadAsCbz.value,
+        config.downloadsPath.value,
+        config.autoDownloadNewChapters.value,
 
-        serverConfig.maxSourcesInParallel.value,
+        config.maxSourcesInParallel.value,
 
-        serverConfig.excludeUnreadChapters.value,
-        serverConfig.excludeNotStarted.value,
-        serverConfig.excludeCompleted.value,
-        serverConfig.globalUpdateInterval.value,
+        config.excludeUnreadChapters.value,
+        config.excludeNotStarted.value,
+        config.excludeCompleted.value,
+        config.globalUpdateInterval.value,
 
-        serverConfig.basicAuthEnabled.value,
-        serverConfig.basicAuthUsername.value,
-        serverConfig.basicAuthPassword.value,
+        config.basicAuthEnabled.value,
+        config.basicAuthUsername.value,
+        config.basicAuthPassword.value,
 
-        serverConfig.debugLogsEnabled.value,
-        serverConfig.systemTrayEnabled.value,
+        config.debugLogsEnabled.value,
+        config.systemTrayEnabled.value,
 
-        serverConfig.backupPath.value,
-        serverConfig.backupTime.value,
-        serverConfig.backupInterval.value,
-        serverConfig.backupTTL.value,
+        config.backupPath.value,
+        config.backupTime.value,
+        config.backupInterval.value,
+        config.backupTTL.value,
 
-        serverConfig.localSourcePath.value
+        config.localSourcePath.value
     )
 }

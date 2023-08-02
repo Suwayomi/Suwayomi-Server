@@ -26,8 +26,8 @@ import kotlin.reflect.KProperty
 
 val mutableConfigValueScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-private const val MODULE_NAME = "server"
-class ServerConfig(getConfig: () -> Config, val moduleName: String = MODULE_NAME) : SystemPropertyOverridableConfigModule(getConfig, moduleName) {
+const val SERVER_CONFIG_MODULE_NAME = "server"
+class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONFIG_MODULE_NAME) : SystemPropertyOverridableConfigModule(getConfig, moduleName) {
     inner class OverrideConfigValue<T>(private val configAdapter: ConfigAdapter<T>) {
         private var flow: MutableStateFlow<T>? = null
 
@@ -131,6 +131,6 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = MODULE_NAME
     }
 
     companion object {
-        fun register(getConfig: () -> Config) = ServerConfig({ getConfig().getConfig(MODULE_NAME) })
+        fun register(getConfig: () -> Config) = ServerConfig({ getConfig().getConfig(SERVER_CONFIG_MODULE_NAME) })
     }
 }
