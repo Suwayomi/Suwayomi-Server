@@ -87,6 +87,14 @@ enum class WebUI(
         "https://raw.githubusercontent.com/Suwayomi/Tachidesk-WebUI/master/versionToServerVersionMapping.json",
         "https://api.github.com/repos/Suwayomi/Tachidesk-WebUI-preview/releases/latest",
         "Tachidesk-WebUI"
+    ),
+
+    CUSTOM(
+        "Custom",
+        "repoURL",
+        "versionMappingUrl",
+        "latestReleaseInfoURL",
+        "baseFileName"
     );
 }
 
@@ -140,7 +148,7 @@ object WebInterfaceManager {
     private fun scheduleWebUIUpdateCheck() {
         HAScheduler.descheduleCron(currentUpdateTaskId)
 
-        val isAutoUpdateDisabled = !isAutoUpdateEnabled() || serverConfig.webUIFlavor.value == "Custom"
+        val isAutoUpdateDisabled = !isAutoUpdateEnabled() || serverConfig.webUIFlavor.value == WebUI.CUSTOM.uiName
         if (isAutoUpdateDisabled) {
             return
         }
@@ -173,7 +181,7 @@ object WebInterfaceManager {
     }
 
     suspend fun setupWebUI() {
-        if (serverConfig.webUIFlavor.value == "Custom") {
+        if (serverConfig.webUIFlavor.value == WebUI.CUSTOM.uiName) {
             return
         }
 
