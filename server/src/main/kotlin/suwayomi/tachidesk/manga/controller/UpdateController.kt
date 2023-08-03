@@ -68,11 +68,19 @@ object UpdateController {
             val updater by DI.global.instance<IUpdater>()
             if (categoryId == null) {
                 logger.info { "Adding Library to Update Queue" }
-                updater.addCategoriesToUpdateQueue(Category.getCategoryList(), true)
+                updater.addCategoriesToUpdateQueue(
+                    Category.getCategoryList(),
+                    clear = true,
+                    forceAll = false
+                )
             } else {
                 val category = Category.getCategoryById(categoryId)
                 if (category != null) {
-                    updater.addCategoriesToUpdateQueue(listOf(category), true)
+                    updater.addCategoriesToUpdateQueue(
+                        listOf(category),
+                        clear = true,
+                        forceAll = true
+                    )
                 } else {
                     logger.info { "No Category found" }
                     ctx.status(HttpCode.BAD_REQUEST)

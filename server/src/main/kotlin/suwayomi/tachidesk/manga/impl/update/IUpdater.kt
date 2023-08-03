@@ -4,7 +4,7 @@ import kotlinx.coroutines.flow.StateFlow
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 
 interface IUpdater {
-    fun addCategoriesToUpdateQueue(categories: List<CategoryDataClass>, clear: Boolean?)
+    fun addCategoriesToUpdateQueue(categories: List<CategoryDataClass>, clear: Boolean?, forceAll: Boolean)
     val status: StateFlow<UpdateStatus>
     fun reset()
 }
