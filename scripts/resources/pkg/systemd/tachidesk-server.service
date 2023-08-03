@@ -10,7 +10,7 @@ Group=tachidesk
 SyslogIdentifier=tachidesk
 
 EnvironmentFile=/etc/tachidesk/server.conf
-ExecStart=/usr/bin/java $JAVA_ARGS -Dsuwayomi.tachidesk.config.server.rootDir="${TACHIDESK_ROOT_DIR}" -jar /usr/share/java/tachidesk-server/Tachidesk-Server.jar
+ExecStart=/usr/bin/java $JAVA_ARGS -Dsuwayomi.tachidesk.config.server.rootDir="${TACHIDESK_ROOT_DIR}" -jar /usr/share/java/tachidesk-server/bin/Tachidesk-Server.jar
 Restart=on-failure
 
 ProtectSystem=full

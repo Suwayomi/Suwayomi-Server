@@ -8,7 +8,7 @@ Homepage: https://github.com/Suwayomi/Tachidesk-Server
 
 Package: tachidesk-server
 Architecture: all
-Depends: ${misc:Depends}, java8-runtime-headless, libc++-dev
+Depends: ${misc:Depends}, java8-runtime, libc++-dev
 Description: Manga Reader
  A free and open source manga reader server that runs extensions built for Tachiyomi.
  Tachidesk is an independent Tachiyomi compatible software and is not a Fork of Tachiyomi.
