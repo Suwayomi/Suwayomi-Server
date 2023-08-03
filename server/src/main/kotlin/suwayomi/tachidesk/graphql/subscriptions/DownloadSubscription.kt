@@ -7,19 +7,16 @@
 
 package suwayomi.tachidesk.graphql.subscriptions
 
-import graphql.schema.DataFetchingEnvironment
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import suwayomi.tachidesk.graphql.server.subscriptions.FlowSubscriptionSource
-import suwayomi.tachidesk.graphql.types.DownloadType
-import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
-
-val downloadSubscriptionSource = FlowSubscriptionSource<DownloadChapter>()
+import suwayomi.tachidesk.graphql.types.DownloadStatus
+import suwayomi.tachidesk.manga.impl.download.DownloadManager
 
 class DownloadSubscription {
-    fun downloadChanged(dataFetchingEnvironment: DataFetchingEnvironment): Flow<DownloadType> {
-        return downloadSubscriptionSource.emitter.map { downloadChapter ->
-            DownloadType(downloadChapter)
+
+    fun downloadChanged(): Flow<DownloadStatus> {
+        return DownloadManager.status.map { downloadStatus ->
+            DownloadStatus(downloadStatus)
         }
     }
 }
