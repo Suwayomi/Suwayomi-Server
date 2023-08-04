@@ -112,7 +112,7 @@ class ApolloSubscriptionProtocolHandler(
             return subscriptionHandler.executeSubscription(request, graphQLContext)
                 .map {
                     if (it.errors?.isNotEmpty() == true) {
-                        SubscriptionOperationMessage(type = GQL_ERROR.type, id = operationMessage.id, payload = it)
+                        SubscriptionOperationMessage(type = GQL_ERROR.type, id = operationMessage.id, payload = it.errors)
                     } else {
                         SubscriptionOperationMessage(type = GQL_NEXT.type, id = operationMessage.id, payload = it)
                     }
