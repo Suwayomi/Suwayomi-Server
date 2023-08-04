@@ -94,7 +94,7 @@ class ApolloSubscriptionProtocolHandler(
         }
 
         if (sessionState.doesOperationExist(context, operationMessage)) {
-            sessionState.terminateSession(context, CloseStatus(4409, "Subscriber for ${operationMessage.id} already exists"))
+            context.closeSession(CloseStatus(4409, "Subscriber for ${operationMessage.id} already exists"))
             logger.info("Already subscribed to operation ${operationMessage.id} for session ${context.sessionId}")
             return emptyFlow()
         }
