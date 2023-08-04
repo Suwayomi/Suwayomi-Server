@@ -81,6 +81,7 @@
     <script>
         const fetcher = GraphiQL.createFetcher({
             url: window.location.href,
+            subscriptionUrl: window.location.href.replace(/^http/,'ws')
         });
 
         function GraphiQLWithExplorer() {
