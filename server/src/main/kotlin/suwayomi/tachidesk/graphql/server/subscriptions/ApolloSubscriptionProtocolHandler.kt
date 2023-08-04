@@ -93,8 +93,8 @@ class ApolloSubscriptionProtocolHandler(
             return flowOf(basicConnectionErrorMessage)
         }
 
-        if (sessionState.doesOperationExist(context, operationMessage)) {
-            context.closeSession(CloseStatus(4409, "Subscriber for ${operationMessage.id} already exists"))
+        if (sessionState.doesOperationExist(operationMessage)) {
+            sessionState.terminateSession(context, CloseStatus(4409, "Subscriber for ${operationMessage.id} already exists"))
             logger.info("Already subscribed to operation ${operationMessage.id} for session ${context.sessionId}")
             return emptyFlow()
         }
@@ -122,7 +122,7 @@ class ApolloSubscriptionProtocolHandler(
         } catch (exception: Exception) {
             logger.error("Error running graphql subscription", exception)
             // Do not terminate the session, just stop the operation messages
-            sessionState.completeOperation(context, operationMessage)
+            sessionState.completeOperation(operationMessage)
             return flowOf(SubscriptionOperationMessage(type = GQL_ERROR.type, id = operationMessage.id))
         }
     }
@@ -149,7 +149,7 @@ class ApolloSubscriptionProtocolHandler(
         operationMessage: SubscriptionOperationMessage,
         context: WsContext
     ): Flow<SubscriptionOperationMessage> {
-        return sessionState.completeOperation(context, operationMessage)
+        return sessionState.completeOperation(operationMessage)
     }
 
     private fun onPing(): Flow<SubscriptionOperationMessage> {
@@ -163,7 +163,7 @@ class ApolloSubscriptionProtocolHandler(
 
     private fun onUnknownOperation(operationMessage: SubscriptionOperationMessage, context: WsContext): Flow<SubscriptionOperationMessage> {
         logger.error("Unknown subscription operation $operationMessage")
-        sessionState.completeOperation(context, operationMessage)
+        sessionState.completeOperation(operationMessage)
         return emptyFlow()
     }
 
