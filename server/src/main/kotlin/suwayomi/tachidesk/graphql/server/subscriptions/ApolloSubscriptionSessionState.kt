@@ -12,16 +12,12 @@ import io.javalin.websocket.WsContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.onCompletion
-import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ServerMessages.GQL_COMPLETE
+import org.eclipse.jetty.websocket.api.CloseStatus
 import suwayomi.tachidesk.graphql.server.toGraphQLContext
 import java.util.concurrent.ConcurrentHashMap
 
 internal class ApolloSubscriptionSessionState {
-
-    // Sessions are saved by web socket session id
-    internal val activeKeepAliveSessions = ConcurrentHashMap<String, Job>()
 
     // Operations are saved by web socket session id, then operation id
     internal val activeOperations = ConcurrentHashMap<String, ConcurrentHashMap<String, Job>>()
@@ -44,15 +40,6 @@ internal class ApolloSubscriptionSessionState {
     fun getGraphQLContext(context: WsContext): GraphQLContext = cachedGraphQLContext[context.sessionId] ?: emptyMap<Any, Any>().toGraphQLContext()
 
     /**
-     * Save the session that is sending keep alive messages.
-     * This will override values without cancelling the subscription, so it is the responsibility of the consumer to cancel.
-     * These messages will be stopped on [terminateSession].
-     */
-    fun saveKeepAliveSubscription(context: WsContext, subscription: Job) {
-        activeKeepAliveSessions[context.sessionId] = subscription
-    }
-
-    /**
      * Save the operation that is sending data to the client.
      * This will override values without cancelling the subscription so it is the responsibility of the consumer to cancel.
      * These messages will be stopped on [stopOperation].
@@ -70,37 +57,22 @@ internal class ApolloSubscriptionSessionState {
      * This can happen when the publisher finishes or if the client manually sends the stop message.
      */
     fun completeOperation(context: WsContext, operationMessage: SubscriptionOperationMessage): Flow<SubscriptionOperationMessage> {
-        return getCompleteMessage(operationMessage)
-            .onCompletion { removeActiveOperation(context, operationMessage.id, cancelSubscription = false) }
+        return getCompleteMessage()
+            .onCompletion { removeActiveOperation(context, operationMessage.id) }
     }
 
-    /**
-     * Stop the subscription sending data and send the [GQL_COMPLETE] message.
-     * Does NOT terminate the session.
-     */
-    fun stopOperation(context: WsContext, operationMessage: SubscriptionOperationMessage): Flow<SubscriptionOperationMessage> {
-        return getCompleteMessage(operationMessage)
-            .onCompletion { removeActiveOperation(context, operationMessage.id, cancelSubscription = true) }
-    }
-
-    private fun getCompleteMessage(operationMessage: SubscriptionOperationMessage): Flow<SubscriptionOperationMessage> {
-        val id = operationMessage.id
-        if (id != null) {
-            return flowOf(SubscriptionOperationMessage(type = GQL_COMPLETE.type, id = id))
-        }
+    private fun getCompleteMessage(): Flow<SubscriptionOperationMessage> {
         return emptyFlow()
     }
 
     /**
      * Remove active running subscription from the cache and cancel if needed
      */
-    private fun removeActiveOperation(context: WsContext, id: String?, cancelSubscription: Boolean) {
+    private fun removeActiveOperation(context: WsContext, id: String?) {
         val operationsForSession = activeOperations[context.sessionId]
         val subscription = operationsForSession?.get(id)
         if (subscription != null) {
-            if (cancelSubscription) {
-                subscription.cancel()
-            }
+            subscription.cancel()
             operationsForSession.remove(id)
             if (operationsForSession.isEmpty()) {
                 activeOperations.remove(context.sessionId)
@@ -111,13 +83,11 @@ internal class ApolloSubscriptionSessionState {
     /**
      * Terminate the session, cancelling the keep alive messages and all operations active for this session.
      */
-    fun terminateSession(context: WsContext) {
-        activeOperations[context.sessionId]?.forEach { (_, subscription) -> subscription.cancel() }
+    fun terminateSession(context: WsContext, code: CloseStatus) {
         activeOperations.remove(context.sessionId)
+            ?.forEach { (_, subscription) -> subscription.cancel() }
         cachedGraphQLContext.remove(context.sessionId)
-        activeKeepAliveSessions[context.sessionId]?.cancel()
-        activeKeepAliveSessions.remove(context.sessionId)
-        context.closeSession()
+        context.closeSession(code)
     }
 
     /**
