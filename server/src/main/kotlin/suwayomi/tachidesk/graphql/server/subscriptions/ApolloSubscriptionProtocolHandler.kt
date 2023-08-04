@@ -48,9 +48,9 @@ class ApolloSubscriptionProtocolHandler(
 ) {
     private val sessionState = ApolloSubscriptionSessionState()
     private val logger = KotlinLogging.logger {}
-    private val pongMessage = SubscriptionOperationMessage(type = GQL_PONG.type, payload = emptyMap<Any, Any>())
+    private val pongMessage = SubscriptionOperationMessage(type = GQL_PONG.type)
     private val basicConnectionErrorMessage = SubscriptionOperationMessage(type = GQL_ERROR.type)
-    private val acknowledgeMessage = SubscriptionOperationMessage(GQL_CONNECTION_ACK.type, payload = emptyMap<Any, Any>())
+    private val acknowledgeMessage = SubscriptionOperationMessage(GQL_CONNECTION_ACK.type)
 
     fun handleMessage(context: WsMessageContext): Flow<SubscriptionOperationMessage> {
         val operationMessage = convertToMessageOrNull(context.message()) ?: return flowOf(basicConnectionErrorMessage)
@@ -164,7 +164,7 @@ class ApolloSubscriptionProtocolHandler(
     private fun onUnknownOperation(operationMessage: SubscriptionOperationMessage, context: WsContext): Flow<SubscriptionOperationMessage> {
         logger.error("Unknown subscription operation $operationMessage")
         sessionState.completeOperation(context, operationMessage)
-        return emptyFlow()/*flowOf(getConnectionErrorMessage(operationMessage))*/
+        return emptyFlow()
     }
 
     private fun onException(exception: Exception): Flow<SubscriptionOperationMessage> {
