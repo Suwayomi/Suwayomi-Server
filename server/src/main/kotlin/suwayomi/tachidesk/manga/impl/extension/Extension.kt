@@ -260,7 +260,7 @@ object Extension {
 
         val downloadedFile = File(savePath)
         downloadedFile.sink().buffer().use { sink ->
-            response.body!!.source().use { source ->
+            response.body.source().use { source ->
                 sink.writeAll(source)
                 sink.flush()
             }

@@ -1,9 +1,9 @@
 [versions]
-kotlin = "1.8.0"
-coroutines = "1.6.4"
-serialization = "1.4.1"
+kotlin = "1.9.0"
+coroutines = "1.7.2"
+serialization = "1.5.1"
 okhttp = "5.0.0-alpha.11" # Major version is locked by Tachiyomi extensions
-javalin = "4.6.6" # Javalin 5.0.0+ requires Java 11
+javalin = "4.6.8" # Javalin 5.0.0+ requires Java 11
 jackson = "2.13.3" # jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
 exposed = "0.40.1"
 dex2jar = "v64"
@@ -11,6 +11,7 @@ rhino = "1.7.14"
 settings = "1.0.0-RC"
 twelvemonkeys = "3.9.4"
 playwright = "1.28.0"
+graphqlkotlin = "6.5.3"
 
 [libraries]
 # Kotlin
@@ -28,8 +29,8 @@ serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-jso
 serialization-protobuf = { module = "org.jetbrains.kotlinx:kotlinx-serialization-protobuf", version.ref = "serialization" }
 
 # Logging
-slf4japi = "org.slf4j:slf4j-api:2.0.6"
-logback = "ch.qos.logback:logback-classic:1.3.5"
+slf4japi = "org.slf4j:slf4j-api:2.0.7"
+logback = "ch.qos.logback:logback-classic:1.3.8"
 kotlinlogging = "io.github.microutils:kotlin-logging:3.0.5"
 
 # OkHttp
@@ -45,6 +46,11 @@ jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", ver
 jackson-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
 jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations", version.ref = "jackson" }
 
+# GraphQL
+graphql-kotlin-server = { module = "com.expediagroup:graphql-kotlin-server", version.ref = "graphqlkotlin" }
+graphql-kotlin-scheme = { module = "com.expediagroup:graphql-kotlin-schema-generator", version.ref = "graphqlkotlin" }
+graphql-scalars = "com.graphql-java:graphql-java-extended-scalars:20.2"
+
 # Exposed ORM
 exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
 exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposed" }
@@ -56,7 +62,7 @@ h2 = "com.h2database:h2:1.4.200" # current database driver, can't update to h2 v
 exposed-migrations = "com.github.Suwayomi:exposed-migrations:3.2.0"
 
 # Dependency Injection
-kodein = "org.kodein.di:kodein-di-conf-jvm:7.15.0"
+kodein = "org.kodein.di:kodein-di-conf-jvm:7.20.2"
 
 # tray icon
 systemtray-core = "com.dorkbox:SystemTray:4.2.1"
@@ -66,7 +72,7 @@ systemtray-desktop = "com.dorkbox:Desktop:1.0"
 # dependencies of Tachiyomi extensions
 injekt = "com.github.inorichi.injekt:injekt-core:65b0440"
 rxjava = "io.reactivex:rxjava:1.3.8"
-jsoup = "org.jsoup:jsoup:1.15.3"
+jsoup = "org.jsoup:jsoup:1.16.1"
 
 # Config
 config = "com.typesafe:config:1.4.2"
@@ -92,15 +98,15 @@ xmlpull = "xmlpull:xmlpull:1.1.3.4a"
 
 # Disk & File
 appdirs = "net.harawata:appdirs:1.2.1"
-zip4j = "net.lingala.zip4j:zip4j:2.11.2"
+zip4j = "net.lingala.zip4j:zip4j:2.11.5"
 commonscompress = "org.apache.commons:commons-compress:1.23.0"
-junrar = "com.github.junrar:junrar:7.5.3"
+junrar = "com.github.junrar:junrar:7.5.4"
 
 # CloudflareInterceptor
 playwright = { module = "com.microsoft.playwright:playwright", version.ref = "playwright" }
 
 # AES/CBC/PKCS7Padding Cypher provider
-bouncycastle = "org.bouncycastle:bcprov-jdk18on:1.72"
+bouncycastle = "org.bouncycastle:bcprov-jdk18on:1.75"
 
 # AndroidX annotations
 android-annotations = "androidx.annotation:annotation:1.5.0"
@@ -114,7 +120,7 @@ settings-core = { module = "com.russhwolf:multiplatform-settings-jvm", version.r
 settings-serialization = { module = "com.russhwolf:multiplatform-settings-serialization-jvm", version.ref = "settings" }
 
 # ICU4J
-icu4j = "com.ibm.icu:icu4j:72.1"
+icu4j = "com.ibm.icu:icu4j:73.2"
 
 # Image Decoding implementation provider
 twelvemonkeys-common-lang = { module = "com.twelvemonkeys.common:common-lang", version.ref = "twelvemonkeys" }
@@ -126,7 +132,7 @@ twelvemonkeys-imageio-jpeg = { module = "com.twelvemonkeys.imageio:imageio-jpeg"
 twelvemonkeys-imageio-webp = { module = "com.twelvemonkeys.imageio:imageio-webp", version.ref = "twelvemonkeys" }
 
 # Testing
-mockk = "io.mockk:mockk:1.13.2"
+mockk = "io.mockk:mockk:1.13.5"
 
 # cron scheduler
 cron4j = "it.sauronsoftware.cron4j:cron4j:2.2.5"
@@ -146,10 +152,10 @@ kotlinter = { id = "org.jmailen.kotlinter", version = "3.12.0"}
 buildconfig = { id = "com.github.gmazzo.buildconfig", version = "3.1.0"}
 
 # Download
-download = { id = "de.undercouch.download", version = "5.3.0"}
+download = { id = "de.undercouch.download", version = "5.4.0"}
 
 # ShadowJar
-shadowjar = { id = "com.github.johnrengelman.shadow", version = "7.1.2"}
+shadowjar = { id = "com.github.johnrengelman.shadow", version = "8.1.1"}
 
 [bundles]
 shared = [
