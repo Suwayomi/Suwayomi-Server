@@ -20,7 +20,9 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -68,6 +70,10 @@ object DownloadManager {
     private fun saveDownloadQueue() {
         sharedPreferences.edit().putStringSet(downloadQueueKey, downloadQueue.map { it.chapter.id.toString() }.toSet())
             .apply()
+    }
+
+    private fun triggerSaveDownloadQueue() {
+        scope.launch { saveQueueFlow.emit(Unit) }
     }
 
     fun restoreAndResumeDownloads() {
@@ -124,6 +130,11 @@ object DownloadManager {
                 sendStatusToAllClients()
             }
         }
+    }
+
+    private val saveQueueFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    init {
+        saveQueueFlow.onEach { saveDownloadQueue() }.launchIn(scope)
     }
 
     private fun sendStatusToAllClients() {
@@ -197,7 +208,7 @@ object DownloadManager {
             downloadQueue = downloadQueue,
             notifier = ::notifyAllClients,
             onComplete = ::refreshDownloaders,
-            onDownloadFinished = ::saveDownloadQueue
+            onDownloadFinished = ::triggerSaveDownloadQueue
         )
     }
 
@@ -277,7 +288,7 @@ object DownloadManager {
                 manga
             )
             downloadQueue.add(newDownloadChapter)
-            saveDownloadQueue()
+            triggerSaveDownloadQueue()
             logger.debug { "Added chapter ${chapter.id} to download queue ($newDownloadChapter)" }
             return newDownloadChapter
         }
@@ -309,7 +320,7 @@ object DownloadManager {
         logger.debug { "dequeue ${chapterDownloads.size} chapters [${chapterDownloads.joinToString(separator = ", ") { "$it" }}]" }
 
         downloadQueue.removeAll(chapterDownloads)
-        saveDownloadQueue()
+        triggerSaveDownloadQueue()
 
         notifyAllClients()
     }
@@ -335,7 +346,7 @@ object DownloadManager {
 
         downloadQueue -= download
         downloadQueue.add(to, download)
-        saveDownloadQueue()
+        triggerSaveDownloadQueue()
     }
 
     fun start() {
@@ -364,7 +375,7 @@ object DownloadManager {
 
         stop()
         downloadQueue.clear()
-        saveDownloadQueue()
+        triggerSaveDownloadQueue()
         notifyAllClients()
     }
 }
