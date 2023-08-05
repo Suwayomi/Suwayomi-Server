@@ -38,7 +38,6 @@ class PersistentCookieStore(context: Context) : CookieStore {
         }
     }
 
-    @Synchronized
     fun addAll(url: HttpUrl, cookies: List<Cookie>) {
         lock.withLock {
             val uri = url.toUri()
@@ -60,7 +59,6 @@ class PersistentCookieStore(context: Context) : CookieStore {
         }
     }
 
-    @Synchronized
     override fun removeAll(): Boolean {
         return lock.withLock {
             val wasNotEmpty = cookieMap.isEmpty()
