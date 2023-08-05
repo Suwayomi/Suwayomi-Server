@@ -118,12 +118,13 @@ object Chapter {
         }
 
         val numberOfCurrentChapters = getCountOfMangaChapters(mangaId)
-        val chapterList = source.fetchChapterList(sManga).awaitSingle()
+        val chapterList = source.getChapterList(sManga)
 
         // Recognize number for new chapters.
-        chapterList.forEach {
-            (source as? HttpSource)?.prepareNewChapter(it, sManga)
-            ChapterRecognition.parseChapterNumber(it, sManga)
+        chapterList.forEach { chapter ->
+            (source as? HttpSource)?.prepareNewChapter(chapter, sManga)
+            val chapterNumber = ChapterRecognition.parseChapterNumber(manga.title, chapter.name, chapter.chapter_number.toDouble())
+            chapter .chapter_number = chapterNumber.toFloat()
         }
 
         var now = Instant.now().epochSecond

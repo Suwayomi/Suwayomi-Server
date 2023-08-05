@@ -213,12 +213,12 @@ class ChapterMutation {
         val source = getCatalogueSourceOrNull(manga[MangaTable.sourceReference])!!
 
         return future {
-            source.fetchPageList(
+            source.getPageList(
                 SChapter.create().apply {
                     url = chapter[ChapterTable.url]
                     name = chapter[ChapterTable.name]
                 }
-            ).awaitSingle()
+            )
         }.thenApply { pageList ->
             transaction {
                 PageTable.deleteWhere { PageTable.chapter eq chapterId }
