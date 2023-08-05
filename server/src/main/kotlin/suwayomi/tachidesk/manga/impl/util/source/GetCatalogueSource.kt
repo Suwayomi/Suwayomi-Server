@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
+import mu.KotlinLogging
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.kodein.di.DI
@@ -23,6 +24,8 @@ import suwayomi.tachidesk.server.ApplicationDirs
 import java.util.concurrent.ConcurrentHashMap
 
 object GetCatalogueSource {
+    private val logger = KotlinLogging.logger { }
+
     private val sourceCache = ConcurrentHashMap<Long, CatalogueSource>()
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
@@ -57,7 +60,12 @@ object GetCatalogueSource {
     }
 
     fun getCatalogueSourceOrNull(sourceId: Long): CatalogueSource? {
-        return runCatching { getCatalogueSource(sourceId) }.getOrNull()
+        return try {
+            getCatalogueSource(sourceId)
+        } catch (e: Exception) {
+            logger.warn(e) { "getCatalogueSource($sourceId) failed" }
+            null
+        }
     }
 
     fun getCatalogueSourceOrStub(sourceId: Long): CatalogueSource {
