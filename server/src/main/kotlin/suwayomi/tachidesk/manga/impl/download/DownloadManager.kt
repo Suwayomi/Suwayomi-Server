@@ -314,21 +314,24 @@ object DownloadManager {
     }
 
     fun reorder(chapterIndex: Int, mangaId: Int, to: Int) {
-        require(to >= 0) { "'to' must be over or equal to 0" }
         val download = downloadQueue.find { it.mangaId == mangaId && it.chapterIndex == chapterIndex }
             ?: return
 
-        logger.debug { "reorder download $download from ${downloadQueue.indexOf(download)} to $to" }
-
-        downloadQueue -= download
-        downloadQueue.add(to, download)
-        saveDownloadQueue()
+        reorder(download, to)
     }
 
     fun reorder(chapterId: Int, to: Int) {
-        require(to >= 0) { "'to' must be over or equal to 0" }
         val download = downloadQueue.find { it.chapter.id == chapterId }
             ?: return
+
+        reorder(download, to)
+    }
+
+    private fun reorder(download: DownloadChapter, to: Int) {
+        require(to >= 0) { "'to' must be over or equal to 0" }
+
+        logger.debug { "reorder download $download from ${downloadQueue.indexOf(download)} to $to" }
+
         downloadQueue -= download
         downloadQueue.add(to, download)
         saveDownloadQueue()
