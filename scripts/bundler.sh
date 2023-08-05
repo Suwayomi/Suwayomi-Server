@@ -188,7 +188,7 @@ copy_linux_package_assets_to() {
   cp "scripts/resources/pkg/tachidesk-launcher.sh" "$output_dir/"
   cp "scripts/resources/pkg/tachidesk-launcher.desktop" "$output_dir/"
   cp "scripts/resources/pkg/systemd"/* "$output_dir/"
-  cp "server/src/main/resources/icon/faviconlogo.png" \
+  cp "server/src/main/resources/icon/faviconlogo-128.png" \
     "$output_dir/tachidesk-server.png"
 }
 
