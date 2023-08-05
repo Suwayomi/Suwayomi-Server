@@ -197,7 +197,6 @@ object DownloadManager {
     private fun refreshDownloaders() {
         scope.launch {
             downloaderWatch.emit(Unit)
-            saveDownloadQueue()
         }
     }
 
