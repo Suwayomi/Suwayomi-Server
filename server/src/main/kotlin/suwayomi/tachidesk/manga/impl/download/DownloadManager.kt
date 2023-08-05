@@ -132,12 +132,11 @@ object DownloadManager {
     }
 
     private fun notifyAllClients(immediate: Boolean = false) {
+        scope.launch {
+            notifyFlow.emit(Unit)
+        }
         if (immediate) {
             sendStatusToAllClients()
-        } else {
-            scope.launch {
-                notifyFlow.emit(Unit)
-            }
         }
         /*if (downloadChapter != null) { TODO GRAPHQL
             downloadSubscriptionSource.publish(downloadChapter)
