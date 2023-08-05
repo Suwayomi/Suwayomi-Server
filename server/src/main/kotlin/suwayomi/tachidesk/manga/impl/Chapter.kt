@@ -28,7 +28,6 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
-import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
@@ -124,7 +123,7 @@ object Chapter {
         chapterList.forEach { chapter ->
             (source as? HttpSource)?.prepareNewChapter(chapter, sManga)
             val chapterNumber = ChapterRecognition.parseChapterNumber(manga.title, chapter.name, chapter.chapter_number.toDouble())
-            chapter .chapter_number = chapterNumber.toFloat()
+            chapter.chapter_number = chapterNumber.toFloat()
         }
 
         var now = Instant.now().epochSecond

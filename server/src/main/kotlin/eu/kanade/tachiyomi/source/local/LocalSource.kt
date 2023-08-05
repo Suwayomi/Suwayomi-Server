@@ -56,7 +56,7 @@ import com.github.junrar.Archive as JunrarArchive
 
 class LocalSource(
     private val fileSystem: LocalSourceFileSystem,
-    private val coverManager: LocalCoverManager,
+    private val coverManager: LocalCoverManager
 ) : CatalogueSource, UnmeteredSource {
 
     private val json: Json by injectLazy()

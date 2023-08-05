@@ -1,7 +1,5 @@
 package eu.kanade.tachiyomi.util.storage
 
-import eu.kanade.tachiyomi.source.model.SChapter
-import eu.kanade.tachiyomi.source.model.SManga
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipFile
 import org.jsoup.Jsoup

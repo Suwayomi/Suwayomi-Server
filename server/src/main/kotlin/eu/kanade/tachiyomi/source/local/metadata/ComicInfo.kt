@@ -1,6 +1,5 @@
 package eu.kanade.tachiyomi.source.local.metadata
 
-
 import eu.kanade.tachiyomi.source.model.SManga
 import kotlinx.serialization.Serializable
 import nl.adaptivity.xmlutil.serialization.XmlElement
@@ -17,7 +16,7 @@ fun SManga.copyFromComicInfo(comicInfo: ComicInfo) {
     listOfNotNull(
         comicInfo.genre?.value,
         comicInfo.tags?.value,
-        comicInfo.categories?.value,
+        comicInfo.categories?.value
     )
         .distinct()
         .joinToString(", ") { it.trim() }
@@ -29,7 +28,7 @@ fun SManga.copyFromComicInfo(comicInfo: ComicInfo) {
         comicInfo.inker?.value,
         comicInfo.colorist?.value,
         comicInfo.letterer?.value,
-        comicInfo.coverArtist?.value,
+        comicInfo.coverArtist?.value
     )
         .flatMap { it.split(", ") }
         .distinct()
@@ -58,7 +57,7 @@ data class ComicInfo(
     val tags: Tags?,
     val web: Web?,
     val publishingStatus: PublishingStatusTachiyomi?,
-    val categories: CategoriesTachiyomi?,
+    val categories: CategoriesTachiyomi?
 ) {
     @Suppress("UNUSED")
     @XmlElement(false)
@@ -138,7 +137,7 @@ data class ComicInfo(
 
 enum class ComicInfoPublishingStatus(
     val comicInfoValue: String,
-    val sMangaModelValue: Int,
+    val sMangaModelValue: Int
 ) {
     ONGOING("Ongoing", SManga.ONGOING),
     COMPLETED("Completed", SManga.COMPLETED),
@@ -146,7 +145,7 @@ enum class ComicInfoPublishingStatus(
     PUBLISHING_FINISHED("Publishing finished", SManga.PUBLISHING_FINISHED),
     CANCELLED("Cancelled", SManga.CANCELLED),
     ON_HIATUS("On hiatus", SManga.ON_HIATUS),
-    UNKNOWN("Unknown", SManga.UNKNOWN),
+    UNKNOWN("Unknown", SManga.UNKNOWN)
     ;
 
     companion object {
