@@ -71,11 +71,13 @@ object DownloadManager {
     }
 
     fun restoreAndResumeDownloads() {
-        logger.debug { "restoreAndResumeDownloads: Restore download queue..." }
-        enqueue(EnqueueInput(loadDownloadQueue()))
+        scope.launch {
+            logger.debug { "restoreAndResumeDownloads: Restore download queue..." }
+            enqueue(EnqueueInput(loadDownloadQueue()))
 
-        if (downloadQueue.size > 0) {
-            logger.info { "restoreAndResumeDownloads: Restored download queue, starting downloads..." }
+            if (downloadQueue.size > 0) {
+                logger.info { "restoreAndResumeDownloads: Restored download queue, starting downloads..." }
+            }
         }
     }
 
