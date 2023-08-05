@@ -36,10 +36,10 @@ class NetworkHelper(context: Context) {
 //    private val cacheSize = 5L * 1024 * 1024 // 5 MiB
 
     // Tachidesk -->
-    val cookies = PersistentCookieStore(context)
+    val cookieStore = PersistentCookieStore(context)
     init {
         CookieHandler.setDefault(
-            CookieManager(cookies, CookiePolicy.ACCEPT_ALL)
+            CookieManager(cookieStore, CookiePolicy.ACCEPT_ALL)
         )
     }
     // Tachidesk <--
@@ -47,7 +47,7 @@ class NetworkHelper(context: Context) {
     private val baseClientBuilder: OkHttpClient.Builder
         get() {
             val builder = OkHttpClient.Builder()
-                .cookieJar(PersistentCookieJar(cookies))
+                .cookieJar(PersistentCookieJar(cookieStore))
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .callTimeout(2, TimeUnit.MINUTES)

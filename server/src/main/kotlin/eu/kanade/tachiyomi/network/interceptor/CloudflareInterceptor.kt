@@ -44,7 +44,7 @@ class CloudflareInterceptor : Interceptor {
 
         return try {
             originalResponse.close()
-            network.cookies.remove(originalRequest.url.toUri())
+            network.cookieStore.remove(originalRequest.url.toUri())
 
             val request = resolveWithWebView(originalRequest)
 
@@ -105,7 +105,7 @@ object CFClearance {
 
         // Copy cookies to cookie store
         cookies.groupBy { it.domain }.forEach { (domain, cookies) ->
-            network.cookies.addAll(
+            network.cookieStore.addAll(
                 url = HttpUrl.Builder()
                     .scheme("http")
                     .host(domain)
