@@ -196,7 +196,8 @@ object DownloadManager {
             sourceId = sourceId,
             downloadQueue = downloadQueue,
             notifier = ::notifyAllClients,
-            onComplete = ::refreshDownloaders
+            onComplete = ::refreshDownloaders,
+            onDownloadFinished = ::saveDownloadQueue
         )
     }
 
