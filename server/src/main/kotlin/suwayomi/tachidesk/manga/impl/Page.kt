@@ -88,8 +88,12 @@ object Page {
 
         val fileName = getPageName(index)
 
-        if (chapterEntry[ChapterTable.isDownloaded]) {
-            return ChapterDownloadHelper.getImage(mangaId, chapterId, index)
+        try {
+            if (chapterEntry[ChapterTable.isDownloaded]) {
+                return ChapterDownloadHelper.getImage(mangaId, chapterId, index)
+            }
+        } catch (_: Exception) {
+            // ignore and fetch again
         }
 
         val cacheSaveDir = getChapterCachePath(mangaId, chapterId)
