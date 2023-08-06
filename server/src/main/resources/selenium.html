@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>WebSocket Stream with Click Events</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        #streamContainer {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div id="controls">
+    <button id="backButton">Back</button>
+    <button id="forwardButton">Forward</button>
+</div>
+<div id="streamContainer"></div>
+
+<script>
+    const streamContainer = document.getElementById('streamContainer');
+    const backButton = document.getElementById('backButton');
+    const forwardButton = document.getElementById('forwardButton');
+    const socket = new WebSocket(window.location.href.replace(/^http/,'ws'));
+
+    socket.onopen = () => {
+        console.log('WebSocket connection opened');
+    };
+
+    socket.onmessage = (event) => {
+        const imageData = event.data; // Assuming you're sending image data as binary
+        const img = new Image();
+        img.src = 'data:image/jpeg;base64,' + imageData; // Display the image data
+        streamContainer.innerHTML = ''; // Clear previous content
+        streamContainer.appendChild(img);
+    };
+
+    socket.onclose = (event) => {
+        if (event.wasClean) {
+            console.log(`WebSocket connection closed cleanly, code=${event.code}, reason=${event.reason}`);
+        } else {
+            console.error('WebSocket connection died');
+        }
+    };
+
+    socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+    };
+
+    // Handle click events
+    streamContainer.addEventListener('click', (event) => {
+        const rect = streamContainer.getBoundingClientRect();
+        const clickX = event.clientX - rect.left;
+        const clickY = event.clientY - rect.top;
+
+        // Send click coordinates to the server
+        socket.send(JSON.stringify({ type: 'click', x: clickX, y: clickY }));
+    });
+
+    // Handle keyboard events
+    document.addEventListener('keydown', (event) => {
+        const key = event.key;
+
+        event.preventDefault();
+
+        // Send key press event to the server
+        socket.send(JSON.stringify({ type: 'keypress', key: key }));
+    });
+
+    // Handle button clicks
+    backButton.addEventListener('click', () => {
+        socket.send(JSON.stringify({ type: 'back' }));
+    });
+
+    forwardButton.addEventListener('click', () => {
+        socket.send(JSON.stringify({ type: 'forward' }));
+    });
+</script>
+</body>
+</html>

@@ -75,6 +75,8 @@ dependencies {
     implementation(libs.cron4j)
 
     implementation(libs.cronUtils)
+
+    implementation("org.seleniumhq.selenium:selenium-java:4.11.0")
 }
 
 application {
