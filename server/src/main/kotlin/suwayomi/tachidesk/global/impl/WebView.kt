@@ -22,6 +22,7 @@ import org.openqa.selenium.OutputType
 import org.openqa.selenium.TakesScreenshot
 import org.openqa.selenium.WebDriver
 import org.openqa.selenium.chrome.ChromeDriver
+import org.openqa.selenium.chrome.ChromeOptions
 import org.openqa.selenium.interactions.Actions
 import suwayomi.tachidesk.manga.impl.update.Websocket
 import uy.kohesive.injekt.injectLazy
@@ -89,7 +90,11 @@ class SeleniumScreenshotServer : Closeable {
         const val height = 800
     }
 
-    private val driver: WebDriver = ChromeDriver()
+    private val driver: WebDriver = run {
+        val options = ChromeOptions()
+        options.addArguments("--headless")
+        ChromeDriver(options)
+    }
     init {
         driver.manage().window().size = Dimension(width, height)
         driver.get("https://google.com")
@@ -98,17 +103,17 @@ class SeleniumScreenshotServer : Closeable {
 
     init {
         GlobalScope.launch(executor) {
-            try {
-                while (isActive) {
+            while (isActive) {
+                try {
                     // Capture screenshot
                     val screenshot =
                         (driver as TakesScreenshot).getScreenshotAs(OutputType.BASE64)
-
                     // Send image data over the socket
                     WebView.notifyAllClients(screenshot)
                     delay(1000) // Adjust interval as needed
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
-            } catch (e: Exception) {
             }
         }
     }
