@@ -37,7 +37,7 @@ import java.util.concurrent.Executors
 object WebView : Websocket<String>() {
     val json: Json by injectLazy()
 
-    var driver: SeleniumScreenshotServer? = null
+    private var driver: SeleniumScreenshotServer? = null
 
     override fun addClient(ctx: WsContext) {
         if (clients.isNotEmpty()) {
@@ -102,6 +102,10 @@ class SeleniumScreenshotServer : Closeable {
                     // Send image data over the socket
                     WebView.notifyAllClients(screenshot)
                     delay(1000) // Adjust interval as needed
+                } catch (e: NoSuchSessionException) {
+                    ensureActive()
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -153,7 +157,14 @@ class SeleniumScreenshotServer : Closeable {
     }
 
     override fun close() {
-        driver.close()
         executor.cancel()
+        try {
+            driver.quit()
+        } catch (_: Exception) {
+        }
+        try {
+            driver.close()
+        } catch (_: Exception) {
+        }
     }
 }
