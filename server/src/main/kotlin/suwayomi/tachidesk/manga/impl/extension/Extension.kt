@@ -213,7 +213,7 @@ object Extension {
             var zipEntry = zipInputStream.nextEntry
             while (zipEntry != null) {
                 if (zipEntry.name.startsWith("assets/")) {
-                    val assetFile = File(assetsFolder, zipEntry.name.substringAfter("assets/"))
+                    val assetFile = File(assetsFolder, zipEntry.name)
                     assetFile.parentFile.mkdirs()
                     FileOutputStream(assetFile).use { outputStream ->
                         zipInputStream.copyTo(outputStream)
@@ -236,7 +236,7 @@ object Extension {
                 }
                 assetsFolder.walkTopDown().forEach { file ->
                     if (file.isFile) {
-                        jarZipOutputStream.putNextEntry(ZipEntry("assets/${file.relativeTo(assetsFolder)}"))
+                        jarZipOutputStream.putNextEntry(ZipEntry(file.relativeTo(assetsFolder).toString()))
                         file.inputStream().use { inputStream ->
                             inputStream.copyTo(jarZipOutputStream)
                         }
