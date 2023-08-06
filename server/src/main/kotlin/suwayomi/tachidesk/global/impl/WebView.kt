@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.global.impl
 
+import eu.kanade.tachiyomi.source.online.HttpSource
 import io.javalin.websocket.WsContext
 import io.javalin.websocket.WsMessageContext
 import kotlinx.coroutines.GlobalScope
@@ -8,14 +9,15 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.double
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import org.eclipse.jetty.websocket.api.CloseStatus
-import org.openqa.selenium.By
+import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.openqa.selenium.Dimension
 import org.openqa.selenium.Keys
 import org.openqa.selenium.OutputType
@@ -25,23 +27,12 @@ import org.openqa.selenium.chrome.ChromeDriver
 import org.openqa.selenium.chrome.ChromeOptions
 import org.openqa.selenium.interactions.Actions
 import suwayomi.tachidesk.manga.impl.update.Websocket
+import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
+import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.MangaTable
 import uy.kohesive.injekt.injectLazy
 import java.io.Closeable
 import java.util.concurrent.Executors
-
-@Serializable
-sealed class WebViewEvent {
-    @SerialName("click")
-    data class Click(
-        val x: Int,
-        val y: Int
-    ) : WebViewEvent()
-
-    @SerialName("keypress")
-    data class KeyPress(
-        val key: String
-    ) : WebViewEvent()
-}
 
 object WebView : Websocket<String>() {
     val json: Json by injectLazy()
@@ -121,7 +112,6 @@ class SeleniumScreenshotServer : Closeable {
     fun handleEvent(jsonObject: JsonObject) {
         when (jsonObject["type"]!!.jsonPrimitive.content) {
             "click" -> {
-                val element = driver.findElement(By.tagName("body"))
                 val x = jsonObject["x"]!!.jsonPrimitive.double.toInt()
                 val y = jsonObject["y"]!!.jsonPrimitive.double.toInt()
                 if (x in 0..width && y in 0..height) {
@@ -143,6 +133,21 @@ class SeleniumScreenshotServer : Closeable {
             }
             "forward" -> {
                 driver.navigate().forward()
+            }
+            "loadsource" -> {
+                val sourceId = jsonObject["source"]!!.jsonPrimitive.longOrNull ?: return
+                val source = getCatalogueSourceOrNull(sourceId) as? HttpSource ?: return
+                driver.get(source.baseUrl)
+            }
+            "loadmanga" -> {
+                val mangaId = jsonObject["manga"]!!.jsonPrimitive.intOrNull ?: return
+                val manga = transaction { MangaTable.select { MangaTable.id eq mangaId }.firstOrNull() } ?: return
+                driver.get(manga[MangaTable.realUrl] ?: return)
+            }
+            "loadchapter" -> {
+                val chapterId = jsonObject["chapter"]!!.jsonPrimitive.intOrNull ?: return
+                val chapter = transaction { ChapterTable.select { ChapterTable.id eq chapterId }.firstOrNull() } ?: return
+                driver.get(chapter[ChapterTable.realUrl] ?: return)
             }
         }
     }

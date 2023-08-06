@@ -33,7 +33,21 @@
     const forwardButton = document.getElementById('forwardButton');
     const socket = new WebSocket(window.location.href.replace(/^http/,'ws'));
 
+    // Read the 'source' query parameter from the URL
+    const queryParams = new URLSearchParams(window.location.search);
+    const source = queryParams.get('source');
+    const manga = queryParams.get('manga');
+    const chapter = queryParams.get('chapter');
+
     socket.onopen = () => {
+        if (source !== undefined && source !== null) {
+            socket.send(JSON.stringify({ type: 'loadsource', source: source }));
+        } else if (manga !== undefined && manga !== null) {
+            socket.send(JSON.stringify({ type: 'loadmanga', manga: manga }));
+        } else if (chapter !== undefined && chapter !== null) {
+            socket.send(JSON.stringify({ type: 'loadchapter', chapter: chapter }));
+        }
+
         console.log('WebSocket connection opened');
     };
 
