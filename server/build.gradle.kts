@@ -56,9 +56,6 @@ dependencies {
     implementation(libs.commonscompress)
     implementation(libs.junrar)
 
-    // CloudflareInterceptor
-    implementation(libs.playwright)
-
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
     implementation(libs.bouncycastle)
 
