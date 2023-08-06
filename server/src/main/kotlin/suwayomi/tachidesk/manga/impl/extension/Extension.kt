@@ -236,7 +236,7 @@ object Extension {
                 }
                 assetsFolder.walkTopDown().forEach { file ->
                     if (file.isFile) {
-                        jarZipOutputStream.putNextEntry(ZipEntry(file.relativeTo(assetsFolder).toString()))
+                        jarZipOutputStream.putNextEntry(ZipEntry(file.relativeTo(assetsFolder).toString().replace("\\", "/")))
                         file.inputStream().use { inputStream ->
                             inputStream.copyTo(jarZipOutputStream)
                         }
