@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import xyz.nulldev.ts.config.GlobalConfigManager
@@ -36,14 +37,15 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
                 return flow!!
             }
 
-            val value = configAdapter.toType(overridableConfig.getValue<ServerConfig, String>(thisRef, property))
+            val getValueFromConfig = { configAdapter.toType(overridableConfig.getValue<ServerConfig, String>(thisRef, property)) }
+            val value = getValueFromConfig()
 
             val stateFlow = MutableStateFlow(value)
             flow = stateFlow
 
-            stateFlow.drop(1).distinctUntilChanged().onEach {
-                GlobalConfigManager.updateValue("$moduleName.${property.name}", it as Any)
-            }.launchIn(mutableConfigValueScope)
+            stateFlow.drop(1).distinctUntilChanged().filter { it != getValueFromConfig() }
+                .onEach { GlobalConfigManager.updateValue("$moduleName.${property.name}", it as Any) }
+                .launchIn(mutableConfigValueScope)
 
             return stateFlow
         }
