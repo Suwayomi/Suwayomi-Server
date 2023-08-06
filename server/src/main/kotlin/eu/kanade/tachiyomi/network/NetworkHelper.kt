@@ -21,6 +21,9 @@ import mu.KotlinLogging
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import suwayomi.tachidesk.server.serverConfig
+import java.net.CookieHandler
+import java.net.CookieManager
+import java.net.CookiePolicy
 import java.util.concurrent.TimeUnit
 
 @Suppress("UNUSED_PARAMETER")
@@ -32,12 +35,19 @@ class NetworkHelper(context: Context) {
 
 //    private val cacheSize = 5L * 1024 * 1024 // 5 MiB
 
-    val cookieManager = PersistentCookieJar(context)
+    // Tachidesk -->
+    val cookieStore = PersistentCookieStore(context)
+    init {
+        CookieHandler.setDefault(
+            CookieManager(cookieStore, CookiePolicy.ACCEPT_ALL)
+        )
+    }
+    // Tachidesk <--
 
     private val baseClientBuilder: OkHttpClient.Builder
         get() {
             val builder = OkHttpClient.Builder()
-                .cookieJar(cookieManager)
+                .cookieJar(PersistentCookieJar(cookieStore))
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .callTimeout(2, TimeUnit.MINUTES)
@@ -72,9 +82,4 @@ class NetworkHelper(context: Context) {
             .addInterceptor(CloudflareInterceptor())
             .build()
     }
-
-    // Tachidesk -->
-    val cookies: PersistentCookieStore
-        get() = cookieManager.store
-    // Tachidesk <--
 }
