@@ -17,6 +17,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.eclipse.jetty.websocket.api.CloseStatus
 import org.openqa.selenium.By
 import org.openqa.selenium.Dimension
+import org.openqa.selenium.Keys
 import org.openqa.selenium.OutputType
 import org.openqa.selenium.TakesScreenshot
 import org.openqa.selenium.WebDriver
@@ -93,7 +94,6 @@ class SeleniumScreenshotServer : Closeable {
         driver.manage().window().size = Dimension(width, height)
         driver.get("https://google.com")
     }
-    private val actions = Actions(driver)
     private val executor = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 
     init {
@@ -120,12 +120,18 @@ class SeleniumScreenshotServer : Closeable {
                 val x = jsonObject["x"]!!.jsonPrimitive.double.toInt()
                 val y = jsonObject["y"]!!.jsonPrimitive.double.toInt()
                 if (x in 0..width && y in 0..height) {
-                    actions.moveToLocation(x, y).click().perform()
+                    Actions(driver).moveToLocation(x, y).click().perform()
                 }
             }
             "keypress" -> {
                 val key = jsonObject["key"]!!.jsonPrimitive.content
-                actions.keyDown(key).keyUp(key)
+                val keys: CharSequence = when (key) {
+                    "Backspace" -> Keys.BACK_SPACE
+                    "Tab" -> Keys.TAB
+                    "Enter" -> Keys.ENTER
+                    else -> key
+                }
+                Actions(driver).keyDown(keys).keyUp(keys).perform()
             }
             "back" -> {
                 driver.navigate().back()
