@@ -20,7 +20,9 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -68,6 +70,10 @@ object DownloadManager {
     private fun saveDownloadQueue() {
         sharedPreferences.edit().putStringSet(downloadQueueKey, downloadQueue.map { it.chapter.id.toString() }.toSet())
             .apply()
+    }
+
+    private fun triggerSaveDownloadQueue() {
+        scope.launch { saveQueueFlow.emit(Unit) }
     }
 
     fun restoreAndResumeDownloads() {
@@ -124,6 +130,11 @@ object DownloadManager {
                 sendStatusToAllClients()
             }
         }
+    }
+
+    private val saveQueueFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    init {
+        saveQueueFlow.onEach { saveDownloadQueue() }.launchIn(scope)
     }
 
     private fun sendStatusToAllClients() {
@@ -186,7 +197,6 @@ object DownloadManager {
     private fun refreshDownloaders() {
         scope.launch {
             downloaderWatch.emit(Unit)
-            saveDownloadQueue()
         }
     }
 
@@ -196,7 +206,8 @@ object DownloadManager {
             sourceId = sourceId,
             downloadQueue = downloadQueue,
             notifier = ::notifyAllClients,
-            onComplete = ::refreshDownloaders
+            onComplete = ::refreshDownloaders,
+            onDownloadFinished = ::triggerSaveDownloadQueue
         )
     }
 
@@ -276,7 +287,7 @@ object DownloadManager {
                 manga
             )
             downloadQueue.add(newDownloadChapter)
-            saveDownloadQueue()
+            triggerSaveDownloadQueue()
             logger.debug { "Added chapter ${chapter.id} to download queue ($newDownloadChapter)" }
             return newDownloadChapter
         }
@@ -308,30 +319,33 @@ object DownloadManager {
         logger.debug { "dequeue ${chapterDownloads.size} chapters [${chapterDownloads.joinToString(separator = ", ") { "$it" }}]" }
 
         downloadQueue.removeAll(chapterDownloads)
-        saveDownloadQueue()
+        triggerSaveDownloadQueue()
 
         notifyAllClients()
     }
 
     fun reorder(chapterIndex: Int, mangaId: Int, to: Int) {
-        require(to >= 0) { "'to' must be over or equal to 0" }
         val download = downloadQueue.find { it.mangaId == mangaId && it.chapterIndex == chapterIndex }
             ?: return
+
+        reorder(download, to)
+    }
+
+    fun reorder(chapterId: Int, to: Int) {
+        val download = downloadQueue.find { it.chapter.id == chapterId }
+            ?: return
+
+        reorder(download, to)
+    }
+
+    private fun reorder(download: DownloadChapter, to: Int) {
+        require(to >= 0) { "'to' must be over or equal to 0" }
 
         logger.debug { "reorder download $download from ${downloadQueue.indexOf(download)} to $to" }
 
         downloadQueue -= download
         downloadQueue.add(to, download)
-        saveDownloadQueue()
-    }
-
-    fun reorder(chapterId: Int, to: Int) {
-        require(to >= 0) { "'to' must be over or equal to 0" }
-        val download = downloadQueue.find { it.chapter.id == chapterId }
-            ?: return
-        downloadQueue -= download
-        downloadQueue.add(to, download)
-        saveDownloadQueue()
+        triggerSaveDownloadQueue()
     }
 
     fun start() {
@@ -360,7 +374,7 @@ object DownloadManager {
 
         stop()
         downloadQueue.clear()
-        saveDownloadQueue()
+        triggerSaveDownloadQueue()
         notifyAllClients()
     }
 }

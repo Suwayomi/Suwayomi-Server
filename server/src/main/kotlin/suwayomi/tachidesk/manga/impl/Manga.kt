@@ -25,7 +25,6 @@ import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.impl.Source.getSource
-import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
@@ -105,7 +104,7 @@ object Manga {
             url = mangaEntry[MangaTable.url]
             title = mangaEntry[MangaTable.title]
         }
-        val networkManga = source.fetchMangaDetails(sManga).awaitSingle()
+        val networkManga = source.getMangaDetails(sManga)
         sManga.copyFrom(networkManga)
 
         transaction {

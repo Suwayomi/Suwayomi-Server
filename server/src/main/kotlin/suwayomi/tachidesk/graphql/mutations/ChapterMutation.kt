@@ -11,7 +11,6 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.impl.Chapter
-import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -213,12 +212,12 @@ class ChapterMutation {
         val source = getCatalogueSourceOrNull(manga[MangaTable.sourceReference])!!
 
         return future {
-            source.fetchPageList(
+            source.getPageList(
                 SChapter.create().apply {
                     url = chapter[ChapterTable.url]
                     name = chapter[ChapterTable.name]
                 }
-            ).awaitSingle()
+            )
         }.thenApply { pageList ->
             transaction {
                 PageTable.deleteWhere { PageTable.chapter eq chapterId }
