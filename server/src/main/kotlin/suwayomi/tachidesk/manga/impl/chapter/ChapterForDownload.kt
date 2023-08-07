@@ -18,7 +18,6 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Page.getPageName
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
-import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
@@ -64,12 +63,12 @@ private class ChapterForDownload(
         val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
         val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
-        return source.fetchPageList(
+        return source.getPageList(
             SChapter.create().apply {
                 url = chapterEntry[ChapterTable.url]
                 name = chapterEntry[ChapterTable.name]
             }
-        ).awaitSingle()
+        )
     }
 
     private fun markAsNotDownloaded() {

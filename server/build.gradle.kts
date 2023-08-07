@@ -45,6 +45,10 @@ dependencies {
     implementation(libs.rxjava)
     implementation(libs.jsoup)
 
+    // ComicInfo
+    implementation(libs.serialization.xml.core)
+    implementation(libs.serialization.xml)
+
     // Sort
     implementation(libs.sort)
 
@@ -114,6 +118,7 @@ buildConfig {
 
 tasks {
     shadowJar {
+        isZip64 = true
         manifest {
             attributes(
                 "Main-Class" to MainClass,
