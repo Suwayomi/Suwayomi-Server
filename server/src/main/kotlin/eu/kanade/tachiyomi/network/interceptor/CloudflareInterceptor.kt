@@ -204,7 +204,7 @@ object CFClearance {
     }
 
     // ref: https://github.com/vvanglro/cf-clearance/blob/44124a8f06d8d0ecf2bf558a027082ff88dab435/cf_clearance/stealth.py#L76
-    private fun applyStealthInitScripts(page: Page) {
+    fun applyStealthInitScripts(page: Page) {
         for (script in stealthInitScripts) {
             page.addInitScript(script)
         }
