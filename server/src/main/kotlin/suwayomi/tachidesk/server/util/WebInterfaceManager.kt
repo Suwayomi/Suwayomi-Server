@@ -184,16 +184,21 @@ object WebInterfaceManager {
         logger.warn { "doInitialSetup: fallback to bundled default webUI \"$DEFAULT_WEB_UI\"" }
 
         try {
+            setupBundledWebUI()
+        } catch (e: Exception) {
+            throw Exception("Unable to setup a webUI")
+        }
+    }
+
+    private fun setupBundledWebUI() {
+        try {
             extractBundledWebUI()
             return
         } catch (e: BundledWebUIMissing) {
-            logger.warn(e) { "doInitialSetup: fallback to downloading the version of the bundled webUI" }
+            logger.warn(e) { "setupBundledWebUI: fallback to downloading the version of the bundled webUI" }
         }
 
-        val downloadFailed = !doDownload() { BuildConfig.WEBUI_TAG }
-        if (downloadFailed) {
-            throw Exception("Unable to setup a webUI")
-        }
+        downloadVersion(BuildConfig.WEBUI_TAG)
     }
 
     private fun extractBundledWebUI() {
