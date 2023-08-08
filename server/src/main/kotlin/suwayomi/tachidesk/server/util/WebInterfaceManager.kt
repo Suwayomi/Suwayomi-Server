@@ -128,8 +128,13 @@ object WebInterfaceManager {
                     BuildConfig.WEBUI_TAG
                 )
             if (shouldUpdateToBundledVersion) {
-                logger.debug { "Update to bundled version \"${BuildConfig.WEBUI_TAG}\"" }
-                extractBundledWebUI()
+                logger.debug { "setupWebUI: update to bundled version \"${BuildConfig.WEBUI_TAG}\"" }
+
+                try {
+                    extractBundledWebUI()
+                } catch (e: Exception) {
+                    logger.error(e) { "setupWebUI: failed the update to the bundled webUI" }
+                }
             }
 
             return
