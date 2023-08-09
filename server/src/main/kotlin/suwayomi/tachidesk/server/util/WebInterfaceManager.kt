@@ -10,6 +10,15 @@ package suwayomi.tachidesk.server.util
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.await
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.sample
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -24,6 +33,13 @@ import net.lingala.zip4j.ZipFile
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
+import suwayomi.tachidesk.graphql.types.UpdateState
+import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
+import suwayomi.tachidesk.graphql.types.UpdateState.ERROR
+import suwayomi.tachidesk.graphql.types.UpdateState.FINISHED
+import suwayomi.tachidesk.graphql.types.UpdateState.STOPPED
+import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
+import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
@@ -38,6 +54,7 @@ import java.security.MessageDigest
 import java.util.Date
 import java.util.prefs.Preferences
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.seconds
 
 private val applicationDirs by DI.global.instance<ApplicationDirs>()
 private val tmpDir = System.getProperty("java.io.tmpdir")
@@ -76,6 +93,7 @@ const val DEFAULT_WEB_UI = "WebUI"
 
 object WebInterfaceManager {
     private val logger = KotlinLogging.logger {}
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private const val webUIPreviewVersion = "PREVIEW"
     private const val lastWebUIUpdateCheckKey = "lastWebUIUpdateCheckKey"
@@ -85,6 +103,24 @@ object WebInterfaceManager {
 
     private val json: Json by injectLazy()
     private val network: NetworkHelper by injectLazy()
+
+    private val notifyFlow =
+        MutableSharedFlow<WebUIUpdateStatus>(extraBufferCapacity = 1, onBufferOverflow = DROP_OLDEST)
+    val status = notifyFlow.sample(1.seconds)
+        .stateIn(
+            scope,
+            SharingStarted.Eagerly,
+            WebUIUpdateStatus(
+                info = WebUIUpdateInfo(
+                    channel = serverConfig.webUIChannel,
+                    tag = "",
+                    updateAvailable = false
+                ),
+                state = STOPPED,
+                progress = 0
+            )
+        )
+
     init {
         scheduleWebUIUpdateCheck()
     }
@@ -391,25 +427,68 @@ object WebInterfaceManager {
         throw Exception("No compatible webUI version found")
     }
 
-    suspend fun downloadVersion(version: String) {
-        val webUIZip = "${WebUI.WEBUI.baseFileName}-$version.zip"
-        val webUIZipPath = "$tmpDir/$webUIZip"
-        val webUIZipURL = "${getDownloadUrlFor(version)}/$webUIZip"
-
-        val log =
-            KotlinLogging.logger("${logger.name} downloadVersion(version= $version, flavor= ${serverConfig.webUIFlavor})")
-        log.info { "Downloading WebUI zip from the Internet..." }
-
-        executeWithRetry(log, { downloadVersionZipFile(webUIZipURL, webUIZipPath) })
-        File(applicationDirs.webUIRoot).deleteRecursively()
-
-        // extract webUI zip
-        log.info { "Extracting WebUI zip..." }
-        extractDownload(webUIZipPath, applicationDirs.webUIRoot)
-        log.info { "Extracting WebUI zip Done." }
+    private fun emitStatus(version: String, state: UpdateState, progress: Int) {
+        scope.launch {
+            notifyFlow.emit(
+                WebUIUpdateStatus(
+                    info = WebUIUpdateInfo(
+                        channel = serverConfig.webUIChannel,
+                        tag = version,
+                        updateAvailable = true
+                    ),
+                    state,
+                    progress
+                )
+            )
+        }
     }
 
-    private suspend fun downloadVersionZipFile(url: String, filePath: String) {
+    fun startDownloadInScope(version: String) {
+        scope.launch {
+            downloadVersion(version)
+        }
+    }
+
+    suspend fun downloadVersion(version: String) {
+        emitStatus(version, DOWNLOADING, 0)
+
+        try {
+            val webUIZip = "${WebUI.WEBUI.baseFileName}-$version.zip"
+            val webUIZipPath = "$tmpDir/$webUIZip"
+            val webUIZipURL = "${getDownloadUrlFor(version)}/$webUIZip"
+
+            val log =
+                KotlinLogging.logger("${logger.name} downloadVersion(version= $version, flavor= ${serverConfig.webUIFlavor})")
+            log.info { "Downloading WebUI zip from the Internet..." }
+
+            executeWithRetry(log, {
+                downloadVersionZipFile(webUIZipURL, webUIZipPath) { progress ->
+                    emitStatus(
+                        version,
+                        DOWNLOADING,
+                        progress
+                    )
+                }
+            })
+            File(applicationDirs.webUIRoot).deleteRecursively()
+
+            // extract webUI zip
+            log.info { "Extracting WebUI zip..." }
+            extractDownload(webUIZipPath, applicationDirs.webUIRoot)
+            log.info { "Extracting WebUI zip Done." }
+
+            emitStatus(version, FINISHED, 100)
+        } catch (e: Exception) {
+            emitStatus(version, ERROR, 0)
+            throw e
+        }
+    }
+
+    private suspend fun downloadVersionZipFile(
+        url: String,
+        filePath: String,
+        updateProgress: (progress: Int) -> Unit
+    ) {
         val zipFile = File(filePath)
         zipFile.delete()
 
@@ -433,11 +512,13 @@ object WebInterfaceManager {
                     }
 
                     totalCount += count
-                    val percentage =
-                        (totalCount.toFloat() / contentLength * 100).toInt().toString().padStart(2, '0')
-                    print("\b\b$percentage")
+                    val percentage = (totalCount.toFloat() / contentLength * 100).toInt()
+                    val percentageStr = percentage.toString().padStart(2, '0')
+                    print("\b\b$percentageStr")
 
                     webUIZipFileOut.write(data, 0, count)
+
+                    updateProgress(percentage)
                 }
                 println()
                 logger.info { "downloadVersionZipFile: Downloading WebUI Done." }

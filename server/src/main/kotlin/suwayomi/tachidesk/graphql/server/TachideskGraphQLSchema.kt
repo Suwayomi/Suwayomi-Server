@@ -18,6 +18,7 @@ import suwayomi.tachidesk.graphql.mutations.CategoryMutation
 import suwayomi.tachidesk.graphql.mutations.ChapterMutation
 import suwayomi.tachidesk.graphql.mutations.DownloadMutation
 import suwayomi.tachidesk.graphql.mutations.ExtensionMutation
+import suwayomi.tachidesk.graphql.mutations.InfoMutation
 import suwayomi.tachidesk.graphql.mutations.MangaMutation
 import suwayomi.tachidesk.graphql.mutations.MetaMutation
 import suwayomi.tachidesk.graphql.mutations.SourceMutation
@@ -37,6 +38,7 @@ import suwayomi.tachidesk.graphql.server.primitives.GraphQLCursor
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLLongAsString
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLUpload
 import suwayomi.tachidesk.graphql.subscriptions.DownloadSubscription
+import suwayomi.tachidesk.graphql.subscriptions.InfoSubscription
 import suwayomi.tachidesk.graphql.subscriptions.UpdateSubscription
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
@@ -74,6 +76,7 @@ val schema = toSchema(
         TopLevelObject(ChapterMutation()),
         TopLevelObject(DownloadMutation()),
         TopLevelObject(ExtensionMutation()),
+        TopLevelObject(InfoMutation()),
         TopLevelObject(MangaMutation()),
         TopLevelObject(MetaMutation()),
         TopLevelObject(SourceMutation()),
@@ -81,6 +84,7 @@ val schema = toSchema(
     ),
     subscriptions = listOf(
         TopLevelObject(DownloadSubscription()),
+        TopLevelObject(InfoSubscription()),
         TopLevelObject(UpdateSubscription())
     )
 )
