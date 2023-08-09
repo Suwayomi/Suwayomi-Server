@@ -297,7 +297,11 @@ object WebInterfaceManager {
     }
 
     private fun getLocalVersion(path: String = applicationDirs.webUIRoot): String {
-        return File("$path/revision").readText().trim()
+        return try {
+            File("$path/revision").readText().trim()
+        } catch (e: Exception) {
+            "r-1"
+        }
     }
 
     private fun doesLocalWebUIExist(path: String): Boolean {
