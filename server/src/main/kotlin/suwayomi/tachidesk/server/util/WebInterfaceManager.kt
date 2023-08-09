@@ -425,7 +425,7 @@ object WebInterfaceManager {
         ZipFile(zipFilePath).use { it.extractAll(targetPath) }
     }
 
-    fun isUpdateAvailable(currentVersion: String): Boolean {
+    fun isUpdateAvailable(currentVersion: String = getLocalVersion()): Boolean {
         return try {
             val latestCompatibleVersion = getLatestCompatibleVersion()
             latestCompatibleVersion != currentVersion
