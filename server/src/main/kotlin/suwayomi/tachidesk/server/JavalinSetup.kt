@@ -19,6 +19,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.future.future
+import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
 import org.kodein.di.DI
 import org.kodein.di.conf.global
@@ -47,7 +48,9 @@ object JavalinSetup {
     fun javalinSetup() {
         val app = Javalin.create { config ->
             if (serverConfig.webUIEnabled) {
-                WebInterfaceManager.setupWebUI()
+                runBlocking {
+                    WebInterfaceManager.setupWebUI()
+                }
 
                 logger.info { "Serving web static files for ${serverConfig.webUIFlavor}" }
                 config.addStaticFiles(applicationDirs.webUIRoot, Location.EXTERNAL)
