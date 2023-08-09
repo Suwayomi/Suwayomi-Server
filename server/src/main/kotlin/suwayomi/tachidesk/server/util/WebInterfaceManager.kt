@@ -108,7 +108,7 @@ object WebInterfaceManager {
         }
 
         if (doesLocalWebUIExist(applicationDirs.webUIRoot)) {
-            val currentVersion = getLocalVersion(applicationDirs.webUIRoot)
+            val currentVersion = getLocalVersion()
 
             logger.info { "setupWebUI: found webUI files - flavor= ${serverConfig.webUIFlavor}, version= $currentVersion" }
 
@@ -124,7 +124,7 @@ object WebInterfaceManager {
             // check if the bundled webUI version is a newer version than the current used version
             // this could be the case in case no compatible webUI version is available and a newer server version was installed
             val shouldUpdateToBundledVersion =
-                serverConfig.webUIFlavor == DEFAULT_WEB_UI && extractVersion(getLocalVersion(applicationDirs.webUIRoot)) < extractVersion(
+                serverConfig.webUIFlavor == DEFAULT_WEB_UI && extractVersion(getLocalVersion()) < extractVersion(
                     BuildConfig.WEBUI_TAG
                 )
             if (shouldUpdateToBundledVersion) {
@@ -211,7 +211,7 @@ object WebInterfaceManager {
 
     private fun checkForUpdate() {
         preferences.putLong(lastWebUIUpdateCheckKey, System.currentTimeMillis())
-        val localVersion = getLocalVersion(applicationDirs.webUIRoot)
+        val localVersion = getLocalVersion()
 
         if (!isUpdateAvailable(localVersion)) {
             logger.debug { "checkForUpdate(${serverConfig.webUIFlavor}, $localVersion): local version is the latest one" }
@@ -233,7 +233,7 @@ object WebInterfaceManager {
         return "$downloadSpecificVersionBaseUrl/$version"
     }
 
-    private fun getLocalVersion(path: String): String {
+    private fun getLocalVersion(path: String = applicationDirs.webUIRoot): String {
         return File("$path/revision").readText().trim()
     }
 
