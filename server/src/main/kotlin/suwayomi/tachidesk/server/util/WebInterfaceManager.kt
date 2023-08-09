@@ -213,7 +213,7 @@ object WebInterfaceManager {
         preferences.putLong(lastWebUIUpdateCheckKey, System.currentTimeMillis())
         val localVersion = getLocalVersion()
 
-        if (!isUpdateAvailable(localVersion)) {
+        if (!isUpdateAvailable(localVersion).second) {
             logger.debug { "checkForUpdate(${serverConfig.webUIFlavor}, $localVersion): local version is the latest one" }
             return
         }
@@ -425,13 +425,15 @@ object WebInterfaceManager {
         ZipFile(zipFilePath).use { it.extractAll(targetPath) }
     }
 
-    fun isUpdateAvailable(currentVersion: String = getLocalVersion()): Boolean {
+    fun isUpdateAvailable(currentVersion: String = getLocalVersion()): Pair<String, Boolean> {
         return try {
             val latestCompatibleVersion = getLatestCompatibleVersion()
-            latestCompatibleVersion != currentVersion
+            val isUpdateAvailable = latestCompatibleVersion != currentVersion
+
+            Pair(latestCompatibleVersion, isUpdateAvailable)
         } catch (e: Exception) {
             logger.warn(e) { "isUpdateAvailable: check failed due to" }
-            false
+            Pair("", false)
         }
     }
 }
