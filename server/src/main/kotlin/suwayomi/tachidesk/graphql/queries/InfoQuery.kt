@@ -28,17 +28,17 @@ class InfoQuery {
         )
     }
 
-    data class CheckForUpdatesPayload(
+    data class CheckForServerUpdatesPayload(
         /** [channel] mirrors [suwayomi.tachidesk.server.BuildConfig.BUILD_TYPE] */
         val channel: String,
         val tag: String,
         val url: String
     )
 
-    fun checkForUpdates(): CompletableFuture<List<CheckForUpdatesPayload>> {
+    fun checkForServerUpdates(): CompletableFuture<List<CheckForServerUpdatesPayload>> {
         return future {
             AppUpdate.checkUpdate().map {
-                CheckForUpdatesPayload(
+                CheckForServerUpdatesPayload(
                     channel = it.channel,
                     tag = it.tag,
                     url = it.url
