@@ -1,8 +1,12 @@
 package suwayomi.tachidesk.graphql.queries
 
 import suwayomi.tachidesk.global.impl.AppUpdate
+import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
+import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
 import suwayomi.tachidesk.server.BuildConfig
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.util.WebInterfaceManager
 import java.util.concurrent.CompletableFuture
 
 class InfoQuery {
@@ -28,22 +32,37 @@ class InfoQuery {
         )
     }
 
-    data class CheckForUpdatesPayload(
+    data class CheckForServerUpdatesPayload(
         /** [channel] mirrors [suwayomi.tachidesk.server.BuildConfig.BUILD_TYPE] */
         val channel: String,
         val tag: String,
         val url: String
     )
 
-    fun checkForUpdates(): CompletableFuture<List<CheckForUpdatesPayload>> {
+    fun checkForServerUpdates(): CompletableFuture<List<CheckForServerUpdatesPayload>> {
         return future {
             AppUpdate.checkUpdate().map {
-                CheckForUpdatesPayload(
+                CheckForServerUpdatesPayload(
                     channel = it.channel,
                     tag = it.tag,
                     url = it.url
                 )
             }
         }
+    }
+
+    fun checkForWebUIUpdate(): CompletableFuture<WebUIUpdateInfo> {
+        return future {
+            val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable()
+            WebUIUpdateInfo(
+                channel = serverConfig.webUIChannel,
+                tag = version,
+                updateAvailable
+            )
+        }
+    }
+
+    fun getWebUIUpdateStatus(): WebUIUpdateStatus {
+        return WebInterfaceManager.status.value
     }
 }
