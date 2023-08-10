@@ -252,7 +252,7 @@ object WebInterfaceManager {
         }
     }
 
-    private fun setupBundledWebUI() {
+    private suspend fun setupBundledWebUI() {
         try {
             extractBundledWebUI()
             return
