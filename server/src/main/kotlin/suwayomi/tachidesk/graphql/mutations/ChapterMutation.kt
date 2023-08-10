@@ -121,21 +121,17 @@ class ChapterMutation {
         val (clientMutationId, mangaId) = input
 
         return future {
-            val numberOfCurrentChapters = Chapter.getCountOfMangaChapters(mangaId)
             Chapter.fetchChapterList(mangaId)
-            numberOfCurrentChapters
-        }.thenApply { numberOfCurrentChapters ->
+        }.thenApply {
             val chapters = transaction {
                 ChapterTable.select { ChapterTable.manga eq mangaId }
                     .orderBy(ChapterTable.sourceOrder)
+                    .map { ChapterType(it) }
             }
-
-            // download new chapters if settings flag is enabled
-            Chapter.downloadNewChapters(mangaId, numberOfCurrentChapters, chapters.toList())
 
             FetchChaptersPayload(
                 clientMutationId = clientMutationId,
-                chapters = chapters.map { ChapterType(it) }
+                chapters = chapters
             )
         }
     }
