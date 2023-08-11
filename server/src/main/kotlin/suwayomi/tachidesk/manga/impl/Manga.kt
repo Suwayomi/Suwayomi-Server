@@ -127,7 +127,7 @@ object Manga {
                 if (!sManga.thumbnail_url.isNullOrEmpty() && sManga.thumbnail_url != mangaEntry[MangaTable.thumbnail_url]) {
                     it[MangaTable.thumbnail_url] = sManga.thumbnail_url
                     it[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
-                    clearMangaThumbnailCache(mangaId)
+                    clearThumbnail(mangaId)
                 }
 
                 it[MangaTable.realUrl] = runCatching {
@@ -301,10 +301,10 @@ object Manga {
         return fetchMangaThumbnail(mangaId)
     }
 
-    private fun clearMangaThumbnailCache(mangaId: Int) {
-        val saveDir = applicationDirs.tempThumbnailCacheRoot
+    private fun clearThumbnail(mangaId: Int) {
         val fileName = mangaId.toString()
 
-        clearCachedImage(saveDir, fileName)
+        clearCachedImage(applicationDirs.tempThumbnailCacheRoot, fileName)
+        clearCachedImage(applicationDirs.thumbnailDownloadsRoot, fileName)
     }
 }
