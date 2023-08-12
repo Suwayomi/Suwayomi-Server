@@ -12,11 +12,11 @@ data class UpdateStatus(
     val numberOfJobs: Int = 0
 ) {
 
-    constructor(jobs: List<UpdateJob>, running: Boolean) : this(
+    constructor(jobs: List<UpdateJob>, skippedMangas: List<MangaDataClass>, running: Boolean) : this(
         statusMap = jobs.groupBy { it.status }
             .mapValues { entry ->
                 entry.value.map { it.manga }
-            },
+            }.plus(Pair(JobStatus.SKIPPED, skippedMangas)),
         running = running,
         numberOfJobs = jobs.size
     )

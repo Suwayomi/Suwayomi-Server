@@ -12,14 +12,16 @@ class UpdateStatus(
     val pendingJobs: UpdateStatusType,
     val runningJobs: UpdateStatusType,
     val completeJobs: UpdateStatusType,
-    val failedJobs: UpdateStatusType
+    val failedJobs: UpdateStatusType,
+    val skippedJobs: UpdateStatusType
 ) {
     constructor(status: UpdateStatus) : this(
         isRunning = status.running,
         pendingJobs = UpdateStatusType(status.statusMap[JobStatus.PENDING]?.map { it.id }.orEmpty()),
         runningJobs = UpdateStatusType(status.statusMap[JobStatus.RUNNING]?.map { it.id }.orEmpty()),
         completeJobs = UpdateStatusType(status.statusMap[JobStatus.COMPLETE]?.map { it.id }.orEmpty()),
-        failedJobs = UpdateStatusType(status.statusMap[JobStatus.FAILED]?.map { it.id }.orEmpty())
+        failedJobs = UpdateStatusType(status.statusMap[JobStatus.FAILED]?.map { it.id }.orEmpty()),
+        skippedJobs = UpdateStatusType(status.statusMap[JobStatus.SKIPPED]?.map { it.id }.orEmpty())
     )
 }
 

@@ -125,6 +125,7 @@ class Updater : IUpdater {
                 semaphore.withPermit {
                     _status.value = UpdateStatus(
                         process(job),
+                        _status.value.statusMap[JobStatus.SKIPPED] ?: emptyList(),
                         tracker.any { (_, job) ->
                             job.status == JobStatus.PENDING || job.status == JobStatus.RUNNING
                         }
@@ -138,7 +139,13 @@ class Updater : IUpdater {
 
     private suspend fun process(job: UpdateJob): List<UpdateJob> {
         tracker[job.manga.id] = job.copy(status = JobStatus.RUNNING)
-        _status.update { UpdateStatus(tracker.values.toList(), true) }
+        _status.update {
+            UpdateStatus(
+                tracker.values.toList(),
+                _status.value.statusMap[JobStatus.SKIPPED] ?: emptyList(),
+                true
+            )
+        }
         tracker[job.manga.id] = try {
             logger.info { "Updating \"${job.manga.title}\" (source: ${job.manga.sourceId})" }
             Chapter.getChapterList(job.manga.id, true)
@@ -182,10 +189,12 @@ class Updater : IUpdater {
             .filter { if (serverConfig.excludeCompleted.value) { it.status != MangaStatus.COMPLETED.name } else true }
             .filter { forceAll || !excludedCategories.any { category -> mangasToCategoriesMap[it.id]?.contains(category) == true } }
             .toList()
+        val skippedMangas = categoriesToUpdateMangas.subtract(mangasToUpdate.toSet()).toList()
 
         // In case no manga gets updated and no update job was running before, the client would never receive an info about its update request
+        _status.update { UpdateStatus(emptyList(), skippedMangas, false) }
+
         if (mangasToUpdate.isEmpty()) {
-            UpdaterSocket.notifyAllClients(UpdateStatus())
             return
         }
 
@@ -195,10 +204,16 @@ class Updater : IUpdater {
         )
     }
 
-    private fun addMangasToQueue(mangas: List<MangaDataClass>) {
-        mangas.forEach { tracker[it.id] = UpdateJob(it) }
-        _status.update { UpdateStatus(tracker.values.toList(), mangas.isNotEmpty()) }
-        mangas.forEach { addMangaToQueue(it) }
+    private fun addMangasToQueue(mangasToUpdate: List<MangaDataClass>) {
+        mangasToUpdate.forEach { tracker[it.id] = UpdateJob(it) }
+        _status.update {
+            UpdateStatus(
+                tracker.values.toList(),
+                _status.value.statusMap[JobStatus.SKIPPED] ?: emptyList(),
+                mangasToUpdate.isNotEmpty()
+            )
+        }
+        mangasToUpdate.forEach { addMangaToQueue(it) }
     }
 
     private fun addMangaToQueue(manga: MangaDataClass) {
