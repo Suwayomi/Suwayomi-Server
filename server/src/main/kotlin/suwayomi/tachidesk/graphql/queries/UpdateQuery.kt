@@ -21,4 +21,10 @@ class UpdateQuery {
             failedJobs = UpdateStatusType(status.statusMap[JobStatus.FAILED]?.map { it.id }.orEmpty())
         )
     }
+
+    data class LastUpdateTimestampPayload(val timestamp: Long)
+
+    fun lastUpdateTimestamp(): LastUpdateTimestampPayload {
+        return LastUpdateTimestampPayload(updater.getLastUpdateTimestamp())
+    }
 }

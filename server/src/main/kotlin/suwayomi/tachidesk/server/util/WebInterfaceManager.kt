@@ -87,7 +87,8 @@ enum class WebUIChannel {
 }
 
 enum class WebUIFlavor(
-    val uiName: String, val repoUrl: String,
+    val uiName: String,
+    val repoUrl: String,
     val versionMappingUrl: String,
     val latestReleaseInfoUrl: String,
     val baseFileName: String

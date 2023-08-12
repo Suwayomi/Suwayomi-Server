@@ -18,9 +18,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import mu.KotlinLogging
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
@@ -49,6 +46,7 @@ class Updater : IUpdater {
     private var maxSourcesInParallel = 20 // max permits, necessary to be set to be able to release up to 20 permits
     private val semaphore = Semaphore(maxSourcesInParallel)
 
+    private val lastUpdateKey = "lastUpdateKey"
     private val lastAutomatedUpdateKey = "lastAutomatedUpdateKey"
     private val preferences = Preferences.userNodeForPackage(Updater::class.java)
 
@@ -74,6 +72,10 @@ class Updater : IUpdater {
             },
             ignoreInitialValue = false
         )
+    }
+
+    override fun getLastUpdateTimestamp(): Long {
+        return preferences.getLong(lastUpdateKey, 0)
     }
 
     private fun autoUpdateTask() {
@@ -150,9 +152,10 @@ class Updater : IUpdater {
     }
 
     override fun addCategoriesToUpdateQueue(categories: List<CategoryDataClass>, clear: Boolean?, forceAll: Boolean) {
-        val updater by DI.global.instance<IUpdater>()
+        preferences.putLong(lastUpdateKey, System.currentTimeMillis())
+
         if (clear == true) {
-            updater.reset()
+            reset()
         }
 
         val includeInUpdateStatusToCategoryMap = categories.groupBy { it.includeInUpdate }
