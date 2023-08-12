@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import xyz.nulldev.ts.config.GlobalConfigManager
@@ -26,8 +27,8 @@ import kotlin.reflect.KProperty
 
 val mutableConfigValueScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-private const val MODULE_NAME = "server"
-class ServerConfig(getConfig: () -> Config, val moduleName: String = MODULE_NAME) : SystemPropertyOverridableConfigModule(getConfig, moduleName) {
+const val SERVER_CONFIG_MODULE_NAME = "server"
+class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONFIG_MODULE_NAME) : SystemPropertyOverridableConfigModule(getConfig, moduleName) {
     inner class OverrideConfigValue<T>(private val configAdapter: ConfigAdapter<T>) {
         private var flow: MutableStateFlow<T>? = null
 
@@ -36,14 +37,15 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = MODULE_NAME
                 return flow!!
             }
 
-            val value = configAdapter.toType(overridableConfig.getValue<ServerConfig, String>(thisRef, property))
+            val getValueFromConfig = { configAdapter.toType(overridableConfig.getValue<ServerConfig, String>(thisRef, property)) }
+            val value = getValueFromConfig()
 
             val stateFlow = MutableStateFlow(value)
             flow = stateFlow
 
-            stateFlow.drop(1).distinctUntilChanged().onEach {
-                GlobalConfigManager.updateValue("$moduleName.${property.name}", it as Any)
-            }.launchIn(mutableConfigValueScope)
+            stateFlow.drop(1).distinctUntilChanged().filter { it != getValueFromConfig() }
+                .onEach { GlobalConfigManager.updateValue("$moduleName.${property.name}", it as Any) }
+                .launchIn(mutableConfigValueScope)
 
             return stateFlow
         }
@@ -131,6 +133,6 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = MODULE_NAME
     }
 
     companion object {
-        fun register(getConfig: () -> Config) = ServerConfig({ getConfig().getConfig(MODULE_NAME) })
+        fun register(getConfig: () -> Config) = ServerConfig({ getConfig().getConfig(SERVER_CONFIG_MODULE_NAME) })
     }
 }
