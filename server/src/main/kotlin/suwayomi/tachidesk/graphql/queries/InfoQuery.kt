@@ -55,7 +55,7 @@ class InfoQuery {
         return future {
             val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable()
             WebUIUpdateInfo(
-                channel = serverConfig.webUIChannel,
+                channel = serverConfig.webUIChannel.value,
                 tag = version,
                 updateAvailable
             )

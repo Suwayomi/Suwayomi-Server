@@ -3,7 +3,6 @@ package suwayomi.tachidesk.graphql.mutations
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
 import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
-import suwayomi.tachidesk.graphql.types.UpdateState.FINISHED
 import suwayomi.tachidesk.graphql.types.UpdateState.STOPPED
 import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
@@ -37,7 +36,7 @@ class InfoMutation {
                         input.clientMutationId,
                         WebUIUpdateStatus(
                             info = WebUIUpdateInfo(
-                                channel = serverConfig.webUIChannel,
+                                channel = serverConfig.webUIChannel.value,
                                 tag = version,
                                 updateAvailable
                             ),

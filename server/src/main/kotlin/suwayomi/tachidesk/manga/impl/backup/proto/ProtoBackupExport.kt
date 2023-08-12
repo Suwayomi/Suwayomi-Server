@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.impl.backup.proto
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import kotlinx.coroutines.flow.combine
 import mu.KotlinLogging
 import okio.buffer
 import okio.gzip
@@ -53,10 +54,22 @@ object ProtoBackupExport : ProtoBackupBase() {
     private const val lastAutomatedBackupKey = "lastAutomatedBackupKey"
     private val preferences = Preferences.userNodeForPackage(ProtoBackupExport::class.java)
 
+    init {
+        serverConfig.subscribeTo(
+            combine(serverConfig.backupInterval, serverConfig.backupTime) { interval, timeOfDay ->
+                Pair(
+                    interval,
+                    timeOfDay
+                )
+            },
+            ::scheduleAutomatedBackupTask
+        )
+    }
+
     fun scheduleAutomatedBackupTask() {
         HAScheduler.descheduleCron(backupSchedulerJobId)
 
-        val areAutomatedBackupsDisabled = serverConfig.backupInterval == 0
+        val areAutomatedBackupsDisabled = serverConfig.backupInterval.value == 0
         if (areAutomatedBackupsDisabled) {
             return
         }
@@ -67,10 +80,10 @@ object ProtoBackupExport : ProtoBackupBase() {
             preferences.putLong(lastAutomatedBackupKey, System.currentTimeMillis())
         }
 
-        val (hour, minute) = serverConfig.backupTime.split(":").map { it.toInt() }
+        val (hour, minute) = serverConfig.backupTime.value.split(":").map { it.toInt() }
         val backupHour = hour.coerceAtLeast(0).coerceAtMost(23)
         val backupMinute = minute.coerceAtLeast(0).coerceAtMost(59)
-        val backupInterval = serverConfig.backupInterval.days.coerceAtLeast(1.days)
+        val backupInterval = serverConfig.backupInterval.value.days.coerceAtLeast(1.days)
 
         // trigger last backup in case the server wasn't running on the scheduled time
         val lastAutomatedBackup = preferences.getLong(lastAutomatedBackupKey, System.currentTimeMillis())
@@ -105,9 +118,9 @@ object ProtoBackupExport : ProtoBackupBase() {
     }
 
     private fun cleanupAutomatedBackups() {
-        logger.debug { "Cleanup automated backups (ttl= ${serverConfig.backupTTL})" }
+        logger.debug { "Cleanup automated backups (ttl= ${serverConfig.backupTTL.value})" }
 
-        val isCleanupDisabled = serverConfig.backupTTL == 0
+        val isCleanupDisabled = serverConfig.backupTTL.value == 0
         if (isCleanupDisabled) {
             return
         }
@@ -133,7 +146,7 @@ object ProtoBackupExport : ProtoBackupBase() {
 
         val lastAccessTime = file.lastModified()
         val isTTLReached =
-            System.currentTimeMillis() - lastAccessTime >= serverConfig.backupTTL.days.coerceAtLeast(1.days).inWholeMilliseconds
+            System.currentTimeMillis() - lastAccessTime >= serverConfig.backupTTL.value.days.coerceAtLeast(1.days).inWholeMilliseconds
         if (isTTLReached) {
             file.delete()
         }

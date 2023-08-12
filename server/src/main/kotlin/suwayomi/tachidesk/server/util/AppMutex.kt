@@ -31,7 +31,7 @@ object AppMutex {
         OtherApplicationRunning(2)
     }
 
-    private val appIP = if (serverConfig.ip == "0.0.0.0") "127.0.0.1" else serverConfig.ip
+    private val appIP = if (serverConfig.ip.value == "0.0.0.0") "127.0.0.1" else serverConfig.ip.value
 
     private val jsonMapper by DI.global.instance<JsonMapper>()
 
@@ -41,7 +41,7 @@ object AppMutex {
             .build()
 
         val request = Builder()
-            .url("http://$appIP:${serverConfig.port}/api/v1/settings/about/")
+            .url("http://$appIP:${serverConfig.port.value}/api/v1/settings/about/")
             .build()
 
         val response = try {
@@ -64,7 +64,7 @@ object AppMutex {
                 logger.info("Mutex status is clear, Resuming startup.")
             }
             AppMutexState.TachideskInstanceRunning -> {
-                logger.info("Another instance of Tachidesk is running on $appIP:${serverConfig.port}")
+                logger.info("Another instance of Tachidesk is running on $appIP:${serverConfig.port.value}")
 
                 logger.info("Probably user thought tachidesk is closed so, opening webUI in browser again.")
                 openInBrowser()
@@ -74,7 +74,7 @@ object AppMutex {
                 shutdownApp(MutexCheckFailedTachideskRunning)
             }
             AppMutexState.OtherApplicationRunning -> {
-                logger.error("A non Tachidesk application is running on $appIP:${serverConfig.port}, aborting startup.")
+                logger.error("A non Tachidesk application is running on $appIP:${serverConfig.port.value}, aborting startup.")
                 shutdownApp(MutexCheckFailedAnotherAppRunning)
             }
         }

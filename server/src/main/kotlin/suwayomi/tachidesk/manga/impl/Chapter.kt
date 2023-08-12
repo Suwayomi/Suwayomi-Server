@@ -210,7 +210,7 @@ object Chapter {
         val wasInitialFetch = currentNumberOfChapters == 0
 
         // make sure to ignore initial fetch
-        val downloadNewChapters = serverConfig.autoDownloadNewChapters && !wasInitialFetch && areNewChaptersAvailable
+        val downloadNewChapters = serverConfig.autoDownloadNewChapters.value && !wasInitialFetch && areNewChaptersAvailable
         if (!downloadNewChapters) {
             return
         }

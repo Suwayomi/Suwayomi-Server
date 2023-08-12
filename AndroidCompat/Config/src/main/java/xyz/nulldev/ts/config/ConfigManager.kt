@@ -14,6 +14,8 @@ import com.typesafe.config.ConfigValue
 import com.typesafe.config.ConfigValueFactory
 import com.typesafe.config.parser.ConfigDocument
 import com.typesafe.config.parser.ConfigDocumentFactory
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import mu.KotlinLogging
 import java.io.File
 
@@ -31,6 +33,8 @@ open class ConfigManager {
     // Public read-only view of modules
     val loadedModules: Map<Class<out ConfigModule>, ConfigModule>
         get() = generatedModules
+
+    private val mutex = Mutex()
 
     /**
      * Get a config module
@@ -98,11 +102,13 @@ open class ConfigManager {
         userConfigFile.writeText(newFileContent)
     }
 
-    fun updateValue(path: String, value: Any) {
-        val configValue = ConfigValueFactory.fromAnyRef(value)
+    suspend fun updateValue(path: String, value: Any) {
+        mutex.withLock {
+            val configValue = ConfigValueFactory.fromAnyRef(value)
 
-        updateUserConfigFile(path, configValue)
-        internalConfig = internalConfig.withValue(path, configValue)
+            updateUserConfigFile(path, configValue)
+            internalConfig = internalConfig.withValue(path, configValue)
+        }
     }
 
     /**

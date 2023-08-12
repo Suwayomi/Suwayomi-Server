@@ -33,6 +33,7 @@ import suwayomi.tachidesk.util.HAScheduler
 import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
 import java.util.prefs.Preferences
+import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.hours
 
 class Updater : IUpdater {
@@ -45,12 +46,35 @@ class Updater : IUpdater {
     private val tracker = ConcurrentHashMap<Int, UpdateJob>()
     private val updateChannels = ConcurrentHashMap<String, Channel<UpdateJob>>()
 
-    private val semaphore = Semaphore(serverConfig.maxParallelUpdateRequests)
+    private var maxSourcesInParallel = 20 // max permits, necessary to be set to be able to release up to 20 permits
+    private val semaphore = Semaphore(maxSourcesInParallel)
 
     private val lastAutomatedUpdateKey = "lastAutomatedUpdateKey"
     private val preferences = Preferences.userNodeForPackage(Updater::class.java)
 
     private var currentUpdateTaskId = ""
+
+    init {
+        serverConfig.subscribeTo(serverConfig.globalUpdateInterval, ::scheduleUpdateTask)
+        serverConfig.subscribeTo(
+            serverConfig.maxSourcesInParallel,
+            { value ->
+                val newMaxPermits = value.coerceAtLeast(1).coerceAtMost(20)
+                val permitDifference = maxSourcesInParallel - newMaxPermits
+                maxSourcesInParallel = newMaxPermits
+
+                val addMorePermits = permitDifference < 0
+                for (i in 1..permitDifference.absoluteValue) {
+                    if (addMorePermits) {
+                        semaphore.release()
+                    } else {
+                        semaphore.acquire()
+                    }
+                }
+            },
+            ignoreInitialValue = false
+        )
+    }
 
     private fun autoUpdateTask() {
         val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
@@ -61,19 +85,19 @@ class Updater : IUpdater {
             return
         }
 
-        logger.info { "Trigger global update (interval= ${serverConfig.globalUpdateInterval}h, lastAutomatedUpdate= ${Date(lastAutomatedUpdate)})" }
+        logger.info { "Trigger global update (interval= ${serverConfig.globalUpdateInterval.value}h, lastAutomatedUpdate= ${Date(lastAutomatedUpdate)})" }
         addCategoriesToUpdateQueue(Category.getCategoryList(), clear = true, forceAll = false)
     }
 
     fun scheduleUpdateTask() {
         HAScheduler.deschedule(currentUpdateTaskId)
 
-        val isAutoUpdateDisabled = serverConfig.globalUpdateInterval == 0.0
+        val isAutoUpdateDisabled = serverConfig.globalUpdateInterval.value == 0.0
         if (isAutoUpdateDisabled) {
             return
         }
 
-        val updateInterval = serverConfig.globalUpdateInterval.hours.coerceAtLeast(6.hours).inWholeMilliseconds
+        val updateInterval = serverConfig.globalUpdateInterval.value.hours.coerceAtLeast(6.hours).inWholeMilliseconds
         val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
         val timeToNextExecution = (updateInterval - (System.currentTimeMillis() - lastAutomatedUpdate)).mod(updateInterval)
 
@@ -150,9 +174,9 @@ class Updater : IUpdater {
         val mangasToUpdate = categoriesToUpdateMangas
             .asSequence()
             .filter { it.updateStrategy == UpdateStrategy.ALWAYS_UPDATE }
-            .filter { if (serverConfig.excludeUnreadChapters) { (it.unreadCount ?: 0L) == 0L } else true }
-            .filter { if (serverConfig.excludeNotStarted) { it.lastReadAt != null } else true }
-            .filter { if (serverConfig.excludeCompleted) { it.status != MangaStatus.COMPLETED.name } else true }
+            .filter { if (serverConfig.excludeUnreadChapters.value) { (it.unreadCount ?: 0L) == 0L } else true }
+            .filter { if (serverConfig.excludeNotStarted.value) { it.lastReadAt != null } else true }
+            .filter { if (serverConfig.excludeCompleted.value) { it.status != MangaStatus.COMPLETED.name } else true }
             .filter { forceAll || !excludedCategories.any { category -> mangasToCategoriesMap[it.id]?.contains(category) == true } }
             .toList()
 

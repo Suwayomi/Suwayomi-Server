@@ -16,11 +16,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -70,7 +70,7 @@ enum class WebUIChannel {
 
     companion object {
         fun doesConfigChannelEqual(channel: WebUIChannel): Boolean {
-            return serverConfig.webUIChannel.equals(channel.toString(), true)
+            return serverConfig.webUIChannel.value.equals(channel.toString(), true)
         }
     }
 }
@@ -112,7 +112,7 @@ object WebInterfaceManager {
             SharingStarted.Eagerly,
             WebUIUpdateStatus(
                 info = WebUIUpdateInfo(
-                    channel = serverConfig.webUIChannel,
+                    channel = serverConfig.webUIChannel.value,
                     tag = "",
                     updateAvailable = false
                 ),
@@ -122,27 +122,36 @@ object WebInterfaceManager {
         )
 
     init {
-        scheduleWebUIUpdateCheck()
+        serverConfig.subscribeTo(
+            combine(serverConfig.webUIUpdateCheckInterval, serverConfig.webUIFlavor) { interval, flavor ->
+                Pair(
+                    interval,
+                    flavor
+                )
+            },
+            ::scheduleWebUIUpdateCheck,
+            ignoreInitialValue = false
+        )
     }
 
     private fun isAutoUpdateEnabled(): Boolean {
-        return serverConfig.webUIUpdateCheckInterval.toInt() != 0
+        return serverConfig.webUIUpdateCheckInterval.value.toInt() != 0
     }
 
     private fun scheduleWebUIUpdateCheck() {
         HAScheduler.descheduleCron(currentUpdateTaskId)
 
-        val isAutoUpdateDisabled = !isAutoUpdateEnabled() || serverConfig.webUIFlavor == "Custom"
+        val isAutoUpdateDisabled = !isAutoUpdateEnabled() || serverConfig.webUIFlavor.value == "Custom"
         if (isAutoUpdateDisabled) {
             return
         }
 
-        val updateInterval = serverConfig.webUIUpdateCheckInterval.hours.coerceAtLeast(1.hours).coerceAtMost(23.hours)
+        val updateInterval = serverConfig.webUIUpdateCheckInterval.value.hours.coerceAtLeast(1.hours).coerceAtMost(23.hours)
         val lastAutomatedUpdate = preferences.getLong(lastWebUIUpdateCheckKey, System.currentTimeMillis())
 
         val task = {
             logger.debug {
-                "Checking for webUI update (channel= ${serverConfig.webUIChannel}, interval= ${serverConfig.webUIUpdateCheckInterval}h, lastAutomatedUpdate= ${
+                "Checking for webUI update (channel= ${serverConfig.webUIChannel.value}, interval= ${serverConfig.webUIUpdateCheckInterval.value}h, lastAutomatedUpdate= ${
                 Date(
                     lastAutomatedUpdate
                 )
@@ -165,14 +174,14 @@ object WebInterfaceManager {
     }
 
     suspend fun setupWebUI() {
-        if (serverConfig.webUIFlavor == "Custom") {
+        if (serverConfig.webUIFlavor.value == "Custom") {
             return
         }
 
         if (doesLocalWebUIExist(applicationDirs.webUIRoot)) {
             val currentVersion = getLocalVersion()
 
-            logger.info { "setupWebUI: found webUI files - flavor= ${serverConfig.webUIFlavor}, version= $currentVersion" }
+            logger.info { "setupWebUI: found webUI files - flavor= ${serverConfig.webUIFlavor.value}, version= $currentVersion" }
 
             if (!isLocalWebUIValid(applicationDirs.webUIRoot)) {
                 doInitialSetup()
@@ -186,7 +195,7 @@ object WebInterfaceManager {
             // check if the bundled webUI version is a newer version than the current used version
             // this could be the case in case no compatible webUI version is available and a newer server version was installed
             val shouldUpdateToBundledVersion =
-                serverConfig.webUIFlavor == DEFAULT_WEB_UI && extractVersion(getLocalVersion()) < extractVersion(
+                serverConfig.webUIFlavor.value == DEFAULT_WEB_UI && extractVersion(getLocalVersion()) < extractVersion(
                     BuildConfig.WEBUI_TAG
                 )
             if (shouldUpdateToBundledVersion) {
@@ -232,10 +241,10 @@ object WebInterfaceManager {
             return
         }
 
-        if (serverConfig.webUIFlavor != DEFAULT_WEB_UI) {
+        if (serverConfig.webUIFlavor.value != DEFAULT_WEB_UI) {
             logger.warn { "doInitialSetup: fallback to default webUI \"$DEFAULT_WEB_UI\"" }
 
-            serverConfig.webUIFlavor = DEFAULT_WEB_UI
+            serverConfig.webUIFlavor.value = DEFAULT_WEB_UI
 
             val fallbackToBundledVersion = !doDownload() { getLatestCompatibleVersion() }
             if (!fallbackToBundledVersion) {
@@ -287,11 +296,11 @@ object WebInterfaceManager {
         val localVersion = getLocalVersion()
 
         if (!isUpdateAvailable(localVersion).second) {
-            logger.debug { "checkForUpdate(${serverConfig.webUIFlavor}, $localVersion): local version is the latest one" }
+            logger.debug { "checkForUpdate(${serverConfig.webUIFlavor.value}, $localVersion): local version is the latest one" }
             return
         }
 
-        logger.info { "checkForUpdate(${serverConfig.webUIFlavor}, $localVersion): An update is available, starting download..." }
+        logger.info { "checkForUpdate(${serverConfig.webUIFlavor.value}, $localVersion): An update is available, starting download..." }
         try {
             downloadVersion(getLatestCompatibleVersion())
         } catch (e: Exception) {
@@ -416,7 +425,7 @@ object WebInterfaceManager {
         val currentServerVersionNumber = extractVersion(BuildConfig.REVISION)
         val webUIToServerVersionMappings = fetchServerMappingFile()
 
-        logger.debug { "getLatestCompatibleVersion: webUIChannel= ${serverConfig.webUIChannel}, currentServerVersion= ${BuildConfig.REVISION}, mappingFile= $webUIToServerVersionMappings" }
+        logger.debug { "getLatestCompatibleVersion: webUIChannel= ${serverConfig.webUIChannel.value}, currentServerVersion= ${BuildConfig.REVISION}, mappingFile= $webUIToServerVersionMappings" }
 
         for (i in 0 until webUIToServerVersionMappings.size) {
             val webUIToServerVersionEntry = webUIToServerVersionMappings[i].jsonObject
@@ -446,7 +455,7 @@ object WebInterfaceManager {
             notifyFlow.emit(
                 WebUIUpdateStatus(
                     info = WebUIUpdateInfo(
-                        channel = serverConfig.webUIChannel,
+                        channel = serverConfig.webUIChannel.value,
                         tag = version,
                         updateAvailable = true
                     ),
@@ -472,7 +481,7 @@ object WebInterfaceManager {
             val webUIZipURL = "${getDownloadUrlFor(version)}/$webUIZip"
 
             val log =
-                KotlinLogging.logger("${logger.name} downloadVersion(version= $version, flavor= ${serverConfig.webUIFlavor})")
+                KotlinLogging.logger("${logger.name} downloadVersion(version= $version, flavor= ${serverConfig.webUIFlavor.value})")
             log.info { "Downloading WebUI zip from the Internet..." }
 
             executeWithRetry(log, {
