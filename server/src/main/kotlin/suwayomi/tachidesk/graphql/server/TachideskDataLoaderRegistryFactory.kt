@@ -10,6 +10,7 @@ package suwayomi.tachidesk.graphql.server
 import com.expediagroup.graphql.dataloader.KotlinDataLoaderRegistryFactory
 import suwayomi.tachidesk.graphql.dataLoaders.CategoriesForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.CategoryDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.CategoryForIdsDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.CategoryMetaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ChapterDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ChapterMetaDataLoader
@@ -39,6 +40,7 @@ class TachideskDataLoaderRegistryFactory {
                 MangaForSourceDataLoader(),
                 MangaForIdsDataLoader(),
                 CategoryDataLoader(),
+                CategoryForIdsDataLoader(),
                 CategoryMetaDataLoader(),
                 CategoriesForMangaDataLoader(),
                 SourceDataLoader(),

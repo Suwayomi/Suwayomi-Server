@@ -114,9 +114,10 @@ class Updater : IUpdater {
     /**
      * Updates the status and sustains the "skippedMangas"
      */
-    private fun updateStatus(jobs: List<UpdateJob>, running: Boolean, skippedMangas: List<MangaDataClass>? = null) {
+    private fun updateStatus(jobs: List<UpdateJob>, running: Boolean, categories: Map<CategoryUpdateStatus, List<CategoryDataClass>>? = null, skippedMangas: List<MangaDataClass>? = null) {
+        val updateStatusCategories = categories ?: _status.value.categoryStatusMap
         val tmpSkippedMangas = skippedMangas ?: _status.value.mangaStatusMap[JobStatus.SKIPPED] ?: emptyList()
-        _status.update { UpdateStatus(jobs, tmpSkippedMangas, running) }
+        _status.update { UpdateStatus(updateStatusCategories, jobs, tmpSkippedMangas, running) }
     }
 
     private fun getOrCreateUpdateChannelFor(source: String): Channel<UpdateJob> {
@@ -175,6 +176,11 @@ class Updater : IUpdater {
         } else {
             includedCategories.ifEmpty { unsetCategories }
         }
+        val skippedCategories = categories.subtract(categoriesToUpdate.toSet()).toList()
+        val updateStatusCategories = mapOf(
+            Pair(CategoryUpdateStatus.UPDATING, categoriesToUpdate),
+            Pair(CategoryUpdateStatus.SKIPPED, skippedCategories)
+        )
 
         logger.debug { "Updating categories: '${categoriesToUpdate.joinToString("', '") { it.name }}'" }
 
@@ -193,7 +199,7 @@ class Updater : IUpdater {
         val skippedMangas = categoriesToUpdateMangas.subtract(mangasToUpdate.toSet()).toList()
 
         // In case no manga gets updated and no update job was running before, the client would never receive an info about its update request
-        updateStatus(emptyList(), false, skippedMangas)
+        updateStatus(emptyList(), mangasToUpdate.isNotEmpty(), updateStatusCategories, skippedMangas)
 
         if (mangasToUpdate.isEmpty()) {
             return
