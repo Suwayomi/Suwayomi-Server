@@ -118,8 +118,11 @@ private class ChapterForDownload(
         val pageCount = pageList.count()
 
         transaction {
+            val lastPageRead = ChapterTable.select { ChapterTable.id eq chapterId }.firstOrNull()?.get(ChapterTable.lastPageRead) ?: 0
+
             ChapterTable.update({ ChapterTable.id eq chapterId }) {
                 it[ChapterTable.pageCount] = pageCount
+                it[ChapterTable.lastPageRead] = lastPageRead.coerceAtMost(pageCount - 1)
             }
         }
     }

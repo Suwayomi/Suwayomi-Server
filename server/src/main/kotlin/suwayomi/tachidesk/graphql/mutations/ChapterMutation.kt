@@ -228,7 +228,9 @@ class ChapterMutation {
                     this[PageTable.chapter] = chapterId
                 }
                 ChapterTable.update({ ChapterTable.id eq chapterId }) {
-                    it[ChapterTable.pageCount] = pageList.size
+                    val pageCount = pageList.size
+                    it[ChapterTable.pageCount] = pageCount
+                    it[ChapterTable.lastPageRead] = chapter[ChapterTable.lastPageRead].coerceAtMost(pageCount - 1)
                 }
             }
 
