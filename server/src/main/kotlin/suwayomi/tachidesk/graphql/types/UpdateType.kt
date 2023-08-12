@@ -17,11 +17,11 @@ class UpdateStatus(
 ) {
     constructor(status: UpdateStatus) : this(
         isRunning = status.running,
-        pendingJobs = UpdateStatusType(status.statusMap[JobStatus.PENDING]?.map { it.id }.orEmpty()),
-        runningJobs = UpdateStatusType(status.statusMap[JobStatus.RUNNING]?.map { it.id }.orEmpty()),
-        completeJobs = UpdateStatusType(status.statusMap[JobStatus.COMPLETE]?.map { it.id }.orEmpty()),
-        failedJobs = UpdateStatusType(status.statusMap[JobStatus.FAILED]?.map { it.id }.orEmpty()),
-        skippedJobs = UpdateStatusType(status.statusMap[JobStatus.SKIPPED]?.map { it.id }.orEmpty())
+        pendingJobs = UpdateStatusType(status.mangaStatusMap[JobStatus.PENDING]?.map { it.id }.orEmpty()),
+        runningJobs = UpdateStatusType(status.mangaStatusMap[JobStatus.RUNNING]?.map { it.id }.orEmpty()),
+        completeJobs = UpdateStatusType(status.mangaStatusMap[JobStatus.COMPLETE]?.map { it.id }.orEmpty()),
+        failedJobs = UpdateStatusType(status.mangaStatusMap[JobStatus.FAILED]?.map { it.id }.orEmpty()),
+        skippedJobs = UpdateStatusType(status.mangaStatusMap[JobStatus.SKIPPED]?.map { it.id }.orEmpty())
     )
 }
 

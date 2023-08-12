@@ -6,14 +6,14 @@ import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 
 val logger = KotlinLogging.logger {}
 data class UpdateStatus(
-    val statusMap: Map<JobStatus, List<MangaDataClass>> = emptyMap(),
+    val mangaStatusMap: Map<JobStatus, List<MangaDataClass>> = emptyMap(),
     val running: Boolean = false,
     @JsonIgnore
     val numberOfJobs: Int = 0
 ) {
 
     constructor(jobs: List<UpdateJob>, skippedMangas: List<MangaDataClass>, running: Boolean) : this(
-        statusMap = jobs.groupBy { it.status }
+        mangaStatusMap = jobs.groupBy { it.status }
             .mapValues { entry ->
                 entry.value.map { it.manga }
             }.plus(Pair(JobStatus.SKIPPED, skippedMangas)),

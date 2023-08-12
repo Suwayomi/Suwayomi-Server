@@ -115,7 +115,7 @@ class Updater : IUpdater {
      * Updates the status and sustains the "skippedMangas"
      */
     private fun updateStatus(jobs: List<UpdateJob>, running: Boolean, skippedMangas: List<MangaDataClass>? = null) {
-        val tmpSkippedMangas = skippedMangas ?: _status.value.statusMap[JobStatus.SKIPPED] ?: emptyList()
+        val tmpSkippedMangas = skippedMangas ?: _status.value.mangaStatusMap[JobStatus.SKIPPED] ?: emptyList()
         _status.update { UpdateStatus(jobs, tmpSkippedMangas, running) }
     }
 
