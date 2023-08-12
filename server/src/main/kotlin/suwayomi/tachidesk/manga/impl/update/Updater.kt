@@ -111,6 +111,14 @@ class Updater : IUpdater {
         HAScheduler.schedule(::autoUpdateTask, updateInterval, timeToNextExecution, "global-update")
     }
 
+    /**
+     * Updates the status and sustains the "skippedMangas"
+     */
+    private fun updateStatus(jobs: List<UpdateJob>, running: Boolean, skippedMangas: List<MangaDataClass>? = null) {
+        val tmpSkippedMangas = skippedMangas ?: _status.value.statusMap[JobStatus.SKIPPED] ?: emptyList()
+        _status.update { UpdateStatus(jobs, tmpSkippedMangas, running) }
+    }
+
     private fun getOrCreateUpdateChannelFor(source: String): Channel<UpdateJob> {
         return updateChannels.getOrPut(source) {
             logger.debug { "getOrCreateUpdateChannelFor: created channel for $source - channels: ${updateChannels.size + 1}" }
@@ -123,9 +131,8 @@ class Updater : IUpdater {
         channel.consumeAsFlow()
             .onEach { job ->
                 semaphore.withPermit {
-                    _status.value = UpdateStatus(
+                    updateStatus(
                         process(job),
-                        _status.value.statusMap[JobStatus.SKIPPED] ?: emptyList(),
                         tracker.any { (_, job) ->
                             job.status == JobStatus.PENDING || job.status == JobStatus.RUNNING
                         }
@@ -139,13 +146,7 @@ class Updater : IUpdater {
 
     private suspend fun process(job: UpdateJob): List<UpdateJob> {
         tracker[job.manga.id] = job.copy(status = JobStatus.RUNNING)
-        _status.update {
-            UpdateStatus(
-                tracker.values.toList(),
-                _status.value.statusMap[JobStatus.SKIPPED] ?: emptyList(),
-                true
-            )
-        }
+        updateStatus(tracker.values.toList(), true)
         tracker[job.manga.id] = try {
             logger.info { "Updating \"${job.manga.title}\" (source: ${job.manga.sourceId})" }
             Chapter.getChapterList(job.manga.id, true)
@@ -192,7 +193,7 @@ class Updater : IUpdater {
         val skippedMangas = categoriesToUpdateMangas.subtract(mangasToUpdate.toSet()).toList()
 
         // In case no manga gets updated and no update job was running before, the client would never receive an info about its update request
-        _status.update { UpdateStatus(emptyList(), skippedMangas, false) }
+        updateStatus(emptyList(), false, skippedMangas)
 
         if (mangasToUpdate.isEmpty()) {
             return
@@ -206,13 +207,7 @@ class Updater : IUpdater {
 
     private fun addMangasToQueue(mangasToUpdate: List<MangaDataClass>) {
         mangasToUpdate.forEach { tracker[it.id] = UpdateJob(it) }
-        _status.update {
-            UpdateStatus(
-                tracker.values.toList(),
-                _status.value.statusMap[JobStatus.SKIPPED] ?: emptyList(),
-                mangasToUpdate.isNotEmpty()
-            )
-        }
+        updateStatus(tracker.values.toList(), mangasToUpdate.isNotEmpty())
         mangasToUpdate.forEach { addMangaToQueue(it) }
     }
 
@@ -226,7 +221,7 @@ class Updater : IUpdater {
     override fun reset() {
         scope.coroutineContext.cancelChildren()
         tracker.clear()
-        _status.update { UpdateStatus() }
+        updateStatus(emptyList(), false)
         updateChannels.forEach { (_, channel) -> channel.cancel() }
         updateChannels.clear()
     }
