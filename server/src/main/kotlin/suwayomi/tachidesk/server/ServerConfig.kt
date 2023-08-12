@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.SystemPropertyOverridableConfigModule
@@ -108,7 +109,7 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
         }
 
         val sharedFlow = MutableSharedFlow<T>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-        actualFlow.distinctUntilChanged().onEach { sharedFlow.emit(it) }.launchIn(mutableConfigValueScope)
+        actualFlow.distinctUntilChanged().mapLatest { sharedFlow.emit(it) }.launchIn(mutableConfigValueScope)
         sharedFlow.onEach { onChange(it) }.launchIn(mutableConfigValueScope)
     }
 
