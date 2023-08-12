@@ -201,7 +201,7 @@ object Chapter {
         return chapterList
     }
 
-    fun downloadNewChapters(mangaId: Int, prevNumberOfChapters: Int, newChapters: List<ResultRow>) {
+    private fun downloadNewChapters(mangaId: Int, prevNumberOfChapters: Int, newChapters: List<ResultRow>) {
         // convert numbers to be index based
         val currentNumberOfChapters = (prevNumberOfChapters - 1).coerceAtLeast(0)
         val updatedNumberOfChapters = (newChapters.size - 1).coerceAtLeast(0)
