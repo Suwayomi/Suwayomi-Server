@@ -74,8 +74,8 @@ open class ApplicationTest {
                 applicationDirs.dataRoot,
                 applicationDirs.extensionsRoot,
                 applicationDirs.extensionsRoot + "/icon",
-                applicationDirs.thumbnailsRoot,
-                applicationDirs.mangaDownloadsRoot,
+                applicationDirs.tempThumbnailCacheRoot,
+                applicationDirs.downloadsRoot,
                 applicationDirs.localMangaRoot
             ).forEach {
                 File(it).mkdirs()
