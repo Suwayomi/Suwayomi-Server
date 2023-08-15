@@ -18,9 +18,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import mu.KotlinLogging
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
@@ -49,6 +46,7 @@ class Updater : IUpdater {
     private var maxSourcesInParallel = 20 // max permits, necessary to be set to be able to release up to 20 permits
     private val semaphore = Semaphore(maxSourcesInParallel)
 
+    private val lastUpdateKey = "lastUpdateKey"
     private val lastAutomatedUpdateKey = "lastAutomatedUpdateKey"
     private val preferences = Preferences.userNodeForPackage(Updater::class.java)
 
@@ -74,6 +72,10 @@ class Updater : IUpdater {
             },
             ignoreInitialValue = false
         )
+    }
+
+    override fun getLastUpdateTimestamp(): Long {
+        return preferences.getLong(lastUpdateKey, 0)
     }
 
     private fun autoUpdateTask() {
@@ -109,6 +111,15 @@ class Updater : IUpdater {
         HAScheduler.schedule(::autoUpdateTask, updateInterval, timeToNextExecution, "global-update")
     }
 
+    /**
+     * Updates the status and sustains the "skippedMangas"
+     */
+    private fun updateStatus(jobs: List<UpdateJob>, running: Boolean, categories: Map<CategoryUpdateStatus, List<CategoryDataClass>>? = null, skippedMangas: List<MangaDataClass>? = null) {
+        val updateStatusCategories = categories ?: _status.value.categoryStatusMap
+        val tmpSkippedMangas = skippedMangas ?: _status.value.mangaStatusMap[JobStatus.SKIPPED] ?: emptyList()
+        _status.update { UpdateStatus(updateStatusCategories, jobs, tmpSkippedMangas, running) }
+    }
+
     private fun getOrCreateUpdateChannelFor(source: String): Channel<UpdateJob> {
         return updateChannels.getOrPut(source) {
             logger.debug { "getOrCreateUpdateChannelFor: created channel for $source - channels: ${updateChannels.size + 1}" }
@@ -121,7 +132,7 @@ class Updater : IUpdater {
         channel.consumeAsFlow()
             .onEach { job ->
                 semaphore.withPermit {
-                    _status.value = UpdateStatus(
+                    updateStatus(
                         process(job),
                         tracker.any { (_, job) ->
                             job.status == JobStatus.PENDING || job.status == JobStatus.RUNNING
@@ -136,7 +147,7 @@ class Updater : IUpdater {
 
     private suspend fun process(job: UpdateJob): List<UpdateJob> {
         tracker[job.manga.id] = job.copy(status = JobStatus.RUNNING)
-        _status.update { UpdateStatus(tracker.values.toList(), true) }
+        updateStatus(tracker.values.toList(), true)
         tracker[job.manga.id] = try {
             logger.info { "Updating \"${job.manga.title}\" (source: ${job.manga.sourceId})" }
             Chapter.getChapterList(job.manga.id, true)
@@ -150,9 +161,10 @@ class Updater : IUpdater {
     }
 
     override fun addCategoriesToUpdateQueue(categories: List<CategoryDataClass>, clear: Boolean?, forceAll: Boolean) {
-        val updater by DI.global.instance<IUpdater>()
+        preferences.putLong(lastUpdateKey, System.currentTimeMillis())
+
         if (clear == true) {
-            updater.reset()
+            reset()
         }
 
         val includeInUpdateStatusToCategoryMap = categories.groupBy { it.includeInUpdate }
@@ -164,6 +176,11 @@ class Updater : IUpdater {
         } else {
             includedCategories.ifEmpty { unsetCategories }
         }
+        val skippedCategories = categories.subtract(categoriesToUpdate.toSet()).toList()
+        val updateStatusCategories = mapOf(
+            Pair(CategoryUpdateStatus.UPDATING, categoriesToUpdate),
+            Pair(CategoryUpdateStatus.SKIPPED, skippedCategories)
+        )
 
         logger.debug { "Updating categories: '${categoriesToUpdate.joinToString("', '") { it.name }}'" }
 
@@ -179,10 +196,12 @@ class Updater : IUpdater {
             .filter { if (serverConfig.excludeCompleted.value) { it.status != MangaStatus.COMPLETED.name } else true }
             .filter { forceAll || !excludedCategories.any { category -> mangasToCategoriesMap[it.id]?.contains(category) == true } }
             .toList()
+        val skippedMangas = categoriesToUpdateMangas.subtract(mangasToUpdate.toSet()).toList()
 
         // In case no manga gets updated and no update job was running before, the client would never receive an info about its update request
+        updateStatus(emptyList(), mangasToUpdate.isNotEmpty(), updateStatusCategories, skippedMangas)
+
         if (mangasToUpdate.isEmpty()) {
-            UpdaterSocket.notifyAllClients(UpdateStatus())
             return
         }
 
@@ -192,10 +211,10 @@ class Updater : IUpdater {
         )
     }
 
-    private fun addMangasToQueue(mangas: List<MangaDataClass>) {
-        mangas.forEach { tracker[it.id] = UpdateJob(it) }
-        _status.update { UpdateStatus(tracker.values.toList(), mangas.isNotEmpty()) }
-        mangas.forEach { addMangaToQueue(it) }
+    private fun addMangasToQueue(mangasToUpdate: List<MangaDataClass>) {
+        mangasToUpdate.forEach { tracker[it.id] = UpdateJob(it) }
+        updateStatus(tracker.values.toList(), mangasToUpdate.isNotEmpty())
+        mangasToUpdate.forEach { addMangaToQueue(it) }
     }
 
     private fun addMangaToQueue(manga: MangaDataClass) {
@@ -208,7 +227,7 @@ class Updater : IUpdater {
     override fun reset() {
         scope.coroutineContext.cancelChildren()
         tracker.clear()
-        _status.update { UpdateStatus() }
+        updateStatus(emptyList(), false)
         updateChannels.forEach { (_, channel) -> channel.cancel() }
         updateChannels.clear()
     }
