@@ -110,6 +110,23 @@ fun applicationSetup() {
     File("$ApplicationRootDir/manga-local").renameTo(applicationDirs.localMangaRoot)
     File("$ApplicationRootDir/anime-thumbnails").delete()
 
+    val oldMangaDownloadDir = File(applicationDirs.downloadsRoot)
+    val newMangaDownloadDir = File(applicationDirs.mangaDownloadsRoot)
+    val downloadDirs = oldMangaDownloadDir.listFiles().orEmpty()
+
+    val moveDownloadsToNewFolder = !newMangaDownloadDir.exists() && downloadDirs.isNotEmpty()
+    if (moveDownloadsToNewFolder) {
+        newMangaDownloadDir.mkdirs()
+
+        for (downloadDir in downloadDirs) {
+            if (downloadDir == File(applicationDirs.thumbnailDownloadsRoot)) {
+                continue
+            }
+
+            downloadDir.renameTo(File(newMangaDownloadDir, downloadDir.name))
+        }
+    }
+
     // make dirs we need
     listOf(
         applicationDirs.dataRoot,
