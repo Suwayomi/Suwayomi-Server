@@ -52,6 +52,7 @@ class SettingsMutation {
         if (settings.basicAuthEnabled != null) serverConfig.basicAuthEnabled.value = settings.basicAuthEnabled!!
         if (settings.basicAuthUsername != null) serverConfig.basicAuthUsername.value = settings.basicAuthUsername!!
         if (settings.basicAuthPassword != null) serverConfig.basicAuthPassword.value = settings.basicAuthPassword!!
+        if (settings.multiUser != null) serverConfig.multiUser.value = settings.multiUser!!
 
         if (settings.debugLogsEnabled != null) serverConfig.debugLogsEnabled.value = settings.debugLogsEnabled!!
         if (settings.systemTrayEnabled != null) serverConfig.systemTrayEnabled.value = settings.systemTrayEnabled!!
