@@ -66,6 +66,10 @@ object Jwt {
         try {
             val decodedJWT = verifier.verify(jwt)
 
+            require(decodedJWT.getClaim("token_type").asString() == "access") {
+                "Cannot use refresh token to access"
+            }
+
             val user = decodedJWT.subject.toInt()
             val roles: List<String> = decodedJWT.getClaim("roles").asList(String::class.java)
             val permissions: List<String> = decodedJWT.getClaim("permissions").asList(String::class.java)
