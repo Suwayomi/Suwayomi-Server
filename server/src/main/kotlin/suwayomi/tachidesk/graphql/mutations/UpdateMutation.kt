@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import graphql.schema.DataFetchingEnvironment
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.kodein.di.DI
@@ -50,9 +51,13 @@ class UpdateMutation {
         val updateStatus: UpdateStatus
     )
 
-    fun updateCategoryManga(input: UpdateCategoryMangaInput): UpdateCategoryMangaPayload {
+    fun updateCategoryManga(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateCategoryMangaInput
+    ): UpdateCategoryMangaPayload {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val categories = transaction {
-            CategoryTable.select { CategoryTable.id inList input.categories }.map {
+            CategoryTable.select { CategoryTable.id inList input.categories and (CategoryTable.user eq userId) }.map {
                 CategoryTable.toDataClass(it)
             }
         }
