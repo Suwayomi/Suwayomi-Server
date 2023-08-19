@@ -8,7 +8,7 @@ sealed class UserType {
         val permissions: List<Permissions>
     ) : UserType()
 
-    object Visitor : UserType()
+    data object Visitor : UserType()
 }
 
 fun UserType.requireUser(): Int {

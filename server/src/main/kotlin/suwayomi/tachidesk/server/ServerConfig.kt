@@ -87,6 +87,7 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
     val basicAuthEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val basicAuthUsername: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
     val basicAuthPassword: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+    val multiUser: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
 
     // misc
     val debugLogsEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)

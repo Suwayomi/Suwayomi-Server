@@ -24,6 +24,7 @@ import suwayomi.tachidesk.graphql.mutations.MetaMutation
 import suwayomi.tachidesk.graphql.mutations.SettingsMutation
 import suwayomi.tachidesk.graphql.mutations.SourceMutation
 import suwayomi.tachidesk.graphql.mutations.UpdateMutation
+import suwayomi.tachidesk.graphql.mutations.UserMutation
 import suwayomi.tachidesk.graphql.queries.BackupQuery
 import suwayomi.tachidesk.graphql.queries.CategoryQuery
 import suwayomi.tachidesk.graphql.queries.ChapterQuery
@@ -84,7 +85,8 @@ val schema = toSchema(
         TopLevelObject(MetaMutation()),
         TopLevelObject(SettingsMutation()),
         TopLevelObject(SourceMutation()),
-        TopLevelObject(UpdateMutation())
+        TopLevelObject(UpdateMutation()),
+        TopLevelObject(UserMutation())
     ),
     subscriptions = listOf(
         TopLevelObject(DownloadSubscription()),

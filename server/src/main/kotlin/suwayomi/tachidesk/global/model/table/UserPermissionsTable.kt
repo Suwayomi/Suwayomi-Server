@@ -8,11 +8,12 @@ package suwayomi.tachidesk.global.model.table
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.ReferenceOption
 
 /**
  * Users registered in Tachidesk.
  */
-object UserTable : IntIdTable() {
-    val username = varchar("username", 64)
-    val password = varchar("password", 90)
+object UserPermissionsTable : IntIdTable() {
+    val user = reference("user", UserTable, ReferenceOption.CASCADE)
+    val permission = varchar("permission", 128)
 }

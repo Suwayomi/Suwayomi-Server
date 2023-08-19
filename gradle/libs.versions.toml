@@ -143,6 +143,10 @@ cron4j = "it.sauronsoftware.cron4j:cron4j:2.2.5"
 # cron-utils
 cronUtils = "com.cronutils:cron-utils:9.2.0"
 
+# User
+bcrypt = "at.favre.lib:bcrypt:0.10.2"
+jwt = "com.auth0:java-jwt:4.4.0"
+
 [plugins]
 # Kotlin
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin"}

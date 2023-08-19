@@ -10,6 +10,7 @@ package suwayomi.tachidesk.server
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.path
 import io.javalin.core.security.RouteRole
+import io.javalin.core.util.Header
 import io.javalin.http.Context
 import io.javalin.http.HttpCode
 import io.javalin.http.staticfiles.Location
@@ -30,8 +31,10 @@ import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.global.GlobalAPI
+import suwayomi.tachidesk.global.impl.util.Jwt
 import suwayomi.tachidesk.graphql.GraphQL
 import suwayomi.tachidesk.manga.MangaAPI
+import suwayomi.tachidesk.server.JavalinSetup.setAttribute
 import suwayomi.tachidesk.server.user.ForbiddenException
 import suwayomi.tachidesk.server.user.UnauthorizedException
 import suwayomi.tachidesk.server.user.UserType
@@ -95,7 +98,19 @@ object JavalinSetup {
                     return username == serverConfig.basicAuthUsername.value && password == serverConfig.basicAuthPassword.value
                 }
 
-                if (serverConfig.basicAuthEnabled.value && !(ctx.basicAuthCredentialsExist() && credentialsValid())) {
+                val user = if (serverConfig.multiUser.value) {
+                    val authentication = ctx.header(Header.AUTHORIZATION)
+                    if (authentication.isNullOrBlank()) {
+                        UserType.Visitor
+                    } else {
+                        Jwt.verifyJwt(authentication.substringAfter("Bearer "))
+                    }
+                } else {
+                    UserType.Admin(1)
+                }
+                ctx.setAttribute(Attribute.TachideskUser, user)
+
+                if (!serverConfig.multiUser.value && serverConfig.basicAuthEnabled.value && !(ctx.basicAuthCredentialsExist() && credentialsValid())) {
                     ctx.header("WWW-Authenticate", "Basic")
                     ctx.status(401).json("Unauthorized")
                 } else {
@@ -146,10 +161,6 @@ object JavalinSetup {
             logger.info("ForbiddenException while handling the request", e)
             ctx.status(HttpCode.FORBIDDEN)
             ctx.result(e.message ?: "Forbidden")
-        }
-
-        app.before {
-            it.setAttribute(Attribute.TachideskUser, UserType.Admin(1)) // todo connect to database
         }
 
         app.routes {

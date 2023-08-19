@@ -9,20 +9,44 @@ package suwayomi.tachidesk.server.database.migration
 
 import de.neonew.exposed.migrations.helpers.SQLMigration
 import org.intellij.lang.annotations.Language
+import suwayomi.tachidesk.global.impl.util.Bcrypt
 
 @Suppress("ClassName", "unused")
 class M0030_AddUsers : SQLMigration() {
 
-    @Language("SQL")
-    override val sql = """
+    class UserSql {
+        private val password = Bcrypt.encryptPassword("password")
+
+        @Language("SQL")
+        val sql = """
         CREATE TABLE USER
         (
             ID INT AUTO_INCREMENT PRIMARY KEY,
-            USERNAME VARCHAR(64) NOT NULL
+            USERNAME VARCHAR(64) NOT NULL,
+            PASSWORD VARCHAR(90) NOT NULL
         );
         
-        INSERT INTO USER(USERNAME)
-        SELECT ('admin');
+        INSERT INTO USER(USERNAME, PASSWORD)
+        SELECT 'admin','$password';
+        
+        CREATE TABLE USERROLES
+        (
+            USER INT NOT NULL,
+            ROLE VARCHAR(24) NOT NULL,
+            CONSTRAINT FK_USERROLES_USER_ID
+                FOREIGN KEY (USER) REFERENCES USER (ID) ON DELETE CASCADE
+        );
+        
+        INSERT INTO USERROLES(USER, ROLE)
+        SELECT 1, 'ADMIN';
+
+        CREATE TABLE USERPERMISSIONS
+        (
+            USER INT NOT NULL,
+            PERMISSION VARCHAR(128) NOT NULL,
+            CONSTRAINT FK_USERPERMISSIONS_USER_ID
+                FOREIGN KEY (USER) REFERENCES USER (ID) ON DELETE CASCADE
+        );
         
         -- Step 1: Add USER column to tables CATEGORY, MANGAMETA, CHAPTERMETA, CATEGORYMANGA, GLOBALMETA, and CATEGORYMETA
         ALTER TABLE CATEGORY ADD COLUMN USER INT NOT NULL DEFAULT 1;
@@ -111,5 +135,10 @@ class M0030_AddUsers : SQLMigration() {
         DROP COLUMN IN_LIBRARY;
         ALTER TABLE MANGA
         DROP COLUMN IN_LIBRARY_AT;
-    """.trimIndent()
+        """.trimIndent()
+    }
+
+    override val sql by lazy {
+        UserSql().sql
+    }
 }
