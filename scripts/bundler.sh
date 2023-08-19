@@ -38,6 +38,8 @@ main() {
   trap "rm -rf $RELEASE_NAME/" RETURN
   mkdir "$RELEASE_NAME/"
 
+  download_launcher
+
   case "$OS" in
     debian-all)
       RELEASE="$RELEASE_NAME.deb"
@@ -152,6 +154,12 @@ move_release_to_output_dir() {
    mv "$RELEASE" "$OUTPUT_DIR/"
 }
 
+download_launcher() {
+  LAUNCHER_URL=$(curl -s "https://api.github.com/repos/Suwayomi/Tachidesk-Launcher/releases/latest" | grep "browser_download_url" | grep ".jar" | head -n 1 | cut -d '"' -f 4)
+  curl -L "$LAUNCHER_URL" -o "Tachidesk-Launcher.jar"
+  mv "Tachidesk-Launcher.jar" "$RELEASE_NAME/Tachidesk-Launcher.jar"
+}
+
 download_jre_and_electron() {
   if [ ! -f "$JRE" ]; then
     curl -L "$JRE_URL" -o "$JRE"
@@ -175,29 +183,26 @@ copy_linux_package_assets_to() {
   local output_dir
   output_dir="$(readlink -e "$1" || exit 1)"
 
-  cp "scripts/resources/pkg/tachidesk-server-browser-launcher.sh" "$output_dir/"
-  cp "scripts/resources/pkg/tachidesk-server-debug-launcher.sh" "$output_dir/"
-  cp "scripts/resources/pkg/tachidesk-server-electron-launcher.sh" "$output_dir/"
+  cp "scripts/resources/pkg/tachidesk-server.sh" "$output_dir/"
   cp "scripts/resources/pkg/tachidesk-server.desktop" "$output_dir/"
+  cp "scripts/resources/pkg/tachidesk-launcher.sh" "$output_dir/"
+  cp "scripts/resources/pkg/tachidesk-launcher.desktop" "$output_dir/"
   cp "scripts/resources/pkg/systemd"/* "$output_dir/"
-  cp "server/src/main/resources/icon/faviconlogo.png" \
+  cp "server/src/main/resources/icon/faviconlogo-128.png" \
     "$output_dir/tachidesk-server.png"
 }
 
 make_linux_bundle() {
-  cp "$JAR" "$RELEASE_NAME/Tachidesk-Server.jar"
-  cp "scripts/resources/tachidesk-server-browser-launcher.sh" "$RELEASE_NAME/"
-  cp "scripts/resources/tachidesk-server-debug-launcher.sh" "$RELEASE_NAME/"
-  cp "scripts/resources/tachidesk-server-electron-launcher.sh" "$RELEASE_NAME/"
+  cp "$JAR" "$RELEASE_NAME/bin/Tachidesk-Server.jar"
+  cp "scripts/resources/tachidesk-launcher.sh" "$RELEASE_NAME/"
+  cp "scripts/resources/tachidesk-server.sh" "$RELEASE_NAME/"
 
   tar -I "gzip -9" -cvf "$RELEASE" "$RELEASE_NAME/"
 }
 
 make_macos_bundle() {
-  cp "$JAR" "$RELEASE_NAME/Tachidesk-Server.jar"
-  cp "scripts/resources/Tachidesk Browser Launcher.command" "$RELEASE_NAME/"
-  cp "scripts/resources/Tachidesk Debug Launcher.command" "$RELEASE_NAME/"
-  cp "scripts/resources/Tachidesk Electron Launcher.command" "$RELEASE_NAME/"
+  cp "$JAR" "$RELEASE_NAME/bin/Tachidesk-Server.jar"
+  cp "scripts/resources/Tachidesk Launcher.command" "$RELEASE_NAME/"
 
   zip -9 -r "$RELEASE" "$RELEASE_NAME/"
 }
@@ -211,6 +216,7 @@ make_deb_package() {
   local upstream_source="tachidesk-server_$RELEASE_VERSION.orig.tar.gz"
 
   mkdir "$RELEASE_NAME/$source_dir/"
+  mv "$RELEASE_NAME/Tachidesk-Launcher.jar" "$RELEASE_NAME/$source_dir/Tachidesk-Launcher.jar"
   cp "$JAR" "$RELEASE_NAME/$source_dir/Tachidesk-Server.jar"
   copy_linux_package_assets_to "$RELEASE_NAME/$source_dir/"
   tar -I "gzip" -C "$RELEASE_NAME/" -cvf "$upstream_source" "$source_dir"
@@ -257,10 +263,8 @@ make_windows_bundle() {
   #WINEARCH=win32 wine "$rcedit" "$RELEASE_NAME/electron/electron.exe" \
   #    --set-icon "$icon"
 
-  cp "$JAR" "$RELEASE_NAME/Tachidesk-Server.jar"
-  cp "scripts/resources/Tachidesk Browser Launcher.bat" "$RELEASE_NAME"
-  cp "scripts/resources/Tachidesk Debug Launcher.bat" "$RELEASE_NAME"
-  cp "scripts/resources/Tachidesk Electron Launcher.bat" "$RELEASE_NAME"
+  cp "$JAR" "$RELEASE_NAME/bin/Tachidesk-Server.jar"
+  cp "scripts/resources/Tachidesk Launcher.bat" "$RELEASE_NAME"
 
   zip -9 -r "$RELEASE" "$RELEASE_NAME"
 }
@@ -277,12 +281,16 @@ make_windows_package() {
   | wixl-heat --var var.SourceDir -p "$RELEASE_NAME/" \
     --directory-ref electron --component-group electron >"$RELEASE_NAME/electron.wxs"
 
+  find "$RELEASE_NAME/bin" \
+  | wixl-heat --var var.SourceDir -p "$RELEASE_NAME/" \
+    --directory-ref bin --component-group bin >"$RELEASE_NAME/bin.wxs"
+
   local icon="server/src/main/resources/icon/faviconlogo.ico"
   local arch=${OS##*-}
 
   wixl -D ProductVersion="$RELEASE_VERSION" -D SourceDir="$RELEASE_NAME" \
     -D Icon="$icon" --arch "$arch" "scripts/resources/msi/tachidesk-server-$arch.wxs" \
-    "$RELEASE_NAME/jre.wxs" "$RELEASE_NAME/electron.wxs" -o "$RELEASE"
+    "$RELEASE_NAME/jre.wxs" "$RELEASE_NAME/electron.wxs" "$RELEASE_NAME/bin.wxs" -o "$RELEASE"
 }
 
 setup_playwright() {

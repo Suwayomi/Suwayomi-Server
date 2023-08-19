@@ -8,6 +8,7 @@
 package suwayomi.tachidesk.graphql.server.subscriptions
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.annotation.JsonInclude
 
 /**
  * The `graphql-ws` protocol from Apollo Client has some special text messages to signal events.
@@ -16,24 +17,26 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties
  * https://github.com/apollographql/subscriptions-transport-ws/blob/master/PROTOCOL.md
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(JsonInclude.Include.NON_NULL)
 data class SubscriptionOperationMessage(
     val type: String,
     val id: String? = null,
     val payload: Any? = null
 ) {
+    enum class CommonMessages(val type: String) {
+        GQL_PING("ping"),
+        GQL_PONG("pong"),
+        GQL_COMPLETE("complete")
+    }
+
     enum class ClientMessages(val type: String) {
         GQL_CONNECTION_INIT("connection_init"),
-        GQL_START("start"),
-        GQL_STOP("stop"),
-        GQL_CONNECTION_TERMINATE("connection_terminate")
+        GQL_SUBSCRIBE("subscribe")
     }
 
     enum class ServerMessages(val type: String) {
         GQL_CONNECTION_ACK("connection_ack"),
-        GQL_CONNECTION_ERROR("connection_error"),
-        GQL_DATA("data"),
-        GQL_ERROR("error"),
-        GQL_COMPLETE("complete"),
-        GQL_CONNECTION_KEEP_ALIVE("ka")
+        GQL_NEXT("next"),
+        GQL_ERROR("error")
     }
 }

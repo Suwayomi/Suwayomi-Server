@@ -20,7 +20,9 @@ import eu.kanade.tachiyomi.network.interceptor.UserAgentInterceptor
 import mu.KotlinLogging
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
-import suwayomi.tachidesk.server.serverConfig
+import java.net.CookieHandler
+import java.net.CookieManager
+import java.net.CookiePolicy
 import java.util.concurrent.TimeUnit
 
 @Suppress("UNUSED_PARAMETER")
@@ -32,29 +34,34 @@ class NetworkHelper(context: Context) {
 
 //    private val cacheSize = 5L * 1024 * 1024 // 5 MiB
 
-    val cookieManager = PersistentCookieJar(context)
+    // Tachidesk -->
+    val cookieStore = PersistentCookieStore(context)
+    init {
+        CookieHandler.setDefault(
+            CookieManager(cookieStore, CookiePolicy.ACCEPT_ALL)
+        )
+    }
+    // Tachidesk <--
 
     private val baseClientBuilder: OkHttpClient.Builder
         get() {
             val builder = OkHttpClient.Builder()
-                .cookieJar(cookieManager)
+                .cookieJar(PersistentCookieJar(cookieStore))
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .callTimeout(2, TimeUnit.MINUTES)
                 .addInterceptor(UserAgentInterceptor())
 
-            if (serverConfig.debugLogsEnabled) {
-                val httpLoggingInterceptor = HttpLoggingInterceptor(object : HttpLoggingInterceptor.Logger {
-                    val logger = KotlinLogging.logger { }
+            val httpLoggingInterceptor = HttpLoggingInterceptor(object : HttpLoggingInterceptor.Logger {
+                val logger = KotlinLogging.logger { }
 
-                    override fun log(message: String) {
-                        logger.debug { message }
-                    }
-                }).apply {
-                    level = HttpLoggingInterceptor.Level.BASIC
+                override fun log(message: String) {
+                    logger.debug { message }
                 }
-                builder.addInterceptor(httpLoggingInterceptor)
+            }).apply {
+                level = HttpLoggingInterceptor.Level.BASIC
             }
+            builder.addInterceptor(httpLoggingInterceptor)
 
 //            when (preferences.dohProvider()) {
 //                PREF_DOH_CLOUDFLARE -> builder.dohCloudflare()
@@ -72,9 +79,4 @@ class NetworkHelper(context: Context) {
             .addInterceptor(CloudflareInterceptor())
             .build()
     }
-
-    // Tachidesk -->
-    val cookies: PersistentCookieStore
-        get() = cookieManager.store
-    // Tachidesk <--
 }

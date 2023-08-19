@@ -16,22 +16,32 @@ import io.javalin.http.UploadedFile
 import suwayomi.tachidesk.graphql.mutations.BackupMutation
 import suwayomi.tachidesk.graphql.mutations.CategoryMutation
 import suwayomi.tachidesk.graphql.mutations.ChapterMutation
+import suwayomi.tachidesk.graphql.mutations.DownloadMutation
 import suwayomi.tachidesk.graphql.mutations.ExtensionMutation
+import suwayomi.tachidesk.graphql.mutations.InfoMutation
 import suwayomi.tachidesk.graphql.mutations.MangaMutation
 import suwayomi.tachidesk.graphql.mutations.MetaMutation
+import suwayomi.tachidesk.graphql.mutations.SettingsMutation
 import suwayomi.tachidesk.graphql.mutations.SourceMutation
+import suwayomi.tachidesk.graphql.mutations.UpdateMutation
 import suwayomi.tachidesk.graphql.queries.BackupQuery
 import suwayomi.tachidesk.graphql.queries.CategoryQuery
 import suwayomi.tachidesk.graphql.queries.ChapterQuery
+import suwayomi.tachidesk.graphql.queries.DownloadQuery
 import suwayomi.tachidesk.graphql.queries.ExtensionQuery
+import suwayomi.tachidesk.graphql.queries.InfoQuery
 import suwayomi.tachidesk.graphql.queries.MangaQuery
 import suwayomi.tachidesk.graphql.queries.MetaQuery
+import suwayomi.tachidesk.graphql.queries.SettingsQuery
 import suwayomi.tachidesk.graphql.queries.SourceQuery
+import suwayomi.tachidesk.graphql.queries.UpdateQuery
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLCursor
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLLongAsString
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLUpload
 import suwayomi.tachidesk.graphql.subscriptions.DownloadSubscription
+import suwayomi.tachidesk.graphql.subscriptions.InfoSubscription
+import suwayomi.tachidesk.graphql.subscriptions.UpdateSubscription
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
@@ -54,21 +64,31 @@ val schema = toSchema(
         TopLevelObject(BackupQuery()),
         TopLevelObject(CategoryQuery()),
         TopLevelObject(ChapterQuery()),
+        TopLevelObject(DownloadQuery()),
         TopLevelObject(ExtensionQuery()),
+        TopLevelObject(InfoQuery()),
         TopLevelObject(MangaQuery()),
         TopLevelObject(MetaQuery()),
-        TopLevelObject(SourceQuery())
+        TopLevelObject(SettingsQuery()),
+        TopLevelObject(SourceQuery()),
+        TopLevelObject(UpdateQuery())
     ),
     mutations = listOf(
         TopLevelObject(BackupMutation()),
         TopLevelObject(CategoryMutation()),
         TopLevelObject(ChapterMutation()),
+        TopLevelObject(DownloadMutation()),
         TopLevelObject(ExtensionMutation()),
+        TopLevelObject(InfoMutation()),
         TopLevelObject(MangaMutation()),
         TopLevelObject(MetaMutation()),
-        TopLevelObject(SourceMutation())
+        TopLevelObject(SettingsMutation()),
+        TopLevelObject(SourceMutation()),
+        TopLevelObject(UpdateMutation())
     ),
     subscriptions = listOf(
-        TopLevelObject(DownloadSubscription())
+        TopLevelObject(DownloadSubscription()),
+        TopLevelObject(InfoSubscription()),
+        TopLevelObject(UpdateSubscription())
     )
 )

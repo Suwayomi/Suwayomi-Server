@@ -3,6 +3,7 @@ package suwayomi.tachidesk.graphql.mutations
 import eu.kanade.tachiyomi.source.model.SChapter
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
@@ -13,7 +14,6 @@ import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.impl.Chapter
-import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -142,21 +142,17 @@ class ChapterMutation {
         val (clientMutationId, mangaId) = input
 
         return future {
-            val numberOfCurrentChapters = Chapter.getCountOfMangaChapters(mangaId)
             Chapter.fetchChapterList(userId, mangaId)
-            numberOfCurrentChapters
-        }.thenApply { numberOfCurrentChapters ->
+        }.thenApply {
             val chapters = transaction {
                 ChapterTable.getWithUserData(userId).select { ChapterTable.manga eq mangaId }
                     .orderBy(ChapterTable.sourceOrder)
+                    .map { ChapterType(it) }
             }
-
-            // download new chapters if settings flag is enabled
-            Chapter.downloadNewChapters(mangaId, numberOfCurrentChapters, chapters.toList())
 
             FetchChaptersPayload(
                 clientMutationId = clientMutationId,
-                chapters = chapters.map { ChapterType(it) }
+                chapters = chapters
             )
         }
     }
@@ -246,12 +242,12 @@ class ChapterMutation {
         val source = getCatalogueSourceOrNull(manga[MangaTable.sourceReference])!!
 
         return future {
-            source.fetchPageList(
+            source.getPageList(
                 SChapter.create().apply {
                     url = chapter[ChapterTable.url]
                     name = chapter[ChapterTable.name]
                 }
-            ).awaitSingle()
+            )
         }.thenApply { pageList ->
             transaction {
                 PageTable.deleteWhere { PageTable.chapter eq chapterId }
@@ -261,8 +257,18 @@ class ChapterMutation {
                     this[PageTable.imageUrl] = page.imageUrl
                     this[PageTable.chapter] = chapterId
                 }
-                ChapterTable.update({ ChapterTable.id eq chapterId }) {
-                    it[ChapterTable.pageCount] = pageList.size
+                val pageCount = pageList.size
+                if (chapter[ChapterTable.pageCount] != pageCount) {
+                    ChapterTable.update({ ChapterTable.id eq chapterId }) {
+                        it[ChapterTable.pageCount] = pageCount
+                    }
+                    ChapterUserTable.select {
+                        ChapterUserTable.chapter eq chapterId and (ChapterUserTable.lastPageRead greater pageCount)
+                    }.forEach { row ->
+                        ChapterUserTable.update({ ChapterUserTable.id eq row[ChapterUserTable.id] }) {
+                            it[ChapterUserTable.lastPageRead] = pageCount
+                        }
+                    }
                 }
             }
 

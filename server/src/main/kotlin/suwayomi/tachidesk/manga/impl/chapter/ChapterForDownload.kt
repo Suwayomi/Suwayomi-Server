@@ -10,6 +10,7 @@ package suwayomi.tachidesk.manga.impl.chapter
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
@@ -18,11 +19,11 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Page.getPageName
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
-import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
@@ -66,12 +67,12 @@ private class ChapterForDownload(
         val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
         val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
-        return source.fetchPageList(
+        return source.getPageList(
             SChapter.create().apply {
                 url = chapterEntry[ChapterTable.url]
                 name = chapterEntry[ChapterTable.name]
             }
-        ).awaitSingle()
+        )
     }
 
     private fun markAsNotDownloaded() {
@@ -123,6 +124,13 @@ private class ChapterForDownload(
         transaction {
             ChapterTable.update({ ChapterTable.id eq chapterId }) {
                 it[ChapterTable.pageCount] = pageCount
+            }
+            ChapterUserTable.select {
+                ChapterUserTable.chapter eq chapterId and (ChapterUserTable.lastPageRead greater pageCount)
+            }.forEach { row ->
+                ChapterUserTable.update({ ChapterUserTable.id eq row[ChapterUserTable.id] }) {
+                    it[ChapterUserTable.lastPageRead] = pageCount
+                }
             }
         }
     }

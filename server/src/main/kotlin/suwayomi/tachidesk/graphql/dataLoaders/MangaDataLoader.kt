@@ -92,3 +92,22 @@ class MangaForSourceDataLoader : KotlinDataLoader<Long, MangaNodeList> {
         }
     }
 }
+
+class MangaForIdsDataLoader : KotlinDataLoader<List<Int>, MangaNodeList> {
+    override val dataLoaderName = "MangaForIdsDataLoader"
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<List<Int>, MangaNodeList> = DataLoaderFactory.newDataLoader { mangaIds ->
+        future {
+            val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
+            transaction {
+                addLogger(Slf4jSqlDebugLogger)
+                val ids = mangaIds.flatten().distinct()
+                val manga = MangaTable.getWithUserData(userId)
+                    .select { MangaTable.id inList ids }
+                    .map { MangaType(it) }
+                mangaIds.map { mangaIds ->
+                    manga.filter { it.id in mangaIds }.toNodeList()
+                }
+            }
+        }
+    }
+}

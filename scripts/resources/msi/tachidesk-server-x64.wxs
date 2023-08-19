@@ -15,6 +15,7 @@
         <Directory Id="INSTALLDIR" Name="Tachidesk-Server" >
           <Directory Id="jre"/>
           <Directory Id="electron"/>
+          <Directory Id="bin"/>
         </Directory>
       </Directory>
       <Directory Id="ProgramMenuFolder">
@@ -31,40 +32,18 @@
     <!-- Component -->
     <DirectoryRef Id="INSTALLDIR">
       <Component Id="TachideskJAR" Guid="*" Win64="yes">
-          <File Id="Tachidesk-Server.jar" Source="$(var.SourceDir)/Tachidesk-Server.jar" KeyPath="yes" />
+          <File Id="Tachidesk-Launcher.jar" Source="$(var.SourceDir)/Tachidesk-Launcher.jar" KeyPath="yes" />
       </Component>
 
-      <Component Id="TachideskBrowserBAT" Guid="*" Win64="yes">
-        <File Id="TachideskBrowser.bat" Source="$(var.SourceDir)/Tachidesk Browser Launcher.bat" KeyPath="yes" >
-          <Shortcut Id="TachideskBrowser.lnk" Name="Tachidesk Browser" Directory="INSTALLDIR"
+      <Component Id="TachideskLauncherBAT" Guid="*" Win64="yes">
+        <File Id="TachideskLauncher.bat" Source="$(var.SourceDir)/Tachidesk Launcher.bat" KeyPath="yes" >
+          <Shortcut Id="TachideskLauncher.lnk" Name="Tachidesk Launcher" Directory="INSTALLDIR"
             WorkingDirectory="INSTALLDIR" Icon="Tachidesk.ico" IconIndex="0" Advertise="yes" />
-          <Shortcut Id="DesktopTachideskBrowser.lnk" Name="Tachidesk Browser" Directory="DesktopFolder"
+          <Shortcut Id="DesktopTachideskLauncher.lnk" Name="Tachidesk Launcher" Directory="DesktopFolder"
             WorkingDirectory="INSTALLDIR" Icon="Tachidesk.ico" IconIndex="0" Advertise="yes" />
-          <Shortcut Id="ProgramMenuTachideskBrowser.lnk" Name="Tachidesk Browser" Directory="ProgramMenuDir"
+          <Shortcut Id="ProgramMenuTachideskLauncher.lnk" Name="Tachidesk Launcher" Directory="ProgramMenuDir"
             WorkingDirectory="INSTALLDIR" Icon="Tachidesk.ico" IconIndex="0" Advertise="yes"
             Description="A free and open source manga reader that runs extensions built for Tachiyomi." />
-        </File>
-      </Component>
-
-      <Component Id="TachideskDebugBAT" Guid="*" Win64="yes">
-        <File Id="TachideskDebug.bat" Source="$(var.SourceDir)/Tachidesk Debug Launcher.bat" KeyPath="yes">
-          <Shortcut Id="TachideskDebug.lnk" Name="Tachidesk Debug" Directory="INSTALLDIR"
-            WorkingDirectory="INSTALLDIR" Icon="Tachidesk.ico" IconIndex="0" Advertise="yes" />
-          <Shortcut Id="ProgramMenuTachideskDebug.lnk" Name="Tachidesk Debug" Directory="ProgramMenuDir"
-            WorkingDirectory="INSTALLDIR" Icon="Tachidesk.ico" IconIndex="0" Advertise="yes"
-            Description="Launches Tachidesk with debug logs attached. If Tachidesk doesn't work for you, running this can give you insight into why." />
-        </File>
-      </Component>
-
-      <Component Id="TachideskElectronBAT" Guid="*" Win64="yes">
-        <File Id="TachideskElectron.bat" Source="$(var.SourceDir)/Tachidesk Electron Launcher.bat" KeyPath="yes">
-          <Shortcut Id="TachideskElectron.lnk" Name="Tachidesk Electron" Directory="INSTALLDIR"
-            WorkingDirectory="INSTALLDIR" Icon="Tachidesk.ico" IconIndex="0" Advertise="yes" />
-          <Shortcut Id="DesktopTachideskElectron.lnk" Name="Tachidesk Electron" Directory="DesktopFolder"
-            WorkingDirectory="INSTALLDIR" Icon="Tachidesk.ico" IconIndex="0" Advertise="yes" />
-          <Shortcut Id="ProgramMenuTachideskElectron.lnk" Name="Tachidesk Electron" Directory="ProgramMenuDir"
-            WorkingDirectory="INSTALLDIR" Icon="Tachidesk.ico" IconIndex="0" Advertise="yes"
-            Description="Launches Tachidesk inside Electron as a desktop applicaton." />
         </File>
       </Component>
     </DirectoryRef>
@@ -72,12 +51,11 @@
     <!-- Feature -->
     <Feature Id="Tachidesk_Server" Title="Tachidesk-Server" Level="1">
       <ComponentGroupRef Id="jre" />
+      <ComponentGroupRef Id="bin" />
       <ComponentRef Id="TachideskJAR" />
-      <ComponentRef Id="TachideskBrowserBAT" />
-      <ComponentRef Id="TachideskDebugBAT" />
+      <ComponentRef Id="TachideskLauncherBAT" />
       <ComponentRef Id="ProgramMenuDir" />
       <ComponentGroupRef Id="electron" />
-      <ComponentRef Id="TachideskElectronBAT" />
     </Feature>
 
     <Icon Id="Tachidesk.ico" SourceFile="$(var.Icon)" />

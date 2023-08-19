@@ -24,13 +24,13 @@
     -->
     <script
             crossorigin="anonymous"
-            integrity="sha512-Vf2xGDzpqUOEIKO+X2rgTLWPY+65++WPwCHkX2nFMu9IcstumPsf/uKKRd5prX3wOu8Q0GBylRpsDB26R6ExOg=="
-            src="https://unpkg.com/react@17.0.2/umd/react.development.js"
+            integrity="sha512-m7nhpWHotpucPI37I4lPovL28Bm2BhAMV8poF3F8Z9oOEZ3jlxGzkgvG0EMt1mVL1xydr1erlBbmN90js/ssUw=="
+            src="https://unpkg.com/react@18.2.0/umd/react.development.js"
     ></script>
     <script
             crossorigin="anonymous"
-            integrity="sha512-Wr9OKCTtq1anK0hq5bY3X/AvDI5EflDSAh0mE9gma+4hl+kXdTJPKZ3TwLMBcrgUeoY0s3dq9JjhCQc7vddtFg=="
-            src="https://unpkg.com/react-dom@17.0.2/umd/react-dom.development.js"
+            integrity="sha512-SKTL5rMewKkHVooCoONgJHCICK1otCPqPFduipyXVLWgtHHmsQgzXXHUP+SPyL4eU/knSpDkMXKlLedcHmWJpQ=="
+            src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"
     ></script>
 
     <!--
@@ -38,8 +38,8 @@
       copy them directly into your environment, or perhaps include them in your
       favored resource bundler.
      -->
-    <link href="https://unpkg.com/graphiql@3.0.0/graphiql.min.css" rel="stylesheet"/>
-    <link href="https://unpkg.com/@graphiql/plugin-explorer@0.1.22/dist/style.css" rel="stylesheet"/>
+    <link href="https://unpkg.com/graphiql@3.0.5/graphiql.min.css" rel="stylesheet"/>
+    <link href="https://unpkg.com/@graphiql/plugin-explorer@0.3.4/dist/style.css" rel="stylesheet"/>
     <style>
         .docExplorerWrap {
             width: 100% !important;
@@ -70,18 +70,21 @@
 <body>
     <div id="graphiql">Loading...</div>
     <script
-            src="https://unpkg.com/graphiql@3.0.0/graphiql.min.js"
+            src="https://unpkg.com/graphiql@3.0.5/graphiql.min.js"
             type="application/javascript"
     ></script>
     <script
-            src="https://unpkg.com/@graphiql/plugin-explorer@0.1.22/dist/graphiql-plugin-explorer.umd.js"
+            src="https://unpkg.com/@graphiql/plugin-explorer@0.3.4/dist/index.umd.js"
             type="application/javascript"
     ></script>
 
     <script>
+        const root = ReactDOM.createRoot(document.getElementById('graphiql'));
         const fetcher = GraphiQL.createFetcher({
             url: window.location.href,
+            subscriptionUrl: window.location.href.replace(/^http/,'ws')
         });
+        const explorer = GraphiQLPluginExplorer.explorerPlugin();
 
         function GraphiQLWithExplorer() {
             const [query, setQuery] = React.useState(
@@ -97,22 +100,17 @@
                 '  }\n' +
                 '}',
             );
-            const explorerPlugin = GraphiQLPluginExplorer.useExplorerPlugin({
-                query: query,
-                onEdit: setQuery,
-            });
             return React.createElement(GraphiQL, {
                 fetcher: fetcher,
                 defaultEditorToolsVisibility: true,
-                plugins: [explorerPlugin],
+                plugins: [explorer],
                 query: query,
                 onEditQuery: setQuery,
             });
         }
 
-        ReactDOM.render(
-            React.createElement(GraphiQLWithExplorer),
-            document.getElementById('graphiql'),
+        root.render(
+            React.createElement(GraphiQLWithExplorer)
         );
     </script>
 </body>

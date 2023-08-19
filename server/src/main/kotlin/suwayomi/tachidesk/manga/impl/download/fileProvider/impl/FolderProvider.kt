@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.manga.impl.download
+package suwayomi.tachidesk.manga.impl.download.fileProvider.impl
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.Page.getPageName
+import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
@@ -19,8 +20,8 @@ import java.io.InputStream
 /*
 * Provides downloaded files when pages were downloaded into folders
 * */
-class FolderProvider(mangaId: Int, chapterId: Int) : DownloadedFilesProvider(mangaId, chapterId) {
-    override fun getImage(index: Int): Pair<InputStream, String> {
+class FolderProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mangaId, chapterId) {
+    override fun getImageImpl(index: Int): Pair<InputStream, String> {
         val chapterDir = getChapterDownloadPath(mangaId, chapterId)
         val folder = File(chapterDir)
         folder.mkdirs()
@@ -30,7 +31,7 @@ class FolderProvider(mangaId: Int, chapterId: Int) : DownloadedFilesProvider(man
     }
 
     @OptIn(FlowPreview::class)
-    override suspend fun download(
+    override suspend fun downloadImpl(
         download: DownloadChapter,
         scope: CoroutineScope,
         step: suspend (DownloadChapter?, Boolean) -> Unit

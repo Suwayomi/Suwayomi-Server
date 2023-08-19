@@ -14,6 +14,8 @@ import com.typesafe.config.ConfigValue
 import com.typesafe.config.ConfigValueFactory
 import com.typesafe.config.parser.ConfigDocument
 import com.typesafe.config.parser.ConfigDocumentFactory
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import mu.KotlinLogging
 import java.io.File
 
@@ -31,6 +33,8 @@ open class ConfigManager {
     // Public read-only view of modules
     val loadedModules: Map<Class<out ConfigModule>, ConfigModule>
         get() = generatedModules
+
+    private val mutex = Mutex()
 
     /**
      * Get a config module
@@ -98,11 +102,23 @@ open class ConfigManager {
         userConfigFile.writeText(newFileContent)
     }
 
-    fun updateValue(path: String, value: Any) {
-        val configValue = ConfigValueFactory.fromAnyRef(value)
+    suspend fun updateValue(path: String, value: Any) {
+        mutex.withLock {
+            val configValue = ConfigValueFactory.fromAnyRef(value)
 
-        updateUserConfigFile(path, configValue)
-        internalConfig = internalConfig.withValue(path, configValue)
+            updateUserConfigFile(path, configValue)
+            internalConfig = internalConfig.withValue(path, configValue)
+        }
+    }
+
+    fun resetUserConfig(): ConfigDocument {
+        val serverConfigFileContent = this::class.java.getResource("/server-reference.conf")?.readText()
+        val serverConfigDoc = ConfigDocumentFactory.parseString(serverConfigFileContent)
+        userConfigFile.writeText(serverConfigDoc.render())
+
+        getUserConfig().entrySet().forEach { internalConfig = internalConfig.withValue(it.key, it.value) }
+
+        return serverConfigDoc
     }
 
     /**
@@ -112,7 +128,6 @@ open class ConfigManager {
      *  - removes outdated settings
      */
     fun updateUserConfig() {
-        val serverConfigFileContent = this::class.java.getResource("/server-reference.conf")?.readText()
         val serverConfig = ConfigFactory.parseResources("server-reference.conf")
         val userConfig = getUserConfig()
 
@@ -125,10 +140,7 @@ open class ConfigManager {
 
         logger.debug { "user config is out of date, updating... (missingSettings= $hasMissingSettings, outdatedSettings= $hasOutdatedSettings" }
 
-        val serverConfigDoc = ConfigDocumentFactory.parseString(serverConfigFileContent)
-        userConfigFile.writeText(serverConfigDoc.render())
-
-        var newUserConfigDoc: ConfigDocument = serverConfigDoc
+        var newUserConfigDoc: ConfigDocument = resetUserConfig()
         userConfig.entrySet().filter { serverConfig.hasPath(it.key) }.forEach { newUserConfigDoc = newUserConfigDoc.withValue(it.key, it.value) }
 
         userConfigFile.writeText(newUserConfigDoc.render())

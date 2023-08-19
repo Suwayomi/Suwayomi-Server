@@ -29,7 +29,6 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
-import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.lang.isEmpty
 import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
@@ -125,12 +124,13 @@ object Chapter {
         }
 
         val numberOfCurrentChapters = getCountOfMangaChapters(mangaId)
-        val chapterList = source.fetchChapterList(sManga).awaitSingle()
+        val chapterList = source.getChapterList(sManga)
 
         // Recognize number for new chapters.
-        chapterList.forEach {
-            (source as? HttpSource)?.prepareNewChapter(it, sManga)
-            ChapterRecognition.parseChapterNumber(it, sManga)
+        chapterList.forEach { chapter ->
+            (source as? HttpSource)?.prepareNewChapter(chapter, sManga)
+            val chapterNumber = ChapterRecognition.parseChapterNumber(manga.title, chapter.name, chapter.chapter_number.toDouble())
+            chapter.chapter_number = chapterNumber.toFloat()
         }
 
         var now = Instant.now().epochSecond
@@ -208,7 +208,7 @@ object Chapter {
         return chapterList
     }
 
-    fun downloadNewChapters(mangaId: Int, prevNumberOfChapters: Int, newChapters: List<ResultRow>) {
+    private fun downloadNewChapters(mangaId: Int, prevNumberOfChapters: Int, newChapters: List<ResultRow>) {
         // convert numbers to be index based
         val currentNumberOfChapters = (prevNumberOfChapters - 1).coerceAtLeast(0)
         val updatedNumberOfChapters = (newChapters.size - 1).coerceAtLeast(0)
@@ -217,7 +217,7 @@ object Chapter {
         val wasInitialFetch = currentNumberOfChapters == 0
 
         // make sure to ignore initial fetch
-        val downloadNewChapters = serverConfig.autoDownloadNewChapters && !wasInitialFetch && areNewChaptersAvailable
+        val downloadNewChapters = serverConfig.autoDownloadNewChapters.value && !wasInitialFetch && areNewChaptersAvailable
         if (!downloadNewChapters) {
             return
         }
@@ -467,21 +467,7 @@ object Chapter {
 
     private fun deleteChapters(input: MangaChapterBatchEditInput, mangaId: Int? = null) {
         if (input.chapterIds != null) {
-            val chapterIds = input.chapterIds
-
-            transaction {
-                ChapterTable.slice(ChapterTable.manga, ChapterTable.id)
-                    .select { ChapterTable.id inList chapterIds }
-                    .forEach { row ->
-                        val chapterMangaId = row[ChapterTable.manga].value
-                        val chapterId = row[ChapterTable.id].value
-                        ChapterDownloadHelper.delete(chapterMangaId, chapterId)
-                    }
-
-                ChapterTable.update({ ChapterTable.id inList chapterIds }) {
-                    it[isDownloaded] = false
-                }
-            }
+            deleteChapters(input.chapterIds)
         } else if (input.chapterIndexes != null && mangaId != null) {
             transaction {
                 val chapterIds = ChapterTable.slice(ChapterTable.manga, ChapterTable.id)
@@ -496,6 +482,22 @@ object Chapter {
                 ChapterTable.update({ ChapterTable.id inList chapterIds }) {
                     it[isDownloaded] = false
                 }
+            }
+        }
+    }
+
+    fun deleteChapters(chapterIds: List<Int>) {
+        transaction {
+            ChapterTable.slice(ChapterTable.manga, ChapterTable.id)
+                .select { ChapterTable.id inList chapterIds }
+                .forEach { row ->
+                    val chapterMangaId = row[ChapterTable.manga].value
+                    val chapterId = row[ChapterTable.id].value
+                    ChapterDownloadHelper.delete(chapterMangaId, chapterId)
+                }
+
+            ChapterTable.update({ ChapterTable.id inList chapterIds }) {
+                it[isDownloaded] = false
             }
         }
     }

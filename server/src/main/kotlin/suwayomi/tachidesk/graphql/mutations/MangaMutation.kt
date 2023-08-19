@@ -11,6 +11,7 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.MangaMetaType
 import suwayomi.tachidesk.graphql.types.MangaType
+import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -74,45 +75,55 @@ class MangaMutation {
                     }
                 }
             }
+        }.apply {
+            if (patch.inLibrary != null) {
+                ids.forEach {
+                    Library.handleMangaThumbnail(it)
+                }
+            }
         }
     }
 
     fun updateManga(
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: UpdateMangaInput
-    ): UpdateMangaPayload {
+    ): CompletableFuture<UpdateMangaPayload> {
         val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, id, patch) = input
 
-        updateMangas(userId, listOf(id), patch)
+        return future {
+            updateMangas(userId, listOf(id), patch)
+        }.thenApply {
+            val manga = transaction {
+                MangaType(MangaTable.getWithUserData(userId).select { MangaTable.id eq id }.first())
+            }
 
-        val manga = transaction {
-            MangaType(MangaTable.getWithUserData(userId).select { MangaTable.id eq id }.first())
+            UpdateMangaPayload(
+                clientMutationId = clientMutationId,
+                manga = manga
+            )
         }
-
-        return UpdateMangaPayload(
-            clientMutationId = clientMutationId,
-            manga = manga
-        )
     }
 
     fun updateMangas(
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: UpdateMangasInput
-    ): UpdateMangasPayload {
+    ): CompletableFuture<UpdateMangasPayload> {
         val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, ids, patch) = input
 
-        updateMangas(userId, ids, patch)
+        return future {
+            updateMangas(userId, ids, patch)
+        }.thenApply {
+            val mangas = transaction {
+                MangaTable.getWithUserData(userId).select { MangaTable.id inList ids }.map { MangaType(it) }
+            }
 
-        val mangas = transaction {
-            MangaTable.getWithUserData(userId).select { MangaTable.id inList ids }.map { MangaType(it) }
+            UpdateMangasPayload(
+                clientMutationId = clientMutationId,
+                mangas = mangas
+            )
         }
-
-        return UpdateMangasPayload(
-            clientMutationId = clientMutationId,
-            mangas = mangas
-        )
     }
 
     data class FetchMangaInput(

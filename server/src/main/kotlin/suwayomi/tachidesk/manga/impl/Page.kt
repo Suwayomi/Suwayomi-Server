@@ -19,7 +19,7 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
-import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getCachedImageResponse
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -88,14 +88,18 @@ object Page {
 
         val fileName = getPageName(index)
 
-        if (chapterEntry[ChapterTable.isDownloaded]) {
-            return ChapterDownloadHelper.getImage(mangaId, chapterId, index)
+        try {
+            if (chapterEntry[ChapterTable.isDownloaded]) {
+                return ChapterDownloadHelper.getImage(mangaId, chapterId, index)
+            }
+        } catch (_: Exception) {
+            // ignore and fetch again
         }
 
         val cacheSaveDir = getChapterCachePath(mangaId, chapterId)
 
         // Note: don't care about invalidating cache because OS cache is not permanent
-        return getCachedImageResponse(cacheSaveDir, fileName) {
+        return getImageResponse(cacheSaveDir, fileName) {
             source.fetchImage(tachiyomiPage).awaitSingle()
         }
     }

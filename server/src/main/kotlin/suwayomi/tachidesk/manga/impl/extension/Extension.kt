@@ -40,7 +40,7 @@ import suwayomi.tachidesk.manga.impl.util.PackageTools.getPackageInfo
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
-import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getCachedImageResponse
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -213,7 +213,7 @@ object Extension {
             var zipEntry = zipInputStream.nextEntry
             while (zipEntry != null) {
                 if (zipEntry.name.startsWith("assets/")) {
-                    val assetFile = File(assetsFolder, zipEntry.name.substringAfter("assets/"))
+                    val assetFile = File(assetsFolder, zipEntry.name)
                     assetFile.parentFile.mkdirs()
                     FileOutputStream(assetFile).use { outputStream ->
                         zipInputStream.copyTo(outputStream)
@@ -236,7 +236,7 @@ object Extension {
                 }
                 assetsFolder.walkTopDown().forEach { file ->
                     if (file.isFile) {
-                        jarZipOutputStream.putNextEntry(ZipEntry("assets/${file.relativeTo(assetsFolder)}"))
+                        jarZipOutputStream.putNextEntry(ZipEntry(file.relativeTo(assetsFolder).toString().replace("\\", "/")))
                         file.inputStream().use { inputStream ->
                             inputStream.copyTo(jarZipOutputStream)
                         }
@@ -260,7 +260,7 @@ object Extension {
 
         val downloadedFile = File(savePath)
         downloadedFile.sink().buffer().use { sink ->
-            response.body!!.source().use { source ->
+            response.body.source().use { source ->
                 sink.writeAll(source)
                 sink.flush()
             }
@@ -329,7 +329,7 @@ object Extension {
 
         val cacheSaveDir = "${applicationDirs.extensionsRoot}/icon"
 
-        return getCachedImageResponse(cacheSaveDir, apkName) {
+        return getImageResponse(cacheSaveDir, apkName) {
             network.client.newCall(
                 GET(iconUrl)
             ).await()

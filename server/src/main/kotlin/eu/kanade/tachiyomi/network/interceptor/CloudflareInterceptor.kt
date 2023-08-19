@@ -44,7 +44,7 @@ class CloudflareInterceptor : Interceptor {
 
         return try {
             originalResponse.close()
-            network.cookies.remove(originalRequest.url.toUri())
+            network.cookieStore.remove(originalRequest.url.toUri())
 
             val request = resolveWithWebView(originalRequest)
 
@@ -87,8 +87,8 @@ object CFClearance {
                 LaunchOptions()
                     .setHeadless(false)
                     .apply {
-                        if (serverConfig.socksProxyEnabled) {
-                            setProxy("socks5://${serverConfig.socksProxyHost}:${serverConfig.socksProxyPort}")
+                        if (serverConfig.socksProxyEnabled.value) {
+                            setProxy("socks5://${serverConfig.socksProxyHost.value}:${serverConfig.socksProxyPort.value}")
                         }
                     }
             ).use { browser ->
@@ -105,7 +105,7 @@ object CFClearance {
 
         // Copy cookies to cookie store
         cookies.groupBy { it.domain }.forEach { (domain, cookies) ->
-            network.cookies.addAll(
+            network.cookieStore.addAll(
                 url = HttpUrl.Builder()
                     .scheme("http")
                     .host(domain)

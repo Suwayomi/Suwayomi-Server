@@ -14,30 +14,27 @@ import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.javalin.websocket.WsContext
 import io.javalin.websocket.WsMessageContext
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
+import org.eclipse.jetty.websocket.api.CloseStatus
 import suwayomi.tachidesk.graphql.server.TachideskGraphQLContextFactory
 import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ClientMessages.GQL_CONNECTION_INIT
-import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ClientMessages.GQL_CONNECTION_TERMINATE
-import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ClientMessages.GQL_START
-import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ClientMessages.GQL_STOP
+import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ClientMessages.GQL_SUBSCRIBE
+import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.CommonMessages.GQL_COMPLETE
+import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.CommonMessages.GQL_PING
+import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.CommonMessages.GQL_PONG
 import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ServerMessages.GQL_CONNECTION_ACK
-import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ServerMessages.GQL_CONNECTION_ERROR
-import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ServerMessages.GQL_CONNECTION_KEEP_ALIVE
-import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ServerMessages.GQL_DATA
 import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ServerMessages.GQL_ERROR
+import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ServerMessages.GQL_NEXT
 
 /**
  * Implementation of the `graphql-ws` protocol defined by Apollo
@@ -51,8 +48,8 @@ class ApolloSubscriptionProtocolHandler(
 ) {
     private val sessionState = ApolloSubscriptionSessionState()
     private val logger = KotlinLogging.logger {}
-    private val keepAliveMessage = SubscriptionOperationMessage(type = GQL_CONNECTION_KEEP_ALIVE.type)
-    private val basicConnectionErrorMessage = SubscriptionOperationMessage(type = GQL_CONNECTION_ERROR.type)
+    private val pongMessage = SubscriptionOperationMessage(type = GQL_PONG.type)
+    private val basicConnectionErrorMessage = SubscriptionOperationMessage(type = GQL_ERROR.type)
     private val acknowledgeMessage = SubscriptionOperationMessage(GQL_CONNECTION_ACK.type)
 
     fun handleMessage(context: WsMessageContext): Flow<SubscriptionOperationMessage> {
@@ -62,9 +59,10 @@ class ApolloSubscriptionProtocolHandler(
         return try {
             when (operationMessage.type) {
                 GQL_CONNECTION_INIT.type -> onInit(operationMessage, context)
-                GQL_START.type -> startSubscription(operationMessage, context)
-                GQL_STOP.type -> onStop(operationMessage, context)
-                GQL_CONNECTION_TERMINATE.type -> onDisconnect(context)
+                GQL_SUBSCRIBE.type -> startSubscription(operationMessage, context)
+                GQL_COMPLETE.type -> onComplete(operationMessage, context)
+                GQL_PING.type -> onPing()
+                GQL_PONG.type -> emptyFlow()
                 else -> onUnknownOperation(operationMessage, context)
             }
         } catch (exception: Exception) {
@@ -85,46 +83,28 @@ class ApolloSubscriptionProtocolHandler(
         }
     }
 
-    /**
-     * If the keep alive configuration is set, send a message back to client at every interval until the session is terminated.
-     * Otherwise just return empty flux to append to the acknowledge message.
-     */
-    @OptIn(FlowPreview::class)
-    private fun getKeepAliveFlow(context: WsContext): Flow<SubscriptionOperationMessage> {
-        val keepAliveInterval: Long? = 2000
-        if (keepAliveInterval != null) {
-            return flowOf(keepAliveMessage).sample(keepAliveInterval)
-                .onStart {
-                    sessionState.saveKeepAliveSubscription(context, currentCoroutineContext().job)
-                }
-        }
-
-        return emptyFlow()
-    }
-
     @Suppress("Detekt.TooGenericExceptionCaught")
     private fun startSubscription(
         operationMessage: SubscriptionOperationMessage,
         context: WsContext
     ): Flow<SubscriptionOperationMessage> {
-        val graphQLContext = sessionState.getGraphQLContext(context)
-
         if (operationMessage.id == null) {
             logger.error("GraphQL subscription operation id is required")
             return flowOf(basicConnectionErrorMessage)
         }
 
-        if (sessionState.doesOperationExist(context, operationMessage)) {
+        if (sessionState.doesOperationExist(operationMessage)) {
+            sessionState.terminateSession(context, CloseStatus(4409, "Subscriber for ${operationMessage.id} already exists"))
             logger.info("Already subscribed to operation ${operationMessage.id} for session ${context.sessionId}")
             return emptyFlow()
         }
 
+        val graphQLContext = sessionState.getGraphQLContext(context)
         val payload = operationMessage.payload
 
         if (payload == null) {
             logger.error("GraphQL subscription payload was null instead of a GraphQLRequest object")
-            sessionState.stopOperation(context, operationMessage)
-            return flowOf(SubscriptionOperationMessage(type = GQL_CONNECTION_ERROR.type, id = operationMessage.id))
+            return flowOf(SubscriptionOperationMessage(type = GQL_ERROR.type, id = operationMessage.id))
         }
 
         try {
@@ -132,9 +112,9 @@ class ApolloSubscriptionProtocolHandler(
             return subscriptionHandler.executeSubscription(request, graphQLContext)
                 .map {
                     if (it.errors?.isNotEmpty() == true) {
-                        SubscriptionOperationMessage(type = GQL_ERROR.type, id = operationMessage.id, payload = it)
+                        SubscriptionOperationMessage(type = GQL_ERROR.type, id = operationMessage.id, payload = it.errors)
                     } else {
-                        SubscriptionOperationMessage(type = GQL_DATA.type, id = operationMessage.id, payload = it)
+                        SubscriptionOperationMessage(type = GQL_NEXT.type, id = operationMessage.id, payload = it)
                     }
                 }
                 .onCompletion { if (it == null) emitAll(onComplete(operationMessage, context)) }
@@ -142,17 +122,14 @@ class ApolloSubscriptionProtocolHandler(
         } catch (exception: Exception) {
             logger.error("Error running graphql subscription", exception)
             // Do not terminate the session, just stop the operation messages
-            sessionState.stopOperation(context, operationMessage)
-            return flowOf(SubscriptionOperationMessage(type = GQL_CONNECTION_ERROR.type, id = operationMessage.id))
+            sessionState.completeOperation(operationMessage)
+            return flowOf(SubscriptionOperationMessage(type = GQL_ERROR.type, id = operationMessage.id))
         }
     }
 
     private fun onInit(operationMessage: SubscriptionOperationMessage, context: WsContext): Flow<SubscriptionOperationMessage> {
         saveContext(operationMessage, context)
-        val acknowledgeMessage = flowOf(acknowledgeMessage)
-        val keepAliveFlux = getKeepAliveFlow(context)
-        return acknowledgeMessage.onCompletion { if (it == null) emitAll(keepAliveFlux) }
-            .catch { emit(getConnectionErrorMessage(operationMessage)) }
+        return flowOf(acknowledgeMessage)
     }
 
     /**
@@ -172,36 +149,26 @@ class ApolloSubscriptionProtocolHandler(
         operationMessage: SubscriptionOperationMessage,
         context: WsContext
     ): Flow<SubscriptionOperationMessage> {
-        return sessionState.completeOperation(context, operationMessage)
+        return sessionState.completeOperation(operationMessage)
     }
 
-    /**
-     * Called with the client has called stop manually, or on error, and we need to cancel the publisher
-     */
-    private fun onStop(
-        operationMessage: SubscriptionOperationMessage,
-        context: WsContext
-    ): Flow<SubscriptionOperationMessage> {
-        return sessionState.stopOperation(context, operationMessage)
+    private fun onPing(): Flow<SubscriptionOperationMessage> {
+        return flowOf(pongMessage)
     }
 
     private fun onDisconnect(context: WsContext): Flow<SubscriptionOperationMessage> {
-        sessionState.terminateSession(context)
+        sessionState.terminateSession(context, CloseStatus(1000, "Normal Closure"))
         return emptyFlow()
     }
 
     private fun onUnknownOperation(operationMessage: SubscriptionOperationMessage, context: WsContext): Flow<SubscriptionOperationMessage> {
         logger.error("Unknown subscription operation $operationMessage")
-        sessionState.stopOperation(context, operationMessage)
-        return flowOf(getConnectionErrorMessage(operationMessage))
+        sessionState.completeOperation(operationMessage)
+        return emptyFlow()
     }
 
     private fun onException(exception: Exception): Flow<SubscriptionOperationMessage> {
         logger.error("Error parsing the subscription message", exception)
         return flowOf(basicConnectionErrorMessage)
-    }
-
-    private fun getConnectionErrorMessage(operationMessage: SubscriptionOperationMessage): SubscriptionOperationMessage {
-        return SubscriptionOperationMessage(type = GQL_CONNECTION_ERROR.type, id = operationMessage.id)
     }
 }

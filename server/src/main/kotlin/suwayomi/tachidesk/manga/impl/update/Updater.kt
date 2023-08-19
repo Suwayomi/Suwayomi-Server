@@ -18,9 +18,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import mu.KotlinLogging
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
@@ -33,6 +30,7 @@ import suwayomi.tachidesk.util.HAScheduler
 import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
 import java.util.prefs.Preferences
+import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.hours
 
 class Updater : IUpdater {
@@ -45,12 +43,40 @@ class Updater : IUpdater {
     private val tracker = ConcurrentHashMap<Int, UpdateJob>()
     private val updateChannels = ConcurrentHashMap<String, Channel<UpdateJob>>()
 
-    private val semaphore = Semaphore(serverConfig.maxParallelUpdateRequests)
+    private var maxSourcesInParallel = 20 // max permits, necessary to be set to be able to release up to 20 permits
+    private val semaphore = Semaphore(maxSourcesInParallel)
 
+    private val lastUpdateKey = "lastUpdateKey"
     private val lastAutomatedUpdateKey = "lastAutomatedUpdateKey"
     private val preferences = Preferences.userNodeForPackage(Updater::class.java)
 
     private var currentUpdateTaskId = ""
+
+    init {
+        serverConfig.subscribeTo(serverConfig.globalUpdateInterval, ::scheduleUpdateTask)
+        serverConfig.subscribeTo(
+            serverConfig.maxSourcesInParallel,
+            { value ->
+                val newMaxPermits = value.coerceAtLeast(1).coerceAtMost(20)
+                val permitDifference = maxSourcesInParallel - newMaxPermits
+                maxSourcesInParallel = newMaxPermits
+
+                val addMorePermits = permitDifference < 0
+                for (i in 1..permitDifference.absoluteValue) {
+                    if (addMorePermits) {
+                        semaphore.release()
+                    } else {
+                        semaphore.acquire()
+                    }
+                }
+            },
+            ignoreInitialValue = false
+        )
+    }
+
+    override fun getLastUpdateTimestamp(): Long {
+        return preferences.getLong(lastUpdateKey, 0)
+    }
 
     private fun autoUpdateTask() {
         val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
@@ -61,19 +87,19 @@ class Updater : IUpdater {
             return
         }
 
-        logger.info { "Trigger global update (interval= ${serverConfig.globalUpdateInterval}h, lastAutomatedUpdate= ${Date(lastAutomatedUpdate)})" }
-        addCategoriesToUpdateQueue(Category.getCategoryList(1), true) // todo USER_ACCOUNTS: decide what do with updating user libraries
+        logger.info { "Trigger global update (interval= ${serverConfig.globalUpdateInterval.value}h, lastAutomatedUpdate= ${Date(lastAutomatedUpdate)})" }
+        addCategoriesToUpdateQueue(Category.getCategoryList(1), clear = true, forceAll = false) // todo USER_ACCOUNTS: decide what do with updating user libraries
     }
 
     fun scheduleUpdateTask() {
         HAScheduler.deschedule(currentUpdateTaskId)
 
-        val isAutoUpdateDisabled = serverConfig.globalUpdateInterval == 0.0
+        val isAutoUpdateDisabled = serverConfig.globalUpdateInterval.value == 0.0
         if (isAutoUpdateDisabled) {
             return
         }
 
-        val updateInterval = serverConfig.globalUpdateInterval.hours.coerceAtLeast(6.hours).inWholeMilliseconds
+        val updateInterval = serverConfig.globalUpdateInterval.value.hours.coerceAtLeast(6.hours).inWholeMilliseconds
         val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
         val timeToNextExecution = (updateInterval - (System.currentTimeMillis() - lastAutomatedUpdate)).mod(updateInterval)
 
@@ -83,6 +109,15 @@ class Updater : IUpdater {
         }
 
         HAScheduler.schedule(::autoUpdateTask, updateInterval, timeToNextExecution, "global-update")
+    }
+
+    /**
+     * Updates the status and sustains the "skippedMangas"
+     */
+    private fun updateStatus(jobs: List<UpdateJob>, running: Boolean, categories: Map<CategoryUpdateStatus, List<CategoryDataClass>>? = null, skippedMangas: List<MangaDataClass>? = null) {
+        val updateStatusCategories = categories ?: _status.value.categoryStatusMap
+        val tmpSkippedMangas = skippedMangas ?: _status.value.mangaStatusMap[JobStatus.SKIPPED] ?: emptyList()
+        _status.update { UpdateStatus(updateStatusCategories, jobs, tmpSkippedMangas, running) }
     }
 
     private fun getOrCreateUpdateChannelFor(source: String): Channel<UpdateJob> {
@@ -97,7 +132,7 @@ class Updater : IUpdater {
         channel.consumeAsFlow()
             .onEach { job ->
                 semaphore.withPermit {
-                    _status.value = UpdateStatus(
+                    updateStatus(
                         process(job),
                         tracker.any { (_, job) ->
                             job.status == JobStatus.PENDING || job.status == JobStatus.RUNNING
@@ -112,7 +147,7 @@ class Updater : IUpdater {
 
     private suspend fun process(job: UpdateJob): List<UpdateJob> {
         tracker[job.manga.id] = job.copy(status = JobStatus.RUNNING)
-        _status.update { UpdateStatus(tracker.values.toList(), true) }
+        updateStatus(tracker.values.toList(), true)
         tracker[job.manga.id] = try {
             logger.info { "Updating \"${job.manga.title}\" (source: ${job.manga.sourceId})" }
             Chapter.getChapterList(0, job.manga.id, true)
@@ -125,17 +160,27 @@ class Updater : IUpdater {
         return tracker.values.toList()
     }
 
-    override fun addCategoriesToUpdateQueue(categories: List<CategoryDataClass>, clear: Boolean?) {
-        val updater by DI.global.instance<IUpdater>()
+    override fun addCategoriesToUpdateQueue(categories: List<CategoryDataClass>, clear: Boolean?, forceAll: Boolean) {
+        preferences.putLong(lastUpdateKey, System.currentTimeMillis())
+
         if (clear == true) {
-            updater.reset()
+            reset()
         }
 
         val includeInUpdateStatusToCategoryMap = categories.groupBy { it.includeInUpdate }
         val excludedCategories = includeInUpdateStatusToCategoryMap[IncludeInUpdate.EXCLUDE].orEmpty()
         val includedCategories = includeInUpdateStatusToCategoryMap[IncludeInUpdate.INCLUDE].orEmpty()
         val unsetCategories = includeInUpdateStatusToCategoryMap[IncludeInUpdate.UNSET].orEmpty()
-        val categoriesToUpdate = includedCategories.ifEmpty { unsetCategories }
+        val categoriesToUpdate = if (forceAll) {
+            categories
+        } else {
+            includedCategories.ifEmpty { unsetCategories }
+        }
+        val skippedCategories = categories.subtract(categoriesToUpdate.toSet()).toList()
+        val updateStatusCategories = mapOf(
+            Pair(CategoryUpdateStatus.UPDATING, categoriesToUpdate),
+            Pair(CategoryUpdateStatus.SKIPPED, skippedCategories)
+        )
 
         logger.debug { "Updating categories: '${categoriesToUpdate.joinToString("', '") { it.name }}'" }
 
@@ -146,15 +191,17 @@ class Updater : IUpdater {
         val mangasToUpdate = categoriesToUpdateMangas
             .asSequence()
             .filter { it.updateStrategy == UpdateStrategy.ALWAYS_UPDATE }
-            .filter { if (serverConfig.excludeUnreadChapters) { (it.unreadCount ?: 0L) == 0L } else true }
-            .filter { if (serverConfig.excludeNotStarted) { it.lastReadAt != null } else true }
-            .filter { if (serverConfig.excludeCompleted) { it.status != MangaStatus.COMPLETED.name } else true }
-            .filter { !excludedCategories.any { category -> mangasToCategoriesMap[it.id]?.contains(category) == true } }
+            .filter { if (serverConfig.excludeUnreadChapters.value) { (it.unreadCount ?: 0L) == 0L } else true }
+            .filter { if (serverConfig.excludeNotStarted.value) { it.lastReadAt != null } else true }
+            .filter { if (serverConfig.excludeCompleted.value) { it.status != MangaStatus.COMPLETED.name } else true }
+            .filter { forceAll || !excludedCategories.any { category -> mangasToCategoriesMap[it.id]?.contains(category) == true } }
             .toList()
+        val skippedMangas = categoriesToUpdateMangas.subtract(mangasToUpdate.toSet()).toList()
 
         // In case no manga gets updated and no update job was running before, the client would never receive an info about its update request
+        updateStatus(emptyList(), mangasToUpdate.isNotEmpty(), updateStatusCategories, skippedMangas)
+
         if (mangasToUpdate.isEmpty()) {
-            UpdaterSocket.notifyAllClients(UpdateStatus())
             return
         }
 
@@ -164,10 +211,10 @@ class Updater : IUpdater {
         )
     }
 
-    private fun addMangasToQueue(mangas: List<MangaDataClass>) {
-        mangas.forEach { tracker[it.id] = UpdateJob(it) }
-        _status.update { UpdateStatus(tracker.values.toList(), mangas.isNotEmpty()) }
-        mangas.forEach { addMangaToQueue(it) }
+    private fun addMangasToQueue(mangasToUpdate: List<MangaDataClass>) {
+        mangasToUpdate.forEach { tracker[it.id] = UpdateJob(it) }
+        updateStatus(tracker.values.toList(), mangasToUpdate.isNotEmpty())
+        mangasToUpdate.forEach { addMangaToQueue(it) }
     }
 
     private fun addMangaToQueue(manga: MangaDataClass) {
@@ -180,7 +227,7 @@ class Updater : IUpdater {
     override fun reset() {
         scope.coroutineContext.cancelChildren()
         tracker.clear()
-        _status.update { UpdateStatus() }
+        updateStatus(emptyList(), false)
         updateChannels.forEach { (_, channel) -> channel.cancel() }
         updateChannels.clear()
     }

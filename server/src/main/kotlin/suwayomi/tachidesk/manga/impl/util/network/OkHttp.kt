@@ -27,7 +27,7 @@ suspend fun Call.await(): Response {
                     }
 
                     continuation.resume(response) {
-                        response.body?.closeQuietly()
+                        response.body.closeQuietly()
                     }
                 }
 

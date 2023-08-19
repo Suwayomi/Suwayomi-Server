@@ -34,7 +34,8 @@ class Downloader(
     val sourceId: String,
     private val downloadQueue: CopyOnWriteArrayList<DownloadChapter>,
     private val notifier: (immediate: Boolean) -> Unit,
-    private val onComplete: () -> Unit
+    private val onComplete: () -> Unit,
+    private val onDownloadFinished: () -> Unit
 ) {
     private val logger = KotlinLogging.logger("${Downloader::class.java.name} source($sourceId)")
 
@@ -112,6 +113,7 @@ class Downloader(
                 downloadQueue.removeIf { it.mangaId == download.mangaId && it.chapterIndex == download.chapterIndex }
                 step(null, false)
                 downloadLogger.debug { "finished" }
+                onDownloadFinished()
             } catch (e: CancellationException) {
                 logger.debug("Downloader was stopped")
                 availableSourceDownloads.filter { it.state == Downloading }.forEach { it.state = Queued }

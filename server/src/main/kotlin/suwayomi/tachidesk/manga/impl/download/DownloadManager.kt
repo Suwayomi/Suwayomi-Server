@@ -19,14 +19,18 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.graphql.subscriptions.downloadSubscriptionSource
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Error
@@ -38,6 +42,7 @@ import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.concurrent.ConcurrentHashMap
@@ -46,8 +51,6 @@ import kotlin.reflect.jvm.jvmName
 import kotlin.time.Duration.Companion.seconds
 
 private val logger = KotlinLogging.logger {}
-
-private const val MAX_SOURCES_IN_PARAllEL = 5
 
 object DownloadManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -68,12 +71,18 @@ object DownloadManager {
             .apply()
     }
 
-    fun restoreAndResumeDownloads() {
-        logger.debug { "restoreAndResumeDownloads: Restore download queue..." }
-        enqueue(EnqueueInput(loadDownloadQueue()))
+    private fun triggerSaveDownloadQueue() {
+        scope.launch { saveQueueFlow.emit(Unit) }
+    }
 
-        if (downloadQueue.size > 0) {
-            logger.info { "restoreAndResumeDownloads: Restored download queue, starting downloads..." }
+    fun restoreAndResumeDownloads() {
+        scope.launch {
+            logger.debug { "restoreAndResumeDownloads: Restore download queue..." }
+            enqueue(EnqueueInput(loadDownloadQueue()))
+
+            if (downloadQueue.size > 0) {
+                logger.info { "restoreAndResumeDownloads: Restored download queue, starting downloads..." }
+            }
         }
     }
 
@@ -108,12 +117,23 @@ object DownloadManager {
 
     private val notifyFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
+    val status = notifyFlow.sample(1.seconds)
+        .map {
+            getStatus()
+        }
+        .stateIn(scope, SharingStarted.Eagerly, getStatus())
+
     init {
         scope.launch {
             notifyFlow.sample(1.seconds).collect {
                 sendStatusToAllClients()
             }
         }
+    }
+
+    private val saveQueueFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    init {
+        saveQueueFlow.onEach { saveDownloadQueue() }.launchIn(scope)
     }
 
     private fun sendStatusToAllClients() {
@@ -124,12 +144,11 @@ object DownloadManager {
     }
 
     private fun notifyAllClients(immediate: Boolean = false) {
+        scope.launch {
+            notifyFlow.emit(Unit)
+        }
         if (immediate) {
             sendStatusToAllClients()
-        } else {
-            scope.launch {
-                notifyFlow.emit(Unit)
-            }
         }
         /*if (downloadChapter != null) { TODO GRAPHQL
             downloadSubscriptionSource.publish(downloadChapter)
@@ -149,6 +168,22 @@ object DownloadManager {
 
     private val downloaderWatch = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     init {
+        serverConfig.subscribeTo(serverConfig.maxSourcesInParallel, { maxSourcesInParallel ->
+            val runningDownloaders = downloaders.values.filter { it.isActive }
+            var downloadersToStop = runningDownloaders.size - maxSourcesInParallel
+
+            logger.debug { "Max sources in parallel changed to $maxSourcesInParallel (running downloaders ${runningDownloaders.size})" }
+
+            if (downloadersToStop > 0) {
+                runningDownloaders.takeWhile {
+                    it.stop()
+                    --downloadersToStop > 0
+                }
+            } else {
+                downloaderWatch.emit(Unit)
+            }
+        })
+
         scope.launch {
             downloaderWatch.sample(1.seconds).collect {
                 val runningDownloaders = downloaders.values.filter { it.isActive }
@@ -156,14 +191,14 @@ object DownloadManager {
 
                 logger.info { "Running: ${runningDownloaders.size}, Queued: ${availableDownloads.size}, Failed: ${downloadQueue.size - availableDownloads.size}" }
 
-                if (runningDownloaders.size < MAX_SOURCES_IN_PARAllEL) {
+                if (runningDownloaders.size < serverConfig.maxSourcesInParallel.value) {
                     availableDownloads.asSequence()
                         .map { it.manga.sourceId }
                         .distinct()
                         .minus(
                             runningDownloaders.map { it.sourceId }.toSet()
                         )
-                        .take(MAX_SOURCES_IN_PARAllEL - runningDownloaders.size)
+                        .take(serverConfig.maxSourcesInParallel.value - runningDownloaders.size)
                         .map { getDownloader(it) }
                         .forEach {
                             it.start()
@@ -177,7 +212,6 @@ object DownloadManager {
     private fun refreshDownloaders() {
         scope.launch {
             downloaderWatch.emit(Unit)
-            saveDownloadQueue()
         }
     }
 
@@ -187,7 +221,8 @@ object DownloadManager {
             sourceId = sourceId,
             downloadQueue = downloadQueue,
             notifier = ::notifyAllClients,
-            onComplete = ::refreshDownloaders
+            onComplete = ::refreshDownloaders,
+            onDownloadFinished = ::triggerSaveDownloadQueue
         )
     }
 
@@ -267,8 +302,7 @@ object DownloadManager {
                 manga
             )
             downloadQueue.add(newDownloadChapter)
-            saveDownloadQueue()
-            downloadSubscriptionSource.publish(newDownloadChapter)
+            triggerSaveDownloadQueue()
             logger.debug { "Added chapter ${chapter.id} to download queue ($newDownloadChapter)" }
             return newDownloadChapter
         }
@@ -300,21 +334,33 @@ object DownloadManager {
         logger.debug { "dequeue ${chapterDownloads.size} chapters [${chapterDownloads.joinToString(separator = ", ") { "$it" }}]" }
 
         downloadQueue.removeAll(chapterDownloads)
-        saveDownloadQueue()
+        triggerSaveDownloadQueue()
 
         notifyAllClients()
     }
 
     fun reorder(chapterIndex: Int, mangaId: Int, to: Int) {
-        require(to >= 0) { "'to' must be over or equal to 0" }
         val download = downloadQueue.find { it.mangaId == mangaId && it.chapterIndex == chapterIndex }
             ?: return
+
+        reorder(download, to)
+    }
+
+    fun reorder(chapterId: Int, to: Int) {
+        val download = downloadQueue.find { it.chapter.id == chapterId }
+            ?: return
+
+        reorder(download, to)
+    }
+
+    private fun reorder(download: DownloadChapter, to: Int) {
+        require(to >= 0) { "'to' must be over or equal to 0" }
 
         logger.debug { "reorder download $download from ${downloadQueue.indexOf(download)} to $to" }
 
         downloadQueue -= download
         downloadQueue.add(to, download)
-        saveDownloadQueue()
+        triggerSaveDownloadQueue()
     }
 
     fun start() {
@@ -343,7 +389,7 @@ object DownloadManager {
 
         stop()
         downloadQueue.clear()
-        saveDownloadQueue()
+        triggerSaveDownloadQueue()
         notifyAllClients()
     }
 }
