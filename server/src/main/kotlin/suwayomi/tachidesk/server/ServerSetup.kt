@@ -79,7 +79,7 @@ fun applicationSetup() {
         } else {
             setLogLevel(Level.INFO)
         }
-    })
+    }, ignoreInitialValue = false)
 
     // Application dirs
     val applicationDirs = ApplicationDirs()
@@ -206,7 +206,8 @@ fun applicationSetup() {
                 System.getProperties()["socksProxyHost"] = ""
                 System.getProperties()["socksProxyPort"] = ""
             }
-        }
+        },
+        ignoreInitialValue = false
     )
 
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
