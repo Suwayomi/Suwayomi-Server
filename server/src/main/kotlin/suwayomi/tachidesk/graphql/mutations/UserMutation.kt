@@ -5,6 +5,7 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.global.impl.util.Bcrypt
 import suwayomi.tachidesk.global.impl.util.Jwt
 import suwayomi.tachidesk.global.model.table.UserTable
@@ -15,6 +16,7 @@ import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.user.Permissions
 import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.server.user.requirePermissions
+import suwayomi.tachidesk.server.user.requireUser
 
 class UserMutation {
 
@@ -99,6 +101,31 @@ class UserMutation {
         }
 
         return RegisterPayload(
+            clientMutationId = clientMutationId,
+        )
+    }
+
+    data class SetPasswordInput(
+        val clientMutationId: String? = null,
+        val password: String,
+    )
+    data class SetPasswordPayload(
+        val clientMutationId: String?,
+    )
+    fun setPassword(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: SetPasswordInput
+    ): SetPasswordPayload {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+
+        val (clientMutationId, password) = input
+        transaction {
+            UserTable.update({ UserTable.id eq userId }) {
+                it[UserTable.password] = Bcrypt.encryptPassword(password)
+            }
+        }
+
+        return SetPasswordPayload(
             clientMutationId = clientMutationId,
         )
     }
