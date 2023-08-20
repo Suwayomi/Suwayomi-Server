@@ -53,7 +53,7 @@ class Updater : IUpdater {
     private var currentUpdateTaskId = ""
 
     init {
-        serverConfig.subscribeTo(serverConfig.globalUpdateInterval, ::scheduleUpdateTask)
+        serverConfig.subscribeTo(serverConfig.globalUpdateInterval, ::scheduleUpdateTask, ignoreInitialValue = false)
         serverConfig.subscribeTo(
             serverConfig.maxSourcesInParallel,
             { value ->
