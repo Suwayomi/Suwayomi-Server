@@ -99,9 +99,6 @@ object Jwt {
             .withClaim("token_type", "access")
             .withExpiresAt(Instant.now().plusSeconds(accessTokenExpiry.inWholeSeconds))
 
-        val user = transaction {
-            UserTable.select { UserTable.id eq userId }.first()
-        }
         val roles = transaction {
             UserRolesTable.select { UserRolesTable.user eq userId }.toList()
                 .map { it[UserRolesTable.role] }
