@@ -62,7 +62,8 @@ object ProtoBackupExport : ProtoBackupBase() {
                     timeOfDay
                 )
             },
-            ::scheduleAutomatedBackupTask
+            ::scheduleAutomatedBackupTask,
+            ignoreInitialValue = false
         )
     }
 
