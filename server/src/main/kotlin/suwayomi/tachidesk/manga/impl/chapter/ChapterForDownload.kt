@@ -29,10 +29,18 @@ import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import java.io.File
 
-suspend fun getChapterDownloadReadyByIndex(chapterIndex: Int, mangaId: Int): ChapterDataClass {
-    val chapter = ChapterForDownload(optChapterIndex = chapterIndex, optMangaId = mangaId)
+suspend fun getChapterDownloadReady(chapterId: Int? = null, chapterIndex: Int? = null, mangaId: Int? = null): ChapterDataClass {
+    val chapter = ChapterForDownload(chapterId, chapterIndex, mangaId)
 
     return chapter.asDownloadReady()
+}
+
+suspend fun getChapterDownloadReadyById(chapterId: Int): ChapterDataClass {
+    return getChapterDownloadReady(chapterId = chapterId)
+}
+
+suspend fun getChapterDownloadReadyByIndex(chapterIndex: Int, mangaId: Int): ChapterDataClass {
+    return getChapterDownloadReady(chapterIndex = chapterIndex, mangaId = mangaId)
 }
 
 private class ChapterForDownload(
