@@ -10,8 +10,10 @@ package suwayomi.tachidesk.manga.impl.chapter
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.batchInsert
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -84,24 +86,12 @@ private class ChapterForDownload(
         val chapterId = chapterEntry[ChapterTable.id].value
 
         transaction {
-            pageList.forEach { page ->
-                val pageEntry = transaction {
-                    PageTable.select { (PageTable.chapter eq chapterId) and (PageTable.index eq page.index) }
-                        .firstOrNull()
-                }
-                if (pageEntry == null) {
-                    PageTable.insert {
-                        it[index] = page.index
-                        it[url] = page.url
-                        it[imageUrl] = page.imageUrl
-                        it[chapter] = chapterId
-                    }
-                } else {
-                    PageTable.update({ (PageTable.chapter eq chapterId) and (PageTable.index eq page.index) }) {
-                        it[url] = page.url
-                        it[imageUrl] = page.imageUrl
-                    }
-                }
+            PageTable.deleteWhere { PageTable.chapter eq chapterId }
+            PageTable.batchInsert(pageList) { page ->
+                this[PageTable.index] = page.index
+                this[PageTable.url] = page.url
+                this[PageTable.imageUrl] = page.imageUrl
+                this[PageTable.chapter] = chapterId
             }
         }
 
@@ -115,14 +105,11 @@ private class ChapterForDownload(
         pageList: List<Page>,
         chapterId: Int
     ) {
-        val pageCount = pageList.count()
-
         transaction {
-            val lastPageRead = ChapterTable.select { ChapterTable.id eq chapterId }.firstOrNull()?.get(ChapterTable.lastPageRead) ?: 0
-
             ChapterTable.update({ ChapterTable.id eq chapterId }) {
+                val pageCount = pageList.size
                 it[ChapterTable.pageCount] = pageCount
-                it[ChapterTable.lastPageRead] = lastPageRead.coerceAtMost(pageCount - 1)
+                it[ChapterTable.lastPageRead] = chapterEntry[ChapterTable.lastPageRead].coerceAtMost(pageCount - 1)
             }
         }
     }
