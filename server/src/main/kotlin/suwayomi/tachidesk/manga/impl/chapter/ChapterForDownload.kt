@@ -30,14 +30,15 @@ import suwayomi.tachidesk.manga.model.table.toDataClass
 import java.io.File
 
 suspend fun getChapterDownloadReadyByIndex(chapterIndex: Int, mangaId: Int): ChapterDataClass {
-    val chapter = ChapterForDownload(chapterIndex, mangaId)
+    val chapter = ChapterForDownload(optChapterIndex = chapterIndex, optMangaId = mangaId)
 
     return chapter.asDownloadReady()
 }
 
 private class ChapterForDownload(
-    private val chapterIndex: Int,
-    private val mangaId: Int
+    optChapterId: Int? = null,
+    optChapterIndex: Int? = null,
+    optMangaId: Int? = null
 ) {
     suspend fun asDownloadReady(): ChapterDataClass {
         if (isNotCompletelyDownloaded()) {
@@ -53,11 +54,27 @@ private class ChapterForDownload(
 
     private fun asDataClass() = ChapterTable.toDataClass(chapterEntry)
 
-    var chapterEntry: ResultRow = freshChapterEntry()
+    var chapterEntry: ResultRow
+    val chapterId: Int
+    val chapterIndex: Int
+    val mangaId: Int
 
-    private fun freshChapterEntry() = transaction {
+    init {
+        chapterEntry = freshChapterEntry(optChapterId, optChapterIndex, optMangaId)
+        chapterId = chapterEntry[ChapterTable.id].value
+        chapterIndex = chapterEntry[ChapterTable.sourceOrder]
+        mangaId = chapterEntry[ChapterTable.manga].value
+    }
+
+    private fun freshChapterEntry(optChapterId: Int? = null, optChapterIndex: Int? = null, optMangaId: Int? = null) = transaction {
         ChapterTable.select {
-            (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId)
+            if (optChapterId != null) {
+                ChapterTable.id eq optChapterId
+            } else if (optChapterIndex != null && optMangaId != null) {
+                (ChapterTable.sourceOrder eq optChapterIndex) and (ChapterTable.manga eq optMangaId)
+            } else {
+                throw Exception("'optChapterId' or 'optChapterIndex' and 'optMangaId' have to be passed")
+            }
         }.first()
     }
 
@@ -83,8 +100,6 @@ private class ChapterForDownload(
     }
 
     private fun updateDatabasePages(pageList: List<Page>) {
-        val chapterId = chapterEntry[ChapterTable.id].value
-
         transaction {
             PageTable.deleteWhere { PageTable.chapter eq chapterId }
             PageTable.batchInsert(pageList) { page ->
@@ -98,7 +113,7 @@ private class ChapterForDownload(
         updatePageCount(pageList, chapterId)
 
         // chapter was updated
-        chapterEntry = freshChapterEntry()
+        chapterEntry = freshChapterEntry(chapterId, chapterIndex, mangaId)
     }
 
     private fun updatePageCount(
