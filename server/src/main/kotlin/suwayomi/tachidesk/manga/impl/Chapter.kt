@@ -26,10 +26,8 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
-import suwayomi.tachidesk.manga.impl.util.lang.isEmpty
 import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
@@ -115,12 +113,12 @@ object Chapter {
     }
 
     suspend fun fetchChapterList(userId: Int, mangaId: Int): List<SChapter> {
-        val manga = getManga(userId, mangaId)
-        val source = getCatalogueSourceOrStub(manga.sourceId.toLong())
+        val manga = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
+        val source = getCatalogueSourceOrStub(manga[MangaTable.sourceReference])
 
         val sManga = SManga.create().apply {
-            title = manga.title
-            url = manga.url
+            title = manga[MangaTable.title]
+            url = manga[MangaTable.url]
         }
 
         val numberOfCurrentChapters = getCountOfMangaChapters(mangaId)
@@ -129,7 +127,7 @@ object Chapter {
         // Recognize number for new chapters.
         chapterList.forEach { chapter ->
             (source as? HttpSource)?.prepareNewChapter(chapter, sManga)
-            val chapterNumber = ChapterRecognition.parseChapterNumber(manga.title, chapter.name, chapter.chapter_number.toDouble())
+            val chapterNumber = ChapterRecognition.parseChapterNumber(manga[MangaTable.title], chapter.name, chapter.chapter_number.toDouble())
             chapter.chapter_number = chapterNumber.toFloat()
         }
 
