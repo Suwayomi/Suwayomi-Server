@@ -8,7 +8,7 @@ import suwayomi.tachidesk.server.user.requireUser
 
 class SettingsQuery {
     fun settings(
-        dataFetchingEnvironment: DataFetchingEnvironment,
+        dataFetchingEnvironment: DataFetchingEnvironment
     ): SettingsType {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         return SettingsType()

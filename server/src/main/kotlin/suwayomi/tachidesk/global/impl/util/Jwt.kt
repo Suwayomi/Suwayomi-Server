@@ -8,7 +8,6 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.global.model.table.UserPermissionsTable
 import suwayomi.tachidesk.global.model.table.UserRolesTable
-import suwayomi.tachidesk.global.model.table.UserTable
 import suwayomi.tachidesk.server.user.Permissions
 import suwayomi.tachidesk.server.user.UserType
 import java.security.SecureRandom

@@ -6,7 +6,6 @@ import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
 import suwayomi.tachidesk.server.BuildConfig
-import suwayomi.tachidesk.server.JavalinSetup
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.serverConfig
@@ -26,7 +25,7 @@ class InfoQuery {
     )
 
     fun about(
-        dataFetchingEnvironment: DataFetchingEnvironment,
+        dataFetchingEnvironment: DataFetchingEnvironment
     ): AboutPayload {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
 
@@ -49,7 +48,7 @@ class InfoQuery {
     )
 
     fun checkForServerUpdates(
-        dataFetchingEnvironment: DataFetchingEnvironment,
+        dataFetchingEnvironment: DataFetchingEnvironment
     ): CompletableFuture<List<CheckForServerUpdatesPayload>> {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
 

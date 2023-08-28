@@ -11,7 +11,6 @@ import suwayomi.tachidesk.global.impl.util.Jwt
 import suwayomi.tachidesk.global.model.table.UserTable
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
-import suwayomi.tachidesk.server.JavalinSetup
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.user.Permissions
 import suwayomi.tachidesk.server.user.UserType
@@ -76,10 +75,10 @@ class UserMutation {
     data class RegisterInput(
         val clientMutationId: String? = null,
         val username: String,
-        val password: String,
+        val password: String
     )
     data class RegisterPayload(
-        val clientMutationId: String?,
+        val clientMutationId: String?
     )
     fun register(
         dataFetchingEnvironment: DataFetchingEnvironment,
@@ -101,16 +100,16 @@ class UserMutation {
         }
 
         return RegisterPayload(
-            clientMutationId = clientMutationId,
+            clientMutationId = clientMutationId
         )
     }
 
     data class SetPasswordInput(
         val clientMutationId: String? = null,
-        val password: String,
+        val password: String
     )
     data class SetPasswordPayload(
-        val clientMutationId: String?,
+        val clientMutationId: String?
     )
     fun setPassword(
         dataFetchingEnvironment: DataFetchingEnvironment,
@@ -126,7 +125,7 @@ class UserMutation {
         }
 
         return SetPasswordPayload(
-            clientMutationId = clientMutationId,
+            clientMutationId = clientMutationId
         )
     }
 }
