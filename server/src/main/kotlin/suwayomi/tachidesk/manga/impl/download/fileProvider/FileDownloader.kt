@@ -1,12 +1,10 @@
 package suwayomi.tachidesk.manga.impl.download.fileProvider
 
-@FunctionalInterface
-interface FileDownload {
+fun interface FileDownload {
     suspend fun executeDownload(vararg args: Any): Boolean
 }
 
-@FunctionalInterface
-interface FileDownload0Args : FileDownload {
+fun interface FileDownload0Args : FileDownload {
     suspend fun execute(): Boolean
 
     override suspend fun executeDownload(vararg args: Any): Boolean {
@@ -14,8 +12,7 @@ interface FileDownload0Args : FileDownload {
     }
 }
 
-@FunctionalInterface
-interface FileDownload3Args<A, B, C> : FileDownload {
+fun interface FileDownload3Args<A, B, C> : FileDownload {
     suspend fun execute(a: A, b: B, c: C): Boolean
 
     override suspend fun executeDownload(vararg args: Any): Boolean {
@@ -23,7 +20,6 @@ interface FileDownload3Args<A, B, C> : FileDownload {
     }
 }
 
-@FunctionalInterface
-interface FileDownloader {
+fun interface FileDownloader {
     fun download(): FileDownload
 }

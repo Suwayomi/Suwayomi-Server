@@ -2,13 +2,11 @@ package suwayomi.tachidesk.manga.impl.download.fileProvider
 
 import java.io.InputStream
 
-@FunctionalInterface
-interface RetrieveFile {
+fun interface RetrieveFile {
     fun executeGetImage(vararg args: Any): Pair<InputStream, String>
 }
 
-@FunctionalInterface
-interface RetrieveFile0Args : RetrieveFile {
+fun interface RetrieveFile0Args : RetrieveFile {
     fun execute(): Pair<InputStream, String>
 
     override fun executeGetImage(vararg args: Any): Pair<InputStream, String> {
@@ -16,8 +14,7 @@ interface RetrieveFile0Args : RetrieveFile {
     }
 }
 
-@FunctionalInterface
-interface RetrieveFile1Args<A> : RetrieveFile {
+fun interface RetrieveFile1Args<A> : RetrieveFile {
     fun execute(a: A): Pair<InputStream, String>
 
     override fun executeGetImage(vararg args: Any): Pair<InputStream, String> {
@@ -25,7 +22,6 @@ interface RetrieveFile1Args<A> : RetrieveFile {
     }
 }
 
-@FunctionalInterface
-interface FileRetriever {
+fun interface FileRetriever {
     fun getImage(): RetrieveFile
 }

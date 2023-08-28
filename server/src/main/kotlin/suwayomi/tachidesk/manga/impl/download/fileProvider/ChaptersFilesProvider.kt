@@ -11,11 +11,7 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
     abstract fun getImageImpl(index: Int): Pair<InputStream, String>
 
     override fun getImage(): RetrieveFile1Args<Int> {
-        return object : RetrieveFile1Args<Int> {
-            override fun execute(a: Int): Pair<InputStream, String> {
-                return getImageImpl(a)
-            }
-        }
+        return RetrieveFile1Args(::getImageImpl)
     }
 
     abstract suspend fun downloadImpl(
@@ -25,15 +21,7 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
     ): Boolean
 
     override fun download(): FileDownload3Args<DownloadChapter, CoroutineScope, suspend (DownloadChapter?, Boolean) -> Unit> {
-        return object : FileDownload3Args<DownloadChapter, CoroutineScope, suspend (DownloadChapter?, Boolean) -> Unit> {
-            override suspend fun execute(
-                a: DownloadChapter,
-                b: CoroutineScope,
-                c: suspend (DownloadChapter?, Boolean) -> Unit
-            ): Boolean {
-                return downloadImpl(a, b, c)
-            }
-        }
+        return FileDownload3Args(::downloadImpl)
     }
 
     abstract override fun delete(): Boolean
