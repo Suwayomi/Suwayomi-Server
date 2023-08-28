@@ -12,6 +12,7 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.andWhere
@@ -99,25 +100,23 @@ class ChapterQuery {
         }
     }
 
-    data class ChapterCondition(
-        val id: Int? = null,
-        val url: String? = null,
-        val name: String? = null,
-        val uploadDate: Long? = null,
-        val chapterNumber: Float? = null,
-        val scanlator: String? = null,
-        val mangaId: Int? = null,
-        val isRead: Boolean? = null,
-        val isBookmarked: Boolean? = null,
-        val lastPageRead: Int? = null,
-        val lastReadAt: Long? = null,
-        val sourceOrder: Int? = null,
-        val realUrl: String? = null,
-        val fetchedAt: Long? = null,
-        val isDownloaded: Boolean? = null,
-        val pageCount: Int? = null
-    ) : HasGetOp {
-        override fun getOp(): Op<Boolean>? {
+    abstract class BaseChapterCondition : HasGetOp {
+        abstract val id: Int?
+        abstract val url: String?
+        abstract val name: String?
+        abstract val uploadDate: Long?
+        abstract val chapterNumber: Float?
+        abstract val scanlator: String?
+        abstract val isRead: Boolean?
+        abstract val isBookmarked: Boolean?
+        abstract val lastPageRead: Int?
+        abstract val lastReadAt: Long?
+        abstract val sourceOrder: Int?
+        abstract val realUrl: String?
+        abstract val fetchedAt: Long?
+        abstract val isDownloaded: Boolean?
+        abstract val pageCount: Int?
+        open fun buildOp(): OpAnd {
             val opAnd = OpAnd()
             opAnd.eq(id, ChapterTable.id)
             opAnd.eq(url, ChapterTable.url)
@@ -125,7 +124,6 @@ class ChapterQuery {
             opAnd.eq(uploadDate, ChapterTable.date_upload)
             opAnd.eq(chapterNumber, ChapterTable.chapter_number)
             opAnd.eq(scanlator, ChapterTable.scanlator)
-            opAnd.eq(mangaId, ChapterTable.manga)
             opAnd.eq(isRead, ChapterTable.isRead)
             opAnd.eq(isBookmarked, ChapterTable.isBookmarked)
             opAnd.eq(lastPageRead, ChapterTable.lastPageRead)
@@ -136,7 +134,54 @@ class ChapterQuery {
             opAnd.eq(isDownloaded, ChapterTable.isDownloaded)
             opAnd.eq(pageCount, ChapterTable.pageCount)
 
-            return opAnd.op
+            return opAnd
+        }
+
+        override fun getOp(): Op<Boolean>? {
+            return buildOp().op
+        }
+    }
+
+    data class MangaChapterCondition(
+        override val id: Int? = null,
+        override val url: String? = null,
+        override val name: String? = null,
+        override val uploadDate: Long? = null,
+        override val chapterNumber: Float? = null,
+        override val scanlator: String? = null,
+        override val isRead: Boolean? = null,
+        override val isBookmarked: Boolean? = null,
+        override val lastPageRead: Int? = null,
+        override val lastReadAt: Long? = null,
+        override val sourceOrder: Int? = null,
+        override val realUrl: String? = null,
+        override val fetchedAt: Long? = null,
+        override val isDownloaded: Boolean? = null,
+        override val pageCount: Int? = null
+    ) : BaseChapterCondition(), HasGetOp
+
+    data class ChapterCondition(
+        override val id: Int? = null,
+        override val url: String? = null,
+        override val name: String? = null,
+        override val uploadDate: Long? = null,
+        override val chapterNumber: Float? = null,
+        override val scanlator: String? = null,
+        override val isRead: Boolean? = null,
+        override val isBookmarked: Boolean? = null,
+        override val lastPageRead: Int? = null,
+        override val lastReadAt: Long? = null,
+        override val sourceOrder: Int? = null,
+        override val realUrl: String? = null,
+        override val fetchedAt: Long? = null,
+        override val isDownloaded: Boolean? = null,
+        override val pageCount: Int? = null,
+        val mangaId: Int? = null
+    ) : BaseChapterCondition(), HasGetOp {
+        override fun buildOp(): OpAnd {
+            val opAnd = super.buildOp()
+            opAnd.eq(mangaId, ChapterTable.manga)
+            return opAnd
         }
     }
 
