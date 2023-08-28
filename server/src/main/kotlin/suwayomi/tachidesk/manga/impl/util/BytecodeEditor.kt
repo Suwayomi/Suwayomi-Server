@@ -18,6 +18,7 @@ import org.objectweb.asm.Opcodes
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardOpenOption
 import kotlin.streams.asSequence
 
 object BytecodeEditor {
@@ -257,6 +258,11 @@ object BytecodeEditor {
     }
 
     private fun write(pair: Pair<Path, ByteArray>) {
-        Files.write(pair.first, pair.second)
+        Files.write(
+            pair.first,
+            pair.second,
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        )
     }
 }
