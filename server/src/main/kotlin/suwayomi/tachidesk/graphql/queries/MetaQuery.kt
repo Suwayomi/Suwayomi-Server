@@ -36,8 +36,8 @@ import suwayomi.tachidesk.graphql.types.GlobalMetaType
 import java.util.concurrent.CompletableFuture
 
 class MetaQuery {
-    fun meta(dataFetchingEnvironment: DataFetchingEnvironment, key: String): CompletableFuture<GlobalMetaType?> {
-        return dataFetchingEnvironment.getValueFromDataLoader<String, GlobalMetaType?>("GlobalMetaDataLoader", key)
+    fun meta(dataFetchingEnvironment: DataFetchingEnvironment, key: String): CompletableFuture<GlobalMetaType> {
+        return dataFetchingEnvironment.getValueFromDataLoader("GlobalMetaDataLoader", key)
     }
 
     enum class MetaOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<GlobalMetaType> {

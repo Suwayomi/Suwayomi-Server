@@ -48,7 +48,7 @@ import java.util.concurrent.CompletableFuture
  * - Get page list?
  */
 class ChapterQuery {
-    fun chapter(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<ChapterType?> {
+    fun chapter(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<ChapterType> {
         return dataFetchingEnvironment.getValueFromDataLoader("ChapterDataLoader", id)
     }
 

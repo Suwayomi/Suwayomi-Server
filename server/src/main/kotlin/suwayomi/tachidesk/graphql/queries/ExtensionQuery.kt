@@ -41,7 +41,7 @@ import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import java.util.concurrent.CompletableFuture
 
 class ExtensionQuery {
-    fun extension(dataFetchingEnvironment: DataFetchingEnvironment, pkgName: String): CompletableFuture<ExtensionType?> {
+    fun extension(dataFetchingEnvironment: DataFetchingEnvironment, pkgName: String): CompletableFuture<ExtensionType> {
         return dataFetchingEnvironment.getValueFromDataLoader("ExtensionDataLoader", pkgName)
     }
 
