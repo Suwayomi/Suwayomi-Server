@@ -55,6 +55,11 @@ private fun getBaseLogger(): ch.qos.logback.classic.Logger {
     return (KotlinLogging.logger(Logger.ROOT_LOGGER_NAME).underlyingLogger as ch.qos.logback.classic.Logger)
 }
 
+private fun getLogger(name: String): ch.qos.logback.classic.Logger {
+    val context = LoggerFactory.getILoggerFactory() as LoggerContext
+    return context.getLogger(name)
+}
+
 fun initLoggerConfig(appRootPath: String) {
     val context = LoggerFactory.getILoggerFactory() as LoggerContext
     val logger = getBaseLogger()
@@ -62,12 +67,12 @@ fun initLoggerConfig(appRootPath: String) {
     logger.addAppender(createRollingFileAppender(context, "$appRootPath/logs"))
 
     // set "kotlin exposed" log level
-    context.getLogger("Exposed").level = Level.ERROR
+    getLogger("Exposed").level = Level.ERROR
 
     // gql "ExecutionStrategy" spams logs with "... completing field ..."
     // gql "notprivacysafe" logs every received request multiple times (received, parsing, validating, executing)
-    context.getLogger("graphql").level = Level.ERROR
-    context.getLogger("notprivacysafe").level = Level.ERROR
+    getLogger("graphql").level = Level.ERROR
+    getLogger("notprivacysafe").level = Level.ERROR
 }
 
 fun setLogLevel(level: Level) {
