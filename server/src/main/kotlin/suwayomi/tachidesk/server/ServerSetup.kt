@@ -32,10 +32,11 @@ import suwayomi.tachidesk.server.util.SystemTray
 import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
 import xyz.nulldev.ts.config.ApplicationRootDir
+import xyz.nulldev.ts.config.BASE_LOGGER_NAME
 import xyz.nulldev.ts.config.ConfigKodeinModule
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.initLoggerConfig
-import xyz.nulldev.ts.config.setLogLevel
+import xyz.nulldev.ts.config.setLogLevelFor
 import java.io.File
 import java.security.Security
 import java.util.Locale
@@ -75,9 +76,9 @@ fun applicationSetup() {
 
     serverConfig.subscribeTo(serverConfig.debugLogsEnabled, { debugLogsEnabled ->
         if (debugLogsEnabled) {
-            setLogLevel(Level.DEBUG)
+            setLogLevelFor(BASE_LOGGER_NAME, Level.DEBUG)
         } else {
-            setLogLevel(Level.INFO)
+            setLogLevelFor(BASE_LOGGER_NAME, Level.INFO)
         }
     }, ignoreInitialValue = false)
 

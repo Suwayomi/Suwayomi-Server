@@ -67,16 +67,24 @@ fun initLoggerConfig(appRootPath: String) {
     logger.addAppender(createRollingFileAppender(context, "$appRootPath/logs"))
 
     // set "kotlin exposed" log level
-    getLogger("Exposed").level = Level.ERROR
+    setLogLevelFor("Exposed", Level.ERROR)
 
     // gql "ExecutionStrategy" spams logs with "... completing field ..."
     // gql "notprivacysafe" logs every received request multiple times (received, parsing, validating, executing)
-    getLogger("graphql").level = Level.ERROR
-    getLogger("notprivacysafe").level = Level.ERROR
+    setLogLevelFor("graphql", Level.ERROR)
+    setLogLevelFor("notprivacysafe", Level.ERROR)
 }
 
-fun setLogLevel(level: Level) {
-    getBaseLogger().level = level
+const val BASE_LOGGER_NAME = "_BaseLogger"
+
+fun setLogLevelFor(name: String, level: Level) {
+    val logger = if (name == BASE_LOGGER_NAME) {
+        getBaseLogger()
+    } else {
+        getLogger(name)
+    }
+
+    logger.level = level
 }
 
 fun debugLogsEnabled(config: Config) =
