@@ -13,6 +13,7 @@ import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.source.local.LocalSource
 import io.javalin.plugin.json.JavalinJackson
 import io.javalin.plugin.json.JsonMapper
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
@@ -74,18 +75,25 @@ fun applicationSetup() {
         ServerConfig.register { GlobalConfigManager.config }
     )
 
-    serverConfig.subscribeTo(serverConfig.debugLogsEnabled, { debugLogsEnabled ->
-        if (debugLogsEnabled) {
-            setLogLevelFor(BASE_LOGGER_NAME, Level.DEBUG)
-        } else {
-            setLogLevelFor(BASE_LOGGER_NAME, Level.INFO)
-        }
-    }, ignoreInitialValue = false)
-
     // Application dirs
     val applicationDirs = ApplicationDirs()
 
     initLoggerConfig(applicationDirs.dataRoot)
+
+    val setupLogLevelUpdating = { configFlow: MutableStateFlow<Boolean>, loggerNames: List<String> ->
+        serverConfig.subscribeTo(configFlow, { debugLogsEnabled ->
+            if (debugLogsEnabled) {
+                loggerNames.forEach { loggerName -> setLogLevelFor(loggerName, Level.DEBUG) }
+            } else {
+                loggerNames.forEach { loggerName -> setLogLevelFor(loggerName, Level.ERROR) }
+            }
+        }, ignoreInitialValue = false)
+    }
+
+    setupLogLevelUpdating(serverConfig.debugLogsEnabled, listOf(BASE_LOGGER_NAME))
+    // gql "ExecutionStrategy" spams logs with "... completing field ..."
+    // gql "notprivacysafe" logs every received request multiple times (received, parsing, validating, executing)
+    setupLogLevelUpdating(serverConfig.gqlDebugLogsEnabled, listOf("graphql", "notprivacysafe"))
 
     logger.info("Running Tachidesk ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")
 
