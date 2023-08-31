@@ -63,6 +63,11 @@ fun initLoggerConfig(appRootPath: String) {
 
     // set "kotlin exposed" log level
     context.getLogger("Exposed").level = Level.ERROR
+
+    // gql "ExecutionStrategy" spams logs with "... completing field ..."
+    // gql "notprivacysafe" logs every received request multiple times (received, parsing, validating, executing)
+    context.getLogger("graphql").level = Level.ERROR
+    context.getLogger("notprivacysafe").level = Level.ERROR
 }
 
 fun setLogLevel(level: Level) {
