@@ -44,7 +44,7 @@ import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class ExtensionQuery {
-    fun extension(dataFetchingEnvironment: DataFetchingEnvironment, pkgName: String): CompletableFuture<ExtensionType?> {
+    fun extension(dataFetchingEnvironment: DataFetchingEnvironment, pkgName: String): CompletableFuture<ExtensionType> {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         return dataFetchingEnvironment.getValueFromDataLoader("ExtensionDataLoader", pkgName)
     }

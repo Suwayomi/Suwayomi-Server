@@ -8,7 +8,6 @@ package suwayomi.tachidesk.manga.controller
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.javalin.http.HttpCode
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.kodein.di.DI
 import org.kodein.di.conf.global
@@ -18,7 +17,7 @@ import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.Page
-import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
+import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyByIndex
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
@@ -310,7 +309,7 @@ object MangaController {
         },
         behaviorOf = { ctx, mangaId, chapterIndex ->
             val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-            ctx.future(future { getChapterDownloadReady(userId, chapterIndex, mangaId) })
+            ctx.future(future { getChapterDownloadReadyByIndex(userId, chapterIndex, mangaId) })
         },
         withResults = {
             json<ChapterDataClass>(HttpCode.OK)

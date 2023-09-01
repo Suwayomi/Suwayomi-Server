@@ -39,9 +39,9 @@ import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class MetaQuery {
-    fun meta(dataFetchingEnvironment: DataFetchingEnvironment, key: String): CompletableFuture<GlobalMetaType?> {
+    fun meta(dataFetchingEnvironment: DataFetchingEnvironment, key: String): CompletableFuture<GlobalMetaType> {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        return dataFetchingEnvironment.getValueFromDataLoader<String, GlobalMetaType?>("GlobalMetaDataLoader", key)
+        return dataFetchingEnvironment.getValueFromDataLoader("GlobalMetaDataLoader", key)
     }
 
     enum class MetaOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<GlobalMetaType> {

@@ -44,9 +44,9 @@ import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class SourceQuery {
-    fun source(dataFetchingEnvironment: DataFetchingEnvironment, id: Long): CompletableFuture<SourceType?> {
+    fun source(dataFetchingEnvironment: DataFetchingEnvironment, id: Long): CompletableFuture<SourceType> {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        return dataFetchingEnvironment.getValueFromDataLoader<Long, SourceType?>("SourceDataLoader", id)
+        return dataFetchingEnvironment.getValueFromDataLoader("SourceDataLoader", id)
     }
 
     enum class SourceOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<SourceType> {

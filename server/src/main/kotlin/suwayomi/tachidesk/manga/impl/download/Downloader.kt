@@ -20,7 +20,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
-import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
+import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyByIndex
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Error
@@ -98,7 +98,7 @@ class Downloader(
                 download.state = Downloading
                 step(download, true)
 
-                download.chapter = getChapterDownloadReady(0, download.chapterIndex, download.mangaId) // no need for user id here
+                download.chapter = getChapterDownloadReadyByIndex(0, download.chapterIndex, download.mangaId) // no need for user id here
                 step(download, false)
 
                 ChapterDownloadHelper.download(download.mangaId, download.chapter.id, download, scope, this::step)

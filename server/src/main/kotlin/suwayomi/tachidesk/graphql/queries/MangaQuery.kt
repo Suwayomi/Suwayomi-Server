@@ -48,7 +48,7 @@ import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class MangaQuery {
-    fun manga(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<MangaType?> {
+    fun manga(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<MangaType> {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         return dataFetchingEnvironment.getValueFromDataLoader("MangaDataLoader", id)
     }

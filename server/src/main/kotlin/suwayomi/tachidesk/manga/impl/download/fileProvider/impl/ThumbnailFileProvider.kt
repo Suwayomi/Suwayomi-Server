@@ -37,14 +37,10 @@ class ThumbnailFileProvider(val mangaId: Int) : DownloadedFilesProvider {
     }
 
     override fun getImage(): RetrieveFile0Args {
-        return object : RetrieveFile0Args {
-            override fun execute(): Pair<InputStream, String> {
-                return getImageImpl()
-            }
-        }
+        return RetrieveFile0Args(::getImageImpl)
     }
 
-    suspend fun downloadImpl(): Boolean {
+    private suspend fun downloadImpl(): Boolean {
         val isExistingFile = getFilePath() != null
         if (isExistingFile) {
             return true
@@ -60,11 +56,7 @@ class ThumbnailFileProvider(val mangaId: Int) : DownloadedFilesProvider {
     }
 
     override fun download(): FileDownload0Args {
-        return object : FileDownload0Args {
-            override suspend fun execute(): Boolean {
-                return downloadImpl()
-            }
-        }
+        return FileDownload0Args(::downloadImpl)
     }
 
     override fun delete(): Boolean {

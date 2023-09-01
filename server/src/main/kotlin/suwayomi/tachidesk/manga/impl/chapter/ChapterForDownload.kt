@@ -12,7 +12,8 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.batchInsert
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -30,16 +31,25 @@ import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import java.io.File
 
-suspend fun getChapterDownloadReady(userId: Int, chapterIndex: Int, mangaId: Int): ChapterDataClass {
-    val chapter = ChapterForDownload(userId, chapterIndex, mangaId)
+suspend fun getChapterDownloadReady(userId: Int, chapterId: Int? = null, chapterIndex: Int? = null, mangaId: Int? = null): ChapterDataClass {
+    val chapter = ChapterForDownload(userId, chapterId, chapterIndex, mangaId)
 
     return chapter.asDownloadReady()
 }
 
+suspend fun getChapterDownloadReadyById(userId: Int, chapterId: Int): ChapterDataClass {
+    return getChapterDownloadReady(userId = userId, chapterId = chapterId)
+}
+
+suspend fun getChapterDownloadReadyByIndex(userId: Int, chapterIndex: Int, mangaId: Int): ChapterDataClass {
+    return getChapterDownloadReady(userId = userId, chapterIndex = chapterIndex, mangaId = mangaId)
+}
+
 private class ChapterForDownload(
     private val userId: Int,
-    private val chapterIndex: Int,
-    private val mangaId: Int
+    optChapterId: Int? = null,
+    optChapterIndex: Int? = null,
+    optMangaId: Int? = null
 ) {
     suspend fun asDownloadReady(): ChapterDataClass {
         if (isNotCompletelyDownloaded()) {
@@ -55,11 +65,27 @@ private class ChapterForDownload(
 
     private fun asDataClass() = ChapterTable.toDataClass(userId, chapterEntry) // no need for user id
 
-    var chapterEntry: ResultRow = freshChapterEntry()
+    var chapterEntry: ResultRow
+    val chapterId: Int
+    val chapterIndex: Int
+    val mangaId: Int
 
-    private fun freshChapterEntry() = transaction {
+    init {
+        chapterEntry = freshChapterEntry(optChapterId, optChapterIndex, optMangaId)
+        chapterId = chapterEntry[ChapterTable.id].value
+        chapterIndex = chapterEntry[ChapterTable.sourceOrder]
+        mangaId = chapterEntry[ChapterTable.manga].value
+    }
+
+    private fun freshChapterEntry(optChapterId: Int? = null, optChapterIndex: Int? = null, optMangaId: Int? = null) = transaction {
         ChapterTable.getWithUserData(userId).select {
-            (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId)
+            if (optChapterId != null) {
+                ChapterTable.id eq optChapterId
+            } else if (optChapterIndex != null && optMangaId != null) {
+                (ChapterTable.sourceOrder eq optChapterIndex) and (ChapterTable.manga eq optMangaId)
+            } else {
+                throw Exception("'optChapterId' or 'optChapterIndex' and 'optMangaId' have to be passed")
+            }
         }.first()
     }
 
@@ -85,51 +111,37 @@ private class ChapterForDownload(
     }
 
     private fun updateDatabasePages(pageList: List<Page>) {
-        val chapterId = chapterEntry[ChapterTable.id].value
-
         transaction {
-            pageList.forEach { page ->
-                val pageEntry = transaction {
-                    PageTable.select { (PageTable.chapter eq chapterId) and (PageTable.index eq page.index) }
-                        .firstOrNull()
-                }
-                if (pageEntry == null) {
-                    PageTable.insert {
-                        it[index] = page.index
-                        it[url] = page.url
-                        it[imageUrl] = page.imageUrl
-                        it[chapter] = chapterId
-                    }
-                } else {
-                    PageTable.update({ (PageTable.chapter eq chapterId) and (PageTable.index eq page.index) }) {
-                        it[url] = page.url
-                        it[imageUrl] = page.imageUrl
-                    }
-                }
+            PageTable.deleteWhere { PageTable.chapter eq chapterId }
+            PageTable.batchInsert(pageList) { page ->
+                this[PageTable.index] = page.index
+                this[PageTable.url] = page.url
+                this[PageTable.imageUrl] = page.imageUrl
+                this[PageTable.chapter] = chapterId
             }
         }
 
         updatePageCount(pageList, chapterId)
 
         // chapter was updated
-        chapterEntry = freshChapterEntry()
+        chapterEntry = freshChapterEntry(chapterId, chapterIndex, mangaId)
     }
 
     private fun updatePageCount(
         pageList: List<Page>,
         chapterId: Int
     ) {
-        val pageCount = pageList.count()
-
         transaction {
             ChapterTable.update({ ChapterTable.id eq chapterId }) {
+                val pageCount = pageList.size
                 it[ChapterTable.pageCount] = pageCount
             }
+            val pageCount = pageList.size
             ChapterUserTable.select {
-                ChapterUserTable.chapter eq chapterId and (ChapterUserTable.lastPageRead greater pageCount)
+                ChapterUserTable.chapter eq chapterId and (ChapterUserTable.lastPageRead greaterEq pageCount)
             }.forEach { row ->
                 ChapterUserTable.update({ ChapterUserTable.id eq row[ChapterUserTable.id] }) {
-                    it[ChapterUserTable.lastPageRead] = pageCount
+                    it[ChapterUserTable.lastPageRead] = pageCount - 1
                 }
             }
         }

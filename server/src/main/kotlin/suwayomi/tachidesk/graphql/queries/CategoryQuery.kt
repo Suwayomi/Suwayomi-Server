@@ -43,7 +43,7 @@ import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class CategoryQuery {
-    fun category(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<CategoryType?> {
+    fun category(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<CategoryType> {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         return dataFetchingEnvironment.getValueFromDataLoader("CategoryDataLoader", id)
     }

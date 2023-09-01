@@ -79,7 +79,7 @@ fun applicationSetup() {
         } else {
             setLogLevel(Level.INFO)
         }
-    })
+    }, ignoreInitialValue = false)
 
     // Application dirs
     val applicationDirs = ApplicationDirs()
@@ -109,6 +109,23 @@ fun applicationSetup() {
     File("$ApplicationRootDir/manga-thumbnails").renameTo(applicationDirs.tempThumbnailCacheRoot)
     File("$ApplicationRootDir/manga-local").renameTo(applicationDirs.localMangaRoot)
     File("$ApplicationRootDir/anime-thumbnails").delete()
+
+    val oldMangaDownloadDir = File(applicationDirs.downloadsRoot)
+    val newMangaDownloadDir = File(applicationDirs.mangaDownloadsRoot)
+    val downloadDirs = oldMangaDownloadDir.listFiles().orEmpty()
+
+    val moveDownloadsToNewFolder = !newMangaDownloadDir.exists() && downloadDirs.isNotEmpty()
+    if (moveDownloadsToNewFolder) {
+        newMangaDownloadDir.mkdirs()
+
+        for (downloadDir in downloadDirs) {
+            if (downloadDir == File(applicationDirs.thumbnailDownloadsRoot)) {
+                continue
+            }
+
+            downloadDir.renameTo(File(newMangaDownloadDir, downloadDir.name))
+        }
+    }
 
     // make dirs we need
     listOf(
@@ -206,7 +223,8 @@ fun applicationSetup() {
                 System.getProperties()["socksProxyHost"] = ""
                 System.getProperties()["socksProxyPort"] = ""
             }
-        }
+        },
+        ignoreInitialValue = false
     )
 
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga

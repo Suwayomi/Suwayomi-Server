@@ -9,8 +9,8 @@ import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream
 import org.apache.commons.compress.archivers.zip.ZipFile
 import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
+import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
-import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import java.io.File
 import java.io.InputStream
 
@@ -29,20 +29,19 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mang
         scope: CoroutineScope,
         step: suspend (DownloadChapter?, Boolean) -> Unit
     ): Boolean {
-        val chapterDir = getChapterDownloadPath(mangaId, chapterId)
         val outputFile = File(getChapterCbzPath(mangaId, chapterId))
-        val chapterFolder = File(chapterDir)
-        if (outputFile.exists()) handleExistingCbzFile(outputFile, chapterFolder)
+        val chapterCacheFolder = File(getChapterCachePath(mangaId, chapterId))
+        if (outputFile.exists()) handleExistingCbzFile(outputFile, chapterCacheFolder)
 
-        FolderProvider(mangaId, chapterId).download().execute(download, scope, step)
+        super.downloadImpl(download, scope, step)
 
         withContext(Dispatchers.IO) {
             outputFile.createNewFile()
         }
 
         ZipArchiveOutputStream(outputFile.outputStream()).use { zipOut ->
-            if (chapterFolder.isDirectory) {
-                chapterFolder.listFiles()?.sortedBy { it.name }?.forEach {
+            if (chapterCacheFolder.isDirectory) {
+                chapterCacheFolder.listFiles()?.sortedBy { it.name }?.forEach {
                     val entry = ZipArchiveEntry(it.name)
                     try {
                         zipOut.putArchiveEntry(entry)
@@ -56,8 +55,8 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mang
             }
         }
 
-        if (chapterFolder.exists() && chapterFolder.isDirectory) {
-            chapterFolder.deleteRecursively()
+        if (chapterCacheFolder.exists() && chapterCacheFolder.isDirectory) {
+            chapterCacheFolder.deleteRecursively()
         }
 
         return true
