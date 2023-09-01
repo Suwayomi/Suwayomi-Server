@@ -28,10 +28,17 @@ class TachideskGraphQLContextFactory : GraphQLContextFactory<com.expediagroup.gr
         )
     }
 
+    fun generateContextMap(request: WsContext): Map<Any, Any> {
+        return mapOf(
+            Context::class to request,
+            request.getPair(Attribute.TachideskUser)
+        )
+    }
+
     private fun <T : Any> Context.getPair(attribute: Attribute<T>) =
         attribute to getAttribute(attribute)
-
-    fun generateContextMap(request: WsContext): Map<*, Any> = emptyMap<Any, Any>()
+    private fun <T : Any> WsContext.getPair(attribute: Attribute<T>) =
+        attribute to getAttribute(attribute)
 }
 
 /**

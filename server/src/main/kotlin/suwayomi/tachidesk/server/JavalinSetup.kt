@@ -17,6 +17,8 @@ import io.javalin.http.staticfiles.Location
 import io.javalin.plugin.openapi.OpenApiOptions
 import io.javalin.plugin.openapi.OpenApiPlugin
 import io.javalin.plugin.openapi.ui.SwaggerOptions
+import io.javalin.websocket.WsConnectContext
+import io.javalin.websocket.WsContext
 import io.swagger.v3.oas.models.info.Info
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -125,6 +127,27 @@ object JavalinSetup {
             }
         }.start()
 
+        app.wsBefore {
+            it.onConnect { ctx ->
+                val user = if (serverConfig.multiUser.value) {
+                    val authentication = ctx.header(Header.AUTHORIZATION)
+                    if (authentication.isNullOrBlank()) {
+                        val token = ctx.queryParam("token")
+                        if (token.isNullOrBlank()) {
+                            UserType.Visitor
+                        } else {
+                            Jwt.verifyJwt(token)
+                        }
+                    } else {
+                        Jwt.verifyJwt(authentication.substringAfter("Bearer "))
+                    }
+                } else {
+                    UserType.Admin(1)
+                }
+                ctx.setAttribute(Attribute.TachideskUser, user)
+            }
+        }
+
         // when JVM is prompted to shutdown, stop javalin gracefully
         Runtime.getRuntime().addShutdownHook(
             thread(start = false) {
@@ -201,7 +224,15 @@ object JavalinSetup {
         attribute(attribute.name, value)
     }
 
+    private fun <T : Any> WsContext.setAttribute(attribute: Attribute<T>, value: T) {
+        attribute(attribute.name, value)
+    }
+
     fun <T : Any> Context.getAttribute(attribute: Attribute<T>): T {
+        return attribute(attribute.name)!!
+    }
+
+    fun <T : Any> WsContext.getAttribute(attribute: Attribute<T>): T {
         return attribute(attribute.name)!!
     }
 }
