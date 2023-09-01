@@ -79,6 +79,18 @@ class MangaType(
         dataClass.chaptersLastFetchedAt
     )
 
+    fun downloadCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> {
+        return dataFetchingEnvironment.getValueFromDataLoader("DownloadedChapterCountForMangaDataLoader", id)
+    }
+
+    fun unreadCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> {
+        return dataFetchingEnvironment.getValueFromDataLoader("UnreadChapterCountForMangaDataLoader", id)
+    }
+
+    fun lastReadChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> {
+        return dataFetchingEnvironment.getValueFromDataLoader("LastReadChapterForMangaDataLoader", id)
+    }
+
     fun chapters(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterNodeList> {
         return dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterNodeList>("ChaptersForMangaDataLoader", id)
     }
