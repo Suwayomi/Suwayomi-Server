@@ -7,7 +7,6 @@
 
 package suwayomi.tachidesk.graphql.server.subscriptions
 
-import com.expediagroup.graphql.generator.extensions.toGraphQLContext
 import com.expediagroup.graphql.server.types.GraphQLRequest
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.convertValue
@@ -35,6 +34,7 @@ import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMess
 import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ServerMessages.GQL_CONNECTION_ACK
 import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ServerMessages.GQL_ERROR
 import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ServerMessages.GQL_NEXT
+import suwayomi.tachidesk.graphql.server.toGraphQLContext
 
 /**
  * Implementation of the `graphql-ws` protocol defined by Apollo

@@ -7,7 +7,6 @@
 
 package suwayomi.tachidesk.graphql.server.subscriptions
 
-import com.expediagroup.graphql.generator.extensions.toGraphQLContext
 import graphql.GraphQLContext
 import io.javalin.websocket.WsContext
 import kotlinx.coroutines.Job
@@ -15,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.onCompletion
 import org.eclipse.jetty.websocket.api.CloseStatus
+import suwayomi.tachidesk.graphql.server.toGraphQLContext
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 

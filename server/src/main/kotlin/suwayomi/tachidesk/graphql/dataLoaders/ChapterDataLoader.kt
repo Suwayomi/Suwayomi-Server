@@ -8,7 +8,6 @@
 package suwayomi.tachidesk.graphql.dataLoaders
 
 import com.expediagroup.graphql.dataloader.KotlinDataLoader
-import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
@@ -27,9 +26,9 @@ import suwayomi.tachidesk.server.user.requireUser
 
 class ChapterDataLoader : KotlinDataLoader<Int, ChapterType?> {
     override val dataLoaderName = "ChapterDataLoader"
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType?> = DataLoaderFactory.newDataLoader<Int, ChapterType> { ids ->
+    override fun getDataLoader(): DataLoader<Int, ChapterType?> = DataLoaderFactory.newDataLoader<Int, ChapterType> { ids, env ->
         future {
-            val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
+            val userId = env.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
                 val chapters = ChapterTable.getWithUserData(userId)
@@ -44,9 +43,9 @@ class ChapterDataLoader : KotlinDataLoader<Int, ChapterType?> {
 
 class ChaptersForMangaDataLoader : KotlinDataLoader<Int, ChapterNodeList> {
     override val dataLoaderName = "ChaptersForMangaDataLoader"
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterNodeList> = DataLoaderFactory.newDataLoader<Int, ChapterNodeList> { ids ->
+    override fun getDataLoader(): DataLoader<Int, ChapterNodeList> = DataLoaderFactory.newDataLoader<Int, ChapterNodeList> { ids, env ->
         future {
-            val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
+            val userId = env.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
                 val chaptersByMangaId = ChapterTable.getWithUserData(userId)

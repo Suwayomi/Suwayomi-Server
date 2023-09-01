@@ -8,7 +8,6 @@
 package suwayomi.tachidesk.graphql.dataLoaders
 
 import com.expediagroup.graphql.dataloader.KotlinDataLoader
-import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
@@ -24,7 +23,7 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 
 class SourceDataLoader : KotlinDataLoader<Long, SourceType?> {
     override val dataLoaderName = "SourceDataLoader"
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Long, SourceType?> = DataLoaderFactory.newDataLoader { ids ->
+    override fun getDataLoader(): DataLoader<Long, SourceType?> = DataLoaderFactory.newDataLoader { ids ->
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
@@ -39,7 +38,7 @@ class SourceDataLoader : KotlinDataLoader<Long, SourceType?> {
 
 class SourcesForExtensionDataLoader : KotlinDataLoader<String, SourceNodeList> {
     override val dataLoaderName = "SourcesForExtensionDataLoader"
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, SourceNodeList> = DataLoaderFactory.newDataLoader { ids ->
+    override fun getDataLoader(): DataLoader<String, SourceNodeList> = DataLoaderFactory.newDataLoader { ids ->
         future {
             transaction {
                 addLogger(Slf4jSqlDebugLogger)
