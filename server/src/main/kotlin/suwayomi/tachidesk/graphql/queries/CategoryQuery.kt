@@ -40,7 +40,7 @@ import suwayomi.tachidesk.manga.model.table.CategoryTable
 import java.util.concurrent.CompletableFuture
 
 class CategoryQuery {
-    fun category(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<CategoryType?> {
+    fun category(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<CategoryType> {
         return dataFetchingEnvironment.getValueFromDataLoader("CategoryDataLoader", id)
     }
 

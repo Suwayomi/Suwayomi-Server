@@ -40,8 +40,8 @@ import suwayomi.tachidesk.manga.model.table.SourceTable
 import java.util.concurrent.CompletableFuture
 
 class SourceQuery {
-    fun source(dataFetchingEnvironment: DataFetchingEnvironment, id: Long): CompletableFuture<SourceType?> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Long, SourceType?>("SourceDataLoader", id)
+    fun source(dataFetchingEnvironment: DataFetchingEnvironment, id: Long): CompletableFuture<SourceType> {
+        return dataFetchingEnvironment.getValueFromDataLoader("SourceDataLoader", id)
     }
 
     enum class SourceOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<SourceType> {

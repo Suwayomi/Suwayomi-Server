@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.manga.impl.download
+package suwayomi.tachidesk.manga.impl.download.fileProvider
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
@@ -8,42 +8,36 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
 import suwayomi.tachidesk.manga.impl.Page
-import suwayomi.tachidesk.manga.impl.Page.getPageName
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
-import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
-import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
+import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import java.io.File
-import java.io.FileInputStream
 import java.io.InputStream
 
 /*
-* Provides downloaded files when pages were downloaded into folders
+* Base class for downloaded chapter files provider, example: Folder, Archive
 * */
-class FolderProvider(mangaId: Int, chapterId: Int) : DownloadedFilesProvider(mangaId, chapterId) {
-    override fun getImage(index: Int): Pair<InputStream, String> {
-        val chapterDir = getChapterDownloadPath(mangaId, chapterId)
-        val folder = File(chapterDir)
-        folder.mkdirs()
-        val file = folder.listFiles()?.sortedBy { it.name }?.get(index)
-        val fileType = file!!.name.substringAfterLast(".")
-        return Pair(FileInputStream(file).buffered(), "image/$fileType")
+abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : DownloadedFilesProvider {
+    abstract fun getImageImpl(index: Int): Pair<InputStream, String>
+
+    override fun getImage(): RetrieveFile1Args<Int> {
+        return RetrieveFile1Args(::getImageImpl)
     }
 
     @OptIn(FlowPreview::class)
-    override suspend fun download(
+    open suspend fun downloadImpl(
         download: DownloadChapter,
         scope: CoroutineScope,
         step: suspend (DownloadChapter?, Boolean) -> Unit
     ): Boolean {
         val pageCount = download.chapter.pageCount
-        val chapterDir = getChapterDownloadPath(mangaId, chapterId)
+        val chapterDir = getChapterCachePath(mangaId, chapterId)
         val folder = File(chapterDir)
         folder.mkdirs()
 
         for (pageNum in 0 until pageCount) {
             var pageProgressJob: Job? = null
-            val fileName = getPageName(pageNum) // might have to change this to index stored in database
-            if (isExistingFile(folder, fileName)) continue
+            val fileName = Page.getPageName(pageNum) // might have to change this to index stored in database
+            if (File(folder, fileName).exists()) continue
             try {
                 Page.getPageImage(
                     mangaId = download.mangaId,
@@ -58,9 +52,6 @@ class FolderProvider(mangaId: Int, chapterId: Int) : DownloadedFilesProvider(man
                             step(null, false) // don't throw on canceled download here since we can't do anything
                         }
                         .launchIn(scope)
-                }.first.use { image ->
-                    val filePath = "$chapterDir/$fileName"
-                    ImageResponse.saveImage(filePath, image)
                 }
             } finally {
                 // always cancel the page progress job even if it throws an exception to avoid memory leaks
@@ -73,15 +64,9 @@ class FolderProvider(mangaId: Int, chapterId: Int) : DownloadedFilesProvider(man
         return true
     }
 
-    override fun delete(): Boolean {
-        val chapterDir = getChapterDownloadPath(mangaId, chapterId)
-        return File(chapterDir).deleteRecursively()
+    override fun download(): FileDownload3Args<DownloadChapter, CoroutineScope, suspend (DownloadChapter?, Boolean) -> Unit> {
+        return FileDownload3Args(::downloadImpl)
     }
 
-    private fun isExistingFile(folder: File, fileName: String): Boolean {
-        val existingFile = folder.listFiles { file ->
-            file.isFile && file.name.startsWith(fileName)
-        }?.firstOrNull()
-        return existingFile?.exists() == true
-    }
+    abstract override fun delete(): Boolean
 }

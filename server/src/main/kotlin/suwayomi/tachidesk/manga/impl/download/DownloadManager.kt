@@ -42,6 +42,7 @@ import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.concurrent.ConcurrentHashMap
@@ -50,8 +51,6 @@ import kotlin.reflect.jvm.jvmName
 import kotlin.time.Duration.Companion.seconds
 
 private val logger = KotlinLogging.logger {}
-
-private const val MAX_SOURCES_IN_PARAllEL = 5
 
 object DownloadManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -169,6 +168,22 @@ object DownloadManager {
 
     private val downloaderWatch = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     init {
+        serverConfig.subscribeTo(serverConfig.maxSourcesInParallel, { maxSourcesInParallel ->
+            val runningDownloaders = downloaders.values.filter { it.isActive }
+            var downloadersToStop = runningDownloaders.size - maxSourcesInParallel
+
+            logger.debug { "Max sources in parallel changed to $maxSourcesInParallel (running downloaders ${runningDownloaders.size})" }
+
+            if (downloadersToStop > 0) {
+                runningDownloaders.takeWhile {
+                    it.stop()
+                    --downloadersToStop > 0
+                }
+            } else {
+                downloaderWatch.emit(Unit)
+            }
+        })
+
         scope.launch {
             downloaderWatch.sample(1.seconds).collect {
                 val runningDownloaders = downloaders.values.filter { it.isActive }
@@ -176,14 +191,14 @@ object DownloadManager {
 
                 logger.info { "Running: ${runningDownloaders.size}, Queued: ${availableDownloads.size}, Failed: ${downloadQueue.size - availableDownloads.size}" }
 
-                if (runningDownloaders.size < MAX_SOURCES_IN_PARAllEL) {
+                if (runningDownloaders.size < serverConfig.maxSourcesInParallel.value) {
                     availableDownloads.asSequence()
                         .map { it.manga.sourceId }
                         .distinct()
                         .minus(
                             runningDownloaders.map { it.sourceId }.toSet()
                         )
-                        .take(MAX_SOURCES_IN_PARAllEL - runningDownloaders.size)
+                        .take(serverConfig.maxSourcesInParallel.value - runningDownloaders.size)
                         .map { getDownloader(it) }
                         .forEach {
                             it.start()

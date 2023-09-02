@@ -6,7 +6,8 @@ enum class JobStatus {
     PENDING,
     RUNNING,
     COMPLETE,
-    FAILED
+    FAILED,
+    SKIPPED
 }
 
 data class UpdateJob(

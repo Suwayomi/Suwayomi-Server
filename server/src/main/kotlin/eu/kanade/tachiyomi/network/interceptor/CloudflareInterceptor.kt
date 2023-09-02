@@ -87,8 +87,8 @@ object CFClearance {
                 LaunchOptions()
                     .setHeadless(false)
                     .apply {
-                        if (serverConfig.socksProxyEnabled) {
-                            setProxy("socks5://${serverConfig.socksProxyHost}:${serverConfig.socksProxyPort}")
+                        if (serverConfig.socksProxyEnabled.value) {
+                            setProxy("socks5://${serverConfig.socksProxyHost.value}:${serverConfig.socksProxyPort.value}")
                         }
                     }
             ).use { browser ->

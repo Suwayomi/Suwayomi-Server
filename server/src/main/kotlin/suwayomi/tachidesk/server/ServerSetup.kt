@@ -7,11 +7,13 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import ch.qos.logback.classic.Level
 import com.typesafe.config.ConfigRenderOptions
 import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.source.local.LocalSource
 import io.javalin.plugin.json.JavalinJackson
 import io.javalin.plugin.json.JsonMapper
+import kotlinx.coroutines.flow.combine
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -26,13 +28,14 @@ import suwayomi.tachidesk.manga.impl.update.Updater
 import suwayomi.tachidesk.manga.impl.util.lang.renameTo
 import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
-import suwayomi.tachidesk.server.util.SystemTray.systemTray
+import suwayomi.tachidesk.server.util.SystemTray
 import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
 import xyz.nulldev.ts.config.ApplicationRootDir
 import xyz.nulldev.ts.config.ConfigKodeinModule
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.initLoggerConfig
+import xyz.nulldev.ts.config.setLogLevel
 import java.io.File
 import java.security.Security
 import java.util.Locale
@@ -43,26 +46,25 @@ class ApplicationDirs(
     val dataRoot: String = ApplicationRootDir,
     val tempRoot: String = "${System.getProperty("java.io.tmpdir")}/Tachidesk"
 ) {
-    val cacheRoot = System.getProperty("java.io.tmpdir") + "/tachidesk"
     val extensionsRoot = "$dataRoot/extensions"
-    val thumbnailsRoot = "$dataRoot/thumbnails"
-    val mangaDownloadsRoot = serverConfig.downloadsPath.ifBlank { "$dataRoot/downloads" }
-    val localMangaRoot = serverConfig.localSourcePath.ifBlank { "$dataRoot/local" }
+    val downloadsRoot get() = serverConfig.downloadsPath.value.ifBlank { "$dataRoot/downloads" }
+    val localMangaRoot get() = serverConfig.localSourcePath.value.ifBlank { "$dataRoot/local" }
     val webUIRoot = "$dataRoot/webUI"
-    val automatedBackupRoot = serverConfig.backupPath.ifBlank { "$dataRoot/backups" }
+    val automatedBackupRoot get() = serverConfig.backupPath.value.ifBlank { "$dataRoot/backups" }
 
+    val tempThumbnailCacheRoot = "$tempRoot/thumbnails"
     val tempMangaCacheRoot = "$tempRoot/manga-cache"
+
+    val thumbnailDownloadsRoot get() = "$downloadsRoot/thumbnails"
+    val mangaDownloadsRoot get() = "$downloadsRoot/mangas"
 }
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
-val systemTrayInstance by lazy { systemTray() }
-
 val androidCompat by lazy { AndroidCompat() }
 
 fun applicationSetup() {
-    Thread.setDefaultUncaughtExceptionHandler {
-            _, throwable ->
+    Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
         KotlinLogging.logger { }.error(throwable) { "unhandled exception" }
     }
 
@@ -70,6 +72,14 @@ fun applicationSetup() {
     GlobalConfigManager.registerModule(
         ServerConfig.register { GlobalConfigManager.config }
     )
+
+    serverConfig.subscribeTo(serverConfig.debugLogsEnabled, { debugLogsEnabled ->
+        if (debugLogsEnabled) {
+            setLogLevel(Level.DEBUG)
+        } else {
+            setLogLevel(Level.INFO)
+        }
+    }, ignoreInitialValue = false)
 
     // Application dirs
     val applicationDirs = ApplicationDirs()
@@ -96,17 +106,34 @@ fun applicationSetup() {
     logger.debug("Data Root directory is set to: ${applicationDirs.dataRoot}")
 
     // Migrate Directories from old versions
-    File("$ApplicationRootDir/manga-thumbnails").renameTo(applicationDirs.thumbnailsRoot)
+    File("$ApplicationRootDir/manga-thumbnails").renameTo(applicationDirs.tempThumbnailCacheRoot)
     File("$ApplicationRootDir/manga-local").renameTo(applicationDirs.localMangaRoot)
     File("$ApplicationRootDir/anime-thumbnails").delete()
+
+    val oldMangaDownloadDir = File(applicationDirs.downloadsRoot)
+    val newMangaDownloadDir = File(applicationDirs.mangaDownloadsRoot)
+    val downloadDirs = oldMangaDownloadDir.listFiles().orEmpty()
+
+    val moveDownloadsToNewFolder = !newMangaDownloadDir.exists() && downloadDirs.isNotEmpty()
+    if (moveDownloadsToNewFolder) {
+        newMangaDownloadDir.mkdirs()
+
+        for (downloadDir in downloadDirs) {
+            if (downloadDir == File(applicationDirs.thumbnailDownloadsRoot)) {
+                continue
+            }
+
+            downloadDir.renameTo(File(newMangaDownloadDir, downloadDir.name))
+        }
+    }
 
     // make dirs we need
     listOf(
         applicationDirs.dataRoot,
         applicationDirs.extensionsRoot,
         applicationDirs.extensionsRoot + "/icon",
-        applicationDirs.thumbnailsRoot,
-        applicationDirs.mangaDownloadsRoot,
+        applicationDirs.tempThumbnailCacheRoot,
+        applicationDirs.downloadsRoot,
         applicationDirs.localMangaRoot
     ).forEach {
         File(it).mkdirs()
@@ -161,13 +188,17 @@ fun applicationSetup() {
     LocalSource.register()
 
     // create system tray
-    if (serverConfig.systemTrayEnabled) {
+    serverConfig.subscribeTo(serverConfig.systemTrayEnabled, { systemTrayEnabled ->
         try {
-            systemTrayInstance
+            if (systemTrayEnabled) {
+                SystemTray.create()
+            } else {
+                SystemTray.remove()
+            }
         } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
             e.printStackTrace()
         }
-    }
+    }, ignoreInitialValue = false)
 
     // Disable jetty's logging
     System.setProperty("org.eclipse.jetty.util.log.announce", "false")
@@ -175,11 +206,26 @@ fun applicationSetup() {
     System.setProperty("org.eclipse.jetty.LEVEL", "OFF")
 
     // socks proxy settings
-    if (serverConfig.socksProxyEnabled) {
-        System.getProperties()["socksProxyHost"] = serverConfig.socksProxyHost
-        System.getProperties()["socksProxyPort"] = serverConfig.socksProxyPort
-        logger.info("Socks Proxy is enabled to ${serverConfig.socksProxyHost}:${serverConfig.socksProxyPort}")
-    }
+    serverConfig.subscribeTo(
+        combine(
+            serverConfig.socksProxyEnabled,
+            serverConfig.socksProxyHost,
+            serverConfig.socksProxyPort
+        ) { proxyEnabled, proxyHost, proxyPort ->
+            Triple(proxyEnabled, proxyHost, proxyPort)
+        },
+        { (proxyEnabled, proxyHost, proxyPort) ->
+            logger.info("Socks Proxy changed - enabled= $proxyEnabled, proxy= $proxyHost:$proxyPort")
+            if (proxyEnabled) {
+                System.getProperties()["socksProxyHost"] = proxyHost
+                System.getProperties()["socksProxyPort"] = proxyPort
+            } else {
+                System.getProperties()["socksProxyHost"] = ""
+                System.getProperties()["socksProxyPort"] = ""
+            }
+        },
+        ignoreInitialValue = false
+    )
 
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
     Security.addProvider(BouncyCastleProvider())

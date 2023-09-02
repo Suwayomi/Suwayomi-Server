@@ -40,7 +40,7 @@ import suwayomi.tachidesk.manga.impl.util.PackageTools.getPackageInfo
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
-import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getCachedImageResponse
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -329,7 +329,7 @@ object Extension {
 
         val cacheSaveDir = "${applicationDirs.extensionsRoot}/icon"
 
-        return getCachedImageResponse(cacheSaveDir, apkName) {
+        return getImageResponse(cacheSaveDir, apkName) {
             network.client.newCall(
                 GET(iconUrl)
             ).await()

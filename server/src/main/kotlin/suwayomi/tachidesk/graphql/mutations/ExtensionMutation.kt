@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import eu.kanade.tachiyomi.source.local.LocalSource
+import io.javalin.http.UploadedFile
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.types.ExtensionType
@@ -121,6 +122,31 @@ class ExtensionMutation {
             FetchExtensionsPayload(
                 clientMutationId = clientMutationId,
                 extensions = extensions
+            )
+        }
+    }
+
+    data class InstallExternalExtensionInput(
+        val clientMutationId: String? = null,
+        val extensionFile: UploadedFile
+    )
+
+    data class InstallExternalExtensionPayload(
+        val clientMutationId: String?,
+        val extension: ExtensionType
+    )
+
+    fun installExternalExtension(input: InstallExternalExtensionInput): CompletableFuture<InstallExternalExtensionPayload> {
+        val (clientMutationId, extensionFile) = input
+
+        return future {
+            Extension.installExternalExtension(extensionFile.content, extensionFile.filename)
+        }.thenApply {
+            val dbExtension = transaction { ExtensionTable.select { ExtensionTable.apkName eq extensionFile.filename }.first() }
+
+            InstallExternalExtensionPayload(
+                clientMutationId,
+                extension = ExtensionType(dbExtension)
             )
         }
     }

@@ -36,6 +36,22 @@ class CategoryDataLoader : KotlinDataLoader<Int, CategoryType> {
     }
 }
 
+class CategoryForIdsDataLoader : KotlinDataLoader<List<Int>, CategoryNodeList> {
+    override val dataLoaderName = "CategoryForIdsDataLoader"
+    override fun getDataLoader(): DataLoader<List<Int>, CategoryNodeList> = DataLoaderFactory.newDataLoader { categoryIds ->
+        future {
+            transaction {
+                addLogger(Slf4jSqlDebugLogger)
+                val ids = categoryIds.flatten().distinct()
+                val categories = CategoryTable.select { CategoryTable.id inList ids }.map { CategoryType(it) }
+                categoryIds.map { categoryIds ->
+                    categories.filter { it.id in categoryIds }.toNodeList()
+                }
+            }
+        }
+    }
+}
+
 class CategoriesForMangaDataLoader : KotlinDataLoader<Int, CategoryNodeList> {
     override val dataLoaderName = "CategoriesForMangaDataLoader"
     override fun getDataLoader(): DataLoader<Int, CategoryNodeList> = DataLoaderFactory.newDataLoader<Int, CategoryNodeList> { ids ->
