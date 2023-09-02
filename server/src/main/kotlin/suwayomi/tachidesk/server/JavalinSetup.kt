@@ -17,7 +17,6 @@ import io.javalin.http.staticfiles.Location
 import io.javalin.plugin.openapi.OpenApiOptions
 import io.javalin.plugin.openapi.OpenApiPlugin
 import io.javalin.plugin.openapi.ui.SwaggerOptions
-import io.javalin.websocket.WsConnectContext
 import io.javalin.websocket.WsContext
 import io.swagger.v3.oas.models.info.Info
 import kotlinx.coroutines.CoroutineScope
