@@ -9,7 +9,13 @@ package suwayomi.tachidesk.graphql.types
 
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
+import mu.KotlinLogging
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SortOrder
+import suwayomi.tachidesk.graphql.dataLoaders.ChaptersContext
+import suwayomi.tachidesk.graphql.queries.ChapterQuery.ChapterFilter
+import suwayomi.tachidesk.graphql.queries.ChapterQuery.ChapterOrderBy
+import suwayomi.tachidesk.graphql.queries.ChapterQuery.MangaChapterCondition
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
@@ -79,8 +85,23 @@ class MangaType(
         dataClass.chaptersLastFetchedAt
     )
 
-    fun chapters(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterNodeList> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterNodeList>("ChaptersForMangaDataLoader", id)
+    fun chapters(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        condition: MangaChapterCondition? = null,
+        filter: ChapterFilter? = null,
+        orderBy: ChapterOrderBy? = null,
+        orderByType: SortOrder? = null,
+        before: Cursor? = null,
+        after: Cursor? = null,
+        first: Int? = null,
+        last: Int? = null,
+        offset: Int? = null
+    ): CompletableFuture<ChapterNodeList> {
+        val context = ChaptersContext(condition, filter, orderBy, orderByType, before, after, first, last, offset)
+        KotlinLogging.logger { }.info { "@Daniel $context" }
+        val dataLoader = dataFetchingEnvironment.getDataLoader<Int, ChapterNodeList>("ChaptersForMangaDataLoader")
+        return dataLoader.load(id, context)
+//        return dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterNodeList>("ChaptersForMangaDataLoader", id)
     }
 
     fun age(): Long? {
