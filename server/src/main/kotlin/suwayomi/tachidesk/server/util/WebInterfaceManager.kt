@@ -452,7 +452,7 @@ object WebInterfaceManager {
 
         for (i in 0 until webUIToServerVersionMappings.size) {
             val webUIToServerVersionEntry = webUIToServerVersionMappings[i].jsonObject
-            var webUIVersion = webUIToServerVersionEntry["uiVersion"].toString()
+            var webUIVersion = webUIToServerVersionEntry["uiVersion"]?.jsonPrimitive?.content ?: throw Exception("Invalid mappingFile")
             val minServerVersionString = webUIToServerVersionEntry["serverVersion"]?.jsonPrimitive?.content ?: throw Exception("Invalid mappingFile")
             val minServerVersionNumber = extractVersion(minServerVersionString)
 
