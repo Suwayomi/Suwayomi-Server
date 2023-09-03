@@ -40,9 +40,8 @@ class FolderProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(manga
             return false
         }
 
-        folder.mkdirs()
         val cacheChapterDir = getChapterCachePath(mangaId, chapterId)
-        File(cacheChapterDir).renameTo(folder)
+        File(cacheChapterDir).copyRecursively(folder, true)
 
         return true
     }
