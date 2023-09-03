@@ -55,6 +55,11 @@ private fun getBaseLogger(): ch.qos.logback.classic.Logger {
     return (KotlinLogging.logger(Logger.ROOT_LOGGER_NAME).underlyingLogger as ch.qos.logback.classic.Logger)
 }
 
+private fun getLogger(name: String): ch.qos.logback.classic.Logger {
+    val context = LoggerFactory.getILoggerFactory() as LoggerContext
+    return context.getLogger(name)
+}
+
 fun initLoggerConfig(appRootPath: String) {
     val context = LoggerFactory.getILoggerFactory() as LoggerContext
     val logger = getBaseLogger()
@@ -62,11 +67,19 @@ fun initLoggerConfig(appRootPath: String) {
     logger.addAppender(createRollingFileAppender(context, "$appRootPath/logs"))
 
     // set "kotlin exposed" log level
-    context.getLogger("Exposed").level = Level.ERROR
+    setLogLevelFor("Exposed", Level.ERROR)
 }
 
-fun setLogLevel(level: Level) {
-    getBaseLogger().level = level
+const val BASE_LOGGER_NAME = "_BaseLogger"
+
+fun setLogLevelFor(name: String, level: Level) {
+    val logger = if (name == BASE_LOGGER_NAME) {
+        getBaseLogger()
+    } else {
+        getLogger(name)
+    }
+
+    logger.level = level
 }
 
 fun debugLogsEnabled(config: Config) =

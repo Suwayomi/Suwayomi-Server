@@ -90,6 +90,7 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
 
     // misc
     val debugLogsEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
+    val gqlDebugLogsEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val systemTrayEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
 
     // backup

@@ -79,7 +79,7 @@ open class ConfigManager {
 
         // set log level early
         if (debugLogsEnabled(config)) {
-            setLogLevel(Level.DEBUG)
+            setLogLevelFor(BASE_LOGGER_NAME, Level.DEBUG)
         }
 
         return config

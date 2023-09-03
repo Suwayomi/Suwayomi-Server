@@ -13,6 +13,7 @@ import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.source.local.LocalSource
 import io.javalin.plugin.json.JavalinJackson
 import io.javalin.plugin.json.JsonMapper
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
@@ -32,10 +33,11 @@ import suwayomi.tachidesk.server.util.SystemTray
 import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
 import xyz.nulldev.ts.config.ApplicationRootDir
+import xyz.nulldev.ts.config.BASE_LOGGER_NAME
 import xyz.nulldev.ts.config.ConfigKodeinModule
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.initLoggerConfig
-import xyz.nulldev.ts.config.setLogLevel
+import xyz.nulldev.ts.config.setLogLevelFor
 import java.io.File
 import java.security.Security
 import java.util.Locale
@@ -73,18 +75,25 @@ fun applicationSetup() {
         ServerConfig.register { GlobalConfigManager.config }
     )
 
-    serverConfig.subscribeTo(serverConfig.debugLogsEnabled, { debugLogsEnabled ->
-        if (debugLogsEnabled) {
-            setLogLevel(Level.DEBUG)
-        } else {
-            setLogLevel(Level.INFO)
-        }
-    }, ignoreInitialValue = false)
-
     // Application dirs
     val applicationDirs = ApplicationDirs()
 
     initLoggerConfig(applicationDirs.dataRoot)
+
+    val setupLogLevelUpdating = { configFlow: MutableStateFlow<Boolean>, loggerNames: List<String> ->
+        serverConfig.subscribeTo(configFlow, { debugLogsEnabled ->
+            if (debugLogsEnabled) {
+                loggerNames.forEach { loggerName -> setLogLevelFor(loggerName, Level.DEBUG) }
+            } else {
+                loggerNames.forEach { loggerName -> setLogLevelFor(loggerName, Level.ERROR) }
+            }
+        }, ignoreInitialValue = false)
+    }
+
+    setupLogLevelUpdating(serverConfig.debugLogsEnabled, listOf(BASE_LOGGER_NAME))
+    // gql "ExecutionStrategy" spams logs with "... completing field ..."
+    // gql "notprivacysafe" logs every received request multiple times (received, parsing, validating, executing)
+    setupLogLevelUpdating(serverConfig.gqlDebugLogsEnabled, listOf("graphql", "notprivacysafe"))
 
     logger.info("Running Tachidesk ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")
 
