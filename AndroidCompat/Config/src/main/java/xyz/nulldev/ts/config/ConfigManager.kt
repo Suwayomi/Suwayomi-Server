@@ -111,12 +111,14 @@ open class ConfigManager {
         }
     }
 
-    fun resetUserConfig(): ConfigDocument {
+    fun resetUserConfig(updateInternalConfig: Boolean = true): ConfigDocument {
         val serverConfigFileContent = this::class.java.getResource("/server-reference.conf")?.readText()
         val serverConfigDoc = ConfigDocumentFactory.parseString(serverConfigFileContent)
         userConfigFile.writeText(serverConfigDoc.render())
 
-        getUserConfig().entrySet().forEach { internalConfig = internalConfig.withValue(it.key, it.value) }
+        if (updateInternalConfig) {
+            getUserConfig().entrySet().forEach { internalConfig = internalConfig.withValue(it.key, it.value) }
+        }
 
         return serverConfigDoc
     }
@@ -140,7 +142,7 @@ open class ConfigManager {
 
         logger.debug { "user config is out of date, updating... (missingSettings= $hasMissingSettings, outdatedSettings= $hasOutdatedSettings" }
 
-        var newUserConfigDoc: ConfigDocument = resetUserConfig()
+        var newUserConfigDoc: ConfigDocument = resetUserConfig(false)
         userConfig.entrySet().filter { serverConfig.hasPath(it.key) }.forEach { newUserConfigDoc = newUserConfigDoc.withValue(it.key, it.value) }
 
         userConfigFile.writeText(newUserConfigDoc.render())
