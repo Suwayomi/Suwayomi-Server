@@ -201,10 +201,10 @@ object Chapter {
         return chapterList
     }
 
-    private fun downloadNewChapters(mangaId: Int, prevNumberOfChapters: Int, newChapters: List<ResultRow>) {
+    private fun downloadNewChapters(mangaId: Int, prevNumberOfChapters: Int, updatedChapterList: List<ResultRow>) {
         // convert numbers to be index based
         val currentNumberOfChapters = (prevNumberOfChapters - 1).coerceAtLeast(0)
-        val updatedNumberOfChapters = (newChapters.size - 1).coerceAtLeast(0)
+        val updatedNumberOfChapters = (updatedChapterList.size - 1).coerceAtLeast(0)
 
         val areNewChaptersAvailable = currentNumberOfChapters < updatedNumberOfChapters
         val wasInitialFetch = currentNumberOfChapters == 0
@@ -216,7 +216,7 @@ object Chapter {
         }
 
         val numberOfNewChapters = updatedNumberOfChapters - currentNumberOfChapters
-        val chapterIdsToDownload = newChapters.subList(0, numberOfNewChapters)
+        val chapterIdsToDownload = updatedChapterList.subList(0, numberOfNewChapters)
             .filter { !it[ChapterTable.isRead] && !it[ChapterTable.isDownloaded] }.map { it[ChapterTable.id].value }
 
         if (chapterIdsToDownload.isEmpty()) {
