@@ -205,19 +205,33 @@ object Chapter {
         // convert numbers to be index based
         val currentNumberOfChapters = (prevNumberOfChapters - 1).coerceAtLeast(0)
         val updatedNumberOfChapters = (updatedChapterList.size - 1).coerceAtLeast(0)
+        val numberOfNewChapters = updatedNumberOfChapters - currentNumberOfChapters
 
-        val areNewChaptersAvailable = currentNumberOfChapters < updatedNumberOfChapters
+        val areNewChaptersAvailable = numberOfNewChapters > 0
         val wasInitialFetch = currentNumberOfChapters == 0
 
         // make sure to ignore initial fetch
-        val downloadNewChapters = serverConfig.autoDownloadNewChapters.value && !wasInitialFetch && areNewChaptersAvailable
-        if (!downloadNewChapters) {
+        val isDownloadPossible =
+            serverConfig.autoDownloadNewChapters.value && areNewChaptersAvailable && !wasInitialFetch
+        if (!isDownloadPossible) {
             return
         }
 
-        val numberOfNewChapters = updatedNumberOfChapters - currentNumberOfChapters
-        val chapterIdsToDownload = updatedChapterList.subList(0, numberOfNewChapters)
-            .filter { !it[ChapterTable.isRead] && !it[ChapterTable.isDownloaded] }.map { it[ChapterTable.id].value }
+        val newChapters = updatedChapterList.subList(0, numberOfNewChapters)
+
+        // make sure to only consider the latest chapters. e.g. old unread chapters should be ignored
+        val latestReadChapterIndex =
+            updatedChapterList.indexOfFirst { it[ChapterTable.isRead] }.takeIf { it > -1 } ?: return
+        val unreadChapters = updatedChapterList.subList(numberOfNewChapters, latestReadChapterIndex)
+            .filter { !it[ChapterTable.isRead] }
+
+        val skipDueToUnreadChapters = serverConfig.excludeEntryWithUnreadChapters.value && unreadChapters.isNotEmpty()
+        if (skipDueToUnreadChapters) {
+            return
+        }
+
+        val chapterIdsToDownload = newChapters.filter { !it[ChapterTable.isRead] && !it[ChapterTable.isDownloaded] }
+            .map { it[ChapterTable.id].value }
 
         if (chapterIdsToDownload.isEmpty()) {
             return
