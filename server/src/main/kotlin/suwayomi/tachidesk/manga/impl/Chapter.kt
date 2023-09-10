@@ -230,7 +230,11 @@ object Chapter {
             return
         }
 
-        val chapterIdsToDownload = newChapters.filter { !it[ChapterTable.isRead] && !it[ChapterTable.isDownloaded] }
+        val firstChapterToDownloadIndex =
+            (numberOfNewChapters - serverConfig.autoDownloadAheadLimit.value).coerceAtLeast(0)
+
+        val chapterIdsToDownload = newChapters.subList(firstChapterToDownloadIndex, numberOfNewChapters)
+            .filter { !it[ChapterTable.isRead] && !it[ChapterTable.isDownloaded] }
             .map { it[ChapterTable.id].value }
 
         if (chapterIdsToDownload.isEmpty()) {
