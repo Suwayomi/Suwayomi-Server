@@ -196,7 +196,9 @@ object Chapter {
             }
         }
 
-        downloadNewChapters(mangaId, numberOfCurrentChapters, newChapters)
+        if (manga.inLibrary) {
+            downloadNewChapters(mangaId, numberOfCurrentChapters, newChapters)
+        }
 
         return chapterList
     }
