@@ -17,6 +17,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.future.await
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -25,6 +26,11 @@ import kotlinx.serialization.json.double
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import me.friwi.jcefmaven.CefAppBuilder
+import me.friwi.jcefmaven.MavenCefAppHandlerAdapter
+import me.friwi.jcefmaven.impl.progress.ConsoleProgressHandler
+import org.cef.browser.CefBrowser
+import org.cef.handler.CefLoadHandlerAdapter
 import org.eclipse.jetty.websocket.api.CloseStatus
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -42,11 +48,15 @@ import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogue
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import uy.kohesive.injekt.injectLazy
+import java.awt.Dimension
+import java.io.ByteArrayOutputStream
 import java.io.Closeable
+import java.io.File
 import java.net.HttpCookie
 import java.net.URI
 import java.util.Date
 import java.util.concurrent.Executors
+import javax.imageio.ImageIO
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.time.Duration.Companion.milliseconds
@@ -64,7 +74,7 @@ object WebView : Websocket<String>() {
             }
             clients.clear()
         } else {
-            driver = PlaywrightScreenshotServer() // SeleniumScreenshotServer()
+            driver = JCefScreenshotServer() // PlaywrightScreenshotServer() // SeleniumScreenshotServer()
         }
         super.addClient(ctx)
     }
@@ -410,5 +420,120 @@ class PlaywrightScreenshotServer : Closeable, ScreenShotWebViewEventListener {
                 }
             }
         )
+    }
+}
+
+@OptIn(ExperimentalEncodingApi::class)
+class JCefScreenshotServer : Closeable, ScreenShotWebViewEventListener {
+    companion object {
+        const val width = 1200
+        const val height = 800
+
+        private val networkHelper: NetworkHelper by injectLazy()
+    }
+
+    val app = run {
+        // Create a new CefAppBuilder instance
+        val builder = CefAppBuilder()
+
+        // Configure the builder instance
+        builder.setInstallDir(File("jcef-bundle")) // Default
+        builder.setProgressHandler(ConsoleProgressHandler()) // Default
+        builder.addJcefArgs("--disable-gpu") // Just an example
+        builder.cefSettings.windowless_rendering_enabled = true // Default - select OSR mode
+
+        // Set an app handler. Do not use CefApp.addAppHandler(...), it will break your code on MacOSX!
+        builder.setAppHandler(object : MavenCefAppHandlerAdapter() {})
+
+        // Build a CefApp instance using the configuration above
+        builder.build()
+    }
+    val client = app.createClient()
+    val browser = client.createBrowser("https://google.com", true, false).apply {
+        uiComponent.size = Dimension(width, height)
+    }
+
+    private val job = SupervisorJob()
+    private val executor = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+    init {
+        GlobalScope.launch(executor) {
+            val completableDeferred = CompletableDeferred<Unit>()
+            client.addLoadHandler(object : CefLoadHandlerAdapter() {
+                override fun onLoadingStateChange(
+                    browser: CefBrowser,
+                    isLoading: Boolean,
+                    canGoBack: Boolean,
+                    canGoForward: Boolean
+                ) {
+                    if (!isLoading) {
+                        completableDeferred.complete(Unit)
+                    }
+                }
+            })
+            completableDeferred.await()
+            while (isActive) {
+                try {
+                    // Capture screenshot
+                    val image = browser.createScreenshot(true).await()
+                    val stream = ByteArrayOutputStream()
+                    ImageIO.write(image, "jpg", stream)
+                    val screenshot = Base64.encode(stream.toByteArray())
+
+                    // Send image data over the socket
+                    WebView.notifyAllClients(screenshot)
+                    delay(1000) // Adjust interval as needed
+                } catch (e: NoSuchSessionException) {
+                    ensureActive()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+        GlobalScope.launch(job) {
+            while (true) {
+                delay(5.seconds)
+                // flush()
+            }
+        }
+    }
+
+    override fun onClick(x: Int, y: Int) {
+        val frame = browser.mainFrame
+
+        // Create and dispatch a synthetic click event at the specified coordinates
+        val javascriptCode = "var event = new MouseEvent('click', {" +
+            "  view: window," +
+            "  bubbles: true," +
+            "  cancelable: true," +
+            "  clientX: " + x + "," +
+            "  clientY: " + y + "," +
+            "});" +
+            "document.elementFromPoint(" + x + "," + y + ").dispatchEvent(event);"
+        frame.executeJavaScript(javascriptCode, frame.url, 0)
+    }
+
+    override fun keyPress(key: String) {
+        TODO("Not yet implemented")
+    }
+
+    override fun back() {
+        browser.goBack()
+    }
+
+    override fun forward() {
+        browser.goForward()
+    }
+
+    override fun loadUrl(url: String) {
+        browser.loadURL(url)
+    }
+
+    override fun close() {
+        job.cancel()
+        // flush()
+        executor.cancel()
+        app.dispose()
     }
 }

@@ -81,6 +81,7 @@ dependencies {
     implementation(libs.cronUtils)
 
     implementation("org.seleniumhq.selenium:selenium-java:4.11.0")
+    implementation("me.friwi:jcefmaven:110.0.25.1")
 }
 
 application {
