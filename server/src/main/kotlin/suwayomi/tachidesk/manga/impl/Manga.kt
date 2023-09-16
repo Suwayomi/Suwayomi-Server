@@ -317,14 +317,24 @@ object Manga {
         clearCachedImage(applicationDirs.thumbnailDownloadsRoot, fileName)
     }
 
-    private val downloadAheadQueue = ConcurrentHashMap.newKeySet<Int>()
+    private val downloadAheadQueue = ConcurrentHashMap<String, ConcurrentHashMap.KeySetView<Int, Boolean>>()
     private var downloadAheadTimer: Timer? = null
-    fun downloadAhead(mangaIds: List<Int>) {
+    fun downloadAhead(mangaIds: List<Int>, latestReadChapterIds: List<Int> = emptyList()) {
         if (serverConfig.autoDownloadAheadLimit.value == 0) {
             return
         }
 
-        downloadAheadQueue.addAll(mangaIds)
+        val MANGAS_KEY = "mangaIds"
+        val CHAPTERS_KEY = "chapterIds"
+
+        val updateDownloadAheadQueue = { key: String, ids: List<Int> ->
+            val idSet = downloadAheadQueue[key] ?: ConcurrentHashMap.newKeySet()
+            idSet.addAll(ids)
+            downloadAheadQueue[key] = idSet
+        }
+
+        updateDownloadAheadQueue(MANGAS_KEY, mangaIds)
+        updateDownloadAheadQueue(CHAPTERS_KEY, latestReadChapterIds)
 
         // handle cases where this function gets called multiple times in quick succession.
         // this could happen in case e.g. multiple chapters get marked as read without batching the operation
@@ -333,7 +343,7 @@ object Manga {
             schedule(
                 object : TimerTask() {
                     override fun run() {
-                        downloadAheadChapters(downloadAheadQueue.toList())
+                        downloadAheadChapters(downloadAheadQueue[MANGAS_KEY]!!.toList(), downloadAheadQueue[CHAPTERS_KEY]!!.toList())
                         downloadAheadQueue.clear()
                     }
                 },
@@ -345,6 +355,12 @@ object Manga {
     /**
      * Downloads the latest unread and not downloaded chapters for each passed manga id.
      *
+     * To pass a specific chapter as the latest read chapter for a manga, it can be provided in the "latestReadChapterIds" list.
+     * This makes it possible to handle cases, where the actual latest read chapter isn't marked as read yet.
+     * E.g. the client marks a chapter as read and at the same time sends the "downloadAhead" mutation.
+     * In this case, the latest read chapter could potentially be the one, that just got send to get marked as read by the client.
+     * Without providing it in "latestReadChapterIds" it could be incorrectly included in the chapters, that will get downloaded.
+     *
      * The latest read chapter will be considered the starting point.
      * E.g.:
      * - 20 chapters
@@ -354,7 +370,7 @@ object Manga {
      *
      * will download the unread chapters starting from chapter 15
      */
-    private fun downloadAheadChapters(mangaIds: List<Int>) {
+    private fun downloadAheadChapters(mangaIds: List<Int>, latestReadChapterIds: List<Int>) {
         val mangaToLatestReadChapterIndex = transaction {
             ChapterTable.select { (ChapterTable.manga inList mangaIds) and (ChapterTable.isRead eq true) }
                 .orderBy(ChapterTable.sourceOrder to SortOrder.DESC).groupBy { it[ChapterTable.manga].value }
@@ -369,7 +385,7 @@ object Manga {
         val chapterIdsToDownload = mangaToUnreadChaptersMap.map { (mangaId, unreadChapters) ->
             val latestReadChapterIndex = mangaToLatestReadChapterIndex[mangaId] ?: 0
             val lastChapterToDownloadIndex =
-                unreadChapters.indexOfLast { it[ChapterTable.sourceOrder] > latestReadChapterIndex }
+                unreadChapters.indexOfLast { it[ChapterTable.sourceOrder] > latestReadChapterIndex && it[ChapterTable.id].value !in latestReadChapterIds }
             val unreadChaptersToConsider = unreadChapters.subList(0, lastChapterToDownloadIndex + 1)
             val firstChapterToDownloadIndex =
                 (unreadChaptersToConsider.size - serverConfig.autoDownloadAheadLimit.value).coerceAtLeast(0)

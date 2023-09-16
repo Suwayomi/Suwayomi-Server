@@ -259,14 +259,18 @@ class DownloadMutation {
         }
     }
 
-    data class DownloadAheadInput(val clientMutationId: String? = null, val mangaIds: List<Int>)
+    data class DownloadAheadInput(
+        val clientMutationId: String? = null,
+        val mangaIds: List<Int> = emptyList(),
+        val latestReadChapterIds: List<Int>? = null
+    )
 
     data class DownloadAheadPayload(val clientMutationId: String?)
 
     fun downloadAhead(input: DownloadAheadInput): DownloadAheadPayload {
-        val (clientMutationId, mangaIds) = input
+        val (clientMutationId, mangaIds, latestReadChapterIds) = input
 
-        Manga.downloadAhead(mangaIds)
+        Manga.downloadAhead(mangaIds, latestReadChapterIds ?: emptyList())
 
         return DownloadAheadPayload(clientMutationId)
     }
