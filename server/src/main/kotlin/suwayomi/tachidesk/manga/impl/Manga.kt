@@ -13,6 +13,7 @@ import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import eu.kanade.tachiyomi.source.online.HttpSource
+import mu.KotlinLogging
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
@@ -25,6 +26,8 @@ import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.impl.Source.getSource
+import suwayomi.tachidesk.manga.impl.download.DownloadManager
+import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.MissingThumbnailException
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
@@ -42,11 +45,17 @@ import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.ApplicationDirs
+import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.time.Instant
+import java.util.Timer
+import java.util.TimerTask
+import java.util.concurrent.ConcurrentHashMap
+
+private val logger = KotlinLogging.logger { }
 
 object Manga {
     private fun truncate(text: String?, maxLength: Int): String? {
@@ -306,5 +315,72 @@ object Manga {
 
         clearCachedImage(applicationDirs.tempThumbnailCacheRoot, fileName)
         clearCachedImage(applicationDirs.thumbnailDownloadsRoot, fileName)
+    }
+
+    private val downloadAheadQueue = ConcurrentHashMap.newKeySet<Int>()
+    private var downloadAheadTimer: Timer? = null
+    fun downloadAhead(mangaIds: List<Int>) {
+        if (serverConfig.autoDownloadAheadLimit.value == 0) {
+            return
+        }
+
+        downloadAheadQueue.addAll(mangaIds)
+
+        // handle cases where this function gets called multiple times in quick succession.
+        // this could happen in case e.g. multiple chapters get marked as read without batching the operation
+        downloadAheadTimer?.cancel()
+        downloadAheadTimer = Timer().apply {
+            schedule(
+                object : TimerTask() {
+                    override fun run() {
+                        downloadAheadChapters(downloadAheadQueue.toList())
+                        downloadAheadQueue.clear()
+                    }
+                },
+                5000
+            )
+        }
+    }
+
+    /**
+     * Downloads the latest unread and not downloaded chapters for each passed manga id.
+     *
+     * The latest read chapter will be considered the starting point.
+     * E.g.:
+     * - 20 chapters
+     * - chapter 15 marked as read
+     * - 16 - 20 marked as unread
+     * - 10 - 14 marked as unread
+     *
+     * will download the unread chapters starting from chapter 15
+     */
+    private fun downloadAheadChapters(mangaIds: List<Int>) {
+        val mangaToLatestReadChapterIndex = transaction {
+            ChapterTable.select { (ChapterTable.manga inList mangaIds) and (ChapterTable.isRead eq true) }
+                .orderBy(ChapterTable.sourceOrder to SortOrder.DESC).groupBy { it[ChapterTable.manga].value }
+        }.mapValues { (_, chapters) -> chapters.firstOrNull()?.let { it[ChapterTable.sourceOrder] } ?: 0 }
+
+        val mangaToUnreadChaptersMap = transaction {
+            ChapterTable.select { (ChapterTable.manga inList mangaIds) and (ChapterTable.isRead eq false) }
+                .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+                .groupBy { it[ChapterTable.manga].value }
+        }
+
+        val chapterIdsToDownload = mangaToUnreadChaptersMap.map { (mangaId, unreadChapters) ->
+            val latestReadChapterIndex = mangaToLatestReadChapterIndex[mangaId] ?: 0
+            val lastChapterToDownloadIndex =
+                unreadChapters.indexOfLast { it[ChapterTable.sourceOrder] > latestReadChapterIndex }
+            val unreadChaptersToConsider = unreadChapters.subList(0, lastChapterToDownloadIndex + 1)
+            val firstChapterToDownloadIndex =
+                (unreadChaptersToConsider.size - serverConfig.autoDownloadAheadLimit.value).coerceAtLeast(0)
+            unreadChaptersToConsider.subList(firstChapterToDownloadIndex, lastChapterToDownloadIndex + 1)
+                .filter { !it[ChapterTable.isDownloaded] }
+                .map { it[ChapterTable.id].value }
+        }.flatten()
+
+        logger.info { "downloadAheadChapters: download chapters [${chapterIdsToDownload.joinToString(", ")}]" }
+
+        DownloadManager.dequeue(mangaIds, chapterIdsToDownload)
+        DownloadManager.enqueue(EnqueueInput(chapterIdsToDownload))
     }
 }
