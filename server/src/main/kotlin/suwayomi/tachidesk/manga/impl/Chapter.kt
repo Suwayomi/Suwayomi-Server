@@ -196,28 +196,48 @@ object Chapter {
             }
         }
 
-        downloadNewChapters(mangaId, numberOfCurrentChapters, newChapters)
+        if (manga.inLibrary) {
+            downloadNewChapters(mangaId, numberOfCurrentChapters, newChapters)
+        }
 
         return chapterList
     }
 
-    private fun downloadNewChapters(mangaId: Int, prevNumberOfChapters: Int, newChapters: List<ResultRow>) {
+    private fun downloadNewChapters(mangaId: Int, prevNumberOfChapters: Int, updatedChapterList: List<ResultRow>) {
         // convert numbers to be index based
         val currentNumberOfChapters = (prevNumberOfChapters - 1).coerceAtLeast(0)
-        val updatedNumberOfChapters = (newChapters.size - 1).coerceAtLeast(0)
+        val updatedNumberOfChapters = (updatedChapterList.size - 1).coerceAtLeast(0)
+        val numberOfNewChapters = updatedNumberOfChapters - currentNumberOfChapters
 
-        val areNewChaptersAvailable = currentNumberOfChapters < updatedNumberOfChapters
+        val areNewChaptersAvailable = numberOfNewChapters > 0
         val wasInitialFetch = currentNumberOfChapters == 0
 
         // make sure to ignore initial fetch
-        val downloadNewChapters = serverConfig.autoDownloadNewChapters.value && !wasInitialFetch && areNewChaptersAvailable
-        if (!downloadNewChapters) {
+        val isDownloadPossible =
+            serverConfig.autoDownloadNewChapters.value && areNewChaptersAvailable && !wasInitialFetch
+        if (!isDownloadPossible) {
             return
         }
 
-        val numberOfNewChapters = updatedNumberOfChapters - currentNumberOfChapters
-        val chapterIdsToDownload = newChapters.subList(0, numberOfNewChapters)
-            .filter { !it[ChapterTable.isRead] && !it[ChapterTable.isDownloaded] }.map { it[ChapterTable.id].value }
+        val newChapters = updatedChapterList.subList(0, numberOfNewChapters)
+
+        // make sure to only consider the latest chapters. e.g. old unread chapters should be ignored
+        val latestReadChapterIndex =
+            updatedChapterList.indexOfFirst { it[ChapterTable.isRead] }.takeIf { it > -1 } ?: return
+        val unreadChapters = updatedChapterList.subList(numberOfNewChapters, latestReadChapterIndex)
+            .filter { !it[ChapterTable.isRead] }
+
+        val skipDueToUnreadChapters = serverConfig.excludeEntryWithUnreadChapters.value && unreadChapters.isNotEmpty()
+        if (skipDueToUnreadChapters) {
+            return
+        }
+
+        val firstChapterToDownloadIndex =
+            (numberOfNewChapters - serverConfig.autoDownloadAheadLimit.value).coerceAtLeast(0)
+
+        val chapterIdsToDownload = newChapters.subList(firstChapterToDownloadIndex, numberOfNewChapters)
+            .filter { !it[ChapterTable.isRead] && !it[ChapterTable.isDownloaded] }
+            .map { it[ChapterTable.id].value }
 
         if (chapterIdsToDownload.isEmpty()) {
             return
