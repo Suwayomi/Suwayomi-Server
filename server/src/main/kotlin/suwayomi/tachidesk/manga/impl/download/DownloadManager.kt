@@ -246,6 +246,8 @@ object DownloadManager {
         val chapters = transaction {
             (ChapterTable innerJoin MangaTable)
                 .select { ChapterTable.id inList input.chapterIds }
+                .orderBy(ChapterTable.manga)
+                .orderBy(ChapterTable.sourceOrder)
                 .toList()
         }
 
