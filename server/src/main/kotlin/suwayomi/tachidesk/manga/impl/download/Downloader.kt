@@ -15,6 +15,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import mu.KLogger
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -83,16 +84,31 @@ class Downloader(
         logger.debug { "stopped" }
     }
 
+    private suspend fun finishDownload(logger: KLogger, download: DownloadChapter) {
+        downloadQueue.removeIf { it.mangaId == download.mangaId && it.chapterIndex == download.chapterIndex }
+        step(null, false)
+        logger.debug { "finished" }
+        onDownloadFinished()
+    }
+
     private suspend fun run() {
         while (downloadQueue.isNotEmpty() && currentCoroutineContext().isActive) {
             val download = availableSourceDownloads.firstOrNull {
-                (it.state == Queued || (it.state == Error && it.tries < 3)) // 3 re-tries per download
+                (it.state == Queued || it.state == Finished || (it.state == Error && it.tries < 3)) // 3 re-tries per download
             } ?: break
 
             val logContext = "${logger.name} - downloadChapter($download))"
             val downloadLogger = KotlinLogging.logger(logContext)
 
             downloadLogger.debug { "start" }
+
+            // handle cases were the downloader was stopped before the finished download could be removed from the queue
+            // otherwise, it will create an endless loop, due to never removing the finished chapter and thinking that the
+            // current download chapter was moved down in the queue
+            if (download.state == Finished) {
+                finishDownload(downloadLogger, download)
+                break
+            }
 
             try {
                 download.state = Downloading
@@ -109,11 +125,7 @@ class Downloader(
                     }
                 }
                 step(download, true)
-
-                downloadQueue.removeIf { it.mangaId == download.mangaId && it.chapterIndex == download.chapterIndex }
-                step(null, false)
-                downloadLogger.debug { "finished" }
-                onDownloadFinished()
+                finishDownload(downloadLogger, download)
             } catch (e: CancellationException) {
                 logger.debug("Downloader was stopped")
                 availableSourceDownloads.filter { it.state == Downloading }.forEach { it.state = Queued }
