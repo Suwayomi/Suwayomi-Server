@@ -9,6 +9,7 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.impl.Chapter
+import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyById
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -69,6 +70,11 @@ class ChapterMutation {
                         update[lastReadAt] = now
                     }
                 }
+            }
+
+            if (patch.isRead == true) {
+                Manga.downloadAhead(ChapterTable.select { ChapterTable.id inList ids }.map { it[ChapterTable.manga].value })
+                Chapter.deleteChapters(ids)
             }
         }
     }

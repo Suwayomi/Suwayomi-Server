@@ -377,6 +377,11 @@ object Chapter {
                     it[ChapterTable.isRead] = markPrevRead
                 }
             }
+
+            if (isRead == true || markPrevRead == true) {
+                Manga.downloadAhead(listOf(mangaId))
+                deleteChapter(mangaId, chapterIndex)
+            }
         }
     }
 
@@ -456,6 +461,16 @@ object Chapter {
                     update[ChapterTable.lastPageRead] = it
                     update[ChapterTable.lastReadAt] = now
                 }
+            }
+
+            if (isRead == true) {
+                val chapterMangaIds =
+                    ChapterTable.select {
+                        ChapterTable.id inList (input.chapterIds ?: emptyList())
+                    }.map { it[ChapterTable.manga].value }.distinct()
+                val mangaIds = listOfNotNull(mangaId, *(chapterMangaIds.toTypedArray()))
+                Manga.downloadAhead(mangaIds)
+                deleteChapters(input.chapterIds ?: emptyList())
             }
         }
     }
