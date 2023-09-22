@@ -25,7 +25,6 @@ class CloudflareInterceptor : Interceptor {
 
     private val network: NetworkHelper by injectLazy()
 
-    @Synchronized
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
 
