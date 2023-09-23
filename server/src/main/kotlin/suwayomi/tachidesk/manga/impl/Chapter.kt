@@ -210,7 +210,7 @@ object Chapter {
         val numberOfNewChapters = updatedNumberOfChapters - currentNumberOfChapters
 
         val areNewChaptersAvailable = numberOfNewChapters > 0
-        val wasInitialFetch = currentNumberOfChapters == 0
+        val wasInitialFetch = currentNumberOfChapters == -1 // has to be -1 - due to converting to index based 1 chapter will be 0
 
         // make sure to ignore initial fetch
         val isDownloadPossible =
