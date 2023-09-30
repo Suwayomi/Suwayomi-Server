@@ -21,7 +21,7 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
     @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE", "UNCHECKED_CAST")
     override suspend fun parseRequest(context: Context): GraphQLServerRequest? {
         return try {
-            val formParam = context.formParam("operation")
+            val formParam = context.formParam("operations")
                 ?: return context.bodyAsClass(GraphQLServerRequest::class.java)
 
             val request = context.jsonMapper().fromJsonString(
