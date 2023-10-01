@@ -21,7 +21,7 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
     @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE", "UNCHECKED_CAST")
     override suspend fun parseRequest(context: Context): GraphQLServerRequest? {
         return try {
-            val formParam = context.formParam("operation")
+            val formParam = context.formParam("operations")
                 ?: return context.bodyAsClass(GraphQLServerRequest::class.java)
 
             val request = context.jsonMapper().fromJsonString(
@@ -35,18 +35,12 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
                 )
             }.orEmpty()
 
-            val filesMap = map.keys
-                .sortedBy { it.toIntOrNull() }
-                .map { context.uploadedFile(it) }
-
-            val mapItems = map.flatMap { (index, variables) ->
-                val indexInt = index.toIntOrNull() ?: return@flatMap emptyList()
-                val file = filesMap.getOrNull(indexInt)
+            val mapItems = map.flatMap { (key, variables) ->
+                val file = context.uploadedFile(key)
                 variables.map { fullVariable ->
                     val variable = fullVariable.removePrefix("variables.").substringBefore('.')
                     val listIndex = fullVariable.substringAfterLast('.').toIntOrNull()
                     MapItem(
-                        indexInt,
                         variable,
                         listIndex,
                         file
@@ -74,7 +68,6 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
     }
 
     data class MapItem(
-        val index: Int,
         val variable: String,
         val listIndex: Int?,
         val file: UploadedFile?
