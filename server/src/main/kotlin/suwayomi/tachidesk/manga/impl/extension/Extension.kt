@@ -181,6 +181,8 @@ object Extension {
                     it[this.apkName] = apkName
                     it[this.isInstalled] = true
                     it[this.classFQName] = className
+                    it[versionName] = packageInfo.versionName
+                    it[versionCode] = packageInfo.versionCode
                 }
 
                 val extensionId =
