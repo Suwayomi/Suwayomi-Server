@@ -12,11 +12,18 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SortOrder.ASC
+import org.jetbrains.exposed.sql.SortOrder.ASC_NULLS_FIRST
+import org.jetbrains.exposed.sql.SortOrder.ASC_NULLS_LAST
+import org.jetbrains.exposed.sql.SortOrder.DESC
+import org.jetbrains.exposed.sql.SortOrder.DESC_NULLS_FIRST
+import org.jetbrains.exposed.sql.SortOrder.DESC_NULLS_LAST
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.queries.ChapterQuery.ChapterOrderBy.ID
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
 import suwayomi.tachidesk.graphql.queries.filter.FloatFilter
@@ -230,11 +237,17 @@ class ChapterQuery {
 
             if (after != null) {
                 res.andWhere {
-                    (orderBy ?: ChapterOrderBy.ID).greater(after)
+                    when (orderByType) {
+                        DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: ID).less(after)
+                        null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: ID).greater(after)
+                    }
                 }
             } else if (before != null) {
                 res.andWhere {
-                    (orderBy ?: ChapterOrderBy.ID).less(before)
+                    when (orderByType) {
+                        DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: ID).greater(before)
+                        null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: ID).less(before)
+                    }
                 }
             }
 
