@@ -13,6 +13,12 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SortOrder.ASC
+import org.jetbrains.exposed.sql.SortOrder.ASC_NULLS_FIRST
+import org.jetbrains.exposed.sql.SortOrder.ASC_NULLS_LAST
+import org.jetbrains.exposed.sql.SortOrder.DESC
+import org.jetbrains.exposed.sql.SortOrder.DESC_NULLS_FIRST
+import org.jetbrains.exposed.sql.SortOrder.DESC_NULLS_LAST
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
@@ -177,11 +183,17 @@ class ExtensionQuery {
 
             if (after != null) {
                 res.andWhere {
-                    (orderBy ?: ExtensionOrderBy.PKG_NAME).greater(after)
+                    when (orderByType) {
+                        DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).less(after)
+                        null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).greater(after)
+                    }
                 }
             } else if (before != null) {
                 res.andWhere {
-                    (orderBy ?: ExtensionOrderBy.PKG_NAME).less(before)
+                    when (orderByType) {
+                        DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).greater(before)
+                        null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).less(before)
+                    }
                 }
             }
 
