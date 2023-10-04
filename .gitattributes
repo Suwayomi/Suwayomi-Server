@@ -26,3 +26,6 @@
 *.swp binary
 *.pdf binary
 *.exe binary
+*.avif binary
+*.heif binary
+*.jxl binary
