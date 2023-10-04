@@ -41,7 +41,7 @@ object PackageTools {
     const val METADATA_SOURCE_FACTORY = "tachiyomi.extension.factory"
     const val METADATA_NSFW = "tachiyomi.extension.nsfw"
     const val LIB_VERSION_MIN = 1.3
-    const val LIB_VERSION_MAX = 1.4
+    const val LIB_VERSION_MAX = 1.5
 
     private const val officialSignature = "7ce04da7773d41b489f4693a366c36bcd0a11fc39b547168553c285bd7348e23" // inorichi's key
     private const val unofficialSignature = "64feb21075ba97ebc9cc981243645b331595c111cef1b0d084236a0403b00581" // ArMor's key
