@@ -35,6 +35,7 @@ import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMess
 import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ServerMessages.GQL_ERROR
 import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ServerMessages.GQL_NEXT
 import suwayomi.tachidesk.graphql.server.toGraphQLContext
+import suwayomi.tachidesk.server.serverConfig
 
 /**
  * Implementation of the `graphql-ws` protocol defined by Apollo
@@ -54,7 +55,15 @@ class ApolloSubscriptionProtocolHandler(
 
     fun handleMessage(context: WsMessageContext): Flow<SubscriptionOperationMessage> {
         val operationMessage = convertToMessageOrNull(context.message()) ?: return flowOf(basicConnectionErrorMessage)
-        logger.debug { "GraphQL subscription client message, sessionId=${context.sessionId} operationMessage=$operationMessage" }
+        logger.debug {
+            "GraphQL subscription client message, sessionId=${context.sessionId} ${
+            if (serverConfig.gqlDebugLogsEnabled.value) {
+                "operationMessage=$operationMessage"
+            } else {
+                ""
+            }
+            }"
+        }
 
         return try {
             when (operationMessage.type) {
