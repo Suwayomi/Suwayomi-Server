@@ -53,10 +53,23 @@ class ApolloSubscriptionProtocolHandler(
     private val basicConnectionErrorMessage = SubscriptionOperationMessage(type = GQL_ERROR.type)
     private val acknowledgeMessage = SubscriptionOperationMessage(GQL_CONNECTION_ACK.type)
 
+    private fun getOperationName(payload: Any?): String {
+        val unknownOperationName = "__UNKNOWN__"
+
+        try {
+            @Suppress("UNCHECKED_CAST")
+            return (payload as Map<String, String>)["operationName"] ?: unknownOperationName
+        } catch (e: Exception) {
+            return unknownOperationName
+        }
+    }
+
     fun handleMessage(context: WsMessageContext): Flow<SubscriptionOperationMessage> {
         val operationMessage = convertToMessageOrNull(context.message()) ?: return flowOf(basicConnectionErrorMessage)
         logger.debug {
-            "GraphQL subscription client message, sessionId=${context.sessionId} ${
+            "GraphQL subscription client message, sessionId=${context.sessionId} type=${operationMessage.type} operationName=${
+            getOperationName(operationMessage.payload)
+            } ${
             if (serverConfig.gqlDebugLogsEnabled.value) {
                 "operationMessage=$operationMessage"
             } else {
