@@ -102,7 +102,7 @@ object Chapter {
                 pageCount = dbChapter[ChapterTable.pageCount],
 
                 chapterCount = chapterList.size,
-                meta = chapterMetas.getValue(dbChapter[ChapterTable.id])
+                meta = chapterMetas.getValue(dbChapter[ChapterTable.id]),
             )
         }
     }
@@ -254,7 +254,7 @@ object Chapter {
         isRead: Boolean?,
         isBookmarked: Boolean?,
         markPrevRead: Boolean?,
-        lastPageRead: Int?
+        lastPageRead: Int?,
     ) {
         transaction {
             if (listOf(isRead, isBookmarked, lastPageRead).any { it != null }) {
@@ -285,20 +285,20 @@ object Chapter {
         val isRead: Boolean? = null,
         val isBookmarked: Boolean? = null,
         val lastPageRead: Int? = null,
-        val delete: Boolean? = null
+        val delete: Boolean? = null,
     )
 
     @Serializable
     data class MangaChapterBatchEditInput(
         val chapterIds: List<Int>? = null,
         val chapterIndexes: List<Int>? = null,
-        val change: ChapterChange?
+        val change: ChapterChange?,
     )
 
     @Serializable
     data class ChapterBatchEditInput(
         val chapterIds: List<Int>? = null,
-        val change: ChapterChange?
+        val change: ChapterChange?,
     )
 
     fun modifyChapters(input: MangaChapterBatchEditInput, mangaId: Int? = null) {
@@ -457,7 +457,7 @@ object Chapter {
                     .map {
                         MangaChapterDataClass(
                             MangaTable.toDataClass(it),
-                            ChapterTable.toDataClass(it)
+                            ChapterTable.toDataClass(it),
                         )
                     }
             }

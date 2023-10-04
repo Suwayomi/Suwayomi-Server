@@ -22,27 +22,27 @@ import java.util.concurrent.CompletableFuture
  */
 class MangaMutation {
     data class UpdateMangaPatch(
-        val inLibrary: Boolean? = null
+        val inLibrary: Boolean? = null,
     )
 
     data class UpdateMangaPayload(
         val clientMutationId: String?,
-        val manga: MangaType
+        val manga: MangaType,
     )
     data class UpdateMangaInput(
         val clientMutationId: String? = null,
         val id: Int,
-        val patch: UpdateMangaPatch
+        val patch: UpdateMangaPatch,
     )
 
     data class UpdateMangasPayload(
         val clientMutationId: String?,
-        val mangas: List<MangaType>
+        val mangas: List<MangaType>,
     )
     data class UpdateMangasInput(
         val clientMutationId: String? = null,
         val ids: List<Int>,
-        val patch: UpdateMangaPatch
+        val patch: UpdateMangaPatch,
     )
 
     private suspend fun updateMangas(ids: List<Int>, patch: UpdateMangaPatch) {
@@ -75,7 +75,7 @@ class MangaMutation {
 
             UpdateMangaPayload(
                 clientMutationId = clientMutationId,
-                manga = manga
+                manga = manga,
             )
         }
     }
@@ -92,22 +92,22 @@ class MangaMutation {
 
             UpdateMangasPayload(
                 clientMutationId = clientMutationId,
-                mangas = mangas
+                mangas = mangas,
             )
         }
     }
 
     data class FetchMangaInput(
         val clientMutationId: String? = null,
-        val id: Int
+        val id: Int,
     )
     data class FetchMangaPayload(
         val clientMutationId: String?,
-        val manga: MangaType
+        val manga: MangaType,
     )
 
     fun fetchManga(
-        input: FetchMangaInput
+        input: FetchMangaInput,
     ): CompletableFuture<FetchMangaPayload> {
         val (clientMutationId, id) = input
 
@@ -119,21 +119,21 @@ class MangaMutation {
             }
             FetchMangaPayload(
                 clientMutationId = clientMutationId,
-                manga = MangaType(manga)
+                manga = MangaType(manga),
             )
         }
     }
 
     data class SetMangaMetaInput(
         val clientMutationId: String? = null,
-        val meta: MangaMetaType
+        val meta: MangaMetaType,
     )
     data class SetMangaMetaPayload(
         val clientMutationId: String?,
-        val meta: MangaMetaType
+        val meta: MangaMetaType,
     )
     fun setMangaMeta(
-        input: SetMangaMetaInput
+        input: SetMangaMetaInput,
     ): SetMangaMetaPayload {
         val (clientMutationId, meta) = input
 
@@ -145,15 +145,15 @@ class MangaMutation {
     data class DeleteMangaMetaInput(
         val clientMutationId: String? = null,
         val mangaId: Int,
-        val key: String
+        val key: String,
     )
     data class DeleteMangaMetaPayload(
         val clientMutationId: String?,
         val meta: MangaMetaType?,
-        val manga: MangaType
+        val manga: MangaType,
     )
     fun deleteMangaMeta(
-        input: DeleteMangaMetaInput
+        input: DeleteMangaMetaInput,
     ): DeleteMangaMetaPayload {
         val (clientMutationId, mangaId, key) = input
 

@@ -122,7 +122,7 @@ object MangaList {
                         lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
                         chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
                         updateStrategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy]),
-                        freshData = true
+                        freshData = true,
                     )
                 } else {
                     val mangaId = mangaEntry[MangaTable.id].value
@@ -149,14 +149,14 @@ object MangaList {
                         lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
                         chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
                         updateStrategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy]),
-                        freshData = false
+                        freshData = false,
                     )
                 }
             }
         }
         return PagedMangaListDataClass(
             mangaList,
-            mangasPage.hasNextPage
+            mangasPage.hasNextPage,
         )
     }
 }

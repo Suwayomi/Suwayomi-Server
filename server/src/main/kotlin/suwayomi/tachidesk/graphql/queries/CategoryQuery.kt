@@ -53,7 +53,8 @@ class CategoryQuery {
     enum class CategoryOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<CategoryType> {
         ID(CategoryTable.id),
         NAME(CategoryTable.name),
-        ORDER(CategoryTable.order);
+        ORDER(CategoryTable.order),
+        ;
 
         override fun greater(cursor: Cursor): Op<Boolean> {
             return when (this) {
@@ -85,7 +86,7 @@ class CategoryQuery {
         val id: Int? = null,
         val order: Int? = null,
         val name: String? = null,
-        val default: Boolean? = null
+        val default: Boolean? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -105,14 +106,14 @@ class CategoryQuery {
         val default: BooleanFilter? = null,
         override val and: List<CategoryFilter>? = null,
         override val or: List<CategoryFilter>? = null,
-        override val not: CategoryFilter? = null
+        override val not: CategoryFilter? = null,
     ) : Filter<CategoryFilter> {
         override fun getOpList(): List<Op<Boolean>> {
             return listOfNotNull(
                 andFilterWithCompareEntity(CategoryTable.id, id),
                 andFilterWithCompare(CategoryTable.order, order),
                 andFilterWithCompareString(CategoryTable.name, name),
-                andFilterWithCompare(CategoryTable.isDefault, default)
+                andFilterWithCompare(CategoryTable.isDefault, default),
             )
         }
     }
@@ -126,7 +127,7 @@ class CategoryQuery {
         after: Cursor? = null,
         first: Int? = null,
         last: Int? = null,
-        offset: Int? = null
+        offset: Int? = null,
     ): CategoryNodeList {
         val queryResults = transaction {
             val res = CategoryTable.selectAll()
@@ -142,7 +143,7 @@ class CategoryQuery {
                 } else {
                     res.orderBy(
                         orderByColumn to orderType,
-                        CategoryTable.id to SortOrder.ASC
+                        CategoryTable.id to SortOrder.ASC,
                     )
                 }
             }
@@ -189,24 +190,24 @@ class CategoryQuery {
                     resultsAsType.firstOrNull()?.let {
                         CategoryNodeList.CategoryEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
                     },
                     resultsAsType.lastOrNull()?.let {
                         CategoryNodeList.CategoryEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
-                    }
+                    },
                 )
             },
             pageInfo = PageInfo(
                 hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.id,
                 hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.id,
                 startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
-                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) }
+                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) },
             ),
-            totalCount = queryResults.total.toInt()
+            totalCount = queryResults.total.toInt(),
         )
     }
 }

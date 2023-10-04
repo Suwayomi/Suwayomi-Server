@@ -109,7 +109,7 @@ object JavalinSetup {
         Runtime.getRuntime().addShutdownHook(
             thread(start = false) {
                 app.stop()
-            }
+            },
         )
 
         app.exception(NullPointerException::class.java) { e, ctx ->
@@ -153,7 +153,7 @@ object JavalinSetup {
             swagger(
                 SwaggerOptions("/api/swagger-ui").apply {
                     title("Tachidesk Swagger Documentation")
-                }
+                },
             )
         }
     }

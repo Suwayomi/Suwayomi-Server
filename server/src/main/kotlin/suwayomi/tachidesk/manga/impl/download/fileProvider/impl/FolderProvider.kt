@@ -25,7 +25,7 @@ class FolderProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(manga
     override suspend fun downloadImpl(
         download: DownloadChapter,
         scope: CoroutineScope,
-        step: suspend (DownloadChapter?, Boolean) -> Unit
+        step: suspend (DownloadChapter?, Boolean) -> Unit,
     ): Boolean {
         val chapterDir = getChapterDownloadPath(mangaId, chapterId)
         val folder = File(chapterDir)

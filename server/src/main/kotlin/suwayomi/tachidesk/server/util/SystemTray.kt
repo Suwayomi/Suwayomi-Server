@@ -25,7 +25,7 @@ object SystemTray {
             serverConfig.subscribeTo(
                 serverConfig.debugLogsEnabled,
                 { debugLogsEnabled -> SystemTray.DEBUG = debugLogsEnabled },
-                ignoreInitialValue = false
+                ignoreInitialValue = false,
             )
 
             CacheUtil.clear(BuildConfig.NAME)
@@ -39,10 +39,10 @@ object SystemTray {
 
             mainMenu.add(
                 MenuItem(
-                    "Open Tachidesk"
+                    "Open Tachidesk",
                 ) {
                     openInBrowser()
-                }
+                },
             )
 
             val icon = ServerConfig::class.java.getResource("/icon/faviconlogo.png")
@@ -54,7 +54,7 @@ object SystemTray {
             mainMenu.add(
                 MenuItem("Quit") {
                     shutdownApp(Success)
-                }
+                },
             )
 
             systemTray

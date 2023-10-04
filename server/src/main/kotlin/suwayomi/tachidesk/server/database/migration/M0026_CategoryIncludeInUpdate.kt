@@ -15,5 +15,5 @@ class M0026_CategoryIncludeInUpdate : AddColumnMigration(
     "Category",
     "include_in_update",
     "INT",
-    IncludeInUpdate.UNSET.value.toString()
+    IncludeInUpdate.UNSET.value.toString(),
 )

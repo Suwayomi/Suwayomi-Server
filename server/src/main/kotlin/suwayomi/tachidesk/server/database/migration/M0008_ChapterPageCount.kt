@@ -14,5 +14,5 @@ class M0008_ChapterPageCount : AddColumnMigration(
     "Chapter",
     "page_count",
     "INT",
-    "-1"
+    "-1",
 )

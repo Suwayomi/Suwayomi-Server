@@ -18,7 +18,7 @@ class AndroidCompatInitializer {
         GlobalConfigManager.registerModules(
             FilesConfigModule.register(GlobalConfigManager.config),
             ApplicationInfoConfigModule.register(GlobalConfigManager.config),
-            SystemConfigModule.register(GlobalConfigManager.config)
+            SystemConfigModule.register(GlobalConfigManager.config),
         )
 
         // Set some properties extensions use

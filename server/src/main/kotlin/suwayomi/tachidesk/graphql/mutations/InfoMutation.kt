@@ -14,12 +14,12 @@ import kotlin.time.Duration.Companion.seconds
 
 class InfoMutation {
     data class WebUIUpdateInput(
-        val clientMutationId: String? = null
+        val clientMutationId: String? = null,
     )
 
     data class WebUIUpdatePayload(
         val clientMutationId: String?,
-        val updateStatus: WebUIUpdateStatus
+        val updateStatus: WebUIUpdateStatus,
     )
 
     fun updateWebUI(input: WebUIUpdateInput): CompletableFuture<WebUIUpdatePayload> {
@@ -38,11 +38,11 @@ class InfoMutation {
                             info = WebUIUpdateInfo(
                                 channel = serverConfig.webUIChannel.value,
                                 tag = version,
-                                updateAvailable
+                                updateAvailable,
                             ),
                             state = STOPPED,
-                            progress = 0
-                        )
+                            progress = 0,
+                        ),
                     )
                 }
                 try {
@@ -53,7 +53,7 @@ class InfoMutation {
 
                 WebUIUpdatePayload(
                     input.clientMutationId,
-                    updateStatus = WebInterfaceManager.status.first { it.state == DOWNLOADING }
+                    updateStatus = WebInterfaceManager.status.first { it.state == DOWNLOADING },
                 )
             }
         }

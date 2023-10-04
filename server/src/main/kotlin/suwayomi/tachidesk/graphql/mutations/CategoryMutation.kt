@@ -27,14 +27,14 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 class CategoryMutation {
     data class SetCategoryMetaInput(
         val clientMutationId: String? = null,
-        val meta: CategoryMetaType
+        val meta: CategoryMetaType,
     )
     data class SetCategoryMetaPayload(
         val clientMutationId: String?,
-        val meta: CategoryMetaType
+        val meta: CategoryMetaType,
     )
     fun setCategoryMeta(
-        input: SetCategoryMetaInput
+        input: SetCategoryMetaInput,
     ): SetCategoryMetaPayload {
         val (clientMutationId, meta) = input
 
@@ -46,15 +46,15 @@ class CategoryMutation {
     data class DeleteCategoryMetaInput(
         val clientMutationId: String? = null,
         val categoryId: Int,
-        val key: String
+        val key: String,
     )
     data class DeleteCategoryMetaPayload(
         val clientMutationId: String?,
         val meta: CategoryMetaType?,
-        val category: CategoryType
+        val category: CategoryType,
     )
     fun deleteCategoryMeta(
-        input: DeleteCategoryMetaInput
+        input: DeleteCategoryMetaInput,
     ): DeleteCategoryMetaPayload {
         val (clientMutationId, categoryId, key) = input
 
@@ -81,27 +81,27 @@ class CategoryMutation {
     data class UpdateCategoryPatch(
         val name: String? = null,
         val default: Boolean? = null,
-        val includeInUpdate: IncludeInUpdate? = null
+        val includeInUpdate: IncludeInUpdate? = null,
     )
 
     data class UpdateCategoryPayload(
         val clientMutationId: String?,
-        val category: CategoryType
+        val category: CategoryType,
     )
     data class UpdateCategoryInput(
         val clientMutationId: String? = null,
         val id: Int,
-        val patch: UpdateCategoryPatch
+        val patch: UpdateCategoryPatch,
     )
 
     data class UpdateCategoriesPayload(
         val clientMutationId: String?,
-        val categories: List<CategoryType>
+        val categories: List<CategoryType>,
     )
     data class UpdateCategoriesInput(
         val clientMutationId: String? = null,
         val ids: List<Int>,
-        val patch: UpdateCategoryPatch
+        val patch: UpdateCategoryPatch,
     )
 
     private fun updateCategories(ids: List<Int>, patch: UpdateCategoryPatch) {
@@ -141,7 +141,7 @@ class CategoryMutation {
 
         return UpdateCategoryPayload(
             clientMutationId = clientMutationId,
-            category = category
+            category = category,
         )
     }
 
@@ -156,18 +156,18 @@ class CategoryMutation {
 
         return UpdateCategoriesPayload(
             clientMutationId = clientMutationId,
-            categories = categories
+            categories = categories,
         )
     }
 
     data class UpdateCategoryOrderPayload(
         val clientMutationId: String?,
-        val categories: List<CategoryType>
+        val categories: List<CategoryType>,
     )
     data class UpdateCategoryOrderInput(
         val clientMutationId: String? = null,
         val id: Int,
-        val position: Int
+        val position: Int,
     )
 
     fun updateCategoryOrder(input: UpdateCategoryOrderInput): UpdateCategoryOrderPayload {
@@ -206,7 +206,7 @@ class CategoryMutation {
 
         return UpdateCategoryOrderPayload(
             clientMutationId = clientMutationId,
-            categories = categories
+            categories = categories,
         )
     }
 
@@ -215,14 +215,14 @@ class CategoryMutation {
         val name: String,
         val order: Int? = null,
         val default: Boolean? = null,
-        val includeInUpdate: IncludeInUpdate? = null
+        val includeInUpdate: IncludeInUpdate? = null,
     )
     data class CreateCategoryPayload(
         val clientMutationId: String?,
-        val category: CategoryType
+        val category: CategoryType,
     )
     fun createCategory(
-        input: CreateCategoryInput
+        input: CreateCategoryInput,
     ): CreateCategoryPayload {
         val (clientMutationId, name, order, default, includeInUpdate) = input
         transaction {
@@ -267,22 +267,22 @@ class CategoryMutation {
 
     data class DeleteCategoryInput(
         val clientMutationId: String? = null,
-        val categoryId: Int
+        val categoryId: Int,
     )
     data class DeleteCategoryPayload(
         val clientMutationId: String?,
         val category: CategoryType?,
-        val mangas: List<MangaType>
+        val mangas: List<MangaType>,
     )
     fun deleteCategory(
-        input: DeleteCategoryInput
+        input: DeleteCategoryInput,
     ): DeleteCategoryPayload {
         val (clientMutationId, categoryId) = input
         if (categoryId == 0) { // Don't delete default category
             return DeleteCategoryPayload(
                 clientMutationId,
                 null,
-                emptyList()
+                emptyList(),
             )
         }
 
@@ -313,27 +313,27 @@ class CategoryMutation {
     data class UpdateMangaCategoriesPatch(
         val clearCategories: Boolean? = null,
         val addToCategories: List<Int>? = null,
-        val removeFromCategories: List<Int>? = null
+        val removeFromCategories: List<Int>? = null,
     )
 
     data class UpdateMangaCategoriesPayload(
         val clientMutationId: String?,
-        val manga: MangaType
+        val manga: MangaType,
     )
     data class UpdateMangaCategoriesInput(
         val clientMutationId: String? = null,
         val id: Int,
-        val patch: UpdateMangaCategoriesPatch
+        val patch: UpdateMangaCategoriesPatch,
     )
 
     data class UpdateMangasCategoriesPayload(
         val clientMutationId: String?,
-        val mangas: List<MangaType>
+        val mangas: List<MangaType>,
     )
     data class UpdateMangasCategoriesInput(
         val clientMutationId: String? = null,
         val ids: List<Int>,
-        val patch: UpdateMangaCategoriesPatch
+        val patch: UpdateMangaCategoriesPatch,
     )
 
     private fun updateMangas(ids: List<Int>, patch: UpdateMangaCategoriesPatch) {
@@ -379,7 +379,7 @@ class CategoryMutation {
 
         return UpdateMangaCategoriesPayload(
             clientMutationId = clientMutationId,
-            manga = manga
+            manga = manga,
         )
     }
 
@@ -394,7 +394,7 @@ class CategoryMutation {
 
         return UpdateMangasCategoriesPayload(
             clientMutationId = clientMutationId,
-            mangas = mangas
+            mangas = mangas,
         )
     }
 }

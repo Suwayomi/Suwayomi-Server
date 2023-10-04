@@ -128,7 +128,7 @@ class M0001_Initial : AddTableMigration() {
                 chapterTable,
                 pageTable,
                 categoryTable,
-                categoryMangaTable
+                categoryMangaTable,
             )
         }
 }

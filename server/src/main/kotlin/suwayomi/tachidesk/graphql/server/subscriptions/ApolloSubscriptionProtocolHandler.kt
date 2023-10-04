@@ -44,7 +44,7 @@ import suwayomi.tachidesk.graphql.server.toGraphQLContext
 class ApolloSubscriptionProtocolHandler(
     private val contextFactory: TachideskGraphQLContextFactory,
     private val subscriptionHandler: GraphQLSubscriptionHandler,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
 ) {
     private val sessionState = ApolloSubscriptionSessionState()
     private val logger = KotlinLogging.logger {}
@@ -86,7 +86,7 @@ class ApolloSubscriptionProtocolHandler(
     @Suppress("Detekt.TooGenericExceptionCaught")
     private fun startSubscription(
         operationMessage: SubscriptionOperationMessage,
-        context: WsContext
+        context: WsContext,
     ): Flow<SubscriptionOperationMessage> {
         if (operationMessage.id == null) {
             logger.error("GraphQL subscription operation id is required")
@@ -147,7 +147,7 @@ class ApolloSubscriptionProtocolHandler(
      */
     private fun onComplete(
         operationMessage: SubscriptionOperationMessage,
-        context: WsContext
+        context: WsContext,
     ): Flow<SubscriptionOperationMessage> {
         return sessionState.completeOperation(operationMessage)
     }

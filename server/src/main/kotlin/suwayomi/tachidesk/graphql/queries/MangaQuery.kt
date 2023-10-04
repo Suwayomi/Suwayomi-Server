@@ -57,7 +57,8 @@ class MangaQuery {
         ID(MangaTable.id),
         TITLE(MangaTable.title),
         IN_LIBRARY_AT(MangaTable.inLibraryAt),
-        LAST_FETCHED_AT(MangaTable.lastFetchedAt);
+        LAST_FETCHED_AT(MangaTable.lastFetchedAt),
+        ;
 
         override fun greater(cursor: Cursor): Op<Boolean> {
             return when (this) {
@@ -104,7 +105,7 @@ class MangaQuery {
         val inLibraryAt: Long? = null,
         val realUrl: String? = null,
         val lastFetchedAt: Long? = null,
-        val chaptersLastFetchedAt: Long? = null
+        val chaptersLastFetchedAt: Long? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -140,7 +141,7 @@ class MangaQuery {
         override val lessThan: MangaStatus? = null,
         override val lessThanOrEqualTo: MangaStatus? = null,
         override val greaterThan: MangaStatus? = null,
-        override val greaterThanOrEqualTo: MangaStatus? = null
+        override val greaterThanOrEqualTo: MangaStatus? = null,
     ) : ComparableScalarFilter<MangaStatus> {
         fun asIntFilter() = IntFilter(
             equalTo = equalTo?.value,
@@ -152,7 +153,7 @@ class MangaQuery {
             lessThan = lessThan?.value,
             lessThanOrEqualTo = lessThanOrEqualTo?.value,
             greaterThan = greaterThan?.value,
-            greaterThanOrEqualTo = greaterThanOrEqualTo?.value
+            greaterThanOrEqualTo = greaterThanOrEqualTo?.value,
 
         )
     }
@@ -176,7 +177,7 @@ class MangaQuery {
         val chaptersLastFetchedAt: LongFilter? = null,
         override val and: List<MangaFilter>? = null,
         override val or: List<MangaFilter>? = null,
-        override val not: MangaFilter? = null
+        override val not: MangaFilter? = null,
     ) : Filter<MangaFilter> {
         override fun getOpList(): List<Op<Boolean>> {
             return listOfNotNull(
@@ -194,7 +195,7 @@ class MangaQuery {
                 andFilterWithCompare(MangaTable.inLibraryAt, inLibraryAt),
                 andFilterWithCompareString(MangaTable.realUrl, realUrl),
                 andFilterWithCompare(MangaTable.lastFetchedAt, lastFetchedAt),
-                andFilterWithCompare(MangaTable.chaptersLastFetchedAt, chaptersLastFetchedAt)
+                andFilterWithCompare(MangaTable.chaptersLastFetchedAt, chaptersLastFetchedAt),
             )
         }
     }
@@ -208,7 +209,7 @@ class MangaQuery {
         after: Cursor? = null,
         first: Int? = null,
         last: Int? = null,
-        offset: Int? = null
+        offset: Int? = null,
     ): MangaNodeList {
         val queryResults = transaction {
             val res = MangaTable.selectAll()
@@ -224,7 +225,7 @@ class MangaQuery {
                 } else {
                     res.orderBy(
                         orderByColumn to orderType,
-                        MangaTable.id to SortOrder.ASC
+                        MangaTable.id to SortOrder.ASC,
                     )
                 }
             }
@@ -271,24 +272,24 @@ class MangaQuery {
                     resultsAsType.firstOrNull()?.let {
                         MangaNodeList.MangaEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
                     },
                     resultsAsType.lastOrNull()?.let {
                         MangaNodeList.MangaEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
-                    }
+                    },
                 )
             },
             pageInfo = PageInfo(
                 hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.id,
                 hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.id,
                 startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
-                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) }
+                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) },
             ),
-            totalCount = queryResults.total.toInt()
+            totalCount = queryResults.total.toInt(),
         )
     }
 }

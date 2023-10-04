@@ -30,12 +30,12 @@ object BackupController {
             ctx.future(
                 future {
                     ProtoBackupImport.performRestore(ctx.bodyAsInputStream())
-                }
+                },
             )
         },
         withResults = {
             httpCode(HttpCode.OK)
-        }
+        },
     )
 
     /** expects a Tachiyomi protobuf backup as a file upload, the file must be named "backup.proto.gz" */
@@ -55,13 +55,13 @@ object BackupController {
             ctx.future(
                 future {
                     ProtoBackupImport.performRestore(ctx.uploadedFile("backup.proto.gz")!!.content)
-                }
+                },
             )
         },
         withResults = {
             httpCode(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
-        }
+        },
     )
 
     /** returns a Tachiyomi protobuf backup created from the current database as a body */
@@ -82,15 +82,15 @@ object BackupController {
                             includeCategories = true,
                             includeChapters = true,
                             includeTracking = true,
-                            includeHistory = true
-                        )
+                            includeHistory = true,
+                        ),
                     )
-                }
+                },
             )
         },
         withResults = {
             stream(HttpCode.OK)
-        }
+        },
     )
 
     /** returns a Tachiyomi protobuf backup created from the current database as a file */
@@ -113,15 +113,15 @@ object BackupController {
                             includeCategories = true,
                             includeChapters = true,
                             includeTracking = true,
-                            includeHistory = true
-                        )
+                            includeHistory = true,
+                        ),
                     )
-                }
+                },
             )
         },
         withResults = {
             stream(HttpCode.OK)
-        }
+        },
     )
 
     /** Reports missing sources and trackers, expects a Tachiyomi protobuf backup in the body */
@@ -136,12 +136,12 @@ object BackupController {
             ctx.future(
                 future {
                     ProtoBackupValidator.validate(ctx.bodyAsInputStream())
-                }
+                },
             )
         },
         withResults = {
             json<ProtoBackupValidator.ValidationResult>(HttpCode.OK)
-        }
+        },
     )
 
     /** Reports missing sources and trackers, expects a Tachiyomi protobuf backup as a file upload, the file must be named "backup.proto.gz" */
@@ -160,11 +160,11 @@ object BackupController {
             ctx.future(
                 future {
                     ProtoBackupValidator.validate(ctx.uploadedFile("backup.proto.gz")!!.content)
-                }
+                },
             )
         },
         withResults = {
             json<ProtoBackupValidator.ValidationResult>(HttpCode.OK)
-        }
+        },
     )
 }

@@ -26,8 +26,8 @@ private class GraphqlLongAsStringCoercing : Coercing<Long, String> {
                 CoercingUtil.i18nMsg(
                     locale,
                     "String.unexpectedRawValueType",
-                    CoercingUtil.typeName(input)
-                )
+                    CoercingUtil.typeName(input),
+                ),
             )
         }
         return input.toLong()
@@ -40,8 +40,8 @@ private class GraphqlLongAsStringCoercing : Coercing<Long, String> {
                     locale,
                     "Scalar.unexpectedAstType",
                     "StringValue",
-                    CoercingUtil.typeName(input)
-                )
+                    CoercingUtil.typeName(input),
+                ),
             )
         }
         return input.value.toLong()
@@ -60,7 +60,7 @@ private class GraphqlLongAsStringCoercing : Coercing<Long, String> {
     override fun serialize(
         dataFetcherResult: Any,
         graphQLContext: GraphQLContext,
-        locale: Locale
+        locale: Locale,
     ): String {
         return toStringImpl(dataFetcherResult)
     }
@@ -85,7 +85,7 @@ private class GraphqlLongAsStringCoercing : Coercing<Long, String> {
         input: Value<*>,
         variables: CoercedVariables,
         graphQLContext: GraphQLContext,
-        locale: Locale
+        locale: Locale,
     ): Long {
         return parseLiteralImpl(input, locale)
     }
@@ -98,7 +98,7 @@ private class GraphqlLongAsStringCoercing : Coercing<Long, String> {
     override fun valueToLiteral(
         input: Any,
         graphQLContext: GraphQLContext,
-        locale: Locale
+        locale: Locale,
     ): Value<*> {
         return valueToLiteralImpl(input)
     }

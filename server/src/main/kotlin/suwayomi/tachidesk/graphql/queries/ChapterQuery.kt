@@ -66,7 +66,8 @@ class ChapterQuery {
         UPLOAD_DATE(ChapterTable.date_upload),
         CHAPTER_NUMBER(ChapterTable.chapter_number),
         LAST_READ_AT(ChapterTable.lastReadAt),
-        FETCHED_AT(ChapterTable.fetchedAt);
+        FETCHED_AT(ChapterTable.fetchedAt),
+        ;
 
         override fun greater(cursor: Cursor): Op<Boolean> {
             return when (this) {
@@ -122,7 +123,7 @@ class ChapterQuery {
         val realUrl: String? = null,
         val fetchedAt: Long? = null,
         val isDownloaded: Boolean? = null,
-        val pageCount: Int? = null
+        val pageCount: Int? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -167,7 +168,7 @@ class ChapterQuery {
         val inLibrary: BooleanFilter? = null,
         override val and: List<ChapterFilter>? = null,
         override val or: List<ChapterFilter>? = null,
-        override val not: ChapterFilter? = null
+        override val not: ChapterFilter? = null,
     ) : Filter<ChapterFilter> {
         override fun getOpList(): List<Op<Boolean>> {
             return listOfNotNull(
@@ -186,7 +187,7 @@ class ChapterQuery {
                 andFilterWithCompareString(ChapterTable.realUrl, realUrl),
                 andFilterWithCompare(ChapterTable.fetchedAt, fetchedAt),
                 andFilterWithCompare(ChapterTable.isDownloaded, isDownloaded),
-                andFilterWithCompare(ChapterTable.pageCount, pageCount)
+                andFilterWithCompare(ChapterTable.pageCount, pageCount),
             )
         }
 
@@ -202,7 +203,7 @@ class ChapterQuery {
         after: Cursor? = null,
         first: Int? = null,
         last: Int? = null,
-        offset: Int? = null
+        offset: Int? = null,
     ): ChapterNodeList {
         val queryResults = transaction {
             val res = ChapterTable.selectAll()
@@ -226,7 +227,7 @@ class ChapterQuery {
                 } else {
                     res.orderBy(
                         orderByColumn to orderType,
-                        ChapterTable.id to SortOrder.ASC
+                        ChapterTable.id to SortOrder.ASC,
                     )
                 }
             }
@@ -273,24 +274,24 @@ class ChapterQuery {
                     resultsAsType.firstOrNull()?.let {
                         ChapterNodeList.ChapterEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
                     },
                     resultsAsType.lastOrNull()?.let {
                         ChapterNodeList.ChapterEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
-                    }
+                    },
                 )
             },
             pageInfo = PageInfo(
                 hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.id,
                 hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.id,
                 startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
-                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) }
+                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) },
             ),
-            totalCount = queryResults.total.toInt()
+            totalCount = queryResults.total.toInt(),
         )
     }
 }

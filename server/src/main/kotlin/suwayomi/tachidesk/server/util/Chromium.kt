@@ -50,7 +50,7 @@ object Chromium {
                     Files.copy(
                         source,
                         chromePath.resolve(source.absolutePathString().removePrefix("/")),
-                        StandardCopyOption.REPLACE_EXISTING
+                        StandardCopyOption.REPLACE_EXISTING,
                     )
                 }
         }

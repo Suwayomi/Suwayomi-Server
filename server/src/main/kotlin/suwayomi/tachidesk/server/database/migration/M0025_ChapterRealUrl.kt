@@ -14,5 +14,5 @@ class M0025_ChapterRealUrl : AddColumnMigration(
     "Chapter",
     "real_url",
     "VARCHAR(2048)",
-    "NULL"
+    "NULL",
 )

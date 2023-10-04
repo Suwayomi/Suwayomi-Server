@@ -25,7 +25,7 @@ class TachideskGraphQLServer(
     requestParser: JavalinGraphQLRequestParser,
     contextFactory: TachideskGraphQLContextFactory,
     requestHandler: GraphQLRequestHandler,
-    subscriptionHandler: GraphQLSubscriptionHandler
+    subscriptionHandler: GraphQLSubscriptionHandler,
 ) : GraphQLServer<Context>(requestParser, contextFactory, requestHandler) {
     private val objectMapper = jacksonObjectMapper()
     private val subscriptionProtocolHandler = ApolloSubscriptionProtocolHandler(contextFactory, subscriptionHandler, objectMapper)

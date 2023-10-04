@@ -31,7 +31,7 @@ fun setLoggingEnabled(enabled: Boolean = true) {
 const val BASE_PATH = "build/tmp/TestDesk"
 
 fun createLibraryManga(
-    _title: String
+    _title: String,
 ): Int {
     return transaction {
         MangaTable.insertAndGetId {
@@ -44,7 +44,7 @@ fun createLibraryManga(
 }
 
 fun createSMangas(
-    count: Int
+    count: Int,
 ): List<SManga> {
     return (0 until count).map {
         SManga.create().apply {
@@ -57,7 +57,7 @@ fun createSMangas(
 fun createChapters(
     mangaId: Int,
     amount: Int,
-    read: Boolean
+    read: Boolean,
 ) {
     val list = listOf((0 until amount)).flatten().map { 1 }
     transaction {

@@ -28,7 +28,7 @@ object AppMutex {
     private enum class AppMutexState(val stat: Int) {
         Clear(0),
         TachideskInstanceRunning(1),
-        OtherApplicationRunning(2)
+        OtherApplicationRunning(2),
     }
 
     private val appIP = if (serverConfig.ip.value == "0.0.0.0") "127.0.0.1" else serverConfig.ip.value

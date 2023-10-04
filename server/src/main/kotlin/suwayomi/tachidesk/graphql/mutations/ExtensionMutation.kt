@@ -15,27 +15,27 @@ class ExtensionMutation {
     data class UpdateExtensionPatch(
         val install: Boolean? = null,
         val update: Boolean? = null,
-        val uninstall: Boolean? = null
+        val uninstall: Boolean? = null,
     )
 
     data class UpdateExtensionPayload(
         val clientMutationId: String?,
-        val extension: ExtensionType
+        val extension: ExtensionType,
     )
     data class UpdateExtensionInput(
         val clientMutationId: String? = null,
         val id: String,
-        val patch: UpdateExtensionPatch
+        val patch: UpdateExtensionPatch,
     )
 
     data class UpdateExtensionsPayload(
         val clientMutationId: String?,
-        val extensions: List<ExtensionType>
+        val extensions: List<ExtensionType>,
     )
     data class UpdateExtensionsInput(
         val clientMutationId: String? = null,
         val ids: List<String>,
-        val patch: UpdateExtensionPatch
+        val patch: UpdateExtensionPatch,
     )
 
     private suspend fun updateExtensions(ids: List<String>, patch: UpdateExtensionPatch) {
@@ -75,7 +75,7 @@ class ExtensionMutation {
 
             UpdateExtensionPayload(
                 clientMutationId = clientMutationId,
-                extension = extension
+                extension = extension,
             )
         }
     }
@@ -93,21 +93,21 @@ class ExtensionMutation {
 
             UpdateExtensionsPayload(
                 clientMutationId = clientMutationId,
-                extensions = extensions
+                extensions = extensions,
             )
         }
     }
 
     data class FetchExtensionsInput(
-        val clientMutationId: String? = null
+        val clientMutationId: String? = null,
     )
     data class FetchExtensionsPayload(
         val clientMutationId: String?,
-        val extensions: List<ExtensionType>
+        val extensions: List<ExtensionType>,
     )
 
     fun fetchExtensions(
-        input: FetchExtensionsInput
+        input: FetchExtensionsInput,
     ): CompletableFuture<FetchExtensionsPayload> {
         val (clientMutationId) = input
 
@@ -121,19 +121,19 @@ class ExtensionMutation {
 
             FetchExtensionsPayload(
                 clientMutationId = clientMutationId,
-                extensions = extensions
+                extensions = extensions,
             )
         }
     }
 
     data class InstallExternalExtensionInput(
         val clientMutationId: String? = null,
-        val extensionFile: UploadedFile
+        val extensionFile: UploadedFile,
     )
 
     data class InstallExternalExtensionPayload(
         val clientMutationId: String?,
-        val extension: ExtensionType
+        val extension: ExtensionType,
     )
 
     fun installExternalExtension(input: InstallExternalExtensionInput): CompletableFuture<InstallExternalExtensionPayload> {
@@ -146,7 +146,7 @@ class ExtensionMutation {
 
             InstallExternalExtensionPayload(
                 clientMutationId,
-                extension = ExtensionType(dbExtension)
+                extension = ExtensionType(dbExtension),
             )
         }
     }

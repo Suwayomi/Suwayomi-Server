@@ -25,27 +25,27 @@ class ChapterMutation {
     data class UpdateChapterPatch(
         val isBookmarked: Boolean? = null,
         val isRead: Boolean? = null,
-        val lastPageRead: Int? = null
+        val lastPageRead: Int? = null,
     )
 
     data class UpdateChapterPayload(
         val clientMutationId: String?,
-        val chapter: ChapterType
+        val chapter: ChapterType,
     )
     data class UpdateChapterInput(
         val clientMutationId: String? = null,
         val id: Int,
-        val patch: UpdateChapterPatch
+        val patch: UpdateChapterPatch,
     )
 
     data class UpdateChaptersPayload(
         val clientMutationId: String?,
-        val chapters: List<ChapterType>
+        val chapters: List<ChapterType>,
     )
     data class UpdateChaptersInput(
         val clientMutationId: String? = null,
         val ids: List<Int>,
-        val patch: UpdateChapterPatch
+        val patch: UpdateChapterPatch,
     )
 
     private fun updateChapters(ids: List<Int>, patch: UpdateChapterPatch) {
@@ -69,7 +69,7 @@ class ChapterMutation {
     }
 
     fun updateChapter(
-        input: UpdateChapterInput
+        input: UpdateChapterInput,
     ): UpdateChapterPayload {
         val (clientMutationId, id, patch) = input
 
@@ -81,12 +81,12 @@ class ChapterMutation {
 
         return UpdateChapterPayload(
             clientMutationId = clientMutationId,
-            chapter = chapter
+            chapter = chapter,
         )
     }
 
     fun updateChapters(
-        input: UpdateChaptersInput
+        input: UpdateChaptersInput,
     ): UpdateChaptersPayload {
         val (clientMutationId, ids, patch) = input
 
@@ -98,21 +98,21 @@ class ChapterMutation {
 
         return UpdateChaptersPayload(
             clientMutationId = clientMutationId,
-            chapters = chapters
+            chapters = chapters,
         )
     }
 
     data class FetchChaptersInput(
         val clientMutationId: String? = null,
-        val mangaId: Int
+        val mangaId: Int,
     )
     data class FetchChaptersPayload(
         val clientMutationId: String?,
-        val chapters: List<ChapterType>
+        val chapters: List<ChapterType>,
     )
 
     fun fetchChapters(
-        input: FetchChaptersInput
+        input: FetchChaptersInput,
     ): CompletableFuture<FetchChaptersPayload> {
         val (clientMutationId, mangaId) = input
 
@@ -127,21 +127,21 @@ class ChapterMutation {
 
             FetchChaptersPayload(
                 clientMutationId = clientMutationId,
-                chapters = chapters
+                chapters = chapters,
             )
         }
     }
 
     data class SetChapterMetaInput(
         val clientMutationId: String? = null,
-        val meta: ChapterMetaType
+        val meta: ChapterMetaType,
     )
     data class SetChapterMetaPayload(
         val clientMutationId: String?,
-        val meta: ChapterMetaType
+        val meta: ChapterMetaType,
     )
     fun setChapterMeta(
-        input: SetChapterMetaInput
+        input: SetChapterMetaInput,
     ): SetChapterMetaPayload {
         val (clientMutationId, meta) = input
 
@@ -153,15 +153,15 @@ class ChapterMutation {
     data class DeleteChapterMetaInput(
         val clientMutationId: String? = null,
         val chapterId: Int,
-        val key: String
+        val key: String,
     )
     data class DeleteChapterMetaPayload(
         val clientMutationId: String?,
         val meta: ChapterMetaType?,
-        val chapter: ChapterType
+        val chapter: ChapterType,
     )
     fun deleteChapterMeta(
-        input: DeleteChapterMetaInput
+        input: DeleteChapterMetaInput,
     ): DeleteChapterMetaPayload {
         val (clientMutationId, chapterId, key) = input
 
@@ -187,15 +187,15 @@ class ChapterMutation {
 
     data class FetchChapterPagesInput(
         val clientMutationId: String? = null,
-        val chapterId: Int
+        val chapterId: Int,
     )
     data class FetchChapterPagesPayload(
         val clientMutationId: String?,
         val pages: List<String>,
-        val chapter: ChapterType
+        val chapter: ChapterType,
     )
     fun fetchChapterPages(
-        input: FetchChapterPagesInput
+        input: FetchChapterPagesInput,
     ): CompletableFuture<FetchChapterPagesPayload> {
         val (clientMutationId, chapterId) = input
 
@@ -207,7 +207,7 @@ class ChapterMutation {
                 pages = List(chapter.pageCount) { index ->
                     "/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}/page/$index"
                 },
-                chapter = ChapterType(chapter)
+                chapter = ChapterType(chapter),
             )
         }
     }

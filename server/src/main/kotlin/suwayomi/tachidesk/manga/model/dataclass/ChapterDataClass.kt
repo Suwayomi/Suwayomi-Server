@@ -48,5 +48,5 @@ data class ChapterDataClass(
     val chapterCount: Int? = null,
 
     /** used to store client specific values */
-    val meta: Map<String, String> = emptyMap()
+    val meta: Map<String, String> = emptyMap(),
 )

@@ -26,12 +26,12 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
 
             val request = context.jsonMapper().fromJsonString(
                 formParam,
-                GraphQLServerRequest::class.java
+                GraphQLServerRequest::class.java,
             )
             val map = context.formParam("map")?.let {
                 context.jsonMapper().fromJsonString(
                     it,
-                    Map::class.java as Class<Map<String, List<String>>>
+                    Map::class.java as Class<Map<String, List<String>>>,
                 )
             }.orEmpty()
 
@@ -43,7 +43,7 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
                     MapItem(
                         variable,
                         listIndex,
-                        file
+                        file,
                     )
                 }
             }.groupBy { it.variable }
@@ -56,9 +56,9 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
                     request.copy(
                         requests = request.requests.map {
                             it.copy(
-                                variables = it.variables?.modifyFiles(mapItems)
+                                variables = it.variables?.modifyFiles(mapItems),
                             )
-                        }
+                        },
                     )
                 }
             }
@@ -70,7 +70,7 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
     data class MapItem(
         val variable: String,
         val listIndex: Int?,
-        val file: UploadedFile?
+        val file: UploadedFile?,
     )
 
     /**

@@ -70,7 +70,7 @@ class Updater : IUpdater {
                     }
                 }
             },
-            ignoreInitialValue = false
+            ignoreInitialValue = false,
         )
     }
 
@@ -136,7 +136,7 @@ class Updater : IUpdater {
                         process(job),
                         tracker.any { (_, job) ->
                             job.status == JobStatus.PENDING || job.status == JobStatus.RUNNING
-                        }
+                        },
                     )
                 }
             }
@@ -179,7 +179,7 @@ class Updater : IUpdater {
         val skippedCategories = categories.subtract(categoriesToUpdate.toSet()).toList()
         val updateStatusCategories = mapOf(
             Pair(CategoryUpdateStatus.UPDATING, categoriesToUpdate),
-            Pair(CategoryUpdateStatus.SKIPPED, skippedCategories)
+            Pair(CategoryUpdateStatus.SKIPPED, skippedCategories),
         )
 
         logger.debug { "Updating categories: '${categoriesToUpdate.joinToString("', '") { it.name }}'" }
@@ -207,7 +207,7 @@ class Updater : IUpdater {
 
         addMangasToQueue(
             mangasToUpdate
-                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, MangaDataClass::title))
+                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, MangaDataClass::title)),
         )
     }
 

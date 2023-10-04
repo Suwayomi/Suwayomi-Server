@@ -12,7 +12,7 @@ class PreferenceManager {
         fun getDefaultSharedPreferences(context: Context) =
             context.getSharedPreferences(
                 context.applicationInfo.packageName,
-                Context.MODE_PRIVATE
+                Context.MODE_PRIVATE,
             )!!
     }
 }

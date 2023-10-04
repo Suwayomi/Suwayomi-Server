@@ -34,7 +34,7 @@ object ImageResponse {
         val fileType = cachedFile.substringAfter("$filePath.")
         return Pair(
             pathToInputStream(cachedFile),
-            "image/$fileType"
+            "image/$fileType",
         )
     }
 
@@ -49,7 +49,7 @@ object ImageResponse {
     suspend fun getImageResponse(
         saveDir: String,
         fileName: String,
-        fetcher: suspend () -> Response
+        fetcher: suspend () -> Response,
     ): Pair<InputStream, String> {
         File(saveDir).mkdirs()
 

@@ -84,12 +84,12 @@ object ProtoBackupImport : ProtoBackupBase() {
                 backupRestoreState.value = BackupRestoreState.RestoringManga(
                     current = index + 1,
                     totalManga = backup.backupManga.size,
-                    title = manga.title
+                    title = manga.title,
                 )
                 restoreManga(
                     backupManga = manga,
                     backupCategories = backup.backupCategories,
-                    categoryMapping = categoryMapping
+                    categoryMapping = categoryMapping,
                 )
             }
 
@@ -126,7 +126,7 @@ object ProtoBackupImport : ProtoBackupBase() {
     private fun restoreManga(
         backupManga: BackupManga,
         backupCategories: List<BackupCategory>,
-        categoryMapping: Map<Int, Int>
+        categoryMapping: Map<Int, Int>,
     ) {
         val manga = backupManga.getMangaImpl()
         val chapters = backupManga.getChaptersImpl()
@@ -150,7 +150,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         history: List<BackupHistory>,
         tracks: List<Track>,
         backupCategories: List<BackupCategory>,
-        categoryMapping: Map<Int, Int>
+        categoryMapping: Map<Int, Int>,
     ) {
         val dbManga = transaction {
             MangaTable.select { (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq manga.source) }

@@ -31,7 +31,7 @@ object CategoryController {
         },
         withResults = {
             json<Array<CategoryDataClass>>(HttpCode.OK)
-        }
+        },
     )
 
     /** category create */
@@ -53,7 +53,7 @@ object CategoryController {
         withResults = {
             httpCode(HttpCode.OK)
             httpCode(HttpCode.BAD_REQUEST)
-        }
+        },
     )
 
     /** category modification */
@@ -74,7 +74,7 @@ object CategoryController {
         },
         withResults = {
             httpCode(HttpCode.OK)
-        }
+        },
     )
 
     /** category delete */
@@ -92,7 +92,7 @@ object CategoryController {
         },
         withResults = {
             httpCode(HttpCode.OK)
-        }
+        },
     )
 
     /** returns the manga list associated with a category */
@@ -109,7 +109,7 @@ object CategoryController {
         },
         withResults = {
             json<Array<MangaDataClass>>(HttpCode.OK)
-        }
+        },
     )
 
     /** category re-ordering */
@@ -128,7 +128,7 @@ object CategoryController {
         },
         withResults = {
             httpCode(HttpCode.OK)
-        }
+        },
     )
 
     /** used to modify a category's meta parameters */
@@ -149,6 +149,6 @@ object CategoryController {
         withResults = {
             httpCode(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
-        }
+        },
     )
 }

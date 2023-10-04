@@ -58,7 +58,7 @@ val schema = toSchema(
     config = SchemaGeneratorConfig(
         supportedPackages = listOf("suwayomi.tachidesk.graphql"),
         introspectionEnabled = true,
-        hooks = CustomSchemaGeneratorHooks()
+        hooks = CustomSchemaGeneratorHooks(),
     ),
     queries = listOf(
         TopLevelObject(BackupQuery()),
@@ -71,7 +71,7 @@ val schema = toSchema(
         TopLevelObject(MetaQuery()),
         TopLevelObject(SettingsQuery()),
         TopLevelObject(SourceQuery()),
-        TopLevelObject(UpdateQuery())
+        TopLevelObject(UpdateQuery()),
     ),
     mutations = listOf(
         TopLevelObject(BackupMutation()),
@@ -84,11 +84,11 @@ val schema = toSchema(
         TopLevelObject(MetaMutation()),
         TopLevelObject(SettingsMutation()),
         TopLevelObject(SourceMutation()),
-        TopLevelObject(UpdateMutation())
+        TopLevelObject(UpdateMutation()),
     ),
     subscriptions = listOf(
         TopLevelObject(DownloadSubscription()),
         TopLevelObject(InfoSubscription()),
-        TopLevelObject(UpdateSubscription())
-    )
+        TopLevelObject(UpdateSubscription()),
+    ),
 )

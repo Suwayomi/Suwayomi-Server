@@ -22,7 +22,7 @@ object TemporaryFileStorage {
         Runtime.getRuntime().addShutdownHook(
             thread(start = false) {
                 folder.deleteRecursively()
-            }
+            },
         )
     }
 

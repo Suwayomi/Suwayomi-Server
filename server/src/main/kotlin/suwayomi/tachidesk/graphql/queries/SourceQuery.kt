@@ -53,7 +53,8 @@ class SourceQuery {
     enum class SourceOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<SourceType> {
         ID(SourceTable.id),
         NAME(SourceTable.name),
-        LANG(SourceTable.lang);
+        LANG(SourceTable.lang),
+        ;
 
         override fun greater(cursor: Cursor): Op<Boolean> {
             return when (this) {
@@ -85,7 +86,7 @@ class SourceQuery {
         val id: Long? = null,
         val name: String? = null,
         val lang: String? = null,
-        val isNsfw: Boolean? = null
+        val isNsfw: Boolean? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -105,14 +106,14 @@ class SourceQuery {
         val isNsfw: BooleanFilter? = null,
         override val and: List<SourceFilter>? = null,
         override val or: List<SourceFilter>? = null,
-        override val not: SourceFilter? = null
+        override val not: SourceFilter? = null,
     ) : Filter<SourceFilter> {
         override fun getOpList(): List<Op<Boolean>> {
             return listOfNotNull(
                 andFilterWithCompareEntity(SourceTable.id, id),
                 andFilterWithCompareString(SourceTable.name, name),
                 andFilterWithCompareString(SourceTable.lang, lang),
-                andFilterWithCompare(SourceTable.isNsfw, isNsfw)
+                andFilterWithCompare(SourceTable.isNsfw, isNsfw),
             )
         }
     }
@@ -126,7 +127,7 @@ class SourceQuery {
         after: Cursor? = null,
         first: Int? = null,
         last: Int? = null,
-        offset: Int? = null
+        offset: Int? = null,
     ): SourceNodeList {
         val (queryResults, resultsAsType) = transaction {
             val res = SourceTable.selectAll()
@@ -142,7 +143,7 @@ class SourceQuery {
                 } else {
                     res.orderBy(
                         orderByColumn to orderType,
-                        SourceTable.id to SortOrder.ASC
+                        SourceTable.id to SortOrder.ASC,
                     )
                 }
             }
@@ -189,24 +190,24 @@ class SourceQuery {
                     resultsAsType.firstOrNull()?.let {
                         SourceNodeList.SourceEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
                     },
                     resultsAsType.lastOrNull()?.let {
                         SourceNodeList.SourceEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
-                    }
+                    },
                 )
             },
             pageInfo = PageInfo(
                 hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.id,
                 hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.id,
                 startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
-                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) }
+                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) },
             ),
-            totalCount = queryResults.total.toInt()
+            totalCount = queryResults.total.toInt(),
         )
     }
 }

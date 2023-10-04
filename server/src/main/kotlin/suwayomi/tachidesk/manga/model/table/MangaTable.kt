@@ -69,7 +69,7 @@ fun MangaTable.toDataClass(mangaEntry: ResultRow) =
         realUrl = mangaEntry[realUrl],
         lastFetchedAt = mangaEntry[lastFetchedAt],
         chaptersLastFetchedAt = mangaEntry[chaptersLastFetchedAt],
-        updateStrategy = UpdateStrategy.valueOf(mangaEntry[updateStrategy])
+        updateStrategy = UpdateStrategy.valueOf(mangaEntry[updateStrategy]),
     )
 
 enum class MangaStatus(val value: Int) {
@@ -79,7 +79,8 @@ enum class MangaStatus(val value: Int) {
     LICENSED(3),
     PUBLISHING_FINISHED(4),
     CANCELLED(5),
-    ON_HIATUS(6);
+    ON_HIATUS(6),
+    ;
 
     companion object {
         fun valueOf(value: Int): MangaStatus = values().find { it.value == value } ?: UNKNOWN

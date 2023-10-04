@@ -64,7 +64,7 @@ internal class UpdateControllerTest : ApplicationTest() {
     }
 
     private fun createLibraryManga(
-        _title: String
+        _title: String,
     ): Int {
         return transaction {
             MangaTable.insertAndGetId {
@@ -81,7 +81,7 @@ internal class UpdateControllerTest : ApplicationTest() {
         clearTables(
             CategoryMangaTable,
             MangaTable,
-            CategoryTable
+            CategoryTable,
         )
         val updater by DI.global.instance<IUpdater>()
         runBlocking { updater.reset() }

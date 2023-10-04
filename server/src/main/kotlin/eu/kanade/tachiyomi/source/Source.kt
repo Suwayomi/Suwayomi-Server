@@ -28,7 +28,7 @@ interface Source {
      */
     @Deprecated(
         "Use the 1.x API instead",
-        ReplaceWith("getMangaDetails")
+        ReplaceWith("getMangaDetails"),
     )
     fun fetchMangaDetails(manga: SManga): Observable<SManga> = throw IllegalStateException("Not used")
 
@@ -39,7 +39,7 @@ interface Source {
      */
     @Deprecated(
         "Use the 1.x API instead",
-        ReplaceWith("getChapterList")
+        ReplaceWith("getChapterList"),
     )
     fun fetchChapterList(manga: SManga): Observable<List<SChapter>> = throw IllegalStateException("Not used")
 
@@ -51,7 +51,7 @@ interface Source {
      */
     @Deprecated(
         "Use the 1.x API instead",
-        ReplaceWith("getPageList")
+        ReplaceWith("getPageList"),
     )
     fun fetchPageList(chapter: SChapter): Observable<List<Page>> = Observable.empty()
 

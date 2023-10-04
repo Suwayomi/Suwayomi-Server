@@ -46,7 +46,7 @@ suspend fun getChapterDownloadReadyByIndex(chapterIndex: Int, mangaId: Int): Cha
 private class ChapterForDownload(
     optChapterId: Int? = null,
     optChapterIndex: Int? = null,
-    optMangaId: Int? = null
+    optMangaId: Int? = null,
 ) {
     suspend fun asDownloadReady(): ChapterDataClass {
         if (isNotCompletelyDownloaded()) {
@@ -94,7 +94,7 @@ private class ChapterForDownload(
             SChapter.create().apply {
                 url = chapterEntry[ChapterTable.url]
                 name = chapterEntry[ChapterTable.name]
-            }
+            },
         )
     }
 
@@ -126,7 +126,7 @@ private class ChapterForDownload(
 
     private fun updatePageCount(
         pageList: List<Page>,
-        chapterId: Int
+        chapterId: Int,
     ) {
         transaction {
             ChapterTable.update({ ChapterTable.id eq chapterId }) {
@@ -154,7 +154,7 @@ private class ChapterForDownload(
 
         return ImageResponse.findFileNameStartingWith(
             chapterDir,
-            getPageName(0)
+            getPageName(0),
         ) != null
     }
 }

@@ -24,7 +24,7 @@ object ProtoBackupValidator {
         val missingTrackers: List<String>,
         val mangasMissingSources: List<String>,
         @JsonIgnore
-        val missingSourceIds: List<Pair<Long, String>>
+        val missingSourceIds: List<Pair<Long, String>>,
     )
 
     fun validate(backup: Backup): ValidationResult {
@@ -56,7 +56,7 @@ object ProtoBackupValidator {
                 .sorted(),
             missingTrackers,
             emptyList(),
-            missingSources.toList()
+            missingSources.toList(),
         )
     }
 

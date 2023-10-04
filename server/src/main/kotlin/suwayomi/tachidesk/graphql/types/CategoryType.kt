@@ -24,14 +24,14 @@ class CategoryType(
     val order: Int,
     val name: String,
     val default: Boolean,
-    val includeInUpdate: IncludeInUpdate
+    val includeInUpdate: IncludeInUpdate,
 ) : Node {
     constructor(row: ResultRow) : this(
         row[CategoryTable.id].value,
         row[CategoryTable.order],
         row[CategoryTable.name],
         row[CategoryTable.isDefault],
-        IncludeInUpdate.fromValue(row[CategoryTable.includeInUpdate])
+        IncludeInUpdate.fromValue(row[CategoryTable.includeInUpdate]),
     )
 
     fun mangas(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> {
@@ -47,11 +47,11 @@ data class CategoryNodeList(
     override val nodes: List<CategoryType>,
     override val edges: List<CategoryEdge>,
     override val pageInfo: PageInfo,
-    override val totalCount: Int
+    override val totalCount: Int,
 ) : NodeList() {
     data class CategoryEdge(
         override val cursor: Cursor,
-        override val node: CategoryType
+        override val node: CategoryType,
     ) : Edge()
 
     companion object {
@@ -63,9 +63,9 @@ data class CategoryNodeList(
                     hasNextPage = false,
                     hasPreviousPage = false,
                     startCursor = Cursor(0.toString()),
-                    endCursor = Cursor(lastIndex.toString())
+                    endCursor = Cursor(lastIndex.toString()),
                 ),
-                totalCount = size
+                totalCount = size,
             )
         }
 
@@ -74,12 +74,12 @@ data class CategoryNodeList(
             return listOf(
                 CategoryEdge(
                     cursor = Cursor("0"),
-                    node = first()
+                    node = first(),
                 ),
                 CategoryEdge(
                     cursor = Cursor(lastIndex.toString()),
-                    node = last()
-                )
+                    node = last(),
+                ),
             )
         }
     }

@@ -13,7 +13,7 @@ data class UpdateStatus(
     val mangaStatusMap: Map<JobStatus, List<MangaDataClass>> = emptyMap(),
     val running: Boolean = false,
     @JsonIgnore
-    val numberOfJobs: Int = 0
+    val numberOfJobs: Int = 0,
 ) {
 
     constructor(categories: Map<CategoryUpdateStatus, List<CategoryDataClass>>, jobs: List<UpdateJob>, skippedMangas: List<MangaDataClass>, running: Boolean) : this(
@@ -23,6 +23,6 @@ data class UpdateStatus(
                 entry.value.map { it.manga }
             }.plus(Pair(JobStatus.SKIPPED, skippedMangas)),
         running = running,
-        numberOfJobs = jobs.size
+        numberOfJobs = jobs.size,
     )
 }

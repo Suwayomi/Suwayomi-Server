@@ -32,12 +32,12 @@ object ExtensionController {
             ctx.future(
                 future {
                     ExtensionsList.getExtensionList()
-                }
+                },
             )
         },
         withResults = {
             json<Array<ExtensionDataClass>>(HttpCode.OK)
-        }
+        },
     )
 
     /** install extension identified with "pkgName" */
@@ -53,14 +53,14 @@ object ExtensionController {
             ctx.future(
                 future {
                     Extension.installExtension(pkgName)
-                }
+                },
             )
         },
         withResults = {
             httpCode(HttpCode.CREATED)
             httpCode(HttpCode.FOUND)
             httpCode(HttpCode.INTERNAL_SERVER_ERROR)
-        }
+        },
     )
 
     /** install the uploaded apk file */
@@ -82,14 +82,14 @@ object ExtensionController {
             ctx.future(
                 future {
                     Extension.installExternalExtension(uploadedFile.content, uploadedFile.filename)
-                }
+                },
             )
         },
         withResults = {
             httpCode(HttpCode.CREATED)
             httpCode(HttpCode.FOUND)
             httpCode(HttpCode.INTERNAL_SERVER_ERROR)
-        }
+        },
     )
 
     /** update extension identified with "pkgName" */
@@ -105,7 +105,7 @@ object ExtensionController {
             ctx.future(
                 future {
                     Extension.updateExtension(pkgName)
-                }
+                },
             )
         },
         withResults = {
@@ -113,7 +113,7 @@ object ExtensionController {
             httpCode(HttpCode.FOUND)
             httpCode(HttpCode.NOT_FOUND)
             httpCode(HttpCode.INTERNAL_SERVER_ERROR)
-        }
+        },
     )
 
     /** uninstall extension identified with "pkgName" */
@@ -134,7 +134,7 @@ object ExtensionController {
             httpCode(HttpCode.FOUND)
             httpCode(HttpCode.NOT_FOUND)
             httpCode(HttpCode.INTERNAL_SERVER_ERROR)
-        }
+        },
     )
 
     /** icon for extension named `apkName` */
@@ -152,12 +152,12 @@ object ExtensionController {
                     .thenApply {
                         ctx.header("content-type", it.second)
                         it.first
-                    }
+                    },
             )
         },
         withResults = {
             image(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
-        }
+        },
     )
 }

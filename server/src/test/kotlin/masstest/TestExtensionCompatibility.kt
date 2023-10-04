@@ -104,7 +104,7 @@ class TestExtensionCompatibility {
                 failedToFetch.joinToString("\n") { (source, exception) ->
                     "${source.name} (${source.lang.uppercase()}, ${source.id}):" +
                         " ${exception.message}"
-                }
+                },
             )
             logger.info { "Now fetching manga info from ${mangaToFetch.size} sources" }
 
@@ -130,7 +130,7 @@ class TestExtensionCompatibility {
                     "${source.name} (${source.lang}, ${source.id}):" +
                         " ${manga.title} (${source.mangaDetailsRequest(manga).url}):" +
                         " ${exception.message}"
-                }
+                },
             )
             logger.info { "Now fetching manga chapters from ${mangaToFetch.size} sources" }
 
@@ -143,7 +143,7 @@ class TestExtensionCompatibility {
                             chaptersToFetch += Triple(
                                 source,
                                 manga,
-                                source.fetchChapterList(manga).awaitSingleRepeat().firstOrNull() ?: throw Exception("Source returned no chapters")
+                                source.fetchChapterList(manga).awaitSingleRepeat().firstOrNull() ?: throw Exception("Source returned no chapters"),
                             )
                         } catch (e: Exception) {
                             logger.warn {
@@ -165,7 +165,7 @@ class TestExtensionCompatibility {
                     "${source.name} (${source.lang}, ${source.id}):" +
                         " ${manga.title} (${source.mangaDetailsRequest(manga).url}):" +
                         " ${exception.message}"
-                }
+                },
             )
 
             val pageListCount = AtomicInteger(1)
@@ -190,7 +190,7 @@ class TestExtensionCompatibility {
                     "${source.name} (${source.lang}, ${source.id}):" +
                         " ${manga.first.title} (${source.mangaDetailsRequest(manga.first).url}):" +
                         " ${manga.second.name} (${manga.second.url}): ${exception.message}"
-                }
+                },
             )
         }
     }

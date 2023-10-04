@@ -46,7 +46,7 @@ private val logger = KotlinLogging.logger {}
 
 class ApplicationDirs(
     val dataRoot: String = ApplicationRootDir,
-    val tempRoot: String = "${System.getProperty("java.io.tmpdir")}/Tachidesk"
+    val tempRoot: String = "${System.getProperty("java.io.tmpdir")}/Tachidesk",
 ) {
     val extensionsRoot = "$dataRoot/extensions"
     val downloadsRoot get() = serverConfig.downloadsPath.value.ifBlank { "$dataRoot/downloads" }
@@ -72,7 +72,7 @@ fun applicationSetup() {
 
     // register Tachidesk's config which is dubbed "ServerConfig"
     GlobalConfigManager.registerModule(
-        ServerConfig.register { GlobalConfigManager.config }
+        ServerConfig.register { GlobalConfigManager.config },
     )
 
     // Application dirs
@@ -109,7 +109,7 @@ fun applicationSetup() {
             bind<IUpdater>() with singleton { updater }
             bind<JsonMapper>() with singleton { JavalinJackson() }
             bind<Json>() with singleton { Json { ignoreUnknownKeys = true } }
-        }
+        },
     )
 
     logger.debug("Data Root directory is set to: ${applicationDirs.dataRoot}")
@@ -143,7 +143,7 @@ fun applicationSetup() {
         applicationDirs.extensionsRoot + "/icon",
         applicationDirs.tempThumbnailCacheRoot,
         applicationDirs.downloadsRoot,
-        applicationDirs.localMangaRoot
+        applicationDirs.localMangaRoot,
     ).forEach {
         File(it).mkdirs()
     }
@@ -219,7 +219,7 @@ fun applicationSetup() {
         combine(
             serverConfig.socksProxyEnabled,
             serverConfig.socksProxyHost,
-            serverConfig.socksProxyPort
+            serverConfig.socksProxyPort,
         ) { proxyEnabled, proxyHost, proxyPort ->
             Triple(proxyEnabled, proxyHost, proxyPort)
         },
@@ -233,7 +233,7 @@ fun applicationSetup() {
                 System.getProperties()["socksProxyPort"] = ""
             }
         },
-        ignoreInitialValue = false
+        ignoreInitialValue = false,
     )
 
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga

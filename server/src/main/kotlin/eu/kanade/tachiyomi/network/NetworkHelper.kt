@@ -38,7 +38,7 @@ class NetworkHelper(context: Context) {
     val cookieStore = PersistentCookieStore(context)
     init {
         CookieHandler.setDefault(
-            CookieManager(cookieStore, CookiePolicy.ACCEPT_ALL)
+            CookieManager(cookieStore, CookiePolicy.ACCEPT_ALL),
         )
     }
     // Tachidesk <--

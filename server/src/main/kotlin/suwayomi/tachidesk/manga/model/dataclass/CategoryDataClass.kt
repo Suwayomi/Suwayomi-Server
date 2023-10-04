@@ -24,5 +24,5 @@ data class CategoryDataClass(
     val default: Boolean,
     val size: Int,
     val includeInUpdate: IncludeInUpdate,
-    val meta: Map<String, String> = emptyMap()
+    val meta: Map<String, String> = emptyMap(),
 )

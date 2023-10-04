@@ -46,6 +46,6 @@ class M0004_AnimeTablesBatch1 : AddTableMigration() {
     override val tables: Array<Table>
         get() = arrayOf(
             AnimeExtensionTable(),
-            AnimeSourceTable()
+            AnimeSourceTable(),
         )
 }

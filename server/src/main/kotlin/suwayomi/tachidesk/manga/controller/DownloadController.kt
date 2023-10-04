@@ -51,7 +51,7 @@ object DownloadController {
         },
         withResults = {
             httpCode(HttpCode.OK)
-        }
+        },
     )
 
     /** Stop the downloader */
@@ -64,12 +64,12 @@ object DownloadController {
         },
         behaviorOf = { ctx ->
             ctx.future(
-                future { DownloadManager.stop() }
+                future { DownloadManager.stop() },
             )
         },
         withResults = {
             httpCode(HttpCode.OK)
-        }
+        },
     )
 
     /** clear download queue */
@@ -82,12 +82,12 @@ object DownloadController {
         },
         behaviorOf = { ctx ->
             ctx.future(
-                future { DownloadManager.clear() }
+                future { DownloadManager.clear() },
             )
         },
         withResults = {
             httpCode(HttpCode.OK)
-        }
+        },
     )
 
     /** Queue single chapter for download */
@@ -104,13 +104,13 @@ object DownloadController {
             ctx.future(
                 future {
                     DownloadManager.enqueueWithChapterIndex(mangaId, chapterIndex)
-                }
+                },
             )
         },
         withResults = {
             httpCode(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
-        }
+        },
     )
 
     val queueChapters = handler(
@@ -126,12 +126,12 @@ object DownloadController {
             ctx.future(
                 future {
                     DownloadManager.enqueue(inputs)
-                }
+                },
             )
         },
         withResults = {
             httpCode(HttpCode.OK)
-        }
+        },
     )
 
     /** delete multiple chapters from download queue */
@@ -148,12 +148,12 @@ object DownloadController {
             ctx.future(
                 future {
                     DownloadManager.dequeue(input)
-                }
+                },
             )
         },
         withResults = {
             httpCode(HttpCode.OK)
-        }
+        },
     )
 
     /** delete chapter from download queue */
@@ -173,7 +173,7 @@ object DownloadController {
         },
         withResults = {
             httpCode(HttpCode.OK)
-        }
+        },
     )
 
     /** clear download queue */
@@ -192,6 +192,6 @@ object DownloadController {
         },
         withResults = {
             httpCode(HttpCode.OK)
-        }
+        },
     )
 }

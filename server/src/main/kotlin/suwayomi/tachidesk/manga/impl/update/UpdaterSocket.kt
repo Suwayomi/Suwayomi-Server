@@ -33,7 +33,7 @@ object UpdaterSocket : Websocket<UpdateStatus>() {
                         |    - STATUS
                         |       sends the current update status
                         |
-                """.trimMargin()
+                """.trimMargin(),
             )
         }
     }

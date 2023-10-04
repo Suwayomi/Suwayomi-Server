@@ -78,7 +78,7 @@ object PackageTools {
                 https://bitbucket.org/pxb1988/dex2jar/issues
                 https://github.com/pxb1988/dex2jar/issues
                 dex2jar@googlegroups.com
-                """.trimIndent()
+                """.trimIndent(),
             )
             handler.dump(errorFile, emptyArray<String>())
         } else {
@@ -114,7 +114,7 @@ object PackageTools {
                     }.forEach {
                         putString(
                             it.attributes.getNamedItem("android:name").nodeValue,
-                            it.attributes.getNamedItem("android:value").nodeValue
+                            it.attributes.getNamedItem("android:value").nodeValue,
                         )
                     }
             }

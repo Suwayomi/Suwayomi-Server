@@ -64,7 +64,7 @@ open class ApplicationTest {
                     bind<ApplicationDirs>() with singleton { applicationDirs }
                     bind<JsonMapper>() with singleton { JavalinJackson() }
                     bind<IUpdater>() with singleton { TestUpdater() }
-                }
+                },
             )
 
             logger.debug("Data Root directory is set to: ${applicationDirs.dataRoot}")
@@ -76,14 +76,14 @@ open class ApplicationTest {
                 applicationDirs.extensionsRoot + "/icon",
                 applicationDirs.tempThumbnailCacheRoot,
                 applicationDirs.downloadsRoot,
-                applicationDirs.localMangaRoot
+                applicationDirs.localMangaRoot,
             ).forEach {
                 File(it).mkdirs()
             }
 
             // register Tachidesk's config which is dubbed "ServerConfig"
             GlobalConfigManager.registerModule(
-                ServerConfig.register { GlobalConfigManager.config }
+                ServerConfig.register { GlobalConfigManager.config },
             )
 
             // Make sure only one instance of the app is running

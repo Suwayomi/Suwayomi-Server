@@ -8,10 +8,10 @@ package suwayomi.tachidesk.manga.impl.download.model
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 enum class Status {
-    Stopped, Started;
+    Stopped, Started
 }
 
 data class DownloadStatus(
     val status: Status,
-    val queue: List<DownloadChapter>
+    val queue: List<DownloadChapter>,
 )

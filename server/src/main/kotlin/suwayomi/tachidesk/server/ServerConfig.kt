@@ -123,7 +123,7 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
     fun <T> subscribeTo(
         mutableStateFlow: MutableStateFlow<T>,
         onChange: suspend (value: T) -> Unit,
-        ignoreInitialValue: Boolean = true
+        ignoreInitialValue: Boolean = true,
     ) {
         subscribeTo(mutableStateFlow.asStateFlow(), onChange, ignoreInitialValue)
     }
@@ -131,7 +131,7 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
     fun <T> subscribeTo(
         mutableStateFlow: MutableStateFlow<T>,
         onChange: suspend () -> Unit,
-        ignoreInitialValue: Boolean = true
+        ignoreInitialValue: Boolean = true,
     ) {
         subscribeTo(mutableStateFlow.asStateFlow(), { _ -> onChange() }, ignoreInitialValue)
     }

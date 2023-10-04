@@ -13,5 +13,5 @@ import de.neonew.exposed.migrations.helpers.RenameFieldMigration
 class M0003_DefaultCategory : RenameFieldMigration(
     "Category",
     "is_landing",
-    "is_default"
+    "is_default",
 )

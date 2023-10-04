@@ -45,13 +45,13 @@ object MangaController {
             ctx.future(
                 future {
                     Manga.getManga(mangaId, onlineFetch)
-                }
+                },
             )
         },
         withResults = {
             json<MangaDataClass>(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
-        }
+        },
     )
 
     /** get manga info with all data filled in */
@@ -68,13 +68,13 @@ object MangaController {
             ctx.future(
                 future {
                     Manga.getMangaFull(mangaId, onlineFetch)
-                }
+                },
             )
         },
         withResults = {
             json<MangaDataClass>(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
-        }
+        },
     )
 
     /** manga thumbnail */
@@ -94,13 +94,13 @@ object MangaController {
                         val httpCacheSeconds = 1.days.inWholeSeconds
                         ctx.header("cache-control", "max-age=$httpCacheSeconds")
                         it.first
-                    }
+                    },
             )
         },
         withResults = {
             image(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
-        }
+        },
     )
 
     /** adds the manga to library */
@@ -114,13 +114,13 @@ object MangaController {
         },
         behaviorOf = { ctx, mangaId ->
             ctx.future(
-                future { Library.addMangaToLibrary(mangaId) }
+                future { Library.addMangaToLibrary(mangaId) },
             )
         },
         withResults = {
             httpCode(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
-        }
+        },
     )
 
     /** removes the manga from the library */
@@ -134,13 +134,13 @@ object MangaController {
         },
         behaviorOf = { ctx, mangaId ->
             ctx.future(
-                future { Library.removeMangaFromLibrary(mangaId) }
+                future { Library.removeMangaFromLibrary(mangaId) },
             )
         },
         withResults = {
             httpCode(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
-        }
+        },
     )
 
     /** list manga's categories */
@@ -157,7 +157,7 @@ object MangaController {
         },
         withResults = {
             json<Array<CategoryDataClass>>(HttpCode.OK)
-        }
+        },
     )
 
     /** adds the manga to category */
@@ -176,7 +176,7 @@ object MangaController {
         },
         withResults = {
             httpCode(HttpCode.OK)
-        }
+        },
     )
 
     /** removes the manga from the category */
@@ -195,7 +195,7 @@ object MangaController {
         },
         withResults = {
             httpCode(HttpCode.OK)
-        }
+        },
     )
 
     /** used to modify a manga's meta parameters */
@@ -216,7 +216,7 @@ object MangaController {
         withResults = {
             httpCode(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
-        }
+        },
     )
 
     /** get chapter list when showing a manga */
@@ -235,7 +235,7 @@ object MangaController {
         withResults = {
             json<Array<ChapterDataClass>>(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
-        }
+        },
     )
 
     /** batch edit chapters of single manga */
@@ -254,7 +254,7 @@ object MangaController {
         },
         withResults = {
             httpCode(HttpCode.OK)
-        }
+        },
     )
 
     /** batch edit chapters from multiple manga */
@@ -272,13 +272,13 @@ object MangaController {
                 Chapter.MangaChapterBatchEditInput(
                     input.chapterIds,
                     null,
-                    input.change
-                )
+                    input.change,
+                ),
             )
         },
         withResults = {
             httpCode(HttpCode.OK)
-        }
+        },
     )
 
     /** used to display a chapter, get a chapter in order to show its pages */
@@ -297,7 +297,7 @@ object MangaController {
         withResults = {
             json<ChapterDataClass>(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
-        }
+        },
     )
 
     /** used to modify a chapter's parameters */
@@ -321,7 +321,7 @@ object MangaController {
         },
         withResults = {
             httpCode(HttpCode.OK)
-        }
+        },
     )
 
     /** delete a downloaded chapter */
@@ -342,7 +342,7 @@ object MangaController {
         withResults = {
             httpCode(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
-        }
+        },
     )
 
     /** used to modify a chapter's meta parameters */
@@ -365,7 +365,7 @@ object MangaController {
         withResults = {
             httpCode(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
-        }
+        },
     )
 
     /** get page at index "index" */
@@ -387,12 +387,12 @@ object MangaController {
                         val httpCacheSeconds = 1.days.inWholeSeconds
                         ctx.header("cache-control", "max-age=$httpCacheSeconds")
                         it.first
-                    }
+                    },
             )
         },
         withResults = {
             image(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
-        }
+        },
     )
 }

@@ -28,7 +28,7 @@ object GlobalMetaController {
         },
         withResults = {
             httpCode(HttpCode.OK)
-        }
+        },
     )
 
     /** used to modify global meta parameters */
@@ -48,6 +48,6 @@ object GlobalMetaController {
         withResults = {
             httpCode(HttpCode.OK)
             httpCode(HttpCode.NOT_FOUND)
-        }
+        },
     )
 }

@@ -36,7 +36,7 @@ class Downloader(
     private val downloadQueue: CopyOnWriteArrayList<DownloadChapter>,
     private val notifier: (immediate: Boolean) -> Unit,
     private val onComplete: () -> Unit,
-    private val onDownloadFinished: () -> Unit
+    private val onDownloadFinished: () -> Unit,
 ) {
     private val logger = KotlinLogging.logger("${Downloader::class.java.name} source($sourceId)")
 

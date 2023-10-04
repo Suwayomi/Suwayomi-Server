@@ -27,7 +27,7 @@ object DBManager {
             "org.h2.Driver",
             databaseConfig = DatabaseConfig {
                 useNestedTransactions = true
-            }
+            },
         )
     }
 }

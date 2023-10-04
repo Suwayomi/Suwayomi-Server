@@ -63,8 +63,8 @@ open class ConfigManager {
         val baseConfig =
             ConfigFactory.parseMap(
                 mapOf(
-                    "androidcompat.rootDir" to "$ApplicationRootDir/android-compat" // override AndroidCompat's rootDir
-                )
+                    "androidcompat.rootDir" to "$ApplicationRootDir/android-compat", // override AndroidCompat's rootDir
+                ),
             )
 
         // Load user config

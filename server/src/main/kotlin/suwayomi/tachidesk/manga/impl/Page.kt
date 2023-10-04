@@ -58,7 +58,7 @@ object Page {
         val tachiyomiPage = Page(
             pageEntry[PageTable.index],
             pageEntry[PageTable.url],
-            pageEntry[PageTable.imageUrl]
+            pageEntry[PageTable.imageUrl],
         )
         progressFlow?.invoke(tachiyomiPage.progress)
 

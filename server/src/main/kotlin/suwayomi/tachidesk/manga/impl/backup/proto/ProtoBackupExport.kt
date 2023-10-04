@@ -59,10 +59,10 @@ object ProtoBackupExport : ProtoBackupBase() {
             combine(serverConfig.backupInterval, serverConfig.backupTime) { interval, timeOfDay ->
                 Pair(
                     interval,
-                    timeOfDay
+                    timeOfDay,
                 )
             },
-            ::scheduleAutomatedBackupTask
+            ::scheduleAutomatedBackupTask,
         )
     }
 
@@ -105,8 +105,8 @@ object ProtoBackupExport : ProtoBackupBase() {
                 includeCategories = true,
                 includeChapters = true,
                 includeTracking = true,
-                includeHistory = true
-            )
+                includeHistory = true,
+            ),
         ).use { input ->
             val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
             automatedBackupDir.mkdirs()
@@ -167,7 +167,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                 backupManga(databaseManga, flags),
                 backupCategories(),
                 emptyList(),
-                backupExtensionInfo(databaseManga)
+                backupExtensionInfo(databaseManga),
             )
         }
 
@@ -193,7 +193,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                 thumbnailUrl = mangaRow[MangaTable.thumbnail_url],
                 dateAdded = TimeUnit.SECONDS.toMillis(mangaRow[MangaTable.inLibraryAt]),
                 viewer = 0, // not supported in Tachidesk
-                updateStrategy = UpdateStrategy.valueOf(mangaRow[MangaTable.updateStrategy])
+                updateStrategy = UpdateStrategy.valueOf(mangaRow[MangaTable.updateStrategy]),
             )
 
             val mangaId = mangaRow[MangaTable.id].value
@@ -218,7 +218,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                         TimeUnit.SECONDS.toMillis(it.fetchedAt),
                         it.uploadDate,
                         it.chapterNumber,
-                        chapters.size - it.index
+                        chapters.size - it.index,
                     )
                 }
             }
@@ -246,7 +246,7 @@ object ProtoBackupExport : ProtoBackupBase() {
             BackupCategory(
                 it.name,
                 it.order,
-                0 // not supported in Tachidesk
+                0, // not supported in Tachidesk
             )
         }
     }
@@ -260,7 +260,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                 val sourceRow = SourceTable.select { SourceTable.id eq it }.firstOrNull()
                 BackupSource(
                     sourceRow?.get(SourceTable.name) ?: "",
-                    it
+                    it,
                 )
             }
             .toList()

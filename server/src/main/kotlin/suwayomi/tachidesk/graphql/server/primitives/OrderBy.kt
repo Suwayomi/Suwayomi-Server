@@ -41,7 +41,7 @@ fun <T : Comparable<T>> greaterNotUnique(
     column: Column<T>,
     idColumn: Column<EntityID<Int>>,
     cursor: Cursor,
-    toValue: (String) -> T
+    toValue: (String) -> T,
 ): Op<Boolean> {
     return greaterNotUniqueImpl(column, idColumn, cursor, String::toInt, toValue)
 }
@@ -51,7 +51,7 @@ fun <T : Comparable<T>> greaterNotUnique(
     column: Column<T>,
     idColumn: Column<EntityID<Long>>,
     cursor: Cursor,
-    toValue: (String) -> T
+    toValue: (String) -> T,
 ): Op<Boolean> {
     return greaterNotUniqueImpl(column, idColumn, cursor, String::toLong, toValue)
 }
@@ -61,7 +61,7 @@ private fun <K : Comparable<K>, V : Comparable<V>> greaterNotUniqueImpl(
     idColumn: Column<EntityID<K>>,
     cursor: Cursor,
     toKey: (String) -> K,
-    toValue: (String) -> V
+    toValue: (String) -> V,
 ): Op<Boolean> {
     val id = toKey(cursor.value.substringBefore('-'))
     val value = toValue(cursor.value.substringAfter('-'))
@@ -73,7 +73,7 @@ fun <T : Comparable<T>> greaterNotUnique(
     column: Column<T>,
     idColumn: Column<String>,
     cursor: Cursor,
-    toValue: (String) -> T
+    toValue: (String) -> T,
 ): Op<Boolean> {
     val id = cursor.value.substringBefore("\\-")
     val value = toValue(cursor.value.substringAfter("\\-"))
@@ -85,7 +85,7 @@ fun <T : Comparable<T>> lessNotUnique(
     column: Column<T>,
     idColumn: Column<EntityID<Int>>,
     cursor: Cursor,
-    toValue: (String) -> T
+    toValue: (String) -> T,
 ): Op<Boolean> {
     return lessNotUniqueImpl(column, idColumn, cursor, String::toInt, toValue)
 }
@@ -95,7 +95,7 @@ fun <T : Comparable<T>> lessNotUnique(
     column: Column<T>,
     idColumn: Column<EntityID<Long>>,
     cursor: Cursor,
-    toValue: (String) -> T
+    toValue: (String) -> T,
 ): Op<Boolean> {
     return lessNotUniqueImpl(column, idColumn, cursor, String::toLong, toValue)
 }
@@ -105,7 +105,7 @@ private fun <K : Comparable<K>, V : Comparable<V>> lessNotUniqueImpl(
     idColumn: Column<EntityID<K>>,
     cursor: Cursor,
     toKey: (String) -> K,
-    toValue: (String) -> V
+    toValue: (String) -> V,
 ): Op<Boolean> {
     val id = toKey(cursor.value.substringBefore('-'))
     val value = toValue(cursor.value.substringAfter('-'))
@@ -117,7 +117,7 @@ fun <T : Comparable<T>> lessNotUnique(
     column: Column<T>,
     idColumn: Column<String>,
     cursor: Cursor,
-    toValue: (String) -> T
+    toValue: (String) -> T,
 ): Op<Boolean> {
     val id = cursor.value.substringBefore("\\-")
     val value = toValue(cursor.value.substringAfter("\\-"))

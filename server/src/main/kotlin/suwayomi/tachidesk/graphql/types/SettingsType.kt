@@ -113,7 +113,7 @@ data class PartialSettingsType(
     override val backupTTL: Int?,
 
     // local source
-    override val localSourcePath: String?
+    override val localSourcePath: String?,
 ) : Settings
 
 class SettingsType(
@@ -163,7 +163,7 @@ class SettingsType(
     override val backupTTL: Int,
 
     // local source
-    override val localSourcePath: String
+    override val localSourcePath: String,
 ) : Settings {
     constructor(config: ServerConfig = serverConfig) : this(
         config.ip.value,
@@ -203,6 +203,6 @@ class SettingsType(
         config.backupInterval.value,
         config.backupTTL.value,
 
-        config.localSourcePath.value
+        config.localSourcePath.value,
     )
 }

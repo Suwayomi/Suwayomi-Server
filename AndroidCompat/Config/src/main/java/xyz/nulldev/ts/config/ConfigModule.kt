@@ -31,7 +31,7 @@ class SystemPropertyOverrideDelegate(val getConfig: () -> Config, val moduleName
 
         val combined = System.getProperty(
             "$CONFIG_PREFIX.$moduleName.${property.name}",
-            configValue.toString()
+            configValue.toString(),
         )
 
         return when (T::class.simpleName) {

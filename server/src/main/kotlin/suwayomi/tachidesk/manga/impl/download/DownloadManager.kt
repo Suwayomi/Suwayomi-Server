@@ -95,7 +95,7 @@ object DownloadManager {
 
     fun notifyClient(ctx: WsContext) {
         ctx.send(
-            getStatus()
+            getStatus(),
         )
     }
 
@@ -109,7 +109,7 @@ object DownloadManager {
                         |    - STATUS
                         |       sends the current download status
                         |
-                """.trimMargin()
+                """.trimMargin(),
             )
         }
     }
@@ -159,7 +159,7 @@ object DownloadManager {
             } else {
                 Status.Started
             },
-            downloadQueue.toList()
+            downloadQueue.toList(),
         )
     }
 
@@ -193,7 +193,7 @@ object DownloadManager {
                         .map { it.manga.sourceId }
                         .distinct()
                         .minus(
-                            runningDownloaders.map { it.sourceId }.toSet()
+                            runningDownloaders.map { it.sourceId }.toSet(),
                         )
                         .take(serverConfig.maxSourcesInParallel.value - runningDownloaders.size)
                         .map { getDownloader(it) }
@@ -219,7 +219,7 @@ object DownloadManager {
             downloadQueue = downloadQueue,
             notifier = ::notifyAllClients,
             onComplete = ::refreshDownloaders,
-            onDownloadFinished = ::triggerSaveDownloadQueue
+            onDownloadFinished = ::triggerSaveDownloadQueue,
         )
     }
 
@@ -237,7 +237,7 @@ object DownloadManager {
     // Input might have additional formats in the future, such as "All for mangaID" or "Unread for categoryID"
     // Having this input format is just future-proofing
     data class EnqueueInput(
-        val chapterIds: List<Int>?
+        val chapterIds: List<Int>?,
     )
 
     fun enqueue(input: EnqueueInput) {
@@ -262,7 +262,7 @@ object DownloadManager {
                 Pair(
                     // this should be safe because mangas is created above from chapters
                     mangas[it[ChapterTable.manga].value]!!,
-                    ChapterTable.toDataClass(it)
+                    ChapterTable.toDataClass(it),
                 )
             }
         }
@@ -298,7 +298,7 @@ object DownloadManager {
                 chapter.index,
                 manga.id,
                 chapter,
-                manga
+                manga,
             )
             downloadQueue.add(newDownloadChapter)
             triggerSaveDownloadQueue()
@@ -396,5 +396,5 @@ object DownloadManager {
 enum class DownloaderState(val state: Int) {
     Stopped(0),
     Running(1),
-    Paused(2)
+    Paused(2),
 }

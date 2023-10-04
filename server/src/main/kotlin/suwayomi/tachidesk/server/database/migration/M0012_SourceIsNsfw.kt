@@ -14,5 +14,5 @@ class M0012_SourceIsNsfw : AddColumnMigration(
     "Source",
     "is_nsfw",
     "BOOLEAN",
-    "FALSE"
+    "FALSE",
 )

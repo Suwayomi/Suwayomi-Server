@@ -25,7 +25,7 @@ class SourceMutation {
     enum class FetchSourceMangaType {
         SEARCH,
         POPULAR,
-        LATEST
+        LATEST,
     }
     data class FetchSourceMangaInput(
         val clientMutationId: String? = null,
@@ -33,16 +33,16 @@ class SourceMutation {
         val type: FetchSourceMangaType,
         val page: Int,
         val query: String? = null,
-        val filters: List<FilterChange>? = null
+        val filters: List<FilterChange>? = null,
     )
     data class FetchSourceMangaPayload(
         val clientMutationId: String?,
         val mangas: List<MangaType>,
-        val hasNextPage: Boolean
+        val hasNextPage: Boolean,
     )
 
     fun fetchSourceManga(
-        input: FetchSourceMangaInput
+        input: FetchSourceMangaInput,
     ): CompletableFuture<FetchSourceMangaPayload> {
         val (clientMutationId, sourceId, type, page, query, filters) = input
 
@@ -53,7 +53,7 @@ class SourceMutation {
                     source.fetchSearchManga(
                         page = page,
                         query = query.orEmpty(),
-                        filters = updateFilterList(source, filters)
+                        filters = updateFilterList(source, filters),
                     ).awaitSingle()
                 }
                 FetchSourceMangaType.POPULAR -> {
@@ -77,7 +77,7 @@ class SourceMutation {
             FetchSourceMangaPayload(
                 clientMutationId = clientMutationId,
                 mangas = mangas,
-                hasNextPage = mangasPage.hasNextPage
+                hasNextPage = mangasPage.hasNextPage,
             )
         }
     }
@@ -88,20 +88,20 @@ class SourceMutation {
         val checkBoxState: Boolean? = null,
         val editTextState: String? = null,
         val listState: String? = null,
-        val multiSelectState: List<String>? = null
+        val multiSelectState: List<String>? = null,
     )
     data class UpdateSourcePreferenceInput(
         val clientMutationId: String? = null,
         val source: Long,
-        val change: SourcePreferenceChange
+        val change: SourcePreferenceChange,
     )
     data class UpdateSourcePreferencePayload(
         val clientMutationId: String?,
-        val preferences: List<Preference>
+        val preferences: List<Preference>,
     )
 
     fun updateSourcePreference(
-        input: UpdateSourcePreferenceInput
+        input: UpdateSourcePreferenceInput,
     ): UpdateSourcePreferencePayload {
         val (clientMutationId, sourceId, change) = input
 
@@ -118,7 +118,7 @@ class SourceMutation {
 
         return UpdateSourcePreferencePayload(
             clientMutationId = clientMutationId,
-            preferences = Source.getSourcePreferencesRaw(sourceId).map { preferenceOf(it) }
+            preferences = Source.getSourcePreferencesRaw(sourceId).map { preferenceOf(it) },
         )
     }
 }

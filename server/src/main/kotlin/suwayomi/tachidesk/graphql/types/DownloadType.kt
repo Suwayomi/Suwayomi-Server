@@ -23,14 +23,14 @@ import suwayomi.tachidesk.manga.impl.download.model.DownloadState as OtherDownlo
 
 data class DownloadStatus(
     val state: DownloaderState,
-    val queue: List<DownloadType>
+    val queue: List<DownloadType>,
 ) {
     constructor(downloadStatus: DownloadStatus) : this(
         when (downloadStatus.status) {
             Status.Stopped -> DownloaderState.STOPPED
             Status.Started -> DownloaderState.STARTED
         },
-        downloadStatus.queue.map { DownloadType(it) }
+        downloadStatus.queue.map { DownloadType(it) },
     )
 }
 
@@ -41,7 +41,7 @@ class DownloadType(
     val mangaId: Int,
     val state: DownloadState,
     val progress: Float,
-    val tries: Int
+    val tries: Int,
 ) : Node {
     constructor(downloadChapter: DownloadChapter) : this(
         downloadChapter.chapter.id,
@@ -53,7 +53,7 @@ class DownloadType(
             OtherDownloadState.Error -> DownloadState.ERROR
         },
         downloadChapter.progress,
-        downloadChapter.tries
+        downloadChapter.tries,
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> {
@@ -69,23 +69,23 @@ enum class DownloadState {
     QUEUED,
     DOWNLOADING,
     FINISHED,
-    ERROR
+    ERROR,
 }
 
 enum class DownloaderState {
     STARTED,
-    STOPPED
+    STOPPED,
 }
 
 data class DownloadNodeList(
     override val nodes: List<DownloadType>,
     override val edges: List<DownloadEdge>,
     override val pageInfo: PageInfo,
-    override val totalCount: Int
+    override val totalCount: Int,
 ) : NodeList() {
     data class DownloadEdge(
         override val cursor: Cursor,
-        override val node: DownloadType
+        override val node: DownloadType,
     ) : Edge()
 
     companion object {
@@ -97,9 +97,9 @@ data class DownloadNodeList(
                     hasNextPage = false,
                     hasPreviousPage = false,
                     startCursor = Cursor(0.toString()),
-                    endCursor = Cursor(lastIndex.toString())
+                    endCursor = Cursor(lastIndex.toString()),
                 ),
-                totalCount = size
+                totalCount = size,
             )
         }
 
@@ -108,12 +108,12 @@ data class DownloadNodeList(
             return listOf(
                 DownloadEdge(
                     cursor = Cursor("0"),
-                    node = first()
+                    node = first(),
                 ),
                 DownloadEdge(
                     cursor = Cursor(lastIndex.toString()),
-                    node = last()
-                )
+                    node = last(),
+                ),
             )
         }
     }

@@ -40,7 +40,7 @@ data class InstalledPackage(val root: File) {
                 }?.map {
                     putString(
                         it.attributes.getNamedItem("android:name").nodeValue,
-                        it.attributes.getNamedItem("android:value").nodeValue
+                        it.attributes.getNamedItem("android:value").nodeValue,
                     )
                 }
             }

@@ -149,7 +149,7 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin"}
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin"}
 
 # Linter
-kotlinter = { id = "org.jmailen.kotlinter", version = "3.12.0"}
+kotlinter = { id = "org.jmailen.kotlinter", version = "3.14.0"}
 
 # Build config
 buildconfig = { id = "com.github.gmazzo.buildconfig", version = "3.1.0"}

@@ -27,7 +27,7 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
     open suspend fun downloadImpl(
         download: DownloadChapter,
         scope: CoroutineScope,
-        step: suspend (DownloadChapter?, Boolean) -> Unit
+        step: suspend (DownloadChapter?, Boolean) -> Unit,
     ): Boolean {
         val pageCount = download.chapter.pageCount
         val chapterDir = getChapterCachePath(mangaId, chapterId)
@@ -42,7 +42,7 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
                 Page.getPageImage(
                     mangaId = download.mangaId,
                     chapterIndex = download.chapterIndex,
-                    index = pageNum
+                    index = pageNum,
                 ) { flow ->
                     pageProgressJob = flow
                         .sample(100)

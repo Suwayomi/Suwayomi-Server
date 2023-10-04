@@ -23,11 +23,11 @@ import kotlinx.coroutines.flow.map
 
 open class GraphQLSubscriptionHandler(
     private val graphQL: GraphQL,
-    private val dataLoaderRegistryFactory: KotlinDataLoaderRegistryFactory? = null
+    private val dataLoaderRegistryFactory: KotlinDataLoaderRegistryFactory? = null,
 ) {
     open fun executeSubscription(
         graphQLRequest: GraphQLRequest,
-        graphQLContext: GraphQLContext = GraphQLContext.of(emptyMap<Any, Any>())
+        graphQLContext: GraphQLContext = GraphQLContext.of(emptyMap<Any, Any>()),
     ): Flow<GraphQLResponse<*>> {
         val dataLoaderRegistry = dataLoaderRegistryFactory?.generate()
         val input = graphQLRequest.toExecutionInput(dataLoaderRegistry, graphQLContext)

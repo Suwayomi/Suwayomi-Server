@@ -71,11 +71,11 @@ object Search {
                                     is Filter.Select<*> -> FilterObject("Select", item)
                                     else -> throw RuntimeException("Illegal Group item type!")
                                 }
-                            }
+                            },
                         )
                     }
                     else -> it
-                }
+                },
             )
         }
     }
@@ -85,7 +85,7 @@ object Search {
 
     data class FilterObject(
         val type: String,
-        val filter: Filter<*>
+        val filter: Filter<*>,
     )
 
     fun setFilter(sourceId: Long, changes: List<FilterChange>) {
@@ -136,13 +136,13 @@ object Search {
     @Serializable
     data class FilterChange(
         val position: Int,
-        val state: String
+        val state: String,
     )
 
     @Serializable
     data class FilterData(
         val searchTerm: String?,
-        val filter: List<FilterChange>?
+        val filter: List<FilterChange>?,
     )
 
     @Suppress("UNUSED_PARAMETER")

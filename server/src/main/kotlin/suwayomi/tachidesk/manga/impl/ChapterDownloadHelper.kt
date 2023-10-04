@@ -25,7 +25,7 @@ object ChapterDownloadHelper {
         chapterId: Int,
         download: DownloadChapter,
         scope: CoroutineScope,
-        step: suspend (DownloadChapter?, Boolean) -> Unit
+        step: suspend (DownloadChapter?, Boolean) -> Unit,
     ): Boolean {
         return provider(mangaId, chapterId).download().execute(download, scope, step)
     }

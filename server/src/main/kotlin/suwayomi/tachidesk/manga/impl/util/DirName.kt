@@ -38,7 +38,7 @@ private fun getChapterDir(mangaId: Int, chapterId: Int): String {
         when {
             chapterEntry[ChapterTable.scanlator] != null -> "${chapterEntry[ChapterTable.scanlator]}_${chapterEntry[ChapterTable.name]}"
             else -> chapterEntry[ChapterTable.name]
-        }
+        },
     )
 
     return getMangaDir(mangaId) + "/$chapterDir"

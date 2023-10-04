@@ -54,7 +54,8 @@ class ExtensionQuery {
     enum class ExtensionOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<ExtensionType> {
         PKG_NAME(ExtensionTable.pkgName),
         NAME(ExtensionTable.name),
-        APK_NAME(ExtensionTable.apkName);
+        APK_NAME(ExtensionTable.apkName),
+        ;
 
         override fun greater(cursor: Cursor): Op<Boolean> {
             return when (this) {
@@ -93,7 +94,7 @@ class ExtensionQuery {
         val isNsfw: Boolean? = null,
         val isInstalled: Boolean? = null,
         val hasUpdate: Boolean? = null,
-        val isObsolete: Boolean? = null
+        val isObsolete: Boolean? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -126,7 +127,7 @@ class ExtensionQuery {
         val isObsolete: BooleanFilter? = null,
         override val and: List<ExtensionFilter>? = null,
         override val or: List<ExtensionFilter>? = null,
-        override val not: ExtensionFilter? = null
+        override val not: ExtensionFilter? = null,
     ) : Filter<ExtensionFilter> {
         override fun getOpList(): List<Op<Boolean>> {
             return listOfNotNull(
@@ -140,7 +141,7 @@ class ExtensionQuery {
                 andFilterWithCompare(ExtensionTable.isNsfw, isNsfw),
                 andFilterWithCompare(ExtensionTable.isInstalled, isInstalled),
                 andFilterWithCompare(ExtensionTable.hasUpdate, hasUpdate),
-                andFilterWithCompare(ExtensionTable.isObsolete, isObsolete)
+                andFilterWithCompare(ExtensionTable.isObsolete, isObsolete),
             )
         }
     }
@@ -154,7 +155,7 @@ class ExtensionQuery {
         after: Cursor? = null,
         first: Int? = null,
         last: Int? = null,
-        offset: Int? = null
+        offset: Int? = null,
     ): ExtensionNodeList {
         val queryResults = transaction {
             val res = ExtensionTable.selectAll()
@@ -172,7 +173,7 @@ class ExtensionQuery {
                 } else {
                     res.orderBy(
                         orderByColumn to orderType,
-                        ExtensionTable.pkgName to SortOrder.ASC
+                        ExtensionTable.pkgName to SortOrder.ASC,
                     )
                 }
             }
@@ -219,24 +220,24 @@ class ExtensionQuery {
                     resultsAsType.firstOrNull()?.let {
                         ExtensionNodeList.ExtensionEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
                     },
                     resultsAsType.lastOrNull()?.let {
                         ExtensionNodeList.ExtensionEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
-                    }
+                    },
                 )
             },
             pageInfo = PageInfo(
                 hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.pkgName,
                 hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.pkgName,
                 startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
-                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) }
+                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) },
             ),
-            totalCount = queryResults.total.toInt()
+            totalCount = queryResults.total.toInt(),
         )
     }
 }

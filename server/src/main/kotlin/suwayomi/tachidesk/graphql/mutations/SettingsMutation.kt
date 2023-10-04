@@ -11,12 +11,12 @@ import xyz.nulldev.ts.config.GlobalConfigManager
 class SettingsMutation {
     data class SetSettingsInput(
         val clientMutationId: String? = null,
-        val settings: PartialSettingsType
+        val settings: PartialSettingsType,
     )
 
     data class SetSettingsPayload(
         val clientMutationId: String?,
-        val settings: SettingsType
+        val settings: SettingsType,
     )
 
     private fun updateSettings(settings: Settings) {
@@ -72,7 +72,7 @@ class SettingsMutation {
 
     data class ResetSettingsPayload(
         val clientMutationId: String?,
-        val settings: SettingsType
+        val settings: SettingsType,
     )
 
     fun resetSettings(input: ResetSettingsInput): ResetSettingsPayload {

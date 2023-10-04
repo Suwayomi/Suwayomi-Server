@@ -60,5 +60,5 @@ fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
         downloaded = chapterEntry[isDownloaded],
         pageCount = chapterEntry[pageCount],
         chapterCount = transaction { ChapterTable.select { manga eq chapterEntry[manga].value }.count().toInt() },
-        meta = getChapterMetaMap(chapterEntry[id])
+        meta = getChapterMetaMap(chapterEntry[id]),
     )

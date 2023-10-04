@@ -65,7 +65,8 @@ class BundledWebUIMissing : Exception("No bundled webUI version found")
 
 enum class WebUIInterface {
     BROWSER,
-    ELECTRON;
+    ELECTRON,
+    ;
 
     companion object {
         fun from(value: String): WebUIInterface = WebUIInterface.values().find { it.name.lowercase() == value.lowercase() } ?: BROWSER
@@ -75,7 +76,8 @@ enum class WebUIInterface {
 enum class WebUIChannel {
     BUNDLED, // the default webUI version bundled with the server release
     STABLE,
-    PREVIEW;
+    PREVIEW,
+    ;
 
     companion object {
         fun from(channel: String): WebUIChannel = WebUIChannel.values().find { it.name.lowercase() == channel.lowercase() } ?: STABLE
@@ -91,14 +93,14 @@ enum class WebUIFlavor(
     val repoUrl: String,
     val versionMappingUrl: String,
     val latestReleaseInfoUrl: String,
-    val baseFileName: String
+    val baseFileName: String,
 ) {
     WEBUI(
         "WebUI",
         "https://github.com/Suwayomi/Tachidesk-WebUI-preview",
         "https://raw.githubusercontent.com/Suwayomi/Tachidesk-WebUI/master/versionToServerVersionMapping.json",
         "https://api.github.com/repos/Suwayomi/Tachidesk-WebUI-preview/releases/latest",
-        "Tachidesk-WebUI"
+        "Tachidesk-WebUI",
     ),
 
     CUSTOM(
@@ -106,8 +108,9 @@ enum class WebUIFlavor(
         "repoURL",
         "versionMappingUrl",
         "latestReleaseInfoURL",
-        "baseFileName"
-    );
+        "baseFileName",
+    ),
+    ;
 
     companion object {
         fun from(value: String): WebUIFlavor = WebUIFlavor.values().find { it.name == value } ?: WEBUI
@@ -137,11 +140,11 @@ object WebInterfaceManager {
                 info = WebUIUpdateInfo(
                     channel = serverConfig.webUIChannel.value,
                     tag = "",
-                    updateAvailable = false
+                    updateAvailable = false,
                 ),
                 state = STOPPED,
-                progress = 0
-            )
+                progress = 0,
+            ),
         )
 
     init {
@@ -149,11 +152,11 @@ object WebInterfaceManager {
             combine(serverConfig.webUIUpdateCheckInterval, serverConfig.webUIFlavor) { interval, flavor ->
                 Pair(
                     interval,
-                    flavor
+                    flavor,
                 )
             },
             ::scheduleWebUIUpdateCheck,
-            ignoreInitialValue = false
+            ignoreInitialValue = false,
         )
     }
 
@@ -175,9 +178,9 @@ object WebInterfaceManager {
         val task = {
             logger.debug {
                 "Checking for webUI update (channel= ${serverConfig.webUIChannel.value}, interval= ${serverConfig.webUIUpdateCheckInterval.value}h, lastAutomatedUpdate= ${
-                Date(
-                    lastAutomatedUpdate
-                )
+                    Date(
+                        lastAutomatedUpdate,
+                    )
                 })"
             }
 
@@ -219,7 +222,7 @@ object WebInterfaceManager {
             // this could be the case in case no compatible webUI version is available and a newer server version was installed
             val shouldUpdateToBundledVersion =
                 serverConfig.webUIFlavor.value == WebUIFlavor.WEBUI.uiName && extractVersion(getLocalVersion()) < extractVersion(
-                    BuildConfig.WEBUI_TAG
+                    BuildConfig.WEBUI_TAG,
                 )
             if (shouldUpdateToBundledVersion) {
                 logger.debug { "setupWebUI: update to bundled version \"${BuildConfig.WEBUI_TAG}\"" }
@@ -390,7 +393,7 @@ object WebInterfaceManager {
         log: KLogger,
         execute: suspend () -> T,
         maxRetries: Int = 3,
-        retryCount: Int = 0
+        retryCount: Int = 0,
     ): T {
         try {
             return execute()
@@ -433,9 +436,9 @@ object WebInterfaceManager {
             KotlinLogging.logger("$logger fetchServerMappingFile"),
             {
                 json.parseToJsonElement(
-                    network.client.newCall(GET(WebUIFlavor.WEBUI.versionMappingUrl)).await().body.string()
+                    network.client.newCall(GET(WebUIFlavor.WEBUI.versionMappingUrl)).await().body.string(),
                 ).jsonArray
-            }
+            },
         )
     }
 
@@ -480,11 +483,11 @@ object WebInterfaceManager {
                     info = WebUIUpdateInfo(
                         channel = serverConfig.webUIChannel.value,
                         tag = version,
-                        updateAvailable = true
+                        updateAvailable = true,
                     ),
                     state,
-                    progress
-                )
+                    progress,
+                ),
             )
         }
     }
@@ -512,7 +515,7 @@ object WebInterfaceManager {
                     emitStatus(
                         version,
                         DOWNLOADING,
-                        progress
+                        progress,
                     )
                 }
             })
@@ -533,7 +536,7 @@ object WebInterfaceManager {
     private suspend fun downloadVersionZipFile(
         url: String,
         filePath: String,
-        updateProgress: (progress: Int) -> Unit
+        updateProgress: (progress: Int) -> Unit,
     ) {
         val zipFile = File(filePath)
         zipFile.delete()

@@ -91,7 +91,7 @@ object Manga {
                 lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
                 chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
                 updateStrategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy]),
-                freshData = true
+                freshData = true,
             )
         }
     }
@@ -201,7 +201,7 @@ object Manga {
         lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
         chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
         updateStrategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy]),
-        freshData = false
+        freshData = false,
     )
 
     fun getMangaMetaMap(mangaId: Int): Map<String, String> {
@@ -256,7 +256,7 @@ object Manga {
                     }
 
                 source.client.newCall(
-                    GET(thumbnailUrl, source.headers)
+                    GET(thumbnailUrl, source.headers),
                 ).await()
             }
 
@@ -278,7 +278,7 @@ object Manga {
                 val thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
                     ?: throw NullPointerException("No thumbnail found")
                 network.client.newCall(
-                    GET(thumbnailUrl)
+                    GET(thumbnailUrl),
                 ).await()
             }
 

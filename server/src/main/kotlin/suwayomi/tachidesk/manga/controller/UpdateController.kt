@@ -42,12 +42,12 @@ object UpdateController {
             ctx.future(
                 future {
                     Chapter.getRecentChapters(pageNum)
-                }
+                },
             )
         },
         withResults = {
             json<PagedMangaChapterListDataClass>(HttpCode.OK)
-        }
+        },
     )
 
     /**
@@ -71,7 +71,7 @@ object UpdateController {
                 updater.addCategoriesToUpdateQueue(
                     Category.getCategoryList(),
                     clear = true,
-                    forceAll = false
+                    forceAll = false,
                 )
             } else {
                 val category = Category.getCategoryById(categoryId)
@@ -79,7 +79,7 @@ object UpdateController {
                     updater.addCategoriesToUpdateQueue(
                         listOf(category),
                         clear = true,
-                        forceAll = true
+                        forceAll = true,
                     )
                 } else {
                     logger.info { "No Category found" }
@@ -90,7 +90,7 @@ object UpdateController {
         withResults = {
             httpCode(HttpCode.OK)
             httpCode(HttpCode.BAD_REQUEST)
-        }
+        },
     )
 
     fun categoryUpdateWS(ws: WsConfig) {
@@ -118,7 +118,7 @@ object UpdateController {
         },
         withResults = {
             json<UpdateStatus>(HttpCode.OK)
-        }
+        },
     )
 
     val reset = handler(
@@ -136,11 +136,11 @@ object UpdateController {
                     updater.reset()
                 }.thenApply {
                     ctx.status(HttpCode.OK)
-                }
+                },
             )
         },
         withResults = {
             httpCode(HttpCode.OK)
-        }
+        },
     )
 }

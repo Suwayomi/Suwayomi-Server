@@ -19,7 +19,7 @@ data class UpdateDataClass(
     /** [channel] mirrors [suwayomi.tachidesk.server.BuildConfig.BUILD_TYPE] */
     val channel: String,
     val tag: String,
-    val url: String
+    val url: String,
 )
 
 object AppUpdate {
@@ -32,27 +32,27 @@ object AppUpdate {
     suspend fun checkUpdate(): List<UpdateDataClass> {
         val stableJson = json.parseToJsonElement(
             network.client.newCall(
-                GET(LATEST_STABLE_CHANNEL_URL)
-            ).await().body.string()
+                GET(LATEST_STABLE_CHANNEL_URL),
+            ).await().body.string(),
         ).jsonObject
 
         val previewJson = json.parseToJsonElement(
             network.client.newCall(
-                GET(LATEST_PREVIEW_CHANNEL_URL)
-            ).await().body.string()
+                GET(LATEST_PREVIEW_CHANNEL_URL),
+            ).await().body.string(),
         ).jsonObject
 
         return listOf(
             UpdateDataClass(
                 "Stable",
                 stableJson["tag_name"]!!.jsonPrimitive.content,
-                stableJson["html_url"]!!.jsonPrimitive.content
+                stableJson["html_url"]!!.jsonPrimitive.content,
             ),
             UpdateDataClass(
                 "Preview",
                 previewJson["tag_name"]!!.jsonPrimitive.content,
-                previewJson["html_url"]!!.jsonPrimitive.content
-            )
+                previewJson["html_url"]!!.jsonPrimitive.content,
+            ),
         )
     }
 }

@@ -34,7 +34,7 @@ object ExtensionGithubApi {
         val nsfw: Int,
         val hasReadme: Int = 0,
         val hasChangelog: Int = 0,
-        val sources: List<ExtensionSourceJsonObject>?
+        val sources: List<ExtensionSourceJsonObject>?,
     )
 
     @Serializable
@@ -42,7 +42,7 @@ object ExtensionGithubApi {
         val name: String,
         val lang: String,
         val id: Long,
-        val baseUrl: String
+        val baseUrl: String,
     )
 
     private var requiresFallbackSource = false
@@ -103,7 +103,7 @@ object ExtensionGithubApi {
                     hasChangelog = it.hasChangelog == 1,
                     sources = it.sources?.toExtensionSources() ?: emptyList(),
                     apkName = it.apk,
-                    iconUrl = "${REPO_URL_PREFIX}icon/${it.apk.replace(".apk", ".png")}"
+                    iconUrl = "${REPO_URL_PREFIX}icon/${it.apk.replace(".apk", ".png")}",
                 )
             }
     }
@@ -114,7 +114,7 @@ object ExtensionGithubApi {
                 name = it.name,
                 lang = it.lang,
                 id = it.id,
-                baseUrl = it.baseUrl
+                baseUrl = it.baseUrl,
             )
         }
     }

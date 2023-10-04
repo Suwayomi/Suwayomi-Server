@@ -12,14 +12,14 @@ class MetaMutation {
 
     data class SetGlobalMetaInput(
         val clientMutationId: String? = null,
-        val meta: GlobalMetaType
+        val meta: GlobalMetaType,
     )
     data class SetGlobalMetaPayload(
         val clientMutationId: String?,
-        val meta: GlobalMetaType
+        val meta: GlobalMetaType,
     )
     fun setGlobalMeta(
-        input: SetGlobalMetaInput
+        input: SetGlobalMetaInput,
     ): SetGlobalMetaPayload {
         val (clientMutationId, meta) = input
 
@@ -30,14 +30,14 @@ class MetaMutation {
 
     data class DeleteGlobalMetaInput(
         val clientMutationId: String? = null,
-        val key: String
+        val key: String,
     )
     data class DeleteGlobalMetaPayload(
         val clientMutationId: String?,
-        val meta: GlobalMetaType?
+        val meta: GlobalMetaType?,
     )
     fun deleteGlobalMeta(
-        input: DeleteGlobalMetaInput
+        input: DeleteGlobalMetaInput,
     ): DeleteGlobalMetaPayload {
         val (clientMutationId, key) = input
 

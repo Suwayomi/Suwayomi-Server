@@ -89,7 +89,7 @@ object CFClearance {
                         if (serverConfig.socksProxyEnabled.value) {
                             setProxy("socks5://${serverConfig.socksProxyHost.value}:${serverConfig.socksProxyPort.value}")
                         }
-                    }
+                    },
             ).use { browser ->
                 val userAgent = originalRequest.header("User-Agent")
                 if (userAgent != null) {
@@ -109,7 +109,7 @@ object CFClearance {
                     .scheme("http")
                     .host(domain)
                     .build(),
-                cookies = cookies
+                cookies = cookies,
             )
         }
         // Merge new and existing cookies for this request
@@ -120,7 +120,7 @@ object CFClearance {
         // Extract cookies from current request
         val existingCookies = Cookie.parseAll(
             originalRequest.url,
-            originalRequest.headers
+            originalRequest.headers,
         )
         // Filter out existing values of cookies that we are about to merge in
         val filteredExisting = existingCookies.filter { existing ->
@@ -143,7 +143,7 @@ object CFClearance {
             Playwright.create().use { playwright ->
                 playwright.chromium().launch(
                     LaunchOptions()
-                        .setHeadless(true)
+                        .setHeadless(true),
                 ).use { browser ->
                     browser.newPage().use { page ->
                         val userAgent = page.evaluate("() => {return navigator.userAgent}") as String
@@ -198,7 +198,7 @@ object CFClearance {
             ServerConfig::class.java.getResource("/cloudflare-js/navigator.permissions.js")!!.readText(),
             ServerConfig::class.java.getResource("/cloudflare-js/navigator.webdriver.js")!!.readText(),
             ServerConfig::class.java.getResource("/cloudflare-js/chrome.runtime.js")!!.readText(),
-            ServerConfig::class.java.getResource("/cloudflare-js/chrome.plugin.js")!!.readText()
+            ServerConfig::class.java.getResource("/cloudflare-js/chrome.plugin.js")!!.readText(),
         )
     }
 

@@ -28,8 +28,8 @@ private class GraphqlCursorCoercing : Coercing<Cursor, String> {
                 CoercingUtil.i18nMsg(
                     locale,
                     "String.unexpectedRawValueType",
-                    CoercingUtil.typeName(input)
-                )
+                    CoercingUtil.typeName(input),
+                ),
             )
         }
         return Cursor(input)
@@ -42,8 +42,8 @@ private class GraphqlCursorCoercing : Coercing<Cursor, String> {
                     locale,
                     "Scalar.unexpectedAstType",
                     "StringValue",
-                    CoercingUtil.typeName(input)
-                )
+                    CoercingUtil.typeName(input),
+                ),
             )
         }
         return Cursor(input.value)
@@ -59,8 +59,8 @@ private class GraphqlCursorCoercing : Coercing<Cursor, String> {
             CoercingUtil.i18nMsg(
                 Locale.getDefault(),
                 "String.unexpectedRawValueType",
-                CoercingUtil.typeName(dataFetcherResult)
-            )
+                CoercingUtil.typeName(dataFetcherResult),
+            ),
         )
     }
 
@@ -68,14 +68,14 @@ private class GraphqlCursorCoercing : Coercing<Cursor, String> {
     override fun serialize(
         dataFetcherResult: Any,
         graphQLContext: GraphQLContext,
-        locale: Locale
+        locale: Locale,
     ): String {
         return toStringImpl(dataFetcherResult) ?: throw CoercingSerializeException(
             CoercingUtil.i18nMsg(
                 locale,
                 "String.unexpectedRawValueType",
-                CoercingUtil.typeName(dataFetcherResult)
-            )
+                CoercingUtil.typeName(dataFetcherResult),
+            ),
         )
     }
 
@@ -99,7 +99,7 @@ private class GraphqlCursorCoercing : Coercing<Cursor, String> {
         input: Value<*>,
         variables: CoercedVariables,
         graphQLContext: GraphQLContext,
-        locale: Locale
+        locale: Locale,
     ): Cursor {
         return parseLiteralImpl(input, locale)
     }
@@ -112,7 +112,7 @@ private class GraphqlCursorCoercing : Coercing<Cursor, String> {
     override fun valueToLiteral(
         input: Any,
         graphQLContext: GraphQLContext,
-        locale: Locale
+        locale: Locale,
     ): Value<*> {
         return valueToLiteralImpl(input)
     }

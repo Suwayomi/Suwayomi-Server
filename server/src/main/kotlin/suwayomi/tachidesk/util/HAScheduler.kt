@@ -142,7 +142,7 @@ object HAScheduler {
                 }
             },
             interval.inWholeMilliseconds,
-            interval.inWholeMilliseconds
+            interval.inWholeMilliseconds,
         )
     }
 
@@ -220,7 +220,7 @@ object HAScheduler {
                 override fun execute(context: TaskExecutionContext?) {
                     execute()
                 }
-            }
+            },
         )
 
         val task = HACronTask(taskId, cronExpr, execute, name)

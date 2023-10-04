@@ -4,7 +4,7 @@ import suwayomi.tachidesk.server.ApplicationDirs
 import java.io.File
 
 class LocalSourceFileSystem(
-    private val applicationDirs: ApplicationDirs
+    private val applicationDirs: ApplicationDirs,
 ) {
 
     fun getBaseDirectories(): Sequence<File> {

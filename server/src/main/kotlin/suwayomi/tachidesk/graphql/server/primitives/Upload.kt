@@ -22,8 +22,8 @@ private class GraphqlUploadCoercing : Coercing<UploadedFile, Void?> {
                 CoercingUtil.i18nMsg(
                     locale,
                     "String.unexpectedRawValueType",
-                    CoercingUtil.typeName(input)
-                )
+                    CoercingUtil.typeName(input),
+                ),
             )
         }
         return input
@@ -38,7 +38,7 @@ private class GraphqlUploadCoercing : Coercing<UploadedFile, Void?> {
     override fun serialize(
         dataFetcherResult: Any,
         graphQLContext: GraphQLContext,
-        locale: Locale
+        locale: Locale,
     ): Void? {
         throw CoercingSerializeException("Upload is an input-only type")
     }
