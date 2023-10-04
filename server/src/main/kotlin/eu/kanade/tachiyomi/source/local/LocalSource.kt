@@ -40,7 +40,6 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
-import rx.Observable
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.registerCatalogueSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
@@ -76,11 +75,11 @@ class LocalSource(
     override val supportsLatest: Boolean = true
 
     // Browse related
-    override fun fetchPopularManga(page: Int) = fetchSearchManga(page, "", POPULAR_FILTERS)
+    override suspend fun getPopularManga(page: Int) = getSearchManga(page, "", POPULAR_FILTERS)
 
-    override fun fetchLatestUpdates(page: Int) = fetchSearchManga(page, "", LATEST_FILTERS)
+    override suspend fun getLatestUpdates(page: Int) = getSearchManga(page, "", LATEST_FILTERS)
 
-    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> {
+    override suspend fun getSearchManga(page: Int, query: String, filters: FilterList): MangasPage {
         val baseDirsFiles = fileSystem.getFilesInBaseDirectories()
         val lastModifiedLimit by lazy { if (filters === LATEST_FILTERS) System.currentTimeMillis() - LATEST_THRESHOLD else 0L }
         var mangaDirs = baseDirsFiles
@@ -153,7 +152,7 @@ class LocalSource(
             }
         }
 
-        return Observable.just(MangasPage(mangas.toList(), false))
+        return MangasPage(mangas.toList(), false)
     }
 
     // Manga details related
