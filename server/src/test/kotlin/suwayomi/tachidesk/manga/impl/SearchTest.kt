@@ -38,6 +38,7 @@ class SearchTest : ApplicationTest() {
     class FakeSearchableSource(id: Long) : StubSource(id) {
         var mangas: List<SManga> = emptyList()
 
+        @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getSearchManga"))
         override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> {
             return Observable.just(MangasPage(mangas, false))
         }

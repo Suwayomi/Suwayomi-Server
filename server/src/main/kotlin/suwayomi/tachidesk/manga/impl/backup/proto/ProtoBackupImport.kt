@@ -48,7 +48,7 @@ object ProtoBackupImport : ProtoBackupBase() {
 
     private val backupMutex = Mutex()
     sealed class BackupRestoreState {
-        object Idle : BackupRestoreState()
+        data object Idle : BackupRestoreState()
         data class RestoringCategories(val totalManga: Int) : BackupRestoreState()
         data class RestoringManga(val current: Int, val totalManga: Int, val title: String) : BackupRestoreState()
     }

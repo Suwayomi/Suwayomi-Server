@@ -22,6 +22,7 @@ public class Preference {
     @JsonIgnore
     protected Context context;
 
+    private boolean isVisible;
     private String key;
     private CharSequence title;
     private CharSequence summary;
@@ -98,6 +99,14 @@ public class Preference {
     /** Tachidesk specific API */
     public SharedPreferences getSharedPreferences() {
         return sharedPreferences;
+    }
+
+    public void setVisible(boolean visible) {
+        isVisible = visible;
+    }
+
+    public boolean getVisible() {
+        return isVisible;
     }
 
     /** Tachidesk specific API */

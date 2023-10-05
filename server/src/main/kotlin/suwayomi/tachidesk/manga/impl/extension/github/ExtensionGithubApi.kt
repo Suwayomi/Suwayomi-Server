@@ -9,9 +9,10 @@ package suwayomi.tachidesk.manga.impl.extension.github
 
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
-import eu.kanade.tachiyomi.network.await
+import eu.kanade.tachiyomi.network.awaitSuccess
 import eu.kanade.tachiyomi.network.parseAs
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import suwayomi.tachidesk.manga.impl.util.PackageTools.LIB_VERSION_MAX
 import suwayomi.tachidesk.manga.impl.util.PackageTools.LIB_VERSION_MIN
@@ -22,6 +23,7 @@ object ExtensionGithubApi {
     private const val REPO_URL_PREFIX = "https://raw.githubusercontent.com/tachiyomiorg/tachiyomi-extensions/repo/"
     private const val FALLBACK_REPO_URL_PREFIX = "https://gcore.jsdelivr.net/gh/tachiyomiorg/tachiyomi-extensions@repo/"
     private val logger = KotlinLogging.logger {}
+    private val json: Json by injectLazy()
 
     @Serializable
     private data class ExtensionJsonObject(
@@ -52,7 +54,7 @@ object ExtensionGithubApi {
             null
         } else {
             try {
-                client.newCall(GET("${REPO_URL_PREFIX}index.min.json")).await()
+                client.newCall(GET("${REPO_URL_PREFIX}index.min.json")).awaitSuccess()
             } catch (e: Throwable) {
                 logger.error(e) { "Failed to get extensions from GitHub" }
                 requiresFallbackSource = true
@@ -61,12 +63,14 @@ object ExtensionGithubApi {
         }
 
         val response = githubResponse ?: run {
-            client.newCall(GET("${FALLBACK_REPO_URL_PREFIX}index.min.json")).await()
+            client.newCall(GET("${FALLBACK_REPO_URL_PREFIX}index.min.json")).awaitSuccess()
         }
 
-        return response
-            .parseAs<List<ExtensionJsonObject>>()
-            .toExtensions()
+        return with(json) {
+            response
+                .parseAs<List<ExtensionJsonObject>>()
+                .toExtensions()
+        }
     }
 
     fun getApkUrl(extension: ExtensionDataClass): String {

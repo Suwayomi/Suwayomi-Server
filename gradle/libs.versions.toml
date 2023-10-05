@@ -27,6 +27,7 @@ coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", ve
 
 # Serialization
 serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+serialization-json-okio = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json-okio", version.ref = "serialization" }
 serialization-protobuf = { module = "org.jetbrains.kotlinx:kotlinx-serialization-protobuf", version.ref = "serialization" }
 serialization-xml-core = { module = "io.github.pdvrieze.xmlutil:core-jvm", version.ref = "xmlserialization" }
 serialization-xml = { module = "io.github.pdvrieze.xmlutil:serialization-jvm", version.ref = "xmlserialization" }
@@ -167,6 +168,7 @@ shared = [
     "coroutines-core",
     "coroutines-jdk8",
     "serialization-json",
+    "serialization-json-okio",
     "serialization-protobuf",
     "kodein",
     "slf4japi",

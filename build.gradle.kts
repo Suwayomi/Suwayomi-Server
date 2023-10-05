@@ -37,6 +37,10 @@ subprojects {
             dependsOn("formatKotlin")
             kotlinOptions {
                 jvmTarget = JavaVersion.VERSION_1_8.toString()
+
+                freeCompilerArgs += listOf(
+                    "-Xcontext-receivers"
+                )
             }
         }
 

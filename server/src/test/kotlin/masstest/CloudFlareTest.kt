@@ -10,7 +10,6 @@ import org.junit.jupiter.api.TestInstance
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList
-import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.server.applicationSetup
 import suwayomi.tachidesk.test.BASE_PATH
@@ -51,7 +50,7 @@ class CloudFlareTest {
 
     @Test
     fun `test nhentai browse`() = runTest {
-        assert(nhentai.fetchPopularManga(1).awaitSingle().mangas.isNotEmpty()) {
+        assert(nhentai.getPopularManga(1).mangas.isNotEmpty()) {
             "NHentai results were empty"
         }
     }

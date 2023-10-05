@@ -17,7 +17,6 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
-import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
@@ -34,7 +33,7 @@ object Page {
      */
     suspend fun getTrueImageUrl(page: Page, source: HttpSource): String {
         if (page.imageUrl == null) {
-            page.imageUrl = source.fetchImageUrl(page).awaitSingle()
+            page.imageUrl = source.getImageUrl(page)
         }
         return page.imageUrl!!
     }
@@ -100,7 +99,7 @@ object Page {
 
         // Note: don't care about invalidating cache because OS cache is not permanent
         return getImageResponse(cacheSaveDir, fileName) {
-            source.fetchImage(tachiyomiPage).awaitSingle()
+            source.getImage(tachiyomiPage)
         }
     }
 

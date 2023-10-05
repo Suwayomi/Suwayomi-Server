@@ -9,7 +9,7 @@ package suwayomi.tachidesk.server.util
 
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
-import eu.kanade.tachiyomi.network.await
+import eu.kanade.tachiyomi.network.awaitSuccess
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -408,7 +408,7 @@ object WebInterfaceManager {
     private suspend fun fetchMD5SumFor(version: String): String {
         return try {
             executeWithRetry(KotlinLogging.logger("${logger.name} fetchMD5SumFor($version)"), {
-                network.client.newCall(GET("${getDownloadUrlFor(version)}/md5sum")).await().body.string().trim()
+                network.client.newCall(GET("${getDownloadUrlFor(version)}/md5sum")).awaitSuccess().body.string().trim()
             })
         } catch (e: Exception) {
             ""
@@ -422,7 +422,7 @@ object WebInterfaceManager {
 
     private suspend fun fetchPreviewVersion(): String {
         return executeWithRetry(KotlinLogging.logger("${logger.name} fetchPreviewVersion"), {
-            val releaseInfoJson = network.client.newCall(GET(WebUIFlavor.WEBUI.latestReleaseInfoUrl)).await().body.string()
+            val releaseInfoJson = network.client.newCall(GET(WebUIFlavor.WEBUI.latestReleaseInfoUrl)).awaitSuccess().body.string()
             Json.decodeFromString<JsonObject>(releaseInfoJson)["tag_name"]?.jsonPrimitive?.content
                 ?: throw Exception("Failed to get the preview version tag")
         })
@@ -433,7 +433,7 @@ object WebInterfaceManager {
             KotlinLogging.logger("$logger fetchServerMappingFile"),
             {
                 json.parseToJsonElement(
-                    network.client.newCall(GET(WebUIFlavor.WEBUI.versionMappingUrl)).await().body.string()
+                    network.client.newCall(GET(WebUIFlavor.WEBUI.versionMappingUrl)).awaitSuccess().body.string()
                 ).jsonArray
             }
         )

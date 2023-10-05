@@ -20,13 +20,11 @@ import mu.KotlinLogging
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import rx.Observable
 import suwayomi.tachidesk.manga.impl.Source.getSourceList
 import suwayomi.tachidesk.manga.impl.extension.Extension.installExtension
 import suwayomi.tachidesk.manga.impl.extension.Extension.uninstallExtension
 import suwayomi.tachidesk.manga.impl.extension.Extension.updateExtension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList.getExtensionList
-import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import suwayomi.tachidesk.server.applicationSetup
@@ -89,8 +87,8 @@ class TestExtensionCompatibility {
                         logger.info { "${popularCount.getAndIncrement()} - Now fetching popular manga from $source" }
                         try {
                             mangaToFetch += source to (
-                                source.fetchPopularManga(1)
-                                    .awaitSingleRepeat().mangas.firstOrNull()
+                                repeat { source.getPopularManga(1) }
+                                    .mangas.firstOrNull()
                                     ?: throw Exception("Source returned no manga")
                                 )
                         } catch (e: Exception) {
@@ -114,7 +112,7 @@ class TestExtensionCompatibility {
                     semaphore.withPermit {
                         logger.info { "${mangaCount.getAndIncrement()} - Now fetching manga from $source" }
                         try {
-                            manga.copyFrom(source.fetchMangaDetails(manga).awaitSingleRepeat())
+                            manga.copyFrom(repeat { source.getMangaDetails(manga) })
                             manga.initialized = true
                         } catch (e: Exception) {
                             logger.warn {
@@ -143,7 +141,7 @@ class TestExtensionCompatibility {
                             chaptersToFetch += Triple(
                                 source,
                                 manga,
-                                source.fetchChapterList(manga).awaitSingleRepeat().firstOrNull() ?: throw Exception("Source returned no chapters")
+                                repeat { source.getChapterList(manga) }.firstOrNull() ?: throw Exception("Source returned no chapters")
                             )
                         } catch (e: Exception) {
                             logger.warn {
@@ -174,7 +172,7 @@ class TestExtensionCompatibility {
                     semaphore.withPermit {
                         logger.info { "${pageListCount.getAndIncrement()} - Now fetching page list from $source" }
                         try {
-                            source.fetchPageList(chapter).awaitSingleRepeat()
+                            repeat { source.getPageList(chapter) }
                         } catch (e: Exception) {
                             logger.warn {
                                 "Failed to fetch manga info from $source for ${manga.title} (${source.mangaDetailsRequest(manga).url}): ${e.message}"
@@ -195,12 +193,12 @@ class TestExtensionCompatibility {
         }
     }
 
-    private suspend fun <T> Observable<T>.awaitSingleRepeat(): T {
+    private suspend fun <T> repeat(block: suspend () -> T): T {
         for (i in 1..2) {
             try {
-                return awaitSingle()
+                return block()
             } catch (e: Exception) {}
         }
-        return awaitSingle()
+        return block()
     }
 }

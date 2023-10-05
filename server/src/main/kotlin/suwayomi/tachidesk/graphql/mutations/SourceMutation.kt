@@ -14,7 +14,6 @@ import suwayomi.tachidesk.graphql.types.preferenceOf
 import suwayomi.tachidesk.graphql.types.updateFilterList
 import suwayomi.tachidesk.manga.impl.MangaList.insertOrGet
 import suwayomi.tachidesk.manga.impl.Source
-import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -50,18 +49,18 @@ class SourceMutation {
             val source = GetCatalogueSource.getCatalogueSourceOrNull(sourceId)!!
             val mangasPage = when (type) {
                 FetchSourceMangaType.SEARCH -> {
-                    source.fetchSearchManga(
+                    source.getSearchManga(
                         page = page,
                         query = query.orEmpty(),
                         filters = updateFilterList(source, filters)
-                    ).awaitSingle()
+                    )
                 }
                 FetchSourceMangaType.POPULAR -> {
-                    source.fetchPopularManga(page).awaitSingle()
+                    source.getPopularManga(page)
                 }
                 FetchSourceMangaType.LATEST -> {
                     if (!source.supportsLatest) throw Exception("Source does not support latest")
-                    source.fetchLatestUpdates(page).awaitSingle()
+                    source.getLatestUpdates(page)
                 }
             }
 
