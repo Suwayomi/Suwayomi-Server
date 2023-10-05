@@ -1,12 +1,12 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
-import org.jmailen.gradle.kotlinter.tasks.FormatTask
-import org.jmailen.gradle.kotlinter.tasks.LintTask
+import org.jlleitschuh.gradle.ktlint.KtlintExtension
+import org.jlleitschuh.gradle.ktlint.KtlintPlugin
 
 @Suppress("DSL_SCOPE_VIOLATION")
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.kotlinter)
+    alias(libs.plugins.ktlint)
     alias(libs.plugins.buildconfig) apply false
     alias(libs.plugins.download)
 }
@@ -32,6 +32,14 @@ subprojects {
         }
     }
 
+    plugins.withType<KtlintPlugin> {
+        extensions.configure<KtlintExtension>("ktlint") {
+            filter {
+                exclude("**/generated/**")
+            }
+        }
+    }
+
     tasks {
         withType<KotlinJvmCompile> {
             dependsOn("formatKotlin")
@@ -42,14 +50,6 @@ subprojects {
                     "-Xcontext-receivers"
                 )
             }
-        }
-
-        withType<LintTask> {
-            source(files("src/kotlin"))
-        }
-
-        withType<FormatTask> {
-            source(files("src/kotlin"))
         }
     }
 }
