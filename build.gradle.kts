@@ -34,7 +34,7 @@ subprojects {
 
     plugins.withType<KtlintPlugin> {
         extensions.configure<KtlintExtension>("ktlint") {
-            version.set("1.0.0")
+            version.set(libs.versions.ktlint.get())
             filter {
                 exclude("**/generated/**")
             }
