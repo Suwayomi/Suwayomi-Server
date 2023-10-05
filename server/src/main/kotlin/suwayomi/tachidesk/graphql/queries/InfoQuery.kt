@@ -17,7 +17,7 @@ class InfoQuery {
         val buildType: String,
         val buildTime: Long,
         val github: String,
-        val discord: String
+        val discord: String,
     )
 
     fun about(): AboutPayload {
@@ -28,7 +28,7 @@ class InfoQuery {
             BuildConfig.BUILD_TYPE,
             BuildConfig.BUILD_TIME,
             BuildConfig.GITHUB,
-            BuildConfig.DISCORD
+            BuildConfig.DISCORD,
         )
     }
 
@@ -36,7 +36,7 @@ class InfoQuery {
         /** [channel] mirrors [suwayomi.tachidesk.server.BuildConfig.BUILD_TYPE] */
         val channel: String,
         val tag: String,
-        val url: String
+        val url: String,
     )
 
     fun checkForServerUpdates(): CompletableFuture<List<CheckForServerUpdatesPayload>> {
@@ -45,7 +45,7 @@ class InfoQuery {
                 CheckForServerUpdatesPayload(
                     channel = it.channel,
                     tag = it.tag,
-                    url = it.url
+                    url = it.url,
                 )
             }
         }
@@ -57,7 +57,7 @@ class InfoQuery {
             WebUIUpdateInfo(
                 channel = serverConfig.webUIChannel.value,
                 tag = version,
-                updateAvailable
+                updateAvailable,
             )
         }
     }

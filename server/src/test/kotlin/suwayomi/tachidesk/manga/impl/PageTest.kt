@@ -13,14 +13,14 @@ import suwayomi.tachidesk.test.ApplicationTest
 import kotlin.test.assertEquals
 
 class PageTest : ApplicationTest() {
-
     @Test
     fun testGetPageName() {
         val tests = listOf(0, 1, 2, 100)
 
-        val testResults = tests.map {
-            getPageName(it)
-        }
+        val testResults =
+            tests.map {
+                getPageName(it)
+            }
 
         assertEquals(testResults[0], "001")
         assertEquals(testResults[1], "002")

@@ -15,6 +15,6 @@ val ApplicationRootDir: String
     get(): String {
         return System.getProperty(
             "$CONFIG_PREFIX.server.rootDir",
-            AppDirsFactory.getInstance().getUserDataDir("Tachidesk", null, null)
+            AppDirsFactory.getInstance().getUserDataDir("Tachidesk", null, null),
         )
     }

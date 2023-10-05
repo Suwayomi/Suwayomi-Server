@@ -11,7 +11,7 @@ import kotlin.math.min
 
 open class PaginatedList<T>(
     val page: List<T>,
-    val hasNextPage: Boolean
+    val hasNextPage: Boolean,
 )
 
 const val PaginationFactor = 50
@@ -19,7 +19,7 @@ const val PaginationFactor = 50
 fun <T> paginatedFrom(
     pageNum: Int,
     paginationFactor: Int = PaginationFactor,
-    lister: () -> List<T>
+    lister: () -> List<T>,
 ): PaginatedList<T> {
     val list = lister()
     val lastIndex = list.size - 1
@@ -35,6 +35,6 @@ fun <T> paginatedFrom(
 
     return PaginatedList(
         sliced,
-        higherIndex < lastIndex
+        higherIndex < lastIndex,
     )
 }

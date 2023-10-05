@@ -17,36 +17,39 @@ import io.javalin.plugin.json.jsonMapper
 import java.io.IOException
 
 class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
-
     @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE", "UNCHECKED_CAST")
     override suspend fun parseRequest(context: Context): GraphQLServerRequest? {
         return try {
-            val formParam = context.formParam("operations")
-                ?: return context.bodyAsClass(GraphQLServerRequest::class.java)
+            val formParam =
+                context.formParam("operations")
+                    ?: return context.bodyAsClass(GraphQLServerRequest::class.java)
 
-            val request = context.jsonMapper().fromJsonString(
-                formParam,
-                GraphQLServerRequest::class.java
-            )
-            val map = context.formParam("map")?.let {
+            val request =
                 context.jsonMapper().fromJsonString(
-                    it,
-                    Map::class.java as Class<Map<String, List<String>>>
+                    formParam,
+                    GraphQLServerRequest::class.java,
                 )
-            }.orEmpty()
-
-            val mapItems = map.flatMap { (key, variables) ->
-                val file = context.uploadedFile(key)
-                variables.map { fullVariable ->
-                    val variable = fullVariable.removePrefix("variables.").substringBefore('.')
-                    val listIndex = fullVariable.substringAfterLast('.').toIntOrNull()
-                    MapItem(
-                        variable,
-                        listIndex,
-                        file
+            val map =
+                context.formParam("map")?.let {
+                    context.jsonMapper().fromJsonString(
+                        it,
+                        Map::class.java as Class<Map<String, List<String>>>,
                     )
-                }
-            }.groupBy { it.variable }
+                }.orEmpty()
+
+            val mapItems =
+                map.flatMap { (key, variables) ->
+                    val file = context.uploadedFile(key)
+                    variables.map { fullVariable ->
+                        val variable = fullVariable.removePrefix("variables.").substringBefore('.')
+                        val listIndex = fullVariable.substringAfterLast('.').toIntOrNull()
+                        MapItem(
+                            variable,
+                            listIndex,
+                            file,
+                        )
+                    }
+                }.groupBy { it.variable }
 
             when (request) {
                 is GraphQLRequest -> {
@@ -54,11 +57,12 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
                 }
                 is GraphQLBatchRequest -> {
                     request.copy(
-                        requests = request.requests.map {
-                            it.copy(
-                                variables = it.variables?.modifyFiles(mapItems)
-                            )
-                        }
+                        requests =
+                            request.requests.map {
+                                it.copy(
+                                    variables = it.variables?.modifyFiles(mapItems),
+                                )
+                            },
                     )
                 }
             }
@@ -70,7 +74,7 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
     data class MapItem(
         val variable: String,
         val listIndex: Int?,
-        val file: UploadedFile?
+        val file: UploadedFile?,
     )
 
     /**

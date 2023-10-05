@@ -50,7 +50,11 @@ object PackageTools {
     /**
      * Convert dex to jar, a wrapper for the dex2jar library
      */
-    fun dex2jar(dexFile: String, jarFile: String, fileNameWithoutType: String) {
+    fun dex2jar(
+        dexFile: String,
+        jarFile: String,
+        fileNameWithoutType: String,
+    ) {
         // adopted from com.googlecode.dex2jar.tools.Dex2jarCmd.doCommandLine
         // source at: https://github.com/DexPatcher/dex2jar/tree/v2.1-20190905-lanchon/dex-tools/src/main/java/com/googlecode/dex2jar/tools/Dex2jarCmd.java
 
@@ -78,7 +82,7 @@ object PackageTools {
                 https://bitbucket.org/pxb1988/dex2jar/issues
                 https://github.com/pxb1988/dex2jar/issues
                 dex2jar@googlegroups.com
-                """.trimIndent()
+                """.trimIndent(),
             )
             handler.dump(errorFile, emptyArray<String>())
         } else {
@@ -93,37 +97,40 @@ object PackageTools {
             val parsed = ApkFile(apk)
             val dbFactory = DocumentBuilderFactory.newInstance()
             val dBuilder = dbFactory.newDocumentBuilder()
-            val doc = parsed.manifestXml.byteInputStream().use {
-                dBuilder.parse(it)
-            }
+            val doc =
+                parsed.manifestXml.byteInputStream().use {
+                    dBuilder.parse(it)
+                }
 
             logger.trace(parsed.manifestXml)
 
-            applicationInfo.metaData = Bundle().apply {
-                val appTag = doc.getElementsByTagName("application").item(0)
+            applicationInfo.metaData =
+                Bundle().apply {
+                    val appTag = doc.getElementsByTagName("application").item(0)
 
-                appTag?.childNodes?.toList()
-                    .orEmpty()
-                    .asSequence()
-                    .filter {
-                        it.nodeType == Node.ELEMENT_NODE
-                    }.map {
-                        it as Element
-                    }.filter {
-                        it.tagName == "meta-data"
-                    }.forEach {
-                        putString(
-                            it.attributes.getNamedItem("android:name").nodeValue,
-                            it.attributes.getNamedItem("android:value").nodeValue
-                        )
-                    }
-            }
+                    appTag?.childNodes?.toList()
+                        .orEmpty()
+                        .asSequence()
+                        .filter {
+                            it.nodeType == Node.ELEMENT_NODE
+                        }.map {
+                            it as Element
+                        }.filter {
+                            it.tagName == "meta-data"
+                        }.forEach {
+                            putString(
+                                it.attributes.getNamedItem("android:name").nodeValue,
+                                it.attributes.getNamedItem("android:value").nodeValue,
+                            )
+                        }
+                }
 
-            signatures = (
-                parsed.apkSingers.flatMap { it.certificateMetas }
-                /*+ parsed.apkV2Singers.flatMap { it.certificateMetas }*/
+            signatures =
+                (
+                    parsed.apkSingers.flatMap { it.certificateMetas }
+                    // + parsed.apkV2Singers.flatMap { it.certificateMetas }
                 ) // Blocked by: https://github.com/hsiafan/apk-parser/issues/72
-                .map { Signature(it.data) }.toTypedArray()
+                    .map { Signature(it.data) }.toTypedArray()
         }
     }
 
@@ -142,7 +149,10 @@ object PackageTools {
      * loads the extension main class called [className] from the jar located at [jarPath]
      * It may return an instance of HttpSource or SourceFactory depending on the extension.
      */
-    fun loadExtensionSources(jarPath: String, className: String): Any {
+    fun loadExtensionSources(
+        jarPath: String,
+        className: String,
+    ): Any {
         try {
             logger.debug { "loading jar with path: $jarPath" }
             val classLoader = jarLoaderMap[jarPath] ?: URLClassLoader(arrayOf<URL>(URL("file:$jarPath")))

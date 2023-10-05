@@ -82,9 +82,10 @@ dependencies {
 }
 
 application {
-    applicationDefaultJvmArgs = listOf(
-        "-Djunrar.extractor.thread-keep-alive-seconds=30"
-    )
+    applicationDefaultJvmArgs =
+        listOf(
+            "-Djunrar.extractor.thread-keep-alive-seconds=30",
+        )
     mainClass.set(MainClass)
 }
 
@@ -125,7 +126,7 @@ tasks {
                 "Implementation-Title" to rootProject.name,
                 "Implementation-Vendor" to "The Suwayomi Project",
                 "Specification-Version" to tachideskVersion,
-                "Implementation-Version" to tachideskRevision
+                "Implementation-Version" to tachideskRevision,
             )
         }
         archiveBaseName.set(rootProject.name)
@@ -151,16 +152,16 @@ tasks {
         src("https://github.com/Suwayomi/Tachidesk-WebUI-preview/releases/download/$webUIRevisionTag/Tachidesk-WebUI-$webUIRevisionTag.zip")
         dest("src/main/resources/WebUI.zip")
 
-
         fun shouldOverwrite(): Boolean {
             val zipPath = project.projectDir.absolutePath + "/src/main/resources/WebUI.zip"
-            val zipFile =  net.lingala.zip4j.ZipFile(zipPath)
+            val zipFile = net.lingala.zip4j.ZipFile(zipPath)
 
             var shouldOverwrite = true
             if (zipFile.isValidZipFile) {
-                val zipRevision = zipFile.getInputStream(zipFile.getFileHeader("revision")).bufferedReader().use {
-                    it.readText().trim()
-                }
+                val zipRevision =
+                    zipFile.getInputStream(zipFile.getFileHeader("revision")).bufferedReader().use {
+                        it.readText().trim()
+                    }
 
                 if (zipRevision == webUIRevisionTag) {
                     shouldOverwrite = false
@@ -177,11 +178,12 @@ tasks {
         group = "application"
         finalizedBy(run)
         doFirst {
-            application.applicationDefaultJvmArgs = listOf(
-                "-Dsuwayomi.tachidesk.config.server.webUIInterface=electron",
-                // Change this to the installed electron application
-                "-Dsuwayomi.tachidesk.config.server.electronPath=/usr/bin/electron"
-            )
+            application.applicationDefaultJvmArgs =
+                listOf(
+                    "-Dsuwayomi.tachidesk.config.server.webUIInterface=electron",
+                    // Change this to the installed electron application
+                    "-Dsuwayomi.tachidesk.config.server.electronPath=/usr/bin/electron",
+                )
         }
     }
 }

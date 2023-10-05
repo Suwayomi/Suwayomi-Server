@@ -22,12 +22,15 @@ object TemporaryFileStorage {
         Runtime.getRuntime().addShutdownHook(
             thread(start = false) {
                 folder.deleteRecursively()
-            }
+            },
         )
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun saveFile(name: String, content: InputStream) {
+    fun saveFile(
+        name: String,
+        content: InputStream,
+    ) {
         val file = folder.resolve(name)
         content.use { inStream ->
             file.outputStream().use {

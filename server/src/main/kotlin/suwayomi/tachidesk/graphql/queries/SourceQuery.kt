@@ -46,14 +46,18 @@ import suwayomi.tachidesk.manga.model.table.SourceTable
 import java.util.concurrent.CompletableFuture
 
 class SourceQuery {
-    fun source(dataFetchingEnvironment: DataFetchingEnvironment, id: Long): CompletableFuture<SourceType> {
+    fun source(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        id: Long,
+    ): CompletableFuture<SourceType> {
         return dataFetchingEnvironment.getValueFromDataLoader("SourceDataLoader", id)
     }
 
     enum class SourceOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<SourceType> {
         ID(SourceTable.id),
         NAME(SourceTable.name),
-        LANG(SourceTable.lang);
+        LANG(SourceTable.lang),
+        ;
 
         override fun greater(cursor: Cursor): Op<Boolean> {
             return when (this) {
@@ -72,11 +76,12 @@ class SourceQuery {
         }
 
         override fun asCursor(type: SourceType): Cursor {
-            val value = when (this) {
-                ID -> type.id.toString()
-                NAME -> type.id.toString() + "-" + type.name
-                LANG -> type.id.toString() + "-" + type.lang
-            }
+            val value =
+                when (this) {
+                    ID -> type.id.toString()
+                    NAME -> type.id.toString() + "-" + type.name
+                    LANG -> type.id.toString() + "-" + type.lang
+                }
             return Cursor(value)
         }
     }
@@ -85,7 +90,7 @@ class SourceQuery {
         val id: Long? = null,
         val name: String? = null,
         val lang: String? = null,
-        val isNsfw: Boolean? = null
+        val isNsfw: Boolean? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -105,14 +110,14 @@ class SourceQuery {
         val isNsfw: BooleanFilter? = null,
         override val and: List<SourceFilter>? = null,
         override val or: List<SourceFilter>? = null,
-        override val not: SourceFilter? = null
+        override val not: SourceFilter? = null,
     ) : Filter<SourceFilter> {
         override fun getOpList(): List<Op<Boolean>> {
             return listOfNotNull(
                 andFilterWithCompareEntity(SourceTable.id, id),
                 andFilterWithCompareString(SourceTable.name, name),
                 andFilterWithCompareString(SourceTable.lang, lang),
-                andFilterWithCompare(SourceTable.isNsfw, isNsfw)
+                andFilterWithCompare(SourceTable.isNsfw, isNsfw),
             )
         }
     }
@@ -126,57 +131,58 @@ class SourceQuery {
         after: Cursor? = null,
         first: Int? = null,
         last: Int? = null,
-        offset: Int? = null
+        offset: Int? = null,
     ): SourceNodeList {
-        val (queryResults, resultsAsType) = transaction {
-            val res = SourceTable.selectAll()
+        val (queryResults, resultsAsType) =
+            transaction {
+                val res = SourceTable.selectAll()
 
-            res.applyOps(condition, filter)
+                res.applyOps(condition, filter)
 
-            if (orderBy != null || (last != null || before != null)) {
-                val orderByColumn = orderBy?.column ?: SourceTable.id
-                val orderType = orderByType.maybeSwap(last ?: before)
+                if (orderBy != null || (last != null || before != null)) {
+                    val orderByColumn = orderBy?.column ?: SourceTable.id
+                    val orderType = orderByType.maybeSwap(last ?: before)
 
-                if (orderBy == SourceOrderBy.ID || orderBy == null) {
-                    res.orderBy(orderByColumn to orderType)
-                } else {
-                    res.orderBy(
-                        orderByColumn to orderType,
-                        SourceTable.id to SortOrder.ASC
-                    )
-                }
-            }
-
-            val total = res.count()
-            val firstResult = res.firstOrNull()?.get(SourceTable.id)?.value
-            val lastResult = res.lastOrNull()?.get(SourceTable.id)?.value
-
-            if (after != null) {
-                res.andWhere {
-                    when (orderByType) {
-                        DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: SourceOrderBy.ID).less(after)
-                        null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: SourceOrderBy.ID).greater(after)
+                    if (orderBy == SourceOrderBy.ID || orderBy == null) {
+                        res.orderBy(orderByColumn to orderType)
+                    } else {
+                        res.orderBy(
+                            orderByColumn to orderType,
+                            SourceTable.id to SortOrder.ASC,
+                        )
                     }
                 }
-            } else if (before != null) {
-                res.andWhere {
-                    when (orderByType) {
-                        DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: SourceOrderBy.ID).greater(before)
-                        null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: SourceOrderBy.ID).less(before)
+
+                val total = res.count()
+                val firstResult = res.firstOrNull()?.get(SourceTable.id)?.value
+                val lastResult = res.lastOrNull()?.get(SourceTable.id)?.value
+
+                if (after != null) {
+                    res.andWhere {
+                        when (orderByType) {
+                            DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: SourceOrderBy.ID).less(after)
+                            null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: SourceOrderBy.ID).greater(after)
+                        }
+                    }
+                } else if (before != null) {
+                    res.andWhere {
+                        when (orderByType) {
+                            DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: SourceOrderBy.ID).greater(before)
+                            null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: SourceOrderBy.ID).less(before)
+                        }
                     }
                 }
-            }
 
-            if (first != null) {
-                res.limit(first, offset?.toLong() ?: 0)
-            } else if (last != null) {
-                res.limit(last)
-            }
+                if (first != null) {
+                    res.limit(first, offset?.toLong() ?: 0)
+                } else if (last != null) {
+                    res.limit(last)
+                }
 
-            QueryResults(total, firstResult, lastResult, res.toList()).let {
-                it to it.results.mapNotNull { SourceType(it) }
+                QueryResults(total, firstResult, lastResult, res.toList()).let {
+                    it to it.results.mapNotNull { SourceType(it) }
+                }
             }
-        }
 
         val getAsCursor: (SourceType) -> Cursor = (orderBy ?: SourceOrderBy.ID)::asCursor
 
@@ -189,24 +195,25 @@ class SourceQuery {
                     resultsAsType.firstOrNull()?.let {
                         SourceNodeList.SourceEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
                     },
                     resultsAsType.lastOrNull()?.let {
                         SourceNodeList.SourceEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
-                    }
+                    },
                 )
             },
-            pageInfo = PageInfo(
-                hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.id,
-                hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.id,
-                startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
-                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) }
-            ),
-            totalCount = queryResults.total.toInt()
+            pageInfo =
+                PageInfo(
+                    hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.id,
+                    hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.id,
+                    startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
+                    endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) },
+                ),
+            totalCount = queryResults.total.toInt(),
         )
     }
 }

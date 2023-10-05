@@ -24,43 +24,43 @@ import kotlin.coroutines.resumeWithException
 suspend fun <T> Observable<T>.awaitSingle(): T = single().awaitOne()
 
 @OptIn(InternalCoroutinesApi::class)
-private suspend fun <T> Observable<T>.awaitOne(): T = suspendCancellableCoroutine { cont ->
-    cont.unsubscribeOnCancellation(
-        subscribe(
-            object : Subscriber<T>() {
-                override fun onStart() {
-                    request(1)
-                }
+private suspend fun <T> Observable<T>.awaitOne(): T =
+    suspendCancellableCoroutine { cont ->
+        cont.unsubscribeOnCancellation(
+            subscribe(
+                object : Subscriber<T>() {
+                    override fun onStart() {
+                        request(1)
+                    }
 
-                override fun onNext(t: T) {
-                    cont.resume(t)
-                }
+                    override fun onNext(t: T) {
+                        cont.resume(t)
+                    }
 
-                override fun onCompleted() {
-                    if (cont.isActive) {
-                        cont.resumeWithException(
-                            IllegalStateException(
-                                "Should have invoked onNext"
+                    override fun onCompleted() {
+                        if (cont.isActive) {
+                            cont.resumeWithException(
+                                IllegalStateException(
+                                    "Should have invoked onNext",
+                                ),
                             )
-                        )
+                        }
                     }
-                }
 
-                override fun onError(e: Throwable) {
+                    override fun onError(e: Throwable) {
                     /*
-                       * Rx1 observable throws NoSuchElementException if cancellation happened before
-                       * element emission. To mitigate this we try to atomically resume continuation with exception:
-                       * if resume failed, then we know that continuation successfully cancelled itself
-                       */
-                    val token = cont.tryResumeWithException(e)
-                    if (token != null) {
-                        cont.completeResume(token)
+                     * Rx1 observable throws NoSuchElementException if cancellation happened before
+                     * element emission. To mitigate this we try to atomically resume continuation with exception:
+                     * if resume failed, then we know that continuation successfully cancelled itself
+                     */
+                        val token = cont.tryResumeWithException(e)
+                        if (token != null) {
+                            cont.completeResume(token)
+                        }
                     }
-                }
-            }
+                },
+            ),
         )
-    )
-}
+    }
 
-private fun <T> CancellableContinuation<T>.unsubscribeOnCancellation(sub: Subscription) =
-    invokeOnCancellation { sub.unsubscribe() }
+private fun <T> CancellableContinuation<T>.unsubscribeOnCancellation(sub: Subscription) = invokeOnCancellation { sub.unsubscribe() }

@@ -52,7 +52,7 @@ class TachideskDataLoaderRegistryFactory {
                 SourceDataLoader(),
                 SourcesForExtensionDataLoader(),
                 ExtensionDataLoader(),
-                ExtensionForSourceDataLoader()
+                ExtensionForSourceDataLoader(),
             )
         }
     }

@@ -47,14 +47,18 @@ import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import java.util.concurrent.CompletableFuture
 
 class ExtensionQuery {
-    fun extension(dataFetchingEnvironment: DataFetchingEnvironment, pkgName: String): CompletableFuture<ExtensionType> {
+    fun extension(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        pkgName: String,
+    ): CompletableFuture<ExtensionType> {
         return dataFetchingEnvironment.getValueFromDataLoader("ExtensionDataLoader", pkgName)
     }
 
     enum class ExtensionOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<ExtensionType> {
         PKG_NAME(ExtensionTable.pkgName),
         NAME(ExtensionTable.name),
-        APK_NAME(ExtensionTable.apkName);
+        APK_NAME(ExtensionTable.apkName),
+        ;
 
         override fun greater(cursor: Cursor): Op<Boolean> {
             return when (this) {
@@ -73,11 +77,12 @@ class ExtensionQuery {
         }
 
         override fun asCursor(type: ExtensionType): Cursor {
-            val value = when (this) {
-                PKG_NAME -> type.pkgName
-                NAME -> type.pkgName + "\\-" + type.name
-                APK_NAME -> type.pkgName + "\\-" + type.apkName
-            }
+            val value =
+                when (this) {
+                    PKG_NAME -> type.pkgName
+                    NAME -> type.pkgName + "\\-" + type.name
+                    APK_NAME -> type.pkgName + "\\-" + type.apkName
+                }
             return Cursor(value)
         }
     }
@@ -93,7 +98,7 @@ class ExtensionQuery {
         val isNsfw: Boolean? = null,
         val isInstalled: Boolean? = null,
         val hasUpdate: Boolean? = null,
-        val isObsolete: Boolean? = null
+        val isObsolete: Boolean? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -126,7 +131,7 @@ class ExtensionQuery {
         val isObsolete: BooleanFilter? = null,
         override val and: List<ExtensionFilter>? = null,
         override val or: List<ExtensionFilter>? = null,
-        override val not: ExtensionFilter? = null
+        override val not: ExtensionFilter? = null,
     ) : Filter<ExtensionFilter> {
         override fun getOpList(): List<Op<Boolean>> {
             return listOfNotNull(
@@ -140,7 +145,7 @@ class ExtensionQuery {
                 andFilterWithCompare(ExtensionTable.isNsfw, isNsfw),
                 andFilterWithCompare(ExtensionTable.isInstalled, isInstalled),
                 andFilterWithCompare(ExtensionTable.hasUpdate, hasUpdate),
-                andFilterWithCompare(ExtensionTable.isObsolete, isObsolete)
+                andFilterWithCompare(ExtensionTable.isObsolete, isObsolete),
             )
         }
     }
@@ -154,57 +159,58 @@ class ExtensionQuery {
         after: Cursor? = null,
         first: Int? = null,
         last: Int? = null,
-        offset: Int? = null
+        offset: Int? = null,
     ): ExtensionNodeList {
-        val queryResults = transaction {
-            val res = ExtensionTable.selectAll()
+        val queryResults =
+            transaction {
+                val res = ExtensionTable.selectAll()
 
-            res.adjustWhere { ExtensionTable.name neq LocalSource.EXTENSION_NAME }
+                res.adjustWhere { ExtensionTable.name neq LocalSource.EXTENSION_NAME }
 
-            res.applyOps(condition, filter)
+                res.applyOps(condition, filter)
 
-            if (orderBy != null || (last != null || before != null)) {
-                val orderByColumn = orderBy?.column ?: ExtensionTable.pkgName
-                val orderType = orderByType.maybeSwap(last ?: before)
+                if (orderBy != null || (last != null || before != null)) {
+                    val orderByColumn = orderBy?.column ?: ExtensionTable.pkgName
+                    val orderType = orderByType.maybeSwap(last ?: before)
 
-                if (orderBy == ExtensionOrderBy.PKG_NAME || orderBy == null) {
-                    res.orderBy(orderByColumn to orderType)
-                } else {
-                    res.orderBy(
-                        orderByColumn to orderType,
-                        ExtensionTable.pkgName to SortOrder.ASC
-                    )
-                }
-            }
-
-            val total = res.count()
-            val firstResult = res.firstOrNull()?.get(ExtensionTable.pkgName)
-            val lastResult = res.lastOrNull()?.get(ExtensionTable.pkgName)
-
-            if (after != null) {
-                res.andWhere {
-                    when (orderByType) {
-                        DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).less(after)
-                        null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).greater(after)
+                    if (orderBy == ExtensionOrderBy.PKG_NAME || orderBy == null) {
+                        res.orderBy(orderByColumn to orderType)
+                    } else {
+                        res.orderBy(
+                            orderByColumn to orderType,
+                            ExtensionTable.pkgName to SortOrder.ASC,
+                        )
                     }
                 }
-            } else if (before != null) {
-                res.andWhere {
-                    when (orderByType) {
-                        DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).greater(before)
-                        null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).less(before)
+
+                val total = res.count()
+                val firstResult = res.firstOrNull()?.get(ExtensionTable.pkgName)
+                val lastResult = res.lastOrNull()?.get(ExtensionTable.pkgName)
+
+                if (after != null) {
+                    res.andWhere {
+                        when (orderByType) {
+                            DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).less(after)
+                            null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).greater(after)
+                        }
+                    }
+                } else if (before != null) {
+                    res.andWhere {
+                        when (orderByType) {
+                            DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).greater(before)
+                            null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).less(before)
+                        }
                     }
                 }
-            }
 
-            if (first != null) {
-                res.limit(first, offset?.toLong() ?: 0)
-            } else if (last != null) {
-                res.limit(last)
-            }
+                if (first != null) {
+                    res.limit(first, offset?.toLong() ?: 0)
+                } else if (last != null) {
+                    res.limit(last)
+                }
 
-            QueryResults(total, firstResult, lastResult, res.toList())
-        }
+                QueryResults(total, firstResult, lastResult, res.toList())
+            }
 
         val getAsCursor: (ExtensionType) -> Cursor = (orderBy ?: ExtensionOrderBy.PKG_NAME)::asCursor
 
@@ -219,24 +225,25 @@ class ExtensionQuery {
                     resultsAsType.firstOrNull()?.let {
                         ExtensionNodeList.ExtensionEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
                     },
                     resultsAsType.lastOrNull()?.let {
                         ExtensionNodeList.ExtensionEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
-                    }
+                    },
                 )
             },
-            pageInfo = PageInfo(
-                hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.pkgName,
-                hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.pkgName,
-                startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
-                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) }
-            ),
-            totalCount = queryResults.total.toInt()
+            pageInfo =
+                PageInfo(
+                    hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.pkgName,
+                    hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.pkgName,
+                    startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
+                    endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) },
+                ),
+            totalCount = queryResults.total.toInt(),
         )
     }
 }

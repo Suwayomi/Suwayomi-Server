@@ -10,7 +10,6 @@ import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
  * A basic interface for creating a source. It could be an online source, a local source, etc...
  */
 interface Source {
-
     /**
      * Id for the source. Must be unique.
      */
@@ -60,19 +59,19 @@ interface Source {
 
     @Deprecated(
         "Use the non-RxJava API instead",
-        ReplaceWith("getMangaDetails")
+        ReplaceWith("getMangaDetails"),
     )
     fun fetchMangaDetails(manga: SManga): Observable<SManga> = throw IllegalStateException("Not used")
 
     @Deprecated(
         "Use the non-RxJava API instead",
-        ReplaceWith("getChapterList")
+        ReplaceWith("getChapterList"),
     )
     fun fetchChapterList(manga: SManga): Observable<List<SChapter>> = throw IllegalStateException("Not used")
 
     @Deprecated(
         "Use the non-RxJava API instead",
-        ReplaceWith("getPageList")
+        ReplaceWith("getPageList"),
     )
     fun fetchPageList(chapter: SChapter): Observable<List<Page>> = Observable.empty()
 }

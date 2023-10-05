@@ -15,7 +15,7 @@ class M0023_CategoryMetaRefFix : SQLMigration() {
     fun String.toSqlName(): String =
         TransactionManager.defaultDatabase!!.identifierManager.let {
             it.quoteIfNecessary(
-                it.inProperCase(this)
+                it.inProperCase(this),
             )
         }
 

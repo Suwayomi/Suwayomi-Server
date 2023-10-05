@@ -15,7 +15,7 @@ private val DEFAULT_BODY: RequestBody = FormBody.Builder().build()
 fun GET(
     url: String,
     headers: Headers = DEFAULT_HEADERS,
-    cache: CacheControl = DEFAULT_CACHE_CONTROL
+    cache: CacheControl = DEFAULT_CACHE_CONTROL,
 ): Request {
     return Request.Builder()
         .url(url)
@@ -30,7 +30,7 @@ fun GET(
 fun GET(
     url: HttpUrl,
     headers: Headers = DEFAULT_HEADERS,
-    cache: CacheControl = DEFAULT_CACHE_CONTROL
+    cache: CacheControl = DEFAULT_CACHE_CONTROL,
 ): Request {
     return Request.Builder()
         .url(url)
@@ -43,7 +43,7 @@ fun POST(
     url: String,
     headers: Headers = DEFAULT_HEADERS,
     body: RequestBody = DEFAULT_BODY,
-    cache: CacheControl = DEFAULT_CACHE_CONTROL
+    cache: CacheControl = DEFAULT_CACHE_CONTROL,
 ): Request {
     return Request.Builder()
         .url(url)

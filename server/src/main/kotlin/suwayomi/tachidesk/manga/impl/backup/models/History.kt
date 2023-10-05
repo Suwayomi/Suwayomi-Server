@@ -6,7 +6,6 @@ import java.io.Serializable
  * Object containing the history statistics of a chapter
  */
 interface History : Serializable {
-
     /**
      * Id of history object.
      */
@@ -28,15 +27,15 @@ interface History : Serializable {
     var time_read: Long
 
     companion object {
-
         /**
          * History constructor
          *
          * @param chapter chapter object
          * @return history object
          */
-        fun create(chapter: Chapter): History = HistoryImpl().apply {
-            this.chapter_id = chapter.id!!
-        }
+        fun create(chapter: Chapter): History =
+            HistoryImpl().apply {
+                this.chapter_id = chapter.id!!
+            }
     }
 }

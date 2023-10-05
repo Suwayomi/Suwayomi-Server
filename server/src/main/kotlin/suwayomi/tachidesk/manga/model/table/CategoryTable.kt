@@ -20,12 +20,13 @@ object CategoryTable : IntIdTable() {
     val includeInUpdate = integer("include_in_update").default(IncludeInUpdate.UNSET.value)
 }
 
-fun CategoryTable.toDataClass(categoryEntry: ResultRow) = CategoryDataClass(
-    categoryEntry[id].value,
-    categoryEntry[order],
-    categoryEntry[name],
-    categoryEntry[isDefault],
-    Category.getCategorySize(categoryEntry[id].value),
-    IncludeInUpdate.fromValue(categoryEntry[includeInUpdate]),
-    Category.getCategoryMetaMap(categoryEntry[id].value)
-)
+fun CategoryTable.toDataClass(categoryEntry: ResultRow) =
+    CategoryDataClass(
+        categoryEntry[id].value,
+        categoryEntry[order],
+        categoryEntry[name],
+        categoryEntry[isDefault],
+        Category.getCategorySize(categoryEntry[id].value),
+        IncludeInUpdate.fromValue(categoryEntry[includeInUpdate]),
+        Category.getCategoryMetaMap(categoryEntry[id].value),
+    )

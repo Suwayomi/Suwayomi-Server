@@ -43,7 +43,7 @@ class SourceType(
     val supportsLatest: Boolean,
     val isConfigurable: Boolean,
     val isNsfw: Boolean,
-    val displayName: String
+    val displayName: String,
 ) : Node {
     constructor(source: SourceDataClass) : this(
         id = source.id.toLong(),
@@ -53,7 +53,7 @@ class SourceType(
         supportsLatest = source.supportsLatest,
         isConfigurable = source.isConfigurable,
         isNsfw = source.isNsfw,
-        displayName = source.displayName
+        displayName = source.displayName,
     )
 
     constructor(row: ResultRow, sourceExtension: ResultRow, catalogueSource: CatalogueSource) : this(
@@ -64,7 +64,7 @@ class SourceType(
         supportsLatest = catalogueSource.supportsLatest,
         isConfigurable = catalogueSource is ConfigurableSource,
         isNsfw = row[SourceTable.isNsfw],
-        displayName = catalogueSource.toString()
+        displayName = catalogueSource.toString(),
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> {
@@ -85,16 +85,18 @@ class SourceType(
 }
 
 fun SourceType(row: ResultRow): SourceType? {
-    val catalogueSource = GetCatalogueSource
-        .getCatalogueSourceOrNull(row[SourceTable.id].value)
-        ?: return null
-    val sourceExtension = if (row.hasValue(ExtensionTable.id)) {
-        row
-    } else {
-        ExtensionTable
-            .select { ExtensionTable.id eq row[SourceTable.extension] }
-            .first()
-    }
+    val catalogueSource =
+        GetCatalogueSource
+            .getCatalogueSourceOrNull(row[SourceTable.id].value)
+            ?: return null
+    val sourceExtension =
+        if (row.hasValue(ExtensionTable.id)) {
+            row
+        } else {
+            ExtensionTable
+                .select { ExtensionTable.id eq row[SourceTable.extension] }
+                .first()
+        }
 
     return SourceType(row, sourceExtension, catalogueSource)
 }
@@ -103,11 +105,11 @@ data class SourceNodeList(
     override val nodes: List<SourceType>,
     override val edges: List<SourceEdge>,
     override val pageInfo: PageInfo,
-    override val totalCount: Int
+    override val totalCount: Int,
 ) : NodeList() {
     data class SourceEdge(
         override val cursor: Cursor,
-        override val node: SourceType
+        override val node: SourceType,
     ) : Edge()
 
     companion object {
@@ -115,13 +117,14 @@ data class SourceNodeList(
             return SourceNodeList(
                 nodes = this,
                 edges = getEdges(),
-                pageInfo = PageInfo(
-                    hasNextPage = false,
-                    hasPreviousPage = false,
-                    startCursor = Cursor(0.toString()),
-                    endCursor = Cursor(lastIndex.toString())
-                ),
-                totalCount = size
+                pageInfo =
+                    PageInfo(
+                        hasNextPage = false,
+                        hasPreviousPage = false,
+                        startCursor = Cursor(0.toString()),
+                        endCursor = Cursor(lastIndex.toString()),
+                    ),
+                totalCount = size,
             )
         }
 
@@ -130,12 +133,12 @@ data class SourceNodeList(
             return listOf(
                 SourceEdge(
                     cursor = Cursor("0"),
-                    node = first()
+                    node = first(),
                 ),
                 SourceEdge(
                     cursor = Cursor(lastIndex.toString()),
-                    node = last()
-                )
+                    node = last(),
+                ),
             )
         }
     }
@@ -156,7 +159,7 @@ data class CheckBoxFilter(val name: String, val default: Boolean) : Filter
 enum class TriState {
     IGNORE,
     INCLUDE,
-    EXCLUDE
+    EXCLUDE,
 }
 
 data class TriStateFilter(val name: String, val default: TriState) : Filter
@@ -177,18 +180,20 @@ fun filterOf(filter: SourceFilter<*>): Filter {
         is SourceFilter.Select<*> -> SelectFilter(filter.name, filter.displayValues, filter.state)
         is SourceFilter.Text -> TextFilter(filter.name, filter.state)
         is SourceFilter.CheckBox -> CheckBoxFilter(filter.name, filter.state)
-        is SourceFilter.TriState -> TriStateFilter(
-            filter.name,
-            when (filter.state) {
-                SourceFilter.TriState.STATE_INCLUDE -> TriState.INCLUDE
-                SourceFilter.TriState.STATE_EXCLUDE -> TriState.EXCLUDE
-                else -> TriState.IGNORE
-            }
-        )
-        is SourceFilter.Group<*> -> GroupFilter(
-            filter.name,
-            filter.state.map { filterOf(it as SourceFilter<*>) }
-        )
+        is SourceFilter.TriState ->
+            TriStateFilter(
+                filter.name,
+                when (filter.state) {
+                    SourceFilter.TriState.STATE_INCLUDE -> TriState.INCLUDE
+                    SourceFilter.TriState.STATE_EXCLUDE -> TriState.EXCLUDE
+                    else -> TriState.IGNORE
+                },
+            )
+        is SourceFilter.Group<*> ->
+            GroupFilter(
+                filter.name,
+                filter.state.map { filterOf(it as SourceFilter<*>) },
+            )
         is SourceFilter.Sort -> SortFilter(filter.name, filter.values.asList(), filter.state?.let(SortFilter::SortSelection))
         else -> throw RuntimeException("sealed class cannot have more subtypes!")
     }
@@ -239,10 +244,13 @@ data class FilterChange(
     val checkBoxState: Boolean? = null,
     val triState: TriState? = null,
     val sortState: SortFilter.SortSelection? = null,
-    val groupChange: FilterChange? = null
+    val groupChange: FilterChange? = null,
 )
 
-fun updateFilterList(source: CatalogueSource, changes: List<FilterChange>?): FilterList {
+fun updateFilterList(
+    source: CatalogueSource,
+    changes: List<FilterChange>?,
+): FilterList {
     val filterList = source.getFilterList()
 
     changes?.forEach { change ->
@@ -301,7 +309,7 @@ data class SwitchPreference(
     val summary: String?,
     val visible: Boolean,
     val currentValue: Boolean?,
-    val default: Boolean
+    val default: Boolean,
 ) : Preference
 
 data class CheckBoxPreference(
@@ -310,7 +318,7 @@ data class CheckBoxPreference(
     val summary: String?,
     val visible: Boolean,
     val currentValue: Boolean?,
-    val default: Boolean
+    val default: Boolean,
 ) : Preference
 
 data class EditTextPreference(
@@ -322,7 +330,7 @@ data class EditTextPreference(
     val default: String?,
     val dialogTitle: String?,
     val dialogMessage: String?,
-    val text: String?
+    val text: String?,
 ) : Preference
 
 data class ListPreference(
@@ -333,7 +341,7 @@ data class ListPreference(
     val currentValue: String?,
     val default: String?,
     val entries: List<String>,
-    val entryValues: List<String>
+    val entryValues: List<String>,
 ) : Preference
 
 data class MultiSelectListPreference(
@@ -346,60 +354,65 @@ data class MultiSelectListPreference(
     val dialogTitle: String?,
     val dialogMessage: String?,
     val entries: List<String>,
-    val entryValues: List<String>
+    val entryValues: List<String>,
 ) : Preference
 
 fun preferenceOf(preference: SourcePreference): Preference {
     return when (preference) {
-        is SourceSwitchPreference -> SwitchPreference(
-            preference.key,
-            preference.title.toString(),
-            preference.summary?.toString(),
-            preference.visible,
-            preference.currentValue as Boolean,
-            preference.defaultValue as Boolean,
-        )
-        is SourceCheckBoxPreference -> CheckBoxPreference(
-            preference.key,
-            preference.title.toString(),
-            preference.summary?.toString(),
-            preference.visible,
-            preference.currentValue as Boolean,
-            preference.defaultValue as Boolean
-        )
-        is SourceEditTextPreference -> EditTextPreference(
-            preference.key,
-            preference.title?.toString(),
-            preference.summary?.toString(),
-            preference.visible,
-            (preference.currentValue as CharSequence?)?.toString(),
-            (preference.defaultValue as CharSequence?)?.toString(),
-            preference.dialogTitle?.toString(),
-            preference.dialogMessage?.toString(),
-            preference.text
-        )
-        is SourceListPreference -> ListPreference(
-            preference.key,
-            preference.title?.toString(),
-            preference.summary?.toString(),
-            preference.visible,
-            (preference.currentValue as CharSequence?)?.toString(),
-            (preference.defaultValue as CharSequence?)?.toString(),
-            preference.entries.map { it.toString() },
-            preference.entryValues.map { it.toString() }
-        )
-        is SourceMultiSelectListPreference -> MultiSelectListPreference(
-            preference.key,
-            preference.title?.toString(),
-            preference.summary?.toString(),
-            preference.visible,
-            (preference.currentValue as Collection<*>?)?.map { it.toString() },
-            (preference.defaultValue as Collection<*>?)?.map { it.toString() },
-            preference.dialogTitle?.toString(),
-            preference.dialogMessage?.toString(),
-            preference.entries.map { it.toString() },
-            preference.entryValues.map { it.toString() }
-        )
+        is SourceSwitchPreference ->
+            SwitchPreference(
+                preference.key,
+                preference.title.toString(),
+                preference.summary?.toString(),
+                preference.visible,
+                preference.currentValue as Boolean,
+                preference.defaultValue as Boolean,
+            )
+        is SourceCheckBoxPreference ->
+            CheckBoxPreference(
+                preference.key,
+                preference.title.toString(),
+                preference.summary?.toString(),
+                preference.visible,
+                preference.currentValue as Boolean,
+                preference.defaultValue as Boolean,
+            )
+        is SourceEditTextPreference ->
+            EditTextPreference(
+                preference.key,
+                preference.title?.toString(),
+                preference.summary?.toString(),
+                preference.visible,
+                (preference.currentValue as CharSequence?)?.toString(),
+                (preference.defaultValue as CharSequence?)?.toString(),
+                preference.dialogTitle?.toString(),
+                preference.dialogMessage?.toString(),
+                preference.text,
+            )
+        is SourceListPreference ->
+            ListPreference(
+                preference.key,
+                preference.title?.toString(),
+                preference.summary?.toString(),
+                preference.visible,
+                (preference.currentValue as CharSequence?)?.toString(),
+                (preference.defaultValue as CharSequence?)?.toString(),
+                preference.entries.map { it.toString() },
+                preference.entryValues.map { it.toString() },
+            )
+        is SourceMultiSelectListPreference ->
+            MultiSelectListPreference(
+                preference.key,
+                preference.title?.toString(),
+                preference.summary?.toString(),
+                preference.visible,
+                (preference.currentValue as Collection<*>?)?.map { it.toString() },
+                (preference.defaultValue as Collection<*>?)?.map { it.toString() },
+                preference.dialogTitle?.toString(),
+                preference.dialogMessage?.toString(),
+                preference.entries.map { it.toString() },
+                preference.entryValues.map { it.toString() },
+            )
         else -> throw RuntimeException("sealed class cannot have more subtypes!")
     }
 }

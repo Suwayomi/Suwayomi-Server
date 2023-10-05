@@ -9,7 +9,6 @@ import java.io.File
  * Loader used to load a chapter from a .zip or .cbz file.
  */
 class ZipPageLoader(file: File) : PageLoader {
-
     private val zip = ZipFile(file)
 
     override suspend fun getPages(): List<ReaderPage> {

@@ -26,7 +26,10 @@ object KodeinGlobalHelper {
      */
     @JvmStatic
     @Suppress("UNCHECKED_CAST")
-    fun <T : Any> instance(type: Class<T>, kodein: DI? = null): T {
+    fun <T : Any> instance(
+        type: Class<T>,
+        kodein: DI? = null,
+    ): T {
         return when (type) {
             AndroidFiles::class.java -> {
                 val instance: AndroidFiles by (kodein ?: kodein()).instance()

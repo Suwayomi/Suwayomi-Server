@@ -34,7 +34,8 @@ class M0006_AnimeTablesBatch3 : AddTableMigration() {
     }
 
     override val tables: Array<Table>
-        get() = arrayOf(
-            EpisodeTable()
-        )
+        get() =
+            arrayOf(
+                EpisodeTable(),
+            )
 }

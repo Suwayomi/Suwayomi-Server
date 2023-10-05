@@ -26,13 +26,15 @@ object Browser {
                 try {
                     val electronPath = serverConfig.electronPath.value
                     electronInstances.add(ProcessBuilder(electronPath, appBaseUrl).start())
-                } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
+                } catch (e: Throwable) {
+                    // cover both java.lang.Exception and java.lang.Error
                     e.printStackTrace()
                 }
             } else {
                 try {
                     Desktop.browseURL(appBaseUrl)
-                } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
+                } catch (e: Throwable) {
+                    // cover both java.lang.Exception and java.lang.Error
                     e.printStackTrace()
                 }
             }

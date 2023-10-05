@@ -14,16 +14,12 @@ data class SourceDataClass(
     val name: String,
     val lang: String,
     val iconUrl: String,
-
     /** The Source provides a latest listing */
     val supportsLatest: Boolean,
-
     /** The Source implements [ConfigurableSource] */
     val isConfigurable: Boolean,
-
     /** The Source class has a @Nsfw annotation */
     val isNsfw: Boolean,
-
     /** A nicer version of [name] */
-    val displayName: String
+    val displayName: String,
 )

@@ -27,8 +27,9 @@ class M0021_GlobalAndCategoryMeta : AddTableMigration() {
     }
 
     override val tables: Array<Table>
-        get() = arrayOf(
-            GlobalMetaTable(),
-            CategoryMetaTable()
-        )
+        get() =
+            arrayOf(
+                GlobalMetaTable(),
+                CategoryMetaTable(),
+            )
 }

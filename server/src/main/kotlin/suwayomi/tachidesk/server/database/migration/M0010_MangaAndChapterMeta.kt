@@ -29,8 +29,9 @@ class M0010_MangaAndChapterMeta : AddTableMigration() {
     }
 
     override val tables: Array<Table>
-        get() = arrayOf(
-            ChapterMetaTable(),
-            MangaMetaTable()
-        )
+        get() =
+            arrayOf(
+                ChapterMetaTable(),
+                MangaMetaTable(),
+            )
 }

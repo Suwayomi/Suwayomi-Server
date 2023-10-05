@@ -1,7 +1,6 @@
 package eu.kanade.tachiyomi.source.model
 
 class SMangaImpl : SManga {
-
     override lateinit var url: String
 
     override lateinit var title: String

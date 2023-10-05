@@ -6,7 +6,6 @@ import rx.Observable
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 
 interface CatalogueSource : Source {
-
     /**
      * An ISO 639-1 compliant language code (two letters in lower case).
      */
@@ -37,7 +36,11 @@ interface CatalogueSource : Source {
      * @param filters the list of filters to apply.
      */
     @Suppress("DEPRECATION")
-    suspend fun getSearchManga(page: Int, query: String, filters: FilterList): MangasPage {
+    suspend fun getSearchManga(
+        page: Int,
+        query: String,
+        filters: FilterList,
+    ): MangasPage {
         return fetchSearchManga(page, query, filters).awaitSingle()
     }
 
@@ -59,22 +62,23 @@ interface CatalogueSource : Source {
 
     @Deprecated(
         "Use the non-RxJava API instead",
-        ReplaceWith("getPopularManga")
+        ReplaceWith("getPopularManga"),
     )
-    fun fetchPopularManga(page: Int): Observable<MangasPage> =
-        throw IllegalStateException("Not used")
+    fun fetchPopularManga(page: Int): Observable<MangasPage> = throw IllegalStateException("Not used")
 
     @Deprecated(
         "Use the non-RxJava API instead",
-        ReplaceWith("getSearchManga")
+        ReplaceWith("getSearchManga"),
     )
-    fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> =
-        throw IllegalStateException("Not used")
+    fun fetchSearchManga(
+        page: Int,
+        query: String,
+        filters: FilterList,
+    ): Observable<MangasPage> = throw IllegalStateException("Not used")
 
     @Deprecated(
         "Use the non-RxJava API instead",
-        ReplaceWith("getLatestUpdates")
+        ReplaceWith("getLatestUpdates"),
     )
-    fun fetchLatestUpdates(page: Int): Observable<MangasPage> =
-        throw IllegalStateException("Not used")
+    fun fetchLatestUpdates(page: Int): Observable<MangasPage> = throw IllegalStateException("Not used")
 }

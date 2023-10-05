@@ -17,7 +17,6 @@ import uy.kohesive.injekt.api.InjektScope
 import uy.kohesive.injekt.registry.default.DefaultRegistrar
 
 open class App : Application() {
-
     override fun onCreate() {
         super.onCreate()
         Injekt = InjektScope(DefaultRegistrar())

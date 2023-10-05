@@ -28,7 +28,6 @@ import java.security.MessageDigest
  * A simple implementation for sources from a website.
  */
 abstract class HttpSource : CatalogueSource {
-
     /**
      * Network service.
      */
@@ -91,7 +90,11 @@ abstract class HttpSource : CatalogueSource {
      * @param versionId [Int] the version ID of the source
      * @return a unique ID for the source
      */
-    protected fun generateId(name: String, lang: String, versionId: Int): Long {
+    protected fun generateId(
+        name: String,
+        lang: String,
+        versionId: Int,
+    ): Long {
         val key = "${name.lowercase()}/$lang/$versionId"
         val bytes = MessageDigest.getInstance("MD5").digest(key.toByteArray())
         return (0..7).map { bytes[it].toLong() and 0xff shl 8 * (7 - it) }.reduce(Long::or) and Long.MAX_VALUE
@@ -100,9 +103,10 @@ abstract class HttpSource : CatalogueSource {
     /**
      * Headers builder for requests. Implementations can override this method for custom headers.
      */
-    protected open fun headersBuilder() = Headers.Builder().apply {
-        add("User-Agent", DEFAULT_USER_AGENT)
-    }
+    protected open fun headersBuilder() =
+        Headers.Builder().apply {
+            add("User-Agent", DEFAULT_USER_AGENT)
+        }
 
     /**
      * Visible name of the source.
@@ -147,7 +151,11 @@ abstract class HttpSource : CatalogueSource {
      * @param filters the list of filters to apply.
      */
     @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getSearchManga"))
-    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> {
+    override fun fetchSearchManga(
+        page: Int,
+        query: String,
+        filters: FilterList,
+    ): Observable<MangasPage> {
         return client.newCall(searchMangaRequest(page, query, filters))
             .asObservableSuccess()
             .map { response ->
@@ -162,7 +170,11 @@ abstract class HttpSource : CatalogueSource {
      * @param query the search query.
      * @param filters the list of filters to apply.
      */
-    protected abstract fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request
+    protected abstract fun searchMangaRequest(
+        page: Int,
+        query: String,
+        filters: FilterList,
+    ): Request
 
     /**
      * Parses the response from the site and returns a [MangasPage] object.
@@ -450,7 +462,10 @@ abstract class HttpSource : CatalogueSource {
      * @param chapter the chapter to be added.
      * @param manga the manga of the chapter.
      */
-    open fun prepareNewChapter(chapter: SChapter, manga: SManga) {}
+    open fun prepareNewChapter(
+        chapter: SChapter,
+        manga: SManga,
+    ) {}
 
     /**
      * Returns the list of filters for the source.

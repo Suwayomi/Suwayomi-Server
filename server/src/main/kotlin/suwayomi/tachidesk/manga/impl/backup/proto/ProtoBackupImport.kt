@@ -47,9 +47,12 @@ object ProtoBackupImport : ProtoBackupBase() {
     private val errors = mutableListOf<Pair<Date, String>>()
 
     private val backupMutex = Mutex()
+
     sealed class BackupRestoreState {
         data object Idle : BackupRestoreState()
+
         data class RestoringCategories(val totalManga: Int) : BackupRestoreState()
+
         data class RestoringManga(val current: Int, val totalManga: Int, val title: String) : BackupRestoreState()
     }
 
@@ -70,26 +73,28 @@ object ProtoBackupImport : ProtoBackupBase() {
                 restoreCategories(backup.backupCategories)
             }
 
-            val categoryMapping = transaction {
-                backup.backupCategories.associate {
-                    it.order to CategoryTable.select { CategoryTable.name eq it.name }.first()[CategoryTable.id].value
+            val categoryMapping =
+                transaction {
+                    backup.backupCategories.associate {
+                        it.order to CategoryTable.select { CategoryTable.name eq it.name }.first()[CategoryTable.id].value
+                    }
                 }
-            }
 
             // Store source mapping for error messages
             sourceMapping = backup.getSourceMap()
 
             // Restore individual manga
             backup.backupManga.forEachIndexed { index, manga ->
-                backupRestoreState.value = BackupRestoreState.RestoringManga(
-                    current = index + 1,
-                    totalManga = backup.backupManga.size,
-                    title = manga.title
-                )
+                backupRestoreState.value =
+                    BackupRestoreState.RestoringManga(
+                        current = index + 1,
+                        totalManga = backup.backupManga.size,
+                        title = manga.title,
+                    )
                 restoreManga(
                     backupManga = manga,
                     backupCategories = backup.backupCategories,
-                    categoryMapping = categoryMapping
+                    categoryMapping = categoryMapping,
                 )
             }
 
@@ -126,7 +131,7 @@ object ProtoBackupImport : ProtoBackupBase() {
     private fun restoreManga(
         backupManga: BackupManga,
         backupCategories: List<BackupCategory>,
-        categoryMapping: Map<Int, Int>
+        categoryMapping: Map<Int, Int>,
     ) {
         val manga = backupManga.getMangaImpl()
         val chapters = backupManga.getChaptersImpl()
@@ -150,36 +155,38 @@ object ProtoBackupImport : ProtoBackupBase() {
         history: List<BackupHistory>,
         tracks: List<Track>,
         backupCategories: List<BackupCategory>,
-        categoryMapping: Map<Int, Int>
+        categoryMapping: Map<Int, Int>,
     ) {
-        val dbManga = transaction {
-            MangaTable.select { (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq manga.source) }
-                .firstOrNull()
-        }
+        val dbManga =
+            transaction {
+                MangaTable.select { (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq manga.source) }
+                    .firstOrNull()
+            }
 
         if (dbManga == null) { // Manga not in database
             transaction {
                 // insert manga to database
-                val mangaId = MangaTable.insertAndGetId {
-                    it[url] = manga.url
-                    it[title] = manga.title
+                val mangaId =
+                    MangaTable.insertAndGetId {
+                        it[url] = manga.url
+                        it[title] = manga.title
 
-                    it[artist] = manga.artist
-                    it[author] = manga.author
-                    it[description] = manga.description
-                    it[genre] = manga.genre
-                    it[status] = manga.status
-                    it[thumbnail_url] = manga.thumbnail_url
-                    it[updateStrategy] = manga.update_strategy.name
+                        it[artist] = manga.artist
+                        it[author] = manga.author
+                        it[description] = manga.description
+                        it[genre] = manga.genre
+                        it[status] = manga.status
+                        it[thumbnail_url] = manga.thumbnail_url
+                        it[updateStrategy] = manga.update_strategy.name
 
-                    it[sourceReference] = manga.source
+                        it[sourceReference] = manga.source
 
-                    it[initialized] = manga.description != null
+                        it[initialized] = manga.description != null
 
-                    it[inLibrary] = manga.favorite
+                        it[inLibrary] = manga.favorite
 
-                    it[inLibraryAt] = TimeUnit.MILLISECONDS.toSeconds(manga.date_added)
-                }.value
+                        it[inLibraryAt] = TimeUnit.MILLISECONDS.toSeconds(manga.date_added)
+                    }.value
 
                 // insert chapter data
                 val chaptersLength = chapters.size

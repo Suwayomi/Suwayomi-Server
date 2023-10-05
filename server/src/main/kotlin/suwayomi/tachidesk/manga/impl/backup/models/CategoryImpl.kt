@@ -1,7 +1,6 @@
 package suwayomi.tachidesk.manga.impl.backup.models
 
 class CategoryImpl : Category {
-
     override var id: Int? = null
 
     override lateinit var name: String

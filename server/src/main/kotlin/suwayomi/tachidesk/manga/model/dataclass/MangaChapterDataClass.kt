@@ -9,5 +9,5 @@ package suwayomi.tachidesk.manga.model.dataclass
 
 data class MangaChapterDataClass(
     val manga: MangaDataClass,
-    val chapter: ChapterDataClass
+    val chapter: ChapterDataClass,
 )

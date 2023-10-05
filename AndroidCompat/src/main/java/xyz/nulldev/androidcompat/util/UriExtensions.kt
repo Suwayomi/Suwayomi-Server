@@ -24,5 +24,7 @@ import java.net.URI
  * Utilites to convert between Java and Android Uris.
  */
 fun Uri.java() = URI(this.toString())
+
 fun Uri.file() = File(this.path)
+
 fun URI.android() = Uri.parse(this.toString())!!

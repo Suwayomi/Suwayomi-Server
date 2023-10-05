@@ -20,48 +20,49 @@ object SystemTray {
     private var instance: SystemTray? = null
 
     fun create() {
-        instance = try {
-            // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
-            serverConfig.subscribeTo(
-                serverConfig.debugLogsEnabled,
-                { debugLogsEnabled -> SystemTray.DEBUG = debugLogsEnabled },
-                ignoreInitialValue = false
-            )
+        instance =
+            try {
+                // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
+                serverConfig.subscribeTo(
+                    serverConfig.debugLogsEnabled,
+                    { debugLogsEnabled -> SystemTray.DEBUG = debugLogsEnabled },
+                    ignoreInitialValue = false,
+                )
 
-            CacheUtil.clear(BuildConfig.NAME)
+                CacheUtil.clear(BuildConfig.NAME)
 
-            if (System.getProperty("os.name").startsWith("Mac")) {
-                SystemTray.FORCE_TRAY_TYPE = SystemTray.TrayType.Awt
+                if (System.getProperty("os.name").startsWith("Mac")) {
+                    SystemTray.FORCE_TRAY_TYPE = SystemTray.TrayType.Awt
+                }
+
+                val systemTray = SystemTray.get(BuildConfig.NAME)
+                val mainMenu = systemTray.menu
+
+                mainMenu.add(
+                    MenuItem(
+                        "Open Tachidesk",
+                    ) {
+                        openInBrowser()
+                    },
+                )
+
+                val icon = ServerConfig::class.java.getResource("/icon/faviconlogo.png")
+
+                // systemTray.setTooltip("Tachidesk")
+                systemTray.setImage(icon)
+                // systemTray.status = "No Mail"
+
+                mainMenu.add(
+                    MenuItem("Quit") {
+                        shutdownApp(Success)
+                    },
+                )
+
+                systemTray
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
             }
-
-            val systemTray = SystemTray.get(BuildConfig.NAME)
-            val mainMenu = systemTray.menu
-
-            mainMenu.add(
-                MenuItem(
-                    "Open Tachidesk"
-                ) {
-                    openInBrowser()
-                }
-            )
-
-            val icon = ServerConfig::class.java.getResource("/icon/faviconlogo.png")
-
-            // systemTray.setTooltip("Tachidesk")
-            systemTray.setImage(icon)
-            // systemTray.status = "No Mail"
-
-            mainMenu.add(
-                MenuItem("Quit") {
-                    shutdownApp(Success)
-                }
-            )
-
-            systemTray
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
     }
 
     fun remove() {

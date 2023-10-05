@@ -50,10 +50,11 @@ object JavalinSetup {
 
     fun javalinSetup() {
         val server = Server()
-        val connector = ServerConnector(server).apply {
-            host = serverConfig.ip.value
-            port = serverConfig.port.value
-        }
+        val connector =
+            ServerConnector(server).apply {
+                host = serverConfig.ip.value
+                port = serverConfig.port.value
+            }
         server.addConnector(connector)
 
         serverConfig.subscribeTo(combine(serverConfig.ip, serverConfig.port) { ip, port -> Pair(ip, port) }, { (newIp, newPort) ->
@@ -68,48 +69,49 @@ object JavalinSetup {
             logger.info { "Server ip and/or port changed from $oldIp:$oldPort to $newIp:$newPort " }
         })
 
-        val app = Javalin.create { config ->
-            if (serverConfig.webUIEnabled.value) {
-                runBlocking {
-                    WebInterfaceManager.setupWebUI()
+        val app =
+            Javalin.create { config ->
+                if (serverConfig.webUIEnabled.value) {
+                    runBlocking {
+                        WebInterfaceManager.setupWebUI()
+                    }
+
+                    logger.info { "Serving web static files for ${serverConfig.webUIFlavor.value}" }
+                    config.addStaticFiles(applicationDirs.webUIRoot, Location.EXTERNAL)
+                    config.addSinglePageRoot("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
+                    config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
                 }
 
-                logger.info { "Serving web static files for ${serverConfig.webUIFlavor.value}" }
-                config.addStaticFiles(applicationDirs.webUIRoot, Location.EXTERNAL)
-                config.addSinglePageRoot("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
-                config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
-            }
+                config.server { server }
 
-            config.server { server }
+                config.enableCorsForAllOrigins()
 
-            config.enableCorsForAllOrigins()
+                config.accessManager { handler, ctx, _ ->
+                    fun credentialsValid(): Boolean {
+                        val (username, password) = ctx.basicAuthCredentials()
+                        return username == serverConfig.basicAuthUsername.value && password == serverConfig.basicAuthPassword.value
+                    }
 
-            config.accessManager { handler, ctx, _ ->
-                fun credentialsValid(): Boolean {
-                    val (username, password) = ctx.basicAuthCredentials()
-                    return username == serverConfig.basicAuthUsername.value && password == serverConfig.basicAuthPassword.value
+                    if (serverConfig.basicAuthEnabled.value && !(ctx.basicAuthCredentialsExist() && credentialsValid())) {
+                        ctx.header("WWW-Authenticate", "Basic")
+                        ctx.status(401).json("Unauthorized")
+                    } else {
+                        handler.handle(ctx)
+                    }
                 }
-
-                if (serverConfig.basicAuthEnabled.value && !(ctx.basicAuthCredentialsExist() && credentialsValid())) {
-                    ctx.header("WWW-Authenticate", "Basic")
-                    ctx.status(401).json("Unauthorized")
-                } else {
-                    handler.handle(ctx)
+            }.events { event ->
+                event.serverStarted {
+                    if (serverConfig.initialOpenInBrowserEnabled.value) {
+                        Browser.openInBrowser()
+                    }
                 }
-            }
-        }.events { event ->
-            event.serverStarted {
-                if (serverConfig.initialOpenInBrowserEnabled.value) {
-                    Browser.openInBrowser()
-                }
-            }
-        }.start()
+            }.start()
 
         // when JVM is prompted to shutdown, stop javalin gracefully
         Runtime.getRuntime().addShutdownHook(
             thread(start = false) {
                 app.stop()
-            }
+            },
         )
 
         app.exception(NullPointerException::class.java) { e, ctx ->
@@ -144,16 +146,17 @@ object JavalinSetup {
     }
 
     private fun getOpenApiOptions(): OpenApiOptions {
-        val applicationInfo = Info().apply {
-            version("1.0")
-            description("Tachidesk Api")
-        }
+        val applicationInfo =
+            Info().apply {
+                version("1.0")
+                description("Tachidesk Api")
+            }
         return OpenApiOptions(applicationInfo).apply {
             path("/api/openapi.json")
             swagger(
                 SwaggerOptions("/api/swagger-ui").apply {
                     title("Tachidesk Swagger Documentation")
-                }
+                },
             )
         }
     }

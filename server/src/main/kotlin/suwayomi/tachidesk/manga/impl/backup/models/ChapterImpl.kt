@@ -4,7 +4,6 @@ import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 
 class ChapterImpl : Chapter {
-
     override var id: Long? = null
 
     override var manga_id: Long? = null

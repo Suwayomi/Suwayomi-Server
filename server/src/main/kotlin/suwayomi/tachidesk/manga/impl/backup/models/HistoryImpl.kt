@@ -4,7 +4,6 @@ package suwayomi.tachidesk.manga.impl.backup.models
  * Object containing the history statistics of a chapter
  */
 class HistoryImpl : History {
-
     /**
      * Id of history object.
      */

@@ -27,15 +27,15 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 class CategoryMutation {
     data class SetCategoryMetaInput(
         val clientMutationId: String? = null,
-        val meta: CategoryMetaType
+        val meta: CategoryMetaType,
     )
+
     data class SetCategoryMetaPayload(
         val clientMutationId: String?,
-        val meta: CategoryMetaType
+        val meta: CategoryMetaType,
     )
-    fun setCategoryMeta(
-        input: SetCategoryMetaInput
-    ): SetCategoryMetaPayload {
+
+    fun setCategoryMeta(input: SetCategoryMetaInput): SetCategoryMetaPayload {
         val (clientMutationId, meta) = input
 
         Category.modifyMeta(meta.categoryId, meta.key, meta.value)
@@ -46,34 +46,37 @@ class CategoryMutation {
     data class DeleteCategoryMetaInput(
         val clientMutationId: String? = null,
         val categoryId: Int,
-        val key: String
+        val key: String,
     )
+
     data class DeleteCategoryMetaPayload(
         val clientMutationId: String?,
         val meta: CategoryMetaType?,
-        val category: CategoryType
+        val category: CategoryType,
     )
-    fun deleteCategoryMeta(
-        input: DeleteCategoryMetaInput
-    ): DeleteCategoryMetaPayload {
+
+    fun deleteCategoryMeta(input: DeleteCategoryMetaInput): DeleteCategoryMetaPayload {
         val (clientMutationId, categoryId, key) = input
 
-        val (meta, category) = transaction {
-            val meta = CategoryMetaTable.select { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
-                .firstOrNull()
+        val (meta, category) =
+            transaction {
+                val meta =
+                    CategoryMetaTable.select { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
+                        .firstOrNull()
 
-            CategoryMetaTable.deleteWhere { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
+                CategoryMetaTable.deleteWhere { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
 
-            val category = transaction {
-                CategoryType(CategoryTable.select { CategoryTable.id eq categoryId }.first())
+                val category =
+                    transaction {
+                        CategoryType(CategoryTable.select { CategoryTable.id eq categoryId }.first())
+                    }
+
+                if (meta != null) {
+                    CategoryMetaType(meta)
+                } else {
+                    null
+                } to category
             }
-
-            if (meta != null) {
-                CategoryMetaType(meta)
-            } else {
-                null
-            } to category
-        }
 
         return DeleteCategoryMetaPayload(clientMutationId, meta, category)
     }
@@ -81,30 +84,35 @@ class CategoryMutation {
     data class UpdateCategoryPatch(
         val name: String? = null,
         val default: Boolean? = null,
-        val includeInUpdate: IncludeInUpdate? = null
+        val includeInUpdate: IncludeInUpdate? = null,
     )
 
     data class UpdateCategoryPayload(
         val clientMutationId: String?,
-        val category: CategoryType
+        val category: CategoryType,
     )
+
     data class UpdateCategoryInput(
         val clientMutationId: String? = null,
         val id: Int,
-        val patch: UpdateCategoryPatch
+        val patch: UpdateCategoryPatch,
     )
 
     data class UpdateCategoriesPayload(
         val clientMutationId: String?,
-        val categories: List<CategoryType>
+        val categories: List<CategoryType>,
     )
+
     data class UpdateCategoriesInput(
         val clientMutationId: String? = null,
         val ids: List<Int>,
-        val patch: UpdateCategoryPatch
+        val patch: UpdateCategoryPatch,
     )
 
-    private fun updateCategories(ids: List<Int>, patch: UpdateCategoryPatch) {
+    private fun updateCategories(
+        ids: List<Int>,
+        patch: UpdateCategoryPatch,
+    ) {
         transaction {
             if (patch.name != null) {
                 CategoryTable.update({ CategoryTable.id inList ids }) { update ->
@@ -135,13 +143,14 @@ class CategoryMutation {
 
         updateCategories(listOf(id), patch)
 
-        val category = transaction {
-            CategoryType(CategoryTable.select { CategoryTable.id eq id }.first())
-        }
+        val category =
+            transaction {
+                CategoryType(CategoryTable.select { CategoryTable.id eq id }.first())
+            }
 
         return UpdateCategoryPayload(
             clientMutationId = clientMutationId,
-            category = category
+            category = category,
         )
     }
 
@@ -150,24 +159,26 @@ class CategoryMutation {
 
         updateCategories(ids, patch)
 
-        val categories = transaction {
-            CategoryTable.select { CategoryTable.id inList ids }.map { CategoryType(it) }
-        }
+        val categories =
+            transaction {
+                CategoryTable.select { CategoryTable.id inList ids }.map { CategoryType(it) }
+            }
 
         return UpdateCategoriesPayload(
             clientMutationId = clientMutationId,
-            categories = categories
+            categories = categories,
         )
     }
 
     data class UpdateCategoryOrderPayload(
         val clientMutationId: String?,
-        val categories: List<CategoryType>
+        val categories: List<CategoryType>,
     )
+
     data class UpdateCategoryOrderInput(
         val clientMutationId: String? = null,
         val id: Int,
-        val position: Int
+        val position: Int,
     )
 
     fun updateCategoryOrder(input: UpdateCategoryOrderInput): UpdateCategoryOrderPayload {
@@ -177,9 +188,10 @@ class CategoryMutation {
         }
 
         transaction {
-            val currentOrder = CategoryTable
-                .select { CategoryTable.id eq categoryId }
-                .first()[CategoryTable.order]
+            val currentOrder =
+                CategoryTable
+                    .select { CategoryTable.id eq categoryId }
+                    .first()[CategoryTable.order]
 
             if (currentOrder != position) {
                 if (position < currentOrder) {
@@ -200,13 +212,14 @@ class CategoryMutation {
 
         Category.normalizeCategories()
 
-        val categories = transaction {
-            CategoryTable.selectAll().orderBy(CategoryTable.order).map { CategoryType(it) }
-        }
+        val categories =
+            transaction {
+                CategoryTable.selectAll().orderBy(CategoryTable.order).map { CategoryType(it) }
+            }
 
         return UpdateCategoryOrderPayload(
             clientMutationId = clientMutationId,
-            categories = categories
+            categories = categories,
         )
     }
 
@@ -215,15 +228,15 @@ class CategoryMutation {
         val name: String,
         val order: Int? = null,
         val default: Boolean? = null,
-        val includeInUpdate: IncludeInUpdate? = null
+        val includeInUpdate: IncludeInUpdate? = null,
     )
+
     data class CreateCategoryPayload(
         val clientMutationId: String?,
-        val category: CategoryType
+        val category: CategoryType,
     )
-    fun createCategory(
-        input: CreateCategoryInput
-    ): CreateCategoryPayload {
+
+    fun createCategory(input: CreateCategoryInput): CreateCategoryPayload {
         val (clientMutationId, name, order, default, includeInUpdate) = input
         transaction {
             require(CategoryTable.select { CategoryTable.name eq input.name }.isEmpty()) {
@@ -239,73 +252,78 @@ class CategoryMutation {
             }
         }
 
-        val category = transaction {
-            if (order != null) {
-                CategoryTable.update({ CategoryTable.order greaterEq order }) {
-                    it[CategoryTable.order] = CategoryTable.order + 1
+        val category =
+            transaction {
+                if (order != null) {
+                    CategoryTable.update({ CategoryTable.order greaterEq order }) {
+                        it[CategoryTable.order] = CategoryTable.order + 1
+                    }
                 }
+
+                val id =
+                    CategoryTable.insertAndGetId {
+                        it[CategoryTable.name] = input.name
+                        it[CategoryTable.order] = order ?: Int.MAX_VALUE
+                        if (default != null) {
+                            it[CategoryTable.isDefault] = default
+                        }
+                        if (includeInUpdate != null) {
+                            it[CategoryTable.includeInUpdate] = includeInUpdate.value
+                        }
+                    }
+
+                Category.normalizeCategories()
+
+                CategoryType(CategoryTable.select { CategoryTable.id eq id }.first())
             }
-
-            val id = CategoryTable.insertAndGetId {
-                it[CategoryTable.name] = input.name
-                it[CategoryTable.order] = order ?: Int.MAX_VALUE
-                if (default != null) {
-                    it[CategoryTable.isDefault] = default
-                }
-                if (includeInUpdate != null) {
-                    it[CategoryTable.includeInUpdate] = includeInUpdate.value
-                }
-            }
-
-            Category.normalizeCategories()
-
-            CategoryType(CategoryTable.select { CategoryTable.id eq id }.first())
-        }
 
         return CreateCategoryPayload(clientMutationId, category)
     }
 
     data class DeleteCategoryInput(
         val clientMutationId: String? = null,
-        val categoryId: Int
+        val categoryId: Int,
     )
+
     data class DeleteCategoryPayload(
         val clientMutationId: String?,
         val category: CategoryType?,
-        val mangas: List<MangaType>
+        val mangas: List<MangaType>,
     )
-    fun deleteCategory(
-        input: DeleteCategoryInput
-    ): DeleteCategoryPayload {
+
+    fun deleteCategory(input: DeleteCategoryInput): DeleteCategoryPayload {
         val (clientMutationId, categoryId) = input
         if (categoryId == 0) { // Don't delete default category
             return DeleteCategoryPayload(
                 clientMutationId,
                 null,
-                emptyList()
+                emptyList(),
             )
         }
 
-        val (category, mangas) = transaction {
-            val category = CategoryTable.select { CategoryTable.id eq categoryId }
-                .firstOrNull()
+        val (category, mangas) =
+            transaction {
+                val category =
+                    CategoryTable.select { CategoryTable.id eq categoryId }
+                        .firstOrNull()
 
-            val mangas = transaction {
-                MangaTable.innerJoin(CategoryMangaTable)
-                    .select { CategoryMangaTable.category eq categoryId }
-                    .map { MangaType(it) }
+                val mangas =
+                    transaction {
+                        MangaTable.innerJoin(CategoryMangaTable)
+                            .select { CategoryMangaTable.category eq categoryId }
+                            .map { MangaType(it) }
+                    }
+
+                CategoryTable.deleteWhere { CategoryTable.id eq categoryId }
+
+                Category.normalizeCategories()
+
+                if (category != null) {
+                    CategoryType(category)
+                } else {
+                    null
+                } to mangas
             }
-
-            CategoryTable.deleteWhere { CategoryTable.id eq categoryId }
-
-            Category.normalizeCategories()
-
-            if (category != null) {
-                CategoryType(category)
-            } else {
-                null
-            } to mangas
-        }
 
         return DeleteCategoryPayload(clientMutationId, category, mangas)
     }
@@ -313,30 +331,35 @@ class CategoryMutation {
     data class UpdateMangaCategoriesPatch(
         val clearCategories: Boolean? = null,
         val addToCategories: List<Int>? = null,
-        val removeFromCategories: List<Int>? = null
+        val removeFromCategories: List<Int>? = null,
     )
 
     data class UpdateMangaCategoriesPayload(
         val clientMutationId: String?,
-        val manga: MangaType
+        val manga: MangaType,
     )
+
     data class UpdateMangaCategoriesInput(
         val clientMutationId: String? = null,
         val id: Int,
-        val patch: UpdateMangaCategoriesPatch
+        val patch: UpdateMangaCategoriesPatch,
     )
 
     data class UpdateMangasCategoriesPayload(
         val clientMutationId: String?,
-        val mangas: List<MangaType>
+        val mangas: List<MangaType>,
     )
+
     data class UpdateMangasCategoriesInput(
         val clientMutationId: String? = null,
         val ids: List<Int>,
-        val patch: UpdateMangaCategoriesPatch
+        val patch: UpdateMangaCategoriesPatch,
     )
 
-    private fun updateMangas(ids: List<Int>, patch: UpdateMangaCategoriesPatch) {
+    private fun updateMangas(
+        ids: List<Int>,
+        patch: UpdateMangaCategoriesPatch,
+    ) {
         transaction {
             if (patch.clearCategories == true) {
                 CategoryMangaTable.deleteWhere { CategoryMangaTable.manga inList ids }
@@ -346,19 +369,21 @@ class CategoryMutation {
                 }
             }
             if (!patch.addToCategories.isNullOrEmpty()) {
-                val newCategories = buildList {
-                    ids.forEach { mangaId ->
-                        patch.addToCategories.forEach { categoryId ->
-                            val existingMapping = CategoryMangaTable.select {
-                                (CategoryMangaTable.manga eq mangaId) and (CategoryMangaTable.category eq categoryId)
-                            }.isNotEmpty()
+                val newCategories =
+                    buildList {
+                        ids.forEach { mangaId ->
+                            patch.addToCategories.forEach { categoryId ->
+                                val existingMapping =
+                                    CategoryMangaTable.select {
+                                        (CategoryMangaTable.manga eq mangaId) and (CategoryMangaTable.category eq categoryId)
+                                    }.isNotEmpty()
 
-                            if (!existingMapping) {
-                                add(mangaId to categoryId)
+                                if (!existingMapping) {
+                                    add(mangaId to categoryId)
+                                }
                             }
                         }
                     }
-                }
 
                 CategoryMangaTable.batchInsert(newCategories) { (manga, category) ->
                     this[CategoryMangaTable.manga] = manga
@@ -373,13 +398,14 @@ class CategoryMutation {
 
         updateMangas(listOf(id), patch)
 
-        val manga = transaction {
-            MangaType(MangaTable.select { MangaTable.id eq id }.first())
-        }
+        val manga =
+            transaction {
+                MangaType(MangaTable.select { MangaTable.id eq id }.first())
+            }
 
         return UpdateMangaCategoriesPayload(
             clientMutationId = clientMutationId,
-            manga = manga
+            manga = manga,
         )
     }
 
@@ -388,13 +414,14 @@ class CategoryMutation {
 
         updateMangas(ids, patch)
 
-        val mangas = transaction {
-            MangaTable.select { MangaTable.id inList ids }.map { MangaType(it) }
-        }
+        val mangas =
+            transaction {
+                MangaTable.select { MangaTable.id inList ids }.map { MangaType(it) }
+            }
 
         return UpdateMangasCategoriesPayload(
             clientMutationId = clientMutationId,
-            mangas = mangas
+            mangas = mangas,
         )
     }
 }

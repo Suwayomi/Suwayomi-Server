@@ -16,10 +16,11 @@ class M0019_RemoveAnime : SQLMigration() {
     val AnimeSource = "ANIMESOURCE"
     val Episode = "EPISODE"
 
-    override val sql = """
+    override val sql =
+        """
         DROP TABLE $AnimeSource;
         DROP TABLE $AnimeExtension;
         DROP TABLE $Episode;
         DROP TABLE $Anime;
-    """.trimIndent()
+        """.trimIndent()
 }

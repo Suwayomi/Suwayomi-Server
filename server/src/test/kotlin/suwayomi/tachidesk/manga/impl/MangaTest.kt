@@ -33,24 +33,24 @@ class MangaTest : ApplicationTest() {
         assertEquals(
             1,
             Manga.getMangaMetaMap(metaManga).size,
-            "Manga meta should still only have one pair"
+            "Manga meta should still only have one pair",
         )
         assertEquals(
             "newValue",
             Manga.getMangaMetaMap(metaManga)["test"],
-            "Manga meta with key 'test' should use the value `newValue`"
+            "Manga meta with key 'test' should use the value `newValue`",
         )
 
         Manga.modifyMangaMeta(metaManga, "test2", "value2")
         assertEquals(
             2,
             Manga.getMangaMetaMap(metaManga).size,
-            "Manga Meta should have an additional pair"
+            "Manga Meta should have an additional pair",
         )
         assertEquals(
             "value2",
             Manga.getMangaMetaMap(metaManga)["test2"],
-            "Manga Meta for key 'test2' should be 'value2'"
+            "Manga Meta for key 'test2' should be 'value2'",
         )
     }
 
@@ -58,7 +58,7 @@ class MangaTest : ApplicationTest() {
     internal fun tearDown() {
         clearTables(
             MangaMetaTable,
-            MangaTable
+            MangaTable,
         )
     }
 }

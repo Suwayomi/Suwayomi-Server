@@ -30,25 +30,26 @@ object UpdateController {
     private val logger = KotlinLogging.logger { }
 
     /** get recently updated manga chapters */
-    val recentChapters = handler(
-        pathParam<Int>("pageNum"),
-        documentWith = {
-            withOperation {
-                summary("Updates fetch")
-                description("Get recently updated manga chapters")
-            }
-        },
-        behaviorOf = { ctx, pageNum ->
-            ctx.future(
-                future {
-                    Chapter.getRecentChapters(pageNum)
+    val recentChapters =
+        handler(
+            pathParam<Int>("pageNum"),
+            documentWith = {
+                withOperation {
+                    summary("Updates fetch")
+                    description("Get recently updated manga chapters")
                 }
-            )
-        },
-        withResults = {
-            json<PagedMangaChapterListDataClass>(HttpCode.OK)
-        }
-    )
+            },
+            behaviorOf = { ctx, pageNum ->
+                ctx.future(
+                    future {
+                        Chapter.getRecentChapters(pageNum)
+                    },
+                )
+            },
+            withResults = {
+                json<PagedMangaChapterListDataClass>(HttpCode.OK)
+            },
+        )
 
     /**
      * Class made for handling return type in the documentation for [recentChapters],
@@ -56,42 +57,43 @@ object UpdateController {
      */
     private class PagedMangaChapterListDataClass : PaginatedList<MangaChapterDataClass>(emptyList(), false)
 
-    val categoryUpdate = handler(
-        formParam<Int?>("categoryId"),
-        documentWith = {
-            withOperation {
-                summary("Updater start")
-                description("Starts the updater")
-            }
-        },
-        behaviorOf = { ctx, categoryId ->
-            val updater by DI.global.instance<IUpdater>()
-            if (categoryId == null) {
-                logger.info { "Adding Library to Update Queue" }
-                updater.addCategoriesToUpdateQueue(
-                    Category.getCategoryList(),
-                    clear = true,
-                    forceAll = false
-                )
-            } else {
-                val category = Category.getCategoryById(categoryId)
-                if (category != null) {
+    val categoryUpdate =
+        handler(
+            formParam<Int?>("categoryId"),
+            documentWith = {
+                withOperation {
+                    summary("Updater start")
+                    description("Starts the updater")
+                }
+            },
+            behaviorOf = { ctx, categoryId ->
+                val updater by DI.global.instance<IUpdater>()
+                if (categoryId == null) {
+                    logger.info { "Adding Library to Update Queue" }
                     updater.addCategoriesToUpdateQueue(
-                        listOf(category),
+                        Category.getCategoryList(),
                         clear = true,
-                        forceAll = true
+                        forceAll = false,
                     )
                 } else {
-                    logger.info { "No Category found" }
-                    ctx.status(HttpCode.BAD_REQUEST)
+                    val category = Category.getCategoryById(categoryId)
+                    if (category != null) {
+                        updater.addCategoriesToUpdateQueue(
+                            listOf(category),
+                            clear = true,
+                            forceAll = true,
+                        )
+                    } else {
+                        logger.info { "No Category found" }
+                        ctx.status(HttpCode.BAD_REQUEST)
+                    }
                 }
-            }
-        },
-        withResults = {
-            httpCode(HttpCode.OK)
-            httpCode(HttpCode.BAD_REQUEST)
-        }
-    )
+            },
+            withResults = {
+                httpCode(HttpCode.OK)
+                httpCode(HttpCode.BAD_REQUEST)
+            },
+        )
 
     fun categoryUpdateWS(ws: WsConfig) {
         ws.onConnect { ctx ->
@@ -105,42 +107,44 @@ object UpdateController {
         }
     }
 
-    val updateSummary = handler(
-        documentWith = {
-            withOperation {
-                summary("Updater summary")
-                description("Gets the latest updater summary")
-            }
-        },
-        behaviorOf = { ctx ->
-            val updater by DI.global.instance<IUpdater>()
-            ctx.json(updater.status.value)
-        },
-        withResults = {
-            json<UpdateStatus>(HttpCode.OK)
-        }
-    )
-
-    val reset = handler(
-        documentWith = {
-            withOperation {
-                summary("Updater reset")
-                description("Stops and resets the Updater")
-            }
-        },
-        behaviorOf = { ctx ->
-            val updater by DI.global.instance<IUpdater>()
-            logger.info { "Resetting Updater" }
-            ctx.future(
-                future {
-                    updater.reset()
-                }.thenApply {
-                    ctx.status(HttpCode.OK)
+    val updateSummary =
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("Updater summary")
+                    description("Gets the latest updater summary")
                 }
-            )
-        },
-        withResults = {
-            httpCode(HttpCode.OK)
-        }
-    )
+            },
+            behaviorOf = { ctx ->
+                val updater by DI.global.instance<IUpdater>()
+                ctx.json(updater.status.value)
+            },
+            withResults = {
+                json<UpdateStatus>(HttpCode.OK)
+            },
+        )
+
+    val reset =
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("Updater reset")
+                    description("Stops and resets the Updater")
+                }
+            },
+            behaviorOf = { ctx ->
+                val updater by DI.global.instance<IUpdater>()
+                logger.info { "Resetting Updater" }
+                ctx.future(
+                    future {
+                        updater.reset()
+                    }.thenApply {
+                        ctx.status(HttpCode.OK)
+                    },
+                )
+            },
+            withResults = {
+                httpCode(HttpCode.OK)
+            },
+        )
 }

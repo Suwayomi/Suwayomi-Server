@@ -57,7 +57,11 @@ class HACronTask(id: String, val cronExpr: String, execute: () -> Unit, name: St
     }
 }
 
-class HATask(id: String, val interval: Long, execute: () -> Unit, val timerTask: TimerTask, name: String?, val initialDelay: Long = interval) : BaseHATask(id, execute, name) {
+class HATask(id: String, val interval: Long, execute: () -> Unit, val timerTask: TimerTask, name: String?, val initialDelay: Long = interval) : BaseHATask(
+    id,
+    execute,
+    name,
+) {
     private val firstExecutionTime = System.currentTimeMillis() + initialDelay
 
     private fun getElapsedTimeOfCurrentInterval(): Long {
@@ -142,11 +146,14 @@ object HAScheduler {
                 }
             },
             interval.inWholeMilliseconds,
-            interval.inWholeMilliseconds
+            interval.inWholeMilliseconds,
         )
     }
 
-    private fun createTimerTask(interval: Long, execute: () -> Unit): TimerTask {
+    private fun createTimerTask(
+        interval: Long,
+        execute: () -> Unit,
+    ): TimerTask {
         return object : TimerTask() {
             var lastExecutionTime: Long = 0
 
@@ -170,7 +177,12 @@ object HAScheduler {
         }
     }
 
-    fun schedule(execute: () -> Unit, interval: Long, delay: Long, name: String?): String {
+    fun schedule(
+        execute: () -> Unit,
+        interval: Long,
+        delay: Long,
+        name: String?,
+    ): String {
         val taskId = UUID.randomUUID().toString()
         val timerTask = createTimerTask(interval, execute)
 
@@ -193,7 +205,10 @@ object HAScheduler {
         return task
     }
 
-    fun reschedule(taskId: String, interval: Long) {
+    fun reschedule(
+        taskId: String,
+        interval: Long,
+    ) {
         val task = deschedule(taskId) ?: return
 
         val timerTask = createTimerTask(interval, task.execute)
@@ -209,19 +224,24 @@ object HAScheduler {
         logger.debug { "reschedule: new= $updatedTask, old= $task" }
     }
 
-    fun scheduleCron(execute: () -> Unit, cronExpr: String, name: String?): String {
+    fun scheduleCron(
+        execute: () -> Unit,
+        cronExpr: String,
+        name: String?,
+    ): String {
         if (!scheduler.isStarted) {
             scheduler.start()
         }
 
-        val taskId = scheduler.schedule(
-            cronExpr,
-            object : Task() {
-                override fun execute(context: TaskExecutionContext?) {
-                    execute()
-                }
-            }
-        )
+        val taskId =
+            scheduler.schedule(
+                cronExpr,
+                object : Task() {
+                    override fun execute(context: TaskExecutionContext?) {
+                        execute()
+                    }
+                },
+            )
 
         val task = HACronTask(taskId, cronExpr, execute, name)
         scheduledTasks.add(task)
@@ -239,7 +259,10 @@ object HAScheduler {
         logger.debug { "descheduleCron: $task" }
     }
 
-    fun rescheduleCron(taskId: String, cronExpr: String) {
+    fun rescheduleCron(
+        taskId: String,
+        cronExpr: String,
+    ) {
         val task = scheduledTasks.find { it.id == taskId } ?: return
 
         val updatedTask = HACronTask(taskId, cronExpr, task.execute, task.name)

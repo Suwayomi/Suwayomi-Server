@@ -15,34 +15,40 @@ class ExtensionMutation {
     data class UpdateExtensionPatch(
         val install: Boolean? = null,
         val update: Boolean? = null,
-        val uninstall: Boolean? = null
+        val uninstall: Boolean? = null,
     )
 
     data class UpdateExtensionPayload(
         val clientMutationId: String?,
-        val extension: ExtensionType
+        val extension: ExtensionType,
     )
+
     data class UpdateExtensionInput(
         val clientMutationId: String? = null,
         val id: String,
-        val patch: UpdateExtensionPatch
+        val patch: UpdateExtensionPatch,
     )
 
     data class UpdateExtensionsPayload(
         val clientMutationId: String?,
-        val extensions: List<ExtensionType>
+        val extensions: List<ExtensionType>,
     )
+
     data class UpdateExtensionsInput(
         val clientMutationId: String? = null,
         val ids: List<String>,
-        val patch: UpdateExtensionPatch
+        val patch: UpdateExtensionPatch,
     )
 
-    private suspend fun updateExtensions(ids: List<String>, patch: UpdateExtensionPatch) {
-        val extensions = transaction {
-            ExtensionTable.select { ExtensionTable.pkgName inList ids }
-                .map { ExtensionType(it) }
-        }
+    private suspend fun updateExtensions(
+        ids: List<String>,
+        patch: UpdateExtensionPatch,
+    ) {
+        val extensions =
+            transaction {
+                ExtensionTable.select { ExtensionTable.pkgName inList ids }
+                    .map { ExtensionType(it) }
+            }
 
         if (patch.update == true) {
             extensions.filter { it.hasUpdate }.forEach {
@@ -69,13 +75,14 @@ class ExtensionMutation {
         return future {
             updateExtensions(listOf(id), patch)
         }.thenApply {
-            val extension = transaction {
-                ExtensionType(ExtensionTable.select { ExtensionTable.pkgName eq id }.first())
-            }
+            val extension =
+                transaction {
+                    ExtensionType(ExtensionTable.select { ExtensionTable.pkgName eq id }.first())
+                }
 
             UpdateExtensionPayload(
                 clientMutationId = clientMutationId,
-                extension = extension
+                extension = extension,
             )
         }
     }
@@ -86,54 +93,55 @@ class ExtensionMutation {
         return future {
             updateExtensions(ids, patch)
         }.thenApply {
-            val extensions = transaction {
-                ExtensionTable.select { ExtensionTable.pkgName inList ids }
-                    .map { ExtensionType(it) }
-            }
+            val extensions =
+                transaction {
+                    ExtensionTable.select { ExtensionTable.pkgName inList ids }
+                        .map { ExtensionType(it) }
+                }
 
             UpdateExtensionsPayload(
                 clientMutationId = clientMutationId,
-                extensions = extensions
+                extensions = extensions,
             )
         }
     }
 
     data class FetchExtensionsInput(
-        val clientMutationId: String? = null
-    )
-    data class FetchExtensionsPayload(
-        val clientMutationId: String?,
-        val extensions: List<ExtensionType>
+        val clientMutationId: String? = null,
     )
 
-    fun fetchExtensions(
-        input: FetchExtensionsInput
-    ): CompletableFuture<FetchExtensionsPayload> {
+    data class FetchExtensionsPayload(
+        val clientMutationId: String?,
+        val extensions: List<ExtensionType>,
+    )
+
+    fun fetchExtensions(input: FetchExtensionsInput): CompletableFuture<FetchExtensionsPayload> {
         val (clientMutationId) = input
 
         return future {
             ExtensionsList.fetchExtensions()
         }.thenApply {
-            val extensions = transaction {
-                ExtensionTable.select { ExtensionTable.name neq LocalSource.EXTENSION_NAME }
-                    .map { ExtensionType(it) }
-            }
+            val extensions =
+                transaction {
+                    ExtensionTable.select { ExtensionTable.name neq LocalSource.EXTENSION_NAME }
+                        .map { ExtensionType(it) }
+                }
 
             FetchExtensionsPayload(
                 clientMutationId = clientMutationId,
-                extensions = extensions
+                extensions = extensions,
             )
         }
     }
 
     data class InstallExternalExtensionInput(
         val clientMutationId: String? = null,
-        val extensionFile: UploadedFile
+        val extensionFile: UploadedFile,
     )
 
     data class InstallExternalExtensionPayload(
         val clientMutationId: String?,
-        val extension: ExtensionType
+        val extension: ExtensionType,
     )
 
     fun installExternalExtension(input: InstallExternalExtensionInput): CompletableFuture<InstallExternalExtensionPayload> {
@@ -146,7 +154,7 @@ class ExtensionMutation {
 
             InstallExternalExtensionPayload(
                 clientMutationId,
-                extension = ExtensionType(dbExtension)
+                extension = ExtensionType(dbExtension),
             )
         }
     }

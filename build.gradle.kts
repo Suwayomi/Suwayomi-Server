@@ -34,6 +34,7 @@ subprojects {
 
     plugins.withType<KtlintPlugin> {
         extensions.configure<KtlintExtension>("ktlint") {
+            version.set("1.0.0")
             filter {
                 exclude("**/generated/**")
             }
@@ -42,7 +43,7 @@ subprojects {
 
     tasks {
         withType<KotlinJvmCompile> {
-            dependsOn("formatKotlin")
+            dependsOn("ktlintFormat")
             kotlinOptions {
                 jvmTarget = JavaVersion.VERSION_1_8.toString()
 

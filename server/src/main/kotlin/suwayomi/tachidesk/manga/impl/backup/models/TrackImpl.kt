@@ -1,7 +1,6 @@
 package suwayomi.tachidesk.manga.impl.backup.models
 
 class TrackImpl : Track {
-
     override var id: Long? = null
 
     override var manga_id: Long = 0

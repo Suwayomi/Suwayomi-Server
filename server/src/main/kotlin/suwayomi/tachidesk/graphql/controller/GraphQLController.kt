@@ -23,7 +23,7 @@ object GraphQLController {
         ctx.future(
             future {
                 server.execute(ctx)
-            }
+            },
         )
     }
 

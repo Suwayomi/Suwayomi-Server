@@ -19,7 +19,6 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
 internal class ApolloSubscriptionSessionState {
-
     // Operations are saved by web socket session id, then operation id
     internal val activeOperations = ConcurrentHashMap<String, Job>()
 
@@ -33,21 +32,29 @@ internal class ApolloSubscriptionSessionState {
      * This allows us to include some initial state to be used when handling all the messages.
      * This will be removed in [terminateSession].
      */
-    fun saveContext(context: WsContext, graphQLContext: GraphQLContext) {
+    fun saveContext(
+        context: WsContext,
+        graphQLContext: GraphQLContext,
+    ) {
         cachedGraphQLContext[context.sessionId] = graphQLContext
     }
 
     /**
      * Return the graphQL context for this session.
      */
-    fun getGraphQLContext(context: WsContext): GraphQLContext = cachedGraphQLContext[context.sessionId] ?: emptyMap<Any, Any>().toGraphQLContext()
+    fun getGraphQLContext(context: WsContext): GraphQLContext =
+        cachedGraphQLContext[context.sessionId] ?: emptyMap<Any, Any>().toGraphQLContext()
 
     /**
      * Save the operation that is sending data to the client.
      * This will override values without cancelling the subscription so it is the responsibility of the consumer to cancel.
      * These messages will be stopped on [stopOperation].
      */
-    fun saveOperation(context: WsContext, operationMessage: SubscriptionOperationMessage, subscription: Job) {
+    fun saveOperation(
+        context: WsContext,
+        operationMessage: SubscriptionOperationMessage,
+        subscription: Job,
+    ) {
         val id = operationMessage.id
         if (id != null) {
             activeOperations[id] = subscription
@@ -78,7 +85,10 @@ internal class ApolloSubscriptionSessionState {
     /**
      * Terminate the session, cancelling the keep alive messages and all operations active for this session.
      */
-    fun terminateSession(context: WsContext, code: CloseStatus) {
+    fun terminateSession(
+        context: WsContext,
+        code: CloseStatus,
+    ) {
         sessionToOperationId.remove(context.sessionId)?.forEach {
             activeOperations[it]?.cancel()
         }
@@ -89,6 +99,5 @@ internal class ApolloSubscriptionSessionState {
     /**
      * Looks up the operation for the client, to check if it already exists
      */
-    fun doesOperationExist(operationMessage: SubscriptionOperationMessage): Boolean =
-        activeOperations.containsKey(operationMessage.id)
+    fun doesOperationExist(operationMessage: SubscriptionOperationMessage): Boolean = activeOperations.containsKey(operationMessage.id)
 }

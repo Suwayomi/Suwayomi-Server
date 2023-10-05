@@ -35,14 +35,16 @@ object GetCatalogueSource {
             return cachedResult
         }
 
-        val sourceRecord = transaction {
-            SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
-        } ?: return null
+        val sourceRecord =
+            transaction {
+                SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
+            } ?: return null
 
         val extensionId = sourceRecord[SourceTable.extension]
-        val extensionRecord = transaction {
-            ExtensionTable.select { ExtensionTable.id eq extensionId }.first()
-        }
+        val extensionRecord =
+            transaction {
+                ExtensionTable.select { ExtensionTable.id eq extensionId }.first()
+            }
 
         val apkName = extensionRecord[ExtensionTable.apkName]
         val className = extensionRecord[ExtensionTable.classFQName]

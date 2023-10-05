@@ -15,11 +15,15 @@ import suwayomi.tachidesk.global.model.table.GlobalMetaTable
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 object GlobalMeta {
-    fun modifyMeta(key: String, value: String) {
+    fun modifyMeta(
+        key: String,
+        value: String,
+    ) {
         transaction {
-            val meta = transaction {
-                GlobalMetaTable.select { GlobalMetaTable.key eq key }
-            }.firstOrNull()
+            val meta =
+                transaction {
+                    GlobalMetaTable.select { GlobalMetaTable.key eq key }
+                }.firstOrNull()
 
             if (meta == null) {
                 GlobalMetaTable.insert {

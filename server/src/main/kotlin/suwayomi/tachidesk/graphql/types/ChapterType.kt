@@ -35,7 +35,7 @@ class ChapterType(
     val realUrl: String?,
     val fetchedAt: Long,
     val isDownloaded: Boolean,
-    val pageCount: Int
+    val pageCount: Int,
 //    val chapterCount: Int?,
 ) : Node {
     constructor(row: ResultRow) : this(
@@ -54,7 +54,7 @@ class ChapterType(
         row[ChapterTable.realUrl],
         row[ChapterTable.fetchedAt],
         row[ChapterTable.isDownloaded],
-        row[ChapterTable.pageCount]
+        row[ChapterTable.pageCount],
 //        transaction { ChapterTable.select { manga eq chapterEntry[manga].value }.count().toInt() },
     )
 
@@ -74,7 +74,7 @@ class ChapterType(
         dataClass.realUrl,
         dataClass.fetchedAt,
         dataClass.downloaded,
-        dataClass.pageCount
+        dataClass.pageCount,
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> {
@@ -90,11 +90,11 @@ data class ChapterNodeList(
     override val nodes: List<ChapterType>,
     override val edges: List<ChapterEdge>,
     override val pageInfo: PageInfo,
-    override val totalCount: Int
+    override val totalCount: Int,
 ) : NodeList() {
     data class ChapterEdge(
         override val cursor: Cursor,
-        override val node: ChapterType
+        override val node: ChapterType,
     ) : Edge()
 
     companion object {
@@ -102,13 +102,14 @@ data class ChapterNodeList(
             return ChapterNodeList(
                 nodes = this,
                 edges = getEdges(),
-                pageInfo = PageInfo(
-                    hasNextPage = false,
-                    hasPreviousPage = false,
-                    startCursor = Cursor(0.toString()),
-                    endCursor = Cursor(lastIndex.toString())
-                ),
-                totalCount = size
+                pageInfo =
+                    PageInfo(
+                        hasNextPage = false,
+                        hasPreviousPage = false,
+                        startCursor = Cursor(0.toString()),
+                        endCursor = Cursor(lastIndex.toString()),
+                    ),
+                totalCount = size,
             )
         }
 
@@ -117,12 +118,12 @@ data class ChapterNodeList(
             return listOf(
                 ChapterEdge(
                     cursor = Cursor("0"),
-                    node = first()
+                    node = first(),
                 ),
                 ChapterEdge(
                     cursor = Cursor(lastIndex.toString()),
-                    node = last()
-                )
+                    node = last(),
+                ),
             )
         }
     }

@@ -15,39 +15,41 @@ import suwayomi.tachidesk.server.util.withOperation
 
 object GlobalMetaController {
     /** used to modify a category's meta parameters */
-    val getMeta = handler(
-        documentWith = {
-            withOperation {
-                summary("Server level meta mapping")
-                description("Get a list of globally stored key-value mapping, you can set values for whatever you want inside it.")
-            }
-        },
-        behaviorOf = { ctx ->
-            ctx.json(GlobalMeta.getMetaMap())
-            ctx.status(200)
-        },
-        withResults = {
-            httpCode(HttpCode.OK)
-        }
-    )
+    val getMeta =
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("Server level meta mapping")
+                    description("Get a list of globally stored key-value mapping, you can set values for whatever you want inside it.")
+                }
+            },
+            behaviorOf = { ctx ->
+                ctx.json(GlobalMeta.getMetaMap())
+                ctx.status(200)
+            },
+            withResults = {
+                httpCode(HttpCode.OK)
+            },
+        )
 
     /** used to modify global meta parameters */
-    val modifyMeta = handler(
-        formParam<String>("key"),
-        formParam<String>("value"),
-        documentWith = {
-            withOperation {
-                summary("Add meta data to the global meta mapping")
-                description("A simple Key-Value stored at server global level, you can set values for whatever you want inside it.")
-            }
-        },
-        behaviorOf = { ctx, key, value ->
-            GlobalMeta.modifyMeta(key, value)
-            ctx.status(200)
-        },
-        withResults = {
-            httpCode(HttpCode.OK)
-            httpCode(HttpCode.NOT_FOUND)
-        }
-    )
+    val modifyMeta =
+        handler(
+            formParam<String>("key"),
+            formParam<String>("value"),
+            documentWith = {
+                withOperation {
+                    summary("Add meta data to the global meta mapping")
+                    description("A simple Key-Value stored at server global level, you can set values for whatever you want inside it.")
+                }
+            },
+            behaviorOf = { ctx, key, value ->
+                GlobalMeta.modifyMeta(key, value)
+                ctx.status(200)
+            },
+            withResults = {
+                httpCode(HttpCode.OK)
+                httpCode(HttpCode.NOT_FOUND)
+            },
+        )
 }
