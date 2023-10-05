@@ -7,6 +7,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.DownloadStatus
 import suwayomi.tachidesk.manga.impl.Chapter
+import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -256,5 +257,21 @@ class DownloadMutation {
                 }
             )
         }
+    }
+
+    data class DownloadAheadInput(
+        val clientMutationId: String? = null,
+        val mangaIds: List<Int> = emptyList(),
+        val latestReadChapterIds: List<Int>? = null
+    )
+
+    data class DownloadAheadPayload(val clientMutationId: String?)
+
+    fun downloadAhead(input: DownloadAheadInput): DownloadAheadPayload {
+        val (clientMutationId, mangaIds, latestReadChapterIds) = input
+
+        Manga.downloadAhead(mangaIds, latestReadChapterIds ?: emptyList())
+
+        return DownloadAheadPayload(clientMutationId)
     }
 }
