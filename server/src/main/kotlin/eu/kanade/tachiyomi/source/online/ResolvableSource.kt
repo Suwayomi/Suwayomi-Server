@@ -10,7 +10,6 @@ import eu.kanade.tachiyomi.source.model.SManga
  */
 @Suppress("unused")
 interface ResolvableSource : Source {
-
     /**
      * Whether this source may potentially handle the given URI.
      *

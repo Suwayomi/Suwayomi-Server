@@ -15,5 +15,5 @@ class M0024_MangaUpdateStrategy : AddColumnMigration(
     "Manga",
     "update_strategy",
     "VARCHAR(256)",
-    "'${UpdateStrategy.ALWAYS_UPDATE.name}'"
+    "'${UpdateStrategy.ALWAYS_UPDATE.name}'",
 )

@@ -19,31 +19,37 @@ import mu.KotlinLogging
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-private fun createRollingFileAppender(logContext: LoggerContext, logDirPath: String): RollingFileAppender<ILoggingEvent> {
+private fun createRollingFileAppender(
+    logContext: LoggerContext,
+    logDirPath: String,
+): RollingFileAppender<ILoggingEvent> {
     val logFilename = "application"
 
-    val logEncoder = PatternLayoutEncoder().apply {
-        pattern = "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger - %msg%n"
-        context = logContext
-        start()
-    }
+    val logEncoder =
+        PatternLayoutEncoder().apply {
+            pattern = "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger - %msg%n"
+            context = logContext
+            start()
+        }
 
-    val appender = RollingFileAppender<ILoggingEvent>().apply {
-        name = "FILE"
-        context = logContext
-        encoder = logEncoder
-        file = "$logDirPath/$logFilename.log"
-    }
+    val appender =
+        RollingFileAppender<ILoggingEvent>().apply {
+            name = "FILE"
+            context = logContext
+            encoder = logEncoder
+            file = "$logDirPath/$logFilename.log"
+        }
 
-    val rollingPolicy = SizeAndTimeBasedRollingPolicy<ILoggingEvent>().apply {
-        context = logContext
-        setParent(appender)
-        fileNamePattern = "$logDirPath/${logFilename}_%d{yyyy-MM-dd}_%i.log.gz"
-        setMaxFileSize(FileSize.valueOf("10mb"))
-        maxHistory = 14
-        setTotalSizeCap(FileSize.valueOf("1gb"))
-        start()
-    }
+    val rollingPolicy =
+        SizeAndTimeBasedRollingPolicy<ILoggingEvent>().apply {
+            context = logContext
+            setParent(appender)
+            fileNamePattern = "$logDirPath/${logFilename}_%d{yyyy-MM-dd}_%i.log.gz"
+            setMaxFileSize(FileSize.valueOf("10mb"))
+            maxHistory = 14
+            setTotalSizeCap(FileSize.valueOf("1gb"))
+            start()
+        }
 
     appender.rollingPolicy = rollingPolicy
     appender.start()
@@ -72,12 +78,16 @@ fun initLoggerConfig(appRootPath: String) {
 
 const val BASE_LOGGER_NAME = "_BaseLogger"
 
-fun setLogLevelFor(name: String, level: Level) {
-    val logger = if (name == BASE_LOGGER_NAME) {
-        getBaseLogger()
-    } else {
-        getLogger(name)
-    }
+fun setLogLevelFor(
+    name: String,
+    level: Level,
+) {
+    val logger =
+        if (name == BASE_LOGGER_NAME) {
+            getBaseLogger()
+        } else {
+            getLogger(name)
+        }
 
     logger.level = level
 }

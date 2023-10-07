@@ -12,36 +12,43 @@ import graphql.schema.CoercingSerializeException
 import graphql.schema.GraphQLScalarType
 import java.util.Locale
 
-val GraphQLLongAsString: GraphQLScalarType = GraphQLScalarType.newScalar()
-    .name("LongString").description("A 64-bit signed integer as a String").coercing(GraphqlLongAsStringCoercing()).build()
+val GraphQLLongAsString: GraphQLScalarType =
+    GraphQLScalarType.newScalar()
+        .name("LongString").description("A 64-bit signed integer as a String").coercing(GraphqlLongAsStringCoercing()).build()
 
 private class GraphqlLongAsStringCoercing : Coercing<Long, String> {
     private fun toStringImpl(input: Any): String {
         return input.toString()
     }
 
-    private fun parseValueImpl(input: Any, locale: Locale): Long {
+    private fun parseValueImpl(
+        input: Any,
+        locale: Locale,
+    ): Long {
         if (input !is String) {
             throw CoercingParseValueException(
                 CoercingUtil.i18nMsg(
                     locale,
                     "String.unexpectedRawValueType",
-                    CoercingUtil.typeName(input)
-                )
+                    CoercingUtil.typeName(input),
+                ),
             )
         }
         return input.toLong()
     }
 
-    private fun parseLiteralImpl(input: Any, locale: Locale): Long {
+    private fun parseLiteralImpl(
+        input: Any,
+        locale: Locale,
+    ): Long {
         if (input !is StringValue) {
             throw CoercingParseLiteralException(
                 CoercingUtil.i18nMsg(
                     locale,
                     "Scalar.unexpectedAstType",
                     "StringValue",
-                    CoercingUtil.typeName(input)
-                )
+                    CoercingUtil.typeName(input),
+                ),
             )
         }
         return input.value.toLong()
@@ -60,7 +67,7 @@ private class GraphqlLongAsStringCoercing : Coercing<Long, String> {
     override fun serialize(
         dataFetcherResult: Any,
         graphQLContext: GraphQLContext,
-        locale: Locale
+        locale: Locale,
     ): String {
         return toStringImpl(dataFetcherResult)
     }
@@ -71,7 +78,11 @@ private class GraphqlLongAsStringCoercing : Coercing<Long, String> {
     }
 
     @Throws(CoercingParseValueException::class)
-    override fun parseValue(input: Any, graphQLContext: GraphQLContext, locale: Locale): Long {
+    override fun parseValue(
+        input: Any,
+        graphQLContext: GraphQLContext,
+        locale: Locale,
+    ): Long {
         return parseValueImpl(input, locale)
     }
 
@@ -85,7 +96,7 @@ private class GraphqlLongAsStringCoercing : Coercing<Long, String> {
         input: Value<*>,
         variables: CoercedVariables,
         graphQLContext: GraphQLContext,
-        locale: Locale
+        locale: Locale,
     ): Long {
         return parseLiteralImpl(input, locale)
     }
@@ -98,7 +109,7 @@ private class GraphqlLongAsStringCoercing : Coercing<Long, String> {
     override fun valueToLiteral(
         input: Any,
         graphQLContext: GraphQLContext,
-        locale: Locale
+        locale: Locale,
     ): Value<*> {
         return valueToLiteralImpl(input)
     }

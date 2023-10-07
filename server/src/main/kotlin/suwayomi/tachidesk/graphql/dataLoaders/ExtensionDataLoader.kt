@@ -21,43 +21,50 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 
 class ExtensionDataLoader : KotlinDataLoader<String, ExtensionType?> {
     override val dataLoaderName = "ExtensionDataLoader"
-    override fun getDataLoader(): DataLoader<String, ExtensionType?> = DataLoaderFactory.newDataLoader { ids ->
-        future {
-            transaction {
-                addLogger(Slf4jSqlDebugLogger)
-                val extensions = ExtensionTable.select { ExtensionTable.pkgName inList ids }
-                    .map { ExtensionType(it) }
-                    .associateBy { it.pkgName }
-                ids.map { extensions[it] }
+
+    override fun getDataLoader(): DataLoader<String, ExtensionType?> =
+        DataLoaderFactory.newDataLoader { ids ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val extensions =
+                        ExtensionTable.select { ExtensionTable.pkgName inList ids }
+                            .map { ExtensionType(it) }
+                            .associateBy { it.pkgName }
+                    ids.map { extensions[it] }
+                }
             }
         }
-    }
 }
 
 class ExtensionForSourceDataLoader : KotlinDataLoader<Long, ExtensionType?> {
     override val dataLoaderName = "ExtensionForSourceDataLoader"
-    override fun getDataLoader(): DataLoader<Long, ExtensionType?> = DataLoaderFactory.newDataLoader { ids ->
-        future {
-            transaction {
-                addLogger(Slf4jSqlDebugLogger)
-                val extensions = ExtensionTable.innerJoin(SourceTable)
-                    .select { SourceTable.id inList ids }
-                    .toList()
-                    .map { Triple(it[SourceTable.id].value, it[ExtensionTable.pkgName], it) }
-                    .let { triples ->
-                        val sources = buildMap {
-                            triples.forEach {
-                                if (!containsKey(it.second)) {
-                                    put(it.second, ExtensionType(it.third))
+
+    override fun getDataLoader(): DataLoader<Long, ExtensionType?> =
+        DataLoaderFactory.newDataLoader { ids ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val extensions =
+                        ExtensionTable.innerJoin(SourceTable)
+                            .select { SourceTable.id inList ids }
+                            .toList()
+                            .map { Triple(it[SourceTable.id].value, it[ExtensionTable.pkgName], it) }
+                            .let { triples ->
+                                val sources =
+                                    buildMap {
+                                        triples.forEach {
+                                            if (!containsKey(it.second)) {
+                                                put(it.second, ExtensionType(it.third))
+                                            }
+                                        }
+                                    }
+                                triples.associate {
+                                    it.first to sources[it.second]
                                 }
                             }
-                        }
-                        triples.associate {
-                            it.first to sources[it.second]
-                        }
-                    }
-                ids.map { extensions[it] }
+                    ids.map { extensions[it] }
+                }
             }
         }
-    }
 }

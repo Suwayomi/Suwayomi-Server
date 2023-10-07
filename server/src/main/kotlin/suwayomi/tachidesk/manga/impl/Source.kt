@@ -46,7 +46,7 @@ object Source {
                     catalogueSource.supportsLatest,
                     catalogueSource is ConfigurableSource,
                     it[SourceTable.isNsfw],
-                    catalogueSource.toString()
+                    catalogueSource.toString(),
                 )
             }
         }
@@ -63,12 +63,12 @@ object Source {
                 source[SourceTable.name],
                 source[SourceTable.lang],
                 getExtensionIconUrl(
-                    extension[ExtensionTable.apkName]
+                    extension[ExtensionTable.apkName],
                 ),
                 catalogueSource.supportsLatest,
                 catalogueSource is ConfigurableSource,
                 source[SourceTable.isNsfw],
-                catalogueSource.toString()
+                catalogueSource.toString(),
             )
         }
     }
@@ -85,7 +85,7 @@ object Source {
      */
     data class PreferenceObject(
         val type: String,
-        val props: Any
+        val props: Any,
     )
 
     var preferenceScreenMap: MutableMap<Long, PreferenceScreen> = mutableMapOf()
@@ -119,7 +119,7 @@ object Source {
 
     data class SourcePreferenceChange(
         val position: Int,
-        val value: String
+        val value: String,
     )
 
     private val jsonMapper by DI.global.instance<JsonMapper>()
@@ -137,7 +137,7 @@ object Source {
                 "Set<String>" -> jsonMapper.fromJsonString(value, List::class.java as Class<List<String>>).toSet()
                 else -> throw RuntimeException("Unsupported type conversion")
             }
-        }
+        },
     ) {
         val screen = preferenceScreenMap[sourceId]!!
         val pref = screen.preferences[position]

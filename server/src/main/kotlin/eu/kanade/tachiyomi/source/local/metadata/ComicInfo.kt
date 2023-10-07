@@ -16,7 +16,7 @@ fun SManga.copyFromComicInfo(comicInfo: ComicInfo) {
     listOfNotNull(
         comicInfo.genre?.value,
         comicInfo.tags?.value,
-        comicInfo.categories?.value
+        comicInfo.categories?.value,
     )
         .distinct()
         .joinToString(", ") { it.trim() }
@@ -28,7 +28,7 @@ fun SManga.copyFromComicInfo(comicInfo: ComicInfo) {
         comicInfo.inker?.value,
         comicInfo.colorist?.value,
         comicInfo.letterer?.value,
-        comicInfo.coverArtist?.value
+        comicInfo.coverArtist?.value,
     )
         .flatMap { it.split(", ") }
         .distinct()
@@ -57,7 +57,7 @@ data class ComicInfo(
     val tags: Tags?,
     val web: Web?,
     val publishingStatus: PublishingStatusTachiyomi?,
-    val categories: CategoriesTachiyomi?
+    val categories: CategoriesTachiyomi?,
 ) {
     @Suppress("UNUSED")
     @XmlElement(false)
@@ -71,73 +71,105 @@ data class ComicInfo(
 
     @Serializable
     @XmlSerialName("Title", "", "")
-    data class Title(@XmlValue(true) val value: String = "")
+    data class Title(
+        @XmlValue(true) val value: String = "",
+    )
 
     @Serializable
     @XmlSerialName("Series", "", "")
-    data class Series(@XmlValue(true) val value: String = "")
+    data class Series(
+        @XmlValue(true) val value: String = "",
+    )
 
     @Serializable
     @XmlSerialName("Number", "", "")
-    data class Number(@XmlValue(true) val value: String = "")
+    data class Number(
+        @XmlValue(true) val value: String = "",
+    )
 
     @Serializable
     @XmlSerialName("Summary", "", "")
-    data class Summary(@XmlValue(true) val value: String = "")
+    data class Summary(
+        @XmlValue(true) val value: String = "",
+    )
 
     @Serializable
     @XmlSerialName("Writer", "", "")
-    data class Writer(@XmlValue(true) val value: String = "")
+    data class Writer(
+        @XmlValue(true) val value: String = "",
+    )
 
     @Serializable
     @XmlSerialName("Penciller", "", "")
-    data class Penciller(@XmlValue(true) val value: String = "")
+    data class Penciller(
+        @XmlValue(true) val value: String = "",
+    )
 
     @Serializable
     @XmlSerialName("Inker", "", "")
-    data class Inker(@XmlValue(true) val value: String = "")
+    data class Inker(
+        @XmlValue(true) val value: String = "",
+    )
 
     @Serializable
     @XmlSerialName("Colorist", "", "")
-    data class Colorist(@XmlValue(true) val value: String = "")
+    data class Colorist(
+        @XmlValue(true) val value: String = "",
+    )
 
     @Serializable
     @XmlSerialName("Letterer", "", "")
-    data class Letterer(@XmlValue(true) val value: String = "")
+    data class Letterer(
+        @XmlValue(true) val value: String = "",
+    )
 
     @Serializable
     @XmlSerialName("CoverArtist", "", "")
-    data class CoverArtist(@XmlValue(true) val value: String = "")
+    data class CoverArtist(
+        @XmlValue(true) val value: String = "",
+    )
 
     @Serializable
     @XmlSerialName("Translator", "", "")
-    data class Translator(@XmlValue(true) val value: String = "")
+    data class Translator(
+        @XmlValue(true) val value: String = "",
+    )
 
     @Serializable
     @XmlSerialName("Genre", "", "")
-    data class Genre(@XmlValue(true) val value: String = "")
+    data class Genre(
+        @XmlValue(true) val value: String = "",
+    )
 
     @Serializable
     @XmlSerialName("Tags", "", "")
-    data class Tags(@XmlValue(true) val value: String = "")
+    data class Tags(
+        @XmlValue(true) val value: String = "",
+    )
 
     @Serializable
     @XmlSerialName("Web", "", "")
-    data class Web(@XmlValue(true) val value: String = "")
+    data class Web(
+        @XmlValue(true) val value: String = "",
+    )
 
     // The spec doesn't have a good field for this
     @Serializable
     @XmlSerialName("PublishingStatusTachiyomi", "http://www.w3.org/2001/XMLSchema", "ty")
-    data class PublishingStatusTachiyomi(@XmlValue(true) val value: String = "")
+    data class PublishingStatusTachiyomi(
+        @XmlValue(true) val value: String = "",
+    )
 
     @Serializable
     @XmlSerialName("Categories", "http://www.w3.org/2001/XMLSchema", "ty")
-    data class CategoriesTachiyomi(@XmlValue(true) val value: String = "")
+    data class CategoriesTachiyomi(
+        @XmlValue(true) val value: String = "",
+    )
 }
 
 enum class ComicInfoPublishingStatus(
     val comicInfoValue: String,
-    val sMangaModelValue: Int
+    val sMangaModelValue: Int,
 ) {
     ONGOING("Ongoing", SManga.ONGOING),
     COMPLETED("Completed", SManga.COMPLETED),
@@ -145,7 +177,7 @@ enum class ComicInfoPublishingStatus(
     PUBLISHING_FINISHED("Publishing finished", SManga.PUBLISHING_FINISHED),
     CANCELLED("Cancelled", SManga.CANCELLED),
     ON_HIATUS("On hiatus", SManga.ON_HIATUS),
-    UNKNOWN("Unknown", SManga.UNKNOWN)
+    UNKNOWN("Unknown", SManga.UNKNOWN),
     ;
 
     companion object {

@@ -4,7 +4,8 @@ import de.neonew.exposed.migrations.helpers.SQLMigration
 
 @Suppress("ClassName", "unused")
 class M0028_AddCascade : SQLMigration() {
-    override val sql: String = """
+    override val sql: String =
+        """
         alter table CATEGORYMANGA
             drop constraint if exists FK_CATEGORYMANGA_CATEGORY__ID;
         alter table CATEGORYMANGA
@@ -44,5 +45,5 @@ class M0028_AddCascade : SQLMigration() {
             add constraint FK_PAGE_CHAPTER__ID
                 foreign key (CHAPTER) references CHAPTER
                     on delete cascade;
-    """.trimIndent()
+        """.trimIndent()
 }

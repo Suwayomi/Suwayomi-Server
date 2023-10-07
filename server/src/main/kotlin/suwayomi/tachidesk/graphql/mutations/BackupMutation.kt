@@ -20,17 +20,16 @@ import kotlin.time.Duration.Companion.seconds
 class BackupMutation {
     data class RestoreBackupInput(
         val clientMutationId: String? = null,
-        val backup: UploadedFile
+        val backup: UploadedFile,
     )
+
     data class RestoreBackupPayload(
         val clientMutationId: String?,
-        val status: BackupRestoreStatus
+        val status: BackupRestoreStatus,
     )
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun restoreBackup(
-        input: RestoreBackupInput
-    ): CompletableFuture<RestoreBackupPayload> {
+    fun restoreBackup(input: RestoreBackupInput): CompletableFuture<RestoreBackupPayload> {
         val (clientMutationId, backup) = input
 
         return future {
@@ -38,11 +37,12 @@ class BackupMutation {
                 ProtoBackupImport.performRestore(backup.content)
             }
 
-            val status = withTimeout(10.seconds) {
-                ProtoBackupImport.backupRestoreState.first {
-                    it != ProtoBackupImport.BackupRestoreState.Idle
-                }.toStatus()
-            }
+            val status =
+                withTimeout(10.seconds) {
+                    ProtoBackupImport.backupRestoreState.first {
+                        it != ProtoBackupImport.BackupRestoreState.Idle
+                    }.toStatus()
+                }
 
             RestoreBackupPayload(clientMutationId, status)
         }
@@ -51,32 +51,33 @@ class BackupMutation {
     data class CreateBackupInput(
         val clientMutationId: String? = null,
         val includeChapters: Boolean? = null,
-        val includeCategories: Boolean? = null
+        val includeCategories: Boolean? = null,
     )
+
     data class CreateBackupPayload(
         val clientMutationId: String?,
-        val url: String
+        val url: String,
     )
-    fun createBackup(
-        input: CreateBackupInput? = null
-    ): CreateBackupPayload {
+
+    fun createBackup(input: CreateBackupInput? = null): CreateBackupPayload {
         val filename = ProtoBackupExport.getBackupFilename()
 
-        val backup = ProtoBackupExport.createBackup(
-            BackupFlags(
-                includeManga = true,
-                includeCategories = input?.includeCategories ?: true,
-                includeChapters = input?.includeChapters ?: true,
-                includeTracking = true,
-                includeHistory = true
+        val backup =
+            ProtoBackupExport.createBackup(
+                BackupFlags(
+                    includeManga = true,
+                    includeCategories = input?.includeCategories ?: true,
+                    includeChapters = input?.includeChapters ?: true,
+                    includeTracking = true,
+                    includeHistory = true,
+                ),
             )
-        )
 
         TemporaryFileStorage.saveFile(filename, backup)
 
         return CreateBackupPayload(
             clientMutationId = input?.clientMutationId,
-            url = "/api/graphql/files/backup/$filename"
+            url = "/api/graphql/files/backup/$filename",
         )
     }
 }

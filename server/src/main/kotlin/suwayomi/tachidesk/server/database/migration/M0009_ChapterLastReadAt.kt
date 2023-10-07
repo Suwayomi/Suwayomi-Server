@@ -14,5 +14,5 @@ class M0009_ChapterLastReadAt : AddColumnMigration(
     "Chapter",
     "last_read_at",
     "BIGINT", // BIGINT == Long
-    "0"
+    "0",
 )

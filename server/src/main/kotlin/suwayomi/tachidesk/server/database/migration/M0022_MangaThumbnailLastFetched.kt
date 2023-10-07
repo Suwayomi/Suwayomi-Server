@@ -14,5 +14,5 @@ class M0022_MangaThumbnailLastFetched : AddColumnMigration(
     "Manga",
     "thumbnail_url_last_fetched",
     "BIGINT",
-    "0"
+    "0",
 )

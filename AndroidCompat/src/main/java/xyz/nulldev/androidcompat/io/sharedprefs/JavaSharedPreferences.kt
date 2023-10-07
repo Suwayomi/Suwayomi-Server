@@ -31,7 +31,10 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
         return preferences.keys.associateWith { preferences.getStringOrNull(it) }.toMutableMap()
     }
 
-    override fun getString(key: String, defValue: String?): String? {
+    override fun getString(
+        key: String,
+        defValue: String?,
+    ): String? {
         return if (defValue != null) {
             preferences.getString(key, defValue)
         } else {
@@ -39,7 +42,10 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
         }
     }
 
-    override fun getStringSet(key: String, defValues: Set<String>?): Set<String>? {
+    override fun getStringSet(
+        key: String,
+        defValues: Set<String>?,
+    ): Set<String>? {
         try {
             return if (defValues != null) {
                 preferences.decodeValue(SetSerializer(String.serializer()), key, defValues)
@@ -51,19 +57,31 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
         }
     }
 
-    override fun getInt(key: String, defValue: Int): Int {
+    override fun getInt(
+        key: String,
+        defValue: Int,
+    ): Int {
         return preferences.getInt(key, defValue)
     }
 
-    override fun getLong(key: String, defValue: Long): Long {
+    override fun getLong(
+        key: String,
+        defValue: Long,
+    ): Long {
         return preferences.getLong(key, defValue)
     }
 
-    override fun getFloat(key: String, defValue: Float): Float {
+    override fun getFloat(
+        key: String,
+        defValue: Float,
+    ): Float {
         return preferences.getFloat(key, defValue)
     }
 
-    override fun getBoolean(key: String, defValue: Boolean): Boolean {
+    override fun getBoolean(
+        key: String,
+        defValue: Boolean,
+    ): Boolean {
         return preferences.getBoolean(key, defValue)
     }
 
@@ -80,11 +98,15 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
 
         private sealed class Action {
             data class Add(val key: String, val value: Any) : Action()
+
             data class Remove(val key: String) : Action()
             object Clear : Action()
         }
 
-        override fun putString(key: String, value: String?): SharedPreferences.Editor {
+        override fun putString(
+            key: String,
+            value: String?,
+        ): SharedPreferences.Editor {
             if (value != null) {
                 actions += Action.Add(key, value)
             } else {
@@ -95,7 +117,7 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
 
         override fun putStringSet(
             key: String,
-            values: MutableSet<String>?
+            values: MutableSet<String>?,
         ): SharedPreferences.Editor {
             if (values != null) {
                 actions += Action.Add(key, values)
@@ -105,22 +127,34 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
             return this
         }
 
-        override fun putInt(key: String, value: Int): SharedPreferences.Editor {
+        override fun putInt(
+            key: String,
+            value: Int,
+        ): SharedPreferences.Editor {
             actions += Action.Add(key, value)
             return this
         }
 
-        override fun putLong(key: String, value: Long): SharedPreferences.Editor {
+        override fun putLong(
+            key: String,
+            value: Long,
+        ): SharedPreferences.Editor {
             actions += Action.Add(key, value)
             return this
         }
 
-        override fun putFloat(key: String, value: Float): SharedPreferences.Editor {
+        override fun putFloat(
+            key: String,
+            value: Float,
+        ): SharedPreferences.Editor {
             actions += Action.Add(key, value)
             return this
         }
 
-        override fun putBoolean(key: String, value: Boolean): SharedPreferences.Editor {
+        override fun putBoolean(
+            key: String,
+            value: Boolean,
+        ): SharedPreferences.Editor {
             actions += Action.Add(key, value)
             return this
         }
@@ -148,15 +182,16 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
             actions.forEach {
                 @Suppress("UNCHECKED_CAST")
                 when (it) {
-                    is Action.Add -> when (val value = it.value) {
-                        is Set<*> -> preferences.encodeValue(SetSerializer(String.serializer()), it.key, value as Set<String>)
-                        is String -> preferences.putString(it.key, value)
-                        is Int -> preferences.putInt(it.key, value)
-                        is Long -> preferences.putLong(it.key, value)
-                        is Float -> preferences.putFloat(it.key, value)
-                        is Double -> preferences.putDouble(it.key, value)
-                        is Boolean -> preferences.putBoolean(it.key, value)
-                    }
+                    is Action.Add ->
+                        when (val value = it.value) {
+                            is Set<*> -> preferences.encodeValue(SetSerializer(String.serializer()), it.key, value as Set<String>)
+                            is String -> preferences.putString(it.key, value)
+                            is Int -> preferences.putInt(it.key, value)
+                            is Long -> preferences.putLong(it.key, value)
+                            is Float -> preferences.putFloat(it.key, value)
+                            is Double -> preferences.putDouble(it.key, value)
+                            is Boolean -> preferences.putBoolean(it.key, value)
+                        }
                     is Action.Remove -> {
                         preferences.remove(it.key)
                         /**
@@ -178,9 +213,10 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
     }
 
     override fun registerOnSharedPreferenceChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
-        val javaListener = PreferenceChangeListener {
-            listener.onSharedPreferenceChanged(this, it.key)
-        }
+        val javaListener =
+            PreferenceChangeListener {
+                listener.onSharedPreferenceChanged(this, it.key)
+            }
         listeners[listener] = javaListener
         javaPreferences.addPreferenceChangeListener(javaListener)
     }

@@ -17,7 +17,11 @@ import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.stringParam
 import org.jetbrains.exposed.sql.upperCase
 
-class ILikeEscapeOp(expr1: Expression<*>, expr2: Expression<*>, like: Boolean, val escapeChar: Char?) : ComparisonOp(expr1, expr2, if (like) "ILIKE" else "NOT ILIKE") {
+class ILikeEscapeOp(expr1: Expression<*>, expr2: Expression<*>, like: Boolean, val escapeChar: Char?) : ComparisonOp(
+    expr1,
+    expr2,
+    if (like) "ILIKE" else "NOT ILIKE",
+) {
     override fun toQueryBuilder(queryBuilder: QueryBuilder) {
         super.toQueryBuilder(queryBuilder)
         if (escapeChar != null) {
@@ -29,43 +33,93 @@ class ILikeEscapeOp(expr1: Expression<*>, expr2: Expression<*>, like: Boolean, v
     }
 
     companion object {
-        fun <T : String?> iLike(expression: Expression<T>, pattern: String): ILikeEscapeOp = iLike(expression, LikePattern(pattern))
-        fun <T : String?> iNotLike(expression: Expression<T>, pattern: String): ILikeEscapeOp = iNotLike(expression, LikePattern(pattern))
-        fun <T : String?> iLike(expression: Expression<T>, pattern: LikePattern): ILikeEscapeOp = ILikeEscapeOp(expression, stringParam(pattern.pattern), true, pattern.escapeChar)
-        fun <T : String?> iNotLike(expression: Expression<T>, pattern: LikePattern): ILikeEscapeOp = ILikeEscapeOp(expression, stringParam(pattern.pattern), false, pattern.escapeChar)
+        fun <T : String?> iLike(
+            expression: Expression<T>,
+            pattern: String,
+        ): ILikeEscapeOp = iLike(expression, LikePattern(pattern))
+
+        fun <T : String?> iNotLike(
+            expression: Expression<T>,
+            pattern: String,
+        ): ILikeEscapeOp = iNotLike(expression, LikePattern(pattern))
+
+        fun <T : String?> iLike(
+            expression: Expression<T>,
+            pattern: LikePattern,
+        ): ILikeEscapeOp =
+            ILikeEscapeOp(
+                expression,
+                stringParam(pattern.pattern),
+                true,
+                pattern.escapeChar,
+            )
+
+        fun <T : String?> iNotLike(
+            expression: Expression<T>,
+            pattern: LikePattern,
+        ): ILikeEscapeOp =
+            ILikeEscapeOp(
+                expression,
+                stringParam(pattern.pattern),
+                false,
+                pattern.escapeChar,
+            )
     }
 }
 
-class DistinctFromOp(expr1: Expression<*>, expr2: Expression<*>, not: Boolean) : ComparisonOp(expr1, expr2, if (not) "IS NOT DISTINCT FROM" else "IS DISTINCT FROM") {
+class DistinctFromOp(expr1: Expression<*>, expr2: Expression<*>, not: Boolean) : ComparisonOp(
+    expr1,
+    expr2,
+    if (not) "IS NOT DISTINCT FROM" else "IS DISTINCT FROM",
+) {
     companion object {
-        fun <T> distinctFrom(expression: ExpressionWithColumnType<T>, t: T): DistinctFromOp = DistinctFromOp(
-            expression,
-            with(SqlExpressionBuilder) {
-                expression.wrap(t)
-            },
-            false
-        )
-        fun <T> notDistinctFrom(expression: ExpressionWithColumnType<T>, t: T): DistinctFromOp = DistinctFromOp(
-            expression,
-            with(SqlExpressionBuilder) {
-                expression.wrap(t)
-            },
-            true
-        )
-        fun <T : Comparable<T>> distinctFrom(expression: ExpressionWithColumnType<EntityID<T>>, t: T): DistinctFromOp = DistinctFromOp(
-            expression,
-            with(SqlExpressionBuilder) {
-                expression.wrap(t)
-            },
-            false
-        )
-        fun <T : Comparable<T>> notDistinctFrom(expression: ExpressionWithColumnType<EntityID<T>>, t: T): DistinctFromOp = DistinctFromOp(
-            expression,
-            with(SqlExpressionBuilder) {
-                expression.wrap(t)
-            },
-            true
-        )
+        fun <T> distinctFrom(
+            expression: ExpressionWithColumnType<T>,
+            t: T,
+        ): DistinctFromOp =
+            DistinctFromOp(
+                expression,
+                with(SqlExpressionBuilder) {
+                    expression.wrap(t)
+                },
+                false,
+            )
+
+        fun <T> notDistinctFrom(
+            expression: ExpressionWithColumnType<T>,
+            t: T,
+        ): DistinctFromOp =
+            DistinctFromOp(
+                expression,
+                with(SqlExpressionBuilder) {
+                    expression.wrap(t)
+                },
+                true,
+            )
+
+        fun <T : Comparable<T>> distinctFrom(
+            expression: ExpressionWithColumnType<EntityID<T>>,
+            t: T,
+        ): DistinctFromOp =
+            DistinctFromOp(
+                expression,
+                with(SqlExpressionBuilder) {
+                    expression.wrap(t)
+                },
+                false,
+            )
+
+        fun <T : Comparable<T>> notDistinctFrom(
+            expression: ExpressionWithColumnType<EntityID<T>>,
+            t: T,
+        ): DistinctFromOp =
+            DistinctFromOp(
+                expression,
+                with(SqlExpressionBuilder) {
+                    expression.wrap(t)
+                },
+                true,
+            )
     }
 }
 
@@ -88,9 +142,10 @@ interface Filter<T : Filter<T>> : HasGetOp {
 
     override fun getOp(): Op<Boolean>? {
         var op: Op<Boolean>? = null
+
         fun newOp(
             otherOp: Op<Boolean>?,
-            operator: (Op<Boolean>, Op<Boolean>) -> Op<Boolean>
+            operator: (Op<Boolean>, Op<Boolean>) -> Op<Boolean>,
         ) {
             when {
                 op == null && otherOp == null -> Unit
@@ -99,9 +154,11 @@ interface Filter<T : Filter<T>> : HasGetOp {
                 op != null && otherOp != null -> op = operator(op!!, otherOp)
             }
         }
+
         fun andOp(andOp: Op<Boolean>?) {
             newOp(andOp, Op<Boolean>::and)
         }
+
         fun orOp(orOp: Op<Boolean>?) {
             newOp(orOp, Op<Boolean>::or)
         }
@@ -127,6 +184,8 @@ interface ScalarFilter<T> {
     val notEqualTo: T?
     val distinctFrom: T?
     val notDistinctFrom: T?
+
+    @Suppress("ktlint:standard:property-naming")
     val `in`: List<T>?
     val notIn: List<T>?
 }
@@ -155,7 +214,7 @@ data class LongFilter(
     override val lessThan: Long? = null,
     override val lessThanOrEqualTo: Long? = null,
     override val greaterThan: Long? = null,
-    override val greaterThanOrEqualTo: Long? = null
+    override val greaterThanOrEqualTo: Long? = null,
 ) : ComparableScalarFilter<Long>
 
 data class BooleanFilter(
@@ -169,7 +228,7 @@ data class BooleanFilter(
     override val lessThan: Boolean? = null,
     override val lessThanOrEqualTo: Boolean? = null,
     override val greaterThan: Boolean? = null,
-    override val greaterThanOrEqualTo: Boolean? = null
+    override val greaterThanOrEqualTo: Boolean? = null,
 ) : ComparableScalarFilter<Boolean>
 
 data class IntFilter(
@@ -183,7 +242,7 @@ data class IntFilter(
     override val lessThan: Int? = null,
     override val lessThanOrEqualTo: Int? = null,
     override val greaterThan: Int? = null,
-    override val greaterThanOrEqualTo: Int? = null
+    override val greaterThanOrEqualTo: Int? = null,
 ) : ComparableScalarFilter<Int>
 
 data class FloatFilter(
@@ -197,7 +256,7 @@ data class FloatFilter(
     override val lessThan: Float? = null,
     override val lessThanOrEqualTo: Float? = null,
     override val greaterThan: Float? = null,
-    override val greaterThanOrEqualTo: Float? = null
+    override val greaterThanOrEqualTo: Float? = null,
 ) : ComparableScalarFilter<Float>
 
 data class StringFilter(
@@ -235,7 +294,7 @@ data class StringFilter(
     val lessThanInsensitive: String? = null,
     val lessThanOrEqualToInsensitive: String? = null,
     val greaterThanInsensitive: String? = null,
-    val greaterThanOrEqualToInsensitive: String? = null
+    val greaterThanOrEqualToInsensitive: String? = null,
 ) : ComparableScalarFilter<String>
 
 data class StringListFilter(
@@ -251,13 +310,13 @@ data class StringListFilter(
     override val hasNone: List<String>? = null,
     val hasAnyInsensitive: List<String>? = null,
     val hasAllInsensitive: List<String>? = null,
-    val hasNoneInsensitive: List<String>? = null
+    val hasNoneInsensitive: List<String>? = null,
 ) : ListScalarFilter<String, List<String>>
 
 @Suppress("UNCHECKED_CAST")
 fun <T : String, S : T?> andFilterWithCompareString(
     column: Column<S>,
-    filter: StringFilter?
+    filter: StringFilter?,
 ): Op<Boolean>? {
     filter ?: return null
     val opAnd = OpAnd()
@@ -314,19 +373,29 @@ fun <T : String, S : T?> andFilterWithCompareString(
 }
 
 class OpAnd(var op: Op<Boolean>? = null) {
-    fun <T> andWhere(value: T?, andPart: SqlExpressionBuilder.(T & Any) -> Op<Boolean>) {
+    fun <T> andWhere(
+        value: T?,
+        andPart: SqlExpressionBuilder.(T & Any) -> Op<Boolean>,
+    ) {
         value ?: return
         val expr = Op.build { andPart(value) }
         op = if (op == null) expr else (op!! and expr)
     }
 
-    fun <T> eq(value: T?, column: Column<T>) = andWhere(value) { column eq it }
-    fun <T : Comparable<T>> eq(value: T?, column: Column<EntityID<T>>) = andWhere(value) { column eq it }
+    fun <T> eq(
+        value: T?,
+        column: Column<T>,
+    ) = andWhere(value) { column eq it }
+
+    fun <T : Comparable<T>> eq(
+        value: T?,
+        column: Column<EntityID<T>>,
+    ) = andWhere(value) { column eq it }
 }
 
 fun <T : Comparable<T>> andFilterWithCompare(
     column: Column<T>,
-    filter: ComparableScalarFilter<T>?
+    filter: ComparableScalarFilter<T>?,
 ): Op<Boolean>? {
     filter ?: return null
     val opAnd = OpAnd(andFilter(column, filter))
@@ -341,7 +410,7 @@ fun <T : Comparable<T>> andFilterWithCompare(
 
 fun <T : Comparable<T>> andFilterWithCompareEntity(
     column: Column<EntityID<T>>,
-    filter: ComparableScalarFilter<T>?
+    filter: ComparableScalarFilter<T>?,
 ): Op<Boolean>? {
     filter ?: return null
     val opAnd = OpAnd(andFilterEntity(column, filter))
@@ -356,7 +425,7 @@ fun <T : Comparable<T>> andFilterWithCompareEntity(
 
 fun <T : Comparable<T>> andFilter(
     column: Column<T>,
-    filter: ScalarFilter<T>?
+    filter: ScalarFilter<T>?,
 ): Op<Boolean>? {
     filter ?: return null
     val opAnd = OpAnd()
@@ -377,7 +446,7 @@ fun <T : Comparable<T>> andFilter(
 
 fun <T : Comparable<T>> andFilterEntity(
     column: Column<EntityID<T>>,
-    filter: ScalarFilter<T>?
+    filter: ScalarFilter<T>?,
 ): Op<Boolean>? {
     filter ?: return null
     val opAnd = OpAnd()

@@ -70,7 +70,7 @@ class Updater : IUpdater {
                     }
                 }
             },
-            ignoreInitialValue = false
+            ignoreInitialValue = false,
         )
     }
 
@@ -87,7 +87,11 @@ class Updater : IUpdater {
             return
         }
 
-        logger.info { "Trigger global update (interval= ${serverConfig.globalUpdateInterval.value}h, lastAutomatedUpdate= ${Date(lastAutomatedUpdate)})" }
+        logger.info {
+            "Trigger global update (interval= ${serverConfig.globalUpdateInterval.value}h, lastAutomatedUpdate= ${Date(
+                lastAutomatedUpdate,
+            )})"
+        }
         addCategoriesToUpdateQueue(Category.getCategoryList(), clear = true, forceAll = false)
     }
 
@@ -103,7 +107,10 @@ class Updater : IUpdater {
         val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
         val timeToNextExecution = (updateInterval - (System.currentTimeMillis() - lastAutomatedUpdate)).mod(updateInterval)
 
-        val wasPreviousUpdateTriggered = System.currentTimeMillis() - (if (lastAutomatedUpdate > 0) lastAutomatedUpdate else System.currentTimeMillis()) < updateInterval
+        val wasPreviousUpdateTriggered =
+            System.currentTimeMillis() - (
+                if (lastAutomatedUpdate > 0) lastAutomatedUpdate else System.currentTimeMillis()
+            ) < updateInterval
         if (!wasPreviousUpdateTriggered) {
             autoUpdateTask()
         }
@@ -114,7 +121,12 @@ class Updater : IUpdater {
     /**
      * Updates the status and sustains the "skippedMangas"
      */
-    private fun updateStatus(jobs: List<UpdateJob>, running: Boolean, categories: Map<CategoryUpdateStatus, List<CategoryDataClass>>? = null, skippedMangas: List<MangaDataClass>? = null) {
+    private fun updateStatus(
+        jobs: List<UpdateJob>,
+        running: Boolean,
+        categories: Map<CategoryUpdateStatus, List<CategoryDataClass>>? = null,
+        skippedMangas: List<MangaDataClass>? = null,
+    ) {
         val updateStatusCategories = categories ?: _status.value.categoryStatusMap
         val tmpSkippedMangas = skippedMangas ?: _status.value.mangaStatusMap[JobStatus.SKIPPED] ?: emptyList()
         _status.update { UpdateStatus(updateStatusCategories, jobs, tmpSkippedMangas, running) }
@@ -136,7 +148,7 @@ class Updater : IUpdater {
                         process(job),
                         tracker.any { (_, job) ->
                             job.status == JobStatus.PENDING || job.status == JobStatus.RUNNING
-                        }
+                        },
                     )
                 }
             }
@@ -148,19 +160,24 @@ class Updater : IUpdater {
     private suspend fun process(job: UpdateJob): List<UpdateJob> {
         tracker[job.manga.id] = job.copy(status = JobStatus.RUNNING)
         updateStatus(tracker.values.toList(), true)
-        tracker[job.manga.id] = try {
-            logger.info { "Updating \"${job.manga.title}\" (source: ${job.manga.sourceId})" }
-            Chapter.getChapterList(job.manga.id, true)
-            job.copy(status = JobStatus.COMPLETE)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            logger.error(e) { "Error while updating ${job.manga.title}" }
-            job.copy(status = JobStatus.FAILED)
-        }
+        tracker[job.manga.id] =
+            try {
+                logger.info { "Updating \"${job.manga.title}\" (source: ${job.manga.sourceId})" }
+                Chapter.getChapterList(job.manga.id, true)
+                job.copy(status = JobStatus.COMPLETE)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                logger.error(e) { "Error while updating ${job.manga.title}" }
+                job.copy(status = JobStatus.FAILED)
+            }
         return tracker.values.toList()
     }
 
-    override fun addCategoriesToUpdateQueue(categories: List<CategoryDataClass>, clear: Boolean?, forceAll: Boolean) {
+    override fun addCategoriesToUpdateQueue(
+        categories: List<CategoryDataClass>,
+        clear: Boolean?,
+        forceAll: Boolean,
+    ) {
         preferences.putLong(lastUpdateKey, System.currentTimeMillis())
 
         if (clear == true) {
@@ -171,31 +188,53 @@ class Updater : IUpdater {
         val excludedCategories = includeInUpdateStatusToCategoryMap[IncludeInUpdate.EXCLUDE].orEmpty()
         val includedCategories = includeInUpdateStatusToCategoryMap[IncludeInUpdate.INCLUDE].orEmpty()
         val unsetCategories = includeInUpdateStatusToCategoryMap[IncludeInUpdate.UNSET].orEmpty()
-        val categoriesToUpdate = if (forceAll) {
-            categories
-        } else {
-            includedCategories.ifEmpty { unsetCategories }
-        }
+        val categoriesToUpdate =
+            if (forceAll) {
+                categories
+            } else {
+                includedCategories.ifEmpty { unsetCategories }
+            }
         val skippedCategories = categories.subtract(categoriesToUpdate.toSet()).toList()
-        val updateStatusCategories = mapOf(
-            Pair(CategoryUpdateStatus.UPDATING, categoriesToUpdate),
-            Pair(CategoryUpdateStatus.SKIPPED, skippedCategories)
-        )
+        val updateStatusCategories =
+            mapOf(
+                Pair(CategoryUpdateStatus.UPDATING, categoriesToUpdate),
+                Pair(CategoryUpdateStatus.SKIPPED, skippedCategories),
+            )
 
         logger.debug { "Updating categories: '${categoriesToUpdate.joinToString("', '") { it.name }}'" }
 
-        val categoriesToUpdateMangas = categoriesToUpdate
-            .flatMap { CategoryManga.getCategoryMangaList(it.id) }
-            .distinctBy { it.id }
+        val categoriesToUpdateMangas =
+            categoriesToUpdate
+                .flatMap { CategoryManga.getCategoryMangaList(it.id) }
+                .distinctBy { it.id }
         val mangasToCategoriesMap = CategoryManga.getMangasCategories(categoriesToUpdateMangas.map { it.id })
-        val mangasToUpdate = categoriesToUpdateMangas
-            .asSequence()
-            .filter { it.updateStrategy == UpdateStrategy.ALWAYS_UPDATE }
-            .filter { if (serverConfig.excludeUnreadChapters.value) { (it.unreadCount ?: 0L) == 0L } else true }
-            .filter { if (serverConfig.excludeNotStarted.value) { it.lastReadAt != null } else true }
-            .filter { if (serverConfig.excludeCompleted.value) { it.status != MangaStatus.COMPLETED.name } else true }
-            .filter { forceAll || !excludedCategories.any { category -> mangasToCategoriesMap[it.id]?.contains(category) == true } }
-            .toList()
+        val mangasToUpdate =
+            categoriesToUpdateMangas
+                .asSequence()
+                .filter { it.updateStrategy == UpdateStrategy.ALWAYS_UPDATE }
+                .filter {
+                    if (serverConfig.excludeUnreadChapters.value) {
+                        (it.unreadCount ?: 0L) == 0L
+                    } else {
+                        true
+                    }
+                }
+                .filter {
+                    if (serverConfig.excludeNotStarted.value) {
+                        it.lastReadAt != null
+                    } else {
+                        true
+                    }
+                }
+                .filter {
+                    if (serverConfig.excludeCompleted.value) {
+                        it.status != MangaStatus.COMPLETED.name
+                    } else {
+                        true
+                    }
+                }
+                .filter { forceAll || !excludedCategories.any { category -> mangasToCategoriesMap[it.id]?.contains(category) == true } }
+                .toList()
         val skippedMangas = categoriesToUpdateMangas.subtract(mangasToUpdate.toSet()).toList()
 
         // In case no manga gets updated and no update job was running before, the client would never receive an info about its update request
@@ -207,7 +246,7 @@ class Updater : IUpdater {
 
         addMangasToQueue(
             mangasToUpdate
-                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, MangaDataClass::title))
+                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, MangaDataClass::title)),
         )
     }
 

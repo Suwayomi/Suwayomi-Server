@@ -29,7 +29,11 @@ import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import java.io.File
 
-suspend fun getChapterDownloadReady(chapterId: Int? = null, chapterIndex: Int? = null, mangaId: Int? = null): ChapterDataClass {
+suspend fun getChapterDownloadReady(
+    chapterId: Int? = null,
+    chapterIndex: Int? = null,
+    mangaId: Int? = null,
+): ChapterDataClass {
     val chapter = ChapterForDownload(chapterId, chapterIndex, mangaId)
 
     return chapter.asDownloadReady()
@@ -39,14 +43,17 @@ suspend fun getChapterDownloadReadyById(chapterId: Int): ChapterDataClass {
     return getChapterDownloadReady(chapterId = chapterId)
 }
 
-suspend fun getChapterDownloadReadyByIndex(chapterIndex: Int, mangaId: Int): ChapterDataClass {
+suspend fun getChapterDownloadReadyByIndex(
+    chapterIndex: Int,
+    mangaId: Int,
+): ChapterDataClass {
     return getChapterDownloadReady(chapterIndex = chapterIndex, mangaId = mangaId)
 }
 
 private class ChapterForDownload(
     optChapterId: Int? = null,
     optChapterIndex: Int? = null,
-    optMangaId: Int? = null
+    optMangaId: Int? = null,
 ) {
     suspend fun asDownloadReady(): ChapterDataClass {
         if (isNotCompletelyDownloaded()) {
@@ -74,7 +81,11 @@ private class ChapterForDownload(
         mangaId = chapterEntry[ChapterTable.manga].value
     }
 
-    private fun freshChapterEntry(optChapterId: Int? = null, optChapterIndex: Int? = null, optMangaId: Int? = null) = transaction {
+    private fun freshChapterEntry(
+        optChapterId: Int? = null,
+        optChapterIndex: Int? = null,
+        optMangaId: Int? = null,
+    ) = transaction {
         ChapterTable.select {
             if (optChapterId != null) {
                 ChapterTable.id eq optChapterId
@@ -94,7 +105,7 @@ private class ChapterForDownload(
             SChapter.create().apply {
                 url = chapterEntry[ChapterTable.url]
                 name = chapterEntry[ChapterTable.name]
-            }
+            },
         )
     }
 
@@ -126,7 +137,7 @@ private class ChapterForDownload(
 
     private fun updatePageCount(
         pageList: List<Page>,
-        chapterId: Int
+        chapterId: Int,
     ) {
         transaction {
             ChapterTable.update({ ChapterTable.id eq chapterId }) {
@@ -141,7 +152,7 @@ private class ChapterForDownload(
         return !(
             chapterEntry[ChapterTable.isDownloaded] &&
                 (firstPageExists() || File(getChapterCbzPath(mangaId, chapterEntry[ChapterTable.id].value)).exists())
-            )
+        )
     }
 
     private fun firstPageExists(): Boolean {
@@ -154,7 +165,7 @@ private class ChapterForDownload(
 
         return ImageResponse.findFileNameStartingWith(
             chapterDir,
-            getPageName(0)
+            getPageName(0),
         ) != null
     }
 }

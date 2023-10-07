@@ -9,5 +9,5 @@ class MangaDetails(
     val artist: String? = null,
     val description: String? = null,
     val genre: List<String>? = null,
-    val status: Int? = null
+    val status: Int? = null,
 )

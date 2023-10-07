@@ -1,11 +1,10 @@
 import de.undercouch.gradle.tasks.download.Download
 import java.time.Instant
 
-@Suppress("DSL_SCOPE_VIOLATION")
 plugins {
     id(libs.plugins.kotlin.jvm.get().pluginId)
     id(libs.plugins.kotlin.serialization.get().pluginId)
-    id(libs.plugins.kotlinter.get().pluginId)
+    id(libs.plugins.ktlint.get().pluginId)
     application
     alias(libs.plugins.shadowjar)
     id(libs.plugins.buildconfig.get().pluginId)
@@ -82,9 +81,10 @@ dependencies {
 }
 
 application {
-    applicationDefaultJvmArgs = listOf(
-        "-Djunrar.extractor.thread-keep-alive-seconds=30"
-    )
+    applicationDefaultJvmArgs =
+        listOf(
+            "-Djunrar.extractor.thread-keep-alive-seconds=30",
+        )
     mainClass.set(MainClass)
 }
 
@@ -98,7 +98,7 @@ sourceSets {
 
 buildConfig {
     className("BuildConfig")
-    packageName("suwayomi.tachidesk.server")
+    packageName("suwayomi.tachidesk.server.generated")
 
     useKotlinOutput()
 
@@ -125,7 +125,7 @@ tasks {
                 "Implementation-Title" to rootProject.name,
                 "Implementation-Vendor" to "The Suwayomi Project",
                 "Specification-Version" to tachideskVersion,
-                "Implementation-Version" to tachideskRevision
+                "Implementation-Version" to tachideskRevision,
             )
         }
         archiveBaseName.set(rootProject.name)
@@ -151,16 +151,16 @@ tasks {
         src("https://github.com/Suwayomi/Tachidesk-WebUI-preview/releases/download/$webUIRevisionTag/Tachidesk-WebUI-$webUIRevisionTag.zip")
         dest("src/main/resources/WebUI.zip")
 
-
         fun shouldOverwrite(): Boolean {
             val zipPath = project.projectDir.absolutePath + "/src/main/resources/WebUI.zip"
-            val zipFile =  net.lingala.zip4j.ZipFile(zipPath)
+            val zipFile = net.lingala.zip4j.ZipFile(zipPath)
 
             var shouldOverwrite = true
             if (zipFile.isValidZipFile) {
-                val zipRevision = zipFile.getInputStream(zipFile.getFileHeader("revision")).bufferedReader().use {
-                    it.readText().trim()
-                }
+                val zipRevision =
+                    zipFile.getInputStream(zipFile.getFileHeader("revision")).bufferedReader().use {
+                        it.readText().trim()
+                    }
 
                 if (zipRevision == webUIRevisionTag) {
                     shouldOverwrite = false
@@ -177,11 +177,12 @@ tasks {
         group = "application"
         finalizedBy(run)
         doFirst {
-            application.applicationDefaultJvmArgs = listOf(
-                "-Dsuwayomi.tachidesk.config.server.webUIInterface=electron",
-                // Change this to the installed electron application
-                "-Dsuwayomi.tachidesk.config.server.electronPath=/usr/bin/electron"
-            )
+            application.applicationDefaultJvmArgs =
+                listOf(
+                    "-Dsuwayomi.tachidesk.config.server.webUIInterface=electron",
+                    // Change this to the installed electron application
+                    "-Dsuwayomi.tachidesk.config.server.electronPath=/usr/bin/electron",
+                )
         }
     }
 }

@@ -35,10 +35,11 @@ object Category {
 
         return transaction {
             if (CategoryTable.select { CategoryTable.name eq name }.firstOrNull() == null) {
-                val newCategoryId = CategoryTable.insertAndGetId {
-                    it[CategoryTable.name] = name
-                    it[CategoryTable.order] = Int.MAX_VALUE
-                }.value
+                val newCategoryId =
+                    CategoryTable.insertAndGetId {
+                        it[CategoryTable.name] = name
+                        it[CategoryTable.order] = Int.MAX_VALUE
+                    }.value
 
                 normalizeCategories()
 
@@ -49,10 +50,20 @@ object Category {
         }
     }
 
-    fun updateCategory(categoryId: Int, name: String?, isDefault: Boolean?, includeInUpdate: Int?) {
+    fun updateCategory(
+        categoryId: Int,
+        name: String?,
+        isDefault: Boolean?,
+        includeInUpdate: Int?,
+    ) {
         transaction {
             CategoryTable.update({ CategoryTable.id eq categoryId }) {
-                if (categoryId != DEFAULT_CATEGORY_ID && name != null && !name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)) it[CategoryTable.name] = name
+                if (
+                    categoryId != DEFAULT_CATEGORY_ID && name != null &&
+                    !name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)
+                ) {
+                    it[CategoryTable.name] = name
+                }
                 if (categoryId != DEFAULT_CATEGORY_ID && isDefault != null) it[CategoryTable.isDefault] = isDefault
                 if (includeInUpdate != null) it[CategoryTable.includeInUpdate] = includeInUpdate
             }
@@ -62,10 +73,16 @@ object Category {
     /**
      * Move the category from order number `from` to `to`
      */
-    fun reorderCategory(from: Int, to: Int) {
+    fun reorderCategory(
+        from: Int,
+        to: Int,
+    ) {
         if (from == 0 || to == 0) return
         transaction {
-            val categories = CategoryTable.select { CategoryTable.id neq DEFAULT_CATEGORY_ID }.orderBy(CategoryTable.order to SortOrder.ASC).toMutableList()
+            val categories =
+                CategoryTable.select {
+                    CategoryTable.id neq DEFAULT_CATEGORY_ID
+                }.orderBy(CategoryTable.order to SortOrder.ASC).toMutableList()
             categories.add(to - 1, categories.removeAt(from - 1))
             categories.forEachIndexed { index, cat ->
                 CategoryTable.update({ CategoryTable.id eq cat[CategoryTable.id].value }) {
@@ -98,14 +115,15 @@ object Category {
         }
     }
 
-    private fun needsDefaultCategory() = transaction {
-        MangaTable
-            .leftJoin(CategoryMangaTable)
-            .select { MangaTable.inLibrary eq true }
-            .andWhere { CategoryMangaTable.manga.isNull() }
-            .empty()
-            .not()
-    }
+    private fun needsDefaultCategory() =
+        transaction {
+            MangaTable
+                .leftJoin(CategoryMangaTable)
+                .select { MangaTable.inLibrary eq true }
+                .andWhere { CategoryMangaTable.manga.isNull() }
+                .empty()
+                .not()
+        }
 
     const val DEFAULT_CATEGORY_ID = 0
     const val DEFAULT_CATEGORY_NAME = "Default"
@@ -156,11 +174,16 @@ object Category {
         }
     }
 
-    fun modifyMeta(categoryId: Int, key: String, value: String) {
+    fun modifyMeta(
+        categoryId: Int,
+        key: String,
+        value: String,
+    ) {
         transaction {
-            val meta = transaction {
-                CategoryMetaTable.select { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
-            }.firstOrNull()
+            val meta =
+                transaction {
+                    CategoryMetaTable.select { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
+                }.firstOrNull()
 
             if (meta == null) {
                 CategoryMetaTable.insert {

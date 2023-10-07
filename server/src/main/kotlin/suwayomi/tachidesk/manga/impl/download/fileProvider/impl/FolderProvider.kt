@@ -25,7 +25,7 @@ class FolderProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(manga
     override suspend fun downloadImpl(
         download: DownloadChapter,
         scope: CoroutineScope,
-        step: suspend (DownloadChapter?, Boolean) -> Unit
+        step: suspend (DownloadChapter?, Boolean) -> Unit,
     ): Boolean {
         val chapterDir = getChapterDownloadPath(mangaId, chapterId)
         val folder = File(chapterDir)
@@ -51,10 +51,14 @@ class FolderProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(manga
         return File(chapterDir).deleteRecursively()
     }
 
-    private fun isExistingFile(folder: File, fileName: String): Boolean {
-        val existingFile = folder.listFiles { file ->
-            file.isFile && file.name.startsWith(fileName)
-        }?.firstOrNull()
+    private fun isExistingFile(
+        folder: File,
+        fileName: String,
+    ): Boolean {
+        val existingFile =
+            folder.listFiles { file ->
+                file.isFile && file.name.startsWith(fileName)
+            }?.firstOrNull()
         return existingFile?.exists() == true
     }
 }

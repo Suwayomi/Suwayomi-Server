@@ -49,5 +49,5 @@ jobs:
         uses: gradle/gradle-build-action@v2
         with:
           build-root-directory: master
-          arguments: :server:shadowJar --stacktrace
+          arguments: ktlintCheck :server:shadowJar --stacktrace
 

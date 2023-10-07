@@ -14,5 +14,5 @@ class M0013_MangaRealUrl : AddColumnMigration(
     "Manga",
     "real_url",
     "VARCHAR(2048)",
-    "NULL"
+    "NULL",
 )

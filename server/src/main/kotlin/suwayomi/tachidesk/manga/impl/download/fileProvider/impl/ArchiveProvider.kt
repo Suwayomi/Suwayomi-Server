@@ -28,7 +28,7 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mang
     override suspend fun downloadImpl(
         download: DownloadChapter,
         scope: CoroutineScope,
-        step: suspend (DownloadChapter?, Boolean) -> Unit
+        step: suspend (DownloadChapter?, Boolean) -> Unit,
     ): Boolean {
         val mangaDownloadFolder = File(getMangaDownloadDir(mangaId))
         val outputFile = File(getChapterCbzPath(mangaId, chapterId))
@@ -71,7 +71,10 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mang
         return false
     }
 
-    private fun handleExistingCbzFile(cbzFile: File, chapterFolder: File) {
+    private fun handleExistingCbzFile(
+        cbzFile: File,
+        chapterFolder: File,
+    ) {
         if (!chapterFolder.exists()) chapterFolder.mkdirs()
         ZipArchiveInputStream(cbzFile.inputStream()).use { zipInputStream ->
             var zipEntry = zipInputStream.nextEntry

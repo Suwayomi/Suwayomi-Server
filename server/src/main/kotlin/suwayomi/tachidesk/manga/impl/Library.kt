@@ -29,9 +29,10 @@ object Library {
         val manga = getManga(mangaId)
         if (!manga.inLibrary) {
             transaction {
-                val defaultCategories = CategoryTable.select {
-                    (CategoryTable.isDefault eq true) and (CategoryTable.id neq Category.DEFAULT_CATEGORY_ID)
-                }.toList()
+                val defaultCategories =
+                    CategoryTable.select {
+                        (CategoryTable.isDefault eq true) and (CategoryTable.id neq Category.DEFAULT_CATEGORY_ID)
+                    }.toList()
                 val existingCategories = CategoryMangaTable.select { CategoryMangaTable.manga eq mangaId }.toList()
 
                 MangaTable.update({ MangaTable.id eq manga.id }) {
@@ -66,7 +67,10 @@ object Library {
         }
     }
 
-    fun handleMangaThumbnail(mangaId: Int, inLibrary: Boolean) {
+    fun handleMangaThumbnail(
+        mangaId: Int,
+        inLibrary: Boolean,
+    ) {
         scope.launch {
             try {
                 if (inLibrary) {

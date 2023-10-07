@@ -3,8 +3,8 @@ package suwayomi.tachidesk.graphql.queries
 import suwayomi.tachidesk.global.impl.AppUpdate
 import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
-import suwayomi.tachidesk.server.BuildConfig
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import java.util.concurrent.CompletableFuture
@@ -17,7 +17,7 @@ class InfoQuery {
         val buildType: String,
         val buildTime: Long,
         val github: String,
-        val discord: String
+        val discord: String,
     )
 
     fun about(): AboutPayload {
@@ -28,7 +28,7 @@ class InfoQuery {
             BuildConfig.BUILD_TYPE,
             BuildConfig.BUILD_TIME,
             BuildConfig.GITHUB,
-            BuildConfig.DISCORD
+            BuildConfig.DISCORD,
         )
     }
 
@@ -36,7 +36,7 @@ class InfoQuery {
         /** [channel] mirrors [suwayomi.tachidesk.server.BuildConfig.BUILD_TYPE] */
         val channel: String,
         val tag: String,
-        val url: String
+        val url: String,
     )
 
     fun checkForServerUpdates(): CompletableFuture<List<CheckForServerUpdatesPayload>> {
@@ -45,7 +45,7 @@ class InfoQuery {
                 CheckForServerUpdatesPayload(
                     channel = it.channel,
                     tag = it.tag,
-                    url = it.url
+                    url = it.url,
                 )
             }
         }
@@ -57,7 +57,7 @@ class InfoQuery {
             WebUIUpdateInfo(
                 channel = serverConfig.webUIChannel.value,
                 tag = version,
-                updateAvailable
+                updateAvailable,
             )
         }
     }

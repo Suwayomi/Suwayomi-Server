@@ -20,42 +20,47 @@ data class InstalledPackage(val root: File) {
     val icon = File(root, "icon.png")
 
     val info: PackageInfo
-        get() = ApkParsers.getMetaInfo(apk).toPackageInfo(apk).also {
-            val parsed = ApkFile(apk)
-            val dbFactory = DocumentBuilderFactory.newInstance()
-            val dBuilder = dbFactory.newDocumentBuilder()
-            val doc = parsed.manifestXml.byteInputStream().use {
-                dBuilder.parse(it)
+        get() =
+            ApkParsers.getMetaInfo(apk).toPackageInfo(apk).also {
+                val parsed = ApkFile(apk)
+                val dbFactory = DocumentBuilderFactory.newInstance()
+                val dBuilder = dbFactory.newDocumentBuilder()
+                val doc =
+                    parsed.manifestXml.byteInputStream().use {
+                        dBuilder.parse(it)
+                    }
+
+                it.applicationInfo.metaData =
+                    Bundle().apply {
+                        val appTag = doc.getElementsByTagName("application").item(0)
+
+                        appTag?.childNodes?.toList()?.filter {
+                            it.nodeType == Node.ELEMENT_NODE
+                        }?.map {
+                            it as Element
+                        }?.filter {
+                            it.tagName == "meta-data"
+                        }?.map {
+                            putString(
+                                it.attributes.getNamedItem("android:name").nodeValue,
+                                it.attributes.getNamedItem("android:value").nodeValue,
+                            )
+                        }
+                    }
+
+                it.signatures =
+                    (
+                        parsed.apkSingers.flatMap { it.certificateMetas }
+                        // + parsed.apkV2Singers.flatMap { it.certificateMetas }
+                    ) // Blocked by: https://github.com/hsiafan/apk-parser/issues/72
+                        .map { Signature(it.data) }.toTypedArray()
             }
-
-            it.applicationInfo.metaData = Bundle().apply {
-                val appTag = doc.getElementsByTagName("application").item(0)
-
-                appTag?.childNodes?.toList()?.filter {
-                    it.nodeType == Node.ELEMENT_NODE
-                }?.map {
-                    it as Element
-                }?.filter {
-                    it.tagName == "meta-data"
-                }?.map {
-                    putString(
-                        it.attributes.getNamedItem("android:name").nodeValue,
-                        it.attributes.getNamedItem("android:value").nodeValue
-                    )
-                }
-            }
-
-            it.signatures = (
-                parsed.apkSingers.flatMap { it.certificateMetas }
-                /*+ parsed.apkV2Singers.flatMap { it.certificateMetas }*/
-                ) // Blocked by: https://github.com/hsiafan/apk-parser/issues/72
-                .map { Signature(it.data) }.toTypedArray()
-        }
 
     fun verify(): Boolean {
-        val res = ApkVerifier.Builder(apk)
-            .build()
-            .verify()
+        val res =
+            ApkVerifier.Builder(apk)
+                .build()
+                .verify()
 
         return res.isVerified
     }
@@ -64,11 +69,12 @@ data class InstalledPackage(val root: File) {
         try {
             val icons = ApkFile(apk).allIcons
 
-            val read = icons.filter { it.isFile }.map {
-                it.data.inputStream().use {
-                    ImageIO.read(it)
-                }
-            }.sortedByDescending { it.width * it.height }.firstOrNull() ?: return
+            val read =
+                icons.filter { it.isFile }.map {
+                    it.data.inputStream().use {
+                        ImageIO.read(it)
+                    }
+                }.sortedByDescending { it.width * it.height }.firstOrNull() ?: return
 
             ImageIO.write(read, "png", icon)
         } catch (e: Exception) {

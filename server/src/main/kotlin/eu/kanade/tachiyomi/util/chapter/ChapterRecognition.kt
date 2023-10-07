@@ -4,7 +4,6 @@ package eu.kanade.tachiyomi.util.chapter
  * -R> = regex conversion.
  */
 object ChapterRecognition {
-
     private const val NUMBER_PATTERN = """([0-9]+)(\.[0-9]+)?(\.?[a-z]+)?"""
 
     /**
@@ -30,7 +29,11 @@ object ChapterRecognition {
      */
     private val unwantedWhiteSpace = Regex("""\s(?=extra|special|omake)""")
 
-    fun parseChapterNumber(mangaTitle: String, chapterName: String, chapterNumber: Double? = null): Double {
+    fun parseChapterNumber(
+        mangaTitle: String,
+        chapterName: String,
+        chapterNumber: Double? = null,
+    ): Double {
         // If chapter number is known return.
         if (chapterNumber != null && (chapterNumber == -2.0 || chapterNumber > -1.0)) {
             return chapterNumber
@@ -81,7 +84,10 @@ object ChapterRecognition {
      * @param alpha alpha value of regex
      * @return decimal/alpha float value
      */
-    private fun checkForDecimal(decimal: String?, alpha: String?): Double {
+    private fun checkForDecimal(
+        decimal: String?,
+        alpha: String?,
+    ): Double {
         if (!decimal.isNullOrEmpty()) {
             return decimal.toDouble()
         }

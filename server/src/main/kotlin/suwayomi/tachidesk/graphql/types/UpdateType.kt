@@ -16,7 +16,7 @@ class UpdateStatus(
     val runningJobs: UpdateStatusType,
     val completeJobs: UpdateStatusType,
     val failedJobs: UpdateStatusType,
-    val skippedJobs: UpdateStatusType
+    val skippedJobs: UpdateStatusType,
 ) {
     constructor(status: UpdateStatus) : this(
         isRunning = status.running,
@@ -26,13 +26,13 @@ class UpdateStatus(
         runningJobs = UpdateStatusType(status.mangaStatusMap[JobStatus.RUNNING]?.map { it.id }.orEmpty()),
         completeJobs = UpdateStatusType(status.mangaStatusMap[JobStatus.COMPLETE]?.map { it.id }.orEmpty()),
         failedJobs = UpdateStatusType(status.mangaStatusMap[JobStatus.FAILED]?.map { it.id }.orEmpty()),
-        skippedJobs = UpdateStatusType(status.mangaStatusMap[JobStatus.SKIPPED]?.map { it.id }.orEmpty())
+        skippedJobs = UpdateStatusType(status.mangaStatusMap[JobStatus.SKIPPED]?.map { it.id }.orEmpty()),
     )
 }
 
 class UpdateStatusCategoryType(
     @get:GraphQLIgnore
-    val categoryIds: List<Int>
+    val categoryIds: List<Int>,
 ) {
     fun categories(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<CategoryNodeList> {
         return dataFetchingEnvironment.getValueFromDataLoader("CategoryForIdsDataLoader", categoryIds)
@@ -41,7 +41,7 @@ class UpdateStatusCategoryType(
 
 class UpdateStatusType(
     @get:GraphQLIgnore
-    val mangaIds: List<Int>
+    val mangaIds: List<Int>,
 ) {
     fun mangas(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> {
         return dataFetchingEnvironment.getValueFromDataLoader<List<Int>, MangaNodeList>("MangaForIdsDataLoader", mangaIds)

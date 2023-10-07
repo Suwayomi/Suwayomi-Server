@@ -12,5 +12,5 @@ import de.neonew.exposed.migrations.helpers.DropColumnMigration
 @Suppress("ClassName", "unused")
 class M0029_DropMangaDefaultCategory : DropColumnMigration(
     "Manga",
-    "default_category"
+    "default_category",
 )

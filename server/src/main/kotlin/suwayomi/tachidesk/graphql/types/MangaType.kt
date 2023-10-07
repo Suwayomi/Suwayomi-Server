@@ -39,7 +39,7 @@ class MangaType(
     val inLibraryAt: Long,
     val realUrl: String?,
     var lastFetchedAt: Long?, // todo
-    var chaptersLastFetchedAt: Long? // todo
+    var chaptersLastFetchedAt: Long?, // todo
 ) : Node {
     constructor(row: ResultRow) : this(
         row[MangaTable.id].value,
@@ -57,7 +57,7 @@ class MangaType(
         row[MangaTable.inLibraryAt],
         row[MangaTable.realUrl],
         row[MangaTable.lastFetchedAt],
-        row[MangaTable.chaptersLastFetchedAt]
+        row[MangaTable.chaptersLastFetchedAt],
     )
 
     constructor(dataClass: MangaDataClass) : this(
@@ -76,7 +76,7 @@ class MangaType(
         dataClass.inLibraryAt,
         dataClass.realUrl,
         dataClass.lastFetchedAt,
-        dataClass.chaptersLastFetchedAt
+        dataClass.chaptersLastFetchedAt,
     )
 
     fun downloadCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> {
@@ -123,11 +123,11 @@ data class MangaNodeList(
     override val nodes: List<MangaType>,
     override val edges: List<MangaEdge>,
     override val pageInfo: PageInfo,
-    override val totalCount: Int
+    override val totalCount: Int,
 ) : NodeList() {
     data class MangaEdge(
         override val cursor: Cursor,
-        override val node: MangaType
+        override val node: MangaType,
     ) : Edge()
 
     companion object {
@@ -135,13 +135,14 @@ data class MangaNodeList(
             return MangaNodeList(
                 nodes = this,
                 edges = getEdges(),
-                pageInfo = PageInfo(
-                    hasNextPage = false,
-                    hasPreviousPage = false,
-                    startCursor = Cursor(0.toString()),
-                    endCursor = Cursor(lastIndex.toString())
-                ),
-                totalCount = size
+                pageInfo =
+                    PageInfo(
+                        hasNextPage = false,
+                        hasPreviousPage = false,
+                        startCursor = Cursor(0.toString()),
+                        endCursor = Cursor(lastIndex.toString()),
+                    ),
+                totalCount = size,
             )
         }
 
@@ -150,12 +151,12 @@ data class MangaNodeList(
             return listOf(
                 MangaEdge(
                     cursor = Cursor("0"),
-                    node = first()
+                    node = first(),
                 ),
                 MangaEdge(
                     cursor = Cursor(lastIndex.toString()),
-                    node = last()
-                )
+                    node = last(),
+                ),
             )
         }
     }

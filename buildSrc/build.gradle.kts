@@ -7,5 +7,5 @@ repositories {
 }
 
 dependencies {
-    implementation("net.lingala.zip4j:zip4j:2.9.0")
+    implementation(libs.zip4j)
 }

@@ -19,12 +19,16 @@ import java.net.URLConnection
 
 // adopted from: eu.kanade.tachiyomi.util.system.ImageUtil
 object ImageUtil {
-    fun isImage(name: String, openStream: (() -> InputStream)? = null): Boolean {
-        val contentType = try {
-            URLConnection.guessContentTypeFromName(name)
-        } catch (e: Exception) {
-            null
-        } ?: openStream?.let { findImageType(it)?.mime }
+    fun isImage(
+        name: String,
+        openStream: (() -> InputStream)? = null,
+    ): Boolean {
+        val contentType =
+            try {
+                URLConnection.guessContentTypeFromName(name)
+            } catch (e: Exception) {
+                null
+            } ?: openStream?.let { findImageType(it)?.mime }
         return contentType?.startsWith("image/") ?: false
     }
 
@@ -36,12 +40,13 @@ object ImageUtil {
         try {
             val bytes = ByteArray(12)
 
-            val length = if (stream.markSupported()) {
-                stream.mark(bytes.size)
-                stream.read(bytes, 0, bytes.size).also { stream.reset() }
-            } else {
-                stream.read(bytes, 0, bytes.size)
-            }
+            val length =
+                if (stream.markSupported()) {
+                    stream.mark(bytes.size)
+                    stream.read(bytes, 0, bytes.size).also { stream.reset() }
+                } else {
+                    stream.read(bytes, 0, bytes.size)
+                }
 
             if (length == -1) {
                 return null
@@ -160,6 +165,6 @@ object ImageUtil {
         JPEG("image/jpeg", "jpg"),
         JXL("image/jxl", "jxl"),
         PNG("image/png", "png"),
-        WEBP("image/webp", "webp")
+        WEBP("image/webp", "webp"),
     }
 }

@@ -48,23 +48,24 @@ object ExtensionsList {
         return extensionTableAsDataClass()
     }
 
-    fun extensionTableAsDataClass() = transaction {
-        ExtensionTable.selectAll().filter { it[ExtensionTable.name] != LocalSource.EXTENSION_NAME }.map {
-            ExtensionDataClass(
-                it[ExtensionTable.apkName],
-                getExtensionIconUrl(it[ExtensionTable.apkName]),
-                it[ExtensionTable.name],
-                it[ExtensionTable.pkgName],
-                it[ExtensionTable.versionName],
-                it[ExtensionTable.versionCode],
-                it[ExtensionTable.lang],
-                it[ExtensionTable.isNsfw],
-                it[ExtensionTable.isInstalled],
-                it[ExtensionTable.hasUpdate],
-                it[ExtensionTable.isObsolete]
-            )
+    fun extensionTableAsDataClass() =
+        transaction {
+            ExtensionTable.selectAll().filter { it[ExtensionTable.name] != LocalSource.EXTENSION_NAME }.map {
+                ExtensionDataClass(
+                    it[ExtensionTable.apkName],
+                    getExtensionIconUrl(it[ExtensionTable.apkName]),
+                    it[ExtensionTable.name],
+                    it[ExtensionTable.pkgName],
+                    it[ExtensionTable.versionName],
+                    it[ExtensionTable.versionCode],
+                    it[ExtensionTable.lang],
+                    it[ExtensionTable.isNsfw],
+                    it[ExtensionTable.isInstalled],
+                    it[ExtensionTable.hasUpdate],
+                    it[ExtensionTable.isObsolete],
+                )
+            }
         }
-    }
 
     private fun updateExtensionDatabase(foundExtensions: List<OnlineExtension>) {
         transaction {

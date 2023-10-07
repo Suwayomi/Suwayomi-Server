@@ -18,7 +18,10 @@ class ServiceSupport {
 
     private val logger = KotlinLogging.logger {}
 
-    fun startService(@Suppress("UNUSED_PARAMETER") context: Context, intent: Intent) {
+    fun startService(
+        @Suppress("UNUSED_PARAMETER") context: Context,
+        intent: Intent,
+    ) {
         val name = intentToClassName(intent)
 
         logger.debug { "Starting service: $name" }
@@ -35,7 +38,10 @@ class ServiceSupport {
         }
     }
 
-    fun stopService(@Suppress("UNUSED_PARAMETER") context: Context, intent: Intent) {
+    fun stopService(
+        @Suppress("UNUSED_PARAMETER") context: Context,
+        intent: Intent,
+    ) {
         val name = intentToClassName(intent)
         stopService(name)
     }

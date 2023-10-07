@@ -7,7 +7,6 @@ import java.io.File
  * Loader used to load a chapter from a .epub file.
  */
 class EpubPageLoader(file: File) : PageLoader {
-
     private val epub = EpubFile(file)
 
     override suspend fun getPages(): List<ReaderPage> {

@@ -18,7 +18,7 @@ class DownloadChapter(
     var manga: MangaDataClass,
     var state: DownloadState = Queued,
     var progress: Float = 0f,
-    var tries: Int = 0
+    var tries: Int = 0,
 ) {
     override fun toString(): String {
         return "${manga.title} ($mangaId) - ${chapter.name} (${chapter.id}) | state= $state, tries= $tries, progress= $progress"

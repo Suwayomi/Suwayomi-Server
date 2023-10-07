@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:property-naming")
+
 package suwayomi.tachidesk.manga.impl.backup.models
 
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
@@ -5,7 +7,6 @@ import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.manga.model.table.MangaTable
 
 open class MangaImpl : Manga {
-
     override var id: Long? = null
 
     override var source: Long = -1

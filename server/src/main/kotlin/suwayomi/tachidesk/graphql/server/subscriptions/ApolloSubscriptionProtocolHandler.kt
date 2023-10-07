@@ -45,7 +45,7 @@ import suwayomi.tachidesk.server.serverConfig
 class ApolloSubscriptionProtocolHandler(
     private val contextFactory: TachideskGraphQLContextFactory,
     private val subscriptionHandler: GraphQLSubscriptionHandler,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
 ) {
     private val sessionState = ApolloSubscriptionSessionState()
     private val logger = KotlinLogging.logger {}
@@ -68,13 +68,13 @@ class ApolloSubscriptionProtocolHandler(
         val operationMessage = convertToMessageOrNull(context.message()) ?: return flowOf(basicConnectionErrorMessage)
         logger.debug {
             "GraphQL subscription client message, sessionId=${context.sessionId} type=${operationMessage.type} operationName=${
-            getOperationName(operationMessage.payload)
+                getOperationName(operationMessage.payload)
             } ${
-            if (serverConfig.gqlDebugLogsEnabled.value) {
-                "operationMessage=$operationMessage"
-            } else {
-                ""
-            }
+                if (serverConfig.gqlDebugLogsEnabled.value) {
+                    "operationMessage=$operationMessage"
+                } else {
+                    ""
+                }
             }"
         }
 
@@ -108,7 +108,7 @@ class ApolloSubscriptionProtocolHandler(
     @Suppress("Detekt.TooGenericExceptionCaught")
     private fun startSubscription(
         operationMessage: SubscriptionOperationMessage,
-        context: WsContext
+        context: WsContext,
     ): Flow<SubscriptionOperationMessage> {
         if (operationMessage.id == null) {
             logger.error("GraphQL subscription operation id is required")
@@ -149,7 +149,10 @@ class ApolloSubscriptionProtocolHandler(
         }
     }
 
-    private fun onInit(operationMessage: SubscriptionOperationMessage, context: WsContext): Flow<SubscriptionOperationMessage> {
+    private fun onInit(
+        operationMessage: SubscriptionOperationMessage,
+        context: WsContext,
+    ): Flow<SubscriptionOperationMessage> {
         saveContext(operationMessage, context)
         return flowOf(acknowledgeMessage)
     }
@@ -157,7 +160,10 @@ class ApolloSubscriptionProtocolHandler(
     /**
      * Generate the context and save it for all future messages.
      */
-    private fun saveContext(operationMessage: SubscriptionOperationMessage, context: WsContext) {
+    private fun saveContext(
+        operationMessage: SubscriptionOperationMessage,
+        context: WsContext,
+    ) {
         runBlocking {
             val graphQLContext = contextFactory.generateContextMap(context).toGraphQLContext()
             sessionState.saveContext(context, graphQLContext)
@@ -169,7 +175,7 @@ class ApolloSubscriptionProtocolHandler(
      */
     private fun onComplete(
         operationMessage: SubscriptionOperationMessage,
-        context: WsContext
+        context: WsContext,
     ): Flow<SubscriptionOperationMessage> {
         return sessionState.completeOperation(operationMessage)
     }
@@ -183,7 +189,10 @@ class ApolloSubscriptionProtocolHandler(
         return emptyFlow()
     }
 
-    private fun onUnknownOperation(operationMessage: SubscriptionOperationMessage, context: WsContext): Flow<SubscriptionOperationMessage> {
+    private fun onUnknownOperation(
+        operationMessage: SubscriptionOperationMessage,
+        context: WsContext,
+    ): Flow<SubscriptionOperationMessage> {
         logger.error("Unknown subscription operation $operationMessage")
         sessionState.completeOperation(operationMessage)
         return emptyFlow()

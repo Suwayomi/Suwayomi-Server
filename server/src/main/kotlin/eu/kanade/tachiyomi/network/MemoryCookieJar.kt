@@ -33,7 +33,10 @@ class MemoryCookieJar : CookieJar {
     }
 
     @Synchronized
-    override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
+    override fun saveFromResponse(
+        url: HttpUrl,
+        cookies: List<Cookie>,
+    ) {
         val cookiesToAdd = cookies.map { WrappedCookie.wrap(it) }
 
         cache.removeAll(cookiesToAdd)

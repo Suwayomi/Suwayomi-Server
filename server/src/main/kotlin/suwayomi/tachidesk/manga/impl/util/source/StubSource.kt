@@ -27,7 +27,11 @@ open class StubSource(override val id: Long) : CatalogueSource {
     }
 
     @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getSearchManga"))
-    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> {
+    override fun fetchSearchManga(
+        page: Int,
+        query: String,
+        filters: FilterList,
+    ): Observable<MangasPage> {
         return Observable.error(getSourceNotInstalledException())
     }
 

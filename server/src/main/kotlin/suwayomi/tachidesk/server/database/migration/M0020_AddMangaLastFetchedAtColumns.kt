@@ -11,8 +11,9 @@ import de.neonew.exposed.migrations.helpers.SQLMigration
 
 @Suppress("ClassName", "unused")
 class M0020_AddMangaLastFetchedAtColumns : SQLMigration() {
-    override val sql = """
+    override val sql =
+        """
         ALTER TABLE Manga ADD COLUMN last_fetched_at BIGINT DEFAULT 0;
         ALTER TABLE Manga ADD COLUMN chapters_last_fetched_at BIGINT DEFAULT 0;
-    """.trimIndent()
+        """.trimIndent()
 }

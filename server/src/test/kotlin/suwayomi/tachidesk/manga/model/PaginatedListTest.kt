@@ -9,8 +9,8 @@ package suwayomi.tachidesk.manga.model
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import suwayomi.tachidesk.manga.model.dataclass.PAGINATION_FACTOR
 import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
-import suwayomi.tachidesk.manga.model.dataclass.PaginationFactor
 import suwayomi.tachidesk.manga.model.dataclass.paginatedFrom
 import suwayomi.tachidesk.test.ApplicationTest
 
@@ -21,85 +21,88 @@ class PaginatedListTest : ApplicationTest() {
 
         assertEquals(
             PaginatedList(emptyList<Int>(), false),
-            paginated
+            paginated,
         )
     }
 
     @Test
     fun `size smaller than PaginationFactor`() {
-        val paginated = paginatedFrom(0) { listIndicesOf(0, PaginationFactor - 1) }
+        val paginated = paginatedFrom(0) { listIndicesOf(0, PAGINATION_FACTOR - 1) }
 
         assertEquals(
-            PaginatedList(listIndicesOf(0, PaginationFactor - 1), false),
-            paginated
+            PaginatedList(listIndicesOf(0, PAGINATION_FACTOR - 1), false),
+            paginated,
         )
     }
 
     @Test
     fun `one less than two times PaginationFactor`() {
-        val masterLister = { listIndicesOf(0, PaginationFactor * 2 - 1) }
+        val masterLister = { listIndicesOf(0, PAGINATION_FACTOR * 2 - 1) }
 
         val firstPage = paginatedFrom(0, lister = masterLister)
 
         assertEquals(
-            PaginatedList(listIndicesOf(0, PaginationFactor), true),
-            firstPage
+            PaginatedList(listIndicesOf(0, PAGINATION_FACTOR), true),
+            firstPage,
         )
 
         val secondPage = paginatedFrom(1, lister = masterLister)
 
         assertEquals(
-            PaginatedList(listIndicesOf(PaginationFactor, PaginationFactor * 2 - 1), false),
-            secondPage
+            PaginatedList(listIndicesOf(PAGINATION_FACTOR, PAGINATION_FACTOR * 2 - 1), false),
+            secondPage,
         )
     }
 
     @Test
     fun `two times PaginationFactor`() {
-        val masterLister = { listIndicesOf(0, PaginationFactor * 2) }
+        val masterLister = { listIndicesOf(0, PAGINATION_FACTOR * 2) }
 
         val firstPage = paginatedFrom(0, lister = masterLister)
 
         assertEquals(
-            PaginatedList(listIndicesOf(0, PaginationFactor), true),
-            firstPage
+            PaginatedList(listIndicesOf(0, PAGINATION_FACTOR), true),
+            firstPage,
         )
 
         val secondPage = paginatedFrom(1, lister = masterLister)
 
         assertEquals(
-            PaginatedList(listIndicesOf(PaginationFactor, PaginationFactor * 2), false),
-            secondPage
+            PaginatedList(listIndicesOf(PAGINATION_FACTOR, PAGINATION_FACTOR * 2), false),
+            secondPage,
         )
     }
 
     @Test
     fun `one more than two times PaginationFactor`() {
-        val masterLister = { listIndicesOf(0, PaginationFactor * 2 + 1) }
+        val masterLister = { listIndicesOf(0, PAGINATION_FACTOR * 2 + 1) }
 
         val firstPage = paginatedFrom(0, lister = masterLister)
 
         assertEquals(
-            PaginatedList(listIndicesOf(0, PaginationFactor), true),
-            firstPage
+            PaginatedList(listIndicesOf(0, PAGINATION_FACTOR), true),
+            firstPage,
         )
 
         val secondPage = paginatedFrom(1, lister = masterLister)
 
         assertEquals(
-            PaginatedList(listIndicesOf(PaginationFactor, PaginationFactor * 2), true),
-            secondPage
+            PaginatedList(listIndicesOf(PAGINATION_FACTOR, PAGINATION_FACTOR * 2), true),
+            secondPage,
         )
 
         val thirdPage = paginatedFrom(2, lister = masterLister)
 
         assertEquals(
-            PaginatedList(listIndicesOf(PaginationFactor * 2, PaginationFactor * 2 + 1), false),
-            thirdPage
+            PaginatedList(listIndicesOf(PAGINATION_FACTOR * 2, PAGINATION_FACTOR * 2 + 1), false),
+            thirdPage,
         )
     }
 
-    private fun listIndicesOf(first: Int, last: Int): List<Int> {
+    private fun listIndicesOf(
+        first: Int,
+        last: Int,
+    ): List<Int> {
         return (first until last).toList()
     }
 }

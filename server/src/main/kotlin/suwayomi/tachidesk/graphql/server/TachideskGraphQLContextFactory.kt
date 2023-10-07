@@ -37,5 +37,4 @@ class TachideskGraphQLContextFactory : GraphQLContextFactory<GraphQLContext, Con
  * Create a [GraphQLContext] from [this] map
  * @return a new [GraphQLContext]
  */
-fun Map<*, Any?>.toGraphQLContext(): graphql.GraphQLContext =
-    graphql.GraphQLContext.of(this)
+fun Map<*, Any?>.toGraphQLContext(): graphql.GraphQLContext = graphql.GraphQLContext.of(this)

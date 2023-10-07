@@ -13,7 +13,6 @@ import org.jsoup.nodes.Element
  * A simple implementation for sources from a website using Jsoup, an HTML parser.
  */
 abstract class ParsedHttpSource : HttpSource() {
-
     /**
      * Parses the response from the site and returns a [MangasPage] object.
      *
@@ -22,13 +21,15 @@ abstract class ParsedHttpSource : HttpSource() {
     override fun popularMangaParse(response: Response): MangasPage {
         val document = response.asJsoup()
 
-        val mangas = document.select(popularMangaSelector()).map { element ->
-            popularMangaFromElement(element)
-        }
+        val mangas =
+            document.select(popularMangaSelector()).map { element ->
+                popularMangaFromElement(element)
+            }
 
-        val hasNextPage = popularMangaNextPageSelector()?.let { selector ->
-            document.select(selector).first()
-        } != null
+        val hasNextPage =
+            popularMangaNextPageSelector()?.let { selector ->
+                document.select(selector).first()
+            } != null
 
         return MangasPage(mangas, hasNextPage)
     }
@@ -60,13 +61,15 @@ abstract class ParsedHttpSource : HttpSource() {
     override fun searchMangaParse(response: Response): MangasPage {
         val document = response.asJsoup()
 
-        val mangas = document.select(searchMangaSelector()).map { element ->
-            searchMangaFromElement(element)
-        }
+        val mangas =
+            document.select(searchMangaSelector()).map { element ->
+                searchMangaFromElement(element)
+            }
 
-        val hasNextPage = searchMangaNextPageSelector()?.let { selector ->
-            document.select(selector).first()
-        } != null
+        val hasNextPage =
+            searchMangaNextPageSelector()?.let { selector ->
+                document.select(selector).first()
+            } != null
 
         return MangasPage(mangas, hasNextPage)
     }
@@ -98,13 +101,15 @@ abstract class ParsedHttpSource : HttpSource() {
     override fun latestUpdatesParse(response: Response): MangasPage {
         val document = response.asJsoup()
 
-        val mangas = document.select(latestUpdatesSelector()).map { element ->
-            latestUpdatesFromElement(element)
-        }
+        val mangas =
+            document.select(latestUpdatesSelector()).map { element ->
+                latestUpdatesFromElement(element)
+            }
 
-        val hasNextPage = latestUpdatesNextPageSelector()?.let { selector ->
-            document.select(selector).first()
-        } != null
+        val hasNextPage =
+            latestUpdatesNextPageSelector()?.let { selector ->
+                document.select(selector).first()
+            } != null
 
         return MangasPage(mangas, hasNextPage)
     }

@@ -25,31 +25,32 @@ fun Call.asObservable(): Observable<Response> {
         val call = clone()
 
         // Wrap the call in a helper which handles both unsubscription and backpressure.
-        val requestArbiter = object : AtomicBoolean(), Producer, Subscription {
-            override fun request(n: Long) {
-                if (n == 0L || !compareAndSet(false, true)) return
+        val requestArbiter =
+            object : AtomicBoolean(), Producer, Subscription {
+                override fun request(n: Long) {
+                    if (n == 0L || !compareAndSet(false, true)) return
 
-                try {
-                    val response = call.execute()
-                    if (!subscriber.isUnsubscribed) {
-                        subscriber.onNext(response)
-                        subscriber.onCompleted()
-                    }
-                } catch (error: Exception) {
-                    if (!subscriber.isUnsubscribed) {
-                        subscriber.onError(error)
+                    try {
+                        val response = call.execute()
+                        if (!subscriber.isUnsubscribed) {
+                            subscriber.onNext(response)
+                            subscriber.onCompleted()
+                        }
+                    } catch (error: Exception) {
+                        if (!subscriber.isUnsubscribed) {
+                            subscriber.onError(error)
+                        }
                     }
                 }
-            }
 
-            override fun unsubscribe() {
-                // call.cancel()
-            }
+                override fun unsubscribe() {
+                    // call.cancel()
+                }
 
-            override fun isUnsubscribed(): Boolean {
-                return call.isCanceled()
+                override fun isUnsubscribed(): Boolean {
+                    return call.isCanceled()
+                }
             }
-        }
 
         subscriber.add(requestArbiter)
         subscriber.setProducer(requestArbiter)
@@ -72,13 +73,19 @@ private suspend fun Call.await(callStack: Array<StackTraceElement>): Response {
     return suspendCancellableCoroutine { continuation ->
         val callback =
             object : Callback {
-                override fun onResponse(call: Call, response: Response) {
+                override fun onResponse(
+                    call: Call,
+                    response: Response,
+                ) {
                     continuation.resume(response) {
                         response.body.close()
                     }
                 }
 
-                override fun onFailure(call: Call, e: IOException) {
+                override fun onFailure(
+                    call: Call,
+                    e: IOException,
+                ) {
                     // Don't bother with resuming the continuation if it is already cancelled.
                     if (continuation.isCancelled) return
                     val exception = IOException(e.message, e).apply { stackTrace = callStack }
@@ -116,16 +123,20 @@ suspend fun Call.awaitSuccess(): Response {
     return response
 }
 
-fun OkHttpClient.newCachelessCallWithProgress(request: Request, listener: ProgressListener): Call {
-    val progressClient = newBuilder()
-        .cache(null)
-        .addNetworkInterceptor { chain ->
-            val originalResponse = chain.proceed(chain.request())
-            originalResponse.newBuilder()
-                .body(ProgressResponseBody(originalResponse.body, listener))
-                .build()
-        }
-        .build()
+fun OkHttpClient.newCachelessCallWithProgress(
+    request: Request,
+    listener: ProgressListener,
+): Call {
+    val progressClient =
+        newBuilder()
+            .cache(null)
+            .addNetworkInterceptor { chain ->
+                val originalResponse = chain.proceed(chain.request())
+                originalResponse.newBuilder()
+                    .body(ProgressResponseBody(originalResponse.body, listener))
+                    .build()
+            }
+            .build()
 
     return progressClient.newCall(request)
 }
@@ -139,7 +150,7 @@ context(Json)
 @OptIn(ExperimentalSerializationApi::class)
 fun <T> decodeFromJsonResponse(
     deserializer: DeserializationStrategy<T>,
-    response: Response
+    response: Response,
 ): T {
     return response.body.source().use {
         decodeFromBufferedSource(deserializer, it)
