@@ -121,7 +121,6 @@ object WebInterfaceManager {
     private val logger = KotlinLogging.logger {}
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    private const val WEBUI_PREVIEW_VERSION = "PREVIEW"
     private const val LAST_WEBUI_UPDATE_CHECK_KEY = "lastWebUIUpdateCheckKey"
 
     private val preferences = Preferences.userNodeForPackage(WebInterfaceManager::class.java)
@@ -483,7 +482,7 @@ object WebInterfaceManager {
                 continue
             }
 
-            if (webUIVersion == WEBUI_PREVIEW_VERSION) {
+            if (webUIVersion == WebUIChannel.PREVIEW.name) {
                 webUIVersion = fetchPreviewVersion()
             }
 
