@@ -479,11 +479,11 @@ object WebInterfaceManager {
                     ?: throw Exception("Invalid mappingFile")
             val minServerVersionNumber = extractVersion(minServerVersionString)
 
-            val ignorePreviewVersion =
-                !WebUIChannel.doesConfigChannelEqual(WebUIChannel.PREVIEW) && webUIVersion == WEBUI_PREVIEW_VERSION
-            if (ignorePreviewVersion) {
+            if (!WebUIChannel.doesConfigChannelEqual(WebUIChannel.from(webUIVersion))) {
                 continue
-            } else {
+            }
+
+            if (webUIVersion == WEBUI_PREVIEW_VERSION) {
                 webUIVersion = fetchPreviewVersion()
             }
 
