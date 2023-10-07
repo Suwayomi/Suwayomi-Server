@@ -479,7 +479,12 @@ object WebInterfaceManager {
             val minServerVersionNumber = extractVersion(minServerVersionString)
 
             if (!WebUIChannel.doesConfigChannelEqual(WebUIChannel.from(webUIVersion))) {
-                continue
+                // allow only STABLE versions for STABLE channel
+                if (WebUIChannel.doesConfigChannelEqual(WebUIChannel.STABLE)) {
+                    continue
+                }
+
+                // allow all versions for PREVIEW channel
             }
 
             if (webUIVersion == WebUIChannel.PREVIEW.name) {
