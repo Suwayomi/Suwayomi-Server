@@ -51,7 +51,7 @@ object ProtoBackupExport : ProtoBackupBase() {
     private val logger = KotlinLogging.logger { }
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
     private var backupSchedulerJobId: String = ""
-    private const val lastAutomatedBackupKey = "lastAutomatedBackupKey"
+    private const val LAST_AUTOMATED_BACKUP_KEY = "lastAutomatedBackupKey"
     private val preferences = Preferences.userNodeForPackage(ProtoBackupExport::class.java)
 
     init {
@@ -77,7 +77,7 @@ object ProtoBackupExport : ProtoBackupBase() {
         val task = {
             cleanupAutomatedBackups()
             createAutomatedBackup()
-            preferences.putLong(lastAutomatedBackupKey, System.currentTimeMillis())
+            preferences.putLong(LAST_AUTOMATED_BACKUP_KEY, System.currentTimeMillis())
         }
 
         val (hour, minute) = serverConfig.backupTime.value.split(":").map { it.toInt() }
@@ -86,7 +86,7 @@ object ProtoBackupExport : ProtoBackupBase() {
         val backupInterval = serverConfig.backupInterval.value.days.coerceAtLeast(1.days)
 
         // trigger last backup in case the server wasn't running on the scheduled time
-        val lastAutomatedBackup = preferences.getLong(lastAutomatedBackupKey, System.currentTimeMillis())
+        val lastAutomatedBackup = preferences.getLong(LAST_AUTOMATED_BACKUP_KEY, System.currentTimeMillis())
         val wasPreviousBackupTriggered =
             (System.currentTimeMillis() - lastAutomatedBackup) < backupInterval.inWholeMilliseconds
         if (!wasPreviousBackupTriggered) {

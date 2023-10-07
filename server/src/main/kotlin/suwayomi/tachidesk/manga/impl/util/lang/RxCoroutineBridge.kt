@@ -17,9 +17,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 // source: https://github.com/jobobby04/TachiyomiSY/blob/9320221a4e8b118ef68deb60d8c4c32bcbb9e06f/app/src/main/java/eu/kanade/tachiyomi/util/lang/RxCoroutineBridge.kt
-/*
- * Util functions for bridging RxJava and coroutines. Taken from TachiyomiEH/SY.
- */
+// Util functions for bridging RxJava and coroutines. Taken from TachiyomiEH/SY.
 
 suspend fun <T> Observable<T>.awaitSingle(): T = single().awaitOne()
 

@@ -14,11 +14,11 @@ open class PaginatedList<T>(
     val hasNextPage: Boolean,
 )
 
-const val PaginationFactor = 50
+const val PAGINATION_FACTOR = 50
 
 fun <T> paginatedFrom(
     pageNum: Int,
-    paginationFactor: Int = PaginationFactor,
+    paginationFactor: Int = PAGINATION_FACTOR,
     lister: () -> List<T>,
 ): PaginatedList<T> {
     val list = lister()

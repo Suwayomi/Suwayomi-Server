@@ -2,7 +2,6 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 import org.jlleitschuh.gradle.ktlint.KtlintExtension
 import org.jlleitschuh.gradle.ktlint.KtlintPlugin
 
-@Suppress("DSL_SCOPE_VIOLATION")
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
@@ -48,7 +47,7 @@ subprojects {
                 jvmTarget = JavaVersion.VERSION_1_8.toString()
 
                 freeCompilerArgs += listOf(
-                    "-Xcontext-receivers"
+                    "-Xcontext-receivers",
                 )
             }
         }

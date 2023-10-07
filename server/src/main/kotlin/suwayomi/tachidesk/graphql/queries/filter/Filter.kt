@@ -184,6 +184,8 @@ interface ScalarFilter<T> {
     val notEqualTo: T?
     val distinctFrom: T?
     val notDistinctFrom: T?
+
+    @Suppress("ktlint:standard:property-naming")
     val `in`: List<T>?
     val notIn: List<T>?
 }

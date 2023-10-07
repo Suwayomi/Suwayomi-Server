@@ -316,7 +316,16 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5> handler(
     noinline withResults: ResultsBuilder.() -> Unit,
 ): DocumentedHandler {
     return documented(
-        documentation = getDocumentation(documentWith, withResults, param1, param2, param3, param4, param5),
+        documentation =
+            getDocumentation(
+                documentWith,
+                withResults,
+                param1,
+                param2,
+                param3,
+                param4,
+                param5,
+            ),
         handle = {
             behaviorOf(
                 it,
@@ -342,7 +351,17 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified 
     noinline withResults: ResultsBuilder.() -> Unit,
 ): DocumentedHandler {
     return documented(
-        documentation = getDocumentation(documentWith, withResults, param1, param2, param3, param4, param5, param6),
+        documentation =
+            getDocumentation(
+                documentWith,
+                withResults,
+                param1,
+                param2,
+                param3,
+                param4,
+                param5,
+                param6,
+            ),
         handle = {
             behaviorOf(
                 it,
@@ -357,7 +376,15 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified 
     )
 }
 
-inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified P6, reified P7> handler(
+inline fun <
+    reified P1,
+    reified P2,
+    reified P3,
+    reified P4,
+    reified P5,
+    reified P6,
+    reified P7,
+    > handler(
     param1: Param<P1>,
     param2: Param<P2>,
     param3: Param<P3>,
@@ -370,7 +397,18 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified 
     noinline withResults: ResultsBuilder.() -> Unit,
 ): DocumentedHandler {
     return documented(
-        documentation = getDocumentation(documentWith, withResults, param1, param2, param3, param4, param5, param6, param7),
+        documentation =
+            getDocumentation(
+                documentWith,
+                withResults,
+                param1,
+                param2,
+                param3,
+                param4,
+                param5,
+                param6,
+                param7,
+            ),
         handle = {
             behaviorOf(
                 it,
@@ -386,7 +424,16 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified 
     )
 }
 
-inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified P6, reified P7, reified P8> handler(
+inline fun <
+    reified P1,
+    reified P2,
+    reified P3,
+    reified P4,
+    reified P5,
+    reified P6,
+    reified P7,
+    reified P8,
+    > handler(
     param1: Param<P1>,
     param2: Param<P2>,
     param3: Param<P3>,
@@ -400,7 +447,19 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified 
     noinline withResults: ResultsBuilder.() -> Unit,
 ): DocumentedHandler {
     return documented(
-        documentation = getDocumentation(documentWith, withResults, param1, param2, param3, param4, param5, param6, param7, param8),
+        documentation =
+            getDocumentation(
+                documentWith,
+                withResults,
+                param1,
+                param2,
+                param3,
+                param4,
+                param5,
+                param6,
+                param7,
+                param8,
+            ),
         handle = {
             behaviorOf(
                 it,
@@ -417,7 +476,17 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified 
     )
 }
 
-inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified P6, reified P7, reified P8, reified P9> handler(
+inline fun <
+    reified P1,
+    reified P2,
+    reified P3,
+    reified P4,
+    reified P5,
+    reified P6,
+    reified P7,
+    reified P8,
+    reified P9,
+    > handler(
     param1: Param<P1>,
     param2: Param<P2>,
     param3: Param<P3>,
@@ -432,7 +501,20 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified 
     noinline withResults: ResultsBuilder.() -> Unit,
 ): DocumentedHandler {
     return documented(
-        documentation = getDocumentation(documentWith, withResults, param1, param2, param3, param4, param5, param6, param7, param8, param9),
+        documentation =
+            getDocumentation(
+                documentWith,
+                withResults,
+                param1,
+                param2,
+                param3,
+                param4,
+                param5,
+                param6,
+                param7,
+                param8,
+                param9,
+            ),
         handle = {
             behaviorOf(
                 it,
@@ -450,7 +532,18 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified 
     )
 }
 
-inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified P6, reified P7, reified P8, reified P9, reified P10> handler(
+inline fun <
+    reified P1,
+    reified P2,
+    reified P3,
+    reified P4,
+    reified P5,
+    reified P6,
+    reified P7,
+    reified P8,
+    reified P9,
+    reified P10,
+    > handler(
     param1: Param<P1>,
     param2: Param<P2>,
     param3: Param<P3>,
@@ -466,7 +559,21 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified 
     noinline withResults: ResultsBuilder.() -> Unit,
 ): DocumentedHandler {
     return documented(
-        documentation = getDocumentation(documentWith, withResults, param1, param2, param3, param4, param5, param6, param7, param8, param9, param10),
+        documentation =
+            getDocumentation(
+                documentWith,
+                withResults,
+                param1,
+                param2,
+                param3,
+                param4,
+                param5,
+                param6,
+                param7,
+                param8,
+                param9,
+                param10,
+            ),
         handle = {
             behaviorOf(
                 it,

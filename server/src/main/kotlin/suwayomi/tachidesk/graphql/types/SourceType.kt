@@ -84,6 +84,7 @@ class SourceType(
     }
 }
 
+@Suppress("ktlint:standard:function-naming")
 fun SourceType(row: ResultRow): SourceType? {
     val catalogueSource =
         GetCatalogueSource
@@ -262,32 +263,42 @@ fun updateFilterList(
                 // NOOP
             }
             is SourceFilter.Select<*> -> {
-                filter.state = change.selectState ?: throw Exception("Expected select state change at position ${change.position}")
+                filter.state = change.selectState
+                    ?: throw Exception("Expected select state change at position ${change.position}")
             }
             is SourceFilter.Text -> {
-                filter.state = change.textState ?: throw Exception("Expected text state change at position ${change.position}")
+                filter.state = change.textState
+                    ?: throw Exception("Expected text state change at position ${change.position}")
             }
             is SourceFilter.CheckBox -> {
-                filter.state = change.checkBoxState ?: throw Exception("Expected checkbox state change at position ${change.position}")
+                filter.state = change.checkBoxState
+                    ?: throw Exception("Expected checkbox state change at position ${change.position}")
             }
             is SourceFilter.TriState -> {
-                filter.state = change.triState?.ordinal ?: throw Exception("Expected tri state change at position ${change.position}")
+                filter.state = change.triState?.ordinal
+                    ?: throw Exception("Expected tri state change at position ${change.position}")
             }
             is SourceFilter.Group<*> -> {
-                val groupChange = change.groupChange ?: throw Exception("Expected group change at position ${change.position}")
+                val groupChange =
+                    change.groupChange
+                        ?: throw Exception("Expected group change at position ${change.position}")
 
                 when (val groupFilter = filter.state[groupChange.position]) {
                     is SourceFilter.CheckBox -> {
-                        groupFilter.state = groupChange.checkBoxState ?: throw Exception("Expected checkbox state change at position ${change.position}")
+                        groupFilter.state = groupChange.checkBoxState
+                            ?: throw Exception("Expected checkbox state change at position ${change.position}")
                     }
                     is SourceFilter.TriState -> {
-                        groupFilter.state = groupChange.triState?.ordinal ?: throw Exception("Expected tri state change at position ${change.position}")
+                        groupFilter.state = groupChange.triState?.ordinal
+                            ?: throw Exception("Expected tri state change at position ${change.position}")
                     }
                     is SourceFilter.Text -> {
-                        groupFilter.state = groupChange.textState ?: throw Exception("Expected text state change at position ${change.position}")
+                        groupFilter.state = groupChange.textState
+                            ?: throw Exception("Expected text state change at position ${change.position}")
                     }
                     is SourceFilter.Select<*> -> {
-                        groupFilter.state = groupChange.selectState ?: throw Exception("Expected select state change at position ${change.position}")
+                        groupFilter.state = groupChange.selectState
+                            ?: throw Exception("Expected select state change at position ${change.position}")
                     }
                 }
             }

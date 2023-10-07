@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi
 
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
+import suwayomi.tachidesk.server.generated.BuildConfig
 
 /**
  * Used by extensions.
@@ -14,14 +15,14 @@ object AppInfo {
      *
      * @since extension-lib 1.3
      */
-    fun getVersionCode() = suwayomi.tachidesk.server.BuildConfig.REVISION.substring(1).toInt()
+    fun getVersionCode() = BuildConfig.REVISION.substring(1).toInt()
 
     /**
      * should be something like "0.13.1"
      *
      * @since extension-lib 1.3
      */
-    fun getVersionName() = suwayomi.tachidesk.server.BuildConfig.VERSION.substring(1)
+    fun getVersionName() = BuildConfig.VERSION.substring(1)
 
     /**
      * A list of supported image MIME types by the reader.

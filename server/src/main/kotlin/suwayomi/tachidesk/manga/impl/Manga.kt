@@ -339,6 +339,9 @@ object Manga {
     private val downloadAheadQueue = ConcurrentHashMap<String, ConcurrentHashMap.KeySetView<Int, Boolean>>()
     private var downloadAheadTimer: Timer? = null
 
+    private const val MANGAS_KEY = "mangaIds"
+    private const val CHAPTERS_KEY = "chapterIds"
+
     fun downloadAhead(
         mangaIds: List<Int>,
         latestReadChapterIds: List<Int> = emptyList(),
@@ -346,9 +349,6 @@ object Manga {
         if (serverConfig.autoDownloadAheadLimit.value == 0) {
             return
         }
-
-        val MANGAS_KEY = "mangaIds"
-        val CHAPTERS_KEY = "chapterIds"
 
         val updateDownloadAheadQueue = { key: String, ids: List<Int> ->
             val idSet = downloadAheadQueue[key] ?: ConcurrentHashMap.newKeySet()
@@ -367,7 +367,10 @@ object Manga {
                 schedule(
                     object : TimerTask() {
                         override fun run() {
-                            downloadAheadChapters(downloadAheadQueue[MANGAS_KEY]!!.toList(), downloadAheadQueue[CHAPTERS_KEY]!!.toList())
+                            downloadAheadChapters(
+                                downloadAheadQueue[MANGAS_KEY]?.toList().orEmpty(),
+                                downloadAheadQueue[CHAPTERS_KEY]?.toList().orEmpty(),
+                            )
                             downloadAheadQueue.clear()
                         }
                     },
@@ -415,7 +418,10 @@ object Manga {
             mangaToUnreadChaptersMap.map { (mangaId, unreadChapters) ->
                 val latestReadChapterIndex = mangaToLatestReadChapterIndex[mangaId] ?: 0
                 val lastChapterToDownloadIndex =
-                    unreadChapters.indexOfLast { it[ChapterTable.sourceOrder] > latestReadChapterIndex && it[ChapterTable.id].value !in latestReadChapterIds }
+                    unreadChapters.indexOfLast {
+                        it[ChapterTable.sourceOrder] > latestReadChapterIndex &&
+                            it[ChapterTable.id].value !in latestReadChapterIds
+                    }
                 val unreadChaptersToConsider = unreadChapters.subList(0, lastChapterToDownloadIndex + 1)
                 val firstChapterToDownloadIndex =
                     (unreadChaptersToConsider.size - serverConfig.autoDownloadAheadLimit.value).coerceAtLeast(0)

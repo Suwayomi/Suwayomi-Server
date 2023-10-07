@@ -1,7 +1,6 @@
 import de.undercouch.gradle.tasks.download.Download
 import java.time.Instant
 
-@Suppress("DSL_SCOPE_VIOLATION")
 plugins {
     id(libs.plugins.kotlin.jvm.get().pluginId)
     id(libs.plugins.kotlin.serialization.get().pluginId)
@@ -99,7 +98,7 @@ sourceSets {
 
 buildConfig {
     className("BuildConfig")
-    packageName("suwayomi.tachidesk.server")
+    packageName("suwayomi.tachidesk.server.generated")
 
     useKotlinOutput()
 

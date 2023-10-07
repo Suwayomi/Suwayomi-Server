@@ -237,7 +237,9 @@ object MangaController {
                 withOperation {
                     summary("Get manga chapter list")
                     description(
-                        "Get the manga chapter list from the database or online. If there is no chapters in the database it fetches the chapters online. Use onlineFetch to update chapter list.",
+                        "Get the manga chapter list from the database or online. " +
+                            "If there is no chapters in the database it fetches the chapters online. " +
+                            "Use onlineFetch to update chapter list.",
                     )
                 }
             },

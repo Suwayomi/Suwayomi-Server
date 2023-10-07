@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:property-naming")
+
 package suwayomi.tachidesk.manga.impl.backup.models
 
 import org.jetbrains.exposed.sql.ResultRow

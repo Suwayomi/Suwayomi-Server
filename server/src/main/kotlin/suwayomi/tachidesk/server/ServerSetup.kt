@@ -28,6 +28,7 @@ import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.Updater
 import suwayomi.tachidesk.manga.impl.util.lang.renameTo
 import suwayomi.tachidesk.server.database.databaseUp
+import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
 import suwayomi.tachidesk.server.util.SystemTray
 import xyz.nulldev.androidcompat.AndroidCompat

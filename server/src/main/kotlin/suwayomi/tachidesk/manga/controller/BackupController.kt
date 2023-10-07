@@ -155,7 +155,9 @@ object BackupController {
                 withOperation {
                     summary("Validate a backup file")
                     description(
-                        "Reports missing sources and trackers, expects a Tachiyomi protobuf backup as a file upload, the file must be named \"backup.proto.gz\"",
+                        "Reports missing sources and trackers, " +
+                            "expects a Tachiyomi protobuf backup as a file upload, " +
+                            "the file must be named \"backup.proto.gz\"",
                     )
                 }
                 uploadedFile("backup.proto.gz") {

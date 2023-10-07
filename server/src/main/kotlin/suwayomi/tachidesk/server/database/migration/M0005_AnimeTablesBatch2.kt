@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:property-naming")
+
 package suwayomi.tachidesk.server.database.migration
 
 /*

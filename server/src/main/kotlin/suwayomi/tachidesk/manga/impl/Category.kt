@@ -58,7 +58,12 @@ object Category {
     ) {
         transaction {
             CategoryTable.update({ CategoryTable.id eq categoryId }) {
-                if (categoryId != DEFAULT_CATEGORY_ID && name != null && !name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)) it[CategoryTable.name] = name
+                if (
+                    categoryId != DEFAULT_CATEGORY_ID && name != null &&
+                    !name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)
+                ) {
+                    it[CategoryTable.name] = name
+                }
                 if (categoryId != DEFAULT_CATEGORY_ID && isDefault != null) it[CategoryTable.isDefault] = isDefault
                 if (includeInUpdate != null) it[CategoryTable.includeInUpdate] = includeInUpdate
             }

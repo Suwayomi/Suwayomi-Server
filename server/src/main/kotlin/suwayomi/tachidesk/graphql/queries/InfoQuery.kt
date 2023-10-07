@@ -3,8 +3,8 @@ package suwayomi.tachidesk.graphql.queries
 import suwayomi.tachidesk.global.impl.AppUpdate
 import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
-import suwayomi.tachidesk.server.BuildConfig
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import java.util.concurrent.CompletableFuture

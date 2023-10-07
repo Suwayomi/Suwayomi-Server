@@ -57,16 +57,16 @@ object DownloadManager {
     private val downloadQueue = CopyOnWriteArrayList<DownloadChapter>()
     private val downloaders = ConcurrentHashMap<String, Downloader>()
 
-    private const val downloadQueueKey = "downloadQueueKey"
+    private const val DOWNLOAD_QUEUE_KEY = "downloadQueueKey"
     private val sharedPreferences =
         Injekt.get<Application>().getSharedPreferences(DownloadManager::class.jvmName, Context.MODE_PRIVATE)
 
     private fun loadDownloadQueue(): List<Int> {
-        return sharedPreferences.getStringSet(downloadQueueKey, emptySet())?.mapNotNull { it.toInt() } ?: emptyList()
+        return sharedPreferences.getStringSet(DOWNLOAD_QUEUE_KEY, emptySet())?.mapNotNull { it.toInt() } ?: emptyList()
     }
 
     private fun saveDownloadQueue() {
-        sharedPreferences.edit().putStringSet(downloadQueueKey, downloadQueue.map { it.chapter.id.toString() }.toSet())
+        sharedPreferences.edit().putStringSet(DOWNLOAD_QUEUE_KEY, downloadQueue.map { it.chapter.id.toString() }.toSet())
             .apply()
     }
 
@@ -191,7 +191,9 @@ object DownloadManager {
                 val availableDownloads = downloadQueue.filter { it.state != Error }
 
                 logger.info {
-                    "Running: ${runningDownloaders.size}, Queued: ${availableDownloads.size}, Failed: ${downloadQueue.size - availableDownloads.size}"
+                    "Running: ${runningDownloaders.size}, " +
+                        "Queued: ${availableDownloads.size}, " +
+                        "Failed: ${downloadQueue.size - availableDownloads.size}"
                 }
 
                 if (runningDownloaders.size < serverConfig.maxSourcesInParallel.value) {

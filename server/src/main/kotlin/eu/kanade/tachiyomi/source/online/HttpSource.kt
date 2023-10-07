@@ -19,7 +19,6 @@ import okhttp3.Response
 import rx.Observable
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import uy.kohesive.injekt.injectLazy
-// import uy.kohesive.injekt.injectLazy
 import java.net.URI
 import java.net.URISyntaxException
 import java.security.MessageDigest

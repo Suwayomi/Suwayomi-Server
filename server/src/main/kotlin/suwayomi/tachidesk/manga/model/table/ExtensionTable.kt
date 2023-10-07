@@ -13,6 +13,7 @@ object ExtensionTable : IntIdTable() {
     val apkName = varchar("apk_name", 1024)
 
     // default is the local source icon from tachiyomi
+    @Suppress("ktlint:standard:max-line-length")
     val iconUrl =
         varchar("icon_url", 2048)
             .default(

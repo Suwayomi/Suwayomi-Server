@@ -10,8 +10,8 @@ package suwayomi.tachidesk.server.util
 import dorkbox.systemTray.MenuItem
 import dorkbox.systemTray.SystemTray
 import dorkbox.util.CacheUtil
-import suwayomi.tachidesk.server.BuildConfig
 import suwayomi.tachidesk.server.ServerConfig
+import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.util.Browser.openInBrowser
 import suwayomi.tachidesk.server.util.ExitCode.Success

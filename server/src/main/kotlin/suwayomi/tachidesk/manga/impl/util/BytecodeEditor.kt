@@ -81,7 +81,7 @@ object BytecodeEditor {
     /**
      * The path where replacement classes will reside
      */
-    private const val replacementPath = "xyz/nulldev/androidcompat/replace"
+    private const val REPLACEMENT_PATH = "xyz/nulldev/androidcompat/replace"
 
     /**
      * List of classes that will be replaced
@@ -100,7 +100,7 @@ object BytecodeEditor {
     private fun String?.replaceDirectly() =
         when (this) {
             null -> this
-            in classesToReplace -> "$replacementPath/$this"
+            in classesToReplace -> "$REPLACEMENT_PATH/$this"
             else -> this
         }
 
@@ -115,7 +115,7 @@ object BytecodeEditor {
         var classReference = this
         if (classReference != null) {
             classesToReplace.forEach {
-                classReference = classReference?.replace(it, "$replacementPath/$it")
+                classReference = classReference?.replace(it, "$REPLACEMENT_PATH/$it")
             }
         }
         return classReference

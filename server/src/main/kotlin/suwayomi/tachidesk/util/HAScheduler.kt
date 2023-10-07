@@ -21,7 +21,11 @@ import kotlin.time.Duration.Companion.seconds
 
 val cronParser = CronParser(CronDefinitionBuilder.instanceDefinitionFor(CRON4J))
 
-abstract class BaseHATask(val id: String, val execute: () -> Unit, val name: String?) : Comparable<BaseHATask> {
+abstract class BaseHATask(
+    val id: String,
+    val execute: () -> Unit,
+    val name: String?,
+) : Comparable<BaseHATask> {
     abstract fun getLastExecutionTime(): Long
 
     abstract fun getNextExecutionTime(): Long
@@ -33,19 +37,34 @@ abstract class BaseHATask(val id: String, val execute: () -> Unit, val name: Str
     }
 
     override fun toString(): String {
-        return "Task \"$name\" ($id) lastExecution= ${Date(getLastExecutionTime())} nextExecution= ${Date(getNextExecutionTime())}"
+        return "Task \"$name\" ($id) " +
+            "lastExecution= ${Date(getLastExecutionTime())} " +
+            "nextExecution= ${Date(getNextExecutionTime())}"
     }
 }
 
-class HACronTask(id: String, val cronExpr: String, execute: () -> Unit, name: String?) : BaseHATask(id, execute, name) {
+class HACronTask(
+    id: String,
+    val cronExpr: String,
+    execute: () -> Unit,
+    name: String?,
+) : BaseHATask(id, execute, name) {
     private val executionTime = ExecutionTime.forCron(cronParser.parse(cronExpr))
 
     override fun getLastExecutionTime(): Long {
-        return executionTime.lastExecution(ZonedDateTime.now()).get().toEpochSecond().seconds.inWholeMilliseconds
+        return executionTime.lastExecution(ZonedDateTime.now())
+            .get()
+            .toEpochSecond()
+            .seconds
+            .inWholeMilliseconds
     }
 
     override fun getNextExecutionTime(): Long {
-        return executionTime.nextExecution(ZonedDateTime.now()).get().toEpochSecond().seconds.inWholeMilliseconds
+        return executionTime.nextExecution(ZonedDateTime.now())
+            .get()
+            .toEpochSecond()
+            .seconds
+            .inWholeMilliseconds
     }
 
     override fun getTimeToNextExecution(): Long {
@@ -57,11 +76,18 @@ class HACronTask(id: String, val cronExpr: String, execute: () -> Unit, name: St
     }
 }
 
-class HATask(id: String, val interval: Long, execute: () -> Unit, val timerTask: TimerTask, name: String?, val initialDelay: Long = interval) : BaseHATask(
-    id,
-    execute,
-    name,
-) {
+class HATask(
+    id: String,
+    val interval: Long,
+    execute: () -> Unit,
+    val timerTask: TimerTask,
+    name: String?,
+    val initialDelay: Long = interval,
+) : BaseHATask(
+        id,
+        execute,
+        name,
+    ) {
     private val firstExecutionTime = System.currentTimeMillis() + initialDelay
 
     private fun getElapsedTimeOfCurrentInterval(): Long {
@@ -123,7 +149,10 @@ object HAScheduler {
 
                     val systemWasInHibernation = elapsedTime > interval.inWholeMilliseconds + HIBERNATION_THRESHOLD
                     if (systemWasInHibernation) {
-                        logger.debug { "System hibernation detected, task was delayed by ${elapsedTime - interval.inWholeMilliseconds}ms" }
+                        logger.debug {
+                            "System hibernation detected, task was delayed by " +
+                                "${elapsedTime - interval.inWholeMilliseconds}ms"
+                        }
                         scheduledTasks.toList().forEach {
                             val wasLastExecutionMissed = currentTime - it.getLastExecutionTime() - elapsedTime < 0
                             if (wasLastExecutionMissed) {

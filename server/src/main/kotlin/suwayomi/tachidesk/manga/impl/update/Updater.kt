@@ -107,7 +107,10 @@ class Updater : IUpdater {
         val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
         val timeToNextExecution = (updateInterval - (System.currentTimeMillis() - lastAutomatedUpdate)).mod(updateInterval)
 
-        val wasPreviousUpdateTriggered = System.currentTimeMillis() - (if (lastAutomatedUpdate > 0) lastAutomatedUpdate else System.currentTimeMillis()) < updateInterval
+        val wasPreviousUpdateTriggered =
+            System.currentTimeMillis() - (
+                if (lastAutomatedUpdate > 0) lastAutomatedUpdate else System.currentTimeMillis()
+            ) < updateInterval
         if (!wasPreviousUpdateTriggered) {
             autoUpdateTask()
         }

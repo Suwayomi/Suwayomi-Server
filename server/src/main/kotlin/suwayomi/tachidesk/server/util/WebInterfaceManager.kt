@@ -41,7 +41,7 @@ import suwayomi.tachidesk.graphql.types.UpdateState.STOPPED
 import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
 import suwayomi.tachidesk.server.ApplicationDirs
-import suwayomi.tachidesk.server.BuildConfig
+import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.HAScheduler
 import uy.kohesive.injekt.injectLazy
@@ -69,7 +69,7 @@ enum class WebUIInterface {
     ;
 
     companion object {
-        fun from(value: String): WebUIInterface = WebUIInterface.values().find { it.name.lowercase() == value.lowercase() } ?: BROWSER
+        fun from(value: String): WebUIInterface = entries.find { it.name.lowercase() == value.lowercase() } ?: BROWSER
     }
 }
 
@@ -80,7 +80,7 @@ enum class WebUIChannel {
     ;
 
     companion object {
-        fun from(channel: String): WebUIChannel = WebUIChannel.values().find { it.name.lowercase() == channel.lowercase() } ?: STABLE
+        fun from(channel: String): WebUIChannel = entries.find { it.name.lowercase() == channel.lowercase() } ?: STABLE
 
         fun doesConfigChannelEqual(channel: WebUIChannel): Boolean {
             return serverConfig.webUIChannel.value.equals(channel.name, true)
@@ -113,7 +113,7 @@ enum class WebUIFlavor(
     ;
 
     companion object {
-        fun from(value: String): WebUIFlavor = WebUIFlavor.values().find { it.name == value } ?: WEBUI
+        fun from(value: String): WebUIFlavor = entries.find { it.name == value } ?: WEBUI
     }
 }
 
@@ -121,8 +121,8 @@ object WebInterfaceManager {
     private val logger = KotlinLogging.logger {}
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    private const val webUIPreviewVersion = "PREVIEW"
-    private const val lastWebUIUpdateCheckKey = "lastWebUIUpdateCheckKey"
+    private const val WEBUI_PREVIEW_VERSION = "PREVIEW"
+    private const val LAST_WEBUI_UPDATE_CHECK_KEY = "lastWebUIUpdateCheckKey"
 
     private val preferences = Preferences.userNodeForPackage(WebInterfaceManager::class.java)
     private var currentUpdateTaskId: String = ""
@@ -175,15 +175,18 @@ object WebInterfaceManager {
         }
 
         val updateInterval = serverConfig.webUIUpdateCheckInterval.value.hours.coerceAtLeast(1.hours).coerceAtMost(23.hours)
-        val lastAutomatedUpdate = preferences.getLong(lastWebUIUpdateCheckKey, System.currentTimeMillis())
+        val lastAutomatedUpdate = preferences.getLong(LAST_WEBUI_UPDATE_CHECK_KEY, System.currentTimeMillis())
 
         val task = {
             logger.debug {
-                "Checking for webUI update (channel= ${serverConfig.webUIChannel.value}, interval= ${serverConfig.webUIUpdateCheckInterval.value}h, lastAutomatedUpdate= ${
-                    Date(
-                        lastAutomatedUpdate,
-                    )
-                })"
+                "Checking for webUI update (" +
+                    "channel= ${serverConfig.webUIChannel.value}, " +
+                    "interval= ${serverConfig.webUIUpdateCheckInterval.value}h, " +
+                    "lastAutomatedUpdate= ${
+                        Date(
+                            lastAutomatedUpdate,
+                        )
+                    })"
             }
 
             runBlocking {
@@ -321,7 +324,7 @@ object WebInterfaceManager {
     }
 
     private suspend fun checkForUpdate() {
-        preferences.putLong(lastWebUIUpdateCheckKey, System.currentTimeMillis())
+        preferences.putLong(LAST_WEBUI_UPDATE_CHECK_KEY, System.currentTimeMillis())
         val localVersion = getLocalVersion()
 
         if (!isUpdateAvailable(localVersion).second) {
@@ -371,7 +374,9 @@ object WebInterfaceManager {
         val validationSucceeded = currentVersionMD5Sum == localMD5Sum
 
         logger.info {
-            "isLocalWebUIValid: Validation ${if (validationSucceeded) "succeeded" else "failed"} - md5: local= $localMD5Sum; expected= $currentVersionMD5Sum"
+            "isLocalWebUIValid: Validation " +
+                "${if (validationSucceeded) "succeeded" else "failed"} - " +
+                "md5: local= $localMD5Sum; expected= $currentVersionMD5Sum"
         }
 
         return validationSucceeded
@@ -457,17 +462,25 @@ object WebInterfaceManager {
         val webUIToServerVersionMappings = fetchServerMappingFile()
 
         logger.debug {
-            "getLatestCompatibleVersion: webUIChannel= ${serverConfig.webUIChannel.value}, currentServerVersion= ${BuildConfig.REVISION}, mappingFile= $webUIToServerVersionMappings"
+            "getLatestCompatibleVersion: " +
+                "webUIChannel= ${serverConfig.webUIChannel.value}, " +
+                "currentServerVersion= ${BuildConfig.REVISION}, " +
+                "mappingFile= $webUIToServerVersionMappings"
         }
 
         for (i in 0 until webUIToServerVersionMappings.size) {
             val webUIToServerVersionEntry = webUIToServerVersionMappings[i].jsonObject
-            var webUIVersion = webUIToServerVersionEntry["uiVersion"]?.jsonPrimitive?.content ?: throw Exception("Invalid mappingFile")
-            val minServerVersionString = webUIToServerVersionEntry["serverVersion"]?.jsonPrimitive?.content ?: throw Exception("Invalid mappingFile")
+            var webUIVersion =
+                webUIToServerVersionEntry["uiVersion"]?.jsonPrimitive?.content
+                    ?: throw Exception("Invalid mappingFile")
+            val minServerVersionString =
+                webUIToServerVersionEntry["serverVersion"]
+                    ?.jsonPrimitive?.content
+                    ?: throw Exception("Invalid mappingFile")
             val minServerVersionNumber = extractVersion(minServerVersionString)
 
             val ignorePreviewVersion =
-                !WebUIChannel.doesConfigChannelEqual(WebUIChannel.PREVIEW) && webUIVersion == webUIPreviewVersion
+                !WebUIChannel.doesConfigChannelEqual(WebUIChannel.PREVIEW) && webUIVersion == WEBUI_PREVIEW_VERSION
             if (ignorePreviewVersion) {
                 continue
             } else {

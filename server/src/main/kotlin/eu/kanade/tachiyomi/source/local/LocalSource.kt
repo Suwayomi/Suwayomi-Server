@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:property-naming")
+
 package eu.kanade.tachiyomi.source.local
 
 import eu.kanade.tachiyomi.source.CatalogueSource
