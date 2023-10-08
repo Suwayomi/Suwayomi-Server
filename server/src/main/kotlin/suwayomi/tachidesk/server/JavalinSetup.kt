@@ -225,7 +225,7 @@ object JavalinSetup {
     }
 
     sealed class Attribute<T : Any>(val name: String) {
-        object TachideskUser : Attribute<UserType>("user")
+        data object TachideskUser : Attribute<UserType>("user")
     }
 
     private fun <T : Any> Context.setAttribute(
