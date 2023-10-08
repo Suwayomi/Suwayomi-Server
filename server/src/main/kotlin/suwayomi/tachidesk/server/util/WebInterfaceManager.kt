@@ -121,7 +121,6 @@ object WebInterfaceManager {
     private val logger = KotlinLogging.logger {}
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    private const val WEBUI_PREVIEW_VERSION = "PREVIEW"
     private const val LAST_WEBUI_UPDATE_CHECK_KEY = "lastWebUIUpdateCheckKey"
 
     private val preferences = Preferences.userNodeForPackage(WebInterfaceManager::class.java)
@@ -479,15 +478,24 @@ object WebInterfaceManager {
                     ?: throw Exception("Invalid mappingFile")
             val minServerVersionNumber = extractVersion(minServerVersionString)
 
-            val ignorePreviewVersion =
-                !WebUIChannel.doesConfigChannelEqual(WebUIChannel.PREVIEW) && webUIVersion == WEBUI_PREVIEW_VERSION
-            if (ignorePreviewVersion) {
-                continue
-            } else {
+            if (!WebUIChannel.doesConfigChannelEqual(WebUIChannel.from(webUIVersion))) {
+                // allow only STABLE versions for STABLE channel
+                if (WebUIChannel.doesConfigChannelEqual(WebUIChannel.STABLE)) {
+                    continue
+                }
+
+                // allow all versions for PREVIEW channel
+            }
+
+            if (webUIVersion == WebUIChannel.PREVIEW.name) {
                 webUIVersion = fetchPreviewVersion()
             }
 
-            val isCompatibleVersion = minServerVersionNumber <= currentServerVersionNumber
+            val isCompatibleVersion =
+                minServerVersionNumber <= currentServerVersionNumber && minServerVersionNumber >=
+                    extractVersion(
+                        BuildConfig.WEBUI_TAG,
+                    )
             if (isCompatibleVersion) {
                 return webUIVersion
             }
