@@ -3,11 +3,13 @@ package suwayomi.tachidesk.graphql.server.primitives
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.or
 
 interface OrderBy<T> {
@@ -33,6 +35,30 @@ fun SortOrder?.maybeSwap(value: Any?): SortOrder {
         }
     } else {
         this ?: SortOrder.ASC
+    }
+}
+
+
+fun <T> Query.applyBeforeAfter(
+    before: Cursor?,
+    after: Cursor?,
+    orderBy: OrderBy<T>,
+    orderByType: SortOrder?,
+) {
+    if (after != null) {
+        andWhere {
+            when (orderByType) {
+                SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> orderBy.less(after)
+                null, SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> orderBy.greater(after)
+            }
+        }
+    } else if (before != null) {
+        andWhere {
+            when (orderByType) {
+                SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> orderBy.greater(before)
+                null, SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> orderBy.less(before)
+            }
+        }
     }
 }
 

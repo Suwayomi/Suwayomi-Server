@@ -13,16 +13,9 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SortOrder.ASC
-import org.jetbrains.exposed.sql.SortOrder.ASC_NULLS_FIRST
-import org.jetbrains.exposed.sql.SortOrder.ASC_NULLS_LAST
-import org.jetbrains.exposed.sql.SortOrder.DESC
-import org.jetbrains.exposed.sql.SortOrder.DESC_NULLS_FIRST
-import org.jetbrains.exposed.sql.SortOrder.DESC_NULLS_LAST
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
-import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
@@ -38,6 +31,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
+import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
@@ -187,21 +181,12 @@ class ExtensionQuery {
                 val firstResult = res.firstOrNull()?.get(ExtensionTable.pkgName)
                 val lastResult = res.lastOrNull()?.get(ExtensionTable.pkgName)
 
-                if (after != null) {
-                    res.andWhere {
-                        when (orderByType) {
-                            DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).less(after)
-                            null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).greater(after)
-                        }
-                    }
-                } else if (before != null) {
-                    res.andWhere {
-                        when (orderByType) {
-                            DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).greater(before)
-                            null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).less(before)
-                        }
-                    }
-                }
+                res.applyBeforeAfter(
+                    before = before,
+                    after = after,
+                    orderBy = orderBy ?: ExtensionOrderBy.PKG_NAME,
+                    orderByType = orderByType,
+                )
 
                 if (first != null) {
                     res.limit(first, offset?.toLong() ?: 0)
