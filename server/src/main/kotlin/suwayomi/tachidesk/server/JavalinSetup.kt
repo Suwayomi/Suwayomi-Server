@@ -59,10 +59,11 @@ object JavalinSetup {
 
     fun javalinSetup() {
         val server = Server()
-        val connector = ServerConnector(server).apply {
-            host = serverConfig.ip.value
-            port = serverConfig.port.value
-        }
+        val connector =
+            ServerConnector(server).apply {
+                host = serverConfig.ip.value
+                port = serverConfig.port.value
+            }
         server.addConnector(connector)
 
         serverConfig.subscribeTo(combine(serverConfig.ip, serverConfig.port) { ip, port -> Pair(ip, port) }, { (newIp, newPort) ->
@@ -77,72 +78,79 @@ object JavalinSetup {
             logger.info { "Server ip and/or port changed from $oldIp:$oldPort to $newIp:$newPort " }
         })
 
-        val app = Javalin.create { config ->
-            if (serverConfig.webUIEnabled.value) {
-                runBlocking {
-                    WebInterfaceManager.setupWebUI()
-                }
-
-                logger.info { "Serving web static files for ${serverConfig.webUIFlavor.value}" }
-                config.addStaticFiles(applicationDirs.webUIRoot, Location.EXTERNAL)
-                config.addSinglePageRoot("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
-                config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
-            }
-
-            config.server { server }
-
-            config.enableCorsForAllOrigins()
-
-            config.accessManager { handler, ctx, _ ->
-                fun credentialsValid(): Boolean {
-                    val (username, password) = ctx.basicAuthCredentials()
-                    return username == serverConfig.basicAuthUsername.value && password == serverConfig.basicAuthPassword.value
-                }
-
-                val user = if (serverConfig.multiUser.value) {
-                    val authentication = ctx.header(Header.AUTHORIZATION)
-                    if (authentication.isNullOrBlank()) {
-                        UserType.Visitor
-                    } else {
-                        Jwt.verifyJwt(authentication.substringAfter("Bearer "))
+        val app =
+            Javalin.create { config ->
+                if (serverConfig.webUIEnabled.value) {
+                    runBlocking {
+                        WebInterfaceManager.setupWebUI()
                     }
-                } else {
-                    UserType.Admin(1)
-                }
-                ctx.setAttribute(Attribute.TachideskUser, user)
 
-                if (!serverConfig.multiUser.value && serverConfig.basicAuthEnabled.value && !(ctx.basicAuthCredentialsExist() && credentialsValid())) {
-                    ctx.header("WWW-Authenticate", "Basic")
-                    ctx.status(401).json("Unauthorized")
-                } else {
-                    handler.handle(ctx)
+                    logger.info { "Serving web static files for ${serverConfig.webUIFlavor.value}" }
+                    config.addStaticFiles(applicationDirs.webUIRoot, Location.EXTERNAL)
+                    config.addSinglePageRoot("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
+                    config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
                 }
-            }
-        }.events { event ->
-            event.serverStarted {
-                if (serverConfig.initialOpenInBrowserEnabled.value) {
-                    Browser.openInBrowser()
+
+                config.server { server }
+
+                config.enableCorsForAllOrigins()
+
+                config.accessManager { handler, ctx, _ ->
+                    fun credentialsValid(): Boolean {
+                        val (username, password) = ctx.basicAuthCredentials()
+                        return username == serverConfig.basicAuthUsername.value && password == serverConfig.basicAuthPassword.value
+                    }
+
+                    val user =
+                        if (serverConfig.multiUser.value) {
+                            val authentication = ctx.header(Header.AUTHORIZATION)
+                            if (authentication.isNullOrBlank()) {
+                                UserType.Visitor
+                            } else {
+                                Jwt.verifyJwt(authentication.substringAfter("Bearer "))
+                            }
+                        } else {
+                            UserType.Admin(1)
+                        }
+                    ctx.setAttribute(Attribute.TachideskUser, user)
+
+                    if (
+                        !serverConfig.multiUser.value &&
+                        serverConfig.basicAuthEnabled.value &&
+                        !(ctx.basicAuthCredentialsExist() && credentialsValid())
+                    ) {
+                        ctx.header("WWW-Authenticate", "Basic")
+                        ctx.status(401).json("Unauthorized")
+                    } else {
+                        handler.handle(ctx)
+                    }
                 }
-            }
-        }.start()
+            }.events { event ->
+                event.serverStarted {
+                    if (serverConfig.initialOpenInBrowserEnabled.value) {
+                        Browser.openInBrowser()
+                    }
+                }
+            }.start()
 
         app.wsBefore {
             it.onConnect { ctx ->
-                val user = if (serverConfig.multiUser.value) {
-                    val authentication = ctx.header(Header.AUTHORIZATION)
-                    if (authentication.isNullOrBlank()) {
-                        val token = ctx.queryParam("token")
-                        if (token.isNullOrBlank()) {
-                            UserType.Visitor
+                val user =
+                    if (serverConfig.multiUser.value) {
+                        val authentication = ctx.header(Header.AUTHORIZATION)
+                        if (authentication.isNullOrBlank()) {
+                            val token = ctx.queryParam("token")
+                            if (token.isNullOrBlank()) {
+                                UserType.Visitor
+                            } else {
+                                Jwt.verifyJwt(token)
+                            }
                         } else {
-                            Jwt.verifyJwt(token)
+                            Jwt.verifyJwt(authentication.substringAfter("Bearer "))
                         }
                     } else {
-                        Jwt.verifyJwt(authentication.substringAfter("Bearer "))
+                        UserType.Admin(1)
                     }
-                } else {
-                    UserType.Admin(1)
-                }
                 ctx.setAttribute(Attribute.TachideskUser, user)
             }
         }
@@ -151,7 +159,7 @@ object JavalinSetup {
         Runtime.getRuntime().addShutdownHook(
             thread(start = false) {
                 app.stop()
-            }
+            },
         )
 
         app.exception(NullPointerException::class.java) { e, ctx ->
@@ -197,16 +205,17 @@ object JavalinSetup {
     }
 
     private fun getOpenApiOptions(): OpenApiOptions {
-        val applicationInfo = Info().apply {
-            version("1.0")
-            description("Tachidesk Api")
-        }
+        val applicationInfo =
+            Info().apply {
+                version("1.0")
+                description("Tachidesk Api")
+            }
         return OpenApiOptions(applicationInfo).apply {
             path("/api/openapi.json")
             swagger(
                 SwaggerOptions("/api/swagger-ui").apply {
                     title("Tachidesk Swagger Documentation")
-                }
+                },
             )
         }
     }
@@ -219,11 +228,17 @@ object JavalinSetup {
         object TachideskUser : Attribute<UserType>("user")
     }
 
-    private fun <T : Any> Context.setAttribute(attribute: Attribute<T>, value: T) {
+    private fun <T : Any> Context.setAttribute(
+        attribute: Attribute<T>,
+        value: T,
+    ) {
         attribute(attribute.name, value)
     }
 
-    private fun <T : Any> WsContext.setAttribute(attribute: Attribute<T>, value: T) {
+    private fun <T : Any> WsContext.setAttribute(
+        attribute: Attribute<T>,
+        value: T,
+    ) {
         attribute(attribute.name, value)
     }
 

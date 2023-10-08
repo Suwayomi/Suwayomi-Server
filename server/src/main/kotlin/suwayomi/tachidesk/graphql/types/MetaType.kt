@@ -22,12 +22,12 @@ interface MetaType : Node {
 class ChapterMetaType(
     override val key: String,
     override val value: String,
-    val chapterId: Int
+    val chapterId: Int,
 ) : MetaType {
     constructor(row: ResultRow) : this(
         key = row[ChapterMetaTable.key],
         value = row[ChapterMetaTable.value],
-        chapterId = row[ChapterMetaTable.ref].value
+        chapterId = row[ChapterMetaTable.ref].value,
     )
 
     fun chapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType> {
@@ -38,12 +38,12 @@ class ChapterMetaType(
 class MangaMetaType(
     override val key: String,
     override val value: String,
-    val mangaId: Int
+    val mangaId: Int,
 ) : MetaType {
     constructor(row: ResultRow) : this(
         key = row[MangaMetaTable.key],
         value = row[MangaMetaTable.value],
-        mangaId = row[MangaMetaTable.ref].value
+        mangaId = row[MangaMetaTable.ref].value,
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> {
@@ -54,12 +54,12 @@ class MangaMetaType(
 class CategoryMetaType(
     override val key: String,
     override val value: String,
-    val categoryId: Int
+    val categoryId: Int,
 ) : MetaType {
     constructor(row: ResultRow) : this(
         key = row[CategoryMetaTable.key],
         value = row[CategoryMetaTable.value],
-        categoryId = row[CategoryMetaTable.ref].value
+        categoryId = row[CategoryMetaTable.ref].value,
     )
 
     fun category(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<CategoryType> {
@@ -69,11 +69,11 @@ class CategoryMetaType(
 
 class GlobalMetaType(
     override val key: String,
-    override val value: String
+    override val value: String,
 ) : MetaType {
     constructor(row: ResultRow) : this(
         key = row[GlobalMetaTable.key],
-        value = row[GlobalMetaTable.value]
+        value = row[GlobalMetaTable.value],
     )
 }
 
@@ -81,11 +81,11 @@ data class GlobalMetaNodeList(
     override val nodes: List<GlobalMetaType>,
     override val edges: List<MetaEdge>,
     override val pageInfo: PageInfo,
-    override val totalCount: Int
+    override val totalCount: Int,
 ) : NodeList() {
     data class MetaEdge(
         override val cursor: Cursor,
-        override val node: GlobalMetaType
+        override val node: GlobalMetaType,
     ) : Edge()
 
     companion object {
@@ -93,13 +93,14 @@ data class GlobalMetaNodeList(
             return GlobalMetaNodeList(
                 nodes = this,
                 edges = getEdges(),
-                pageInfo = PageInfo(
-                    hasNextPage = false,
-                    hasPreviousPage = false,
-                    startCursor = Cursor(0.toString()),
-                    endCursor = Cursor(lastIndex.toString())
-                ),
-                totalCount = size
+                pageInfo =
+                    PageInfo(
+                        hasNextPage = false,
+                        hasPreviousPage = false,
+                        startCursor = Cursor(0.toString()),
+                        endCursor = Cursor(lastIndex.toString()),
+                    ),
+                totalCount = size,
             )
         }
 
@@ -108,12 +109,12 @@ data class GlobalMetaNodeList(
             return listOf(
                 MetaEdge(
                     cursor = Cursor("0"),
-                    node = first()
+                    node = first(),
                 ),
                 MetaEdge(
                     cursor = Cursor(lastIndex.toString()),
-                    node = last()
-                )
+                    node = last(),
+                ),
             )
         }
     }

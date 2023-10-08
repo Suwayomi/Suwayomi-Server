@@ -25,7 +25,7 @@ class TachideskGraphQLServer(
     requestParser: JavalinGraphQLRequestParser,
     contextFactory: TachideskGraphQLContextFactory,
     requestHandler: GraphQLRequestHandler,
-    subscriptionHandler: GraphQLSubscriptionHandler
+    subscriptionHandler: GraphQLSubscriptionHandler,
 ) : GraphQLServer<Context>(requestParser, contextFactory, requestHandler) {
     private val objectMapper = jacksonObjectMapper()
     private val subscriptionProtocolHandler = ApolloSubscriptionProtocolHandler(contextFactory, subscriptionHandler, objectMapper)
@@ -42,10 +42,11 @@ class TachideskGraphQLServer(
     }
 
     companion object {
-        private fun getGraphQLObject(): GraphQL = GraphQL.newGraphQL(schema)
-            .subscriptionExecutionStrategy(FlowSubscriptionExecutionStrategy())
-            .defaultDataFetcherExceptionHandler(TachideskDataFetcherExceptionHandler())
-            .build()
+        private fun getGraphQLObject(): GraphQL =
+            GraphQL.newGraphQL(schema)
+                .subscriptionExecutionStrategy(FlowSubscriptionExecutionStrategy())
+                .defaultDataFetcherExceptionHandler(TachideskDataFetcherExceptionHandler())
+                .build()
 
         fun create(): TachideskGraphQLServer {
             val graphQL = getGraphQLObject()

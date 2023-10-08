@@ -24,29 +24,27 @@ class TachideskGraphQLContextFactory : GraphQLContextFactory<com.expediagroup.gr
     override suspend fun generateContextMap(request: Context): Map<Any, Any> {
         return mapOf(
             Context::class to request,
-            request.getPair(Attribute.TachideskUser)
+            request.getPair(Attribute.TachideskUser),
         )
     }
 
     fun generateContextMap(request: WsContext): Map<Any, Any> {
         return mapOf(
             Context::class to request,
-            request.getPair(Attribute.TachideskUser)
+            request.getPair(Attribute.TachideskUser),
         )
     }
 
-    private fun <T : Any> Context.getPair(attribute: Attribute<T>) =
-        attribute to getAttribute(attribute)
-    private fun <T : Any> WsContext.getPair(attribute: Attribute<T>) =
-        attribute to getAttribute(attribute)
+    private fun <T : Any> Context.getPair(attribute: Attribute<T>) = attribute to getAttribute(attribute)
+
+    private fun <T : Any> WsContext.getPair(attribute: Attribute<T>) = attribute to getAttribute(attribute)
 }
 
 /**
  * Create a [GraphQLContext] from [this] map
  * @return a new [GraphQLContext]
  */
-fun Map<*, Any?>.toGraphQLContext(): GraphQLContext =
-    GraphQLContext.of(this)
+fun Map<*, Any?>.toGraphQLContext(): GraphQLContext = GraphQLContext.of(this)
 
 fun <T : Any> GraphQLContext.getAttribute(attribute: Attribute<T>): T {
     return get(attribute)

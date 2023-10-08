@@ -11,7 +11,6 @@ import suwayomi.tachidesk.server.user.ForbiddenException
 import suwayomi.tachidesk.server.user.UnauthorizedException
 
 class TachideskDataFetcherExceptionHandler : SimpleDataFetcherExceptionHandler() {
-
     @Suppress("OVERRIDE_DEPRECATION")
     override fun onException(handlerParameters: DataFetcherExceptionHandlerParameters): DataFetcherExceptionHandlerResult {
         val exception = handlerParameters.exception

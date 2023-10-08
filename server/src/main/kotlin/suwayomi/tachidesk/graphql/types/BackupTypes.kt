@@ -5,31 +5,34 @@ import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 enum class BackupRestoreState {
     IDLE,
     RESTORING_CATEGORIES,
-    RESTORING_MANGA
+    RESTORING_MANGA,
 }
 
 data class BackupRestoreStatus(
     val state: BackupRestoreState,
     val totalManga: Int,
-    val mangaProgress: Int
+    val mangaProgress: Int,
 )
 
 fun ProtoBackupImport.BackupRestoreState.toStatus(): BackupRestoreStatus {
     return when (this) {
-        ProtoBackupImport.BackupRestoreState.Idle -> BackupRestoreStatus(
-            state = BackupRestoreState.IDLE,
-            totalManga = 0,
-            mangaProgress = 0
-        )
-        is ProtoBackupImport.BackupRestoreState.RestoringCategories -> BackupRestoreStatus(
-            state = BackupRestoreState.RESTORING_CATEGORIES,
-            totalManga = totalManga,
-            mangaProgress = 0
-        )
-        is ProtoBackupImport.BackupRestoreState.RestoringManga -> BackupRestoreStatus(
-            state = BackupRestoreState.RESTORING_MANGA,
-            totalManga = totalManga,
-            mangaProgress = current
-        )
+        ProtoBackupImport.BackupRestoreState.Idle ->
+            BackupRestoreStatus(
+                state = BackupRestoreState.IDLE,
+                totalManga = 0,
+                mangaProgress = 0,
+            )
+        is ProtoBackupImport.BackupRestoreState.RestoringCategories ->
+            BackupRestoreStatus(
+                state = BackupRestoreState.RESTORING_CATEGORIES,
+                totalManga = totalManga,
+                mangaProgress = 0,
+            )
+        is ProtoBackupImport.BackupRestoreState.RestoringManga ->
+            BackupRestoreStatus(
+                state = BackupRestoreState.RESTORING_MANGA,
+                totalManga = totalManga,
+                mangaProgress = current,
+            )
     }
 }

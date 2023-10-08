@@ -14,7 +14,6 @@ import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Manga.getMangaMetaMap
-import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
@@ -29,29 +28,36 @@ object MangaList {
         return "/api/v1/manga/$mangaId/thumbnail"
     }
 
-    suspend fun getMangaList(userId: Int, sourceId: Long, pageNum: Int = 1, popular: Boolean): PagedMangaListDataClass {
+    suspend fun getMangaList(
+        userId: Int,
+        sourceId: Long,
+        pageNum: Int = 1,
+        popular: Boolean,
+    ): PagedMangaListDataClass {
         require(pageNum > 0) {
             "pageNum = $pageNum is not in valid range"
         }
         val source = getCatalogueSourceOrStub(sourceId)
-        val mangasPage = if (popular) {
-            source.fetchPopularManga(pageNum).awaitSingle()
-        } else {
-            if (source.supportsLatest) {
-                source.fetchLatestUpdates(pageNum).awaitSingle()
+        val mangasPage =
+            if (popular) {
+                source.getPopularManga(pageNum)
             } else {
-                throw Exception("Source $source doesn't support latest")
+                if (source.supportsLatest) {
+                    source.getLatestUpdates(pageNum)
+                } else {
+                    throw Exception("Source $source doesn't support latest")
+                }
             }
-        }
         return mangasPage.processEntries(userId, sourceId)
     }
 
     fun MangasPage.insertOrGet(sourceId: Long): List<Int> {
         return transaction {
             mangas.map { manga ->
-                val mangaEntry = MangaTable.select {
-                    (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq sourceId)
-                }.firstOrNull()
+                val mangaEntry =
+                    MangaTable.select {
+                        (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq sourceId)
+                    }.firstOrNull()
                 if (mangaEntry == null) { // create manga entry
                     MangaTable.insertAndGetId {
                         it[url] = manga.url
@@ -74,91 +80,92 @@ object MangaList {
         }
     }
 
-    fun MangasPage.processEntries(userId: Int, sourceId: Long): PagedMangaListDataClass {
+    fun MangasPage.processEntries(
+        userId: Int,
+        sourceId: Long,
+    ): PagedMangaListDataClass {
         val mangasPage = this
-        val mangaList = transaction {
-            return@transaction mangasPage.mangas.map { manga ->
-                var mangaEntry = MangaTable.getWithUserData(userId).select {
-                    (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq sourceId)
-                }.firstOrNull()
-                if (mangaEntry == null) { // create manga entry
-                    val mangaId = MangaTable.insertAndGetId {
-                        it[url] = manga.url
-                        it[title] = manga.title
+        val mangaList =
+            transaction {
+                return@transaction mangasPage.mangas.map { manga ->
+                    var mangaEntry =
+                        MangaTable.getWithUserData(userId).select {
+                            (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq sourceId)
+                        }.firstOrNull()
+                    if (mangaEntry == null) { // create manga entry
+                        val mangaId =
+                            MangaTable.insertAndGetId {
+                                it[url] = manga.url
+                                it[title] = manga.title
 
-                        it[artist] = manga.artist
-                        it[author] = manga.author
-                        it[description] = manga.description
-                        it[genre] = manga.genre
-                        it[status] = manga.status
-                        it[thumbnail_url] = manga.thumbnail_url
-                        it[updateStrategy] = manga.update_strategy.name
+                                it[artist] = manga.artist
+                                it[author] = manga.author
+                                it[description] = manga.description
+                                it[genre] = manga.genre
+                                it[status] = manga.status
+                                it[thumbnail_url] = manga.thumbnail_url
+                                it[updateStrategy] = manga.update_strategy.name
 
-                        it[sourceReference] = sourceId
-                    }.value
+                                it[sourceReference] = sourceId
+                            }.value
 
-                    mangaEntry = MangaTable.select {
-                        (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq sourceId)
-                    }.first()
+                        mangaEntry =
+                            MangaTable.select {
+                                (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq sourceId)
+                            }.first()
 
-                    MangaDataClass(
-                        id = mangaId,
-                        sourceId = sourceId.toString(),
-
-                        url = manga.url,
-                        title = manga.title,
-                        thumbnailUrl = proxyThumbnailUrl(mangaId),
-                        thumbnailUrlLastFetched = mangaEntry[MangaTable.thumbnailUrlLastFetched],
-
-                        initialized = manga.initialized,
-
-                        artist = manga.artist,
-                        author = manga.author,
-                        description = manga.description,
-                        genre = manga.genre.toGenreList(),
-                        status = MangaStatus.valueOf(manga.status).name,
-                        inLibrary = false, // It's a new manga entry
-                        inLibraryAt = 0,
-                        meta = getMangaMetaMap(userId, mangaId),
-                        realUrl = mangaEntry[MangaTable.realUrl],
-                        lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
-                        chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
-                        updateStrategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy]),
-                        freshData = true
-                    )
-                } else {
-                    val mangaId = mangaEntry[MangaTable.id].value
-                    MangaDataClass(
-                        id = mangaId,
-                        sourceId = sourceId.toString(),
-
-                        url = manga.url,
-                        title = manga.title,
-                        thumbnailUrl = proxyThumbnailUrl(mangaId),
-                        thumbnailUrlLastFetched = mangaEntry[MangaTable.thumbnailUrlLastFetched],
-
-                        initialized = true,
-
-                        artist = mangaEntry[MangaTable.artist],
-                        author = mangaEntry[MangaTable.author],
-                        description = mangaEntry[MangaTable.description],
-                        genre = mangaEntry[MangaTable.genre].toGenreList(),
-                        status = MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
-                        inLibrary = mangaEntry.getOrNull(MangaUserTable.inLibrary) ?: false,
-                        inLibraryAt = mangaEntry.getOrNull(MangaUserTable.inLibraryAt) ?: 0,
-                        meta = getMangaMetaMap(userId, mangaId),
-                        realUrl = mangaEntry[MangaTable.realUrl],
-                        lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
-                        chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
-                        updateStrategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy]),
-                        freshData = false
-                    )
+                        MangaDataClass(
+                            id = mangaId,
+                            sourceId = sourceId.toString(),
+                            url = manga.url,
+                            title = manga.title,
+                            thumbnailUrl = proxyThumbnailUrl(mangaId),
+                            thumbnailUrlLastFetched = mangaEntry[MangaTable.thumbnailUrlLastFetched],
+                            initialized = manga.initialized,
+                            artist = manga.artist,
+                            author = manga.author,
+                            description = manga.description,
+                            genre = manga.genre.toGenreList(),
+                            status = MangaStatus.valueOf(manga.status).name,
+                            inLibrary = false, // It's a new manga entry
+                            inLibraryAt = 0,
+                            meta = getMangaMetaMap(userId, mangaId),
+                            realUrl = mangaEntry[MangaTable.realUrl],
+                            lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
+                            chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
+                            updateStrategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy]),
+                            freshData = true,
+                        )
+                    } else {
+                        val mangaId = mangaEntry[MangaTable.id].value
+                        MangaDataClass(
+                            id = mangaId,
+                            sourceId = sourceId.toString(),
+                            url = manga.url,
+                            title = manga.title,
+                            thumbnailUrl = proxyThumbnailUrl(mangaId),
+                            thumbnailUrlLastFetched = mangaEntry[MangaTable.thumbnailUrlLastFetched],
+                            initialized = true,
+                            artist = mangaEntry[MangaTable.artist],
+                            author = mangaEntry[MangaTable.author],
+                            description = mangaEntry[MangaTable.description],
+                            genre = mangaEntry[MangaTable.genre].toGenreList(),
+                            status = MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
+                            inLibrary = mangaEntry.getOrNull(MangaUserTable.inLibrary) ?: false,
+                            inLibraryAt = mangaEntry.getOrNull(MangaUserTable.inLibraryAt) ?: 0,
+                            meta = getMangaMetaMap(userId, mangaId),
+                            realUrl = mangaEntry[MangaTable.realUrl],
+                            lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
+                            chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
+                            updateStrategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy]),
+                            freshData = false,
+                        )
+                    }
                 }
             }
-        }
         return PagedMangaListDataClass(
             mangaList,
-            mangasPage.hasNextPage
+            mangasPage.hasNextPage,
         )
     }
 }

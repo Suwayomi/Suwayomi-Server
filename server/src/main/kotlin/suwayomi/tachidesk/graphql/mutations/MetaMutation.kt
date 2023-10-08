@@ -14,18 +14,19 @@ import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.user.requireUser
 
 class MetaMutation {
-
     data class SetGlobalMetaInput(
         val clientMutationId: String? = null,
-        val meta: GlobalMetaType
+        val meta: GlobalMetaType,
     )
+
     data class SetGlobalMetaPayload(
         val clientMutationId: String?,
-        val meta: GlobalMetaType
+        val meta: GlobalMetaType,
     )
+
     fun setGlobalMeta(
         dataFetchingEnvironment: DataFetchingEnvironment,
-        input: SetGlobalMetaInput
+        input: SetGlobalMetaInput,
     ): SetGlobalMetaPayload {
         val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, meta) = input
@@ -37,31 +38,35 @@ class MetaMutation {
 
     data class DeleteGlobalMetaInput(
         val clientMutationId: String? = null,
-        val key: String
+        val key: String,
     )
+
     data class DeleteGlobalMetaPayload(
         val clientMutationId: String?,
-        val meta: GlobalMetaType?
+        val meta: GlobalMetaType?,
     )
+
     fun deleteGlobalMeta(
         dataFetchingEnvironment: DataFetchingEnvironment,
-        input: DeleteGlobalMetaInput
+        input: DeleteGlobalMetaInput,
     ): DeleteGlobalMetaPayload {
         val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, key) = input
 
-        val meta = transaction {
-            val meta = GlobalMetaTable.select { GlobalMetaTable.key eq key and (GlobalMetaTable.user eq userId) }
-                .firstOrNull()
+        val meta =
+            transaction {
+                val meta =
+                    GlobalMetaTable.select { GlobalMetaTable.key eq key and (GlobalMetaTable.user eq userId) }
+                        .firstOrNull()
 
-            GlobalMetaTable.deleteWhere { GlobalMetaTable.key eq key and (GlobalMetaTable.user eq userId) }
+                GlobalMetaTable.deleteWhere { GlobalMetaTable.key eq key and (GlobalMetaTable.user eq userId) }
 
-            if (meta != null) {
-                GlobalMetaType(meta)
-            } else {
-                null
+                if (meta != null) {
+                    GlobalMetaType(meta)
+                } else {
+                    null
+                }
             }
-        }
 
         return DeleteGlobalMetaPayload(clientMutationId, meta)
     }

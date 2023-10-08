@@ -27,8 +27,7 @@ import java.util.concurrent.TimeUnit
 
 @Suppress("UNUSED_PARAMETER")
 class NetworkHelper(context: Context) {
-
-//    private val preferences: PreferencesHelper by injectLazy()
+    //    private val preferences: PreferencesHelper by injectLazy()
 
 //    private val cacheDir = File(context.cacheDir, "network_cache")
 
@@ -36,31 +35,36 @@ class NetworkHelper(context: Context) {
 
     // Tachidesk -->
     val cookieStore = PersistentCookieStore(context)
+
     init {
         CookieHandler.setDefault(
-            CookieManager(cookieStore, CookiePolicy.ACCEPT_ALL)
+            CookieManager(cookieStore, CookiePolicy.ACCEPT_ALL),
         )
     }
     // Tachidesk <--
 
     private val baseClientBuilder: OkHttpClient.Builder
         get() {
-            val builder = OkHttpClient.Builder()
-                .cookieJar(PersistentCookieJar(cookieStore))
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .callTimeout(2, TimeUnit.MINUTES)
-                .addInterceptor(UserAgentInterceptor())
+            val builder =
+                OkHttpClient.Builder()
+                    .cookieJar(PersistentCookieJar(cookieStore))
+                    .connectTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS)
+                    .callTimeout(2, TimeUnit.MINUTES)
+                    .addInterceptor(UserAgentInterceptor())
 
-            val httpLoggingInterceptor = HttpLoggingInterceptor(object : HttpLoggingInterceptor.Logger {
-                val logger = KotlinLogging.logger { }
+            val httpLoggingInterceptor =
+                HttpLoggingInterceptor(
+                    object : HttpLoggingInterceptor.Logger {
+                        val logger = KotlinLogging.logger { }
 
-                override fun log(message: String) {
-                    logger.debug { message }
+                        override fun log(message: String) {
+                            logger.debug { message }
+                        }
+                    },
+                ).apply {
+                    level = HttpLoggingInterceptor.Level.BASIC
                 }
-            }).apply {
-                level = HttpLoggingInterceptor.Level.BASIC
-            }
             builder.addInterceptor(httpLoggingInterceptor)
 
 //            when (preferences.dohProvider()) {

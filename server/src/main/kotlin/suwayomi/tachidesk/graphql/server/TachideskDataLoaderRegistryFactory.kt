@@ -15,9 +15,11 @@ import suwayomi.tachidesk.graphql.dataLoaders.CategoryMetaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ChapterDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ChapterMetaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ChaptersForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.DownloadedChapterCountForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ExtensionDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ExtensionForSourceDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.GlobalMetaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.LastReadChapterForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.MangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.MangaForCategoryDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.MangaForIdsDataLoader
@@ -25,6 +27,7 @@ import suwayomi.tachidesk.graphql.dataLoaders.MangaForSourceDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.MangaMetaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.SourceDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.SourcesForExtensionDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.UnreadChapterCountForMangaDataLoader
 
 class TachideskDataLoaderRegistryFactory {
     companion object {
@@ -33,6 +36,9 @@ class TachideskDataLoaderRegistryFactory {
                 MangaDataLoader(),
                 ChapterDataLoader(),
                 ChaptersForMangaDataLoader(),
+                DownloadedChapterCountForMangaDataLoader(),
+                UnreadChapterCountForMangaDataLoader(),
+                LastReadChapterForMangaDataLoader(),
                 GlobalMetaDataLoader(),
                 ChapterMetaDataLoader(),
                 MangaMetaDataLoader(),
@@ -46,7 +52,7 @@ class TachideskDataLoaderRegistryFactory {
                 SourceDataLoader(),
                 SourcesForExtensionDataLoader(),
                 ExtensionDataLoader(),
-                ExtensionForSourceDataLoader()
+                ExtensionForSourceDataLoader(),
             )
         }
     }

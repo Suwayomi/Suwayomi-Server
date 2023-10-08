@@ -1,9 +1,10 @@
+@file:Suppress("ktlint:standard:property-naming")
+
 package suwayomi.tachidesk.manga.impl.backup.models
 
 import java.io.Serializable
 
 interface Track : Serializable {
-
     var id: Long?
 
     var manga_id: Long
@@ -39,8 +40,9 @@ interface Track : Serializable {
     }
 
     companion object {
-        fun create(serviceId: Int): Track = TrackImpl().apply {
-            sync_id = serviceId
-        }
+        fun create(serviceId: Int): Track =
+            TrackImpl().apply {
+                sync_id = serviceId
+            }
     }
 }

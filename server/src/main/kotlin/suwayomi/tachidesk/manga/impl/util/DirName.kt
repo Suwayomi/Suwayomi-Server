@@ -31,15 +31,19 @@ private fun getMangaDir(mangaId: Int): String {
     return "$sourceDir/$mangaDir"
 }
 
-private fun getChapterDir(mangaId: Int, chapterId: Int): String {
+private fun getChapterDir(
+    mangaId: Int,
+    chapterId: Int,
+): String {
     val chapterEntry = transaction { ChapterTable.select { ChapterTable.id eq chapterId }.first() }
 
-    val chapterDir = SafePath.buildValidFilename(
-        when {
-            chapterEntry[ChapterTable.scanlator] != null -> "${chapterEntry[ChapterTable.scanlator]}_${chapterEntry[ChapterTable.name]}"
-            else -> chapterEntry[ChapterTable.name]
-        }
-    )
+    val chapterDir =
+        SafePath.buildValidFilename(
+            when {
+                chapterEntry[ChapterTable.scanlator] != null -> "${chapterEntry[ChapterTable.scanlator]}_${chapterEntry[ChapterTable.name]}"
+                else -> chapterEntry[ChapterTable.name]
+            },
+        )
 
     return getMangaDir(mangaId) + "/$chapterDir"
 }
@@ -48,20 +52,36 @@ fun getThumbnailDownloadPath(mangaId: Int): String {
     return applicationDirs.thumbnailDownloadsRoot + "/$mangaId"
 }
 
-fun getChapterDownloadPath(mangaId: Int, chapterId: Int): String {
+fun getMangaDownloadDir(mangaId: Int): String {
+    return applicationDirs.mangaDownloadsRoot + "/" + getMangaDir(mangaId)
+}
+
+fun getChapterDownloadPath(
+    mangaId: Int,
+    chapterId: Int,
+): String {
     return applicationDirs.mangaDownloadsRoot + "/" + getChapterDir(mangaId, chapterId)
 }
 
-fun getChapterCbzPath(mangaId: Int, chapterId: Int): String {
+fun getChapterCbzPath(
+    mangaId: Int,
+    chapterId: Int,
+): String {
     return getChapterDownloadPath(mangaId, chapterId) + ".cbz"
 }
 
-fun getChapterCachePath(mangaId: Int, chapterId: Int): String {
+fun getChapterCachePath(
+    mangaId: Int,
+    chapterId: Int,
+): String {
     return applicationDirs.tempMangaCacheRoot + "/" + getChapterDir(mangaId, chapterId)
 }
 
 /** return value says if rename/move was successful */
-fun updateMangaDownloadDir(mangaId: Int, newTitle: String): Boolean {
+fun updateMangaDownloadDir(
+    mangaId: Int,
+    newTitle: String,
+): Boolean {
     val mangaEntry = getMangaEntry(mangaId)
     val source = GetCatalogueSource.getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 

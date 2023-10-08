@@ -18,33 +18,35 @@ import suwayomi.tachidesk.server.user.requirePermissions
 import suwayomi.tachidesk.server.user.requireUser
 
 class UserMutation {
-
     data class LoginInput(
         val clientMutationId: String? = null,
         val username: String,
-        val password: String
+        val password: String,
     )
+
     data class LoginPayload(
         val clientMutationId: String?,
         val accessToken: String,
-        val refreshToken: String
+        val refreshToken: String,
     )
+
     fun login(
         dataFetchingEnvironment: DataFetchingEnvironment,
-        input: LoginInput
+        input: LoginInput,
     ): LoginPayload {
         if (dataFetchingEnvironment.getAttribute(Attribute.TachideskUser) !is UserType.Visitor) {
             throw IllegalArgumentException("Cannot login while already logged-in")
         }
-        val user = transaction {
-            UserTable.select { UserTable.username.lowerCase() eq input.username.lowercase() }.firstOrNull()
-        }
+        val user =
+            transaction {
+                UserTable.select { UserTable.username.lowerCase() eq input.username.lowercase() }.firstOrNull()
+            }
         if (user != null && Bcrypt.verify(user[UserTable.password], input.password)) {
             val jwt = Jwt.generateJwt(user[UserTable.id].value)
             return LoginPayload(
                 clientMutationId = input.clientMutationId,
                 accessToken = jwt.accessToken,
-                refreshToken = jwt.refreshToken
+                refreshToken = jwt.refreshToken,
             )
         } else {
             throw Exception("Incorrect username or password.")
@@ -53,36 +55,38 @@ class UserMutation {
 
     data class RefreshTokenInput(
         val clientMutationId: String? = null,
-        val refreshToken: String
+        val refreshToken: String,
     )
+
     data class RefreshTokenPayload(
         val clientMutationId: String?,
         val accessToken: String,
-        val refreshToken: String
+        val refreshToken: String,
     )
-    fun refreshToken(
-        input: RefreshTokenInput
-    ): RefreshTokenPayload {
+
+    fun refreshToken(input: RefreshTokenInput): RefreshTokenPayload {
         val jwt = Jwt.refreshJwt(input.refreshToken)
 
         return RefreshTokenPayload(
             clientMutationId = input.clientMutationId,
             accessToken = jwt.accessToken,
-            refreshToken = jwt.refreshToken
+            refreshToken = jwt.refreshToken,
         )
     }
 
     data class RegisterInput(
         val clientMutationId: String? = null,
         val username: String,
-        val password: String
+        val password: String,
     )
+
     data class RegisterPayload(
-        val clientMutationId: String?
+        val clientMutationId: String?,
     )
+
     fun register(
         dataFetchingEnvironment: DataFetchingEnvironment,
-        input: RegisterInput
+        input: RegisterInput,
     ): RegisterPayload {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requirePermissions(Permissions.CREATE_USER)
 
@@ -100,20 +104,22 @@ class UserMutation {
         }
 
         return RegisterPayload(
-            clientMutationId = clientMutationId
+            clientMutationId = clientMutationId,
         )
     }
 
     data class SetPasswordInput(
         val clientMutationId: String? = null,
-        val password: String
+        val password: String,
     )
+
     data class SetPasswordPayload(
-        val clientMutationId: String?
+        val clientMutationId: String?,
     )
+
     fun setPassword(
         dataFetchingEnvironment: DataFetchingEnvironment,
-        input: SetPasswordInput
+        input: SetPasswordInput,
     ): SetPasswordPayload {
         val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
 
@@ -125,7 +131,7 @@ class UserMutation {
         }
 
         return SetPasswordPayload(
-            clientMutationId = clientMutationId
+            clientMutationId = clientMutationId,
         )
     }
 }

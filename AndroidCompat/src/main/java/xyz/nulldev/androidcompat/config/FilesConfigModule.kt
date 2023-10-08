@@ -28,7 +28,6 @@ class FilesConfigModule(getConfig: () -> Config) : ConfigModule(getConfig) {
     val packageDir: String by getConfig()
 
     companion object {
-        fun register(config: Config) =
-            FilesConfigModule { config.getConfig("android.files") }
+        fun register(config: Config) = FilesConfigModule { config.getConfig("android.files") }
     }
 }

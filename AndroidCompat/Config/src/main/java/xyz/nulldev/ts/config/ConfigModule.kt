@@ -26,13 +26,17 @@ abstract class SystemPropertyOverridableConfigModule(getConfig: () -> Config, mo
 
 /** Defines a config property that is overridable with jvm `-D` commandline arguments prefixed with [CONFIG_PREFIX] */
 class SystemPropertyOverrideDelegate(val getConfig: () -> Config, val moduleName: String) {
-    inline operator fun <R, reified T> getValue(thisRef: R, property: KProperty<*>): T {
+    inline operator fun <R, reified T> getValue(
+        thisRef: R,
+        property: KProperty<*>,
+    ): T {
         val configValue: T = getConfig().getValue(thisRef, property)
 
-        val combined = System.getProperty(
-            "$CONFIG_PREFIX.$moduleName.${property.name}",
-            configValue.toString()
-        )
+        val combined =
+            System.getProperty(
+                "$CONFIG_PREFIX.$moduleName.${property.name}",
+                configValue.toString(),
+            )
 
         return when (T::class.simpleName) {
             "Int" -> combined.toInt()

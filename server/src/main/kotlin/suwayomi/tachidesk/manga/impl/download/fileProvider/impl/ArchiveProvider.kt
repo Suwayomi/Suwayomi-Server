@@ -11,6 +11,7 @@ import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
+import suwayomi.tachidesk.manga.impl.util.getMangaDownloadDir
 import java.io.File
 import java.io.InputStream
 
@@ -27,8 +28,9 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mang
     override suspend fun downloadImpl(
         download: DownloadChapter,
         scope: CoroutineScope,
-        step: suspend (DownloadChapter?, Boolean) -> Unit
+        step: suspend (DownloadChapter?, Boolean) -> Unit,
     ): Boolean {
+        val mangaDownloadFolder = File(getMangaDownloadDir(mangaId))
         val outputFile = File(getChapterCbzPath(mangaId, chapterId))
         val chapterCacheFolder = File(getChapterCachePath(mangaId, chapterId))
         if (outputFile.exists()) handleExistingCbzFile(outputFile, chapterCacheFolder)
@@ -36,6 +38,7 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mang
         super.downloadImpl(download, scope, step)
 
         withContext(Dispatchers.IO) {
+            mangaDownloadFolder.mkdirs()
             outputFile.createNewFile()
         }
 
@@ -68,7 +71,10 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mang
         return false
     }
 
-    private fun handleExistingCbzFile(cbzFile: File, chapterFolder: File) {
+    private fun handleExistingCbzFile(
+        cbzFile: File,
+        chapterFolder: File,
+    ) {
         if (!chapterFolder.exists()) chapterFolder.mkdirs()
         ZipArchiveInputStream(cbzFile.inputStream()).use { zipInputStream ->
             var zipEntry = zipInputStream.nextEntry

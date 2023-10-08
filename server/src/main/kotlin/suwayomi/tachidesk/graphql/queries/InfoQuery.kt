@@ -5,9 +5,9 @@ import suwayomi.tachidesk.global.impl.AppUpdate
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
-import suwayomi.tachidesk.server.BuildConfig
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
@@ -21,12 +21,10 @@ class InfoQuery {
         val buildType: String,
         val buildTime: Long,
         val github: String,
-        val discord: String
+        val discord: String,
     )
 
-    fun about(
-        dataFetchingEnvironment: DataFetchingEnvironment
-    ): AboutPayload {
+    fun about(dataFetchingEnvironment: DataFetchingEnvironment): AboutPayload {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
 
         return AboutPayload(
@@ -36,7 +34,7 @@ class InfoQuery {
             BuildConfig.BUILD_TYPE,
             BuildConfig.BUILD_TIME,
             BuildConfig.GITHUB,
-            BuildConfig.DISCORD
+            BuildConfig.DISCORD,
         )
     }
 
@@ -44,12 +42,10 @@ class InfoQuery {
         /** [channel] mirrors [suwayomi.tachidesk.server.BuildConfig.BUILD_TYPE] */
         val channel: String,
         val tag: String,
-        val url: String
+        val url: String,
     )
 
-    fun checkForServerUpdates(
-        dataFetchingEnvironment: DataFetchingEnvironment
-    ): CompletableFuture<List<CheckForServerUpdatesPayload>> {
+    fun checkForServerUpdates(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<CheckForServerUpdatesPayload>> {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
 
         return future {
@@ -57,29 +53,25 @@ class InfoQuery {
                 CheckForServerUpdatesPayload(
                     channel = it.channel,
                     tag = it.tag,
-                    url = it.url
+                    url = it.url,
                 )
             }
         }
     }
 
-    fun checkForWebUIUpdate(
-        dataFetchingEnvironment: DataFetchingEnvironment
-    ): CompletableFuture<WebUIUpdateInfo> {
+    fun checkForWebUIUpdate(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<WebUIUpdateInfo> {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         return future {
             val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable()
             WebUIUpdateInfo(
                 channel = serverConfig.webUIChannel.value,
                 tag = version,
-                updateAvailable
+                updateAvailable,
             )
         }
     }
 
-    fun getWebUIUpdateStatus(
-        dataFetchingEnvironment: DataFetchingEnvironment
-    ): WebUIUpdateStatus {
+    fun getWebUIUpdateStatus(dataFetchingEnvironment: DataFetchingEnvironment): WebUIUpdateStatus {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
 
         return WebInterfaceManager.status.value

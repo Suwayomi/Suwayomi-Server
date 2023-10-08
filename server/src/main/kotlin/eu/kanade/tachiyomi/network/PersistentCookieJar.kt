@@ -6,8 +6,10 @@ import okhttp3.HttpUrl
 
 // from TachiWeb-Server
 class PersistentCookieJar(private val store: PersistentCookieStore) : CookieJar {
-
-    override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
+    override fun saveFromResponse(
+        url: HttpUrl,
+        cookies: List<Cookie>,
+    ) {
         store.addAll(url, cookies)
     }
 

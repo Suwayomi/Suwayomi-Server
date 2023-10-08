@@ -15,11 +15,16 @@ import suwayomi.tachidesk.global.model.table.GlobalMetaTable
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 object GlobalMeta {
-    fun modifyMeta(userId: Int, key: String, value: String) {
+    fun modifyMeta(
+        userId: Int,
+        key: String,
+        value: String,
+    ) {
         transaction {
-            val meta = transaction {
-                GlobalMetaTable.select { GlobalMetaTable.key eq key and (GlobalMetaTable.user eq userId) }
-            }.firstOrNull()
+            val meta =
+                transaction {
+                    GlobalMetaTable.select { GlobalMetaTable.key eq key and (GlobalMetaTable.user eq userId) }
+                }.firstOrNull()
 
             if (meta == null) {
                 GlobalMetaTable.insert {

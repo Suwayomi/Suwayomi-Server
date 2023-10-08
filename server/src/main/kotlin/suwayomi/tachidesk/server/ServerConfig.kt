@@ -29,11 +29,18 @@ import kotlin.reflect.KProperty
 val mutableConfigValueScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
 const val SERVER_CONFIG_MODULE_NAME = "server"
-class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONFIG_MODULE_NAME) : SystemPropertyOverridableConfigModule(getConfig, moduleName) {
+
+class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONFIG_MODULE_NAME) : SystemPropertyOverridableConfigModule(
+    getConfig,
+    moduleName,
+) {
     inner class OverrideConfigValue<T>(private val configAdapter: ConfigAdapter<T>) {
         private var flow: MutableStateFlow<T>? = null
 
-        operator fun getValue(thisRef: ServerConfig, property: KProperty<*>): MutableStateFlow<T> {
+        operator fun getValue(
+            thisRef: ServerConfig,
+            property: KProperty<*>,
+        ): MutableStateFlow<T> {
             if (flow != null) {
                 return flow!!
             }
@@ -73,6 +80,8 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
     val downloadAsCbz: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val downloadsPath: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
     val autoDownloadNewChapters: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
+    val excludeEntryWithUnreadChapters: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
+    val autoDownloadAheadLimit: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
 
     // requests
     val maxSourcesInParallel: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
@@ -91,6 +100,7 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
 
     // misc
     val debugLogsEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
+    val gqlDebugLogsEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val systemTrayEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
 
     // backup
@@ -102,26 +112,35 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
     // local source
     val localSourcePath: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
 
-    fun <T> subscribeTo(flow: Flow<T>, onChange: suspend (value: T) -> Unit, ignoreInitialValue: Boolean = true) {
-        val actualFlow = if (ignoreInitialValue) {
-            flow.drop(1)
-        } else {
-            flow
-        }
+    fun <T> subscribeTo(
+        flow: Flow<T>,
+        onChange: suspend (value: T) -> Unit,
+        ignoreInitialValue: Boolean = true,
+    ) {
+        val actualFlow =
+            if (ignoreInitialValue) {
+                flow.drop(1)
+            } else {
+                flow
+            }
 
         val sharedFlow = MutableSharedFlow<T>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
         actualFlow.distinctUntilChanged().mapLatest { sharedFlow.emit(it) }.launchIn(mutableConfigValueScope)
         sharedFlow.onEach { onChange(it) }.launchIn(mutableConfigValueScope)
     }
 
-    fun <T> subscribeTo(flow: Flow<T>, onChange: suspend () -> Unit, ignoreInitialValue: Boolean = true) {
+    fun <T> subscribeTo(
+        flow: Flow<T>,
+        onChange: suspend () -> Unit,
+        ignoreInitialValue: Boolean = true,
+    ) {
         subscribeTo(flow, { _ -> onChange() }, ignoreInitialValue)
     }
 
     fun <T> subscribeTo(
         mutableStateFlow: MutableStateFlow<T>,
         onChange: suspend (value: T) -> Unit,
-        ignoreInitialValue: Boolean = true
+        ignoreInitialValue: Boolean = true,
     ) {
         subscribeTo(mutableStateFlow.asStateFlow(), onChange, ignoreInitialValue)
     }
@@ -129,7 +148,7 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
     fun <T> subscribeTo(
         mutableStateFlow: MutableStateFlow<T>,
         onChange: suspend () -> Unit,
-        ignoreInitialValue: Boolean = true
+        ignoreInitialValue: Boolean = true,
     ) {
         subscribeTo(mutableStateFlow.asStateFlow(), { _ -> onChange() }, ignoreInitialValue)
     }

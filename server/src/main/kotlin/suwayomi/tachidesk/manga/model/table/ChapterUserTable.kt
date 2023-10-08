@@ -23,9 +23,10 @@ object ChapterUserTable : IntIdTable() {
     val lastReadAt = long("last_read_at").default(0)
 }
 
-fun ChapterTable.getWithUserData(userId: Int) = leftJoin(
-    ChapterUserTable,
-    onColumn = { ChapterTable.id },
-    otherColumn = { ChapterUserTable.chapter },
-    additionalConstraint = { ChapterUserTable.user eq userId }
-)
+fun ChapterTable.getWithUserData(userId: Int) =
+    leftJoin(
+        ChapterUserTable,
+        onColumn = { ChapterTable.id },
+        otherColumn = { ChapterUserTable.chapter },
+        additionalConstraint = { ChapterUserTable.user eq userId },
+    )

@@ -13,18 +13,14 @@ import suwayomi.tachidesk.server.user.requireUser
 class UpdateQuery {
     private val updater by DI.global.instance<IUpdater>()
 
-    fun updateStatus(
-        dataFetchingEnvironment: DataFetchingEnvironment
-    ): UpdateStatus {
+    fun updateStatus(dataFetchingEnvironment: DataFetchingEnvironment): UpdateStatus {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         return UpdateStatus(updater.status.value)
     }
 
     data class LastUpdateTimestampPayload(val timestamp: Long)
 
-    fun lastUpdateTimestamp(
-        dataFetchingEnvironment: DataFetchingEnvironment
-    ): LastUpdateTimestampPayload {
+    fun lastUpdateTimestamp(dataFetchingEnvironment: DataFetchingEnvironment): LastUpdateTimestampPayload {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         return LastUpdateTimestampPayload(updater.getLastUpdateTimestamp())
     }

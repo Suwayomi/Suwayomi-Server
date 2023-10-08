@@ -20,13 +20,11 @@ import mu.KotlinLogging
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import rx.Observable
 import suwayomi.tachidesk.manga.impl.Source.getSourceList
 import suwayomi.tachidesk.manga.impl.extension.Extension.installExtension
 import suwayomi.tachidesk.manga.impl.extension.Extension.uninstallExtension
 import suwayomi.tachidesk.manga.impl.extension.Extension.updateExtension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList.getExtensionList
-import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import suwayomi.tachidesk.server.applicationSetup
@@ -89,10 +87,10 @@ class TestExtensionCompatibility {
                         logger.info { "${popularCount.getAndIncrement()} - Now fetching popular manga from $source" }
                         try {
                             mangaToFetch += source to (
-                                source.fetchPopularManga(1)
-                                    .awaitSingleRepeat().mangas.firstOrNull()
+                                repeat { source.getPopularManga(1) }
+                                    .mangas.firstOrNull()
                                     ?: throw Exception("Source returned no manga")
-                                )
+                            )
                         } catch (e: Exception) {
                             logger.warn { "Failed to fetch popular manga from $source: ${e.message}" }
                             failedToFetch += source to e
@@ -104,7 +102,7 @@ class TestExtensionCompatibility {
                 failedToFetch.joinToString("\n") { (source, exception) ->
                     "${source.name} (${source.lang.uppercase()}, ${source.id}):" +
                         " ${exception.message}"
-                }
+                },
             )
             logger.info { "Now fetching manga info from ${mangaToFetch.size} sources" }
 
@@ -114,11 +112,13 @@ class TestExtensionCompatibility {
                     semaphore.withPermit {
                         logger.info { "${mangaCount.getAndIncrement()} - Now fetching manga from $source" }
                         try {
-                            manga.copyFrom(source.fetchMangaDetails(manga).awaitSingleRepeat())
+                            manga.copyFrom(repeat { source.getMangaDetails(manga) })
                             manga.initialized = true
                         } catch (e: Exception) {
                             logger.warn {
-                                "Failed to fetch manga info from $source for ${manga.title} (${source.mangaDetailsRequest(manga).url}): ${e.message}"
+                                "Failed to fetch manga info from $source for ${manga.title} (${source.mangaDetailsRequest(
+                                    manga,
+                                ).url}): ${e.message}"
                             }
                             mangaFailedToFetch += Triple(source, manga, e)
                         }
@@ -130,7 +130,7 @@ class TestExtensionCompatibility {
                     "${source.name} (${source.lang}, ${source.id}):" +
                         " ${manga.title} (${source.mangaDetailsRequest(manga).url}):" +
                         " ${exception.message}"
-                }
+                },
             )
             logger.info { "Now fetching manga chapters from ${mangaToFetch.size} sources" }
 
@@ -140,19 +140,24 @@ class TestExtensionCompatibility {
                     semaphore.withPermit {
                         logger.info { "${chapterCount.getAndIncrement()} - Now fetching manga chapters from $source" }
                         try {
-                            chaptersToFetch += Triple(
-                                source,
-                                manga,
-                                source.fetchChapterList(manga).awaitSingleRepeat().firstOrNull() ?: throw Exception("Source returned no chapters")
-                            )
+                            chaptersToFetch +=
+                                Triple(
+                                    source,
+                                    manga,
+                                    repeat { source.getChapterList(manga) }.firstOrNull() ?: throw Exception("Source returned no chapters"),
+                                )
                         } catch (e: Exception) {
                             logger.warn {
-                                "Failed to fetch manga chapters from $source for ${manga.title} (${source.mangaDetailsRequest(manga).url}): ${e.message}"
+                                "Failed to fetch manga chapters from $source for ${manga.title} (${source.mangaDetailsRequest(
+                                    manga,
+                                ).url}): ${e.message}"
                             }
                             chaptersFailedToFetch += Triple(source, manga, e)
                         } catch (e: NoClassDefFoundError) {
                             logger.warn {
-                                "Failed to fetch manga chapters from $source for ${manga.title} (${source.mangaDetailsRequest(manga).url}): ${e.message}"
+                                "Failed to fetch manga chapters from $source for ${manga.title} (${source.mangaDetailsRequest(
+                                    manga,
+                                ).url}): ${e.message}"
                             }
                             chaptersFailedToFetch += Triple(source, manga, e)
                         }
@@ -165,7 +170,7 @@ class TestExtensionCompatibility {
                     "${source.name} (${source.lang}, ${source.id}):" +
                         " ${manga.title} (${source.mangaDetailsRequest(manga).url}):" +
                         " ${exception.message}"
-                }
+                },
             )
 
             val pageListCount = AtomicInteger(1)
@@ -174,10 +179,12 @@ class TestExtensionCompatibility {
                     semaphore.withPermit {
                         logger.info { "${pageListCount.getAndIncrement()} - Now fetching page list from $source" }
                         try {
-                            source.fetchPageList(chapter).awaitSingleRepeat()
+                            repeat { source.getPageList(chapter) }
                         } catch (e: Exception) {
                             logger.warn {
-                                "Failed to fetch manga info from $source for ${manga.title} (${source.mangaDetailsRequest(manga).url}): ${e.message}"
+                                "Failed to fetch manga info from $source for ${manga.title} (${source.mangaDetailsRequest(
+                                    manga,
+                                ).url}): ${e.message}"
                             }
                             chaptersPageListFailedToFetch += Triple(source, manga to chapter, e)
                         }
@@ -190,17 +197,18 @@ class TestExtensionCompatibility {
                     "${source.name} (${source.lang}, ${source.id}):" +
                         " ${manga.first.title} (${source.mangaDetailsRequest(manga.first).url}):" +
                         " ${manga.second.name} (${manga.second.url}): ${exception.message}"
-                }
+                },
             )
         }
     }
 
-    private suspend fun <T> Observable<T>.awaitSingleRepeat(): T {
+    private suspend fun <T> repeat(block: suspend () -> T): T {
         for (i in 1..2) {
             try {
-                return awaitSingle()
-            } catch (e: Exception) {}
+                return block()
+            } catch (e: Exception) {
+            }
         }
-        return awaitSingle()
+        return block()
     }
 }

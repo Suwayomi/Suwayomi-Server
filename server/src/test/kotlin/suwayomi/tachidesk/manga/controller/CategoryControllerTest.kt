@@ -36,7 +36,7 @@ class CategoryControllerTest : ApplicationTest() {
     @AfterEach
     internal fun tearDown() {
         clearTables(
-            CategoryTable
+            CategoryTable,
         )
     }
 }

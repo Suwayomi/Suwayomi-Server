@@ -23,12 +23,13 @@ object CategoryTable : IntIdTable() {
     val user = reference("user", UserTable, ReferenceOption.CASCADE)
 }
 
-fun CategoryTable.toDataClass(categoryEntry: ResultRow) = CategoryDataClass(
-    categoryEntry[id].value,
-    categoryEntry[order],
-    categoryEntry[name],
-    categoryEntry[isDefault],
-    Category.getCategorySize(categoryEntry[user].value, categoryEntry[id].value),
-    IncludeInUpdate.fromValue(categoryEntry[includeInUpdate]),
-    Category.getCategoryMetaMap(categoryEntry[user].value, categoryEntry[id].value)
-)
+fun CategoryTable.toDataClass(categoryEntry: ResultRow) =
+    CategoryDataClass(
+        categoryEntry[id].value,
+        categoryEntry[order],
+        categoryEntry[name],
+        categoryEntry[isDefault],
+        Category.getCategorySize(categoryEntry[user].value, categoryEntry[id].value),
+        IncludeInUpdate.fromValue(categoryEntry[includeInUpdate]),
+        Category.getCategoryMetaMap(categoryEntry[user].value, categoryEntry[id].value),
+    )

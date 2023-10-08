@@ -13,6 +13,7 @@ import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.source.local.LocalSource
 import io.javalin.plugin.json.JavalinJackson
 import io.javalin.plugin.json.JsonMapper
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
@@ -27,15 +28,17 @@ import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.Updater
 import suwayomi.tachidesk.manga.impl.util.lang.renameTo
 import suwayomi.tachidesk.server.database.databaseUp
+import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
 import suwayomi.tachidesk.server.util.SystemTray
 import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
 import xyz.nulldev.ts.config.ApplicationRootDir
+import xyz.nulldev.ts.config.BASE_LOGGER_NAME
 import xyz.nulldev.ts.config.ConfigKodeinModule
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.initLoggerConfig
-import xyz.nulldev.ts.config.setLogLevel
+import xyz.nulldev.ts.config.setLogLevelFor
 import java.io.File
 import java.security.Security
 import java.util.Locale
@@ -44,7 +47,7 @@ private val logger = KotlinLogging.logger {}
 
 class ApplicationDirs(
     val dataRoot: String = ApplicationRootDir,
-    val tempRoot: String = "${System.getProperty("java.io.tmpdir")}/Tachidesk"
+    val tempRoot: String = "${System.getProperty("java.io.tmpdir")}/Tachidesk",
 ) {
     val extensionsRoot = "$dataRoot/extensions"
     val downloadsRoot get() = serverConfig.downloadsPath.value.ifBlank { "$dataRoot/downloads" }
@@ -70,21 +73,28 @@ fun applicationSetup() {
 
     // register Tachidesk's config which is dubbed "ServerConfig"
     GlobalConfigManager.registerModule(
-        ServerConfig.register { GlobalConfigManager.config }
+        ServerConfig.register { GlobalConfigManager.config },
     )
-
-    serverConfig.subscribeTo(serverConfig.debugLogsEnabled, { debugLogsEnabled ->
-        if (debugLogsEnabled) {
-            setLogLevel(Level.DEBUG)
-        } else {
-            setLogLevel(Level.INFO)
-        }
-    }, ignoreInitialValue = false)
 
     // Application dirs
     val applicationDirs = ApplicationDirs()
 
     initLoggerConfig(applicationDirs.dataRoot)
+
+    val setupLogLevelUpdating = { configFlow: MutableStateFlow<Boolean>, loggerNames: List<String> ->
+        serverConfig.subscribeTo(configFlow, { debugLogsEnabled ->
+            if (debugLogsEnabled) {
+                loggerNames.forEach { loggerName -> setLogLevelFor(loggerName, Level.DEBUG) }
+            } else {
+                loggerNames.forEach { loggerName -> setLogLevelFor(loggerName, Level.ERROR) }
+            }
+        }, ignoreInitialValue = false)
+    }
+
+    setupLogLevelUpdating(serverConfig.debugLogsEnabled, listOf(BASE_LOGGER_NAME))
+    // gql "ExecutionStrategy" spams logs with "... completing field ..."
+    // gql "notprivacysafe" logs every received request multiple times (received, parsing, validating, executing)
+    setupLogLevelUpdating(serverConfig.gqlDebugLogsEnabled, listOf("graphql", "notprivacysafe"))
 
     logger.info("Running Tachidesk ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")
 
@@ -100,7 +110,7 @@ fun applicationSetup() {
             bind<IUpdater>() with singleton { updater }
             bind<JsonMapper>() with singleton { JavalinJackson() }
             bind<Json>() with singleton { Json { ignoreUnknownKeys = true } }
-        }
+        },
     )
 
     logger.debug("Data Root directory is set to: ${applicationDirs.dataRoot}")
@@ -134,7 +144,7 @@ fun applicationSetup() {
         applicationDirs.extensionsRoot + "/icon",
         applicationDirs.tempThumbnailCacheRoot,
         applicationDirs.downloadsRoot,
-        applicationDirs.localMangaRoot
+        applicationDirs.localMangaRoot,
     ).forEach {
         File(it).mkdirs()
     }
@@ -195,7 +205,8 @@ fun applicationSetup() {
             } else {
                 SystemTray.remove()
             }
-        } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
+        } catch (e: Throwable) {
+            // cover both java.lang.Exception and java.lang.Error
             e.printStackTrace()
         }
     }, ignoreInitialValue = false)
@@ -210,7 +221,7 @@ fun applicationSetup() {
         combine(
             serverConfig.socksProxyEnabled,
             serverConfig.socksProxyHost,
-            serverConfig.socksProxyPort
+            serverConfig.socksProxyPort,
         ) { proxyEnabled, proxyHost, proxyPort ->
             Triple(proxyEnabled, proxyHost, proxyPort)
         },
@@ -224,7 +235,7 @@ fun applicationSetup() {
                 System.getProperties()["socksProxyPort"] = ""
             }
         },
-        ignoreInitialValue = false
+        ignoreInitialValue = false,
     )
 
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga

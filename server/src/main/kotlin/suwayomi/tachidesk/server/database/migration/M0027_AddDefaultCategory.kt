@@ -11,7 +11,8 @@ import de.neonew.exposed.migrations.helpers.SQLMigration
 
 @Suppress("ClassName", "unused")
 class M0027_AddDefaultCategory : SQLMigration() {
-    override val sql: String = """
+    override val sql: String =
+        """
         INSERT INTO CATEGORY (ID, NAME, IS_DEFAULT, "ORDER", INCLUDE_IN_UPDATE) VALUES (0, 'Default', TRUE, 0, -1)
-    """.trimIndent()
+        """.trimIndent()
 }

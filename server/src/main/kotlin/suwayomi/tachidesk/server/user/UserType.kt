@@ -5,7 +5,7 @@ sealed class UserType {
 
     class User(
         val id: Int,
-        val permissions: List<Permissions>
+        val permissions: List<Permissions>,
     ) : UserType()
 
     data object Visitor : UserType()

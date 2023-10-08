@@ -22,7 +22,10 @@ class CookieManagerImpl : CookieManager() {
         return acceptCookie
     }
 
-    override fun setAcceptThirdPartyCookies(webview: WebView?, accept: Boolean) {
+    override fun setAcceptThirdPartyCookies(
+        webview: WebView?,
+        accept: Boolean,
+    ) {
         acceptThirdPartyCookies = accept
     }
 
@@ -30,29 +33,38 @@ class CookieManagerImpl : CookieManager() {
         return acceptThirdPartyCookies
     }
 
-    override fun setCookie(url: String, value: String?) {
-        val uri = if (url.startsWith("http")) {
-            URI(url)
-        } else {
-            URI("http://$url")
-        }
+    override fun setCookie(
+        url: String,
+        value: String?,
+    ) {
+        val uri =
+            if (url.startsWith("http")) {
+                URI(url)
+            } else {
+                URI("http://$url")
+            }
 
         HttpCookie.parse(value).forEach {
             cookieHandler.cookieStore.add(uri, it)
         }
     }
 
-    override fun setCookie(url: String, value: String?, callback: ValueCallback<Boolean>?) {
+    override fun setCookie(
+        url: String,
+        value: String?,
+        callback: ValueCallback<Boolean>?,
+    ) {
         setCookie(url, value)
         callback?.onReceiveValue(true)
     }
 
     override fun getCookie(url: String): String {
-        val uri = if (url.startsWith("http")) {
-            URI(url)
-        } else {
-            URI("http://$url")
-        }
+        val uri =
+            if (url.startsWith("http")) {
+                URI(url)
+            } else {
+                URI("http://$url")
+            }
         return cookieHandler.cookieStore.get(uri)
             .joinToString("; ") { "${it.name}=${it.value}" }
     }

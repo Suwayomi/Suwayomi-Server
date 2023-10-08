@@ -27,18 +27,23 @@ import java.time.Instant
 object Library {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    suspend fun addMangaToLibrary(userId: Int, mangaId: Int) {
+    suspend fun addMangaToLibrary(
+        userId: Int,
+        mangaId: Int,
+    ) {
         val manga = getManga(userId, mangaId)
         if (!manga.inLibrary) {
             transaction {
-                val defaultCategories = CategoryTable.select {
-                    MangaUserTable.user eq userId and
-                        (CategoryTable.isDefault eq true) and
-                        (CategoryTable.id neq Category.DEFAULT_CATEGORY_ID)
-                }.toList()
-                val existingCategories = CategoryMangaTable.select {
-                    MangaUserTable.user eq userId and (CategoryMangaTable.manga eq mangaId)
-                }.toList()
+                val defaultCategories =
+                    CategoryTable.select {
+                        MangaUserTable.user eq userId and
+                            (CategoryTable.isDefault eq true) and
+                            (CategoryTable.id neq Category.DEFAULT_CATEGORY_ID)
+                    }.toList()
+                val existingCategories =
+                    CategoryMangaTable.select {
+                        MangaUserTable.user eq userId and (CategoryMangaTable.manga eq mangaId)
+                    }.toList()
 
                 if (MangaUserTable.select { MangaUserTable.user eq userId and (MangaUserTable.manga eq mangaId) }.isEmpty()) {
                     MangaUserTable.insert {
@@ -69,7 +74,10 @@ object Library {
         }
     }
 
-    suspend fun removeMangaFromLibrary(userId: Int, mangaId: Int) {
+    suspend fun removeMangaFromLibrary(
+        userId: Int,
+        mangaId: Int,
+    ) {
         val manga = getManga(userId, mangaId)
         if (manga.inLibrary) {
             transaction {
@@ -84,11 +92,12 @@ object Library {
 
     fun handleMangaThumbnail(mangaId: Int) {
         scope.launch {
-            val mangaInLibrary = transaction {
-                MangaUserTable.select {
-                    MangaUserTable.manga eq mangaId and (MangaUserTable.inLibrary eq true)
-                }.isNotEmpty()
-            }
+            val mangaInLibrary =
+                transaction {
+                    MangaUserTable.select {
+                        MangaUserTable.manga eq mangaId and (MangaUserTable.inLibrary eq true)
+                    }.isNotEmpty()
+                }
             try {
                 if (mangaInLibrary) {
                     ThumbnailDownloadHelper.download(mangaId)

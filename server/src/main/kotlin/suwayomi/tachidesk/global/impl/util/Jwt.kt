@@ -40,7 +40,7 @@ object Jwt {
 
     class JwtTokens(
         val accessToken: String,
-        val refreshToken: String
+        val refreshToken: String,
     )
 
     fun generateJwt(userId: Int): JwtTokens {
@@ -49,7 +49,7 @@ object Jwt {
 
         return JwtTokens(
             accessToken = accessToken,
-            refreshToken = refreshToken
+            refreshToken = refreshToken,
         )
     }
 
@@ -78,9 +78,10 @@ object Jwt {
             } else {
                 UserType.User(
                     id = user,
-                    permissions = permissions.mapNotNull { permission ->
-                        Permissions.entries.find { it.name == permission }
-                    }
+                    permissions =
+                        permissions.mapNotNull { permission ->
+                            Permissions.entries.find { it.name == permission }
+                        },
                 )
             }
         } catch (e: JWTVerificationException) {
@@ -88,24 +89,25 @@ object Jwt {
         }
     }
 
-    private fun createAccessToken(
-        userId: Int
-    ): String {
-        val jwt = JWT.create()
-            .withIssuer(ISSUER)
-            .withAudience(AUDIENCE)
-            .withSubject(userId.toString())
-            .withClaim("token_type", "access")
-            .withExpiresAt(Instant.now().plusSeconds(accessTokenExpiry.inWholeSeconds))
+    private fun createAccessToken(userId: Int): String {
+        val jwt =
+            JWT.create()
+                .withIssuer(ISSUER)
+                .withAudience(AUDIENCE)
+                .withSubject(userId.toString())
+                .withClaim("token_type", "access")
+                .withExpiresAt(Instant.now().plusSeconds(accessTokenExpiry.inWholeSeconds))
 
-        val roles = transaction {
-            UserRolesTable.select { UserRolesTable.user eq userId }.toList()
-                .map { it[UserRolesTable.role] }
-        }
-        val permissions = transaction {
-            UserPermissionsTable.select { UserPermissionsTable.user eq userId }.toList()
-                .map { it[UserPermissionsTable.permission] }
-        }
+        val roles =
+            transaction {
+                UserRolesTable.select { UserRolesTable.user eq userId }.toList()
+                    .map { it[UserRolesTable.role] }
+            }
+        val permissions =
+            transaction {
+                UserPermissionsTable.select { UserPermissionsTable.user eq userId }.toList()
+                    .map { it[UserPermissionsTable.permission] }
+            }
 
         jwt.withClaim("roles", roles)
 
@@ -114,9 +116,7 @@ object Jwt {
         return jwt.sign(algorithm)
     }
 
-    private fun createRefreshToken(
-        userId: Int
-    ): String {
+    private fun createRefreshToken(userId: Int): String {
         return JWT.create()
             .withIssuer(ISSUER)
             .withAudience(AUDIENCE)

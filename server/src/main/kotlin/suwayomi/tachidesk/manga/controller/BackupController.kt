@@ -20,162 +20,171 @@ import suwayomi.tachidesk.server.util.withOperation
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 object BackupController {
-
     /** expects a Tachiyomi protobuf backup in the body */
-    val protobufImport = handler(
-        documentWith = {
-            withOperation {
-                summary("Restore a backup")
-                description("Expects a Tachiyomi protobuf backup in the body")
-            }
-        },
-        behaviorOf = { ctx ->
-            val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-            ctx.future(
-                future {
-                    ProtoBackupImport.performRestore(userId, ctx.bodyAsInputStream())
+    val protobufImport =
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("Restore a backup")
+                    description("Expects a Tachiyomi protobuf backup in the body")
                 }
-            )
-        },
-        withResults = {
-            httpCode(HttpCode.OK)
-        }
-    )
+            },
+            behaviorOf = { ctx ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.future(
+                    future {
+                        ProtoBackupImport.performRestore(userId, ctx.bodyAsInputStream())
+                    },
+                )
+            },
+            withResults = {
+                httpCode(HttpCode.OK)
+            },
+        )
 
     /** expects a Tachiyomi protobuf backup as a file upload, the file must be named "backup.proto.gz" */
-    val protobufImportFile = handler(
-        documentWith = {
-            withOperation {
-                summary("Restore a backup file")
-                description("Expects a Tachiyomi protobuf backup as a file upload, the file must be named \"backup.proto.gz\"")
-            }
-            uploadedFile("backup.proto.gz") {
-                it.description("Protobuf backup")
-                it.required(true)
-            }
-        },
-        behaviorOf = { ctx ->
-            // TODO: rewrite this with ctx.uploadedFiles(), don't call the multipart field "backup.proto.gz"
-            val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-            ctx.future(
-                future {
-                    ProtoBackupImport.performRestore(userId, ctx.uploadedFile("backup.proto.gz")!!.content)
+    val protobufImportFile =
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("Restore a backup file")
+                    description("Expects a Tachiyomi protobuf backup as a file upload, the file must be named \"backup.proto.gz\"")
                 }
-            )
-        },
-        withResults = {
-            httpCode(HttpCode.OK)
-            httpCode(HttpCode.NOT_FOUND)
-        }
-    )
+                uploadedFile("backup.proto.gz") {
+                    it.description("Protobuf backup")
+                    it.required(true)
+                }
+            },
+            behaviorOf = { ctx ->
+                // TODO: rewrite this with ctx.uploadedFiles(), don't call the multipart field "backup.proto.gz"
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.future(
+                    future {
+                        ProtoBackupImport.performRestore(userId, ctx.uploadedFile("backup.proto.gz")!!.content)
+                    },
+                )
+            },
+            withResults = {
+                httpCode(HttpCode.OK)
+                httpCode(HttpCode.NOT_FOUND)
+            },
+        )
 
     /** returns a Tachiyomi protobuf backup created from the current database as a body */
-    val protobufExport = handler(
-        documentWith = {
-            withOperation {
-                summary("Create a backup")
-                description("Returns a Tachiyomi protobuf backup created from the current database as a body")
-            }
-        },
-        behaviorOf = { ctx ->
-            val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-            ctx.contentType("application/octet-stream")
-            ctx.future(
-                future {
-                    ProtoBackupExport.createBackup(
-                        userId,
-                        BackupFlags(
-                            includeManga = true,
-                            includeCategories = true,
-                            includeChapters = true,
-                            includeTracking = true,
-                            includeHistory = true
-                        )
-                    )
+    val protobufExport =
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("Create a backup")
+                    description("Returns a Tachiyomi protobuf backup created from the current database as a body")
                 }
-            )
-        },
-        withResults = {
-            stream(HttpCode.OK)
-        }
-    )
+            },
+            behaviorOf = { ctx ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.contentType("application/octet-stream")
+                ctx.future(
+                    future {
+                        ProtoBackupExport.createBackup(
+                            userId,
+                            BackupFlags(
+                                includeManga = true,
+                                includeCategories = true,
+                                includeChapters = true,
+                                includeTracking = true,
+                                includeHistory = true,
+                            ),
+                        )
+                    },
+                )
+            },
+            withResults = {
+                stream(HttpCode.OK)
+            },
+        )
 
     /** returns a Tachiyomi protobuf backup created from the current database as a file */
-    val protobufExportFile = handler(
-        documentWith = {
-            withOperation {
-                summary("Create a backup file")
-                description("Returns a Tachiyomi protobuf backup created from the current database as a file")
-            }
-        },
-        behaviorOf = { ctx ->
-            val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-            ctx.contentType("application/octet-stream")
-
-            ctx.header("Content-Disposition", """attachment; filename="${ProtoBackupExport.getBackupFilename()}"""")
-            ctx.future(
-                future {
-                    ProtoBackupExport.createBackup(
-                        userId,
-                        BackupFlags(
-                            includeManga = true,
-                            includeCategories = true,
-                            includeChapters = true,
-                            includeTracking = true,
-                            includeHistory = true
-                        )
-                    )
+    val protobufExportFile =
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("Create a backup file")
+                    description("Returns a Tachiyomi protobuf backup created from the current database as a file")
                 }
-            )
-        },
-        withResults = {
-            stream(HttpCode.OK)
-        }
-    )
+            },
+            behaviorOf = { ctx ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.contentType("application/octet-stream")
+
+                ctx.header("Content-Disposition", """attachment; filename="${ProtoBackupExport.getBackupFilename()}"""")
+                ctx.future(
+                    future {
+                        ProtoBackupExport.createBackup(
+                            userId,
+                            BackupFlags(
+                                includeManga = true,
+                                includeCategories = true,
+                                includeChapters = true,
+                                includeTracking = true,
+                                includeHistory = true,
+                            ),
+                        )
+                    },
+                )
+            },
+            withResults = {
+                stream(HttpCode.OK)
+            },
+        )
 
     /** Reports missing sources and trackers, expects a Tachiyomi protobuf backup in the body */
-    val protobufValidate = handler(
-        documentWith = {
-            withOperation {
-                summary("Validate a backup")
-                description("Reports missing sources and trackers, expects a Tachiyomi protobuf backup in the body")
-            }
-        },
-        behaviorOf = { ctx ->
-            ctx.getAttribute(Attribute.TachideskUser).requireUser()
-            ctx.future(
-                future {
-                    ProtoBackupValidator.validate(ctx.bodyAsInputStream())
+    val protobufValidate =
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("Validate a backup")
+                    description("Reports missing sources and trackers, expects a Tachiyomi protobuf backup in the body")
                 }
-            )
-        },
-        withResults = {
-            json<ProtoBackupValidator.ValidationResult>(HttpCode.OK)
-        }
-    )
+            },
+            behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.future(
+                    future {
+                        ProtoBackupValidator.validate(ctx.bodyAsInputStream())
+                    },
+                )
+            },
+            withResults = {
+                json<ProtoBackupValidator.ValidationResult>(HttpCode.OK)
+            },
+        )
 
     /** Reports missing sources and trackers, expects a Tachiyomi protobuf backup as a file upload, the file must be named "backup.proto.gz" */
-    val protobufValidateFile = handler(
-        documentWith = {
-            withOperation {
-                summary("Validate a backup file")
-                description("Reports missing sources and trackers, expects a Tachiyomi protobuf backup as a file upload, the file must be named \"backup.proto.gz\"")
-            }
-            uploadedFile("backup.proto.gz") {
-                it.description("Protobuf backup")
-                it.required(true)
-            }
-        },
-        behaviorOf = { ctx ->
-            ctx.getAttribute(Attribute.TachideskUser).requireUser()
-            ctx.future(
-                future {
-                    ProtoBackupValidator.validate(ctx.uploadedFile("backup.proto.gz")!!.content)
+    val protobufValidateFile =
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("Validate a backup file")
+                    description(
+                        "Reports missing sources and trackers, " +
+                            "expects a Tachiyomi protobuf backup as a file upload, " +
+                            "the file must be named \"backup.proto.gz\"",
+                    )
                 }
-            )
-        },
-        withResults = {
-            json<ProtoBackupValidator.ValidationResult>(HttpCode.OK)
-        }
-    )
+                uploadedFile("backup.proto.gz") {
+                    it.description("Protobuf backup")
+                    it.required(true)
+                }
+            },
+            behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.future(
+                    future {
+                        ProtoBackupValidator.validate(ctx.uploadedFile("backup.proto.gz")!!.content)
+                    },
+                )
+            },
+            withResults = {
+                json<ProtoBackupValidator.ValidationResult>(HttpCode.OK)
+            },
+        )
 }

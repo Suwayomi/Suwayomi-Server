@@ -13,7 +13,6 @@ import java.io.PipedOutputStream
  * Loader used to load a chapter from a .rar or .cbr file.
  */
 class RarPageLoader(file: File) : PageLoader {
-
     private val rar = Archive(file)
 
     override suspend fun getPages(): List<ReaderPage> {
@@ -35,7 +34,10 @@ class RarPageLoader(file: File) : PageLoader {
     /**
      * Returns an input stream for the given [header].
      */
-    private fun getStream(rar: Archive, header: FileHeader): InputStream {
+    private fun getStream(
+        rar: Archive,
+        header: FileHeader,
+    ): InputStream {
         val pipeIn = PipedInputStream()
         val pipeOut = PipedOutputStream(pipeIn)
         synchronized(this) {

@@ -37,24 +37,26 @@ object ChapterTable : IntIdTable() {
     val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
 }
 
-fun ChapterTable.toDataClass(userId: Int, chapterEntry: ResultRow) =
-    ChapterDataClass(
-        id = chapterEntry[id].value,
-        url = chapterEntry[url],
-        name = chapterEntry[name],
-        uploadDate = chapterEntry[date_upload],
-        chapterNumber = chapterEntry[chapter_number],
-        scanlator = chapterEntry[scanlator],
-        mangaId = chapterEntry[manga].value,
-        read = chapterEntry.getOrNull(ChapterUserTable.isRead) ?: false,
-        bookmarked = chapterEntry.getOrNull(ChapterUserTable.isBookmarked) ?: false,
-        lastPageRead = chapterEntry.getOrNull(ChapterUserTable.lastPageRead) ?: 0,
-        lastReadAt = chapterEntry.getOrNull(ChapterUserTable.lastReadAt) ?: 0,
-        index = chapterEntry[sourceOrder],
-        fetchedAt = chapterEntry[fetchedAt],
-        realUrl = chapterEntry[realUrl],
-        downloaded = chapterEntry[isDownloaded],
-        pageCount = chapterEntry[pageCount],
-        chapterCount = transaction { ChapterTable.select { manga eq chapterEntry[manga].value }.count().toInt() },
-        meta = getChapterMetaMap(userId, chapterEntry[id])
-    )
+fun ChapterTable.toDataClass(
+    userId: Int,
+    chapterEntry: ResultRow,
+) = ChapterDataClass(
+    id = chapterEntry[id].value,
+    url = chapterEntry[url],
+    name = chapterEntry[name],
+    uploadDate = chapterEntry[date_upload],
+    chapterNumber = chapterEntry[chapter_number],
+    scanlator = chapterEntry[scanlator],
+    mangaId = chapterEntry[manga].value,
+    read = chapterEntry.getOrNull(ChapterUserTable.isRead) ?: false,
+    bookmarked = chapterEntry.getOrNull(ChapterUserTable.isBookmarked) ?: false,
+    lastPageRead = chapterEntry.getOrNull(ChapterUserTable.lastPageRead) ?: 0,
+    lastReadAt = chapterEntry.getOrNull(ChapterUserTable.lastReadAt) ?: 0,
+    index = chapterEntry[sourceOrder],
+    fetchedAt = chapterEntry[fetchedAt],
+    realUrl = chapterEntry[realUrl],
+    downloaded = chapterEntry[isDownloaded],
+    pageCount = chapterEntry[pageCount],
+    chapterCount = transaction { ChapterTable.select { manga eq chapterEntry[manga].value }.count().toInt() },
+    meta = getChapterMetaMap(userId, chapterEntry[id]),
+)

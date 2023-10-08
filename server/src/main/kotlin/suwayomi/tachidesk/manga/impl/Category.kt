@@ -31,17 +31,21 @@ object Category {
     /**
      * The new category will be placed at the end of the list
      */
-    fun createCategory(userId: Int, name: String): Int {
+    fun createCategory(
+        userId: Int,
+        name: String,
+    ): Int {
         // creating a category named Default is illegal
         if (name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)) return -1
 
         return transaction {
             if (CategoryTable.select { CategoryTable.name eq name and (CategoryTable.user eq userId) }.firstOrNull() == null) {
-                val newCategoryId = CategoryTable.insertAndGetId {
-                    it[CategoryTable.name] = name
-                    it[CategoryTable.order] = Int.MAX_VALUE
-                    it[CategoryTable.user] = userId
-                }.value
+                val newCategoryId =
+                    CategoryTable.insertAndGetId {
+                        it[CategoryTable.name] = name
+                        it[CategoryTable.order] = Int.MAX_VALUE
+                        it[CategoryTable.user] = userId
+                    }.value
 
                 normalizeCategories(userId)
 
@@ -52,10 +56,21 @@ object Category {
         }
     }
 
-    fun updateCategory(userId: Int, categoryId: Int, name: String?, isDefault: Boolean?, includeInUpdate: Int?) {
+    fun updateCategory(
+        userId: Int,
+        categoryId: Int,
+        name: String?,
+        isDefault: Boolean?,
+        includeInUpdate: Int?,
+    ) {
         transaction {
             CategoryTable.update({ CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }) {
-                if (categoryId != DEFAULT_CATEGORY_ID && name != null && !name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)) it[CategoryTable.name] = name
+                if (
+                    categoryId != DEFAULT_CATEGORY_ID && name != null &&
+                    !name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)
+                ) {
+                    it[CategoryTable.name] = name
+                }
                 if (categoryId != DEFAULT_CATEGORY_ID && isDefault != null) it[CategoryTable.isDefault] = isDefault
                 if (includeInUpdate != null) it[CategoryTable.includeInUpdate] = includeInUpdate
             }
@@ -65,12 +80,17 @@ object Category {
     /**
      * Move the category from order number `from` to `to`
      */
-    fun reorderCategory(userId: Int, from: Int, to: Int) {
+    fun reorderCategory(
+        userId: Int,
+        from: Int,
+        to: Int,
+    ) {
         if (from == 0 || to == 0) return
         transaction {
-            val categories = CategoryTable.select { CategoryTable.id neq DEFAULT_CATEGORY_ID and (CategoryTable.user eq userId) }
-                .orderBy(CategoryTable.order to SortOrder.ASC)
-                .toMutableList()
+            val categories =
+                CategoryTable.select { CategoryTable.id neq DEFAULT_CATEGORY_ID and (CategoryTable.user eq userId) }
+                    .orderBy(CategoryTable.order to SortOrder.ASC)
+                    .toMutableList()
             categories.add(to - 1, categories.removeAt(from - 1))
             categories.forEachIndexed { index, cat ->
                 CategoryTable.update({ CategoryTable.id eq cat[CategoryTable.id].value and (CategoryTable.user eq userId) }) {
@@ -81,7 +101,10 @@ object Category {
         }
     }
 
-    fun removeCategory(userId: Int, categoryId: Int) {
+    fun removeCategory(
+        userId: Int,
+        categoryId: Int,
+    ) {
         if (categoryId == DEFAULT_CATEGORY_ID) return
         transaction {
             CategoryTable.deleteWhere { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }
@@ -103,14 +126,15 @@ object Category {
         }
     }
 
-    private fun needsDefaultCategory(userId: Int) = transaction {
-        MangaTable.getWithUserData(userId)
-            .leftJoin(CategoryMangaTable)
-            .select { MangaUserTable.inLibrary eq true and (CategoryMangaTable.user eq userId) }
-            .andWhere { CategoryMangaTable.manga.isNull() }
-            .empty()
-            .not()
-    }
+    private fun needsDefaultCategory(userId: Int) =
+        transaction {
+            MangaTable.getWithUserData(userId)
+                .leftJoin(CategoryMangaTable)
+                .select { MangaUserTable.inLibrary eq true and (CategoryMangaTable.user eq userId) }
+                .andWhere { CategoryMangaTable.manga.isNull() }
+                .empty()
+                .not()
+        }
 
     const val DEFAULT_CATEGORY_ID = 0
     const val DEFAULT_CATEGORY_NAME = "Default"
@@ -132,7 +156,10 @@ object Category {
         }
     }
 
-    fun getCategoryById(userId: Int, categoryId: Int): CategoryDataClass? {
+    fun getCategoryById(
+        userId: Int,
+        categoryId: Int,
+    ): CategoryDataClass? {
         return transaction {
             CategoryTable.select { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }.firstOrNull()?.let {
                 CategoryTable.toDataClass(it)
@@ -140,7 +167,10 @@ object Category {
         }
     }
 
-    fun getCategorySize(userId: Int, categoryId: Int): Int {
+    fun getCategorySize(
+        userId: Int,
+        categoryId: Int,
+    ): Int {
         return transaction {
             if (categoryId == DEFAULT_CATEGORY_ID) {
                 MangaTable.getWithUserData(userId)
@@ -156,22 +186,31 @@ object Category {
         }
     }
 
-    fun getCategoryMetaMap(userId: Int, categoryId: Int): Map<String, String> {
+    fun getCategoryMetaMap(
+        userId: Int,
+        categoryId: Int,
+    ): Map<String, String> {
         return transaction {
             CategoryMetaTable.select { CategoryMetaTable.ref eq categoryId and (CategoryMetaTable.user eq userId) }
                 .associate { it[CategoryMetaTable.key] to it[CategoryMetaTable.value] }
         }
     }
 
-    fun modifyMeta(userId: Int, categoryId: Int, key: String, value: String) {
+    fun modifyMeta(
+        userId: Int,
+        categoryId: Int,
+        key: String,
+        value: String,
+    ) {
         transaction {
-            val meta = transaction {
-                CategoryMetaTable.select {
-                    (CategoryMetaTable.ref eq categoryId) and
-                        (CategoryMetaTable.user eq userId) and
-                        (CategoryMetaTable.key eq key)
-                }
-            }.firstOrNull()
+            val meta =
+                transaction {
+                    CategoryMetaTable.select {
+                        (CategoryMetaTable.ref eq categoryId) and
+                            (CategoryMetaTable.user eq userId) and
+                            (CategoryMetaTable.key eq key)
+                    }
+                }.firstOrNull()
 
             if (meta == null) {
                 CategoryMetaTable.insert {
@@ -186,7 +225,7 @@ object Category {
                         (CategoryMetaTable.ref eq categoryId) and
                             (CategoryMetaTable.user eq userId) and
                             (CategoryMetaTable.key eq key)
-                    }
+                    },
                 ) {
                     it[CategoryMetaTable.value] = value
                 }

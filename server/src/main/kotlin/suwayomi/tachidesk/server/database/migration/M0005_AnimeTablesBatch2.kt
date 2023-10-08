@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:property-naming")
+
 package suwayomi.tachidesk.server.database.migration
 
 /*
@@ -35,7 +37,8 @@ class M0005_AnimeTablesBatch2 : AddTableMigration() {
     }
 
     override val tables: Array<Table>
-        get() = arrayOf(
-            AnimeTable()
-        )
+        get() =
+            arrayOf(
+                AnimeTable(),
+            )
 }

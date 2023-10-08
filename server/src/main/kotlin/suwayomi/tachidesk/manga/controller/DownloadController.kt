@@ -42,167 +42,175 @@ object DownloadController {
     }
 
     /** Start the downloader */
-    val start = handler(
-        documentWith = {
-            withOperation {
-                summary("Downloader start")
-                description("Start the downloader")
-            }
-        },
-        behaviorOf = { ctx ->
-            ctx.getAttribute(Attribute.TachideskUser).requireUser()
-            DownloadManager.start()
-        },
-        withResults = {
-            httpCode(HttpCode.OK)
-        }
-    )
+    val start =
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("Downloader start")
+                    description("Start the downloader")
+                }
+            },
+            behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                DownloadManager.start()
+            },
+            withResults = {
+                httpCode(HttpCode.OK)
+            },
+        )
 
     /** Stop the downloader */
-    val stop = handler(
-        documentWith = {
-            withOperation {
-                summary("Downloader stop")
-                description("Stop the downloader")
-            }
-        },
-        behaviorOf = { ctx ->
-            ctx.getAttribute(Attribute.TachideskUser).requireUser()
-            ctx.future(
-                future { DownloadManager.stop() }
-            )
-        },
-        withResults = {
-            httpCode(HttpCode.OK)
-        }
-    )
+    val stop =
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("Downloader stop")
+                    description("Stop the downloader")
+                }
+            },
+            behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.future(
+                    future { DownloadManager.stop() },
+                )
+            },
+            withResults = {
+                httpCode(HttpCode.OK)
+            },
+        )
 
     /** clear download queue */
-    val clear = handler(
-        documentWith = {
-            withOperation {
-                summary("Downloader clear")
-                description("Clear download queue")
-            }
-        },
-        behaviorOf = { ctx ->
-            ctx.getAttribute(Attribute.TachideskUser).requireUser()
-            ctx.future(
-                future { DownloadManager.clear() }
-            )
-        },
-        withResults = {
-            httpCode(HttpCode.OK)
-        }
-    )
+    val clear =
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("Downloader clear")
+                    description("Clear download queue")
+                }
+            },
+            behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.future(
+                    future { DownloadManager.clear() },
+                )
+            },
+            withResults = {
+                httpCode(HttpCode.OK)
+            },
+        )
 
     /** Queue single chapter for download */
-    val queueChapter = handler(
-        pathParam<Int>("chapterIndex"),
-        pathParam<Int>("mangaId"),
-        documentWith = {
-            withOperation {
-                summary("Downloader add single chapter")
-                description("Queue single chapter for download")
-            }
-        },
-        behaviorOf = { ctx, chapterIndex, mangaId ->
-            ctx.getAttribute(Attribute.TachideskUser).requireUser()
-            ctx.future(
-                future {
-                    DownloadManager.enqueueWithChapterIndex(mangaId, chapterIndex)
+    val queueChapter =
+        handler(
+            pathParam<Int>("chapterIndex"),
+            pathParam<Int>("mangaId"),
+            documentWith = {
+                withOperation {
+                    summary("Downloader add single chapter")
+                    description("Queue single chapter for download")
                 }
-            )
-        },
-        withResults = {
-            httpCode(HttpCode.OK)
-            httpCode(HttpCode.NOT_FOUND)
-        }
-    )
+            },
+            behaviorOf = { ctx, chapterIndex, mangaId ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.future(
+                    future {
+                        DownloadManager.enqueueWithChapterIndex(mangaId, chapterIndex)
+                    },
+                )
+            },
+            withResults = {
+                httpCode(HttpCode.OK)
+                httpCode(HttpCode.NOT_FOUND)
+            },
+        )
 
-    val queueChapters = handler(
-        documentWith = {
-            withOperation {
-                summary("Downloader add multiple chapters")
-                description("Queue multiple chapters for download")
-            }
-            body<EnqueueInput>()
-        },
-        behaviorOf = { ctx ->
-            ctx.getAttribute(Attribute.TachideskUser).requireUser()
-            val inputs = json.decodeFromString<EnqueueInput>(ctx.body())
-            ctx.future(
-                future {
-                    DownloadManager.enqueue(inputs)
+    val queueChapters =
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("Downloader add multiple chapters")
+                    description("Queue multiple chapters for download")
                 }
-            )
-        },
-        withResults = {
-            httpCode(HttpCode.OK)
-        }
-    )
+                body<EnqueueInput>()
+            },
+            behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val inputs = json.decodeFromString<EnqueueInput>(ctx.body())
+                ctx.future(
+                    future {
+                        DownloadManager.enqueue(inputs)
+                    },
+                )
+            },
+            withResults = {
+                httpCode(HttpCode.OK)
+            },
+        )
 
     /** delete multiple chapters from download queue */
-    val unqueueChapters = handler(
-        documentWith = {
-            withOperation {
-                summary("Downloader remove multiple downloads")
-                description("Remove multiple chapters downloads from queue")
-            }
-            body<EnqueueInput>()
-        },
-        behaviorOf = { ctx ->
-            ctx.getAttribute(Attribute.TachideskUser).requireUser()
-            val input = json.decodeFromString<EnqueueInput>(ctx.body())
-            ctx.future(
-                future {
-                    DownloadManager.dequeue(input)
+    val unqueueChapters =
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("Downloader remove multiple downloads")
+                    description("Remove multiple chapters downloads from queue")
                 }
-            )
-        },
-        withResults = {
-            httpCode(HttpCode.OK)
-        }
-    )
+                body<EnqueueInput>()
+            },
+            behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val input = json.decodeFromString<EnqueueInput>(ctx.body())
+                ctx.future(
+                    future {
+                        DownloadManager.dequeue(input)
+                    },
+                )
+            },
+            withResults = {
+                httpCode(HttpCode.OK)
+            },
+        )
 
     /** delete chapter from download queue */
-    val unqueueChapter = handler(
-        pathParam<Int>("chapterIndex"),
-        pathParam<Int>("mangaId"),
-        documentWith = {
-            withOperation {
-                summary("Downloader remove chapter")
-                description("Delete chapter from download queue")
-            }
-        },
-        behaviorOf = { ctx, chapterIndex, mangaId ->
-            ctx.getAttribute(Attribute.TachideskUser).requireUser()
-            DownloadManager.dequeue(chapterIndex, mangaId)
+    val unqueueChapter =
+        handler(
+            pathParam<Int>("chapterIndex"),
+            pathParam<Int>("mangaId"),
+            documentWith = {
+                withOperation {
+                    summary("Downloader remove chapter")
+                    description("Delete chapter from download queue")
+                }
+            },
+            behaviorOf = { ctx, chapterIndex, mangaId ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                DownloadManager.dequeue(chapterIndex, mangaId)
 
-            ctx.status(200)
-        },
-        withResults = {
-            httpCode(HttpCode.OK)
-        }
-    )
+                ctx.status(200)
+            },
+            withResults = {
+                httpCode(HttpCode.OK)
+            },
+        )
 
     /** clear download queue */
-    val reorderChapter = handler(
-        pathParam<Int>("chapterIndex"),
-        pathParam<Int>("mangaId"),
-        pathParam<Int>("to"),
-        documentWith = {
-            withOperation {
-                summary("Downloader reorder chapter")
-                description("Reorder chapter in download queue")
-            }
-        },
-        behaviorOf = { ctx, chapterIndex, mangaId, to ->
-            ctx.getAttribute(Attribute.TachideskUser).requireUser()
-            DownloadManager.reorder(chapterIndex, mangaId, to)
-        },
-        withResults = {
-            httpCode(HttpCode.OK)
-        }
-    )
+    val reorderChapter =
+        handler(
+            pathParam<Int>("chapterIndex"),
+            pathParam<Int>("mangaId"),
+            pathParam<Int>("to"),
+            documentWith = {
+                withOperation {
+                    summary("Downloader reorder chapter")
+                    description("Reorder chapter in download queue")
+                }
+            },
+            behaviorOf = { ctx, chapterIndex, mangaId, to ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                DownloadManager.reorder(chapterIndex, mangaId, to)
+            },
+            withResults = {
+                httpCode(HttpCode.OK)
+            },
+        )
 }

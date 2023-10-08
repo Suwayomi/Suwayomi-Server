@@ -11,8 +11,9 @@ import de.neonew.exposed.migrations.helpers.SQLMigration
 
 @Suppress("ClassName", "unused")
 class M0015_SourceAndExtensionLangAddLengthLimit : SQLMigration() {
-    override val sql = """
+    override val sql =
+        """
         ALTER TABLE SOURCE ALTER COLUMN LANG VARCHAR(32);
         ALTER TABLE EXTENSION ALTER COLUMN LANG VARCHAR(32);
-    """.trimIndent()
+        """.trimIndent()
 }

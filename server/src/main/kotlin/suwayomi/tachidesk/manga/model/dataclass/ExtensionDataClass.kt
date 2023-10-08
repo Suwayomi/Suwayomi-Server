@@ -10,15 +10,13 @@ package suwayomi.tachidesk.manga.model.dataclass
 data class ExtensionDataClass(
     val apkName: String,
     val iconUrl: String,
-
     val name: String,
     val pkgName: String,
     val versionName: String,
     val versionCode: Int,
     val lang: String,
     val isNsfw: Boolean,
-
     val installed: Boolean,
     val hasUpdate: Boolean,
-    val obsolete: Boolean
+    val obsolete: Boolean,
 )

@@ -70,12 +70,10 @@ interface Settings : Node {
 data class PartialSettingsType(
     override val ip: String?,
     override val port: Int?,
-
     // proxy
     override val socksProxyEnabled: Boolean?,
     override val socksProxyHost: String?,
     override val socksProxyPort: String?,
-
     // webUI
     override val webUIFlavor: WebUIFlavor?,
     override val initialOpenInBrowserEnabled: Boolean?,
@@ -83,50 +81,41 @@ data class PartialSettingsType(
     override val electronPath: String?,
     override val webUIChannel: WebUIChannel?,
     override val webUIUpdateCheckInterval: Double?,
-
     // downloader
     override val downloadAsCbz: Boolean?,
     override val downloadsPath: String?,
     override val autoDownloadNewChapters: Boolean?,
-
     // requests
     override val maxSourcesInParallel: Int?,
-
     // updater
     override val excludeUnreadChapters: Boolean?,
     override val excludeNotStarted: Boolean?,
     override val excludeCompleted: Boolean?,
     override val globalUpdateInterval: Double?,
-
     // Authentication
     override val basicAuthEnabled: Boolean?,
     override val basicAuthUsername: String?,
     override val basicAuthPassword: String?,
     override val multiUser: Boolean?,
-
     // misc
     override val debugLogsEnabled: Boolean?,
     override val systemTrayEnabled: Boolean?,
-
     // backup
     override val backupPath: String?,
     override val backupTime: String?,
     override val backupInterval: Int?,
     override val backupTTL: Int?,
-
     // local source
-    override val localSourcePath: String?
+    override val localSourcePath: String?,
 ) : Settings
 
 class SettingsType(
     override val ip: String,
     override val port: Int,
-
     // proxy
     override val socksProxyEnabled: Boolean,
     override val socksProxyHost: String,
     override val socksProxyPort: String,
-
     // webUI
     override val webUIFlavor: WebUIFlavor,
     override val initialOpenInBrowserEnabled: Boolean,
@@ -134,79 +123,63 @@ class SettingsType(
     override val electronPath: String,
     override val webUIChannel: WebUIChannel,
     override val webUIUpdateCheckInterval: Double,
-
     // downloader
     override val downloadAsCbz: Boolean,
     override val downloadsPath: String,
     override val autoDownloadNewChapters: Boolean,
-
     // requests
     override val maxSourcesInParallel: Int,
-
     // updater
     override val excludeUnreadChapters: Boolean,
     override val excludeNotStarted: Boolean,
     override val excludeCompleted: Boolean,
     override val globalUpdateInterval: Double,
-
     // Authentication
     override val basicAuthEnabled: Boolean,
     override val basicAuthUsername: String,
     override val basicAuthPassword: String,
     override val multiUser: Boolean?,
-
     // misc
     override val debugLogsEnabled: Boolean,
     override val systemTrayEnabled: Boolean,
-
     // backup
     override val backupPath: String,
     override val backupTime: String,
     override val backupInterval: Int,
     override val backupTTL: Int,
-
     // local source
-    override val localSourcePath: String
+    override val localSourcePath: String,
 ) : Settings {
     constructor(config: ServerConfig = serverConfig) : this(
         config.ip.value,
         config.port.value,
-
         config.socksProxyEnabled.value,
         config.socksProxyHost.value,
         config.socksProxyPort.value,
-
         WebUIFlavor.from(config.webUIFlavor.value),
         config.initialOpenInBrowserEnabled.value,
         WebUIInterface.from(config.webUIInterface.value),
         config.electronPath.value,
         WebUIChannel.from(config.webUIChannel.value),
         config.webUIUpdateCheckInterval.value,
-
         config.downloadAsCbz.value,
         config.downloadsPath.value,
         config.autoDownloadNewChapters.value,
-
         config.maxSourcesInParallel.value,
-
         config.excludeUnreadChapters.value,
         config.excludeNotStarted.value,
         config.excludeCompleted.value,
         config.globalUpdateInterval.value,
-
         config.basicAuthEnabled.value,
         config.basicAuthUsername.value,
         config.basicAuthPassword.value,
         config.multiUser.value,
-
         config.debugLogsEnabled.value,
         config.systemTrayEnabled.value,
-
         config.backupPath.value,
         config.backupTime.value,
         config.backupInterval.value,
         config.backupTTL.value,
-
-        config.localSourcePath.value
+        config.localSourcePath.value,
     )
 }

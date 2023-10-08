@@ -28,7 +28,7 @@ object AppMutex {
     private enum class AppMutexState(val stat: Int) {
         Clear(0),
         TachideskInstanceRunning(1),
-        OtherApplicationRunning(2)
+        OtherApplicationRunning(2),
     }
 
     private val appIP = if (serverConfig.ip.value == "0.0.0.0") "127.0.0.1" else serverConfig.ip.value
@@ -36,19 +36,22 @@ object AppMutex {
     private val jsonMapper by DI.global.instance<JsonMapper>()
 
     private fun checkAppMutex(): AppMutexState {
-        val client = OkHttpClient.Builder()
-            .connectTimeout(200, TimeUnit.MILLISECONDS)
-            .build()
+        val client =
+            OkHttpClient.Builder()
+                .connectTimeout(200, TimeUnit.MILLISECONDS)
+                .build()
 
-        val request = Builder()
-            .url("http://$appIP:${serverConfig.port.value}/api/v1/settings/about/")
-            .build()
+        val request =
+            Builder()
+                .url("http://$appIP:${serverConfig.port.value}/api/v1/settings/about/")
+                .build()
 
-        val response = try {
-            client.newCall(request).execute().body.string()
-        } catch (e: IOException) {
-            return AppMutexState.Clear
-        }
+        val response =
+            try {
+                client.newCall(request).execute().body.string()
+            } catch (e: IOException) {
+                return AppMutexState.Clear
+            }
 
         return try {
             jsonMapper.fromJsonString(response, AboutDataClass::class.java)

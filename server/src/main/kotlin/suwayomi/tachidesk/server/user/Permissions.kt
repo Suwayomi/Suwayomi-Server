@@ -6,5 +6,5 @@ enum class Permissions {
     UNINSTALL_EXTENSIONS,
     DOWNLOAD_CHAPTERS,
     DELETE_DOWNLOADS,
-    CREATE_USER
+    CREATE_USER,
 }

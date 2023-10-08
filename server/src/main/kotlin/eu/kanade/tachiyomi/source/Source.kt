@@ -10,7 +10,6 @@ import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
  * A basic interface for creating a source. It could be an online source, a local source, etc...
  */
 interface Source {
-
     /**
      * Id for the source. Must be unique.
      */
@@ -22,41 +21,11 @@ interface Source {
     val name: String
 
     /**
-     * Returns an observable with the updated details for a manga.
+     * Get the updated details for a manga.
      *
+     * @since extensions-lib 1.5
      * @param manga the manga to update.
-     */
-    @Deprecated(
-        "Use the 1.x API instead",
-        ReplaceWith("getMangaDetails")
-    )
-    fun fetchMangaDetails(manga: SManga): Observable<SManga> = throw IllegalStateException("Not used")
-
-    /**
-     * Returns an observable with all the available chapters for a manga.
-     *
-     * @param manga the manga to update.
-     */
-    @Deprecated(
-        "Use the 1.x API instead",
-        ReplaceWith("getChapterList")
-    )
-    fun fetchChapterList(manga: SManga): Observable<List<SChapter>> = throw IllegalStateException("Not used")
-
-    /**
-     * Returns an observable with the list of pages a chapter has. Pages should be returned
-     * in the expected order; the index is ignored.
-     *
-     * @param chapter the chapter.
-     */
-    @Deprecated(
-        "Use the 1.x API instead",
-        ReplaceWith("getPageList")
-    )
-    fun fetchPageList(chapter: SChapter): Observable<List<Page>> = Observable.empty()
-
-    /**
-     * [1.x API] Get the updated details for a manga.
+     * @return the updated manga.
      */
     @Suppress("DEPRECATION")
     suspend fun getMangaDetails(manga: SManga): SManga {
@@ -64,7 +33,11 @@ interface Source {
     }
 
     /**
-     * [1.x API] Get all the available chapters for a manga.
+     * Get all the available chapters for a manga.
+     *
+     * @since extensions-lib 1.5
+     * @param manga the manga to update.
+     * @return the chapters for the manga.
      */
     @Suppress("DEPRECATION")
     suspend fun getChapterList(manga: SManga): List<SChapter> {
@@ -72,13 +45,35 @@ interface Source {
     }
 
     /**
-     * [1.x API] Get the list of pages a chapter has. Pages should be returned
+     * Get the list of pages a chapter has. Pages should be returned
      * in the expected order; the index is ignored.
+     *
+     * @since extensions-lib 1.5
+     * @param chapter the chapter.
+     * @return the pages for the chapter.
      */
     @Suppress("DEPRECATION")
     suspend fun getPageList(chapter: SChapter): List<Page> {
         return fetchPageList(chapter).awaitSingle()
     }
+
+    @Deprecated(
+        "Use the non-RxJava API instead",
+        ReplaceWith("getMangaDetails"),
+    )
+    fun fetchMangaDetails(manga: SManga): Observable<SManga> = throw IllegalStateException("Not used")
+
+    @Deprecated(
+        "Use the non-RxJava API instead",
+        ReplaceWith("getChapterList"),
+    )
+    fun fetchChapterList(manga: SManga): Observable<List<SChapter>> = throw IllegalStateException("Not used")
+
+    @Deprecated(
+        "Use the non-RxJava API instead",
+        ReplaceWith("getPageList"),
+    )
+    fun fetchPageList(chapter: SChapter): Observable<List<Page>> = Observable.empty()
 }
 
 // fun Source.icon(): Drawable? = Injekt.get<ExtensionManager>().getAppIconForSource(this)

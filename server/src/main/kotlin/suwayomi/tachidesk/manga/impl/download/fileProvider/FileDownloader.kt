@@ -13,7 +13,11 @@ fun interface FileDownload0Args : FileDownload {
 }
 
 fun interface FileDownload3Args<A, B, C> : FileDownload {
-    suspend fun execute(a: A, b: B, c: C): Boolean
+    suspend fun execute(
+        a: A,
+        b: B,
+        c: C,
+    ): Boolean
 
     override suspend fun executeDownload(vararg args: Any): Boolean {
         return execute(args[0] as A, args[1] as B, args[2] as C)

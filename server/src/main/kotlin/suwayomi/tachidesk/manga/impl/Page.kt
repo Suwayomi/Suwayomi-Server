@@ -17,7 +17,6 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
-import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
@@ -32,21 +31,30 @@ object Page {
      * A page might have a imageUrl ready from the get go, or we might need to
      * go an extra step and call fetchImageUrl to get it.
      */
-    suspend fun getTrueImageUrl(page: Page, source: HttpSource): String {
+    suspend fun getTrueImageUrl(
+        page: Page,
+        source: HttpSource,
+    ): String {
         if (page.imageUrl == null) {
-            page.imageUrl = source.fetchImageUrl(page).awaitSingle()
+            page.imageUrl = source.getImageUrl(page)
         }
         return page.imageUrl!!
     }
 
-    suspend fun getPageImage(mangaId: Int, chapterIndex: Int, index: Int, progressFlow: ((StateFlow<Int>) -> Unit)? = null): Pair<InputStream, String> {
+    suspend fun getPageImage(
+        mangaId: Int,
+        chapterIndex: Int,
+        index: Int,
+        progressFlow: ((StateFlow<Int>) -> Unit)? = null,
+    ): Pair<InputStream, String> {
         val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
         val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
-        val chapterEntry = transaction {
-            ChapterTable.select {
-                (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId)
-            }.first()
-        }
+        val chapterEntry =
+            transaction {
+                ChapterTable.select {
+                    (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId)
+                }.first()
+            }
         val chapterId = chapterEntry[ChapterTable.id].value
 
         val pageEntry =
@@ -55,11 +63,12 @@ object Page {
                     .orderBy(PageTable.index to SortOrder.ASC)
                     .limit(1, index.toLong()).first()
             }
-        val tachiyomiPage = Page(
-            pageEntry[PageTable.index],
-            pageEntry[PageTable.url],
-            pageEntry[PageTable.imageUrl]
-        )
+        val tachiyomiPage =
+            Page(
+                pageEntry[PageTable.index],
+                pageEntry[PageTable.url],
+                pageEntry[PageTable.imageUrl],
+            )
         progressFlow?.invoke(tachiyomiPage.progress)
 
         // we treat Local source differently
@@ -100,7 +109,7 @@ object Page {
 
         // Note: don't care about invalidating cache because OS cache is not permanent
         return getImageResponse(cacheSaveDir, fileName) {
-            source.fetchImage(tachiyomiPage).awaitSingle()
+            source.getImage(tachiyomiPage)
         }
     }
 

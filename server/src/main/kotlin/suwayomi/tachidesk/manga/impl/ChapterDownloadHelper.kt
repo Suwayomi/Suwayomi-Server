@@ -12,11 +12,18 @@ import java.io.File
 import java.io.InputStream
 
 object ChapterDownloadHelper {
-    fun getImage(mangaId: Int, chapterId: Int, index: Int): Pair<InputStream, String> {
+    fun getImage(
+        mangaId: Int,
+        chapterId: Int,
+        index: Int,
+    ): Pair<InputStream, String> {
         return provider(mangaId, chapterId).getImage().execute(index)
     }
 
-    fun delete(mangaId: Int, chapterId: Int): Boolean {
+    fun delete(
+        mangaId: Int,
+        chapterId: Int,
+    ): Boolean {
         return provider(mangaId, chapterId).delete()
     }
 
@@ -25,13 +32,16 @@ object ChapterDownloadHelper {
         chapterId: Int,
         download: DownloadChapter,
         scope: CoroutineScope,
-        step: suspend (DownloadChapter?, Boolean) -> Unit
+        step: suspend (DownloadChapter?, Boolean) -> Unit,
     ): Boolean {
         return provider(mangaId, chapterId).download().execute(download, scope, step)
     }
 
     // return the appropriate provider based on how the download was saved. For the logic is simple but will evolve when new types of downloads are available
-    private fun provider(mangaId: Int, chapterId: Int): ChaptersFilesProvider {
+    private fun provider(
+        mangaId: Int,
+        chapterId: Int,
+    ): ChaptersFilesProvider {
         val chapterFolder = File(getChapterDownloadPath(mangaId, chapterId))
         val cbzFile = File(getChapterCbzPath(mangaId, chapterId))
         if (cbzFile.exists()) return ArchiveProvider(mangaId, chapterId)

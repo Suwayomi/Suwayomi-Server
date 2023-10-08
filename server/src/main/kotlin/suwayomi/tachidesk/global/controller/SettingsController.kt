@@ -22,38 +22,40 @@ import suwayomi.tachidesk.server.util.withOperation
 /** Settings Page/Screen */
 object SettingsController {
     /** returns some static info about the current app build */
-    val about = handler(
-        documentWith = {
-            withOperation {
-                summary("About Tachidesk")
-                description("Returns some static info about the current app build")
-            }
-        },
-        behaviorOf = { ctx ->
-            ctx.getAttribute(Attribute.TachideskUser).requireUser()
-            ctx.json(About.getAbout())
-        },
-        withResults = {
-            json<AboutDataClass>(HttpCode.OK)
-        }
-    )
+    val about =
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("About Tachidesk")
+                    description("Returns some static info about the current app build")
+                }
+            },
+            behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.json(About.getAbout())
+            },
+            withResults = {
+                json<AboutDataClass>(HttpCode.OK)
+            },
+        )
 
     /** check for app updates */
-    val checkUpdate = handler(
-        documentWith = {
-            withOperation {
-                summary("Tachidesk update check")
-                description("Check for app updates")
-            }
-        },
-        behaviorOf = { ctx ->
-            ctx.getAttribute(Attribute.TachideskUser).requireUser()
-            ctx.future(
-                future { AppUpdate.checkUpdate() }
-            )
-        },
-        withResults = {
-            json<Array<UpdateDataClass>>(HttpCode.OK)
-        }
-    )
+    val checkUpdate =
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("Tachidesk update check")
+                    description("Check for app updates")
+                }
+            },
+            behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.future(
+                    future { AppUpdate.checkUpdate() },
+                )
+            },
+            withResults = {
+                json<Array<UpdateDataClass>>(HttpCode.OK)
+            },
+        )
 }

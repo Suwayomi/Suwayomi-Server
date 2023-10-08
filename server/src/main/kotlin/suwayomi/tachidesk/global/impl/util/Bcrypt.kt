@@ -10,7 +10,10 @@ object Bcrypt {
         return hasher.hashToString(12, password.toCharArray())
     }
 
-    fun verify(hash: String, password: String): Boolean {
+    fun verify(
+        hash: String,
+        password: String,
+    ): Boolean {
         return verifyer.verify(password.toCharArray(), hash.toCharArray()).verified
     }
 }

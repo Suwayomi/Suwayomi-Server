@@ -12,6 +12,12 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SortOrder.ASC
+import org.jetbrains.exposed.sql.SortOrder.ASC_NULLS_FIRST
+import org.jetbrains.exposed.sql.SortOrder.ASC_NULLS_LAST
+import org.jetbrains.exposed.sql.SortOrder.DESC
+import org.jetbrains.exposed.sql.SortOrder.DESC_NULLS_FIRST
+import org.jetbrains.exposed.sql.SortOrder.DESC_NULLS_LAST
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.andWhere
@@ -39,14 +45,18 @@ import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class MetaQuery {
-    fun meta(dataFetchingEnvironment: DataFetchingEnvironment, key: String): CompletableFuture<GlobalMetaType> {
+    fun meta(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        key: String,
+    ): CompletableFuture<GlobalMetaType> {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         return dataFetchingEnvironment.getValueFromDataLoader("GlobalMetaDataLoader", key)
     }
 
     enum class MetaOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<GlobalMetaType> {
         KEY(GlobalMetaTable.key),
-        VALUE(GlobalMetaTable.value);
+        VALUE(GlobalMetaTable.value),
+        ;
 
         override fun greater(cursor: Cursor): Op<Boolean> {
             return when (this) {
@@ -63,17 +73,18 @@ class MetaQuery {
         }
 
         override fun asCursor(type: GlobalMetaType): Cursor {
-            val value = when (this) {
-                KEY -> type.key
-                VALUE -> type.key + "\\-" + type.value
-            }
+            val value =
+                when (this) {
+                    KEY -> type.key
+                    VALUE -> type.key + "\\-" + type.value
+                }
             return Cursor(value)
         }
     }
 
     data class MetaCondition(
         val key: String? = null,
-        val value: String? = null
+        val value: String? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -89,12 +100,12 @@ class MetaQuery {
         val value: StringFilter? = null,
         override val and: List<MetaFilter>? = null,
         override val or: List<MetaFilter>? = null,
-        override val not: MetaFilter? = null
+        override val not: MetaFilter? = null,
     ) : Filter<MetaFilter> {
         override fun getOpList(): List<Op<Boolean>> {
             return listOfNotNull(
                 andFilterWithCompareString(GlobalMetaTable.key, key),
-                andFilterWithCompareString(GlobalMetaTable.value, value)
+                andFilterWithCompareString(GlobalMetaTable.value, value),
             )
         }
     }
@@ -109,50 +120,57 @@ class MetaQuery {
         after: Cursor? = null,
         first: Int? = null,
         last: Int? = null,
-        offset: Int? = null
+        offset: Int? = null,
     ): GlobalMetaNodeList {
         val userId = dataFetchingEnvironment.graphQlContext.getAttribute(Attribute.TachideskUser).requireUser()
-        val queryResults = transaction {
-            val res = GlobalMetaTable.select { GlobalMetaTable.user eq userId }
+        val queryResults =
+            transaction {
+                val res = GlobalMetaTable.select { GlobalMetaTable.user eq userId }
 
-            res.applyOps(condition, filter)
+                res.applyOps(condition, filter)
 
-            if (orderBy != null || (last != null || before != null)) {
-                val orderByColumn = orderBy?.column ?: GlobalMetaTable.key
-                val orderType = orderByType.maybeSwap(last ?: before)
+                if (orderBy != null || (last != null || before != null)) {
+                    val orderByColumn = orderBy?.column ?: GlobalMetaTable.key
+                    val orderType = orderByType.maybeSwap(last ?: before)
 
-                if (orderBy == MetaOrderBy.KEY || orderBy == null) {
-                    res.orderBy(orderByColumn to orderType)
-                } else {
-                    res.orderBy(
-                        orderByColumn to orderType,
-                        GlobalMetaTable.key to SortOrder.ASC
-                    )
+                    if (orderBy == MetaOrderBy.KEY || orderBy == null) {
+                        res.orderBy(orderByColumn to orderType)
+                    } else {
+                        res.orderBy(
+                            orderByColumn to orderType,
+                            GlobalMetaTable.key to SortOrder.ASC,
+                        )
+                    }
                 }
-            }
 
-            val total = res.count()
-            val firstResult = res.firstOrNull()?.get(GlobalMetaTable.key)
-            val lastResult = res.lastOrNull()?.get(GlobalMetaTable.key)
+                val total = res.count()
+                val firstResult = res.firstOrNull()?.get(GlobalMetaTable.key)
+                val lastResult = res.lastOrNull()?.get(GlobalMetaTable.key)
 
-            if (after != null) {
-                res.andWhere {
-                    (orderBy ?: MetaOrderBy.KEY).greater(after)
+                if (after != null) {
+                    res.andWhere {
+                        when (orderByType) {
+                            DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: MetaOrderBy.KEY).less(after)
+                            null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: MetaOrderBy.KEY).greater(after)
+                        }
+                    }
+                } else if (before != null) {
+                    res.andWhere {
+                        when (orderByType) {
+                            DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: MetaOrderBy.KEY).greater(before)
+                            null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: MetaOrderBy.KEY).less(before)
+                        }
+                    }
                 }
-            } else if (before != null) {
-                res.andWhere {
-                    (orderBy ?: MetaOrderBy.KEY).less(before)
+
+                if (first != null) {
+                    res.limit(first, offset?.toLong() ?: 0)
+                } else if (last != null) {
+                    res.limit(last)
                 }
-            }
 
-            if (first != null) {
-                res.limit(first, offset?.toLong() ?: 0)
-            } else if (last != null) {
-                res.limit(last)
+                QueryResults(total, firstResult, lastResult, res.toList())
             }
-
-            QueryResults(total, firstResult, lastResult, res.toList())
-        }
 
         val getAsCursor: (GlobalMetaType) -> Cursor = (orderBy ?: MetaOrderBy.KEY)::asCursor
 
@@ -167,24 +185,25 @@ class MetaQuery {
                     resultsAsType.firstOrNull()?.let {
                         GlobalMetaNodeList.MetaEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
                     },
                     resultsAsType.lastOrNull()?.let {
                         GlobalMetaNodeList.MetaEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
-                    }
+                    },
                 )
             },
-            pageInfo = PageInfo(
-                hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.key,
-                hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.key,
-                startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
-                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) }
-            ),
-            totalCount = queryResults.total.toInt()
+            pageInfo =
+                PageInfo(
+                    hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.key,
+                    hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.key,
+                    startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
+                    endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) },
+                ),
+            totalCount = queryResults.total.toInt(),
         )
     }
 }

@@ -13,6 +13,7 @@ import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import eu.kanade.tachiyomi.source.online.HttpSource
+import mu.KotlinLogging
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
@@ -25,6 +26,8 @@ import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.impl.Source.getSource
+import suwayomi.tachidesk.manga.impl.download.DownloadManager
+import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.MissingThumbnailException
 import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
 import suwayomi.tachidesk.manga.impl.util.network.await
@@ -46,14 +49,23 @@ import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.ApplicationDirs
+import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.time.Instant
+import java.util.Timer
+import java.util.TimerTask
+import java.util.concurrent.ConcurrentHashMap
+
+private val logger = KotlinLogging.logger { }
 
 object Manga {
-    private fun truncate(text: String?, maxLength: Int): String? {
+    private fun truncate(
+        text: String?,
+        maxLength: Int,
+    ): String? {
         return if (text?.length ?: 0 > maxLength) {
             text?.take(maxLength - 3) + "..."
         } else {
@@ -61,7 +73,11 @@ object Manga {
         }
     }
 
-    suspend fun getManga(userId: Int, mangaId: Int, onlineFetch: Boolean = false): MangaDataClass {
+    suspend fun getManga(
+        userId: Int,
+        mangaId: Int,
+        onlineFetch: Boolean = false,
+    ): MangaDataClass {
         var mangaEntry = transaction { MangaTable.getWithUserData(userId).select { MangaTable.id eq mangaId }.first() }
 
         return if (!onlineFetch && mangaEntry[MangaTable.initialized]) {
@@ -74,14 +90,11 @@ object Manga {
             MangaDataClass(
                 id = mangaId,
                 sourceId = mangaEntry[MangaTable.sourceReference].toString(),
-
                 url = mangaEntry[MangaTable.url],
                 title = mangaEntry[MangaTable.title],
                 thumbnailUrl = proxyThumbnailUrl(mangaId),
                 thumbnailUrlLastFetched = mangaEntry[MangaTable.thumbnailUrlLastFetched],
-
                 initialized = true,
-
                 artist = sManga.artist,
                 author = sManga.author,
                 description = sManga.description,
@@ -95,7 +108,7 @@ object Manga {
                 lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
                 chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
                 updateStrategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy]),
-                freshData = true
+                freshData = true,
             )
         }
     }
@@ -103,12 +116,14 @@ object Manga {
     suspend fun fetchManga(mangaId: Int): SManga? {
         val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
 
-        val source = getCatalogueSourceOrNull(mangaEntry[MangaTable.sourceReference])
-            ?: return null
-        val sManga = SManga.create().apply {
-            url = mangaEntry[MangaTable.url]
-            title = mangaEntry[MangaTable.title]
-        }
+        val source =
+            getCatalogueSourceOrNull(mangaEntry[MangaTable.sourceReference])
+                ?: return null
+        val sManga =
+            SManga.create().apply {
+                url = mangaEntry[MangaTable.url]
+                title = mangaEntry[MangaTable.title]
+            }
         val networkManga = source.getMangaDetails(sManga)
         sManga.copyFrom(networkManga)
 
@@ -134,9 +149,10 @@ object Manga {
                     clearThumbnail(mangaId)
                 }
 
-                it[MangaTable.realUrl] = runCatching {
-                    (source as? HttpSource)?.getMangaUrl(sManga)
-                }.getOrNull()
+                it[MangaTable.realUrl] =
+                    runCatching {
+                        (source as? HttpSource)?.getMangaUrl(sManga)
+                    }.getOrNull()
 
                 it[MangaTable.lastFetchedAt] = Instant.now().epochSecond
 
@@ -147,7 +163,11 @@ object Manga {
         return sManga
     }
 
-    suspend fun getMangaFull(userId: Int, mangaId: Int, onlineFetch: Boolean = false): MangaDataClass {
+    suspend fun getMangaFull(
+        userId: Int,
+        mangaId: Int,
+        onlineFetch: Boolean = false,
+    ): MangaDataClass {
         val mangaDaaClass = getManga(userId, mangaId, onlineFetch)
 
         return transaction {
@@ -182,17 +202,18 @@ object Manga {
         }
     }
 
-    private fun getMangaDataClass(userId: Int, mangaId: Int, mangaEntry: ResultRow) = MangaDataClass(
+    private fun getMangaDataClass(
+        userId: Int,
+        mangaId: Int,
+        mangaEntry: ResultRow,
+    ) = MangaDataClass(
         id = mangaId,
         sourceId = mangaEntry[MangaTable.sourceReference].toString(),
-
         url = mangaEntry[MangaTable.url],
         title = mangaEntry[MangaTable.title],
         thumbnailUrl = proxyThumbnailUrl(mangaId),
         thumbnailUrlLastFetched = mangaEntry[MangaTable.thumbnailUrlLastFetched],
-
         initialized = true,
-
         artist = mangaEntry[MangaTable.artist],
         author = mangaEntry[MangaTable.author],
         description = mangaEntry[MangaTable.description],
@@ -206,17 +227,25 @@ object Manga {
         lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
         chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
         updateStrategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy]),
-        freshData = false
+        freshData = false,
     )
 
-    fun getMangaMetaMap(userId: Int, mangaId: Int): Map<String, String> {
+    fun getMangaMetaMap(
+        userId: Int,
+        mangaId: Int,
+    ): Map<String, String> {
         return transaction {
             MangaMetaTable.select { MangaMetaTable.user eq userId and (MangaMetaTable.ref eq mangaId) }
                 .associate { it[MangaMetaTable.key] to it[MangaMetaTable.value] }
         }
     }
 
-    fun modifyMangaMeta(userId: Int, mangaId: Int, key: String, value: String) {
+    fun modifyMangaMeta(
+        userId: Int,
+        mangaId: Int,
+        key: String,
+        value: String,
+    ) {
         transaction {
             val meta =
                 MangaMetaTable.select {
@@ -238,7 +267,7 @@ object Manga {
                         MangaMetaTable.user eq userId and
                             (MangaMetaTable.ref eq mangaId) and
                             (MangaMetaTable.key eq key)
-                    }
+                    },
                 ) {
                     it[MangaMetaTable.value] = value
                 }
@@ -257,57 +286,64 @@ object Manga {
         val sourceId = mangaEntry[MangaTable.sourceReference]
 
         return when (val source = getCatalogueSourceOrStub(sourceId)) {
-            is HttpSource -> getImageResponse(cacheSaveDir, fileName) {
-                val thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
-                    ?: if (!mangaEntry[MangaTable.initialized]) {
-                        // initialize then try again
-                        // no need for a user id since we are just fetching if required
-                        getManga(1, mangaId)
-                        transaction {
-                            MangaTable.select { MangaTable.id eq mangaId }.first()
-                        }[MangaTable.thumbnail_url]!!
-                    } else {
-                        // source provides no thumbnail url for this manga
-                        throw NullPointerException("No thumbnail found")
-                    }
+            is HttpSource ->
+                getImageResponse(cacheSaveDir, fileName) {
+                    val thumbnailUrl =
+                        mangaEntry[MangaTable.thumbnail_url]
+                            ?: if (!mangaEntry[MangaTable.initialized]) {
+                                // initialize then try again
+                                // no need for a user id since we are just fetching if required
+                                getManga(1, mangaId)
+                                transaction {
+                                    MangaTable.select { MangaTable.id eq mangaId }.first()
+                                }[MangaTable.thumbnail_url]!!
+                            } else {
+                                // source provides no thumbnail url for this manga
+                                throw NullPointerException("No thumbnail found")
+                            }
 
-                source.client.newCall(
-                    GET(thumbnailUrl, source.headers)
-                ).await()
-            }
+                    source.client.newCall(
+                        GET(thumbnailUrl, source.headers),
+                    ).await()
+                }
 
             is LocalSource -> {
-                val imageFile = mangaEntry[MangaTable.thumbnail_url]?.let {
-                    val file = File(it)
-                    if (file.exists()) {
-                        file
-                    } else {
-                        null
-                    }
-                } ?: throw IOException("Thumbnail does not exist")
-                val contentType = ImageUtil.findImageType { imageFile.inputStream() }?.mime
-                    ?: "image/jpeg"
+                val imageFile =
+                    mangaEntry[MangaTable.thumbnail_url]?.let {
+                        val file = File(it)
+                        if (file.exists()) {
+                            file
+                        } else {
+                            null
+                        }
+                    } ?: throw IOException("Thumbnail does not exist")
+                val contentType =
+                    ImageUtil.findImageType { imageFile.inputStream() }?.mime
+                        ?: "image/jpeg"
                 imageFile.inputStream() to contentType
             }
 
-            is StubSource -> getImageResponse(cacheSaveDir, fileName) {
-                val thumbnailUrl = mangaEntry[MangaTable.thumbnail_url]
-                    ?: throw NullPointerException("No thumbnail found")
-                network.client.newCall(
-                    GET(thumbnailUrl)
-                ).await()
-            }
+            is StubSource ->
+                getImageResponse(cacheSaveDir, fileName) {
+                    val thumbnailUrl =
+                        mangaEntry[MangaTable.thumbnail_url]
+                            ?: throw NullPointerException("No thumbnail found")
+                    network.client.newCall(
+                        GET(thumbnailUrl),
+                    ).await()
+                }
 
             else -> throw IllegalArgumentException("Unknown source")
         }
     }
 
     suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
-        val mangaInLibrary = transaction {
-            MangaUserTable.select {
-                MangaUserTable.manga eq mangaId and (MangaUserTable.inLibrary eq true)
-            }.isNotEmpty()
-        }
+        val mangaInLibrary =
+            transaction {
+                MangaUserTable.select {
+                    MangaUserTable.manga eq mangaId and (MangaUserTable.inLibrary eq true)
+                }.isNotEmpty()
+            }
 
         if (mangaInLibrary) {
             return try {
@@ -326,5 +362,105 @@ object Manga {
 
         clearCachedImage(applicationDirs.tempThumbnailCacheRoot, fileName)
         clearCachedImage(applicationDirs.thumbnailDownloadsRoot, fileName)
+    }
+
+    private val downloadAheadQueue = ConcurrentHashMap<String, ConcurrentHashMap.KeySetView<Int, Boolean>>()
+    private var downloadAheadTimer: Timer? = null
+
+    private const val MANGAS_KEY = "mangaIds"
+    private const val CHAPTERS_KEY = "chapterIds"
+
+    fun downloadAhead(
+        mangaIds: List<Int>,
+        latestReadChapterIds: List<Int> = emptyList(),
+    ) {
+        if (serverConfig.autoDownloadAheadLimit.value == 0) {
+            return
+        }
+
+        val updateDownloadAheadQueue = { key: String, ids: List<Int> ->
+            val idSet = downloadAheadQueue[key] ?: ConcurrentHashMap.newKeySet()
+            idSet.addAll(ids)
+            downloadAheadQueue[key] = idSet
+        }
+
+        updateDownloadAheadQueue(MANGAS_KEY, mangaIds)
+        updateDownloadAheadQueue(CHAPTERS_KEY, latestReadChapterIds)
+
+        // handle cases where this function gets called multiple times in quick succession.
+        // this could happen in case e.g. multiple chapters get marked as read without batching the operation
+        downloadAheadTimer?.cancel()
+        downloadAheadTimer =
+            Timer().apply {
+                schedule(
+                    object : TimerTask() {
+                        override fun run() {
+                            downloadAheadChapters(
+                                downloadAheadQueue[MANGAS_KEY]?.toList().orEmpty(),
+                                downloadAheadQueue[CHAPTERS_KEY]?.toList().orEmpty(),
+                            )
+                            downloadAheadQueue.clear()
+                        }
+                    },
+                    5000,
+                )
+            }
+    }
+
+    /**
+     * Downloads the latest unread and not downloaded chapters for each passed manga id.
+     *
+     * To pass a specific chapter as the latest read chapter for a manga, it can be provided in the "latestReadChapterIds" list.
+     * This makes it possible to handle cases, where the actual latest read chapter isn't marked as read yet.
+     * E.g. the client marks a chapter as read and at the same time sends the "downloadAhead" mutation.
+     * In this case, the latest read chapter could potentially be the one, that just got send to get marked as read by the client.
+     * Without providing it in "latestReadChapterIds" it could be incorrectly included in the chapters, that will get downloaded.
+     *
+     * The latest read chapter will be considered the starting point.
+     * E.g.:
+     * - 20 chapters
+     * - chapter 15 marked as read
+     * - 16 - 20 marked as unread
+     * - 10 - 14 marked as unread
+     *
+     * will download the unread chapters starting from chapter 15
+     */
+    private fun downloadAheadChapters(
+        mangaIds: List<Int>,
+        latestReadChapterIds: List<Int>,
+    ) {
+        val mangaToLatestReadChapterIndex =
+            transaction {
+                ChapterTable.select { (ChapterTable.manga inList mangaIds) and (ChapterTable.isRead eq true) }
+                    .orderBy(ChapterTable.sourceOrder to SortOrder.DESC).groupBy { it[ChapterTable.manga].value }
+            }.mapValues { (_, chapters) -> chapters.firstOrNull()?.let { it[ChapterTable.sourceOrder] } ?: 0 }
+
+        val mangaToUnreadChaptersMap =
+            transaction {
+                ChapterTable.select { (ChapterTable.manga inList mangaIds) and (ChapterTable.isRead eq false) }
+                    .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+                    .groupBy { it[ChapterTable.manga].value }
+            }
+
+        val chapterIdsToDownload =
+            mangaToUnreadChaptersMap.map { (mangaId, unreadChapters) ->
+                val latestReadChapterIndex = mangaToLatestReadChapterIndex[mangaId] ?: 0
+                val lastChapterToDownloadIndex =
+                    unreadChapters.indexOfLast {
+                        it[ChapterTable.sourceOrder] > latestReadChapterIndex &&
+                            it[ChapterTable.id].value !in latestReadChapterIds
+                    }
+                val unreadChaptersToConsider = unreadChapters.subList(0, lastChapterToDownloadIndex + 1)
+                val firstChapterToDownloadIndex =
+                    (unreadChaptersToConsider.size - serverConfig.autoDownloadAheadLimit.value).coerceAtLeast(0)
+                unreadChaptersToConsider.subList(firstChapterToDownloadIndex, lastChapterToDownloadIndex + 1)
+                    .filter { !it[ChapterTable.isDownloaded] }
+                    .map { it[ChapterTable.id].value }
+            }.flatten()
+
+        logger.info { "downloadAheadChapters: download chapters [${chapterIdsToDownload.joinToString(", ")}]" }
+
+        DownloadManager.dequeue(mangaIds, chapterIdsToDownload)
+        DownloadManager.enqueue(EnqueueInput(chapterIdsToDownload))
     }
 }

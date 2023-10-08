@@ -25,16 +25,18 @@ object Chromium {
     fun preinstall(platformDir: String) {
         val loader = Thread.currentThread().contextClassLoader
         val resource = loader.getResource("driver/$platformDir/package/browsers.json") ?: return
-        val json = resource.openStream().use {
-            Json.decodeFromStream<JsonObject>(it)
-        }
-        val revision = json["browsers"]?.jsonArray
-            ?.find { it.jsonObject["name"]?.jsonPrimitive?.contentOrNull == "chromium" }
-            ?.jsonObject
-            ?.get("revision")
-            ?.jsonPrimitive
-            ?.contentOrNull
-            ?: return
+        val json =
+            resource.openStream().use {
+                Json.decodeFromStream<JsonObject>(it)
+            }
+        val revision =
+            json["browsers"]?.jsonArray
+                ?.find { it.jsonObject["name"]?.jsonPrimitive?.contentOrNull == "chromium" }
+                ?.jsonObject
+                ?.get("revision")
+                ?.jsonPrimitive
+                ?.contentOrNull
+                ?: return
 
         val playwrightDir = AppDirsFactory.getInstance().getUserDataDir("ms-playwright", null, null)
         val chromiumZip = Path(".").resolve("bin/chromium.zip")
@@ -50,7 +52,7 @@ object Chromium {
                     Files.copy(
                         source,
                         chromePath.resolve(source.absolutePathString().removePrefix("/")),
-                        StandardCopyOption.REPLACE_EXISTING
+                        StandardCopyOption.REPLACE_EXISTING,
                     )
                 }
         }

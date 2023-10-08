@@ -19,15 +19,15 @@ import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.ServerConfig
 
 object DBManager {
-
     val db by lazy {
         val applicationDirs by DI.global.instance<ApplicationDirs>()
         Database.connect(
             "jdbc:h2:${applicationDirs.dataRoot}/database",
             "org.h2.Driver",
-            databaseConfig = DatabaseConfig {
-                useNestedTransactions = true
-            }
+            databaseConfig =
+                DatabaseConfig {
+                    useNestedTransactions = true
+                },
         )
     }
 }

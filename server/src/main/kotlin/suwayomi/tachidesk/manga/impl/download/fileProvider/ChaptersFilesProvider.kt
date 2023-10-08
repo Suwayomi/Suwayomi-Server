@@ -27,7 +27,7 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
     open suspend fun downloadImpl(
         download: DownloadChapter,
         scope: CoroutineScope,
-        step: suspend (DownloadChapter?, Boolean) -> Unit
+        step: suspend (DownloadChapter?, Boolean) -> Unit,
     ): Boolean {
         val pageCount = download.chapter.pageCount
         val chapterDir = getChapterCachePath(mangaId, chapterId)
@@ -42,16 +42,17 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
                 Page.getPageImage(
                     mangaId = download.mangaId,
                     chapterIndex = download.chapterIndex,
-                    index = pageNum
+                    index = pageNum,
                 ) { flow ->
-                    pageProgressJob = flow
-                        .sample(100)
-                        .distinctUntilChanged()
-                        .onEach {
-                            download.progress = (pageNum.toFloat() + (it.toFloat() * 0.01f)) / pageCount
-                            step(null, false) // don't throw on canceled download here since we can't do anything
-                        }
-                        .launchIn(scope)
+                    pageProgressJob =
+                        flow
+                            .sample(100)
+                            .distinctUntilChanged()
+                            .onEach {
+                                download.progress = (pageNum.toFloat() + (it.toFloat() * 0.01f)) / pageCount
+                                step(null, false) // don't throw on canceled download here since we can't do anything
+                            }
+                            .launchIn(scope)
                 }
             } finally {
                 // always cancel the page progress job even if it throws an exception to avoid memory leaks

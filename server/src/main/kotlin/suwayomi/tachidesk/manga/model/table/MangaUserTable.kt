@@ -20,9 +20,10 @@ object MangaUserTable : IntIdTable() {
     val inLibraryAt = long("in_library_at").default(0)
 }
 
-fun MangaTable.getWithUserData(userId: Int) = leftJoin(
-    MangaUserTable,
-    onColumn = { MangaTable.id },
-    otherColumn = { MangaUserTable.manga },
-    additionalConstraint = { MangaUserTable.user eq userId }
-)
+fun MangaTable.getWithUserData(userId: Int) =
+    leftJoin(
+        MangaUserTable,
+        onColumn = { MangaTable.id },
+        otherColumn = { MangaUserTable.manga },
+        additionalConstraint = { MangaUserTable.user eq userId },
+    )

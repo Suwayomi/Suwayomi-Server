@@ -43,31 +43,30 @@ object MangaTable : IntIdTable() {
     val updateStrategy = varchar("update_strategy", 256).default(UpdateStrategy.ALWAYS_UPDATE.name)
 }
 
-fun MangaTable.toDataClass(userId: Int, mangaEntry: ResultRow) =
-    MangaDataClass(
-        id = mangaEntry[this.id].value,
-        sourceId = mangaEntry[sourceReference].toString(),
-
-        url = mangaEntry[url],
-        title = mangaEntry[title],
-        thumbnailUrl = proxyThumbnailUrl(mangaEntry[this.id].value),
-        thumbnailUrlLastFetched = mangaEntry[thumbnailUrlLastFetched],
-
-        initialized = mangaEntry[initialized],
-
-        artist = mangaEntry[artist],
-        author = mangaEntry[author],
-        description = mangaEntry[description],
-        genre = mangaEntry[genre].toGenreList(),
-        status = Companion.valueOf(mangaEntry[status]).name,
-        inLibrary = mangaEntry.getOrNull(MangaUserTable.inLibrary) ?: false,
-        inLibraryAt = mangaEntry.getOrNull(MangaUserTable.inLibraryAt) ?: 0,
-        meta = getMangaMetaMap(userId, mangaEntry[id].value),
-        realUrl = mangaEntry[realUrl],
-        lastFetchedAt = mangaEntry[lastFetchedAt],
-        chaptersLastFetchedAt = mangaEntry[chaptersLastFetchedAt],
-        updateStrategy = UpdateStrategy.valueOf(mangaEntry[updateStrategy])
-    )
+fun MangaTable.toDataClass(
+    userId: Int,
+    mangaEntry: ResultRow,
+) = MangaDataClass(
+    id = mangaEntry[this.id].value,
+    sourceId = mangaEntry[sourceReference].toString(),
+    url = mangaEntry[url],
+    title = mangaEntry[title],
+    thumbnailUrl = proxyThumbnailUrl(mangaEntry[this.id].value),
+    thumbnailUrlLastFetched = mangaEntry[thumbnailUrlLastFetched],
+    initialized = mangaEntry[initialized],
+    artist = mangaEntry[artist],
+    author = mangaEntry[author],
+    description = mangaEntry[description],
+    genre = mangaEntry[genre].toGenreList(),
+    status = Companion.valueOf(mangaEntry[status]).name,
+    inLibrary = mangaEntry.getOrNull(MangaUserTable.inLibrary) ?: false,
+    inLibraryAt = mangaEntry.getOrNull(MangaUserTable.inLibraryAt) ?: 0,
+    meta = getMangaMetaMap(userId, mangaEntry[id].value),
+    realUrl = mangaEntry[realUrl],
+    lastFetchedAt = mangaEntry[lastFetchedAt],
+    chaptersLastFetchedAt = mangaEntry[chaptersLastFetchedAt],
+    updateStrategy = UpdateStrategy.valueOf(mangaEntry[updateStrategy]),
+)
 
 enum class MangaStatus(val value: Int) {
     UNKNOWN(0),
@@ -76,7 +75,8 @@ enum class MangaStatus(val value: Int) {
     LICENSED(3),
     PUBLISHING_FINISHED(4),
     CANCELLED(5),
-    ON_HIATUS(6);
+    ON_HIATUS(6),
+    ;
 
     companion object {
         fun valueOf(value: Int): MangaStatus = values().find { it.value == value } ?: UNKNOWN

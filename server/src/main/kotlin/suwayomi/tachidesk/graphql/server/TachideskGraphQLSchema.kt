@@ -47,50 +47,56 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
 class CustomSchemaGeneratorHooks : FlowSubscriptionSchemaGeneratorHooks() {
-    override fun willGenerateGraphQLType(type: KType): GraphQLType? = when (type.classifier as? KClass<*>) {
-        Long::class -> GraphQLLongAsString // encode to string for JS
-        Cursor::class -> GraphQLCursor
-        UploadedFile::class -> GraphQLUpload
-        else -> super.willGenerateGraphQLType(type)
-    }
+    override fun willGenerateGraphQLType(type: KType): GraphQLType? =
+        when (type.classifier as? KClass<*>) {
+            Long::class -> GraphQLLongAsString // encode to string for JS
+            Cursor::class -> GraphQLCursor
+            UploadedFile::class -> GraphQLUpload
+            else -> super.willGenerateGraphQLType(type)
+        }
 }
 
-val schema = toSchema(
-    config = SchemaGeneratorConfig(
-        supportedPackages = listOf("suwayomi.tachidesk.graphql"),
-        introspectionEnabled = true,
-        hooks = CustomSchemaGeneratorHooks()
-    ),
-    queries = listOf(
-        TopLevelObject(BackupQuery()),
-        TopLevelObject(CategoryQuery()),
-        TopLevelObject(ChapterQuery()),
-        TopLevelObject(DownloadQuery()),
-        TopLevelObject(ExtensionQuery()),
-        TopLevelObject(InfoQuery()),
-        TopLevelObject(MangaQuery()),
-        TopLevelObject(MetaQuery()),
-        TopLevelObject(SettingsQuery()),
-        TopLevelObject(SourceQuery()),
-        TopLevelObject(UpdateQuery())
-    ),
-    mutations = listOf(
-        TopLevelObject(BackupMutation()),
-        TopLevelObject(CategoryMutation()),
-        TopLevelObject(ChapterMutation()),
-        TopLevelObject(DownloadMutation()),
-        TopLevelObject(ExtensionMutation()),
-        TopLevelObject(InfoMutation()),
-        TopLevelObject(MangaMutation()),
-        TopLevelObject(MetaMutation()),
-        TopLevelObject(SettingsMutation()),
-        TopLevelObject(SourceMutation()),
-        TopLevelObject(UpdateMutation()),
-        TopLevelObject(UserMutation())
-    ),
-    subscriptions = listOf(
-        TopLevelObject(DownloadSubscription()),
-        TopLevelObject(InfoSubscription()),
-        TopLevelObject(UpdateSubscription())
+val schema =
+    toSchema(
+        config =
+            SchemaGeneratorConfig(
+                supportedPackages = listOf("suwayomi.tachidesk.graphql"),
+                introspectionEnabled = true,
+                hooks = CustomSchemaGeneratorHooks(),
+            ),
+        queries =
+            listOf(
+                TopLevelObject(BackupQuery()),
+                TopLevelObject(CategoryQuery()),
+                TopLevelObject(ChapterQuery()),
+                TopLevelObject(DownloadQuery()),
+                TopLevelObject(ExtensionQuery()),
+                TopLevelObject(InfoQuery()),
+                TopLevelObject(MangaQuery()),
+                TopLevelObject(MetaQuery()),
+                TopLevelObject(SettingsQuery()),
+                TopLevelObject(SourceQuery()),
+                TopLevelObject(UpdateQuery()),
+            ),
+        mutations =
+            listOf(
+                TopLevelObject(BackupMutation()),
+                TopLevelObject(CategoryMutation()),
+                TopLevelObject(ChapterMutation()),
+                TopLevelObject(DownloadMutation()),
+                TopLevelObject(ExtensionMutation()),
+                TopLevelObject(InfoMutation()),
+                TopLevelObject(MangaMutation()),
+                TopLevelObject(MetaMutation()),
+                TopLevelObject(SettingsMutation()),
+                TopLevelObject(SourceMutation()),
+                TopLevelObject(UpdateMutation()),
+                TopLevelObject(UserMutation()),
+            ),
+        subscriptions =
+            listOf(
+                TopLevelObject(DownloadSubscription()),
+                TopLevelObject(InfoSubscription()),
+                TopLevelObject(UpdateSubscription()),
+            ),
     )
-)
