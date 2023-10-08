@@ -105,7 +105,6 @@ class ApolloSubscriptionProtocolHandler(
         }
     }
 
-    @Suppress("Detekt.TooGenericExceptionCaught")
     private fun startSubscription(
         operationMessage: SubscriptionOperationMessage,
         context: WsContext,
