@@ -38,7 +38,7 @@ import suwayomi.tachidesk.graphql.server.toGraphQLContext
 import suwayomi.tachidesk.server.serverConfig
 
 /**
- * Implementation of the `graphql-transport-ws` protocol defined by Apollo
+ * Implementation of the `graphql-transport-ws` protocol defined by Denis Badurina
  * https://github.com/enisdenjo/graphql-ws/blob/master/PROTOCOL.md
  * ported for Javalin
  */
