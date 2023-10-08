@@ -1,4 +1,5 @@
 import de.undercouch.gradle.tasks.download.Download
+import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 import java.time.Instant
 
 plugins {
@@ -139,6 +140,15 @@ tasks {
         testLogging {
             showStandardStreams = true
             events("passed", "skipped", "failed")
+        }
+    }
+
+    withType<KotlinJvmCompile> {
+        kotlinOptions {
+            freeCompilerArgs +=
+                listOf(
+                    "-opt-in=kotlinx.serialization.ExperimentalSerializationApi",
+                )
         }
     }
 

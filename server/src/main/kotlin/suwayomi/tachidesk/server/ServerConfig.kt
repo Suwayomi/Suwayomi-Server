@@ -10,6 +10,7 @@ package suwayomi.tachidesk.server
 import com.typesafe.config.Config
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
@@ -111,6 +112,7 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
     // local source
     val localSourcePath: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun <T> subscribeTo(
         flow: Flow<T>,
         onChange: suspend (value: T) -> Unit,

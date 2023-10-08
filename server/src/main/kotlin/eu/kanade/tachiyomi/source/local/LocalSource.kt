@@ -32,6 +32,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import mu.KotlinLogging
+import nl.adaptivity.xmlutil.ExperimentalXmlUtilApi
 import nl.adaptivity.xmlutil.core.KtXmlReader
 import nl.adaptivity.xmlutil.serialization.XML
 import org.apache.commons.compress.archivers.zip.ZipFile
@@ -271,6 +272,7 @@ class LocalSource(
         }
     }
 
+    @OptIn(ExperimentalXmlUtilApi::class)
     private fun setMangaDetailsFromComicInfoFile(
         stream: InputStream,
         manga: SManga,

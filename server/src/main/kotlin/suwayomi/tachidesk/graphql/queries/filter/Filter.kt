@@ -313,7 +313,7 @@ data class StringListFilter(
     val hasNoneInsensitive: List<String>? = null,
 ) : ListScalarFilter<String, List<String>>
 
-@Suppress("UNCHECKED_CAST")
+@Suppress("UNCHECKED_CAST", "FINAL_UPPER_BOUND")
 fun <T : String, S : T?> andFilterWithCompareString(
     column: Column<S>,
     filter: StringFilter?,

@@ -13,6 +13,7 @@ import io.javalin.websocket.WsContext
 import io.javalin.websocket.WsMessageContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -51,6 +52,7 @@ import kotlin.time.Duration.Companion.seconds
 
 private val logger = KotlinLogging.logger {}
 
+@OptIn(FlowPreview::class)
 object DownloadManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val clients = ConcurrentHashMap<String, WsContext>()
@@ -150,9 +152,6 @@ object DownloadManager {
         if (immediate) {
             sendStatusToAllClients()
         }
-        /*if (downloadChapter != null) { TODO GRAPHQL
-            downloadSubscriptionSource.publish(downloadChapter)
-        }*/
     }
 
     private fun getStatus(): DownloadStatus {
