@@ -38,7 +38,6 @@ fun SortOrder?.maybeSwap(value: Any?): SortOrder {
     }
 }
 
-
 fun <T> Query.applyBeforeAfter(
     before: Cursor?,
     after: Cursor?,
