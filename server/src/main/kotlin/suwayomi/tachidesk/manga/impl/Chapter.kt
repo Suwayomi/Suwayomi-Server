@@ -218,13 +218,19 @@ object Chapter {
             }
         }
 
-        if (manga.inLibrary) {
+        val isInALibrary =
+            transaction {
+                MangaUserTable.select { MangaUserTable.manga eq mangaId and (MangaUserTable.inLibrary eq true) }.isNotEmpty()
+            }
+
+        if (isInALibrary) {
             downloadNewChapters(mangaId, numberOfCurrentChapters, newChapters)
         }
 
         return chapterList
     }
 
+    // todo user accounts
     private fun downloadNewChapters(
         mangaId: Int,
         prevNumberOfChapters: Int,
@@ -252,7 +258,7 @@ object Chapter {
             updatedChapterList.indexOfFirst { it.getOrNull(ChapterUserTable.isRead) == true }.takeIf { it > -1 } ?: return
         val unreadChapters =
             updatedChapterList.subList(numberOfNewChapters, latestReadChapterIndex)
-                .filter { !it[ChapterTable.isRead] }
+                .filter { it.getOrNull(ChapterUserTable.isRead) != true }
 
         val skipDueToUnreadChapters = serverConfig.excludeEntryWithUnreadChapters.value && unreadChapters.isNotEmpty()
         if (skipDueToUnreadChapters) {

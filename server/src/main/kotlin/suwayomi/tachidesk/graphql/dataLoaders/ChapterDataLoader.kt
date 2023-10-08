@@ -22,6 +22,7 @@ import suwayomi.tachidesk.graphql.types.ChapterNodeList
 import suwayomi.tachidesk.graphql.types.ChapterNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.JavalinSetup
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -91,16 +92,17 @@ class UnreadChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
     override val dataLoaderName = "UnreadChapterCountForMangaDataLoader"
 
     override fun getDataLoader(): DataLoader<Int, Int> =
-        DataLoaderFactory.newDataLoader<Int, Int> { ids ->
+        DataLoaderFactory.newDataLoader<Int, Int> { ids, env ->
             future {
+                val userId = env.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val unreadChapterCountByMangaId =
                         ChapterTable.getWithUserData(userId)
                             .slice(ChapterTable.manga, ChapterUserTable.isRead.count())
-                            .select { (ChapterTable.manga inList ids) and (ChapterTable.isRead eq false) }
+                            .select { (ChapterTable.manga inList ids) and (ChapterUserTable.isRead eq false) }
                             .groupBy(ChapterTable.manga)
-                            .associate { it[ChapterTable.manga].value to it[ChapterTable.isRead.count()] }
+                            .associate { it[ChapterTable.manga].value to it[ChapterUserTable.isRead.count()] }
                     ids.map { unreadChapterCountByMangaId[it]?.toInt() ?: 0 }
                 }
             }
@@ -111,8 +113,9 @@ class LastReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
     override val dataLoaderName = "LastReadChapterForMangaDataLoader"
 
     override fun getDataLoader(): DataLoader<Int, ChapterType?> =
-        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids ->
+        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids, env ->
             future {
+                val userId = env.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val lastReadChaptersByMangaId =

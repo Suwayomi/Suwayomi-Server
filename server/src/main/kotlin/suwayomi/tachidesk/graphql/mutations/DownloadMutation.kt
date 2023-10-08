@@ -326,10 +326,10 @@ class DownloadMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: DownloadAheadInput,
     ): DownloadAheadPayload {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, mangaIds, latestReadChapterIds) = input
 
-        Manga.downloadAhead(mangaIds, latestReadChapterIds ?: emptyList())
+        Manga.downloadAhead(userId, mangaIds, latestReadChapterIds ?: emptyList())
 
         return DownloadAheadPayload(clientMutationId)
     }

@@ -371,6 +371,7 @@ object Manga {
     private const val CHAPTERS_KEY = "chapterIds"
 
     fun downloadAhead(
+        userId: Int,
         mangaIds: List<Int>,
         latestReadChapterIds: List<Int> = emptyList(),
     ) {
@@ -396,6 +397,7 @@ object Manga {
                     object : TimerTask() {
                         override fun run() {
                             downloadAheadChapters(
+                                userId,
                                 downloadAheadQueue[MANGAS_KEY]?.toList().orEmpty(),
                                 downloadAheadQueue[CHAPTERS_KEY]?.toList().orEmpty(),
                             )
@@ -426,18 +428,23 @@ object Manga {
      * will download the unread chapters starting from chapter 15
      */
     private fun downloadAheadChapters(
+        userId: Int,
         mangaIds: List<Int>,
         latestReadChapterIds: List<Int>,
     ) {
         val mangaToLatestReadChapterIndex =
             transaction {
-                ChapterTable.select { (ChapterTable.manga inList mangaIds) and (ChapterTable.isRead eq true) }
-                    .orderBy(ChapterTable.sourceOrder to SortOrder.DESC).groupBy { it[ChapterTable.manga].value }
+                ChapterTable.getWithUserData(userId).select {
+                    (ChapterTable.manga inList mangaIds) and (ChapterUserTable.isRead eq true)
+                }
+                    .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+                    .groupBy { it[ChapterTable.manga].value }
             }.mapValues { (_, chapters) -> chapters.firstOrNull()?.let { it[ChapterTable.sourceOrder] } ?: 0 }
 
         val mangaToUnreadChaptersMap =
             transaction {
-                ChapterTable.select { (ChapterTable.manga inList mangaIds) and (ChapterTable.isRead eq false) }
+                ChapterTable.getWithUserData(userId)
+                    .select { (ChapterTable.manga inList mangaIds) and (ChapterUserTable.isRead eq false) }
                     .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
                     .groupBy { it[ChapterTable.manga].value }
             }
