@@ -24,33 +24,41 @@ import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogue
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import java.io.File
 
 suspend fun getChapterDownloadReady(
+    userId: Int,
     chapterId: Int? = null,
     chapterIndex: Int? = null,
     mangaId: Int? = null,
 ): ChapterDataClass {
-    val chapter = ChapterForDownload(chapterId, chapterIndex, mangaId)
+    val chapter = ChapterForDownload(userId, chapterId, chapterIndex, mangaId)
 
     return chapter.asDownloadReady()
 }
 
-suspend fun getChapterDownloadReadyById(chapterId: Int): ChapterDataClass {
-    return getChapterDownloadReady(chapterId = chapterId)
+suspend fun getChapterDownloadReadyById(
+    userId: Int,
+    chapterId: Int,
+): ChapterDataClass {
+    return getChapterDownloadReady(userId = userId, chapterId = chapterId)
 }
 
 suspend fun getChapterDownloadReadyByIndex(
+    userId: Int,
     chapterIndex: Int,
     mangaId: Int,
 ): ChapterDataClass {
-    return getChapterDownloadReady(chapterIndex = chapterIndex, mangaId = mangaId)
+    return getChapterDownloadReady(userId = userId, chapterIndex = chapterIndex, mangaId = mangaId)
 }
 
 private class ChapterForDownload(
+    private val userId: Int,
     optChapterId: Int? = null,
     optChapterIndex: Int? = null,
     optMangaId: Int? = null,
@@ -67,7 +75,7 @@ private class ChapterForDownload(
         return asDataClass()
     }
 
-    private fun asDataClass() = ChapterTable.toDataClass(chapterEntry)
+    private fun asDataClass() = ChapterTable.toDataClass(userId, chapterEntry) // no need for user id
 
     var chapterEntry: ResultRow
     val chapterId: Int
@@ -86,7 +94,7 @@ private class ChapterForDownload(
         optChapterIndex: Int? = null,
         optMangaId: Int? = null,
     ) = transaction {
-        ChapterTable.select {
+        ChapterTable.getWithUserData(userId).select {
             if (optChapterId != null) {
                 ChapterTable.id eq optChapterId
             } else if (optChapterIndex != null && optMangaId != null) {
@@ -143,7 +151,14 @@ private class ChapterForDownload(
             ChapterTable.update({ ChapterTable.id eq chapterId }) {
                 val pageCount = pageList.size
                 it[ChapterTable.pageCount] = pageCount
-                it[ChapterTable.lastPageRead] = chapterEntry[ChapterTable.lastPageRead].coerceAtMost(pageCount - 1)
+            }
+            val pageCount = pageList.size
+            ChapterUserTable.select {
+                ChapterUserTable.chapter eq chapterId and (ChapterUserTable.lastPageRead greaterEq pageCount)
+            }.forEach { row ->
+                ChapterUserTable.update({ ChapterUserTable.id eq row[ChapterUserTable.id] }) {
+                    it[ChapterUserTable.lastPageRead] = pageCount - 1
+                }
             }
         }
     }

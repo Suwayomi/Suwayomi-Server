@@ -12,25 +12,30 @@ import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.sql.addLogger
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.CategoryNodeList
 import suwayomi.tachidesk.graphql.types.CategoryNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.CategoryType
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
+import suwayomi.tachidesk.server.JavalinSetup
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.requireUser
 
 class CategoryDataLoader : KotlinDataLoader<Int, CategoryType> {
     override val dataLoaderName = "CategoryDataLoader"
 
     override fun getDataLoader(): DataLoader<Int, CategoryType> =
-        DataLoaderFactory.newDataLoader { ids ->
+        DataLoaderFactory.newDataLoader { ids, env ->
             future {
+                val userId = env.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val categories =
-                        CategoryTable.select { CategoryTable.id inList ids }
+                        CategoryTable.select { CategoryTable.id inList ids and (CategoryTable.user eq userId) }
                             .map { CategoryType(it) }
                             .associateBy { it.id }
                     ids.map { categories[it] }
@@ -43,12 +48,18 @@ class CategoryForIdsDataLoader : KotlinDataLoader<List<Int>, CategoryNodeList> {
     override val dataLoaderName = "CategoryForIdsDataLoader"
 
     override fun getDataLoader(): DataLoader<List<Int>, CategoryNodeList> =
-        DataLoaderFactory.newDataLoader { categoryIds ->
+        DataLoaderFactory.newDataLoader { categoryIds, env ->
             future {
+                val userId = env.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val ids = categoryIds.flatten().distinct()
-                    val categories = CategoryTable.select { CategoryTable.id inList ids }.map { CategoryType(it) }
+                    val categories =
+                        CategoryTable.select { CategoryTable.id inList ids and (CategoryTable.user eq userId) }.map {
+                            CategoryType(
+                                it,
+                            )
+                        }
                     categoryIds.map { categoryIds ->
                         categories.filter { it.id in categoryIds }.toNodeList()
                     }
@@ -61,13 +72,18 @@ class CategoriesForMangaDataLoader : KotlinDataLoader<Int, CategoryNodeList> {
     override val dataLoaderName = "CategoriesForMangaDataLoader"
 
     override fun getDataLoader(): DataLoader<Int, CategoryNodeList> =
-        DataLoaderFactory.newDataLoader<Int, CategoryNodeList> { ids ->
+        DataLoaderFactory.newDataLoader<Int, CategoryNodeList> { ids, env ->
             future {
+                val userId = env.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val itemsByRef =
                         CategoryMangaTable.innerJoin(CategoryTable)
-                            .select { CategoryMangaTable.manga inList ids }
+                            .select {
+                                CategoryMangaTable.manga inList ids and
+                                    (CategoryMangaTable.user eq userId) and
+                                    (CategoryTable.user eq userId)
+                            }
                             .map { Pair(it[CategoryMangaTable.manga].value, CategoryType(it)) }
                             .groupBy { it.first }
                             .mapValues { it.value.map { pair -> pair.second } }

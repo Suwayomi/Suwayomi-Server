@@ -92,7 +92,8 @@ class Updater : IUpdater {
                 lastAutomatedUpdate,
             )})"
         }
-        addCategoriesToUpdateQueue(Category.getCategoryList(), clear = true, forceAll = false)
+        // todo User accounts
+        addCategoriesToUpdateQueue(Category.getCategoryList(1), clear = true, forceAll = false)
     }
 
     fun scheduleUpdateTask() {
@@ -163,7 +164,7 @@ class Updater : IUpdater {
         tracker[job.manga.id] =
             try {
                 logger.info { "Updating \"${job.manga.title}\" (source: ${job.manga.sourceId})" }
-                Chapter.getChapterList(job.manga.id, true)
+                Chapter.getChapterList(0, job.manga.id, true)
                 job.copy(status = JobStatus.COMPLETE)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
@@ -205,9 +206,9 @@ class Updater : IUpdater {
 
         val categoriesToUpdateMangas =
             categoriesToUpdate
-                .flatMap { CategoryManga.getCategoryMangaList(it.id) }
+                .flatMap { CategoryManga.getCategoryMangaList(1, it.id) } // todo User accounts
                 .distinctBy { it.id }
-        val mangasToCategoriesMap = CategoryManga.getMangasCategories(categoriesToUpdateMangas.map { it.id })
+        val mangasToCategoriesMap = CategoryManga.getMangasCategories(1, categoriesToUpdateMangas.map { it.id }) // todo User accounts
         val mangasToUpdate =
             categoriesToUpdateMangas
                 .asSequence()

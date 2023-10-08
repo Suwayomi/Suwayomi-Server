@@ -10,10 +10,14 @@ package suwayomi.tachidesk.server
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.path
 import io.javalin.core.security.RouteRole
+import io.javalin.core.util.Header
+import io.javalin.http.Context
+import io.javalin.http.HttpCode
 import io.javalin.http.staticfiles.Location
 import io.javalin.plugin.openapi.OpenApiOptions
 import io.javalin.plugin.openapi.OpenApiPlugin
 import io.javalin.plugin.openapi.ui.SwaggerOptions
+import io.javalin.websocket.WsContext
 import io.swagger.v3.oas.models.info.Info
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,8 +32,13 @@ import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.global.GlobalAPI
+import suwayomi.tachidesk.global.impl.util.Jwt
 import suwayomi.tachidesk.graphql.GraphQL
 import suwayomi.tachidesk.manga.MangaAPI
+import suwayomi.tachidesk.server.JavalinSetup.setAttribute
+import suwayomi.tachidesk.server.user.ForbiddenException
+import suwayomi.tachidesk.server.user.UnauthorizedException
+import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import java.io.IOException
@@ -92,7 +101,24 @@ object JavalinSetup {
                         return username == serverConfig.basicAuthUsername.value && password == serverConfig.basicAuthPassword.value
                     }
 
-                    if (serverConfig.basicAuthEnabled.value && !(ctx.basicAuthCredentialsExist() && credentialsValid())) {
+                    val user =
+                        if (serverConfig.multiUser.value) {
+                            val authentication = ctx.header(Header.AUTHORIZATION)
+                            if (authentication.isNullOrBlank()) {
+                                UserType.Visitor
+                            } else {
+                                Jwt.verifyJwt(authentication.substringAfter("Bearer "))
+                            }
+                        } else {
+                            UserType.Admin(1)
+                        }
+                    ctx.setAttribute(Attribute.TachideskUser, user)
+
+                    if (
+                        !serverConfig.multiUser.value &&
+                        serverConfig.basicAuthEnabled.value &&
+                        !(ctx.basicAuthCredentialsExist() && credentialsValid())
+                    ) {
                         ctx.header("WWW-Authenticate", "Basic")
                         ctx.status(401).json("Unauthorized")
                     } else {
@@ -106,6 +132,28 @@ object JavalinSetup {
                     }
                 }
             }.start()
+
+        app.wsBefore {
+            it.onConnect { ctx ->
+                val user =
+                    if (serverConfig.multiUser.value) {
+                        val authentication = ctx.header(Header.AUTHORIZATION)
+                        if (authentication.isNullOrBlank()) {
+                            val token = ctx.queryParam("token")
+                            if (token.isNullOrBlank()) {
+                                UserType.Visitor
+                            } else {
+                                Jwt.verifyJwt(token)
+                            }
+                        } else {
+                            Jwt.verifyJwt(authentication.substringAfter("Bearer "))
+                        }
+                    } else {
+                        UserType.Admin(1)
+                    }
+                ctx.setAttribute(Attribute.TachideskUser, user)
+            }
+        }
 
         // when JVM is prompted to shutdown, stop javalin gracefully
         Runtime.getRuntime().addShutdownHook(
@@ -132,6 +180,17 @@ object JavalinSetup {
             logger.error("IllegalArgumentException while handling the request", e)
             ctx.status(400)
             ctx.result(e.message ?: "Bad Request")
+        }
+
+        app.exception(UnauthorizedException::class.java) { e, ctx ->
+            logger.info("UnauthorizedException while handling the request", e)
+            ctx.status(HttpCode.UNAUTHORIZED)
+            ctx.result(e.message ?: "Unauthorized")
+        }
+        app.exception(ForbiddenException::class.java) { e, ctx ->
+            logger.info("ForbiddenException while handling the request", e)
+            ctx.status(HttpCode.FORBIDDEN)
+            ctx.result(e.message ?: "Forbidden")
         }
 
         app.routes {
@@ -163,5 +222,31 @@ object JavalinSetup {
 
     object Auth {
         enum class Role : RouteRole { ANYONE, USER_READ, USER_WRITE }
+    }
+
+    sealed class Attribute<T : Any>(val name: String) {
+        data object TachideskUser : Attribute<UserType>("user")
+    }
+
+    private fun <T : Any> Context.setAttribute(
+        attribute: Attribute<T>,
+        value: T,
+    ) {
+        attribute(attribute.name, value)
+    }
+
+    private fun <T : Any> WsContext.setAttribute(
+        attribute: Attribute<T>,
+        value: T,
+    ) {
+        attribute(attribute.name, value)
+    }
+
+    fun <T : Any> Context.getAttribute(attribute: Attribute<T>): T {
+        return attribute(attribute.name)!!
+    }
+
+    fun <T : Any> WsContext.getAttribute(attribute: Attribute<T>): T {
+        return attribute(attribute.name)!!
     }
 }

@@ -1,15 +1,20 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import graphql.schema.DataFetchingEnvironment
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.UpdateStatus
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.user.requireUser
 
 class UpdateMutation {
     private val updater by DI.global.instance<IUpdater>()
@@ -23,9 +28,14 @@ class UpdateMutation {
         val updateStatus: UpdateStatus,
     )
 
-    fun updateLibraryManga(input: UpdateLibraryMangaInput): UpdateLibraryMangaPayload {
+    fun updateLibraryManga(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateLibraryMangaInput,
+    ): UpdateLibraryMangaPayload {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+
         updater.addCategoriesToUpdateQueue(
-            Category.getCategoryList(),
+            Category.getCategoryList(userId),
             clear = true,
             forceAll = false,
         )
@@ -43,10 +53,14 @@ class UpdateMutation {
         val updateStatus: UpdateStatus,
     )
 
-    fun updateCategoryManga(input: UpdateCategoryMangaInput): UpdateCategoryMangaPayload {
+    fun updateCategoryManga(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateCategoryMangaInput,
+    ): UpdateCategoryMangaPayload {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val categories =
             transaction {
-                CategoryTable.select { CategoryTable.id inList input.categories }.map {
+                CategoryTable.select { CategoryTable.id inList input.categories and (CategoryTable.user eq userId) }.map {
                     CategoryTable.toDataClass(it)
                 }
             }

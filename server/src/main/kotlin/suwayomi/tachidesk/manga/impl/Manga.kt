@@ -29,6 +29,7 @@ import suwayomi.tachidesk.manga.impl.Source.getSource
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.MissingThumbnailException
+import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
@@ -40,9 +41,12 @@ import suwayomi.tachidesk.manga.impl.util.updateMangaDownloadDir
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.serverConfig
@@ -70,17 +74,18 @@ object Manga {
     }
 
     suspend fun getManga(
+        userId: Int,
         mangaId: Int,
         onlineFetch: Boolean = false,
     ): MangaDataClass {
-        var mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
+        var mangaEntry = transaction { MangaTable.getWithUserData(userId).select { MangaTable.id eq mangaId }.first() }
 
         return if (!onlineFetch && mangaEntry[MangaTable.initialized]) {
-            getMangaDataClass(mangaId, mangaEntry)
+            getMangaDataClass(userId, mangaId, mangaEntry)
         } else { // initialize manga
-            val sManga = fetchManga(mangaId) ?: return getMangaDataClass(mangaId, mangaEntry)
+            val sManga = fetchManga(mangaId) ?: return getMangaDataClass(userId, mangaId, mangaEntry)
 
-            mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
+            mangaEntry = transaction { MangaTable.getWithUserData(userId).select { MangaTable.id eq mangaId }.first() }
 
             MangaDataClass(
                 id = mangaId,
@@ -95,10 +100,10 @@ object Manga {
                 description = sManga.description,
                 genre = sManga.genre.toGenreList(),
                 status = MangaStatus.valueOf(sManga.status).name,
-                inLibrary = mangaEntry[MangaTable.inLibrary],
-                inLibraryAt = mangaEntry[MangaTable.inLibraryAt],
+                inLibrary = mangaEntry.getOrNull(MangaUserTable.inLibrary) ?: false,
+                inLibraryAt = mangaEntry.getOrNull(MangaUserTable.inLibraryAt) ?: 0,
                 source = getSource(mangaEntry[MangaTable.sourceReference]),
-                meta = getMangaMetaMap(mangaId),
+                meta = getMangaMetaMap(userId, mangaId),
                 realUrl = mangaEntry[MangaTable.realUrl],
                 lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
                 chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
@@ -159,15 +164,17 @@ object Manga {
     }
 
     suspend fun getMangaFull(
+        userId: Int,
         mangaId: Int,
         onlineFetch: Boolean = false,
     ): MangaDataClass {
-        val mangaDaaClass = getManga(mangaId, onlineFetch)
+        val mangaDaaClass = getManga(userId, mangaId, onlineFetch)
 
         return transaction {
             val unreadCount =
                 ChapterTable
-                    .select { (ChapterTable.manga eq mangaId) and (ChapterTable.isRead eq false) }
+                    .getWithUserData(userId)
+                    .select { (ChapterTable.manga eq mangaId) and (ChapterUserTable.isRead eq false) }
                     .count()
 
             val downloadCount =
@@ -181,21 +188,22 @@ object Manga {
                     .count()
 
             val lastChapterRead =
-                ChapterTable
+                ChapterTable.getWithUserData(userId)
                     .select { (ChapterTable.manga eq mangaId) }
                     .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
-                    .firstOrNull { it[ChapterTable.isRead] }
+                    .firstOrNull { it.getOrNull(ChapterUserTable.isRead) == true }
 
             mangaDaaClass.unreadCount = unreadCount
             mangaDaaClass.downloadCount = downloadCount
             mangaDaaClass.chapterCount = chapterCount
-            mangaDaaClass.lastChapterRead = lastChapterRead?.let { ChapterTable.toDataClass(it) }
+            mangaDaaClass.lastChapterRead = lastChapterRead?.let { ChapterTable.toDataClass(userId, it) }
 
             mangaDaaClass
         }
     }
 
     private fun getMangaDataClass(
+        userId: Int,
         mangaId: Int,
         mangaEntry: ResultRow,
     ) = MangaDataClass(
@@ -211,10 +219,10 @@ object Manga {
         description = mangaEntry[MangaTable.description],
         genre = mangaEntry[MangaTable.genre].toGenreList(),
         status = MangaStatus.valueOf(mangaEntry[MangaTable.status]).name,
-        inLibrary = mangaEntry[MangaTable.inLibrary],
-        inLibraryAt = mangaEntry[MangaTable.inLibraryAt],
+        inLibrary = mangaEntry.getOrNull(MangaUserTable.inLibrary) ?: false,
+        inLibraryAt = mangaEntry.getOrNull(MangaUserTable.inLibraryAt) ?: 0,
         source = getSource(mangaEntry[MangaTable.sourceReference]),
-        meta = getMangaMetaMap(mangaId),
+        meta = getMangaMetaMap(userId, mangaId),
         realUrl = mangaEntry[MangaTable.realUrl],
         lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
         chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
@@ -222,31 +230,45 @@ object Manga {
         freshData = false,
     )
 
-    fun getMangaMetaMap(mangaId: Int): Map<String, String> {
+    fun getMangaMetaMap(
+        userId: Int,
+        mangaId: Int,
+    ): Map<String, String> {
         return transaction {
-            MangaMetaTable.select { MangaMetaTable.ref eq mangaId }
+            MangaMetaTable.select { MangaMetaTable.user eq userId and (MangaMetaTable.ref eq mangaId) }
                 .associate { it[MangaMetaTable.key] to it[MangaMetaTable.value] }
         }
     }
 
     fun modifyMangaMeta(
+        userId: Int,
         mangaId: Int,
         key: String,
         value: String,
     ) {
         transaction {
             val meta =
-                MangaMetaTable.select { (MangaMetaTable.ref eq mangaId) and (MangaMetaTable.key eq key) }
-                    .firstOrNull()
+                MangaMetaTable.select {
+                    MangaMetaTable.user eq userId and
+                        (MangaMetaTable.ref eq mangaId) and
+                        (MangaMetaTable.key eq key)
+                }.firstOrNull()
 
             if (meta == null) {
                 MangaMetaTable.insert {
                     it[MangaMetaTable.key] = key
                     it[MangaMetaTable.value] = value
                     it[MangaMetaTable.ref] = mangaId
+                    it[MangaMetaTable.user] = userId
                 }
             } else {
-                MangaMetaTable.update({ (MangaMetaTable.ref eq mangaId) and (MangaMetaTable.key eq key) }) {
+                MangaMetaTable.update(
+                    {
+                        MangaMetaTable.user eq userId and
+                            (MangaMetaTable.ref eq mangaId) and
+                            (MangaMetaTable.key eq key)
+                    },
+                ) {
                     it[MangaMetaTable.value] = value
                 }
             }
@@ -270,7 +292,8 @@ object Manga {
                         mangaEntry[MangaTable.thumbnail_url]
                             ?: if (!mangaEntry[MangaTable.initialized]) {
                                 // initialize then try again
-                                getManga(mangaId)
+                                // no need for a user id since we are just fetching if required
+                                getManga(1, mangaId)
                                 transaction {
                                     MangaTable.select { MangaTable.id eq mangaId }.first()
                                 }[MangaTable.thumbnail_url]!!
@@ -315,9 +338,14 @@ object Manga {
     }
 
     suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
-        val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
+        val mangaInLibrary =
+            transaction {
+                MangaUserTable.select {
+                    MangaUserTable.manga eq mangaId and (MangaUserTable.inLibrary eq true)
+                }.isNotEmpty()
+            }
 
-        if (mangaEntry[MangaTable.inLibrary]) {
+        if (mangaInLibrary) {
             return try {
                 ThumbnailDownloadHelper.getImage(mangaId)
             } catch (_: MissingThumbnailException) {
@@ -343,6 +371,7 @@ object Manga {
     private const val CHAPTERS_KEY = "chapterIds"
 
     fun downloadAhead(
+        userId: Int,
         mangaIds: List<Int>,
         latestReadChapterIds: List<Int> = emptyList(),
     ) {
@@ -368,6 +397,7 @@ object Manga {
                     object : TimerTask() {
                         override fun run() {
                             downloadAheadChapters(
+                                userId,
                                 downloadAheadQueue[MANGAS_KEY]?.toList().orEmpty(),
                                 downloadAheadQueue[CHAPTERS_KEY]?.toList().orEmpty(),
                             )
@@ -398,18 +428,23 @@ object Manga {
      * will download the unread chapters starting from chapter 15
      */
     private fun downloadAheadChapters(
+        userId: Int,
         mangaIds: List<Int>,
         latestReadChapterIds: List<Int>,
     ) {
         val mangaToLatestReadChapterIndex =
             transaction {
-                ChapterTable.select { (ChapterTable.manga inList mangaIds) and (ChapterTable.isRead eq true) }
-                    .orderBy(ChapterTable.sourceOrder to SortOrder.DESC).groupBy { it[ChapterTable.manga].value }
+                ChapterTable.getWithUserData(userId).select {
+                    (ChapterTable.manga inList mangaIds) and (ChapterUserTable.isRead eq true)
+                }
+                    .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+                    .groupBy { it[ChapterTable.manga].value }
             }.mapValues { (_, chapters) -> chapters.firstOrNull()?.let { it[ChapterTable.sourceOrder] } ?: 0 }
 
         val mangaToUnreadChaptersMap =
             transaction {
-                ChapterTable.select { (ChapterTable.manga inList mangaIds) and (ChapterTable.isRead eq false) }
+                ChapterTable.getWithUserData(userId)
+                    .select { (ChapterTable.manga inList mangaIds) and (ChapterUserTable.isRead eq false) }
                     .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
                     .groupBy { it[ChapterTable.manga].value }
             }

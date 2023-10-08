@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import graphql.schema.DataFetchingEnvironment
 import io.javalin.http.UploadedFile
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -7,13 +8,16 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import suwayomi.tachidesk.graphql.server.TemporaryFileStorage
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.BackupRestoreState
 import suwayomi.tachidesk.graphql.types.BackupRestoreStatus
 import suwayomi.tachidesk.graphql.types.toStatus
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
 
@@ -29,12 +33,16 @@ class BackupMutation {
     )
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun restoreBackup(input: RestoreBackupInput): CompletableFuture<RestoreBackupPayload> {
+    fun restoreBackup(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: RestoreBackupInput,
+    ): CompletableFuture<RestoreBackupPayload> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, backup) = input
 
         return future {
             GlobalScope.launch {
-                ProtoBackupImport.performRestore(backup.content)
+                ProtoBackupImport.performRestore(userId, backup.content)
             }
 
             val status =
@@ -59,11 +67,16 @@ class BackupMutation {
         val url: String,
     )
 
-    fun createBackup(input: CreateBackupInput? = null): CreateBackupPayload {
+    fun createBackup(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: CreateBackupInput? = null,
+    ): CreateBackupPayload {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val filename = ProtoBackupExport.getBackupFilename()
 
         val backup =
             ProtoBackupExport.createBackup(
+                userId,
                 BackupFlags(
                     includeManga = true,
                     includeCategories = input?.includeCategories ?: true,

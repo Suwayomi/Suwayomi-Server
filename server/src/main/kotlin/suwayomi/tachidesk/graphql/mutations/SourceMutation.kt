@@ -5,8 +5,10 @@ import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.SwitchPreferenceCompat
+import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.FilterChange
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.graphql.types.Preference
@@ -16,7 +18,10 @@ import suwayomi.tachidesk.manga.impl.MangaList.insertOrGet
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class SourceMutation {
@@ -41,7 +46,11 @@ class SourceMutation {
         val hasNextPage: Boolean,
     )
 
-    fun fetchSourceManga(input: FetchSourceMangaInput): CompletableFuture<FetchSourceMangaPayload> {
+    fun fetchSourceManga(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: FetchSourceMangaInput,
+    ): CompletableFuture<FetchSourceMangaPayload> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, sourceId, type, page, query, filters) = input
 
         return future {
@@ -68,7 +77,7 @@ class SourceMutation {
 
             val mangas =
                 transaction {
-                    MangaTable.select { MangaTable.id inList mangaIds }
+                    MangaTable.getWithUserData(userId).select { MangaTable.id inList mangaIds }
                         .map { MangaType(it) }
                 }.sortedBy {
                     mangaIds.indexOf(it.id)
@@ -102,7 +111,11 @@ class SourceMutation {
         val preferences: List<Preference>,
     )
 
-    fun updateSourcePreference(input: UpdateSourcePreferenceInput): UpdateSourcePreferencePayload {
+    fun updateSourcePreference(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateSourcePreferenceInput,
+    ): UpdateSourcePreferencePayload {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, sourceId, change) = input
 
         Source.setSourcePreference(sourceId, change.position, "") { preference ->

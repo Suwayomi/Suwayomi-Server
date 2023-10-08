@@ -12,6 +12,9 @@ import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.formParam
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
@@ -28,7 +31,8 @@ object CategoryController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.json(Category.getCategoryList())
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.json(Category.getCategoryList(userId))
             },
             withResults = {
                 json<Array<CategoryDataClass>>(HttpCode.OK)
@@ -46,7 +50,8 @@ object CategoryController {
                 }
             },
             behaviorOf = { ctx, name ->
-                if (Category.createCategory(name) != -1) {
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                if (Category.createCategory(userId, name) != -1) {
                     ctx.status(200)
                 } else {
                     ctx.status(HttpCode.BAD_REQUEST)
@@ -72,7 +77,8 @@ object CategoryController {
                 }
             },
             behaviorOf = { ctx, categoryId, name, isDefault, includeInUpdate ->
-                Category.updateCategory(categoryId, name, isDefault, includeInUpdate)
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                Category.updateCategory(userId, categoryId, name, isDefault, includeInUpdate)
                 ctx.status(200)
             },
             withResults = {
@@ -91,7 +97,8 @@ object CategoryController {
                 }
             },
             behaviorOf = { ctx, categoryId ->
-                Category.removeCategory(categoryId)
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                Category.removeCategory(userId, categoryId)
                 ctx.status(200)
             },
             withResults = {
@@ -110,7 +117,8 @@ object CategoryController {
                 }
             },
             behaviorOf = { ctx, categoryId ->
-                ctx.json(CategoryManga.getCategoryMangaList(categoryId))
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.json(CategoryManga.getCategoryMangaList(userId, categoryId))
             },
             withResults = {
                 json<Array<MangaDataClass>>(HttpCode.OK)
@@ -129,7 +137,8 @@ object CategoryController {
                 }
             },
             behaviorOf = { ctx, from, to ->
-                Category.reorderCategory(from, to)
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                Category.reorderCategory(userId, from, to)
                 ctx.status(200)
             },
             withResults = {
@@ -150,7 +159,8 @@ object CategoryController {
                 }
             },
             behaviorOf = { ctx, categoryId, key, value ->
-                Category.modifyMeta(categoryId, key, value)
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                Category.modifyMeta(userId, categoryId, key, value)
                 ctx.status(200)
             },
             withResults = {

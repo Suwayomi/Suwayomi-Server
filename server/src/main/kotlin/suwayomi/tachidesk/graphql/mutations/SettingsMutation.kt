@@ -1,11 +1,15 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import graphql.schema.DataFetchingEnvironment
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.PartialSettingsType
 import suwayomi.tachidesk.graphql.types.Settings
 import suwayomi.tachidesk.graphql.types.SettingsType
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.SERVER_CONFIG_MODULE_NAME
 import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.user.requireUser
 import xyz.nulldev.ts.config.GlobalConfigManager
 
 class SettingsMutation {
@@ -88,6 +92,9 @@ class SettingsMutation {
         if (settings.basicAuthPassword != null) {
             serverConfig.basicAuthPassword.value = settings.basicAuthPassword!!
         }
+        if (settings.multiUser != null) {
+            serverConfig.multiUser.value = settings.multiUser!!
+        }
 
         if (settings.debugLogsEnabled != null) {
             serverConfig.debugLogsEnabled.value = settings.debugLogsEnabled!!
@@ -114,7 +121,11 @@ class SettingsMutation {
         }
     }
 
-    fun setSettings(input: SetSettingsInput): SetSettingsPayload {
+    fun setSettings(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: SetSettingsInput,
+    ): SetSettingsPayload {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, settings) = input
 
         updateSettings(settings)
@@ -129,7 +140,11 @@ class SettingsMutation {
         val settings: SettingsType,
     )
 
-    fun resetSettings(input: ResetSettingsInput): ResetSettingsPayload {
+    fun resetSettings(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: ResetSettingsInput,
+    ): ResetSettingsPayload {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId) = input
 
         GlobalConfigManager.resetUserConfig()

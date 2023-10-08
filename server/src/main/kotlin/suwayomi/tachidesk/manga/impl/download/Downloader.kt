@@ -123,7 +123,7 @@ class Downloader(
                 download.state = Downloading
                 step(download, true)
 
-                download.chapter = getChapterDownloadReadyByIndex(download.chapterIndex, download.mangaId)
+                download.chapter = getChapterDownloadReadyByIndex(0, download.chapterIndex, download.mangaId) // no need for user id here
                 step(download, false)
 
                 ChapterDownloadHelper.download(download.mangaId, download.chapter.id, download, scope, this::step)

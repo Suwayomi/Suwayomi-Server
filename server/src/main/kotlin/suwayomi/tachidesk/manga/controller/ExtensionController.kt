@@ -12,7 +12,10 @@ import mu.KotlinLogging
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.withOperation
@@ -30,6 +33,7 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future(
                     future {
                         ExtensionsList.getExtensionList()
@@ -52,6 +56,7 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx, pkgName ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future(
                     future {
                         Extension.installExtension(pkgName)
@@ -79,6 +84,7 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val uploadedFile = ctx.uploadedFile("file")!!
                 logger.debug { "Uploaded extension file name: " + uploadedFile.filename }
 
@@ -106,6 +112,7 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx, pkgName ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future(
                     future {
                         Extension.updateExtension(pkgName)
@@ -131,6 +138,7 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx, pkgName ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 Extension.uninstallExtension(pkgName)
                 ctx.status(200)
             },
@@ -153,6 +161,7 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx, apkName ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future(
                     future { Extension.getExtensionIcon(apkName) }
                         .thenApply {

@@ -51,6 +51,7 @@ interface Settings : Node {
     val basicAuthEnabled: Boolean?
     val basicAuthUsername: String?
     val basicAuthPassword: String?
+    val multiUser: Boolean?
 
     // misc
     val debugLogsEnabled: Boolean?
@@ -95,6 +96,7 @@ data class PartialSettingsType(
     override val basicAuthEnabled: Boolean?,
     override val basicAuthUsername: String?,
     override val basicAuthPassword: String?,
+    override val multiUser: Boolean?,
     // misc
     override val debugLogsEnabled: Boolean?,
     override val systemTrayEnabled: Boolean?,
@@ -136,6 +138,7 @@ class SettingsType(
     override val basicAuthEnabled: Boolean,
     override val basicAuthUsername: String,
     override val basicAuthPassword: String,
+    override val multiUser: Boolean?,
     // misc
     override val debugLogsEnabled: Boolean,
     override val systemTrayEnabled: Boolean,
@@ -170,6 +173,7 @@ class SettingsType(
         config.basicAuthEnabled.value,
         config.basicAuthUsername.value,
         config.basicAuthPassword.value,
+        config.multiUser.value,
         config.debugLogsEnabled.value,
         config.systemTrayEnabled.value,
         config.backupPath.value,
