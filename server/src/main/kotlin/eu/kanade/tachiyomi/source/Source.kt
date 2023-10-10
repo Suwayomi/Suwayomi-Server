@@ -7,11 +7,11 @@ import rx.Observable
 import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 
 /**
- * A basic interface for creating a source. It could be an online source, a local source, etc...
+ * A basic interface for creating a source. It could be an online source, a local source, etc.
  */
 interface Source {
     /**
-     * Id for the source. Must be unique.
+     * ID for the source. Must be unique.
      */
     val id: Long
 
@@ -19,6 +19,9 @@ interface Source {
      * Name of the source.
      */
     val name: String
+
+    val lang: String
+        get() = ""
 
     /**
      * Get the updated details for a manga.
@@ -73,9 +76,7 @@ interface Source {
         "Use the non-RxJava API instead",
         ReplaceWith("getPageList"),
     )
-    fun fetchPageList(chapter: SChapter): Observable<List<Page>> = Observable.empty()
+    fun fetchPageList(chapter: SChapter): Observable<List<Page>> = throw IllegalStateException("Not used")
 }
 
 // fun Source.icon(): Drawable? = Injekt.get<ExtensionManager>().getAppIconForSource(this)
-
-fun Source.getPreferenceKey(): String = "source_$id"
