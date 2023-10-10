@@ -120,22 +120,6 @@ interface Manga : SManga {
         const val CHAPTER_DISPLAY_NAME = 0x00000000
         const val CHAPTER_DISPLAY_NUMBER = 0x00100000
         const val CHAPTER_DISPLAY_MASK = 0x00100000
-
-        fun create(source: Long): Manga =
-            MangaImpl().apply {
-                this.source = source
-            }
-
-        fun create(
-            pathUrl: String,
-            title: String,
-            source: Long = 0,
-        ): Manga =
-            MangaImpl().apply {
-                url = pathUrl
-                this.title = title
-                this.source = source
-            }
     }
 }
 
