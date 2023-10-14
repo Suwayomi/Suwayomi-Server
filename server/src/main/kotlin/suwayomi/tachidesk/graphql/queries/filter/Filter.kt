@@ -382,6 +382,15 @@ class OpAnd(var op: Op<Boolean>? = null) {
         op = if (op == null) expr else (op!! and expr)
     }
 
+    fun <T : Any> andWhere(
+        values: List<T>?,
+        andPart: SqlExpressionBuilder.(List<T>) -> Op<Boolean>,
+    ) {
+        values ?: return
+        val expr = Op.build { andPart(values) }
+        op = if (op == null) expr else (op!! and expr)
+    }
+
     fun <T> eq(
         value: T?,
         column: Column<T>,
@@ -391,6 +400,17 @@ class OpAnd(var op: Op<Boolean>? = null) {
         value: T?,
         column: Column<EntityID<T>>,
     ) = andWhere(value) { column eq it }
+
+    fun <T> inList(
+        values: List<T>?,
+        column: Column<T>,
+    ) = andWhere(values) { column inList it }
+
+    @JvmName("inListComparable")
+    fun <T : Comparable<T>> inList(
+        values: List<T>?,
+        column: Column<EntityID<T>>,
+    ) = andWhere(values) { column inList it }
 }
 
 fun <T : Comparable<T>> andFilterWithCompare(
