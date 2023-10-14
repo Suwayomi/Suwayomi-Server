@@ -122,7 +122,7 @@ class MangaQuery {
             opAnd.eq(artist, MangaTable.artist)
             opAnd.eq(author, MangaTable.author)
             opAnd.eq(description, MangaTable.description)
-            opAnd.eq(genre?.joinToString(), MangaTable.genre)
+            genre?.forEach { opAnd.like("%$it%", MangaTable.genre) }
             opAnd.eq(status?.value, MangaTable.status)
             opAnd.eq(inLibrary, MangaTable.inLibrary)
             opAnd.eq(inLibraryAt, MangaTable.inLibraryAt)

@@ -391,6 +391,11 @@ class OpAnd(var op: Op<Boolean>? = null) {
         value: T?,
         column: Column<EntityID<T>>,
     ) = andWhere(value) { column eq it }
+
+    fun like(
+        value: String?,
+        column: Column<String?>,
+    ) = andWhere(value) { column like it }
 }
 
 fun <T : Comparable<T>> andFilterWithCompare(
