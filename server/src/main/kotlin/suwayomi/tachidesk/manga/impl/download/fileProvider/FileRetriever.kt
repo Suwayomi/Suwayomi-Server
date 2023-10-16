@@ -14,6 +14,7 @@ fun interface RetrieveFile0Args : RetrieveFile {
     }
 }
 
+@Suppress("UNCHECKED_CAST")
 fun interface RetrieveFile1Args<A> : RetrieveFile {
     fun execute(a: A): Pair<InputStream, String>
 

@@ -38,8 +38,8 @@ import suwayomi.tachidesk.graphql.server.toGraphQLContext
 import suwayomi.tachidesk.server.serverConfig
 
 /**
- * Implementation of the `graphql-ws` protocol defined by Apollo
- * https://github.com/apollographql/subscriptions-transport-ws/blob/master/PROTOCOL.md
+ * Implementation of the `graphql-transport-ws` protocol defined by Denis Badurina
+ * https://github.com/enisdenjo/graphql-ws/blob/master/PROTOCOL.md
  * ported for Javalin
  */
 class ApolloSubscriptionProtocolHandler(
@@ -47,6 +47,10 @@ class ApolloSubscriptionProtocolHandler(
     private val subscriptionHandler: GraphQLSubscriptionHandler,
     private val objectMapper: ObjectMapper,
 ) {
+    companion object {
+        private const val UNKNOWN_OPERATION_NAME = "__UNKNOWN__"
+    }
+
     private val sessionState = ApolloSubscriptionSessionState()
     private val logger = KotlinLogging.logger {}
     private val pongMessage = SubscriptionOperationMessage(type = GQL_PONG.type)
@@ -54,14 +58,10 @@ class ApolloSubscriptionProtocolHandler(
     private val acknowledgeMessage = SubscriptionOperationMessage(GQL_CONNECTION_ACK.type)
 
     private fun getOperationName(payload: Any?): String {
-        val unknownOperationName = "__UNKNOWN__"
-
-        try {
-            @Suppress("UNCHECKED_CAST")
-            return (payload as Map<String, String>)["operationName"] ?: unknownOperationName
-        } catch (e: Exception) {
-            return unknownOperationName
-        }
+        @Suppress("UNCHECKED_CAST")
+        return (payload as? Map<String, String>)
+            .orEmpty()
+            .getOrDefault("operationName", UNKNOWN_OPERATION_NAME)
     }
 
     fun handleMessage(context: WsMessageContext): Flow<SubscriptionOperationMessage> {
@@ -83,12 +83,12 @@ class ApolloSubscriptionProtocolHandler(
 
         return try {
             when (operationMessage.type) {
-                GQL_CONNECTION_INIT.type -> onInit(operationMessage, context)
+                GQL_CONNECTION_INIT.type -> onInit(context)
                 GQL_SUBSCRIBE.type -> startSubscription(operationMessage, context)
-                GQL_COMPLETE.type -> onComplete(operationMessage, context)
+                GQL_COMPLETE.type -> onComplete(operationMessage)
                 GQL_PING.type -> onPing()
                 GQL_PONG.type -> emptyFlow()
-                else -> onUnknownOperation(operationMessage, context)
+                else -> onUnknownOperation(operationMessage)
             }
         } catch (exception: Exception) {
             onException(exception)
@@ -108,7 +108,6 @@ class ApolloSubscriptionProtocolHandler(
         }
     }
 
-    @Suppress("Detekt.TooGenericExceptionCaught")
     private fun startSubscription(
         operationMessage: SubscriptionOperationMessage,
         context: WsContext,
@@ -142,7 +141,7 @@ class ApolloSubscriptionProtocolHandler(
                         SubscriptionOperationMessage(type = GQL_NEXT.type, id = operationMessage.id, payload = it)
                     }
                 }
-                .onCompletion { if (it == null) emitAll(onComplete(operationMessage, context)) }
+                .onCompletion { if (it == null) emitAll(onComplete(operationMessage)) }
                 .onStart { sessionState.saveOperation(context, operationMessage, currentCoroutineContext().job) }
         } catch (exception: Exception) {
             logger.error("Error running graphql subscription", exception)
@@ -152,21 +151,15 @@ class ApolloSubscriptionProtocolHandler(
         }
     }
 
-    private fun onInit(
-        operationMessage: SubscriptionOperationMessage,
-        context: WsContext,
-    ): Flow<SubscriptionOperationMessage> {
-        saveContext(operationMessage, context)
+    private fun onInit(context: WsContext): Flow<SubscriptionOperationMessage> {
+        saveContext(context)
         return flowOf(acknowledgeMessage)
     }
 
     /**
      * Generate the context and save it for all future messages.
      */
-    private fun saveContext(
-        operationMessage: SubscriptionOperationMessage,
-        context: WsContext,
-    ) {
+    private fun saveContext(context: WsContext) {
         runBlocking {
             val graphQLContext = contextFactory.generateContextMap(context).toGraphQLContext()
             sessionState.saveContext(context, graphQLContext)
@@ -176,10 +169,7 @@ class ApolloSubscriptionProtocolHandler(
     /**
      * Called with the publisher has completed on its own.
      */
-    private fun onComplete(
-        operationMessage: SubscriptionOperationMessage,
-        context: WsContext,
-    ): Flow<SubscriptionOperationMessage> {
+    private fun onComplete(operationMessage: SubscriptionOperationMessage): Flow<SubscriptionOperationMessage> {
         return sessionState.completeOperation(operationMessage)
     }
 
@@ -192,10 +182,7 @@ class ApolloSubscriptionProtocolHandler(
         return emptyFlow()
     }
 
-    private fun onUnknownOperation(
-        operationMessage: SubscriptionOperationMessage,
-        context: WsContext,
-    ): Flow<SubscriptionOperationMessage> {
+    private fun onUnknownOperation(operationMessage: SubscriptionOperationMessage): Flow<SubscriptionOperationMessage> {
         logger.error("Unknown subscription operation $operationMessage")
         sessionState.completeOperation(operationMessage)
         return emptyFlow()

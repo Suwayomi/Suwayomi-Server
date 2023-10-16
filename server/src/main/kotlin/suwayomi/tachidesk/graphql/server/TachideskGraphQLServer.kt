@@ -15,6 +15,7 @@ import graphql.GraphQL
 import io.javalin.http.Context
 import io.javalin.websocket.WsCloseContext
 import io.javalin.websocket.WsMessageContext
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -30,6 +31,7 @@ class TachideskGraphQLServer(
     private val objectMapper = jacksonObjectMapper()
     private val subscriptionProtocolHandler = ApolloSubscriptionProtocolHandler(contextFactory, subscriptionHandler, objectMapper)
 
+    @OptIn(DelicateCoroutinesApi::class)
     fun handleSubscriptionMessage(context: WsMessageContext) {
         subscriptionProtocolHandler.handleMessage(context)
             .map { objectMapper.writeValueAsString(it) }

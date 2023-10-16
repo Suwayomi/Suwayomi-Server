@@ -3,8 +3,6 @@
 package suwayomi.tachidesk.manga.impl.backup.models
 
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
-import org.jetbrains.exposed.sql.ResultRow
-import suwayomi.tachidesk.manga.model.table.MangaTable
 
 open class MangaImpl : Manga {
     override var id: Long? = null
@@ -68,18 +66,4 @@ open class MangaImpl : Manga {
     override fun hashCode(): Int {
         return url.hashCode() + id.hashCode()
     }
-
-    // Tachidesk -->
-    companion object {
-        fun fromQuery(mangaRecord: ResultRow): MangaImpl {
-            return MangaImpl().apply {
-                url = mangaRecord[MangaTable.url]
-                title = mangaRecord[MangaTable.title]
-                source = mangaRecord[MangaTable.sourceReference]
-                viewer_flags = 0 // TODO: implement
-                chapter_flags = 0 // TODO: implement
-            }
-        }
-    }
-    // Tachidesk <--
 }

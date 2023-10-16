@@ -12,6 +12,7 @@ fun interface FileDownload0Args : FileDownload {
     }
 }
 
+@Suppress("UNCHECKED_CAST")
 fun interface FileDownload3Args<A, B, C> : FileDownload {
     suspend fun execute(
         a: A,

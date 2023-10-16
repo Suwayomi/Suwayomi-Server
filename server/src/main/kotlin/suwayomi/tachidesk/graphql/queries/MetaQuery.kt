@@ -12,15 +12,8 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SortOrder.ASC
-import org.jetbrains.exposed.sql.SortOrder.ASC_NULLS_FIRST
-import org.jetbrains.exposed.sql.SortOrder.ASC_NULLS_LAST
-import org.jetbrains.exposed.sql.SortOrder.DESC
-import org.jetbrains.exposed.sql.SortOrder.DESC_NULLS_FIRST
-import org.jetbrains.exposed.sql.SortOrder.DESC_NULLS_LAST
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
-import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
@@ -34,6 +27,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
+import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
@@ -141,21 +135,12 @@ class MetaQuery {
                 val firstResult = res.firstOrNull()?.get(GlobalMetaTable.key)
                 val lastResult = res.lastOrNull()?.get(GlobalMetaTable.key)
 
-                if (after != null) {
-                    res.andWhere {
-                        when (orderByType) {
-                            DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: MetaOrderBy.KEY).less(after)
-                            null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: MetaOrderBy.KEY).greater(after)
-                        }
-                    }
-                } else if (before != null) {
-                    res.andWhere {
-                        when (orderByType) {
-                            DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: MetaOrderBy.KEY).greater(before)
-                            null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: MetaOrderBy.KEY).less(before)
-                        }
-                    }
-                }
+                res.applyBeforeAfter(
+                    before = before,
+                    after = after,
+                    orderBy = orderBy ?: MetaOrderBy.KEY,
+                    orderByType = orderByType,
+                )
 
                 if (first != null) {
                     res.limit(first, offset?.toLong() ?: 0)

@@ -5,6 +5,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+@file:Suppress("DEPRECATION")
+
 package suwayomi.tachidesk.graphql.server
 
 import com.expediagroup.graphql.generator.execution.GraphQLContext
@@ -30,7 +32,9 @@ class TachideskGraphQLContextFactory : GraphQLContextFactory<GraphQLContext, Con
 //            }
 //        }
 
-    fun generateContextMap(request: WsContext): Map<*, Any> = emptyMap<Any, Any>()
+    fun generateContextMap(
+        @Suppress("UNUSED_PARAMETER") request: WsContext,
+    ): Map<*, Any> = emptyMap<Any, Any>()
 }
 
 /**

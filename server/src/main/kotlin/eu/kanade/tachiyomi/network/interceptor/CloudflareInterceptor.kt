@@ -25,6 +25,7 @@ class CloudflareInterceptor : Interceptor {
 
     private val network: NetworkHelper by injectLazy()
 
+    @Suppress("UNUSED_VARIABLE", "UNREACHABLE_CODE")
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
 
@@ -141,6 +142,7 @@ object CFClearance {
             .build()
     }
 
+    @Suppress("UNREACHABLE_CODE")
     fun getWebViewUserAgent(): String {
         return try {
             throw PlaywrightException("playwrite is diabled for v0.6.7")

@@ -26,18 +26,12 @@ import java.security.MessageDigest
 /**
  * A simple implementation for sources from a website.
  */
+@Suppress("unused")
 abstract class HttpSource : CatalogueSource {
     /**
      * Network service.
      */
-    val network: NetworkHelper by injectLazy()
-
-//    /**
-//     * Preferences that a source may need.
-//     */
-//    val preferences: SharedPreferences by lazy {
-//        Injekt.get<Application>().getSharedPreferences(source.getPreferenceKey(), Context.MODE_PRIVATE)
-//    }
+    protected val network: NetworkHelper by injectLazy()
 
     /**
      * Base url of the website without the trailing slash, like: http://mysite.com
@@ -60,7 +54,7 @@ abstract class HttpSource : CatalogueSource {
      *
      * Note: the generated ID sets the sign bit to `0`.
      */
-    override val id by lazy { generateId(name, lang, versionId) }
+    override val id by lazy { generateId() }
 
     /**
      * Headers used for requests.
@@ -72,6 +66,10 @@ abstract class HttpSource : CatalogueSource {
      */
     open val client: OkHttpClient
         get() = network.client
+
+    private fun generateId(): Long {
+        return generateId(name, lang, versionId)
+    }
 
     /**
      * Generates a unique ID for the source based on the provided [name], [lang] and
@@ -89,6 +87,7 @@ abstract class HttpSource : CatalogueSource {
      * @param versionId [Int] the version ID of the source
      * @return a unique ID for the source
      */
+    @Suppress("MemberVisibilityCanBePrivate")
     protected fun generateId(
         name: String,
         lang: String,
@@ -155,8 +154,15 @@ abstract class HttpSource : CatalogueSource {
         query: String,
         filters: FilterList,
     ): Observable<MangasPage> {
-        return client.newCall(searchMangaRequest(page, query, filters))
-            .asObservableSuccess()
+        return Observable.defer {
+            try {
+                client.newCall(searchMangaRequest(page, query, filters)).asObservableSuccess()
+            } catch (e: NoClassDefFoundError) {
+                // RxJava doesn't handle Errors, which tends to happen during global searches
+                // if an old extension using non-existent classes is still around
+                throw RuntimeException(e)
+            }
+        }
             .map { response ->
                 searchMangaParse(response)
             }
@@ -387,7 +393,7 @@ abstract class HttpSource : CatalogueSource {
      *
      * @param page the chapter whose page list has to be fetched
      */
-    open fun imageRequest(page: Page): Request {
+    protected open fun imageRequest(page: Page): Request {
         return GET(page.imageUrl!!, headers)
     }
 
@@ -418,7 +424,7 @@ abstract class HttpSource : CatalogueSource {
      */
     private fun getUrlWithoutDomain(orig: String): String {
         return try {
-            val uri = URI(orig)
+            val uri = URI(orig.replace(" ", "%20"))
             var out = uri.path
             if (uri.query != null) {
                 out += "?" + uri.query
