@@ -68,7 +68,7 @@ abstract class HttpSource : CatalogueSource {
         get() = network.client
 
     private fun generateId(): Long {
-        return generateId(name, lang, versionId)
+        return generateId("${name.lowercase()}/$lang/$versionId")
     }
 
     /**
@@ -94,6 +94,10 @@ abstract class HttpSource : CatalogueSource {
         versionId: Int,
     ): Long {
         val key = "${name.lowercase()}/$lang/$versionId"
+        return generateId(key)
+    }
+
+    private fun generateId(key: String): Long {
         val bytes = MessageDigest.getInstance("MD5").digest(key.toByteArray())
         return (0..7).map { bytes[it].toLong() and 0xff shl 8 * (7 - it) }.reduce(Long::or) and Long.MAX_VALUE
     }
