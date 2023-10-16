@@ -66,16 +66,19 @@ class ApolloSubscriptionProtocolHandler(
 
     fun handleMessage(context: WsMessageContext): Flow<SubscriptionOperationMessage> {
         val operationMessage = convertToMessageOrNull(context.message()) ?: return flowOf(basicConnectionErrorMessage)
-        logger.debug {
-            "GraphQL subscription client message, sessionId=${context.sessionId} type=${operationMessage.type} operationName=${
-                getOperationName(operationMessage.payload)
-            } ${
-                if (serverConfig.gqlDebugLogsEnabled.value) {
-                    "operationMessage=$operationMessage"
-                } else {
-                    ""
-                }
-            }"
+
+        if (operationMessage.type != GQL_PING.type) {
+            logger.debug {
+                "GraphQL subscription client message, sessionId=${context.sessionId} type=${operationMessage.type} operationName=${
+                    getOperationName(operationMessage.payload)
+                } ${
+                    if (serverConfig.gqlDebugLogsEnabled.value) {
+                        "operationMessage=$operationMessage"
+                    } else {
+                        ""
+                    }
+                }"
+            }
         }
 
         return try {

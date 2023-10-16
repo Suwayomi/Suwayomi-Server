@@ -124,7 +124,7 @@ class MangaQuery {
             opAnd.eq(artist, MangaTable.artist)
             opAnd.eq(author, MangaTable.author)
             opAnd.eq(description, MangaTable.description)
-            opAnd.eq(genre?.joinToString(), MangaTable.genre)
+            genre?.forEach { opAnd.like("%$it%", MangaTable.genre) }
             opAnd.eq(status?.value, MangaTable.status)
             opAnd.eq(inLibrary, MangaTable.inLibrary)
             opAnd.eq(inLibraryAt, MangaTable.inLibraryAt)
@@ -175,7 +175,7 @@ class MangaQuery {
         val artist: StringFilter? = null,
         val author: StringFilter? = null,
         val description: StringFilter? = null,
-        // val genre: List<String>? = null, // todo
+        val genre: StringFilter? = null,
         val status: MangaStatusFilter? = null,
         val inLibrary: BooleanFilter? = null,
         val inLibraryAt: LongFilter? = null,
@@ -198,6 +198,7 @@ class MangaQuery {
                 andFilterWithCompareString(MangaTable.artist, artist),
                 andFilterWithCompareString(MangaTable.author, author),
                 andFilterWithCompareString(MangaTable.description, description),
+                andFilterWithCompareString(MangaTable.genre, genre),
                 andFilterWithCompare(MangaTable.status, status?.asIntFilter()),
                 andFilterWithCompare(MangaTable.inLibrary, inLibrary),
                 andFilterWithCompare(MangaTable.inLibraryAt, inLibraryAt),
