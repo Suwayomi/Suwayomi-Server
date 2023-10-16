@@ -99,7 +99,7 @@ object BytecodeEditor {
      */
     private fun String?.replaceDirectly() =
         when (this) {
-            null -> this
+            null -> null
             in classesToReplace -> "$REPLACEMENT_PATH/$this"
             else -> this
         }
@@ -108,24 +108,50 @@ object BytecodeEditor {
      * Replace references to the class, used in places that have
      * other text around the class references
      *
-     * @return [String] with  class references replaced,
-     *          or null if [String] was null
+     * @return [String] with class references replaced, or null if [String] was null
      */
     private fun String?.replaceIndirectly(): String? {
-        var classReference = this
-        if (classReference != null) {
-            classesToReplace.forEach {
-                classReference = classReference?.replace(it, "$REPLACEMENT_PATH/$it")
-            }
+        if (this == null) return null
+        var classReference: String = this
+        classesToReplace.forEach {
+            classReference = classReference.replace(it, "$REPLACEMENT_PATH/$it")
         }
         return classReference
+    }
+
+    /**
+     * List of methods that will be fixed. Remove once https://github.com/ThexXTURBOXx/dex2jar/issues/27
+     * is fixed.
+     */
+    private val methodsToFix =
+        mapOf(
+            ("kotlin/time/Duration" to "getInWholeMilliseconds_impl") to "getInWholeMilliseconds-impl",
+        )
+
+    /**
+     * Replace references to the method, used in places that have
+     * other text around the class references
+     *
+     * @param clazz Class the method is in
+     *
+     * @return [String] with method reference replaced, or null if [String] or [clazz] was null
+     */
+    private fun String?.replaceMethodIndirectly(clazz: String?): String? {
+        if (clazz == null || this == null) return this
+        var method: String = this
+        methodsToFix.forEach {
+            if (clazz == it.key.first) {
+                method = method.replace(it.key.second, it.value)
+            }
+        }
+        return method
     }
 
     /**
      * Replace all references to certain classes inside the class file
      * with ones that behave more like Androids
      *
-     * @param classfileBuffer Class bytecode to load into ASM for ease of modification
+     * @param pair Class bytecode to load into ASM for ease of modification
      *
      * @return [ByteArray] with modified bytecode
      */
@@ -226,7 +252,7 @@ object BytecodeEditor {
                             super.visitMethodInsn(
                                 opcode,
                                 owner.replaceDirectly(),
-                                name,
+                                name.replaceMethodIndirectly(owner),
                                 desc.replaceIndirectly(),
                                 itf,
                             )

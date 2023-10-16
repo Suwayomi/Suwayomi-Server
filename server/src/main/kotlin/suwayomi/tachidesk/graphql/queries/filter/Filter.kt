@@ -416,7 +416,6 @@ class OpAnd(var op: Op<Boolean>? = null) {
         value: String?,
         column: Column<String?>,
     ) = andWhere(value) { column like it }
-
 }
 
 fun <T : Comparable<T>> andFilterWithCompare(
