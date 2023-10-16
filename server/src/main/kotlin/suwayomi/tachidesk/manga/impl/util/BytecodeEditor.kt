@@ -126,6 +126,8 @@ object BytecodeEditor {
     private val methodsToFix =
         mapOf(
             ("kotlin/time/Duration" to "getInWholeMilliseconds_impl") to "getInWholeMilliseconds-impl",
+            ("kotlin/Result" to "constructor_impl") to "constructor-impl",
+            ("kotlin/Result" to "isFailure_impl") to "isFailure-impl",
         )
 
     /**
