@@ -105,6 +105,9 @@ private class ChapterForDownload(
             SChapter.create().apply {
                 url = chapterEntry[ChapterTable.url]
                 name = chapterEntry[ChapterTable.name]
+                scanlator = chapterEntry[ChapterTable.scanlator]
+                chapter_number = chapterEntry[ChapterTable.chapter_number]
+                date_upload = chapterEntry[ChapterTable.date_upload]
             },
         )
     }
