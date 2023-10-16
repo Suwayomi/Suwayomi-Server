@@ -28,6 +28,7 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
+import suwayomi.tachidesk.manga.impl.track.Track
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
@@ -289,6 +290,10 @@ object Chapter {
                 }
             }
         }
+
+        if (isRead == true || markPrevRead == true) {
+            Track.asyncTrackChapter(mangaId)
+        }
     }
 
     @Serializable
@@ -364,6 +369,16 @@ object Chapter {
                     update[ChapterTable.lastReadAt] = now
                 }
             }
+        }
+
+        if (isRead == true) {
+            val mangaIds =
+                transaction {
+                    ChapterTable.select { condition }
+                        .map { it[ChapterTable.manga].value }
+                        .distinct()
+                }
+            mangaIds.forEach { Track.asyncTrackChapter(it) }
         }
     }
 
