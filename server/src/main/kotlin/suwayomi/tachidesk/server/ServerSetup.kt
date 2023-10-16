@@ -94,7 +94,7 @@ fun applicationSetup() {
     setupLogLevelUpdating(serverConfig.debugLogsEnabled, listOf(BASE_LOGGER_NAME))
     // gql "ExecutionStrategy" spams logs with "... completing field ..."
     // gql "notprivacysafe" logs every received request multiple times (received, parsing, validating, executing)
-    setupLogLevelUpdating(serverConfig.gqlDebugLogsEnabled, listOf("graphql", "notprivacysafe"), Level.ERROR)
+    setupLogLevelUpdating(serverConfig.gqlDebugLogsEnabled, listOf("graphql", "notprivacysafe"), Level.WARN)
 
     logger.info("Running Tachidesk ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")
 
