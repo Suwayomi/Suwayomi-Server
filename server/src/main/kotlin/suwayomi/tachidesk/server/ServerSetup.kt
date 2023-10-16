@@ -66,6 +66,16 @@ val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
 val androidCompat by lazy { AndroidCompat() }
 
+fun setupLogLevelUpdating(
+    configFlow: MutableStateFlow<Boolean>,
+    loggerNames: List<String>,
+    defaultLevel: Level = Level.INFO,
+) {
+    serverConfig.subscribeTo(configFlow, { debugLogsEnabled ->
+        loggerNames.forEach { loggerName -> setLogLevelFor(loggerName, if (debugLogsEnabled) Level.DEBUG else defaultLevel) }
+    }, ignoreInitialValue = false)
+}
+
 fun applicationSetup() {
     Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
         KotlinLogging.logger { }.error(throwable) { "unhandled exception" }
@@ -81,20 +91,10 @@ fun applicationSetup() {
 
     initLoggerConfig(applicationDirs.dataRoot)
 
-    val setupLogLevelUpdating = { configFlow: MutableStateFlow<Boolean>, loggerNames: List<String> ->
-        serverConfig.subscribeTo(configFlow, { debugLogsEnabled ->
-            if (debugLogsEnabled) {
-                loggerNames.forEach { loggerName -> setLogLevelFor(loggerName, Level.DEBUG) }
-            } else {
-                loggerNames.forEach { loggerName -> setLogLevelFor(loggerName, Level.ERROR) }
-            }
-        }, ignoreInitialValue = false)
-    }
-
     setupLogLevelUpdating(serverConfig.debugLogsEnabled, listOf(BASE_LOGGER_NAME))
     // gql "ExecutionStrategy" spams logs with "... completing field ..."
     // gql "notprivacysafe" logs every received request multiple times (received, parsing, validating, executing)
-    setupLogLevelUpdating(serverConfig.gqlDebugLogsEnabled, listOf("graphql", "notprivacysafe"))
+    setupLogLevelUpdating(serverConfig.gqlDebugLogsEnabled, listOf("graphql", "notprivacysafe"), Level.ERROR)
 
     logger.info("Running Tachidesk ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")
 
