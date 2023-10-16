@@ -44,6 +44,7 @@ import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
+import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.util.concurrent.CompletableFuture
@@ -110,6 +111,7 @@ class MangaQuery {
         val realUrl: String? = null,
         val lastFetchedAt: Long? = null,
         val chaptersLastFetchedAt: Long? = null,
+        val categoryIds: List<Int>? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -129,6 +131,7 @@ class MangaQuery {
             opAnd.eq(realUrl, MangaTable.realUrl)
             opAnd.eq(lastFetchedAt, MangaTable.lastFetchedAt)
             opAnd.eq(chaptersLastFetchedAt, MangaTable.chaptersLastFetchedAt)
+            opAnd.inList(categoryIds, CategoryMangaTable.category)
 
             return opAnd.op
         }
@@ -179,6 +182,7 @@ class MangaQuery {
         val realUrl: StringFilter? = null,
         val lastFetchedAt: LongFilter? = null,
         val chaptersLastFetchedAt: LongFilter? = null,
+        val categoryId: IntFilter? = null,
         override val and: List<MangaFilter>? = null,
         override val or: List<MangaFilter>? = null,
         override val not: MangaFilter? = null,
@@ -201,6 +205,7 @@ class MangaQuery {
                 andFilterWithCompareString(MangaTable.realUrl, realUrl),
                 andFilterWithCompare(MangaTable.lastFetchedAt, lastFetchedAt),
                 andFilterWithCompare(MangaTable.chaptersLastFetchedAt, chaptersLastFetchedAt),
+                andFilterWithCompareEntity(CategoryMangaTable.category, categoryId),
             )
         }
     }
@@ -218,7 +223,7 @@ class MangaQuery {
     ): MangaNodeList {
         val queryResults =
             transaction {
-                val res = MangaTable.selectAll()
+                val res = MangaTable.leftJoin(CategoryMangaTable).selectAll()
 
                 res.applyOps(condition, filter)
 
