@@ -48,7 +48,6 @@ import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.concurrent.TimeUnit
-import java.util.prefs.Preferences
 import kotlin.time.Duration.Companion.days
 
 object ProtoBackupExport : ProtoBackupBase() {
