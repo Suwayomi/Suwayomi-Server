@@ -120,36 +120,6 @@ object BytecodeEditor {
     }
 
     /**
-     * List of methods that will be fixed. Remove once https://github.com/ThexXTURBOXx/dex2jar/issues/27
-     * is fixed.
-     */
-    private val methodsToFix =
-        mapOf(
-            ("kotlin/time/Duration" to "getInWholeMilliseconds_impl") to "getInWholeMilliseconds-impl",
-            ("kotlin/Result" to "constructor_impl") to "constructor-impl",
-            ("kotlin/Result" to "isFailure_impl") to "isFailure-impl",
-        )
-
-    /**
-     * Replace references to the method, used in places that have
-     * other text around the class references
-     *
-     * @param clazz Class the method is in
-     *
-     * @return [String] with method reference replaced, or null if [String] or [clazz] was null
-     */
-    private fun String?.replaceMethodIndirectly(clazz: String?): String? {
-        if (clazz == null || this == null) return this
-        var method: String = this
-        methodsToFix.forEach {
-            if (clazz == it.key.first) {
-                method = method.replace(it.key.second, it.value)
-            }
-        }
-        return method
-    }
-
-    /**
      * Replace all references to certain classes inside the class file
      * with ones that behave more like Androids
      *
@@ -254,7 +224,7 @@ object BytecodeEditor {
                             super.visitMethodInsn(
                                 opcode,
                                 owner.replaceDirectly(),
-                                name.replaceMethodIndirectly(owner),
+                                name,
                                 desc.replaceIndirectly(),
                                 itf,
                             )
