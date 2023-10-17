@@ -64,7 +64,7 @@ object DownloadManager {
         Injekt.get<Application>().getSharedPreferences(DownloadManager::class.jvmName, Context.MODE_PRIVATE)
 
     private fun loadDownloadQueue(): List<Int> {
-        return sharedPreferences.getStringSet(DOWNLOAD_QUEUE_KEY, emptySet())?.mapNotNull { it.toInt() } ?: emptyList()
+        return sharedPreferences.getStringSet(DOWNLOAD_QUEUE_KEY, emptySet())?.mapNotNull { it.toInt() }.orEmpty()
     }
 
     private fun saveDownloadQueue() {

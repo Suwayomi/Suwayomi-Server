@@ -7,6 +7,8 @@ package suwayomi.tachidesk.server.util
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.app.Application
+import android.content.Context
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.awaitSuccess
@@ -45,6 +47,8 @@ import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.HAScheduler
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.InputStream
@@ -124,7 +128,7 @@ object WebInterfaceManager {
 
     private const val LAST_WEBUI_UPDATE_CHECK_KEY = "lastWebUIUpdateCheckKey"
 
-    private val preferences = Preferences.userNodeForPackage(WebInterfaceManager::class.java)
+    private val preferences = Injekt.get<Application>().getSharedPreferences("server/util", Context.MODE_PRIVATE)
     private var currentUpdateTaskId: String = ""
 
     private val json: Json by injectLazy()
@@ -326,7 +330,7 @@ object WebInterfaceManager {
     }
 
     private suspend fun checkForUpdate() {
-        preferences.putLong(LAST_WEBUI_UPDATE_CHECK_KEY, System.currentTimeMillis())
+        preferences.edit().putLong(LAST_WEBUI_UPDATE_CHECK_KEY, System.currentTimeMillis()).apply()
         val localVersion = getLocalVersion()
 
         if (!isUpdateAvailable(localVersion).second) {

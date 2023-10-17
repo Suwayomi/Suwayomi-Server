@@ -7,6 +7,8 @@ package suwayomi.tachidesk.manga.impl.backup.proto
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.app.Application
+import android.content.Context
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import kotlinx.coroutines.flow.combine
 import mu.KotlinLogging
@@ -38,6 +40,8 @@ import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.HAScheduler
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
@@ -52,7 +56,7 @@ object ProtoBackupExport : ProtoBackupBase() {
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
     private var backupSchedulerJobId: String = ""
     private const val LAST_AUTOMATED_BACKUP_KEY = "lastAutomatedBackupKey"
-    private val preferences = Preferences.userNodeForPackage(ProtoBackupExport::class.java)
+    private val preferences = Injekt.get<Application>().getSharedPreferences("manga/impl/backup/proto", Context.MODE_PRIVATE)
 
     init {
         serverConfig.subscribeTo(
@@ -77,7 +81,7 @@ object ProtoBackupExport : ProtoBackupBase() {
         val task = {
             cleanupAutomatedBackups()
             createAutomatedBackup()
-            preferences.putLong(LAST_AUTOMATED_BACKUP_KEY, System.currentTimeMillis())
+            preferences.edit().putLong(LAST_AUTOMATED_BACKUP_KEY, System.currentTimeMillis()).apply()
         }
 
         val (hour, minute) = serverConfig.backupTime.value.split(":").map { it.toInt() }
