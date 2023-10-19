@@ -63,6 +63,7 @@ class SettingsMutation {
         updateSetting(settings.excludeNotStarted, serverConfig.excludeNotStarted)
         updateSetting(settings.excludeCompleted, serverConfig.excludeCompleted)
         updateSetting(settings.globalUpdateInterval, serverConfig.globalUpdateInterval)
+        updateSetting(settings.updateMangas, serverConfig.updateMangas)
 
         // Authentication
         updateSetting(settings.basicAuthEnabled, serverConfig.basicAuthEnabled)

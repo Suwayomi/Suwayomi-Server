@@ -23,6 +23,7 @@ import mu.KotlinLogging
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
+import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.IncludeInUpdate
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
@@ -166,6 +167,9 @@ class Updater : IUpdater {
         tracker[job.manga.id] =
             try {
                 logger.info { "Updating \"${job.manga.title}\" (source: ${job.manga.sourceId})" }
+                if (serverConfig.updateMangas.value) {
+                    Manga.getManga(job.manga.id, true)
+                }
                 Chapter.getChapterList(job.manga.id, true)
                 job.copy(status = JobStatus.COMPLETE)
             } catch (e: Exception) {

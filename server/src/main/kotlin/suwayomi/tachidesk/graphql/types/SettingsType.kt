@@ -48,6 +48,7 @@ interface Settings : Node {
     val excludeNotStarted: Boolean?
     val excludeCompleted: Boolean?
     val globalUpdateInterval: Double?
+    val updateMangas: Boolean?
 
     // Authentication
     val basicAuthEnabled: Boolean?
@@ -96,6 +97,7 @@ data class PartialSettingsType(
     override val excludeNotStarted: Boolean?,
     override val excludeCompleted: Boolean?,
     override val globalUpdateInterval: Double?,
+    override val updateMangas: Boolean?,
     // Authentication
     override val basicAuthEnabled: Boolean?,
     override val basicAuthUsername: String?,
@@ -140,6 +142,7 @@ class SettingsType(
     override val excludeNotStarted: Boolean,
     override val excludeCompleted: Boolean,
     override val globalUpdateInterval: Double,
+    override val updateMangas: Boolean,
     // Authentication
     override val basicAuthEnabled: Boolean,
     override val basicAuthUsername: String,
@@ -183,6 +186,7 @@ class SettingsType(
         config.excludeNotStarted.value,
         config.excludeCompleted.value,
         config.globalUpdateInterval.value,
+        config.updateMangas.value,
         // Authentication
         config.basicAuthEnabled.value,
         config.basicAuthUsername.value,
