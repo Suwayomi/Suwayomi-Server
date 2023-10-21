@@ -1,5 +1,3 @@
-@file:Suppress("ktlint:standard:property-naming")
-
 package suwayomi.tachidesk.manga.impl.track.tracker.anilist
 
 import android.net.Uri
@@ -29,7 +27,8 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import tachiyomi.core.util.lang.withIOContext
 import uy.kohesive.injekt.injectLazy
 import java.util.Calendar
-import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
 
 class AnilistApi(val client: OkHttpClient, interceptor: AnilistInterceptor) {
     private val json: Json by injectLazy()
@@ -37,7 +36,7 @@ class AnilistApi(val client: OkHttpClient, interceptor: AnilistInterceptor) {
     private val authClient =
         client.newBuilder()
             .addInterceptor(interceptor)
-            .rateLimit(permits = 85, unit = TimeUnit.MINUTES)
+            .rateLimit(permits = 85, period = 1.minutes)
             .build()
 
     suspend fun addLibManga(track: Track): Track {
@@ -64,7 +63,7 @@ class AnilistApi(val client: OkHttpClient, interceptor: AnilistInterceptor) {
             with(json) {
                 authClient.newCall(
                     POST(
-                        apiUrl,
+                        API_URL,
                         body = payload.toString().toRequestBody(jsonMime),
                     ),
                 )
@@ -110,7 +109,7 @@ class AnilistApi(val client: OkHttpClient, interceptor: AnilistInterceptor) {
                         put("completedAt", createDate(track.finished_reading_date))
                     }
                 }
-            authClient.newCall(POST(apiUrl, body = payload.toString().toRequestBody(jsonMime)))
+            authClient.newCall(POST(API_URL, body = payload.toString().toRequestBody(jsonMime)))
                 .awaitSuccess()
             track
         }
@@ -134,7 +133,7 @@ class AnilistApi(val client: OkHttpClient, interceptor: AnilistInterceptor) {
                         put("listId", track.library_id)
                     }
                 }
-            authClient.newCall(POST(apiUrl, body = payload.toString().toRequestBody(jsonMime)))
+            authClient.newCall(POST(API_URL, body = payload.toString().toRequestBody(jsonMime)))
                 .awaitSuccess()
             track
         }
@@ -178,7 +177,7 @@ class AnilistApi(val client: OkHttpClient, interceptor: AnilistInterceptor) {
             with(json) {
                 authClient.newCall(
                     POST(
-                        apiUrl,
+                        API_URL,
                         body = payload.toString().toRequestBody(jsonMime),
                     ),
                 )
@@ -253,7 +252,7 @@ class AnilistApi(val client: OkHttpClient, interceptor: AnilistInterceptor) {
             with(json) {
                 authClient.newCall(
                     POST(
-                        apiUrl,
+                        API_URL,
                         body = payload.toString().toRequestBody(jsonMime),
                     ),
                 )
@@ -278,7 +277,7 @@ class AnilistApi(val client: OkHttpClient, interceptor: AnilistInterceptor) {
     }
 
     fun createOAuth(token: String): OAuth {
-        return OAuth(token, "Bearer", System.currentTimeMillis() + 31536000000, 31536000000)
+        return OAuth(token, "Bearer", System.currentTimeMillis() + 365.days.inWholeMilliseconds, 365.days.inWholeMilliseconds)
     }
 
     suspend fun getCurrentUser(): Pair<Int, String> {
@@ -302,7 +301,7 @@ class AnilistApi(val client: OkHttpClient, interceptor: AnilistInterceptor) {
             with(json) {
                 authClient.newCall(
                     POST(
-                        apiUrl,
+                        API_URL,
                         body = payload.toString().toRequestBody(jsonMime),
                     ),
                 )
@@ -382,18 +381,18 @@ class AnilistApi(val client: OkHttpClient, interceptor: AnilistInterceptor) {
 
     companion object {
         // TODO: need to replace it with official account, and set callback url to suwayomi://oauth/anilist
-        private const val clientId = "14929"
-        private const val apiUrl = "https://graphql.anilist.co/"
-        private const val baseUrl = "https://anilist.co/api/v2/"
-        private const val baseMangaUrl = "https://anilist.co/manga/"
+        private const val CLIENT_ID = "14929"
+        private const val API_URL = "https://graphql.anilist.co/"
+        private const val BASE_URL = "https://anilist.co/api/v2/"
+        private const val BASE_MANGA_URL = "https://anilist.co/manga/"
 
         fun mangaUrl(mediaId: Long): String {
-            return baseMangaUrl + mediaId
+            return BASE_MANGA_URL + mediaId
         }
 
         fun authUrl(): Uri =
-            "${baseUrl}oauth/authorize".toUri().buildUpon()
-                .appendQueryParameter("client_id", clientId)
+            "${BASE_URL}oauth/authorize".toUri().buildUpon()
+                .appendQueryParameter("client_id", CLIENT_ID)
                 .appendQueryParameter("response_type", "token")
                 .build()
     }

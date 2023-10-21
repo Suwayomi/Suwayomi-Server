@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:property-naming")
+
 package suwayomi.tachidesk.manga.impl.track.tracker.model
 
 import java.io.Serializable
