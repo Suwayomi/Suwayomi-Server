@@ -8,7 +8,7 @@ package suwayomi.tachidesk.manga.model.dataclass
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 data class TrackerDataClass(
-    val id: Long,
+    val id: Int,
     val name: String,
     val icon: String,
     val isLogin: Boolean,

@@ -2,32 +2,16 @@
 
 package suwayomi.tachidesk.manga.impl.track.tracker.model
 
-class TrackSearch : Track {
-    override var id: Long? = null
+class TrackSearch {
+    var sync_id: Int = 0
 
-    override var manga_id: Long = 0
+    var media_id: Long = 0
 
-    override var sync_id: Int = 0
+    lateinit var title: String
 
-    override var media_id: Long = 0
+    var total_chapters: Int = 0
 
-    override var library_id: Long? = null
-
-    override lateinit var title: String
-
-    override var last_chapter_read: Float = 0F
-
-    override var total_chapters: Int = 0
-
-    override var score: Float = 0f
-
-    override var status: Int = 0
-
-    override var started_reading_date: Long = 0
-
-    override var finished_reading_date: Long = 0
-
-    override lateinit var tracking_url: String
+    lateinit var tracking_url: String
 
     var cover_url: String = ""
 
@@ -45,7 +29,6 @@ class TrackSearch : Track {
 
         other as TrackSearch
 
-        if (manga_id != other.manga_id) return false
         if (sync_id != other.sync_id) return false
         if (media_id != other.media_id) return false
 
@@ -53,16 +36,15 @@ class TrackSearch : Track {
     }
 
     override fun hashCode(): Int {
-        var result = manga_id.hashCode()
-        result = 31 * result + sync_id
+        var result = sync_id.hashCode()
         result = 31 * result + media_id.hashCode()
         return result
     }
 
     companion object {
-        fun create(serviceId: Long): TrackSearch =
+        fun create(serviceId: Int): TrackSearch =
             TrackSearch().apply {
-                sync_id = serviceId.toInt()
+                sync_id = serviceId
             }
     }
 }

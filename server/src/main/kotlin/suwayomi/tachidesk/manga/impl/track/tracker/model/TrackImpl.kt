@@ -3,9 +3,9 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.model
 
 class TrackImpl : Track {
-    override var id: Long? = null
+    override var id: Int? = null
 
-    override var manga_id: Long = 0
+    override var manga_id: Int = 0
 
     override var sync_id: Int = 0
 

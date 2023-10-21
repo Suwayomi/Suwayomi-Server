@@ -9,15 +9,17 @@ package suwayomi.tachidesk.server.database.migration
 
 import de.neonew.exposed.migrations.helpers.AddTableMigration
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.Table
+import suwayomi.tachidesk.manga.model.table.MangaTable
 
 @Suppress("ClassName", "unused")
 class M0030_TrackRecord : AddTableMigration() {
     private class TrackRecordTable : IntIdTable() {
-        val mangaId = integer("manga_id")
+        val mangaId = reference("manga_id", MangaTable, ReferenceOption.CASCADE)
         val syncId = integer("sync_id")
-        val remoteId = integer("remote_id")
-        val libraryId = integer("library_id").nullable()
+        val remoteId = long("remote_id")
+        val libraryId = long("library_id").nullable()
         val title = varchar("title", 512)
         val lastChapterRead = double("last_chapter_read")
         val totalChapters = integer("total_chapters")

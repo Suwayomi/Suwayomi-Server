@@ -8,12 +8,13 @@ package suwayomi.tachidesk.manga.model.table
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.ReferenceOption
 
 object TrackRecordTable : IntIdTable() {
-    val mangaId = integer("manga_id")
+    val mangaId = reference("manga_id", MangaTable, ReferenceOption.CASCADE)
     val syncId = integer("sync_id")
-    val remoteId = integer("remote_id")
-    val libraryId = integer("library_id").nullable()
+    val remoteId = long("remote_id")
+    val libraryId = long("library_id").nullable()
     val title = varchar("title", 512)
     val lastChapterRead = double("last_chapter_read")
     val totalChapters = integer("total_chapters")

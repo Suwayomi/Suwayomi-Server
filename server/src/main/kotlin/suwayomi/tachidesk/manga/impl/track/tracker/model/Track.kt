@@ -3,9 +3,9 @@ package suwayomi.tachidesk.manga.impl.track.tracker.model
 import java.io.Serializable
 
 interface Track : Serializable {
-    var id: Long?
+    var id: Int?
 
-    var manga_id: Long
+    var manga_id: Int
 
     var sync_id: Int
 
@@ -38,9 +38,9 @@ interface Track : Serializable {
     }
 
     companion object {
-        fun create(serviceId: Long): Track =
+        fun create(serviceId: Int): Track =
             TrackImpl().apply {
-                sync_id = serviceId.toInt()
+                sync_id = serviceId
             }
     }
 }

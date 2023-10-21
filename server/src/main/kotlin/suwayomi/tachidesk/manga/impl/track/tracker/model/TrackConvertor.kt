@@ -5,26 +5,19 @@ import suwayomi.tachidesk.manga.model.dataclass.TrackRecordDataClass
 import suwayomi.tachidesk.manga.model.dataclass.TrackSearchDataClass
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
 
-fun TrackSearchDataClass.toTrack(): Track =
-    Track.create(syncId.toLong()).also {
-        it.id = id
+fun TrackSearchDataClass.toTrack(mangaId: Int): Track =
+    Track.create(syncId).also {
         it.manga_id = mangaId
         it.media_id = mediaId
-        it.library_id = libraryId
         it.title = title
-        it.last_chapter_read = lastChapterRead
         it.total_chapters = totalChapters
-        it.status = status
-        it.score = score
         it.tracking_url = trackingUrl
-        it.started_reading_date = startedReadingDate
-        it.finished_reading_date = finishedReadingDate
     }
 
 fun ResultRow.toTrackRecordDataClass(): TrackRecordDataClass =
     TrackRecordDataClass(
         id = this[TrackRecordTable.id].value,
-        mangaId = this[TrackRecordTable.mangaId],
+        mangaId = this[TrackRecordTable.mangaId].value,
         syncId = this[TrackRecordTable.syncId],
         remoteId = this[TrackRecordTable.remoteId],
         libraryId = this[TrackRecordTable.libraryId],
@@ -39,11 +32,11 @@ fun ResultRow.toTrackRecordDataClass(): TrackRecordDataClass =
     )
 
 fun ResultRow.toTrack(): Track =
-    Track.create(this[TrackRecordTable.syncId].toLong()).also {
-        it.id = this[TrackRecordTable.id].value.toLong()
-        it.manga_id = this[TrackRecordTable.mangaId].toLong()
-        it.media_id = this[TrackRecordTable.remoteId].toLong()
-        it.library_id = this[TrackRecordTable.libraryId]?.toLong()
+    Track.create(this[TrackRecordTable.syncId]).also {
+        it.id = this[TrackRecordTable.id].value
+        it.manga_id = this[TrackRecordTable.mangaId].value
+        it.media_id = this[TrackRecordTable.remoteId]
+        it.library_id = this[TrackRecordTable.libraryId]
         it.title = this[TrackRecordTable.title]
         it.last_chapter_read = this[TrackRecordTable.lastChapterRead].toFloat()
         it.total_chapters = this[TrackRecordTable.totalChapters]

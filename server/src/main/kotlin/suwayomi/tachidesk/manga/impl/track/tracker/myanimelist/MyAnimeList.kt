@@ -13,7 +13,7 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 
-class MyAnimeList(id: Long) : Tracker(id, "MyAnimeList"), DeletableTrackService {
+class MyAnimeList(id: Int) : Tracker(id, "MyAnimeList"), DeletableTrackService {
     companion object {
         const val READING = 1
         const val COMPLETED = 2

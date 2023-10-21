@@ -3,18 +3,16 @@ package suwayomi.tachidesk.manga.impl.track.tracker
 import suwayomi.tachidesk.manga.impl.track.tracker.anilist.Anilist
 import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.MyAnimeList
 
-class TrackerManager {
-    companion object {
-        const val MYANIMELIST = 1L
-        const val ANILIST = 2L
-        const val KITSU = 3L
-        const val SHIKIMORI = 4L
-        const val BANGUMI = 5L
-        const val KOMGA = 6L
-        const val MANGA_UPDATES = 7L
-        const val KAVITA = 8L
-        const val SUWAYOMI = 9L
-    }
+object TrackerManager {
+    const val MYANIMELIST = 1
+    const val ANILIST = 2
+    const val KITSU = 3
+    const val SHIKIMORI = 4
+    const val BANGUMI = 5
+    const val KOMGA = 6
+    const val MANGA_UPDATES = 7
+    const val KAVITA = 8
+    const val SUWAYOMI = 9
 
     val myAnimeList = MyAnimeList(MYANIMELIST)
     val aniList = Anilist(ANILIST)
@@ -28,7 +26,7 @@ class TrackerManager {
 
     val services: List<Tracker> = listOf(myAnimeList, aniList)
 
-    fun getTracker(id: Long) = services.find { it.id == id }
+    fun getTracker(id: Int) = services.find { it.id == id }
 
     fun hasLoggedTracker() = services.any { it.isLoggedIn }
 }

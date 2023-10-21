@@ -6,7 +6,7 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
 
-abstract class Tracker(val id: Long, val name: String) {
+abstract class Tracker(val id: Int, val name: String) {
     val trackPreferences = TrackerPreferences()
     private val networkService: NetworkHelper by injectLazy()
 

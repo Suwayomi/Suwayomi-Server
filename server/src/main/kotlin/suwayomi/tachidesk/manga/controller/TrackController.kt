@@ -18,6 +18,8 @@ import suwayomi.tachidesk.manga.model.dataclass.TrackSearchDataClass
 import suwayomi.tachidesk.manga.model.dataclass.TrackerDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.util.handler
+import suwayomi.tachidesk.server.util.queryParam
+import suwayomi.tachidesk.server.util.withOperation
 
 object TrackController {
     private val json by DI.global.instance<Json>()
@@ -25,6 +27,12 @@ object TrackController {
 
     val list =
         handler(
+            documentWith = {
+                withOperation {
+                    summary("List Supported Trackers")
+                    description("List all supported Trackers")
+                }
+            },
             behaviorOf = { ctx ->
                 ctx.json(Track.getTrackerList())
             },
@@ -35,6 +43,13 @@ object TrackController {
 
     val login =
         handler(
+            documentWith = {
+                withOperation {
+                    summary("Tracker Login")
+                    description("Login to a tracker")
+                }
+                body<Track.LoginInput>()
+            },
             behaviorOf = { ctx ->
                 val input = json.decodeFromString<Track.LoginInput>(ctx.body())
                 logger.debug { "tracker login $input" }
@@ -42,11 +57,19 @@ object TrackController {
             },
             withResults = {
                 httpCode(HttpCode.OK)
+                httpCode(HttpCode.NOT_FOUND)
             },
         )
 
     val logout =
         handler(
+            documentWith = {
+                withOperation {
+                    summary("Tracker Logout")
+                    description("Logout of a Tracker")
+                }
+                body<Track.LogoutInput>()
+            },
             behaviorOf = { ctx ->
                 val input = json.decodeFromString<Track.LogoutInput>(ctx.body())
                 logger.debug { "tracker logout $input" }
@@ -54,11 +77,19 @@ object TrackController {
             },
             withResults = {
                 httpCode(HttpCode.OK)
+                httpCode(HttpCode.NOT_FOUND)
             },
         )
 
     val search =
         handler(
+            documentWith = {
+                withOperation {
+                    summary("Tracker Search")
+                    description("Search for a title on a tracker")
+                }
+                body<Track.SearchInput>()
+            },
             behaviorOf = { ctx ->
                 val input = json.decodeFromString<Track.SearchInput>(ctx.body())
                 logger.debug { "tracker search $input" }
@@ -66,15 +97,24 @@ object TrackController {
             },
             withResults = {
                 httpCode(HttpCode.OK)
+                httpCode(HttpCode.NOT_FOUND)
             },
         )
 
     val bind =
         handler(
-            behaviorOf = { ctx ->
+            queryParam<Int>("mangaId"),
+            documentWith = {
+                withOperation {
+                    summary("Track Record Bind")
+                    description("Bind a Track Record to a Manga")
+                }
+                body<TrackSearchDataClass>()
+            },
+            behaviorOf = { ctx, mangaId ->
                 val input = json.decodeFromString<TrackSearchDataClass>(ctx.body())
                 logger.debug { "tracker bind $input" }
-                ctx.future(future { Track.bind(input) })
+                ctx.future(future { Track.bind(mangaId, input) })
             },
             withResults = {
                 httpCode(HttpCode.OK)
@@ -83,6 +123,13 @@ object TrackController {
 
     val update =
         handler(
+            documentWith = {
+                withOperation {
+                    summary("Track Update")
+                    description("Update a Track Record with the Tracker")
+                }
+                body<Track.UpdateInput>()
+            },
             behaviorOf = { ctx ->
                 val input = json.decodeFromString<Track.UpdateInput>(ctx.body())
                 logger.debug { "tracker update $input" }
