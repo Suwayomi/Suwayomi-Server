@@ -259,6 +259,20 @@ data class FloatFilter(
     override val greaterThanOrEqualTo: Float? = null,
 ) : ComparableScalarFilter<Float>
 
+data class DoubleFilter(
+    override val isNull: Boolean? = null,
+    override val equalTo: Double? = null,
+    override val notEqualTo: Double? = null,
+    override val distinctFrom: Double? = null,
+    override val notDistinctFrom: Double? = null,
+    override val `in`: List<Double>? = null,
+    override val notIn: List<Double>? = null,
+    override val lessThan: Double? = null,
+    override val lessThanOrEqualTo: Double? = null,
+    override val greaterThan: Double? = null,
+    override val greaterThanOrEqualTo: Double? = null,
+) : ComparableScalarFilter<Double>
+
 data class StringFilter(
     override val isNull: Boolean? = null,
     override val equalTo: String? = null,
@@ -418,8 +432,8 @@ class OpAnd(var op: Op<Boolean>? = null) {
     ) = andWhere(value) { column like it }
 }
 
-fun <T : Comparable<T>> andFilterWithCompare(
-    column: Column<T>,
+fun <T : Comparable<T>, S : T?> andFilterWithCompare(
+    column: Column<S>,
     filter: ComparableScalarFilter<T>?,
 ): Op<Boolean>? {
     filter ?: return null
@@ -448,23 +462,24 @@ fun <T : Comparable<T>> andFilterWithCompareEntity(
     return opAnd.op
 }
 
-fun <T : Comparable<T>> andFilter(
-    column: Column<T>,
+@Suppress("UNCHECKED_CAST")
+fun <T : Comparable<T>, S : T?> andFilter(
+    column: Column<S>,
     filter: ScalarFilter<T>?,
 ): Op<Boolean>? {
     filter ?: return null
     val opAnd = OpAnd()
 
     opAnd.andWhere(filter.isNull) { if (it) column.isNull() else column.isNotNull() }
-    opAnd.andWhere(filter.equalTo) { column eq it }
-    opAnd.andWhere(filter.notEqualTo) { column neq it }
-    opAnd.andWhere(filter.distinctFrom) { DistinctFromOp.distinctFrom(column, it) }
-    opAnd.andWhere(filter.notDistinctFrom) { DistinctFromOp.notDistinctFrom(column, it) }
+    opAnd.andWhere(filter.equalTo) { column eq it as S }
+    opAnd.andWhere(filter.notEqualTo) { column neq it as S }
+    opAnd.andWhere(filter.distinctFrom) { DistinctFromOp.distinctFrom(column, it as S) }
+    opAnd.andWhere(filter.notDistinctFrom) { DistinctFromOp.notDistinctFrom(column, it as S) }
     if (!filter.`in`.isNullOrEmpty()) {
-        opAnd.andWhere(filter.`in`) { column inList it }
+        opAnd.andWhere(filter.`in`) { column inList it as List<S> }
     }
     if (!filter.notIn.isNullOrEmpty()) {
-        opAnd.andWhere(filter.notIn) { column notInList it }
+        opAnd.andWhere(filter.notIn) { column notInList it as List<S> }
     }
     return opAnd.op
 }

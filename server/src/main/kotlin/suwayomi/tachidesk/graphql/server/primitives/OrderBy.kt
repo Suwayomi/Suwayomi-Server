@@ -81,8 +81,30 @@ fun <T : Comparable<T>> greaterNotUnique(
     return greaterNotUniqueImpl(column, idColumn, cursor, String::toLong, toValue)
 }
 
+@JvmName("greaterNotUniqueIntKeyIntValue")
+fun greaterNotUnique(
+    column: Column<EntityID<Int>>,
+    idColumn: Column<EntityID<Int>>,
+    cursor: Cursor,
+): Op<Boolean> {
+    return greaterNotUniqueImpl(column, idColumn, cursor, String::toInt, String::toInt)
+}
+
 private fun <K : Comparable<K>, V : Comparable<V>> greaterNotUniqueImpl(
     column: Column<V>,
+    idColumn: Column<EntityID<K>>,
+    cursor: Cursor,
+    toKey: (String) -> K,
+    toValue: (String) -> V,
+): Op<Boolean> {
+    val id = toKey(cursor.value.substringBefore('-'))
+    val value = toValue(cursor.value.substringAfter('-'))
+    return (column greater value) or ((column eq value) and (idColumn greater id))
+}
+
+@JvmName("greaterNotUniqueEntityValue")
+private fun <K : Comparable<K>, V : Comparable<V>> greaterNotUniqueImpl(
+    column: Column<EntityID<V>>,
     idColumn: Column<EntityID<K>>,
     cursor: Cursor,
     toKey: (String) -> K,
@@ -125,8 +147,30 @@ fun <T : Comparable<T>> lessNotUnique(
     return lessNotUniqueImpl(column, idColumn, cursor, String::toLong, toValue)
 }
 
+@JvmName("lessNotUniqueIntKeyIntValue")
+fun lessNotUnique(
+    column: Column<EntityID<Int>>,
+    idColumn: Column<EntityID<Int>>,
+    cursor: Cursor,
+): Op<Boolean> {
+    return lessNotUniqueImpl(column, idColumn, cursor, String::toInt, String::toInt)
+}
+
 private fun <K : Comparable<K>, V : Comparable<V>> lessNotUniqueImpl(
     column: Column<V>,
+    idColumn: Column<EntityID<K>>,
+    cursor: Cursor,
+    toKey: (String) -> K,
+    toValue: (String) -> V,
+): Op<Boolean> {
+    val id = toKey(cursor.value.substringBefore('-'))
+    val value = toValue(cursor.value.substringAfter('-'))
+    return (column less value) or ((column eq value) and (idColumn less id))
+}
+
+@JvmName("lessNotUniqueEntityValue")
+private fun <K : Comparable<K>, V : Comparable<V>> lessNotUniqueImpl(
+    column: Column<EntityID<V>>,
     idColumn: Column<EntityID<K>>,
     cursor: Cursor,
     toKey: (String) -> K,
