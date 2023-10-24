@@ -149,7 +149,7 @@ class Updater : IUpdater {
         channel.consumeAsFlow()
             .onEach { job ->
                 semaphore.withPermit {
-                    updateStatus(process(job))
+                    process(job)
                 }
             }
             .catch { logger.error(it) { "Error during updates" } }
@@ -157,9 +157,10 @@ class Updater : IUpdater {
         return channel
     }
 
-    private suspend fun process(job: UpdateJob): List<UpdateJob> {
+    private suspend fun process(job: UpdateJob) {
         tracker[job.manga.id] = job.copy(status = JobStatus.RUNNING)
         updateStatus(tracker.values.toList(), true)
+
         tracker[job.manga.id] =
             try {
                 logger.info { "Updating \"${job.manga.title}\" (source: ${job.manga.sourceId})" }
@@ -170,7 +171,8 @@ class Updater : IUpdater {
                 logger.error(e) { "Error while updating ${job.manga.title}" }
                 job.copy(status = JobStatus.FAILED)
             }
-        return tracker.values.toList()
+
+        updateStatus(tracker.values.toList())
     }
 
     override fun addCategoriesToUpdateQueue(
