@@ -123,13 +123,18 @@ class Updater : IUpdater {
      */
     private fun updateStatus(
         jobs: List<UpdateJob>,
-        running: Boolean,
+        running: Boolean? = null,
         categories: Map<CategoryUpdateStatus, List<CategoryDataClass>>? = null,
         skippedMangas: List<MangaDataClass>? = null,
     ) {
+        val isRunning =
+            running
+                ?: jobs.any { job ->
+                    job.status == JobStatus.PENDING || job.status == JobStatus.RUNNING
+                }
         val updateStatusCategories = categories ?: _status.value.categoryStatusMap
         val tmpSkippedMangas = skippedMangas ?: _status.value.mangaStatusMap[JobStatus.SKIPPED] ?: emptyList()
-        _status.update { UpdateStatus(updateStatusCategories, jobs, tmpSkippedMangas, running) }
+        _status.update { UpdateStatus(updateStatusCategories, jobs, tmpSkippedMangas, isRunning) }
     }
 
     private fun getOrCreateUpdateChannelFor(source: String): Channel<UpdateJob> {
@@ -144,12 +149,7 @@ class Updater : IUpdater {
         channel.consumeAsFlow()
             .onEach { job ->
                 semaphore.withPermit {
-                    updateStatus(
-                        process(job),
-                        tracker.any { (_, job) ->
-                            job.status == JobStatus.PENDING || job.status == JobStatus.RUNNING
-                        },
-                    )
+                    updateStatus(process(job))
                 }
             }
             .catch { logger.error(it) { "Error during updates" } }
