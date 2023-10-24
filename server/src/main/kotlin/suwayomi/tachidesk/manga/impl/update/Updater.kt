@@ -140,11 +140,11 @@ class Updater : IUpdater {
     private fun getOrCreateUpdateChannelFor(source: String): Channel<UpdateJob> {
         return updateChannels.getOrPut(source) {
             logger.debug { "getOrCreateUpdateChannelFor: created channel for $source - channels: ${updateChannels.size + 1}" }
-            createUpdateChannel()
+            createUpdateChannel(source)
         }
     }
 
-    private fun createUpdateChannel(): Channel<UpdateJob> {
+    private fun createUpdateChannel(source: String): Channel<UpdateJob> {
         val channel = Channel<UpdateJob>(Channel.UNLIMITED)
         channel.consumeAsFlow()
             .onEach { job ->
@@ -152,9 +152,35 @@ class Updater : IUpdater {
                     process(job)
                 }
             }
-            .catch { logger.error(it) { "Error during updates" } }
+            .catch {
+                logger.error(it) { "Error during updates (source: $source)" }
+                handleChannelUpdateFailure(source)
+            }
             .launchIn(scope)
         return channel
+    }
+
+    private fun handleChannelUpdateFailure(source: String) {
+        val isFailedSourceUpdate = { job: UpdateJob ->
+            val isForSource = job.manga.sourceId == source
+            val hasFailed = job.status == JobStatus.FAILED
+
+            isForSource && hasFailed
+        }
+
+        // fail all updates for source
+        tracker
+            .filter { (_, job) -> !isFailedSourceUpdate(job) }
+            .forEach { (mangaId, job) ->
+                tracker[mangaId] = job.copy(status = JobStatus.FAILED)
+            }
+
+        updateStatus(
+            tracker.values.toList(),
+            tracker.any { (_, job) ->
+                job.status == JobStatus.PENDING || job.status == JobStatus.RUNNING
+            },
+        )
     }
 
     private suspend fun process(job: UpdateJob) {
