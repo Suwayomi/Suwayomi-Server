@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -156,6 +157,7 @@ class Updater : IUpdater {
                 logger.error(it) { "Error during updates (source: $source)" }
                 handleChannelUpdateFailure(source)
             }
+            .onCompletion { updateChannels.remove(source) }
             .launchIn(scope)
         return channel
     }
