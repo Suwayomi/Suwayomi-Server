@@ -195,8 +195,8 @@ class Updater : IUpdater {
                 Chapter.getChapterList(job.manga.id, true)
                 job.copy(status = JobStatus.COMPLETE)
             } catch (e: Exception) {
-                if (e is CancellationException) throw e
                 logger.error(e) { "Error while updating ${job.manga.title}" }
+                if (e is CancellationException) throw e
                 job.copy(status = JobStatus.FAILED)
             }
 
