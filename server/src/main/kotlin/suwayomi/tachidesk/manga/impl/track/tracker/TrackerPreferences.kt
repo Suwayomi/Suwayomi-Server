@@ -21,7 +21,7 @@ class TrackerPreferences {
         username: String,
         password: String,
     ) {
-        logger.debug { "setTrackCredentials: id=${sync.id} username=$username password=$password" }
+        logger.debug { "setTrackCredentials: id=${sync.id} username=$username" }
         preferenceStore.edit()
             .putString(trackUsername(sync.id), username)
             .putString(trackPassword(sync.id), password)
