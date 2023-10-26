@@ -10,12 +10,14 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.types.FilterChange
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.graphql.types.Preference
+import suwayomi.tachidesk.graphql.types.SourceType
 import suwayomi.tachidesk.graphql.types.preferenceOf
 import suwayomi.tachidesk.graphql.types.updateFilterList
 import suwayomi.tachidesk.manga.impl.MangaList.insertOrGet
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
 
@@ -100,6 +102,7 @@ class SourceMutation {
     data class UpdateSourcePreferencePayload(
         val clientMutationId: String?,
         val preferences: List<Preference>,
+        val source: SourceType,
     )
 
     fun updateSourcePreference(input: UpdateSourcePreferenceInput): UpdateSourcePreferencePayload {
@@ -119,6 +122,10 @@ class SourceMutation {
         return UpdateSourcePreferencePayload(
             clientMutationId = clientMutationId,
             preferences = Source.getSourcePreferencesRaw(sourceId).map { preferenceOf(it) },
+            source =
+                transaction {
+                    SourceType(SourceTable.select { SourceTable.id eq sourceId }.first())!!
+                },
         )
     }
 }
