@@ -243,7 +243,11 @@ object Chapter {
         }
 
         val firstChapterToDownloadIndex =
-            (numberOfNewChapters - serverConfig.autoDownloadAheadLimit.value).coerceAtLeast(0)
+            if (serverConfig.autoDownloadAheadLimit.value > 0) {
+                (numberOfNewChapters - serverConfig.autoDownloadAheadLimit.value).coerceAtLeast(0)
+            } else {
+                0
+            }
 
         val chapterIdsToDownload =
             newChapters.subList(firstChapterToDownloadIndex, numberOfNewChapters)
