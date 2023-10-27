@@ -127,42 +127,66 @@ object Chapter {
             chapter.chapter_number = chapterNumber.toFloat()
         }
 
+        val chapterUrlsInDb = transaction {
+            ChapterTable.select { ChapterTable.manga eq mangaId }
+                .map { it[ChapterTable.url] }
+                .toSet()
+        }
+
         var now = Instant.now().epochSecond
+        val chaptersToInsert = mutableListOf<Chapter>()
+        val chaptersToUpdate = mutableListOf<Chapter>()
+
+        chapterList.reversed().forEachIndexed { index, fetchedChapter ->
+            val chapterUrl = fetchedChapter.url
+            val chapterEntry = chapterUrlsInDb.find { it == chapterUrl }
+
+            if (chapterEntry == null) {
+                chaptersToInsert.add(fetchedChapter.apply {
+                    sourceOrder = index + 1
+                    fetchedAt = now++
+                    it.mangaId = mangaId
+                    realUrl = (source as? HttpSource)?.getChapterUrl(this)
+                })
+            } else {
+                val existingChapter = transaction {
+                    ChapterTable.select { ChapterTable.url eq chapterUrl }.singleOrNull()
+                }
+                if (existingChapter != null) {
+                    chaptersToUpdate.add(fetchedChapter.apply {
+                        sourceOrder = index + 1
+                        it.mangaId = mangaId
+                        realUrl = (source as? HttpSource)?.getChapterUrl(this)
+                    })
+                }
+            }
+        }
 
         transaction {
-            chapterList.reversed().forEachIndexed { index, fetchedChapter ->
-                val chapterEntry = ChapterTable.select { ChapterTable.url eq fetchedChapter.url }.firstOrNull()
-                if (chapterEntry == null) {
-                    ChapterTable.insert {
-                        it[url] = fetchedChapter.url
-                        it[name] = fetchedChapter.name
-                        it[date_upload] = fetchedChapter.date_upload
-                        it[chapter_number] = fetchedChapter.chapter_number
-                        it[scanlator] = fetchedChapter.scanlator
+            if (chaptersToInsert.isNotEmpty()) {
+                ChapterTable.batchInsert(chaptersToInsert) { chapter ->
+                    this[ChapterTable.url] = chapter.url
+                    this[ChapterTable.name] = chapter.name
+                    this[ChapterTable.date_upload] = chapter.date_upload
+                    this[ChapterTable.chapter_number] = chapter.chapter_number
+                    this[ChapterTable.scanlator] = chapter.scanlator
+                    this[ChapterTable.sourceOrder] = chapter.sourceOrder
+                    this[ChapterTable.fetchedAt] = chapter.fetchedAt
+                    this[ChapterTable.manga] = chapter.mangaId
+                    this[ChapterTable.realUrl] = chapter.realUrl
+                }
+            }
 
-                        it[sourceOrder] = index + 1
-                        it[fetchedAt] = now++
-                        it[ChapterTable.manga] = mangaId
-
-                        it[realUrl] =
-                            runCatching {
-                                (source as? HttpSource)?.getChapterUrl(fetchedChapter)
-                            }.getOrNull()
-                    }
-                } else {
-                    ChapterTable.update({ ChapterTable.url eq fetchedChapter.url }) {
-                        it[name] = fetchedChapter.name
-                        it[date_upload] = fetchedChapter.date_upload
-                        it[chapter_number] = fetchedChapter.chapter_number
-                        it[scanlator] = fetchedChapter.scanlator
-
-                        it[sourceOrder] = index + 1
-                        it[ChapterTable.manga] = mangaId
-
-                        it[realUrl] =
-                            runCatching {
-                                (source as? HttpSource)?.getChapterUrl(fetchedChapter)
-                            }.getOrNull()
+            if (chaptersToUpdate.isNotEmpty()) {
+                chaptersToUpdate.forEach { chapter ->
+                    ChapterTable.update({ ChapterTable.url eq chapter.url }) {
+                        it[name] = chapter.name
+                        it[date_upload] = chapter.date_upload
+                        it[chapter_number] = chapter.chapter_number
+                        it[scanlator] = chapter.scanlator
+                        it[sourceOrder] = chapter.sourceOrder
+                        it[manga] = chapter.mangaId
+                        it[realUrl] = chapter.realUrl
                     }
                 }
             }
@@ -180,23 +204,22 @@ object Chapter {
 
         // clear any orphaned/duplicate chapters that are in the db but not in `chapterList`
         val dbChapterCount = newChapters.count()
-        if (dbChapterCount > chapterList.size) { // we got some clean up due
-            val dbChapterList =
-                transaction {
-                    ChapterTable.select { ChapterTable.manga eq mangaId }
-                        .orderBy(ChapterTable.url to ASC).toList()
-                }
+        if (dbChapterCount > chapterList.size) {
             val chapterUrls = chapterList.map { it.url }.toSet()
-
-            dbChapterList.forEachIndexed { index, dbChapter ->
-                if (
-                    !chapterUrls.contains(dbChapter[ChapterTable.url]) || // is orphaned
-                    (index < dbChapterList.lastIndex && dbChapter[ChapterTable.url] == dbChapterList[index + 1][ChapterTable.url]) // is duplicate
-                ) {
-                    transaction {
-                        PageTable.deleteWhere { PageTable.chapter eq dbChapter[ChapterTable.id] }
-                        ChapterTable.deleteWhere { ChapterTable.id eq dbChapter[ChapterTable.id] }
+            val chaptersToDelete = transaction {
+                ChapterTable.select { ChapterTable.manga eq mangaId }
+                    .orderBy(ChapterTable.url to SortOrder.ASC)
+                    .toList()
+                    .filterIndexed { index, dbChapter ->
+                        !chapterUrls.contains(dbChapter[ChapterTable.url]) ||
+                            (index < dbChapterList.lastIndex && dbChapter[ChapterTable.url] == dbChapterList[index + 1][ChapterTable.url])
                     }
+            }
+
+            chaptersToDelete.forEach { chapter ->
+                transaction {
+                    PageTable.deleteWhere { PageTable.chapter eq chapter[ChapterTable.id] }
+                    ChapterTable.deleteWhere { ChapterTable.id eq chapter[ChapterTable.id] }
                 }
             }
         }
