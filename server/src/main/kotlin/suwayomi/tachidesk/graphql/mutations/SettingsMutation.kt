@@ -23,6 +23,7 @@ class SettingsMutation {
         if (settings.ip != null) serverConfig.ip.value = settings.ip!!
         if (settings.port != null) serverConfig.port.value = settings.port!!
 
+        // proxy
         if (settings.socksProxyEnabled != null) {
             serverConfig.socksProxyEnabled.value = settings.socksProxyEnabled!!
         }
@@ -33,6 +34,7 @@ class SettingsMutation {
             serverConfig.socksProxyPort.value = settings.socksProxyPort!!
         }
 
+        // webUI
         if (settings.webUIFlavor != null) {
             serverConfig.webUIFlavor.value = settings.webUIFlavor!!.uiName
         }
@@ -52,6 +54,7 @@ class SettingsMutation {
             serverConfig.webUIUpdateCheckInterval.value = settings.webUIUpdateCheckInterval!!
         }
 
+        // downloader
         if (settings.downloadAsCbz != null) {
             serverConfig.downloadAsCbz.value = settings.downloadAsCbz!!
         }
@@ -61,11 +64,19 @@ class SettingsMutation {
         if (settings.autoDownloadNewChapters != null) {
             serverConfig.autoDownloadNewChapters.value = settings.autoDownloadNewChapters!!
         }
+        if (settings.excludeEntryWithUnreadChapters != null) {
+            serverConfig.excludeEntryWithUnreadChapters.value = settings.excludeEntryWithUnreadChapters!!
+        }
+        if (settings.autoDownloadAheadLimit != null) {
+            serverConfig.autoDownloadAheadLimit.value = settings.autoDownloadAheadLimit!!
+        }
 
+        // requests
         if (settings.maxSourcesInParallel != null) {
             serverConfig.maxSourcesInParallel.value = settings.maxSourcesInParallel!!
         }
 
+        // updater
         if (settings.excludeUnreadChapters != null) {
             serverConfig.excludeUnreadChapters.value = settings.excludeUnreadChapters!!
         }
@@ -79,6 +90,7 @@ class SettingsMutation {
             serverConfig.globalUpdateInterval.value = settings.globalUpdateInterval!!
         }
 
+        // Authentication
         if (settings.basicAuthEnabled != null) {
             serverConfig.basicAuthEnabled.value = settings.basicAuthEnabled!!
         }
@@ -89,13 +101,18 @@ class SettingsMutation {
             serverConfig.basicAuthPassword.value = settings.basicAuthPassword!!
         }
 
+        // misc
         if (settings.debugLogsEnabled != null) {
             serverConfig.debugLogsEnabled.value = settings.debugLogsEnabled!!
+        }
+        if (settings.gqlDebugLogsEnabled != null) {
+            serverConfig.gqlDebugLogsEnabled.value = settings.gqlDebugLogsEnabled!!
         }
         if (settings.systemTrayEnabled != null) {
             serverConfig.systemTrayEnabled.value = settings.systemTrayEnabled!!
         }
 
+        // backup
         if (settings.backupPath != null) {
             serverConfig.backupPath.value = settings.backupPath!!
         }
@@ -109,6 +126,7 @@ class SettingsMutation {
             serverConfig.backupTTL.value = settings.backupTTL!!
         }
 
+        // local source
         if (settings.localSourcePath != null) {
             serverConfig.localSourcePath.value = settings.localSourcePath!!
         }
