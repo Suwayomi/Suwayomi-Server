@@ -41,6 +41,24 @@ class MangaType(
     var lastFetchedAt: Long?, // todo
     var chaptersLastFetchedAt: Long?, // todo
 ) : Node {
+    companion object {
+        fun clearCacheFor(
+            mangaId: Int,
+            dataFetchingEnvironment: DataFetchingEnvironment,
+        ) {
+            dataFetchingEnvironment.getDataLoader<List<Int>, MangaNodeList>("MangaDataLoader").clear(listOf(mangaId))
+            dataFetchingEnvironment.getDataLoader<List<Int>, MangaNodeList>("MangaForIdsDataLoader").clear(listOf(mangaId))
+            dataFetchingEnvironment.getDataLoader<Int, Int>("DownloadedChapterCountForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, Int>("UnreadChapterCountForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, Int>("LastReadChapterForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterNodeList>(
+                "ChaptersForMangaDataLoader",
+            ).clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, Int>("MangaMetaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, Int>("CategoriesForMangaDataLoader").clear(mangaId)
+        }
+    }
+
     constructor(row: ResultRow) : this(
         row[MangaTable.id].value,
         row[MangaTable.sourceReference],
