@@ -329,7 +329,7 @@ object Manga {
         return fetchMangaThumbnail(mangaId)
     }
 
-    private fun clearThumbnail(mangaId: Int) {
+    fun clearThumbnail(mangaId: Int) {
         val fileName = mangaId.toString()
 
         clearCachedImage(applicationDirs.tempThumbnailCacheRoot, fileName)

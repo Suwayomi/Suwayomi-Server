@@ -56,20 +56,26 @@ object MangaList {
                         (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq sourceId)
                     }.firstOrNull()
                 if (mangaEntry == null) { // create manga entry
-                    MangaTable.insertAndGetId {
-                        it[url] = manga.url
-                        it[title] = manga.title
+                    val mangaId =
+                        MangaTable.insertAndGetId {
+                            it[url] = manga.url
+                            it[title] = manga.title
 
-                        it[artist] = manga.artist
-                        it[author] = manga.author
-                        it[description] = manga.description
-                        it[genre] = manga.genre
-                        it[status] = manga.status
-                        it[thumbnail_url] = manga.thumbnail_url
-                        it[updateStrategy] = manga.update_strategy.name
+                            it[artist] = manga.artist
+                            it[author] = manga.author
+                            it[description] = manga.description
+                            it[genre] = manga.genre
+                            it[status] = manga.status
+                            it[thumbnail_url] = manga.thumbnail_url
+                            it[updateStrategy] = manga.update_strategy.name
 
-                        it[sourceReference] = sourceId
-                    }.value
+                            it[sourceReference] = sourceId
+                        }.value
+
+                    // delete thumbnail in case cached data still exists
+                    Manga.clearThumbnail(mangaId)
+
+                    mangaId
                 } else {
                     mangaEntry[MangaTable.id].value
                 }
@@ -102,6 +108,9 @@ object MangaList {
 
                                 it[sourceReference] = sourceId
                             }.value
+
+                        // delete thumbnail in case cached data still exists
+                        Manga.clearThumbnail(mangaId)
 
                         mangaEntry =
                             MangaTable.select {

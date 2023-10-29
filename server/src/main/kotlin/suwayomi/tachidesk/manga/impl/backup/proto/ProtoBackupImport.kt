@@ -22,6 +22,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
+import suwayomi.tachidesk.manga.impl.Manga.clearThumbnail
 import suwayomi.tachidesk.manga.impl.backup.models.Chapter
 import suwayomi.tachidesk.manga.impl.backup.models.Manga
 import suwayomi.tachidesk.manga.impl.backup.models.Track
@@ -187,6 +188,9 @@ object ProtoBackupImport : ProtoBackupBase() {
 
                         it[inLibraryAt] = TimeUnit.MILLISECONDS.toSeconds(manga.date_added)
                     }.value
+
+                // delete thumbnail in case cached data still exists
+                clearThumbnail(mangaId)
 
                 // insert chapter data
                 val chaptersLength = chapters.size
