@@ -10,6 +10,7 @@ package suwayomi.tachidesk.manga.impl
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -50,35 +51,38 @@ object MangaList {
 
     fun MangasPage.insertOrGet(sourceId: Long): List<Int> {
         return transaction {
+            val existingMangaUrlsToId =
+                MangaTable.slice(MangaTable.url, MangaTable.id).select {
+                    (MangaTable.sourceReference eq sourceId) and (MangaTable.url inList mangas.map { it.url })
+                }.associate { Pair(it[MangaTable.url], it[MangaTable.id].value) }
+            val existingMangaUrls = existingMangaUrlsToId.map { it.key }
+
+            val mangasToInsert = mangas.filter { !existingMangaUrls.contains(it.url) }
+
+            val insertedMangaUrlsToId =
+                MangaTable.batchInsert(mangasToInsert) {
+                    this[MangaTable.url] = it.url
+                    this[MangaTable.title] = it.title
+
+                    this[MangaTable.artist] = it.artist
+                    this[MangaTable.author] = it.author
+                    this[MangaTable.description] = it.description
+                    this[MangaTable.genre] = it.genre
+                    this[MangaTable.status] = it.status
+                    this[MangaTable.thumbnail_url] = it.thumbnail_url
+                    this[MangaTable.updateStrategy] = it.update_strategy.name
+
+                    this[MangaTable.sourceReference] = sourceId
+                }.associate { Pair(it[MangaTable.url], it[MangaTable.id].value) }
+
+            // delete thumbnail in case cached data still exists
+            insertedMangaUrlsToId.forEach { (_, id) -> Manga.clearThumbnail(id) }
+
+            val mangaUrlsToId = existingMangaUrlsToId + insertedMangaUrlsToId
+
             mangas.map { manga ->
-                val mangaEntry =
-                    MangaTable.select {
-                        (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq sourceId)
-                    }.firstOrNull()
-                if (mangaEntry == null) { // create manga entry
-                    val mangaId =
-                        MangaTable.insertAndGetId {
-                            it[url] = manga.url
-                            it[title] = manga.title
-
-                            it[artist] = manga.artist
-                            it[author] = manga.author
-                            it[description] = manga.description
-                            it[genre] = manga.genre
-                            it[status] = manga.status
-                            it[thumbnail_url] = manga.thumbnail_url
-                            it[updateStrategy] = manga.update_strategy.name
-
-                            it[sourceReference] = sourceId
-                        }.value
-
-                    // delete thumbnail in case cached data still exists
-                    Manga.clearThumbnail(mangaId)
-
-                    mangaId
-                } else {
-                    mangaEntry[MangaTable.id].value
-                }
+                mangaUrlsToId[manga.url]
+                    ?: throw Exception("MangaList::insertOrGet($sourceId): Something went wrong inserting browsed source mangas")
             }
         }
     }
@@ -108,9 +112,6 @@ object MangaList {
 
                                 it[sourceReference] = sourceId
                             }.value
-
-                        // delete thumbnail in case cached data still exists
-                        Manga.clearThumbnail(mangaId)
 
                         mangaEntry =
                             MangaTable.select {
