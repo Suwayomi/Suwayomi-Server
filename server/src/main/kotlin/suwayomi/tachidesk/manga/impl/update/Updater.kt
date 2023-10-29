@@ -1,5 +1,7 @@
 package suwayomi.tachidesk.manga.impl.update
 
+import android.app.Application
+import android.content.Context
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -27,9 +29,10 @@ import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.HAScheduler
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
-import java.util.prefs.Preferences
 import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.hours
 
@@ -48,7 +51,7 @@ class Updater : IUpdater {
 
     private val lastUpdateKey = "lastUpdateKey"
     private val lastAutomatedUpdateKey = "lastAutomatedUpdateKey"
-    private val preferences = Preferences.userNodeForPackage(Updater::class.java)
+    private val preferences = Injekt.get<Application>().getSharedPreferences("manga/impl/update", Context.MODE_PRIVATE)
 
     private var currentUpdateTaskId = ""
 
@@ -80,7 +83,7 @@ class Updater : IUpdater {
 
     private fun autoUpdateTask() {
         val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
-        preferences.putLong(lastAutomatedUpdateKey, System.currentTimeMillis())
+        preferences.edit().putLong(lastAutomatedUpdateKey, System.currentTimeMillis()).apply()
 
         if (status.value.running) {
             logger.debug { "Global update is already in progress" }
@@ -178,7 +181,7 @@ class Updater : IUpdater {
         clear: Boolean?,
         forceAll: Boolean,
     ) {
-        preferences.putLong(lastUpdateKey, System.currentTimeMillis())
+        preferences.edit().putLong(lastUpdateKey, System.currentTimeMillis()).apply()
 
         if (clear == true) {
             reset()

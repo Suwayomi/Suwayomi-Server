@@ -7,6 +7,8 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.app.Application
+import android.content.Context
 import ch.qos.logback.classic.Level
 import com.typesafe.config.ConfigRenderOptions
 import eu.kanade.tachiyomi.App
@@ -31,6 +33,8 @@ import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
 import suwayomi.tachidesk.server.util.SystemTray
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
 import xyz.nulldev.ts.config.ApplicationRootDir
@@ -42,6 +46,9 @@ import xyz.nulldev.ts.config.setLogLevelFor
 import java.io.File
 import java.security.Security
 import java.util.Locale
+import java.util.prefs.Preferences
+import kotlin.io.path.exists
+import kotlin.io.path.outputStream
 
 private val logger = KotlinLogging.logger {}
 
@@ -211,6 +218,10 @@ fun applicationSetup() {
         }
     }, ignoreInitialValue = false)
 
+    val preferences = Preferences.userRoot().node("suwayomi/tachidesk")
+    migratePreferences(null, preferences)
+    preferences.removeNode()
+
     // Disable jetty's logging
     System.setProperty("org.eclipse.jetty.util.log.announce", "false")
     System.setProperty("org.eclipse.jetty.util.log.class", "org.eclipse.jetty.util.log.StdErrLog")
@@ -249,4 +260,37 @@ fun applicationSetup() {
 
     // start DownloadManager and restore + resume downloads
     DownloadManager.restoreAndResumeDownloads()
+}
+
+fun migratePreferences(
+    parent: String?,
+    rootNode: Preferences,
+) {
+    val subNodes = rootNode.childrenNames()
+
+    for (subNodeName in subNodes) {
+        val subNode = rootNode.node(subNodeName)
+        val key =
+            if (parent != null) {
+                "$parent/$subNodeName"
+            } else {
+                subNodeName
+            }
+        val preferences = Injekt.get<Application>().getSharedPreferences(key, Context.MODE_PRIVATE)
+
+        val items: Map<String, String?> =
+            subNode.keys().associateWith {
+                subNode[it, null]?.ifBlank { null }
+            }
+
+        preferences.edit().apply {
+            items.forEach { (key, value) ->
+                if (value != null) {
+                    putString(key, value)
+                }
+            }
+        }.apply()
+
+        migratePreferences(key, subNode) // Recursively migrate sub-level nodes
+    }
 }
