@@ -10,7 +10,6 @@ package suwayomi.tachidesk.manga.impl
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
-import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 import org.jetbrains.exposed.dao.id.EntityID
@@ -18,8 +17,9 @@ import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SortOrder.ASC
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
@@ -110,6 +110,7 @@ object Chapter {
     suspend fun fetchChapterList(mangaId: Int): List<SChapter> {
         val manga = getManga(mangaId)
         val source = getCatalogueSourceOrStub(manga.sourceId.toLong())
+        val isHttpSource = source is HttpSource
 
         val sManga =
             SManga.create().apply {
@@ -117,76 +118,89 @@ object Chapter {
                 url = manga.url
             }
 
-        val numberOfCurrentChapters = getCountOfMangaChapters(mangaId)
         val chapterList = source.getChapterList(sManga)
+        val now = Instant.now().epochSecond
+        val chaptersInDb =
+            transaction {
+                ChapterTable.select { ChapterTable.manga eq mangaId }
+                    .map { ChapterTable.toDataClass(it) }
+                    .toSet()
+            }
 
-        // Recognize number for new chapters.
-        chapterList.forEach { chapter ->
-            (source as? HttpSource)?.prepareNewChapter(chapter, sManga)
-            val chapterNumber = ChapterRecognition.parseChapterNumber(manga.title, chapter.name, chapter.chapter_number.toDouble())
-            chapter.chapter_number = chapterNumber.toFloat()
-        }
-
-        val chapterUrlsInDb = transaction {
-            ChapterTable.select { ChapterTable.manga eq mangaId }
-                .map { it[ChapterTable.url] }
-                .toSet()
-        }
-
-        var now = Instant.now().epochSecond
-        val chaptersToInsert = mutableListOf<Chapter>()
-        val chaptersToUpdate = mutableListOf<Chapter>()
+        val chaptersToInsert = mutableListOf<ChapterDataClass>()
+        val chaptersToUpdate = mutableListOf<ChapterDataClass>()
 
         chapterList.reversed().forEachIndexed { index, fetchedChapter ->
-            val chapterUrl = fetchedChapter.url
-            val chapterEntry = chapterUrlsInDb.find { it == chapterUrl }
+            val chapterEntry = chaptersInDb.find { it.url == fetchedChapter.url }
+
+            val chapterData =
+                if (isHttpSource) {
+                    ChapterDataClass.fromSChapter(
+                        fetchedChapter,
+                        chapterEntry?.id ?: 0,
+                        index + 1,
+                        now,
+                        mangaId,
+                        (source as? HttpSource)?.getChapterUrl(fetchedChapter),
+                    )
+                } else {
+                    ChapterDataClass.fromSChapter(
+                        fetchedChapter,
+                        chapterEntry?.id ?: 0,
+                        index + 1,
+                        now,
+                        mangaId,
+                    )
+                }
 
             if (chapterEntry == null) {
-                chaptersToInsert.add(fetchedChapter.apply {
-                    sourceOrder = index + 1
-                    fetchedAt = now++
-                    it.mangaId = mangaId
-                    realUrl = (source as? HttpSource)?.getChapterUrl(this)
-                })
+                chaptersToInsert.add(chapterData)
             } else {
-                val existingChapter = transaction {
-                    ChapterTable.select { ChapterTable.url eq chapterUrl }.singleOrNull()
-                }
-                if (existingChapter != null) {
-                    chaptersToUpdate.add(fetchedChapter.apply {
-                        sourceOrder = index + 1
-                        it.mangaId = mangaId
-                        realUrl = (source as? HttpSource)?.getChapterUrl(this)
-                    })
-                }
+                chaptersToUpdate.add(chapterData)
             }
         }
 
         transaction {
             if (chaptersToInsert.isNotEmpty()) {
-                ChapterTable.batchInsert(chaptersToInsert) { chapter ->
-                    this[ChapterTable.url] = chapter.url
-                    this[ChapterTable.name] = chapter.name
-                    this[ChapterTable.date_upload] = chapter.date_upload
-                    this[ChapterTable.chapter_number] = chapter.chapter_number
-                    this[ChapterTable.scanlator] = chapter.scanlator
-                    this[ChapterTable.sourceOrder] = chapter.sourceOrder
-                    this[ChapterTable.fetchedAt] = chapter.fetchedAt
-                    this[ChapterTable.manga] = chapter.mangaId
-                    this[ChapterTable.realUrl] = chapter.realUrl
+                ChapterTable.batchInsert(chaptersToInsert) {
+                    this[ChapterTable.url] = it.url
+                    this[ChapterTable.name] = it.name
+                    this[ChapterTable.date_upload] = it.uploadDate
+                    this[ChapterTable.chapter_number] = it.chapterNumber
+                    this[ChapterTable.scanlator] = it.scanlator
+                    this[ChapterTable.sourceOrder] = it.index
+                    this[ChapterTable.fetchedAt] = it.fetchedAt
+                    this[ChapterTable.manga] = it.mangaId
+                    this[ChapterTable.realUrl] = it.realUrl
                 }
             }
 
+            // Not working
+            /*BatchUpdateStatement(ChapterTable).apply {
+                chaptersToUpdate.forEach {
+                    addBatch(it.id)
+                    this[ChapterTable.name] = it.name
+                    this[ChapterTable.name] = it.name
+                    this[ChapterTable.date_upload] = it.uploadDate
+                    this[ChapterTable.chapter_number] = it.chapterNumber
+                    this[ChapterTable.scanlator] = it.scanlator
+                    this[ChapterTable.sourceOrder] = it.index
+                    this[ChapterTable.fetchedAt] = it.fetchedAt
+                    this[ChapterTable.realUrl] = it.realUrl
+                }
+                execute(Transaction.current())
+            }*/
+
             if (chaptersToUpdate.isNotEmpty()) {
-                chaptersToUpdate.forEach { chapter ->
-                    ChapterTable.update({ ChapterTable.url eq chapter.url }) {
-                        it[name] = chapter.name
-                        it[date_upload] = chapter.date_upload
-                        it[chapter_number] = chapter.chapter_number
-                        it[scanlator] = chapter.scanlator
-                        it[sourceOrder] = chapter.sourceOrder
-                        it[manga] = chapter.mangaId
-                        it[realUrl] = chapter.realUrl
+                chaptersToUpdate.forEach { chapterData ->
+                    ChapterTable.update({ ChapterTable.url eq chapterData.url }) {
+                        it[name] = chapterData.name
+                        it[date_upload] = chapterData.uploadDate
+                        it[chapter_number] = chapterData.chapterNumber
+                        it[scanlator] = chapterData.scanlator
+                        it[sourceOrder] = chapterData.index
+                        it[fetchedAt] = chapterData.fetchedAt
+                        it[realUrl] = chapterData.realUrl
                     }
                 }
             }
@@ -204,28 +218,36 @@ object Chapter {
 
         // clear any orphaned/duplicate chapters that are in the db but not in `chapterList`
         val dbChapterCount = newChapters.count()
-        if (dbChapterCount > chapterList.size) {
+        if (dbChapterCount > chapterList.size) { // we got some clean up due
+            val dbChapterList =
+                transaction {
+                    ChapterTable.select { ChapterTable.manga eq mangaId }
+                        .orderBy(ChapterTable.url to ASC).toList()
+                }
+
             val chapterUrls = chapterList.map { it.url }.toSet()
-            val chaptersToDelete = transaction {
-                ChapterTable.select { ChapterTable.manga eq mangaId }
-                    .orderBy(ChapterTable.url to SortOrder.ASC)
-                    .toList()
-                    .filterIndexed { index, dbChapter ->
-                        !chapterUrls.contains(dbChapter[ChapterTable.url]) ||
-                            (index < dbChapterList.lastIndex && dbChapter[ChapterTable.url] == dbChapterList[index + 1][ChapterTable.url])
-                    }
+            val chaptersToDelete = mutableListOf<ResultRow>()
+
+            dbChapterList.forEachIndexed { index, dbChapter ->
+                val isOrphaned = !chapterUrls.contains(dbChapter[ChapterTable.url])
+                val isDuplicate =
+                    index < dbChapterList.lastIndex && dbChapter[ChapterTable.url] == dbChapterList[index + 1][ChapterTable.url]
+
+                if (isOrphaned || isDuplicate) {
+                    chaptersToDelete.add(dbChapter)
+                }
             }
 
-            chaptersToDelete.forEach { chapter ->
-                transaction {
-                    PageTable.deleteWhere { PageTable.chapter eq chapter[ChapterTable.id] }
-                    ChapterTable.deleteWhere { ChapterTable.id eq chapter[ChapterTable.id] }
-                }
+            val chaptersIdsToDelete = chaptersToDelete.map { it[ChapterTable.id] }
+
+            transaction {
+                PageTable.deleteWhere { PageTable.chapter inList chaptersIdsToDelete }
+                ChapterTable.deleteWhere { ChapterTable.id inList chaptersIdsToDelete }
             }
         }
 
         if (manga.inLibrary) {
-            downloadNewChapters(mangaId, numberOfCurrentChapters, newChapters)
+            downloadNewChapters(mangaId, chapterList.size, newChapters)
         }
 
         return chapterList
@@ -359,15 +381,19 @@ object Chapter {
                     when {
                         input.chapterIds != null ->
                             Op.build { (ChapterTable.manga eq mangaId) and (ChapterTable.id inList input.chapterIds) }
+
                         input.chapterIndexes != null ->
                             Op.build { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder inList input.chapterIndexes) }
+
                         else -> null
                     }
+
                 else -> {
                     // mangaId is null, only chapterIndexes is valid for this case
                     when {
                         input.chapterIds != null ->
                             Op.build { (ChapterTable.id inList input.chapterIds) }
+
                         else -> null
                     }
                 }
