@@ -18,11 +18,13 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SortOrder.ASC
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Manga.getManga
@@ -175,11 +177,9 @@ object Chapter {
                 }
             }
 
-            // Not working
-            /*BatchUpdateStatement(ChapterTable).apply {
+            BatchUpdateStatement(ChapterTable).apply {
                 chaptersToUpdate.forEach {
-                    addBatch(it.id)
-                    this[ChapterTable.name] = it.name
+                    addBatch(EntityID(it.id, ChapterTable))
                     this[ChapterTable.name] = it.name
                     this[ChapterTable.date_upload] = it.uploadDate
                     this[ChapterTable.chapter_number] = it.chapterNumber
@@ -188,21 +188,7 @@ object Chapter {
                     this[ChapterTable.fetchedAt] = it.fetchedAt
                     this[ChapterTable.realUrl] = it.realUrl
                 }
-                execute(Transaction.current())
-            }*/
-
-            if (chaptersToUpdate.isNotEmpty()) {
-                chaptersToUpdate.forEach { chapterData ->
-                    ChapterTable.update({ ChapterTable.url eq chapterData.url }) {
-                        it[name] = chapterData.name
-                        it[date_upload] = chapterData.uploadDate
-                        it[chapter_number] = chapterData.chapterNumber
-                        it[scanlator] = chapterData.scanlator
-                        it[sourceOrder] = chapterData.index
-                        it[fetchedAt] = chapterData.fetchedAt
-                        it[realUrl] = chapterData.realUrl
-                    }
-                }
+                execute(this@transaction)
             }
 
             MangaTable.update({ MangaTable.id eq mangaId }) {
