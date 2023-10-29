@@ -23,6 +23,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.conf.global
+import org.kodein.di.instance
 import org.kodein.di.singleton
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
@@ -109,12 +110,10 @@ fun applicationSetup() {
         "Loaded config:\n" + GlobalConfigManager.config.root().render(ConfigRenderOptions.concise().setFormatted(true))
     }
 
-    val updater = Updater()
-
     DI.global.addImport(
         DI.Module("Server") {
             bind<ApplicationDirs>() with singleton { applicationDirs }
-            bind<IUpdater>() with singleton { updater }
+            bind<IUpdater>() with singleton { Updater() }
             bind<JsonMapper>() with singleton { JavalinJackson() }
             bind<Json>() with singleton { Json { ignoreUnknownKeys = true } }
         },
@@ -253,7 +252,8 @@ fun applicationSetup() {
     Security.addProvider(BouncyCastleProvider())
 
     // start automated global updates
-    updater.scheduleUpdateTask()
+    val updater by DI.global.instance<IUpdater>()
+    (updater as Updater).scheduleUpdateTask()
 
     // start automated backups
     ProtoBackupExport.scheduleAutomatedBackupTask()
