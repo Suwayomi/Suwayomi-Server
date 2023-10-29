@@ -133,8 +133,8 @@ class SettingsType(
     override val downloadAsCbz: Boolean,
     override val downloadsPath: String,
     override val autoDownloadNewChapters: Boolean,
-    override val excludeEntryWithUnreadChapters: Boolean?,
-    override val autoDownloadAheadLimit: Int?,
+    override val excludeEntryWithUnreadChapters: Boolean,
+    override val autoDownloadAheadLimit: Int,
     // requests
     override val maxSourcesInParallel: Int,
     // updater
@@ -149,7 +149,7 @@ class SettingsType(
     override val basicAuthPassword: String,
     // misc
     override val debugLogsEnabled: Boolean,
-    override val gqlDebugLogsEnabled: Boolean?,
+    override val gqlDebugLogsEnabled: Boolean,
     override val systemTrayEnabled: Boolean,
     // backup
     override val backupPath: String,
