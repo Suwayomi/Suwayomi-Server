@@ -48,36 +48,10 @@ data class ChapterDataClass(
             index: Int,
             fetchedAt: Long,
             mangaId: Int,
-        ): ChapterDataClass {
-            return ChapterDataClass(
-                id = 0,
-                url = sChapter.url,
-                name = sChapter.name,
-                uploadDate = sChapter.date_upload,
-                chapterNumber = sChapter.chapter_number,
-                scanlator = sChapter.scanlator ?: "",
-                index = index,
-                fetchedAt = fetchedAt,
-                realUrl = null,
-                mangaId = mangaId,
-                read = false,
-                bookmarked = false,
-                lastPageRead = 0,
-                lastReadAt = 0,
-                downloaded = false,
-            )
-        }
-
-        fun fromSChapter(
-            sChapter: SChapter,
-            id: Int,
-            index: Int,
-            fetchedAt: Long,
-            mangaId: Int,
             realUrl: String?,
         ): ChapterDataClass {
             return ChapterDataClass(
-                id = 0,
+                id = id,
                 url = sChapter.url,
                 name = sChapter.name,
                 uploadDate = sChapter.date_upload,

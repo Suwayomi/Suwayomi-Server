@@ -111,7 +111,6 @@ object Chapter {
     suspend fun fetchChapterList(mangaId: Int): List<SChapter> {
         val manga = getManga(mangaId)
         val source = getCatalogueSourceOrStub(manga.sourceId.toLong())
-        val isHttpSource = source is HttpSource
 
         val sManga =
             SManga.create().apply {
@@ -119,6 +118,7 @@ object Chapter {
                 url = manga.url
             }
 
+        val numberOfCurrentChapters = getCountOfMangaChapters(mangaId)
         val chapterList = source.getChapterList(sManga)
         val now = Instant.now().epochSecond
         val chaptersInDb =
@@ -135,24 +135,14 @@ object Chapter {
             val chapterEntry = chaptersInDb.find { it.url == fetchedChapter.url }
 
             val chapterData =
-                if (isHttpSource) {
-                    ChapterDataClass.fromSChapter(
-                        fetchedChapter,
-                        chapterEntry?.id ?: 0,
-                        index + 1,
-                        now,
-                        mangaId,
-                        (source as? HttpSource)?.getChapterUrl(fetchedChapter),
-                    )
-                } else {
-                    ChapterDataClass.fromSChapter(
-                        fetchedChapter,
-                        chapterEntry?.id ?: 0,
-                        index + 1,
-                        now,
-                        mangaId,
-                    )
-                }
+                ChapterDataClass.fromSChapter(
+                    fetchedChapter,
+                    chapterEntry?.id ?: 0,
+                    index + 1,
+                    now,
+                    mangaId,
+                    (source as? HttpSource)?.getChapterUrl(fetchedChapter),
+                )
 
             if (chapterEntry == null) {
                 chaptersToInsert.add(chapterData)
@@ -211,19 +201,19 @@ object Chapter {
                 }
 
             val chapterUrls = chapterList.map { it.url }.toSet()
-            val chaptersToDelete = mutableListOf<ResultRow>()
 
-            dbChapterList.forEachIndexed { index, dbChapter ->
-                val isOrphaned = !chapterUrls.contains(dbChapter[ChapterTable.url])
-                val isDuplicate =
-                    index < dbChapterList.lastIndex && dbChapter[ChapterTable.url] == dbChapterList[index + 1][ChapterTable.url]
-
-                if (isOrphaned || isDuplicate) {
-                    chaptersToDelete.add(dbChapter)
+            val chaptersIdsToDelete =
+                dbChapterList.mapIndexedNotNull { index, dbChapter ->
+                    val isOrphaned = !chapterUrls.contains(dbChapter[ChapterTable.url])
+                    val isDuplicate =
+                        index < dbChapterList.lastIndex && dbChapter[ChapterTable.url] == dbChapterList[index + 1][ChapterTable.url]
+                    val deleteChapter = isOrphaned || isDuplicate
+                    if (deleteChapter) {
+                        dbChapter[ChapterTable.id].value
+                    } else {
+                        null
+                    }
                 }
-            }
-
-            val chaptersIdsToDelete = chaptersToDelete.map { it[ChapterTable.id] }
 
             transaction {
                 PageTable.deleteWhere { PageTable.chapter inList chaptersIdsToDelete }
@@ -232,7 +222,7 @@ object Chapter {
         }
 
         if (manga.inLibrary) {
-            downloadNewChapters(mangaId, chapterList.size, newChapters)
+            downloadNewChapters(mangaId, numberOfCurrentChapters, newChapters)
         }
 
         return chapterList
