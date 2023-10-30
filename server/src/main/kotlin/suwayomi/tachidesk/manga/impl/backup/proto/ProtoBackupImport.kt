@@ -60,67 +60,70 @@ object ProtoBackupImport : ProtoBackupBase() {
     val backupRestoreState = MutableStateFlow<BackupRestoreState>(BackupRestoreState.Idle)
 
     suspend fun performRestore(sourceStream: InputStream): ValidationResult {
-        return backupMutex.withLock {
-            val backupString = sourceStream.source().gzip().buffer().use { it.readByteArray() }
-            val backup = parser.decodeFromByteArray(BackupSerializer, backupString)
+        return try {
+            backupMutex.withLock {
+                val backupString = sourceStream.source().gzip().buffer().use { it.readByteArray() }
+                val backup = parser.decodeFromByteArray(BackupSerializer, backupString)
 
-            val validationResult = validate(backup)
+                val validationResult = validate(backup)
 
-            restoreAmount = backup.backupManga.size + 1 // +1 for categories
+                restoreAmount = backup.backupManga.size + 1 // +1 for categories
 
-            backupRestoreState.value = BackupRestoreState.RestoringCategories(backup.backupManga.size)
-            // Restore categories
-            if (backup.backupCategories.isNotEmpty()) {
-                restoreCategories(backup.backupCategories)
-            }
+                backupRestoreState.value = BackupRestoreState.RestoringCategories(backup.backupManga.size)
+                // Restore categories
+                if (backup.backupCategories.isNotEmpty()) {
+                    restoreCategories(backup.backupCategories)
+                }
 
-            val categoryMapping =
-                transaction {
-                    backup.backupCategories.associate {
-                        val dbCategory = CategoryTable.select { CategoryTable.name eq it.name }.firstOrNull()
+                val categoryMapping =
+                    transaction {
+                        backup.backupCategories.associate {
+                            val dbCategory = CategoryTable.select { CategoryTable.name eq it.name }.firstOrNull()
                         val categoryId =
                             dbCategory?.let {
                                     categoryResultRow ->
                                 categoryResultRow[CategoryTable.id].value
                             } ?: Category.DEFAULT_CATEGORY_ID
                         it.order to categoryId
+                        }
                     }
+
+                // Store source mapping for error messages
+                sourceMapping = backup.getSourceMap()
+
+                // Restore individual manga
+                backup.backupManga.forEachIndexed { index, manga ->
+                    backupRestoreState.value =
+                        BackupRestoreState.RestoringManga(
+                            current = index + 1,
+                            totalManga = backup.backupManga.size,
+                            title = manga.title,
+                        )
+                    restoreManga(
+                        backupManga = manga,
+                        backupCategories = backup.backupCategories,
+                        categoryMapping = categoryMapping,
+                    )
                 }
 
-            // Store source mapping for error messages
-            sourceMapping = backup.getSourceMap()
+                logger.info {
+                    """
+                    Restore Errors:
+                    ${errors.joinToString("\n") { "${it.first} - ${it.second}" }}
+                    Restore Summary:
+                    - Missing Sources:
+                        ${validationResult.missingSources.joinToString("\n                    ")}
+                    - Titles missing Sources:
+                        ${validationResult.mangasMissingSources.joinToString("\n                    ")}
+                    - Missing Trackers:
+                        ${validationResult.missingTrackers.joinToString("\n                    ")}
+                    """.trimIndent()
+                }
 
-            // Restore individual manga
-            backup.backupManga.forEachIndexed { index, manga ->
-                backupRestoreState.value =
-                    BackupRestoreState.RestoringManga(
-                        current = index + 1,
-                        totalManga = backup.backupManga.size,
-                        title = manga.title,
-                    )
-                restoreManga(
-                    backupManga = manga,
-                    backupCategories = backup.backupCategories,
-                    categoryMapping = categoryMapping,
-                )
+                validationResult
             }
-
-            logger.info {
-                """
-                Restore Errors:
-                ${errors.joinToString("\n") { "${it.first} - ${it.second}" }}
-                Restore Summary:
-                - Missing Sources:
-                    ${validationResult.missingSources.joinToString("\n                    ")}
-                - Titles missing Sources:
-                    ${validationResult.mangasMissingSources.joinToString("\n                    ")}
-                - Missing Trackers:
-                    ${validationResult.missingTrackers.joinToString("\n                    ")}
-                """.trimIndent()
-            }
+        } finally {
             backupRestoreState.value = BackupRestoreState.Idle
-
-            validationResult
         }
     }
 
