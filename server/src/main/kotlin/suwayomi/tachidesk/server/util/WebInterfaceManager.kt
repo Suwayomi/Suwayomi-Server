@@ -613,16 +613,13 @@ object WebInterfaceManager {
             }
         }
 
-        if (!isDownloadValid(zipFile.name, filePath)) {
+        if (!isDownloadValid(filePath)) {
             throw Exception("Download is invalid")
         }
     }
 
-    private suspend fun isDownloadValid(
-        zipFileName: String,
-        zipFilePath: String,
-    ): Boolean {
-        val tempUnzippedWebUIFolderPath = zipFileName.replace(".zip", "")
+    private suspend fun isDownloadValid(zipFilePath: String): Boolean {
+        val tempUnzippedWebUIFolderPath = zipFilePath.replace(".zip", "")
 
         extractDownload(zipFilePath, tempUnzippedWebUIFolderPath)
 
