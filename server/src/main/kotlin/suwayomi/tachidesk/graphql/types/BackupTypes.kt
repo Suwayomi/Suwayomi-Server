@@ -4,6 +4,7 @@ import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 
 enum class BackupRestoreState {
     IDLE,
+    SUCCESS,
     FAILURE,
     RESTORING_CATEGORIES,
     RESTORING_MANGA,
@@ -20,6 +21,12 @@ fun ProtoBackupImport.BackupRestoreState.toStatus(): BackupRestoreStatus {
         ProtoBackupImport.BackupRestoreState.Idle ->
             BackupRestoreStatus(
                 state = BackupRestoreState.IDLE,
+                totalManga = 0,
+                mangaProgress = 0,
+            )
+        is ProtoBackupImport.BackupRestoreState.Success ->
+            BackupRestoreStatus(
+                state = BackupRestoreState.SUCCESS,
                 totalManga = 0,
                 mangaProgress = 0,
             )

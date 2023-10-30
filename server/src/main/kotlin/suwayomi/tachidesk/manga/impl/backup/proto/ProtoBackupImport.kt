@@ -52,6 +52,8 @@ object ProtoBackupImport : ProtoBackupBase() {
     sealed class BackupRestoreState {
         data object Idle : BackupRestoreState()
 
+        data object Success : BackupRestoreState()
+
         data object Failure : BackupRestoreState()
 
         data class RestoringCategories(val totalManga: Int) : BackupRestoreState()
@@ -138,7 +140,7 @@ object ProtoBackupImport : ProtoBackupBase() {
             """.trimIndent()
         }
 
-        backupRestoreState.value = BackupRestoreState.Idle
+        backupRestoreState.value = BackupRestoreState.Success
 
         return validationResult
     }
