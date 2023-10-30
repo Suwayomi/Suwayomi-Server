@@ -59,7 +59,7 @@ object ProtoBackupImport : ProtoBackupBase() {
 
     val backupRestoreState = MutableStateFlow<BackupRestoreState>(BackupRestoreState.Idle)
 
-    suspend fun performRestore(sourceStream: InputStream): ValidationResult {
+    suspend fun restore(sourceStream: InputStream): ValidationResult {
         return try {
             backupMutex.withLock {
                 val backupString = sourceStream.source().gzip().buffer().use { it.readByteArray() }

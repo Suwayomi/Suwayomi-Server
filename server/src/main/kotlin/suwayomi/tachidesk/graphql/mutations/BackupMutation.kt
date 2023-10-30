@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import suwayomi.tachidesk.graphql.server.TemporaryFileStorage
-import suwayomi.tachidesk.graphql.types.BackupRestoreState
 import suwayomi.tachidesk.graphql.types.BackupRestoreStatus
 import suwayomi.tachidesk.graphql.types.toStatus
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
@@ -34,7 +33,7 @@ class BackupMutation {
 
         return future {
             GlobalScope.launch {
-                ProtoBackupImport.performRestore(backup.content)
+                ProtoBackupImport.restore(backup.content)
             }
 
             val status =
