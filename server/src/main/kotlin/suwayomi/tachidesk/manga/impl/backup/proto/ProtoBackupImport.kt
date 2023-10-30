@@ -77,7 +77,13 @@ object ProtoBackupImport : ProtoBackupBase() {
             val categoryMapping =
                 transaction {
                     backup.backupCategories.associate {
-                        it.order to CategoryTable.select { CategoryTable.name eq it.name }.first()[CategoryTable.id].value
+                        val dbCategory = CategoryTable.select { CategoryTable.name eq it.name }.firstOrNull()
+                        val categoryId =
+                            dbCategory?.let {
+                                    categoryResultRow ->
+                                categoryResultRow[CategoryTable.id].value
+                            } ?: Category.DEFAULT_CATEGORY_ID
+                        it.order to categoryId
                     }
                 }
 
