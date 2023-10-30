@@ -48,6 +48,7 @@ interface Settings : Node {
     val excludeNotStarted: Boolean?
     val excludeCompleted: Boolean?
     val globalUpdateInterval: Double?
+    val updateMangas: Boolean?
 
     // Authentication
     val basicAuthEnabled: Boolean?
@@ -96,6 +97,7 @@ data class PartialSettingsType(
     override val excludeNotStarted: Boolean?,
     override val excludeCompleted: Boolean?,
     override val globalUpdateInterval: Double?,
+    override val updateMangas: Boolean?,
     // Authentication
     override val basicAuthEnabled: Boolean?,
     override val basicAuthUsername: String?,
@@ -131,8 +133,8 @@ class SettingsType(
     override val downloadAsCbz: Boolean,
     override val downloadsPath: String,
     override val autoDownloadNewChapters: Boolean,
-    override val excludeEntryWithUnreadChapters: Boolean?,
-    override val autoDownloadAheadLimit: Int?,
+    override val excludeEntryWithUnreadChapters: Boolean,
+    override val autoDownloadAheadLimit: Int,
     // requests
     override val maxSourcesInParallel: Int,
     // updater
@@ -140,13 +142,14 @@ class SettingsType(
     override val excludeNotStarted: Boolean,
     override val excludeCompleted: Boolean,
     override val globalUpdateInterval: Double,
+    override val updateMangas: Boolean,
     // Authentication
     override val basicAuthEnabled: Boolean,
     override val basicAuthUsername: String,
     override val basicAuthPassword: String,
     // misc
     override val debugLogsEnabled: Boolean,
-    override val gqlDebugLogsEnabled: Boolean?,
+    override val gqlDebugLogsEnabled: Boolean,
     override val systemTrayEnabled: Boolean,
     // backup
     override val backupPath: String,
@@ -183,6 +186,7 @@ class SettingsType(
         config.excludeNotStarted.value,
         config.excludeCompleted.value,
         config.globalUpdateInterval.value,
+        config.updateMangas.value,
         // Authentication
         config.basicAuthEnabled.value,
         config.basicAuthUsername.value,
