@@ -10,6 +10,7 @@ package suwayomi.tachidesk.manga.impl
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
+import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 import org.jetbrains.exposed.dao.id.EntityID
@@ -120,6 +121,14 @@ object Chapter {
 
         val numberOfCurrentChapters = getCountOfMangaChapters(mangaId)
         val chapterList = source.getChapterList(sManga)
+
+        // Recognize number for new chapters.
+        chapterList.forEach { chapter ->
+            (source as? HttpSource)?.prepareNewChapter(chapter, sManga)
+            val chapterNumber = ChapterRecognition.parseChapterNumber(manga.title, chapter.name, chapter.chapter_number.toDouble())
+            chapter.chapter_number = chapterNumber.toFloat()
+        }
+
         val now = Instant.now().epochSecond
         val chaptersInDb =
             transaction {
