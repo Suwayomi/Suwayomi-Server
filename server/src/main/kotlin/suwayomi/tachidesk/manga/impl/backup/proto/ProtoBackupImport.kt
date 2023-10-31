@@ -63,7 +63,7 @@ object ProtoBackupImport : ProtoBackupBase() {
 
     val backupRestoreState = MutableStateFlow<BackupRestoreState>(BackupRestoreState.Idle)
 
-    suspend fun restore(sourceStream: InputStream): ValidationResult {
+    suspend fun restoreLegacy(sourceStream: InputStream): ValidationResult {
         return backupMutex.withLock {
             try {
                 performRestore(sourceStream)

@@ -35,7 +35,7 @@ class BackupMutation {
             val currentStatus = ProtoBackupImport.backupRestoreState.value.toStatus()
 
             GlobalScope.launch {
-                ProtoBackupImport.restore(backup.content)
+                ProtoBackupImport.restoreLegacy(backup.content)
             }
 
             val status =
