@@ -27,7 +27,7 @@ class BackupQuery {
         )
     }
 
-    fun restoreStatus(): BackupRestoreStatus {
-        return ProtoBackupImport.backupRestoreState.value.toStatus()
+    fun restoreStatus(id: String): BackupRestoreStatus? {
+        return ProtoBackupImport.getRestoreState(id)?.toStatus()
     }
 }
