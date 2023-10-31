@@ -32,6 +32,8 @@ class BackupMutation {
         val (clientMutationId, backup) = input
 
         return future {
+            val currentStatus = ProtoBackupImport.backupRestoreState.value.toStatus()
+
             GlobalScope.launch {
                 ProtoBackupImport.restore(backup.content)
             }
@@ -39,7 +41,7 @@ class BackupMutation {
             val status =
                 withTimeout(10.seconds) {
                     ProtoBackupImport.backupRestoreState.first {
-                        it != ProtoBackupImport.BackupRestoreState.Idle
+                        it.toStatus().state != currentStatus.state
                     }.toStatus()
                 }
 
