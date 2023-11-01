@@ -29,7 +29,7 @@ object BackupController {
             behaviorOf = { ctx ->
                 ctx.future(
                     future {
-                        ProtoBackupImport.performRestore(ctx.bodyAsInputStream())
+                        ProtoBackupImport.restoreLegacy(ctx.bodyAsInputStream())
                     },
                 )
             },
@@ -55,7 +55,7 @@ object BackupController {
                 // TODO: rewrite this with ctx.uploadedFiles(), don't call the multipart field "backup.proto.gz"
                 ctx.future(
                     future {
-                        ProtoBackupImport.performRestore(ctx.uploadedFile("backup.proto.gz")!!.content)
+                        ProtoBackupImport.restoreLegacy(ctx.uploadedFile("backup.proto.gz")!!.content)
                     },
                 )
             },
