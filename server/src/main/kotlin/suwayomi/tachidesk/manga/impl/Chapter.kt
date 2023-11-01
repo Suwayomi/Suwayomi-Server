@@ -175,18 +175,20 @@ object Chapter {
                 }
             }
 
-            BatchUpdateStatement(ChapterTable).apply {
-                chaptersToUpdate.forEach {
-                    addBatch(EntityID(it.id, ChapterTable))
-                    this[ChapterTable.name] = it.name
-                    this[ChapterTable.date_upload] = it.uploadDate
-                    this[ChapterTable.chapter_number] = it.chapterNumber
-                    this[ChapterTable.scanlator] = it.scanlator
-                    this[ChapterTable.sourceOrder] = it.index
-                    this[ChapterTable.fetchedAt] = it.fetchedAt
-                    this[ChapterTable.realUrl] = it.realUrl
+            if (chaptersToUpdate.isNotEmpty()) {
+                BatchUpdateStatement(ChapterTable).apply {
+                    chaptersToUpdate.forEach {
+                        addBatch(EntityID(it.id, ChapterTable))
+                        this[ChapterTable.name] = it.name
+                        this[ChapterTable.date_upload] = it.uploadDate
+                        this[ChapterTable.chapter_number] = it.chapterNumber
+                        this[ChapterTable.scanlator] = it.scanlator
+                        this[ChapterTable.sourceOrder] = it.index
+                        this[ChapterTable.fetchedAt] = it.fetchedAt
+                        this[ChapterTable.realUrl] = it.realUrl
+                    }
+                    execute(this@transaction)
                 }
-                execute(this@transaction)
             }
 
             MangaTable.update({ MangaTable.id eq mangaId }) {
