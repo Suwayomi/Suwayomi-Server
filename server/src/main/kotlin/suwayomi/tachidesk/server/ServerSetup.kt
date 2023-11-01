@@ -48,8 +48,6 @@ import java.io.File
 import java.security.Security
 import java.util.Locale
 import java.util.prefs.Preferences
-import kotlin.io.path.exists
-import kotlin.io.path.outputStream
 
 private val logger = KotlinLogging.logger {}
 
@@ -217,9 +215,13 @@ fun applicationSetup() {
         }
     }, ignoreInitialValue = false)
 
-    val preferences = Preferences.userRoot().node("suwayomi/tachidesk")
-    migratePreferences(null, preferences)
-    preferences.removeNode()
+    val prefRootNode = "suwayomi/tachidesk"
+    val isMigrationRequired = Preferences.userRoot().nodeExists(prefRootNode)
+    if (isMigrationRequired) {
+        val preferences = Preferences.userRoot().node(prefRootNode)
+        migratePreferences(null, preferences)
+        preferences.removeNode()
+    }
 
     // Disable jetty's logging
     System.setProperty("org.eclipse.jetty.util.log.announce", "false")
