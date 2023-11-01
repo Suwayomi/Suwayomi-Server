@@ -150,7 +150,9 @@ object Chapter {
                     index + 1,
                     now,
                     mangaId,
-                    (source as? HttpSource)?.getChapterUrl(fetchedChapter),
+                    runCatching {
+                        (source as? HttpSource)?.getChapterUrl(fetchedChapter)
+                    }.getOrNull(),
                 )
 
             if (chapterEntry == null) {
