@@ -184,7 +184,6 @@ object Chapter {
                         this[ChapterTable.chapter_number] = it.chapterNumber
                         this[ChapterTable.scanlator] = it.scanlator
                         this[ChapterTable.sourceOrder] = it.index
-                        this[ChapterTable.fetchedAt] = it.fetchedAt
                         this[ChapterTable.realUrl] = it.realUrl
                     }
                     execute(this@transaction)
