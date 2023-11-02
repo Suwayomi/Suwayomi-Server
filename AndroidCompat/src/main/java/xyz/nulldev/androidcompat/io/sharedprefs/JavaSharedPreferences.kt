@@ -19,6 +19,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.SetSerializer
 import kotlinx.serialization.builtins.serializer
 import mu.KotlinLogging
+import xyz.nulldev.androidcompat.util.SafePath
 import xyz.nulldev.ts.config.ApplicationRootDir
 import java.util.Properties
 import kotlin.io.path.Path
@@ -34,7 +35,11 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
         private val logger = KotlinLogging.logger {}
     }
 
-    private val file = Path(ApplicationRootDir, "settings", "$key.xml")
+    private val file = Path(
+        ApplicationRootDir,
+        "settings",
+        "${SafePath.buildValidFilename(key)}.xml"
+    )
     private val properties =
         Properties().also { properties ->
             try {

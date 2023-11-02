@@ -14,7 +14,7 @@ import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
-import suwayomi.tachidesk.manga.impl.util.storage.SafePath
+import xyz.nulldev.androidcompat.util.SafePath
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.ApplicationDirs
