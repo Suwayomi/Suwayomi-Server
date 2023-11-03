@@ -35,11 +35,12 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
         private val logger = KotlinLogging.logger {}
     }
 
-    private val file = Path(
-        ApplicationRootDir,
-        "settings",
-        "${SafePath.buildValidFilename(key)}.xml"
-    )
+    private val file =
+        Path(
+            ApplicationRootDir,
+            "settings",
+            "${SafePath.buildValidFilename(key)}.xml",
+        )
     private val properties =
         Properties().also { properties ->
             try {
