@@ -10,15 +10,21 @@ import org.apache.commons.compress.archivers.zip.ZipFile
 import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
-import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
+import suwayomi.tachidesk.manga.impl.util.getChapterCbzPaths
 import suwayomi.tachidesk.manga.impl.util.getMangaDownloadDir
 import java.io.File
 import java.io.InputStream
+import kotlin.io.path.Path
+import kotlin.io.path.deleteIfExists
 
 class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mangaId, chapterId) {
     override fun getImageImpl(index: Int): Pair<InputStream, String> {
-        val cbzPath = getChapterCbzPath(mangaId, chapterId)
-        val zipFile = ZipFile(cbzPath)
+        val cbzPaths = getChapterCbzPaths(mangaId, chapterId)
+        val zipFile =
+            cbzPaths.firstNotNullOfOrNull { folder ->
+                val file = File(folder).takeIf { it.exists() } ?: return@firstNotNullOfOrNull null
+                ZipFile(file)
+            }!!
         val zipEntry = zipFile.entries.toList().sortedWith(compareBy({ it.name }, { it.name }))[index]
         val inputStream = zipFile.getInputStream(zipEntry)
         val fileType = zipEntry.name.substringAfterLast(".")
@@ -31,9 +37,11 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mang
         step: suspend (DownloadChapter?, Boolean) -> Unit,
     ): Boolean {
         val mangaDownloadFolder = File(getMangaDownloadDir(mangaId))
-        val outputFile = File(getChapterCbzPath(mangaId, chapterId))
+        val outputFiles = getChapterCbzPaths(mangaId, chapterId).map { File(it) }
         val chapterCacheFolder = File(getChapterCachePath(mangaId, chapterId))
-        if (outputFile.exists()) handleExistingCbzFile(outputFile, chapterCacheFolder)
+        val existingFile = outputFiles.find { it.exists() }
+        if (existingFile != null) handleExistingCbzFile(existingFile, chapterCacheFolder)
+        val outputFile = outputFiles.first()
 
         super.downloadImpl(download, scope, step)
 
@@ -66,9 +74,8 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mang
     }
 
     override fun delete(): Boolean {
-        val cbzFile = File(getChapterCbzPath(mangaId, chapterId))
-        if (cbzFile.exists()) return cbzFile.delete()
-        return false
+        val chapterDirs = getChapterCbzPaths(mangaId, chapterId)
+        return chapterDirs.map { Path(it).deleteIfExists() }.any { it }
     }
 
     private fun handleExistingCbzFile(

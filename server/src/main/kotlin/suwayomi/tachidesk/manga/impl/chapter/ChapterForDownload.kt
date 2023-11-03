@@ -18,8 +18,8 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Page.getPageName
-import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
-import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
+import suwayomi.tachidesk.manga.impl.util.getChapterCbzPaths
+import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPaths
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
@@ -154,21 +154,23 @@ private class ChapterForDownload(
     private fun isNotCompletelyDownloaded(): Boolean {
         return !(
             chapterEntry[ChapterTable.isDownloaded] &&
-                (firstPageExists() || File(getChapterCbzPath(mangaId, chapterEntry[ChapterTable.id].value)).exists())
+                (firstPageExists() || getChapterCbzPaths(mangaId, chapterEntry[ChapterTable.id].value).any { File(it).exists() })
         )
     }
 
     private fun firstPageExists(): Boolean {
         val chapterId = chapterEntry[ChapterTable.id].value
 
-        val chapterDir = getChapterDownloadPath(mangaId, chapterId)
+        val chapterDirs = getChapterDownloadPaths(mangaId, chapterId)
 
-        println(chapterDir)
+        println(chapterDirs)
         println(getPageName(0))
 
-        return ImageResponse.findFileNameStartingWith(
-            chapterDir,
-            getPageName(0),
-        ) != null
+        return chapterDirs.any {
+            File(it).exists() && ImageResponse.findFileNameStartingWith(
+                it,
+                getPageName(0),
+            ) != null
+        }
     }
 }

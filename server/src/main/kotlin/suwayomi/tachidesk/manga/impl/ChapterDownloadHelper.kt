@@ -5,8 +5,8 @@ import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.ArchiveProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.FolderProvider
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
-import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
-import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
+import suwayomi.tachidesk.manga.impl.util.getChapterCbzPaths
+import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPaths
 import suwayomi.tachidesk.server.serverConfig
 import java.io.File
 import java.io.InputStream
@@ -42,10 +42,10 @@ object ChapterDownloadHelper {
         mangaId: Int,
         chapterId: Int,
     ): ChaptersFilesProvider {
-        val chapterFolder = File(getChapterDownloadPath(mangaId, chapterId))
-        val cbzFile = File(getChapterCbzPath(mangaId, chapterId))
-        if (cbzFile.exists()) return ArchiveProvider(mangaId, chapterId)
-        if (!chapterFolder.exists() && serverConfig.downloadAsCbz.value) return ArchiveProvider(mangaId, chapterId)
+        val chapterFolders = getChapterDownloadPaths(mangaId, chapterId).map { File(it) }
+        val cbzFiles = getChapterCbzPaths(mangaId, chapterId).map { File(it) }
+        if (cbzFiles.any { it.exists() }) return ArchiveProvider(mangaId, chapterId)
+        if (chapterFolders.none { it.exists() } && serverConfig.downloadAsCbz.value) return ArchiveProvider(mangaId, chapterId)
         return FolderProvider(mangaId, chapterId)
     }
 }

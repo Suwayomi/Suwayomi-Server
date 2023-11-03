@@ -4,7 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
-import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
+import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPaths
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
@@ -14,10 +14,9 @@ import java.io.InputStream
 * */
 class FolderProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mangaId, chapterId) {
     override fun getImageImpl(index: Int): Pair<InputStream, String> {
-        val chapterDir = getChapterDownloadPath(mangaId, chapterId)
-        val folder = File(chapterDir)
-        folder.mkdirs()
-        val file = folder.listFiles()?.sortedBy { it.name }?.get(index)
+        val chapterDirs = getChapterDownloadPaths(mangaId, chapterId)
+        val folder = chapterDirs.firstNotNullOfOrNull { folder -> File(folder).takeIf { it.exists() } }
+        val file = folder?.listFiles()?.sortedBy { it.name }?.get(index)
         val fileType = file!!.name.substringAfterLast(".")
         return Pair(FileInputStream(file).buffered(), "image/$fileType")
     }
@@ -27,13 +26,14 @@ class FolderProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(manga
         scope: CoroutineScope,
         step: suspend (DownloadChapter?, Boolean) -> Unit,
     ): Boolean {
-        val chapterDir = getChapterDownloadPath(mangaId, chapterId)
-        val folder = File(chapterDir)
+        val chapterDir = getChapterDownloadPaths(mangaId, chapterId)
 
-        val alreadyDownloaded = folder.exists()
+        val alreadyDownloaded = chapterDir.any { File(it).exists() }
         if (alreadyDownloaded) {
             return true
         }
+
+        val folder = File(chapterDir.first())
 
         val downloadSucceeded = super.downloadImpl(download, scope, step)
         if (!downloadSucceeded) {
@@ -47,8 +47,8 @@ class FolderProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(manga
     }
 
     override fun delete(): Boolean {
-        val chapterDir = getChapterDownloadPath(mangaId, chapterId)
-        return File(chapterDir).deleteRecursively()
+        val chapterDirs = getChapterDownloadPaths(mangaId, chapterId)
+        return chapterDirs.map { File(it).deleteRecursively() }.any { it }
     }
 
     private fun isExistingFile(

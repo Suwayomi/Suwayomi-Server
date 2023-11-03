@@ -31,21 +31,23 @@ private fun getMangaDir(mangaId: Int): String {
     return "$sourceDir/$mangaDir"
 }
 
-private fun getChapterDir(
+private fun getChapterDirs(
     mangaId: Int,
     chapterId: Int,
-): String {
+): List<String> {
     val chapterEntry = transaction { ChapterTable.select { ChapterTable.id eq chapterId }.first() }
 
-    val chapterDir =
-        SafePath.buildValidFilename(
-            when {
-                chapterEntry[ChapterTable.scanlator] != null -> "${chapterEntry[ChapterTable.scanlator]}_${chapterEntry[ChapterTable.name]}"
-                else -> chapterEntry[ChapterTable.name]
-            },
-        )
-
-    return getMangaDir(mangaId) + "/$chapterDir"
+    return buildList {
+        if (!chapterEntry[ChapterTable.scanlator].isNullOrEmpty()) {
+            add("${chapterEntry[ChapterTable.scanlator]}_${chapterEntry[ChapterTable.name]}")
+        }
+        add(chapterEntry[ChapterTable.name])
+        if (chapterEntry[ChapterTable.scanlator] != null) {
+            add("${chapterEntry[ChapterTable.scanlator]}_${chapterEntry[ChapterTable.name]}")
+        }
+    }.map {
+        getMangaDir(mangaId) + SafePath.buildValidFilename(it)
+    }
 }
 
 fun getThumbnailDownloadPath(mangaId: Int): String {
@@ -56,25 +58,25 @@ fun getMangaDownloadDir(mangaId: Int): String {
     return applicationDirs.mangaDownloadsRoot + "/" + getMangaDir(mangaId)
 }
 
-fun getChapterDownloadPath(
+fun getChapterDownloadPaths(
     mangaId: Int,
     chapterId: Int,
-): String {
-    return applicationDirs.mangaDownloadsRoot + "/" + getChapterDir(mangaId, chapterId)
+): List<String> {
+    return getChapterDirs(mangaId, chapterId).map { applicationDirs.mangaDownloadsRoot + "/" + it }
 }
 
-fun getChapterCbzPath(
+fun getChapterCbzPaths(
     mangaId: Int,
     chapterId: Int,
-): String {
-    return getChapterDownloadPath(mangaId, chapterId) + ".cbz"
+): List<String> {
+    return getChapterDownloadPaths(mangaId, chapterId).map { "$it.cbz" }
 }
 
 fun getChapterCachePath(
     mangaId: Int,
     chapterId: Int,
 ): String {
-    return applicationDirs.tempMangaCacheRoot + "/" + getChapterDir(mangaId, chapterId)
+    return applicationDirs.tempMangaCacheRoot + "/" + getChapterDirs(mangaId, chapterId).first()
 }
 
 /** return value says if rename/move was successful */
