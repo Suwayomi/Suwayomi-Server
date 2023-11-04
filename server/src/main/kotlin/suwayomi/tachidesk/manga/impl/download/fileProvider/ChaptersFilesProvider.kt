@@ -15,7 +15,7 @@ import java.io.InputStream
 
 /*
 * Base class for downloaded chapter files provider, example: Folder, Archive
-* */
+*/
 abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : DownloadedFilesProvider {
     abstract fun getImageImpl(index: Int): Pair<InputStream, String>
 

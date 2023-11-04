@@ -7,17 +7,21 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import com.google.common.cache.Cache
+import com.google.common.cache.CacheBuilder
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
+import eu.kanade.tachiyomi.util.chapter.ChapterSanitizer.sanitize
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SortOrder.ASC
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
@@ -41,7 +45,11 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.serverConfig
+import java.lang.Long
 import java.time.Instant
+import java.util.TreeSet
+import java.util.concurrent.TimeUnit
+import kotlin.math.max
 
 object Chapter {
     private val logger = KotlinLogging.logger { }
@@ -109,133 +117,179 @@ object Chapter {
         }
     }
 
+    val map: Cache<Int, Mutex> =
+        CacheBuilder.newBuilder()
+            .expireAfterAccess(10, TimeUnit.MINUTES)
+            .build()
+
     suspend fun fetchChapterList(mangaId: Int): List<SChapter> {
-        val manga = getManga(mangaId)
-        val source = getCatalogueSourceOrStub(manga.sourceId.toLong())
+        val mutex = map.get(mangaId) { Mutex() }
+        val chapterList =
+            mutex.withLock {
+                val manga = getManga(mangaId)
+                val source = getCatalogueSourceOrStub(manga.sourceId.toLong())
 
-        val sManga =
-            SManga.create().apply {
-                title = manga.title
-                url = manga.url
-            }
-
-        val numberOfCurrentChapters = getCountOfMangaChapters(mangaId)
-        val chapterList = source.getChapterList(sManga)
-
-        // Recognize number for new chapters.
-        chapterList.forEach { chapter ->
-            (source as? HttpSource)?.prepareNewChapter(chapter, sManga)
-            val chapterNumber = ChapterRecognition.parseChapterNumber(manga.title, chapter.name, chapter.chapter_number.toDouble())
-            chapter.chapter_number = chapterNumber.toFloat()
-        }
-
-        val now = Instant.now().epochSecond
-        val chaptersInDb =
-            transaction {
-                ChapterTable.select { ChapterTable.manga eq mangaId }
-                    .map { ChapterTable.toDataClass(it) }
-                    .toSet()
-            }
-
-        val chaptersToInsert = mutableListOf<ChapterDataClass>()
-        val chaptersToUpdate = mutableListOf<ChapterDataClass>()
-
-        chapterList.reversed().forEachIndexed { index, fetchedChapter ->
-            val chapterEntry = chaptersInDb.find { it.url == fetchedChapter.url }
-
-            val chapterData =
-                ChapterDataClass.fromSChapter(
-                    fetchedChapter,
-                    chapterEntry?.id ?: 0,
-                    index + 1,
-                    now,
-                    mangaId,
-                    runCatching {
-                        (source as? HttpSource)?.getChapterUrl(fetchedChapter)
-                    }.getOrNull(),
-                )
-
-            if (chapterEntry == null) {
-                chaptersToInsert.add(chapterData)
-            } else {
-                chaptersToUpdate.add(chapterData)
-            }
-        }
-
-        transaction {
-            if (chaptersToInsert.isNotEmpty()) {
-                ChapterTable.batchInsert(chaptersToInsert) {
-                    this[ChapterTable.url] = it.url
-                    this[ChapterTable.name] = it.name
-                    this[ChapterTable.date_upload] = it.uploadDate
-                    this[ChapterTable.chapter_number] = it.chapterNumber
-                    this[ChapterTable.scanlator] = it.scanlator
-                    this[ChapterTable.sourceOrder] = it.index
-                    this[ChapterTable.fetchedAt] = it.fetchedAt
-                    this[ChapterTable.manga] = it.mangaId
-                    this[ChapterTable.realUrl] = it.realUrl
-                }
-            }
-
-            if (chaptersToUpdate.isNotEmpty()) {
-                BatchUpdateStatement(ChapterTable).apply {
-                    chaptersToUpdate.forEach {
-                        addBatch(EntityID(it.id, ChapterTable))
-                        this[ChapterTable.name] = it.name
-                        this[ChapterTable.date_upload] = it.uploadDate
-                        this[ChapterTable.chapter_number] = it.chapterNumber
-                        this[ChapterTable.scanlator] = it.scanlator
-                        this[ChapterTable.sourceOrder] = it.index
-                        this[ChapterTable.realUrl] = it.realUrl
+                val sManga =
+                    SManga.create().apply {
+                        title = manga.title
+                        url = manga.url
                     }
-                    execute(this@transaction)
-                }
-            }
 
-            MangaTable.update({ MangaTable.id eq mangaId }) {
-                it[MangaTable.chaptersLastFetchedAt] = Instant.now().epochSecond
-            }
-        }
+                val numberOfCurrentChapters = getCountOfMangaChapters(mangaId)
+                val chapterList = source.getChapterList(sManga)
 
-        val newChapters =
-            transaction {
-                ChapterTable.select { ChapterTable.manga eq mangaId }
-                    .orderBy(ChapterTable.sourceOrder to SortOrder.DESC).toList()
-            }
-
-        // clear any orphaned/duplicate chapters that are in the db but not in `chapterList`
-        val dbChapterCount = newChapters.count()
-        if (dbChapterCount > chapterList.size) { // we got some clean up due
-            val dbChapterList =
-                transaction {
-                    ChapterTable.select { ChapterTable.manga eq mangaId }
-                        .orderBy(ChapterTable.url to ASC).toList()
+                // Recognize number for new chapters.
+                chapterList.forEach { chapter ->
+                    (source as? HttpSource)?.prepareNewChapter(chapter, sManga)
+                    val chapterNumber = ChapterRecognition.parseChapterNumber(manga.title, chapter.name, chapter.chapter_number.toDouble())
+                    chapter.chapter_number = chapterNumber.toFloat()
+                    chapter.name = chapter.name.sanitize(manga.title)
+                    chapter.scanlator = chapter.scanlator?.ifBlank { null }
                 }
 
-            val chapterUrls = chapterList.map { it.url }.toSet()
+                val now = Instant.now().epochSecond
+                // Used to not set upload date of older chapters
+                // to a higher value than newer chapters
+                var maxSeenUploadDate = 0L
 
-            val chaptersIdsToDelete =
-                dbChapterList.mapIndexedNotNull { index, dbChapter ->
-                    val isOrphaned = !chapterUrls.contains(dbChapter[ChapterTable.url])
-                    val isDuplicate =
-                        index < dbChapterList.lastIndex && dbChapter[ChapterTable.url] == dbChapterList[index + 1][ChapterTable.url]
-                    val deleteChapter = isOrphaned || isDuplicate
-                    if (deleteChapter) {
-                        dbChapter[ChapterTable.id].value
+                val chaptersInDb =
+                    transaction {
+                        ChapterTable.select { ChapterTable.manga eq mangaId }
+                            .map { ChapterTable.toDataClass(it) }
+                            .toList()
+                    }
+
+                val chaptersToInsert = mutableListOf<ChapterDataClass>()
+                val chaptersToUpdate = mutableListOf<ChapterDataClass>()
+
+                chapterList.reversed().forEachIndexed { index, fetchedChapter ->
+                    val chapterEntry = chaptersInDb.find { it.url == fetchedChapter.url }
+
+                    val chapterData =
+                        ChapterDataClass.fromSChapter(
+                            fetchedChapter,
+                            chapterEntry?.id ?: 0,
+                            index + 1,
+                            now,
+                            mangaId,
+                            runCatching {
+                                (source as? HttpSource)?.getChapterUrl(fetchedChapter)
+                            }.getOrNull(),
+                        )
+
+                    if (chapterEntry == null) {
+                        val newChapterData =
+                            if (chapterData.uploadDate == 0L) {
+                                val altDateUpload = if (maxSeenUploadDate == 0L) now else maxSeenUploadDate
+                                chapterData.copy(uploadDate = altDateUpload)
+                            } else {
+                                maxSeenUploadDate = max(maxSeenUploadDate, chapterData.uploadDate)
+                                chapterData
+                            }
+                        chaptersToInsert.add(newChapterData)
                     } else {
-                        null
+                        val newChapterData =
+                            if (chapterData.uploadDate == 0L) {
+                                chapterData.copy(uploadDate = chapterEntry.uploadDate)
+                            } else {
+                                chapterData
+                            }
+                        chaptersToUpdate.add(newChapterData)
                     }
                 }
 
-            transaction {
-                PageTable.deleteWhere { PageTable.chapter inList chaptersIdsToDelete }
-                ChapterTable.deleteWhere { ChapterTable.id inList chaptersIdsToDelete }
-            }
-        }
+                val deletedChapterNumbers = TreeSet<Float>()
+                val deletedReadChapterNumbers = TreeSet<Float>()
+                val deletedBookmarkedChapterNumbers = TreeSet<Float>()
+                val deletedDownloadedChapterNumbers = TreeSet<Float>()
+                val deletedChapterNumberDateFetchMap = mutableMapOf<Float, kotlin.Long>()
 
-        if (manga.inLibrary) {
-            downloadNewChapters(mangaId, numberOfCurrentChapters, newChapters)
-        }
+                // clear any orphaned/duplicate chapters that are in the db but not in `chapterList`
+                val dbChapterCount = chaptersInDb.count()
+                if (dbChapterCount > chapterList.size) { // we got some clean up due
+                    val chapterUrls = chapterList.map { it.url }.toSet()
+
+                    val chaptersIdsToDelete =
+                        chaptersInDb.mapNotNull { dbChapter ->
+                            if (!chapterUrls.contains(dbChapter.url)) {
+                                if (dbChapter.read) deletedReadChapterNumbers.add(dbChapter.chapterNumber)
+                                if (dbChapter.bookmarked) deletedBookmarkedChapterNumbers.add(dbChapter.chapterNumber)
+                                if (dbChapter.downloaded) deletedDownloadedChapterNumbers.add(dbChapter.chapterNumber)
+                                deletedChapterNumbers.add(dbChapter.chapterNumber)
+                                deletedChapterNumberDateFetchMap[dbChapter.chapterNumber] = dbChapter.fetchedAt
+                                dbChapter.id
+                            } else {
+                                null
+                            }
+                        }
+
+                    transaction {
+                        PageTable.deleteWhere { PageTable.chapter inList chaptersIdsToDelete }
+                        ChapterTable.deleteWhere { ChapterTable.id inList chaptersIdsToDelete }
+                    }
+                }
+
+                transaction {
+                    if (chaptersToInsert.isNotEmpty()) {
+                        ChapterTable.batchInsert(chaptersToInsert) { chapter ->
+                            this[ChapterTable.url] = chapter.url
+                            this[ChapterTable.name] = chapter.name
+                            this[ChapterTable.date_upload] = chapter.uploadDate
+                            this[ChapterTable.chapter_number] = chapter.chapterNumber
+                            this[ChapterTable.scanlator] = chapter.scanlator
+                            this[ChapterTable.sourceOrder] = chapter.index
+                            this[ChapterTable.fetchedAt] = chapter.fetchedAt
+                            this[ChapterTable.manga] = chapter.mangaId
+                            this[ChapterTable.realUrl] = chapter.realUrl
+                            this[ChapterTable.isRead] = false
+                            this[ChapterTable.isBookmarked] = false
+                            this[ChapterTable.isDownloaded] = false
+
+                            // is recognized chapter number
+                            if (chapter.chapterNumber >= 0f && chapter.chapterNumber in deletedChapterNumbers) {
+                                this[ChapterTable.isRead] = chapter.chapterNumber in deletedReadChapterNumbers
+                                this[ChapterTable.isBookmarked] = chapter.chapterNumber in deletedBookmarkedChapterNumbers
+                                this[ChapterTable.isDownloaded] = chapter.chapterNumber in deletedDownloadedChapterNumbers
+                                // Try to use the fetch date of the original entry to not pollute 'Updates' tab
+                                deletedChapterNumberDateFetchMap[chapter.chapterNumber]?.let {
+                                    this[ChapterTable.fetchedAt] = it
+                                }
+                            }
+                        }
+                    }
+
+                    if (chaptersToUpdate.isNotEmpty()) {
+                        BatchUpdateStatement(ChapterTable).apply {
+                            chaptersToUpdate.forEach {
+                                addBatch(EntityID(it.id, ChapterTable))
+                                this[ChapterTable.name] = it.name
+                                this[ChapterTable.date_upload] = it.uploadDate
+                                this[ChapterTable.chapter_number] = it.chapterNumber
+                                this[ChapterTable.scanlator] = it.scanlator
+                                this[ChapterTable.sourceOrder] = it.index
+                                this[ChapterTable.realUrl] = it.realUrl
+                            }
+                            execute(this@transaction)
+                        }
+                    }
+
+                    MangaTable.update({ MangaTable.id eq mangaId }) {
+                        it[MangaTable.chaptersLastFetchedAt] = Instant.now().epochSecond
+                    }
+                }
+
+                val newChapters =
+                    transaction {
+                        ChapterTable.select { ChapterTable.manga eq mangaId }
+                            .orderBy(ChapterTable.sourceOrder to SortOrder.DESC).toList()
+                    }
+
+                if (manga.inLibrary) {
+                    downloadNewChapters(mangaId, numberOfCurrentChapters, newChapters)
+                }
+
+                chapterList
+            }
 
         return chapterList
     }
@@ -264,7 +318,7 @@ object Chapter {
 
         // make sure to only consider the latest chapters. e.g. old unread chapters should be ignored
         val latestReadChapterIndex =
-            updatedChapterList.indexOfFirst { it[ChapterTable.isRead] }.takeIf { it > -1 } ?: return
+            updatedChapterList.indexOfFirst { it[ChapterTable.isRead] }.takeIf { it > -1 } ?: (updatedChapterList.size - 1)
         val unreadChapters =
             updatedChapterList.subList(numberOfNewChapters, latestReadChapterIndex)
                 .filter { !it[ChapterTable.isRead] }

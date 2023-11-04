@@ -56,7 +56,7 @@ data class ChapterDataClass(
                 name = sChapter.name,
                 uploadDate = sChapter.date_upload,
                 chapterNumber = sChapter.chapter_number,
-                scanlator = sChapter.scanlator ?: "",
+                scanlator = sChapter.scanlator,
                 index = index,
                 fetchedAt = fetchedAt,
                 realUrl = realUrl,
