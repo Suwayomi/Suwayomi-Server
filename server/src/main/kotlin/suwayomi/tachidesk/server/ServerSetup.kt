@@ -105,7 +105,9 @@ fun applicationSetup() {
     logger.info("Running Tachidesk ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")
 
     logger.debug {
-        "Loaded config:\n" + GlobalConfigManager.config.root().render(ConfigRenderOptions.concise().setFormatted(true))
+        "Loaded config:\n" +
+            GlobalConfigManager.config.root().render(ConfigRenderOptions.concise().setFormatted(true))
+                .replace(Regex("(\"basicAuth(?:Username|Password)\"\\s:\\s)(?!\"\")\".*\""), "$1\"******\"")
     }
 
     DI.global.addImport(
