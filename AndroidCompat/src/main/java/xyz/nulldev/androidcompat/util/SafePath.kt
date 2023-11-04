@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.manga.impl.util.storage
+package xyz.nulldev.androidcompat.util
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
