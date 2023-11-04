@@ -243,6 +243,7 @@ object Chapter {
                             this[ChapterTable.realUrl] = chapter.realUrl
                             this[ChapterTable.isRead] = false
                             this[ChapterTable.isBookmarked] = false
+                            this[ChapterTable.isDownloaded] = false
 
                             // is recognized chapter number
                             if (chapter.chapterNumber >= 0f && chapter.chapterNumber in deletedChapterNumbers) {
