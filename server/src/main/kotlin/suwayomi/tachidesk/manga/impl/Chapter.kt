@@ -189,11 +189,12 @@ object Chapter {
                         maxSeenUploadDate = max(maxSeenUploadDate, chapterData.uploadDate)
                         chaptersToInsert.add(newChapterData)
                     } else {
-                        val newChapterData = if (chapterData.uploadDate == 0L) {
-                            chapterData.copy(uploadDate = chapterEntry.uploadDate)
-                        } else {
-                            chapterData
-                        }
+                        val newChapterData =
+                            if (chapterData.uploadDate == 0L) {
+                                chapterData.copy(uploadDate = chapterEntry.uploadDate)
+                            } else {
+                                chapterData
+                            }
                         chaptersToUpdate.add(newChapterData)
                     }
                 }
