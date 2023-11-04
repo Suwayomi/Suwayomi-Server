@@ -30,11 +30,6 @@ class FolderProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(manga
         val chapterDir = getChapterDownloadPath(mangaId, chapterId)
         val folder = File(chapterDir)
 
-        val alreadyDownloaded = folder.exists()
-        if (alreadyDownloaded) {
-            return true
-        }
-
         val downloadSucceeded = super.downloadImpl(download, scope, step)
         if (!downloadSucceeded) {
             return false
