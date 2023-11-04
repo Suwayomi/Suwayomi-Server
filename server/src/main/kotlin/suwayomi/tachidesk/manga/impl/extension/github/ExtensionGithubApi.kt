@@ -109,7 +109,7 @@ object ExtensionGithubApi {
                     hasChangelog = it.hasChangelog == 1,
                     sources = it.sources?.toExtensionSources() ?: emptyList(),
                     apkName = it.apk,
-                    iconUrl = "${REPO_URL_PREFIX}icon/${it.apk.replace(".apk", ".png")}",
+                    iconUrl = "${REPO_URL_PREFIX}icon/${it.pkg}.png",
                 )
             }
     }
