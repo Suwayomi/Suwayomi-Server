@@ -201,6 +201,7 @@ object Chapter {
                 val deletedChapterNumbers = TreeSet<Float>()
                 val deletedReadChapterNumbers = TreeSet<Float>()
                 val deletedBookmarkedChapterNumbers = TreeSet<Float>()
+                val deletedDownloadedChapterNumbers = TreeSet<Float>()
                 val deletedChapterNumberDateFetchMap = mutableMapOf<Float, kotlin.Long>()
 
                 // clear any orphaned/duplicate chapters that are in the db but not in `chapterList`
@@ -213,6 +214,7 @@ object Chapter {
                             if (!chapterUrls.contains(dbChapter.url)) {
                                 if (dbChapter.read) deletedReadChapterNumbers.add(dbChapter.chapterNumber)
                                 if (dbChapter.bookmarked) deletedBookmarkedChapterNumbers.add(dbChapter.chapterNumber)
+                                if (dbChapter.downloaded) deletedDownloadedChapterNumbers.add(dbChapter.chapterNumber)
                                 deletedChapterNumbers.add(dbChapter.chapterNumber)
                                 deletedChapterNumberDateFetchMap[dbChapter.chapterNumber] = dbChapter.fetchedAt
                                 dbChapter.id
@@ -246,7 +248,8 @@ object Chapter {
                             if (chapter.chapterNumber >= 0f && chapter.chapterNumber in deletedChapterNumbers) {
                                 this[ChapterTable.isRead] = chapter.chapterNumber in deletedReadChapterNumbers
                                 this[ChapterTable.isBookmarked] = chapter.chapterNumber in deletedBookmarkedChapterNumbers
-                                // Try to to use the fetch date of the original entry to not pollute 'Updates' tab
+                                this[ChapterTable.isDownloaded] = chapter.chapterNumber in deletedDownloadedChapterNumbers
+                                // Try to use the fetch date of the original entry to not pollute 'Updates' tab
                                 deletedChapterNumberDateFetchMap[chapter.chapterNumber]?.let {
                                     this[ChapterTable.fetchedAt] = it
                                 }
