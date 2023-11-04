@@ -264,7 +264,7 @@ object Chapter {
 
         // make sure to only consider the latest chapters. e.g. old unread chapters should be ignored
         val latestReadChapterIndex =
-            updatedChapterList.indexOfFirst { it[ChapterTable.isRead] }.takeIf { it > -1 } ?: return
+            updatedChapterList.indexOfFirst { it[ChapterTable.isRead] }.takeIf { it > -1 } ?: (updatedChapterList.size - 1)
         val unreadChapters =
             updatedChapterList.subList(numberOfNewChapters, latestReadChapterIndex)
                 .filter { !it[ChapterTable.isRead] }
