@@ -186,7 +186,6 @@ object Chapter {
                                 maxSeenUploadDate = max(maxSeenUploadDate, chapterData.uploadDate)
                                 chapterData
                             }
-                        maxSeenUploadDate = max(maxSeenUploadDate, chapterData.uploadDate)
                         chaptersToInsert.add(newChapterData)
                     } else {
                         val newChapterData =
