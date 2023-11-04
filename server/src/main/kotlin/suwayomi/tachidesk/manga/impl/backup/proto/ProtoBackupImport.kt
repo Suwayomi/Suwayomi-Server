@@ -22,6 +22,7 @@ import okio.buffer
 import okio.gzip
 import okio.source
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
@@ -294,23 +295,25 @@ object ProtoBackupImport : ProtoBackupBase() {
 
                 // insert chapter data
                 val chaptersLength = chapters.size
-                chapters.forEach { chapter ->
-                    ChapterTable.insert {
-                        it[url] = chapter.url
-                        it[name] = chapter.name
-                        it[date_upload] = chapter.date_upload
-                        it[chapter_number] = chapter.chapter_number
-                        it[scanlator] = chapter.scanlator
-
-                        it[sourceOrder] = chaptersLength - chapter.source_order
-                        it[ChapterTable.manga] = mangaId
-
-                        it[isRead] = chapter.read
-                        it[lastPageRead] = chapter.last_page_read
-                        it[isBookmarked] = chapter.bookmark
-
-                        it[fetchedAt] = TimeUnit.MILLISECONDS.toSeconds(chapter.date_fetch)
+                ChapterTable.batchInsert(chapters) { chapter ->
+                    this[ChapterTable.url] = chapter.url
+                    this[ChapterTable.name] = chapter.name
+                    if (chapter.date_upload == 0L) {
+                        this[ChapterTable.date_upload] = chapter.date_fetch
+                    } else {
+                        this[ChapterTable.date_upload] = chapter.date_upload
                     }
+                    this[ChapterTable.chapter_number] = chapter.chapter_number
+                    this[ChapterTable.scanlator] = chapter.scanlator
+
+                    this[ChapterTable.sourceOrder] = chaptersLength - chapter.source_order
+                    this[ChapterTable.manga] = mangaId
+
+                    this[ChapterTable.isRead] = chapter.read
+                    this[ChapterTable.lastPageRead] = chapter.last_page_read
+                    this[ChapterTable.isBookmarked] = chapter.bookmark
+
+                    this[ChapterTable.fetchedAt] = TimeUnit.MILLISECONDS.toSeconds(chapter.date_fetch)
                 }
 
                 // insert categories
@@ -350,7 +353,11 @@ object ProtoBackupImport : ProtoBackupBase() {
                         ChapterTable.insert {
                             it[url] = chapter.url
                             it[name] = chapter.name
-                            it[date_upload] = chapter.date_upload
+                            if (chapter.date_upload == 0L) {
+                                it[date_upload] = chapter.date_fetch
+                            } else {
+                                it[date_upload] = chapter.date_upload
+                            }
                             it[chapter_number] = chapter.chapter_number
                             it[scanlator] = chapter.scanlator
 
