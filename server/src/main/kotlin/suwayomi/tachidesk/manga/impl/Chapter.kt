@@ -299,12 +299,11 @@ object Chapter {
         updatedChapterList: List<ResultRow>,
     ) {
         // convert numbers to be index based
-        val currentNumberOfChapters = (prevNumberOfChapters - 1).coerceAtLeast(0)
-        val updatedNumberOfChapters = (updatedChapterList.size - 1).coerceAtLeast(0)
-        val numberOfNewChapters = updatedNumberOfChapters - currentNumberOfChapters
+        val newNumberOfChapters = updatedChapterList.size
+        val numberOfNewChapters = newNumberOfChapters - prevNumberOfChapters
 
         val areNewChaptersAvailable = numberOfNewChapters > 0
-        val wasInitialFetch = currentNumberOfChapters == -1 // has to be -1 - due to converting to index based 1 chapter will be 0
+        val wasInitialFetch = prevNumberOfChapters == 0
 
         // make sure to ignore initial fetch
         val isDownloadPossible =
@@ -317,7 +316,7 @@ object Chapter {
 
         // make sure to only consider the latest chapters. e.g. old unread chapters should be ignored
         val latestReadChapterIndex =
-            updatedChapterList.indexOfFirst { it[ChapterTable.isRead] }.takeIf { it > -1 } ?: (updatedChapterList.size - 1)
+            updatedChapterList.indexOfFirst { it[ChapterTable.isRead] }.takeIf { it > -1 } ?: (updatedChapterList.size)
         val unreadChapters =
             updatedChapterList.subList(numberOfNewChapters, latestReadChapterIndex)
                 .filter { !it[ChapterTable.isRead] }
@@ -329,7 +328,7 @@ object Chapter {
 
         val firstChapterToDownloadIndex =
             if (serverConfig.autoDownloadAheadLimit.value > 0) {
-                (numberOfNewChapters - serverConfig.autoDownloadAheadLimit.value).coerceAtLeast(0)
+                (numberOfNewChapters - serverConfig.autoDownloadAheadLimit.value - 1).coerceAtLeast(0)
             } else {
                 0
             }
