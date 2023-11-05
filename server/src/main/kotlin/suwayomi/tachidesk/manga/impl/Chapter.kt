@@ -298,6 +298,16 @@ object Chapter {
         prevNumberOfChapters: Int,
         updatedChapterList: List<ResultRow>,
     ) {
+        val log =
+            KotlinLogging.logger(
+                "${logger.name}::downloadNewChapters(" +
+                    "mangaId= $mangaId, " +
+                    "prevNumberOfChapters= $prevNumberOfChapters, " +
+                    "updatedChapterList= ${updatedChapterList.size}, " +
+                    "downloadAheadLimit= ${serverConfig.autoDownloadAheadLimit.value}" +
+                    ")",
+            )
+
         // convert numbers to be index based
         val newNumberOfChapters = updatedChapterList.size
         val numberOfNewChapters = newNumberOfChapters - prevNumberOfChapters
@@ -309,6 +319,7 @@ object Chapter {
         val isDownloadPossible =
             serverConfig.autoDownloadNewChapters.value && areNewChaptersAvailable && !wasInitialFetch
         if (!isDownloadPossible) {
+            log.debug { "download is not allowed" }
             return
         }
 
@@ -323,6 +334,7 @@ object Chapter {
 
         val skipDueToUnreadChapters = serverConfig.excludeEntryWithUnreadChapters.value && unreadChapters.isNotEmpty()
         if (skipDueToUnreadChapters) {
+            log.debug { "ignore due to unread chapters" }
             return
         }
 
@@ -339,10 +351,11 @@ object Chapter {
                 .map { it[ChapterTable.id].value }
 
         if (chapterIdsToDownload.isEmpty()) {
+            log.debug { "no chapters available for download" }
             return
         }
 
-        logger.info { "downloadNewChapters($mangaId): Downloading \"${chapterIdsToDownload.size}\" new chapter(s)..." }
+        log.info { "download ${chapterIdsToDownload.size} new chapter(s)..." }
 
         DownloadManager.enqueue(EnqueueInput(chapterIdsToDownload))
     }
