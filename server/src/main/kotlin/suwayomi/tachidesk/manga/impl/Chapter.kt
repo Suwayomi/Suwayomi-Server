@@ -45,7 +45,6 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.serverConfig
-import java.lang.Long
 import java.time.Instant
 import java.util.TreeSet
 import java.util.concurrent.TimeUnit
@@ -202,27 +201,27 @@ object Chapter {
                 val deletedReadChapterNumbers = TreeSet<Float>()
                 val deletedBookmarkedChapterNumbers = TreeSet<Float>()
                 val deletedDownloadedChapterNumbers = TreeSet<Float>()
-                val deletedChapterNumberDateFetchMap = mutableMapOf<Float, kotlin.Long>()
+                val deletedChapterNumberDateFetchMap = mutableMapOf<Float, Long>()
 
                 // clear any orphaned/duplicate chapters that are in the db but not in `chapterList`
-                val dbChapterCount = chaptersInDb.count()
-                if (dbChapterCount > chapterList.size) { // we got some clean up due
-                    val chapterUrls = chapterList.map { it.url }.toSet()
+                val chapterUrls = chapterList.map { it.url }.toSet()
 
-                    val chaptersIdsToDelete =
-                        chaptersInDb.mapNotNull { dbChapter ->
-                            if (!chapterUrls.contains(dbChapter.url)) {
-                                if (dbChapter.read) deletedReadChapterNumbers.add(dbChapter.chapterNumber)
-                                if (dbChapter.bookmarked) deletedBookmarkedChapterNumbers.add(dbChapter.chapterNumber)
-                                if (dbChapter.downloaded) deletedDownloadedChapterNumbers.add(dbChapter.chapterNumber)
-                                deletedChapterNumbers.add(dbChapter.chapterNumber)
-                                deletedChapterNumberDateFetchMap[dbChapter.chapterNumber] = dbChapter.fetchedAt
-                                dbChapter.id
-                            } else {
-                                null
-                            }
+                val chaptersIdsToDelete =
+                    chaptersInDb.mapNotNull { dbChapter ->
+                        if (!chapterUrls.contains(dbChapter.url)) {
+                            if (dbChapter.read) deletedReadChapterNumbers.add(dbChapter.chapterNumber)
+                            if (dbChapter.bookmarked) deletedBookmarkedChapterNumbers.add(dbChapter.chapterNumber)
+                            if (dbChapter.downloaded) deletedDownloadedChapterNumbers.add(dbChapter.chapterNumber)
+                            deletedChapterNumbers.add(dbChapter.chapterNumber)
+                            deletedChapterNumberDateFetchMap[dbChapter.chapterNumber] = dbChapter.fetchedAt
+                            dbChapter.id
+                        } else {
+                            null
                         }
+                    }
 
+                // we got some clean up due
+                if (chaptersIdsToDelete.isNotEmpty()) {
                     transaction {
                         PageTable.deleteWhere { PageTable.chapter inList chaptersIdsToDelete }
                         ChapterTable.deleteWhere { ChapterTable.id inList chaptersIdsToDelete }
