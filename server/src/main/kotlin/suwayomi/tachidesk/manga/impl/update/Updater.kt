@@ -51,9 +51,9 @@ class Updater : IUpdater {
     private var maxSourcesInParallel = 20 // max permits, necessary to be set to be able to release up to 20 permits
     private val semaphore = Semaphore(maxSourcesInParallel)
 
-    private val lastUpdateKey = "lastUpdateKey"
-    private val lastAutomatedUpdateKey = "lastAutomatedUpdateKey"
-    private val preferences = Injekt.get<Application>().getSharedPreferences("manga/impl/update", Context.MODE_PRIVATE)
+    private val lastUpdateKey = "lastGlobalUpdate"
+    private val lastAutomatedUpdateKey = "lastAutomatedGlobalUpdate"
+    private val preferences = Injekt.get<Application>().getSharedPreferences("server_util", Context.MODE_PRIVATE)
 
     private var currentUpdateTaskId = ""
 

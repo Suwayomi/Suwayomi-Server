@@ -125,9 +125,9 @@ object WebInterfaceManager {
     private val logger = KotlinLogging.logger {}
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    private const val LAST_WEBUI_UPDATE_CHECK_KEY = "lastWebUIUpdateCheckKey"
+    private const val LAST_WEBUI_UPDATE_CHECK_KEY = "lastWebUIUpdateCheck"
 
-    private val preferences = Injekt.get<Application>().getSharedPreferences("server/util", Context.MODE_PRIVATE)
+    private val preferences = Injekt.get<Application>().getSharedPreferences("server_util", Context.MODE_PRIVATE)
     private var currentUpdateTaskId: String = ""
 
     private val json: Json by injectLazy()
