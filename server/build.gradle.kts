@@ -107,7 +107,7 @@ buildConfig {
 
     buildConfigField("String", "NAME", quoteWrap(rootProject.name))
     buildConfigField("String", "VERSION", quoteWrap(tachideskVersion))
-    buildConfigField("String", "REVISION", quoteWrap(tachideskRevision))
+    buildConfigField("String", "REVISION", quoteWrap(getTachideskRevision()))
     buildConfigField("String", "BUILD_TYPE", quoteWrap(if (System.getenv("ProductBuildType") == "Stable") "Stable" else "Preview"))
     buildConfigField("long", "BUILD_TIME", Instant.now().epochSecond.toString())
 
@@ -126,12 +126,12 @@ tasks {
                 "Implementation-Title" to rootProject.name,
                 "Implementation-Vendor" to "The Suwayomi Project",
                 "Specification-Version" to tachideskVersion,
-                "Implementation-Version" to tachideskRevision,
+                "Implementation-Version" to getTachideskRevision(),
             )
         }
         archiveBaseName.set(rootProject.name)
         archiveVersion.set(tachideskVersion)
-        archiveClassifier.set(tachideskRevision)
+        archiveClassifier.set(getTachideskRevision())
         destinationDirectory.set(File("$rootDir/server/build"))
     }
 
