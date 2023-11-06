@@ -89,7 +89,7 @@ object ProtoBackupExport : ProtoBackupBase() {
         val backupInterval = serverConfig.backupInterval.value.days.coerceAtLeast(1.days)
 
         // trigger last backup in case the server wasn't running on the scheduled time
-        val lastAutomatedBackup = preferences.getLong(LAST_AUTOMATED_BACKUP_KEY, System.currentTimeMillis())
+        val lastAutomatedBackup = preferences.getLong(LAST_AUTOMATED_BACKUP_KEY, 0)
         val wasPreviousBackupTriggered =
             (System.currentTimeMillis() - lastAutomatedBackup) < backupInterval.inWholeMilliseconds
         if (!wasPreviousBackupTriggered) {
