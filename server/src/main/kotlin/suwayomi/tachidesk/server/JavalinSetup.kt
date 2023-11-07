@@ -72,13 +72,19 @@ object JavalinSetup {
         val app =
             Javalin.create { config ->
                 if (serverConfig.webUIEnabled.value) {
+                    val serveWebUI = {
+                        config.addSinglePageRoot("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
+                    }
+                    WebInterfaceManager.setServeWebUI(serveWebUI)
+
                     runBlocking {
                         WebInterfaceManager.setupWebUI()
                     }
 
                     logger.info { "Serving web static files for ${serverConfig.webUIFlavor.value}" }
                     config.addStaticFiles(applicationDirs.webUIRoot, Location.EXTERNAL)
-                    config.addSinglePageRoot("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
+                    serveWebUI()
+
                     config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
                 }
 
