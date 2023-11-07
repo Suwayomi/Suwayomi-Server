@@ -16,6 +16,7 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.withOperation
+import kotlin.time.Duration.Companion.days
 
 object ExtensionController {
     private val logger = KotlinLogging.logger {}
@@ -157,6 +158,8 @@ object ExtensionController {
                     future { Extension.getExtensionIcon(apkName) }
                         .thenApply {
                             ctx.header("content-type", it.second)
+                            val httpCacheSeconds = 365.days.inWholeSeconds
+                            ctx.header("cache-control", "max-age=$httpCacheSeconds, immutable")
                             it.first
                         },
                 )
