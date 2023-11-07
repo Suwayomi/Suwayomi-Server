@@ -167,6 +167,12 @@ object WebInterfaceManager {
         )
     }
 
+    private var serveWebUI: () -> Unit = {}
+
+    fun setServeWebUI(serveWebUI: () -> Unit) {
+        this.serveWebUI = serveWebUI
+    }
+
     private fun isAutoUpdateEnabled(): Boolean {
         return serverConfig.webUIUpdateCheckInterval.value.toInt() != 0
     }
@@ -566,6 +572,8 @@ object WebInterfaceManager {
             log.info { "Extracting WebUI zip Done." }
 
             emitStatus(version, FINISHED, 100)
+
+            serveWebUI()
         } catch (e: Exception) {
             emitStatus(version, ERROR, 0)
             throw e
