@@ -20,9 +20,17 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
     @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE", "UNCHECKED_CAST")
     override suspend fun parseRequest(context: Context): GraphQLServerRequest? {
         return try {
+            val contentType = context.contentType()
             val formParam =
-                context.formParam("operations")
-                    ?: return context.bodyAsClass(GraphQLServerRequest::class.java)
+                if (
+                    contentType?.contains("application/x-www-form-urlencoded") == true ||
+                    contentType?.contains("multipart/form-data") == true
+                ) {
+                    context.formParam("operations")
+                        ?: throw IllegalArgumentException("Cannot find 'operations' body")
+                } else {
+                    return context.bodyAsClass(GraphQLServerRequest::class.java)
+                }
 
             val request =
                 context.jsonMapper().fromJsonString(
