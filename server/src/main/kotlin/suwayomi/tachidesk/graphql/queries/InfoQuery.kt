@@ -51,6 +51,12 @@ class InfoQuery {
         }
     }
 
+    fun aboutWebUI(): CompletableFuture<WebUIUpdateInfo> {
+        return future {
+            WebInterfaceManager.getAboutInfo()
+        }
+    }
+
     fun checkForWebUIUpdate(): CompletableFuture<WebUIUpdateInfo> {
         return future {
             val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable()
