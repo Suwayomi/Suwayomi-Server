@@ -117,7 +117,7 @@ enum class WebUIFlavor(
     ;
 
     companion object {
-        fun from(value: String): WebUIFlavor = entries.find { it.name == value } ?: WEBUI
+        fun from(value: String): WebUIFlavor = entries.find { it.uiName == value } ?: WEBUI
     }
 }
 
