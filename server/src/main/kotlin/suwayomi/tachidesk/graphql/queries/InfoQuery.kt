@@ -10,7 +10,7 @@ import suwayomi.tachidesk.server.util.WebInterfaceManager
 import java.util.concurrent.CompletableFuture
 
 class InfoQuery {
-    data class AboutPayload(
+    data class AboutServerPayload(
         val name: String,
         val version: String,
         val revision: String,
@@ -20,8 +20,8 @@ class InfoQuery {
         val discord: String,
     )
 
-    fun about(): AboutPayload {
-        return AboutPayload(
+    fun aboutServer(): AboutServerPayload {
+        return AboutServerPayload(
             BuildConfig.NAME,
             BuildConfig.VERSION,
             BuildConfig.REVISION,
@@ -48,6 +48,12 @@ class InfoQuery {
                     url = it.url,
                 )
             }
+        }
+    }
+
+    fun aboutWebUI(): CompletableFuture<WebUIUpdateInfo> {
+        return future {
+            WebInterfaceManager.getAboutInfo()
         }
     }
 

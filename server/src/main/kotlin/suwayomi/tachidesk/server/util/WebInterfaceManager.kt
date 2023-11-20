@@ -167,6 +167,21 @@ object WebInterfaceManager {
         )
     }
 
+    suspend fun getAboutInfo(): WebUIUpdateInfo {
+        val currentVersion = getLocalVersion()
+
+        val failedToGetVersion = currentVersion === "r-1"
+        if (failedToGetVersion) {
+            throw Exception("Failed to get current version")
+        }
+
+        return WebUIUpdateInfo(
+            channel = serverConfig.webUIChannel.value,
+            tag = currentVersion,
+            updateAvailable = isUpdateAvailable(currentVersion).second,
+        )
+    }
+
     private var serveWebUI: () -> Unit = {}
 
     fun setServeWebUI(serveWebUI: () -> Unit) {
