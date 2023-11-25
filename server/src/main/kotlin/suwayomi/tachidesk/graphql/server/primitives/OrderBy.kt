@@ -22,6 +22,11 @@ interface OrderBy<T> {
     fun less(cursor: Cursor): Op<Boolean>
 }
 
+interface Order<By : OrderBy<*>> {
+    val by: By
+    val byType: SortOrder?
+}
+
 fun SortOrder?.maybeSwap(value: Any?): SortOrder {
     return if (value != null) {
         when (this) {

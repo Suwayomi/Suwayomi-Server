@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.graphql.queries
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
@@ -22,6 +23,7 @@ import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
+import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
@@ -93,6 +95,11 @@ class TrackQuery {
         }
     }
 
+    data class TrackerOrder(
+        val by: TrackerOrderBy,
+        val byType: SortOrder? = null,
+    )
+
     data class TrackerCondition(
         val id: Int? = null,
         val name: String? = null,
@@ -113,8 +120,17 @@ class TrackQuery {
 
     fun trackers(
         condition: TrackerCondition? = null,
+        @GraphQLDeprecated(
+            "Replaced with order",
+            replaceWith = ReplaceWith("order"),
+        )
         orderBy: TrackerOrderBy? = null,
+        @GraphQLDeprecated(
+            "Replaced with order",
+            replaceWith = ReplaceWith("order"),
+        )
         orderByType: SortOrder? = null,
+        order: List<TrackerOrder>? = null,
         before: Cursor? = null,
         after: Cursor? = null,
         first: Int? = null,
@@ -135,35 +151,40 @@ class TrackQuery {
                         }
                 }
 
-                if (orderBy != null || (last != null || before != null)) {
-                    val orderType = orderByType.maybeSwap(last ?: before)
+                if (order != null || (last != null || before != null)) {
+                    val baseSort = listOf(TrackerOrder(TrackerOrderBy.ID, SortOrder.ASC))
+                    val deprecatedSort = listOfNotNull(orderBy?.let { TrackerOrder(orderBy, orderByType) })
+                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                    actualSort.forEach { (orderBy, orderByType) ->
+                        val orderType = orderByType.maybeSwap(last ?: before)
 
-                    res =
-                        when (orderType) {
-                            SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST ->
-                                when (orderBy) {
-                                    TrackerOrderBy.ID, null -> res.sortedByDescending { it.id }
-                                    TrackerOrderBy.NAME -> res.sortedByDescending { it.name }
-                                    TrackerOrderBy.IS_LOGGED_IN -> res.sortedByDescending { it.isLoggedIn }
-                                }
-                            SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST ->
-                                when (orderBy) {
-                                    TrackerOrderBy.ID, null -> res.sortedBy { it.id }
-                                    TrackerOrderBy.NAME -> res.sortedBy { it.name }
-                                    TrackerOrderBy.IS_LOGGED_IN -> res.sortedBy { it.isLoggedIn }
-                                }
-                        }
+                        res =
+                            when (orderType) {
+                                SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST ->
+                                    when (orderBy) {
+                                        TrackerOrderBy.ID -> res.sortedByDescending { it.id }
+                                        TrackerOrderBy.NAME -> res.sortedByDescending { it.name }
+                                        TrackerOrderBy.IS_LOGGED_IN -> res.sortedByDescending { it.isLoggedIn }
+                                    }
+                                SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST ->
+                                    when (orderBy) {
+                                        TrackerOrderBy.ID -> res.sortedBy { it.id }
+                                        TrackerOrderBy.NAME -> res.sortedBy { it.name }
+                                        TrackerOrderBy.IS_LOGGED_IN -> res.sortedBy { it.isLoggedIn }
+                                    }
+                            }
+                    }
                 }
 
                 val total = res.size
                 val firstResult = res.firstOrNull()
                 val lastResult = res.lastOrNull()
 
-                val realOrderBy = orderBy ?: TrackerOrderBy.ID
+                val realOrderBy = order?.firstOrNull()?.by ?: TrackerOrderBy.ID
                 if (after != null) {
                     res =
                         res.filter {
-                            when (orderByType) {
+                            when (order?.firstOrNull()?.byType) {
                                 SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> realOrderBy.less(it, after)
                                 null, SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> realOrderBy.greater(it, after)
                             }
@@ -171,7 +192,7 @@ class TrackQuery {
                 } else if (before != null) {
                     res =
                         res.filter {
-                            when (orderByType) {
+                            when (order?.firstOrNull()?.byType) {
                                 SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> realOrderBy.greater(it, before)
                                 null, SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> realOrderBy.less(it, before)
                             }
@@ -187,7 +208,7 @@ class TrackQuery {
                 QueryResults(total.toLong(), firstResult, lastResult, emptyList()) to res
             }
 
-        val getAsCursor: (TrackerType) -> Cursor = (orderBy ?: TrackerOrderBy.ID)::asCursor
+        val getAsCursor: (TrackerType) -> Cursor = (order?.firstOrNull()?.by ?: TrackerOrderBy.ID)::asCursor
 
         return TrackerNodeList(
             resultsAsType,
@@ -288,6 +309,11 @@ class TrackQuery {
         }
     }
 
+    data class TrackRecordOrder(
+        override val by: TrackRecordOrderBy,
+        override val byType: SortOrder? = null,
+    ) : Order<TrackRecordOrderBy>
+
     data class TrackRecordCondition(
         val id: Int? = null,
         val mangaId: Int? = null,
@@ -363,8 +389,17 @@ class TrackQuery {
     fun trackRecords(
         condition: TrackRecordCondition? = null,
         filter: TrackRecordFilter? = null,
+        @GraphQLDeprecated(
+            "Replaced with order",
+            replaceWith = ReplaceWith("order"),
+        )
         orderBy: TrackRecordOrderBy? = null,
+        @GraphQLDeprecated(
+            "Replaced with order",
+            replaceWith = ReplaceWith("order"),
+        )
         orderByType: SortOrder? = null,
+        order: List<TrackRecordOrder>? = null,
         before: Cursor? = null,
         after: Cursor? = null,
         first: Int? = null,
@@ -377,17 +412,15 @@ class TrackQuery {
 
                 res.applyOps(condition, filter)
 
-                if (orderBy != null || (last != null || before != null)) {
-                    val orderByColumn = orderBy?.column ?: TrackRecordTable.id
-                    val orderType = orderByType.maybeSwap(last ?: before)
+                if (order != null || (last != null || before != null)) {
+                    val baseSort = listOf(TrackRecordOrder(TrackRecordOrderBy.ID, SortOrder.ASC))
+                    val deprecatedSort = listOfNotNull(orderBy?.let { TrackRecordOrder(orderBy, orderByType) })
+                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                    actualSort.forEach { (orderBy, orderByType) ->
+                        val orderByColumn = orderBy.column
+                        val orderType = orderByType.maybeSwap(last ?: before)
 
-                    if (orderBy == TrackRecordOrderBy.ID || orderBy == null) {
                         res.orderBy(orderByColumn to orderType)
-                    } else {
-                        res.orderBy(
-                            orderByColumn to orderType,
-                            TrackRecordTable.id to SortOrder.ASC,
-                        )
                     }
                 }
 
@@ -398,8 +431,8 @@ class TrackQuery {
                 res.applyBeforeAfter(
                     before = before,
                     after = after,
-                    orderBy = orderBy ?: TrackRecordOrderBy.ID,
-                    orderByType = orderByType,
+                    orderBy = order?.firstOrNull()?.by ?: TrackRecordOrderBy.ID,
+                    orderByType = order?.firstOrNull()?.byType,
                 )
 
                 if (first != null) {
@@ -411,7 +444,7 @@ class TrackQuery {
                 QueryResults(total, firstResult, lastResult, res.toList())
             }
 
-        val getAsCursor: (TrackRecordType) -> Cursor = (orderBy ?: TrackRecordOrderBy.ID)::asCursor
+        val getAsCursor: (TrackRecordType) -> Cursor = (order?.firstOrNull()?.by ?: TrackRecordOrderBy.ID)::asCursor
 
         val resultsAsType = queryResults.results.map { TrackRecordType(it) }
 
