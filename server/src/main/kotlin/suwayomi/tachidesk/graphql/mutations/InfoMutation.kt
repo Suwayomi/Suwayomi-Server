@@ -3,6 +3,7 @@ package suwayomi.tachidesk.graphql.mutations
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
 import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
+import suwayomi.tachidesk.graphql.types.UpdateState.ERROR
 import suwayomi.tachidesk.graphql.types.UpdateState.STOPPED
 import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
@@ -32,6 +33,8 @@ class InfoMutation {
                 val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable()
 
                 if (!updateAvailable) {
+                    val didUpdateCheckFail = version.isEmpty()
+
                     return@withTimeout WebUIUpdatePayload(
                         input.clientMutationId,
                         WebUIUpdateStatus(
@@ -41,7 +44,7 @@ class InfoMutation {
                                     tag = version,
                                     updateAvailable,
                                 ),
-                            state = STOPPED,
+                            state = if (didUpdateCheckFail) ERROR else STOPPED,
                             progress = 0,
                         ),
                     )
