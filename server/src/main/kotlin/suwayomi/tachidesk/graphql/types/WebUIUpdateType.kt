@@ -5,6 +5,12 @@ data class AboutWebUI(
     val tag: String,
 )
 
+data class WebUIUpdateCheck(
+    val channel: String,
+    val tag: String,
+    val updateAvailable: Boolean,
+)
+
 data class WebUIUpdateInfo(
     val channel: String,
     val tag: String,
