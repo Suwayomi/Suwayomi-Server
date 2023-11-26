@@ -36,6 +36,7 @@ import net.lingala.zip4j.ZipFile
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
+import suwayomi.tachidesk.graphql.types.AboutWebUI
 import suwayomi.tachidesk.graphql.types.UpdateState
 import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
 import suwayomi.tachidesk.graphql.types.UpdateState.ERROR
@@ -167,7 +168,7 @@ object WebInterfaceManager {
         )
     }
 
-    suspend fun getAboutInfo(): WebUIUpdateInfo {
+    suspend fun getAboutInfo(): AboutWebUI {
         val currentVersion = getLocalVersion()
 
         val failedToGetVersion = currentVersion === "r-1"
@@ -175,10 +176,9 @@ object WebInterfaceManager {
             throw Exception("Failed to get current version")
         }
 
-        return WebUIUpdateInfo(
+        return AboutWebUI(
             channel = serverConfig.webUIChannel.value,
             tag = currentVersion,
-            updateAvailable = isUpdateAvailable(currentVersion).second,
         )
     }
 

@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.graphql.queries
 
 import suwayomi.tachidesk.global.impl.AppUpdate
+import suwayomi.tachidesk.graphql.types.AboutWebUI
 import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -51,7 +52,7 @@ class InfoQuery {
         }
     }
 
-    fun aboutWebUI(): CompletableFuture<WebUIUpdateInfo> {
+    fun aboutWebUI(): CompletableFuture<AboutWebUI> {
         return future {
             WebInterfaceManager.getAboutInfo()
         }
