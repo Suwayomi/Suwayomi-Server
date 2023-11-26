@@ -225,6 +225,7 @@ make_deb_package() {
   sed -i "s/\$pkgver/$RELEASE_VERSION/" "$RELEASE_NAME/$source_dir/debian/changelog"
   sed -i "s/\$pkgrel/1/"                "$RELEASE_NAME/$source_dir/debian/changelog"
 
+  sudo apt update
   sudo apt install devscripts build-essential dh-exec
   cd "$RELEASE_NAME/$source_dir/"
   dpkg-buildpackage --no-sign --build=all
@@ -271,6 +272,7 @@ make_windows_bundle() {
 
 make_windows_package() {
   if [ "$CI" = true ]; then
+    sudo apt update
     sudo apt install -y wixl
   fi
 
