@@ -661,7 +661,10 @@ object WebInterfaceManager {
         ZipFile(zipFilePath).use { it.extractAll(targetPath) }
     }
 
-    suspend fun isUpdateAvailable(currentVersion: String = getLocalVersion()): Pair<String, Boolean> {
+    suspend fun isUpdateAvailable(
+        currentVersion: String = getLocalVersion(),
+        raiseError: Boolean = false,
+    ): Pair<String, Boolean> {
         return try {
             val latestCompatibleVersion = getLatestCompatibleVersion()
             val isUpdateAvailable = latestCompatibleVersion != currentVersion
@@ -669,6 +672,11 @@ object WebInterfaceManager {
             Pair(latestCompatibleVersion, isUpdateAvailable)
         } catch (e: Exception) {
             logger.warn(e) { "isUpdateAvailable: check failed due to" }
+
+            if (raiseError) {
+                throw e
+            }
+
             Pair("", false)
         }
     }

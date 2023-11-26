@@ -60,7 +60,7 @@ class InfoQuery {
 
     fun checkForWebUIUpdate(): CompletableFuture<WebUIUpdateCheck> {
         return future {
-            val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable()
+            val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable(raiseError = true)
             WebUIUpdateCheck(
                 channel = serverConfig.webUIChannel.value,
                 tag = version,
