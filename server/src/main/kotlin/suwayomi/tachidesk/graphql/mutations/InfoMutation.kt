@@ -5,10 +5,8 @@ import kotlinx.coroutines.withTimeout
 import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
 import suwayomi.tachidesk.graphql.types.UpdateState.ERROR
 import suwayomi.tachidesk.graphql.types.UpdateState.STOPPED
-import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
 import suwayomi.tachidesk.server.JavalinSetup.future
-import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
@@ -37,15 +35,7 @@ class InfoMutation {
 
                     return@withTimeout WebUIUpdatePayload(
                         input.clientMutationId,
-                        WebUIUpdateStatus(
-                            info =
-                                WebUIUpdateInfo(
-                                    channel = serverConfig.webUIChannel.value,
-                                    tag = version,
-                                ),
-                            state = if (didUpdateCheckFail) ERROR else STOPPED,
-                            progress = 0,
-                        ),
+                        WebInterfaceManager.getStatus(version, if (didUpdateCheckFail) ERROR else STOPPED),
                     )
                 }
                 try {

@@ -143,15 +143,7 @@ object WebInterfaceManager {
             .stateIn(
                 scope,
                 SharingStarted.Eagerly,
-                WebUIUpdateStatus(
-                    info =
-                        WebUIUpdateInfo(
-                            channel = serverConfig.webUIChannel.value,
-                            tag = "",
-                        ),
-                    state = STOPPED,
-                    progress = 0,
-                ),
+                getStatus(),
             )
 
     init {
@@ -178,6 +170,22 @@ object WebInterfaceManager {
         return AboutWebUI(
             channel = serverConfig.webUIChannel.value,
             tag = currentVersion,
+        )
+    }
+
+    fun getStatus(
+        version: String = "",
+        state: UpdateState = STOPPED,
+        progress: Int = 0,
+    ): WebUIUpdateStatus {
+        return WebUIUpdateStatus(
+            info =
+                WebUIUpdateInfo(
+                    channel = serverConfig.webUIChannel.value,
+                    tag = version,
+                ),
+            state,
+            progress,
         )
     }
 
@@ -537,15 +545,7 @@ object WebInterfaceManager {
     ) {
         scope.launch {
             notifyFlow.emit(
-                WebUIUpdateStatus(
-                    info =
-                        WebUIUpdateInfo(
-                            channel = serverConfig.webUIChannel.value,
-                            tag = version,
-                        ),
-                    state,
-                    progress,
-                ),
+                getStatus(version, state, progress),
             )
         }
     }
