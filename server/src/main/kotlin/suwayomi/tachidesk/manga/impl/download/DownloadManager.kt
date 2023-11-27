@@ -119,14 +119,15 @@ object DownloadManager {
 
     private val notifyFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
+    private val statusFlow = MutableSharedFlow<Unit>()
     val status =
-        notifyFlow.sample(1.seconds)
-            .onStart { emit(Unit) }
+        statusFlow.onStart { emit(Unit) }
             .map { getStatus() }
 
     init {
         scope.launch {
             notifyFlow.sample(1.seconds).collect {
+                statusFlow.emit(Unit)
                 sendStatusToAllClients()
             }
         }
@@ -148,6 +149,10 @@ object DownloadManager {
     private fun notifyAllClients(immediate: Boolean = false) {
         scope.launch {
             notifyFlow.emit(Unit)
+
+            if (immediate) {
+                statusFlow.emit(Unit)
+            }
         }
         if (immediate) {
             sendStatusToAllClients()
