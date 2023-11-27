@@ -195,6 +195,10 @@ object WebInterfaceManager {
         )
     }
 
+    fun resetStatus() {
+        emitStatus("", IDLE, 0, immediate = true)
+    }
+
     private var serveWebUI: () -> Unit = {}
 
     fun setServeWebUI(serveWebUI: () -> Unit) {

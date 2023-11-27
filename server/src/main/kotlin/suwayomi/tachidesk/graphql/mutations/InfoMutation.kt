@@ -51,4 +51,19 @@ class InfoMutation {
             }
         }
     }
+
+    fun resetWebUIUpdateStatus(): CompletableFuture<WebUIUpdateStatus> {
+        return future {
+            withTimeout(30.seconds) {
+                val isUpdateFinished = WebInterfaceManager.status.value.state != DOWNLOADING
+                if (!isUpdateFinished) {
+                    throw Exception("Status reset is not allowed during status \"$DOWNLOADING\"")
+                }
+
+                WebInterfaceManager.resetStatus()
+
+                WebInterfaceManager.status.first { it.state == IDLE }
+            }
+        }
+    }
 }
