@@ -42,7 +42,6 @@ class InfoMutation {
                                 WebUIUpdateInfo(
                                     channel = serverConfig.webUIChannel.value,
                                     tag = version,
-                                    updateAvailable,
                                 ),
                             state = if (didUpdateCheckFail) ERROR else STOPPED,
                             progress = 0,

@@ -14,7 +14,6 @@ data class WebUIUpdateCheck(
 data class WebUIUpdateInfo(
     val channel: String,
     val tag: String,
-    val updateAvailable: Boolean,
 )
 
 enum class UpdateState {

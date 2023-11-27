@@ -148,7 +148,6 @@ object WebInterfaceManager {
                         WebUIUpdateInfo(
                             channel = serverConfig.webUIChannel.value,
                             tag = "",
-                            updateAvailable = false,
                         ),
                     state = STOPPED,
                     progress = 0,
@@ -168,7 +167,7 @@ object WebInterfaceManager {
         )
     }
 
-    suspend fun getAboutInfo(): AboutWebUI {
+    fun getAboutInfo(): AboutWebUI {
         val currentVersion = getLocalVersion()
 
         val failedToGetVersion = currentVersion === "r-1"
@@ -543,7 +542,6 @@ object WebInterfaceManager {
                         WebUIUpdateInfo(
                             channel = serverConfig.webUIChannel.value,
                             tag = version,
-                            updateAvailable = true,
                         ),
                     state,
                     progress,
