@@ -137,16 +137,22 @@ object WebInterfaceManager {
     private val notifyFlow =
         MutableSharedFlow<WebUIUpdateStatus>(extraBufferCapacity = 1, onBufferOverflow = DROP_OLDEST)
 
-    @OptIn(FlowPreview::class)
+    private val statusFlow = MutableSharedFlow<WebUIUpdateStatus>()
     val status =
-        notifyFlow.sample(1.seconds)
-            .stateIn(
-                scope,
-                SharingStarted.Eagerly,
-                getStatus(),
-            )
+        statusFlow.stateIn(
+            scope,
+            SharingStarted.Eagerly,
+            getStatus(),
+        )
 
     init {
+        scope.launch {
+            @OptIn(FlowPreview::class)
+            notifyFlow.sample(1.seconds).collect {
+                statusFlow.emit(it)
+            }
+        }
+
         serverConfig.subscribeTo(
             combine(serverConfig.webUIUpdateCheckInterval, serverConfig.webUIFlavor) { interval, flavor ->
                 Pair(
@@ -542,11 +548,17 @@ object WebInterfaceManager {
         version: String,
         state: UpdateState,
         progress: Int,
+        immediate: Boolean = false,
     ) {
         scope.launch {
-            notifyFlow.emit(
-                getStatus(version, state, progress),
-            )
+            val status = getStatus(version, state, progress)
+
+            if (immediate) {
+                statusFlow.emit(status)
+                return@launch
+            }
+
+            notifyFlow.emit(status)
         }
     }
 
@@ -557,7 +569,7 @@ object WebInterfaceManager {
     }
 
     suspend fun downloadVersion(version: String) {
-        emitStatus(version, DOWNLOADING, 0)
+        emitStatus(version, DOWNLOADING, 0, immediate = true)
 
         try {
             val webUIZip = "${WebUIFlavor.WEBUI.baseFileName}-$version.zip"
@@ -584,11 +596,11 @@ object WebInterfaceManager {
             extractDownload(webUIZipPath, applicationDirs.webUIRoot)
             log.info { "Extracting WebUI zip Done." }
 
-            emitStatus(version, FINISHED, 100)
+            emitStatus(version, FINISHED, 100, immediate = true)
 
             serveWebUI()
         } catch (e: Exception) {
-            emitStatus(version, ERROR, 0)
+            emitStatus(version, ERROR, 0, immediate = true)
             throw e
         }
     }
