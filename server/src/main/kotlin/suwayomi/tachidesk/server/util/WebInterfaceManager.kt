@@ -41,7 +41,7 @@ import suwayomi.tachidesk.graphql.types.UpdateState
 import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
 import suwayomi.tachidesk.graphql.types.UpdateState.ERROR
 import suwayomi.tachidesk.graphql.types.UpdateState.FINISHED
-import suwayomi.tachidesk.graphql.types.UpdateState.STOPPED
+import suwayomi.tachidesk.graphql.types.UpdateState.IDLE
 import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -181,7 +181,7 @@ object WebInterfaceManager {
 
     fun getStatus(
         version: String = "",
-        state: UpdateState = STOPPED,
+        state: UpdateState = IDLE,
         progress: Int = 0,
     ): WebUIUpdateStatus {
         return WebUIUpdateStatus(

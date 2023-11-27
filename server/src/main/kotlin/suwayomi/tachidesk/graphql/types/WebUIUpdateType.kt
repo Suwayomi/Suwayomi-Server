@@ -17,7 +17,7 @@ data class WebUIUpdateInfo(
 )
 
 enum class UpdateState {
-    STOPPED,
+    IDLE,
     DOWNLOADING,
     FINISHED,
     ERROR,
