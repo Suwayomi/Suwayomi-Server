@@ -36,12 +36,15 @@ private fun getChapterDir(
     chapterId: Int,
 ): String {
     val chapterEntry = transaction { ChapterTable.select { ChapterTable.id eq chapterId }.first() }
-
+    val mangaEntry = getMangaEntry(mangaId)
     val chapterDir =
         SafePath.buildValidFilename(
             when {
-                chapterEntry[ChapterTable.scanlator] != null -> "${chapterEntry[ChapterTable.scanlator]}_${chapterEntry[ChapterTable.name]}"
-                else -> chapterEntry[ChapterTable.name]
+                chapterEntry[ChapterTable.scanlator] != null -> {
+                    "${mangaEntry[MangaTable.title]}_" +
+                        "${chapterEntry[ChapterTable.name]}_${chapterEntry[ChapterTable.scanlator]}"
+                }
+                else -> "${mangaEntry[MangaTable.title]}_${chapterEntry[ChapterTable.name]}"
             },
         )
 
