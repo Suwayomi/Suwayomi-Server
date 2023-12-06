@@ -65,7 +65,7 @@ class NetworkHelper(context: Context) {
                     .addInterceptor(UncaughtExceptionInterceptor())
                     .addInterceptor(UserAgentInterceptor())
 
-            //if (preferences.verboseLogging().get()) {
+            // if (preferences.verboseLogging().get()) {
             val httpLoggingInterceptor =
                 HttpLoggingInterceptor(
                     object : HttpLoggingInterceptor.Logger {
@@ -79,7 +79,7 @@ class NetworkHelper(context: Context) {
                     level = HttpLoggingInterceptor.Level.BASIC
                 }
             builder.addNetworkInterceptor(httpLoggingInterceptor)
-            //}
+            // }
 
             // builder.addInterceptor(
             //     CloudflareInterceptor(context, cookieJar, ::defaultUserAgentProvider),
