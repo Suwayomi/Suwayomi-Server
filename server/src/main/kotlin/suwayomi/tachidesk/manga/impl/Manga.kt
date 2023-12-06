@@ -14,6 +14,7 @@ import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import eu.kanade.tachiyomi.source.online.HttpSource
 import mu.KotlinLogging
+import okhttp3.CacheControl
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
@@ -280,7 +281,7 @@ object Manga {
                             }
 
                     source.client.newCall(
-                        GET(thumbnailUrl, source.headers),
+                        GET(thumbnailUrl, source.headers, cache = CacheControl.FORCE_NETWORK),
                     ).await()
                 }
 
@@ -306,7 +307,7 @@ object Manga {
                         mangaEntry[MangaTable.thumbnail_url]
                             ?: throw NullPointerException("No thumbnail found")
                     network.client.newCall(
-                        GET(thumbnailUrl),
+                        GET(thumbnailUrl, cache = CacheControl.FORCE_NETWORK),
                     ).await()
                 }
 
