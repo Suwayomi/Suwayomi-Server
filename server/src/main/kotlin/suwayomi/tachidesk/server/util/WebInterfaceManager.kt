@@ -41,7 +41,7 @@ import suwayomi.tachidesk.graphql.types.UpdateState
 import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
 import suwayomi.tachidesk.graphql.types.UpdateState.ERROR
 import suwayomi.tachidesk.graphql.types.UpdateState.FINISHED
-import suwayomi.tachidesk.graphql.types.UpdateState.STOPPED
+import suwayomi.tachidesk.graphql.types.UpdateState.IDLE
 import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -137,25 +137,22 @@ object WebInterfaceManager {
     private val notifyFlow =
         MutableSharedFlow<WebUIUpdateStatus>(extraBufferCapacity = 1, onBufferOverflow = DROP_OLDEST)
 
-    @OptIn(FlowPreview::class)
+    private val statusFlow = MutableSharedFlow<WebUIUpdateStatus>()
     val status =
-        notifyFlow.sample(1.seconds)
-            .stateIn(
-                scope,
-                SharingStarted.Eagerly,
-                WebUIUpdateStatus(
-                    info =
-                        WebUIUpdateInfo(
-                            channel = serverConfig.webUIChannel.value,
-                            tag = "",
-                            updateAvailable = false,
-                        ),
-                    state = STOPPED,
-                    progress = 0,
-                ),
-            )
+        statusFlow.stateIn(
+            scope,
+            SharingStarted.Eagerly,
+            getStatus(),
+        )
 
     init {
+        scope.launch {
+            @OptIn(FlowPreview::class)
+            notifyFlow.sample(1.seconds).collect {
+                statusFlow.emit(it)
+            }
+        }
+
         serverConfig.subscribeTo(
             combine(serverConfig.webUIUpdateCheckInterval, serverConfig.webUIFlavor) { interval, flavor ->
                 Pair(
@@ -168,7 +165,7 @@ object WebInterfaceManager {
         )
     }
 
-    suspend fun getAboutInfo(): AboutWebUI {
+    fun getAboutInfo(): AboutWebUI {
         val currentVersion = getLocalVersion()
 
         val failedToGetVersion = currentVersion === "r-1"
@@ -180,6 +177,26 @@ object WebInterfaceManager {
             channel = serverConfig.webUIChannel.value,
             tag = currentVersion,
         )
+    }
+
+    fun getStatus(
+        version: String = "",
+        state: UpdateState = IDLE,
+        progress: Int = 0,
+    ): WebUIUpdateStatus {
+        return WebUIUpdateStatus(
+            info =
+                WebUIUpdateInfo(
+                    channel = serverConfig.webUIChannel.value,
+                    tag = version,
+                ),
+            state,
+            progress,
+        )
+    }
+
+    fun resetStatus() {
+        emitStatus("", IDLE, 0, immediate = true)
     }
 
     private var serveWebUI: () -> Unit = {}
@@ -535,20 +552,17 @@ object WebInterfaceManager {
         version: String,
         state: UpdateState,
         progress: Int,
+        immediate: Boolean = false,
     ) {
         scope.launch {
-            notifyFlow.emit(
-                WebUIUpdateStatus(
-                    info =
-                        WebUIUpdateInfo(
-                            channel = serverConfig.webUIChannel.value,
-                            tag = version,
-                            updateAvailable = true,
-                        ),
-                    state,
-                    progress,
-                ),
-            )
+            val status = getStatus(version, state, progress)
+
+            if (immediate) {
+                statusFlow.emit(status)
+                return@launch
+            }
+
+            notifyFlow.emit(status)
         }
     }
 
@@ -559,7 +573,7 @@ object WebInterfaceManager {
     }
 
     suspend fun downloadVersion(version: String) {
-        emitStatus(version, DOWNLOADING, 0)
+        emitStatus(version, DOWNLOADING, 0, immediate = true)
 
         try {
             val webUIZip = "${WebUIFlavor.WEBUI.baseFileName}-$version.zip"
@@ -586,11 +600,11 @@ object WebInterfaceManager {
             extractDownload(webUIZipPath, applicationDirs.webUIRoot)
             log.info { "Extracting WebUI zip Done." }
 
-            emitStatus(version, FINISHED, 100)
+            emitStatus(version, FINISHED, 100, immediate = true)
 
             serveWebUI()
         } catch (e: Exception) {
-            emitStatus(version, ERROR, 0)
+            emitStatus(version, ERROR, 0, immediate = true)
             throw e
         }
     }
