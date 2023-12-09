@@ -174,7 +174,7 @@ jobs:
           cd release
           genTag=$(ls *.jar | sed -e's/Tachidesk-Server-\|.jar//g')
           echo "$genTag"
-          echo "::set-output name=value::$genTag"
+          echo "value=$genTag" >> $GITHUB_OUTPUT
 
       - name: Create Tag
         run: |
