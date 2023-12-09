@@ -5,6 +5,7 @@ import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator
+import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.withOperation
@@ -107,7 +108,7 @@ object BackupController {
             behaviorOf = { ctx ->
                 ctx.contentType("application/octet-stream")
 
-                ctx.header("Content-Disposition", """attachment; filename="${ProtoBackupExport.getBackupFilename()}"""")
+                ctx.header("Content-Disposition", """attachment; filename="${Backup.getFilename()}"""")
                 ctx.future(
                     future {
                         ProtoBackupExport.createBackup(

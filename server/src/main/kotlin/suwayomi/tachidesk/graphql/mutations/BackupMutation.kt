@@ -9,6 +9,7 @@ import suwayomi.tachidesk.graphql.types.toStatus
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
+import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
@@ -53,7 +54,7 @@ class BackupMutation {
     )
 
     fun createBackup(input: CreateBackupInput? = null): CreateBackupPayload {
-        val filename = ProtoBackupExport.getBackupFilename()
+        val filename = Backup.getFilename()
 
         val backup =
             ProtoBackupExport.createBackup(
