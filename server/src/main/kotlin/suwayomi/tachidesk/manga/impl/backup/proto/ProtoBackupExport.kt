@@ -45,8 +45,6 @@ import uy.kohesive.injekt.api.get
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.days
 
@@ -114,7 +112,7 @@ object ProtoBackupExport : ProtoBackupBase() {
             val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
             automatedBackupDir.mkdirs()
 
-            val backupFile = File(applicationDirs.automatedBackupRoot, getBackupFilename())
+            val backupFile = File(applicationDirs.automatedBackupRoot, Backup.getFilename())
 
             backupFile.outputStream().use { output -> input.copyTo(output) }
         }
@@ -153,11 +151,6 @@ object ProtoBackupExport : ProtoBackupBase() {
         if (isTTLReached) {
             file.delete()
         }
-    }
-
-    fun getBackupFilename(): String {
-        val currentDate = SimpleDateFormat("yyyy-MM-dd_HH-mm").format(Date())
-        return "tachidesk_$currentDate.proto.gz"
     }
 
     fun createBackup(flags: BackupFlags): InputStream {
