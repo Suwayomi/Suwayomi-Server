@@ -36,8 +36,8 @@ dependencies {
     // AndroidX annotations
     compileOnly(libs.android.annotations)
 
-    // substitute for duktape-android
-    implementation(libs.bundles.rhino)
+    // substitute for duktape-android/quickjs
+    implementation(libs.bundles.polyglot)
 
     // Kotlin wrapper around Java Preferences, makes certain things easier
     implementation(libs.bundles.settings)
