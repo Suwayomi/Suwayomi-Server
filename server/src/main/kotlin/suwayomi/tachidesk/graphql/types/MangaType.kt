@@ -46,16 +46,16 @@ class MangaType(
             mangaId: Int,
             dataFetchingEnvironment: DataFetchingEnvironment,
         ) {
-            dataFetchingEnvironment.getDataLoader<List<Int>, MangaNodeList>("MangaDataLoader").clear(listOf(mangaId))
-            dataFetchingEnvironment.getDataLoader<List<Int>, MangaNodeList>("MangaForIdsDataLoader").clear(listOf(mangaId))
+            dataFetchingEnvironment.getDataLoader<Int, MangaType>("MangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, MangaNodeList>("MangaForIdsDataLoader").clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, Int>("DownloadedChapterCountForMangaDataLoader").clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, Int>("UnreadChapterCountForMangaDataLoader").clear(mangaId)
-            dataFetchingEnvironment.getDataLoader<Int, Int>("LastReadChapterForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LastReadChapterForMangaDataLoader").clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, ChapterNodeList>(
                 "ChaptersForMangaDataLoader",
             ).clear(mangaId)
-            dataFetchingEnvironment.getDataLoader<Int, Int>("MangaMetaDataLoader").clear(mangaId)
-            dataFetchingEnvironment.getDataLoader<Int, Int>("CategoriesForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, List<MangaMetaType>>("MangaMetaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, CategoryNodeList>("CategoriesForMangaDataLoader").clear(mangaId)
         }
     }
 
