@@ -1,2 +1,2 @@
 #Type  Path                Mode  User       Group      Age  Argument
-d      /var/lib/tachidesk  0755  tachidesk  tachidesk
+d      /var/lib/suwayomi   0755  suwayomi   suwayomi

@@ -37,7 +37,7 @@ jobs:
               },
               {
                 "type": "body",
-                "regex": ".*(Tachidesk version|Server Operating System|Server Desktop Environment|Server JVM version|Client Operating System|Client Web Browser):.*(\\(Example:|<usually).*",
+                "regex": ".*(Suwayomi-Server version|Server Operating System|Server Desktop Environment|Server JVM version|Client Operating System|Client Web Browser):.*(\\(Example:|<usually).*",
                 "message": "The requested information was not filled out"
               },
               {

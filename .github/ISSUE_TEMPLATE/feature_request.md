@@ -22,7 +22,7 @@ Note that the issue will be automatically closed if you do not fill out the titl
 
 ---
 
-## What feature should be added to Tachidesk?
+## What feature should be added to Suwayomi?
 Explain What the feature is and how it should work in detail. Remove this line after you are done.
 
 ##  Why/Project's Benefit/Existing Problem

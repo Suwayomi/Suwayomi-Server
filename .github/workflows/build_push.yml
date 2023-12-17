@@ -163,7 +163,7 @@ jobs:
       - name: Checkout Preview branch
         uses: actions/checkout@v3
         with:
-          repository: "Suwayomi/Tachidesk-Server-preview"
+          repository: "Suwayomi/Suwayomi-Server-preview"
           ref: main
           path: preview
           token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
@@ -172,7 +172,7 @@ jobs:
         id: GenTagName
         run: |
           cd release
-          genTag=$(ls *.jar | sed -e's/Tachidesk-Server-\|.jar//g')
+          genTag=$(ls *.jar | sed -e's/Suwayomi-Server-\|.jar//g')
           echo "$genTag"
           echo "value=$genTag" >> $GITHUB_OUTPUT
 
@@ -196,7 +196,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
-          repository: "Suwayomi/Tachidesk-Server-preview"
+          repository: "Suwayomi/Suwayomi-Server-preview"
           tag_name:  ${{ steps.GenTagName.outputs.value }}
           files: release/*
 

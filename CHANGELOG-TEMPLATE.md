@@ -2,10 +2,10 @@
 ## TL;DR
 - N/A
 
-## Tachidesk-Server Changelog
+## Suwayomi-Server Changelog
 - N/A
 
-## Tachidesk-WebUI Changelog
+## Suwayomi-WebUI Changelog
 - N/A
 
 

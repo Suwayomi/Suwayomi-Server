@@ -148,7 +148,7 @@ open class ApplicationTest {
         }
 
         fun databaseSetup() {
-            // fixes #119 , ref: https://github.com/Suwayomi/Tachidesk-Server/issues/119#issuecomment-894681292 , source Id calculation depends on String.lowercase()
+            // fixes #119 , ref: https://github.com/Suwayomi/Suwayomi-Server/issues/119#issuecomment-894681292 , source Id calculation depends on String.lowercase()
             Locale.setDefault(Locale.ENGLISH)
 
             // in-memory database, don't discard database between connections/transactions

@@ -15,7 +15,7 @@ import io.javalin.http.Context
 import io.javalin.websocket.WsContext
 
 /**
- * Custom logic for how Tachidesk should create its context given the [Context]
+ * Custom logic for how Suwayomi-Server should create its context given the [Context]
  */
 class TachideskGraphQLContextFactory : GraphQLContextFactory<GraphQLContext, Context> {
     override suspend fun generateContextMap(request: Context): Map<*, Any> = emptyMap<Any, Any>()
