@@ -19,8 +19,21 @@ Checkout [This Kanban Board](https://github.com/Suwayomi/Tachidesk/projects/1) t
      
 ## How does Tachidesk-Server work?
 This project has two components: 
-1. **Server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run jar libraries converted from apk extensions. All this concludes to serving a REST API.
+1. **Server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run jar libraries converted from apk extensions. All this concludes to serving a GraphQL API.
 2. **WebUI:** A React SPA(`create-react-app`) project that works with the server to do the presentation located at https://github.com/Suwayomi/Tachidesk-WebUI
+
+### API
+#### GraphQL
+*Only available in the preview at the moment*
+
+The GraphQL API can be queried with a POST request to `/api/graphql`. There is also the GraphiQL IDE accessible by the browser at `/api/graphql` to perform ad-hoc queries and explore the API.
+
+#### REST
+> [!WARNING]
+>
+> Soon to be deprecated
+
+The REST API can be queried at `/api/v1`. An interactive Swagger API explorer is available at `/api/swagger-ui`.
 
 ## Why a web app?
 This structure is chosen to
