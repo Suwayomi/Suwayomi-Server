@@ -102,7 +102,7 @@ fun applicationSetup() {
     // gql "notprivacysafe" logs every received request multiple times (received, parsing, validating, executing)
     setupLogLevelUpdating(serverConfig.gqlDebugLogsEnabled, listOf("graphql", "notprivacysafe"), Level.WARN)
 
-    logger.info("Running Tachidesk ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")
+    logger.info("Running Suwayomi-Server ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")
 
     logger.debug {
         "Loaded config:\n" +
@@ -196,7 +196,7 @@ fun applicationSetup() {
         logger.error("Exception while copying Local source's icon", e)
     }
 
-    // fixes #119 , ref: https://github.com/Suwayomi/Tachidesk-Server/issues/119#issuecomment-894681292 , source Id calculation depends on String.lowercase()
+    // fixes #119 , ref: https://github.com/Suwayomi/Suwayomi-Server/issues/119#issuecomment-894681292 , source Id calculation depends on String.lowercase()
     Locale.setDefault(Locale.ENGLISH)
 
     databaseUp()

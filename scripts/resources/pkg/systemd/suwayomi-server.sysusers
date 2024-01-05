@@ -1,2 +1,2 @@
 #Type    Name       ID    GECOS                                 Home directory              Shell
-u        tachidesk  -     "Tachidesk Manga Server"              /var/lib/tachidesk
+u        suwayomi   -     "Suwayomi Manga Server"               /var/lib/suwayomi

@@ -19,7 +19,7 @@ enum class ExitCode(val code: Int) {
 }
 
 fun shutdownApp(exitCode: ExitCode) {
-    logger.info("Shutting Down Tachidesk. Goodbye!")
+    logger.info("Shutting Down Suwayomi-Server. Goodbye!")
 
     exitProcess(exitCode.code)
 }

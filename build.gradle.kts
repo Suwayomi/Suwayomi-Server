@@ -18,7 +18,7 @@ allprojects {
     repositories {
         mavenCentral()
         google()
-        maven("https://github.com/Suwayomi/Tachidesk-Server/raw/android-jar/")
+        maven("https://github.com/Suwayomi/Suwayomi-Server/raw/android-jar/")
         maven("https://jitpack.io")
     }
 }

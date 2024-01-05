@@ -102,10 +102,10 @@ enum class WebUIFlavor(
 ) {
     WEBUI(
         "WebUI",
-        "https://github.com/Suwayomi/Tachidesk-WebUI-preview",
-        "https://raw.githubusercontent.com/Suwayomi/Tachidesk-WebUI/master/versionToServerVersionMapping.json",
-        "https://api.github.com/repos/Suwayomi/Tachidesk-WebUI-preview/releases/latest",
-        "Tachidesk-WebUI",
+        "https://github.com/Suwayomi/Suwayomi-WebUI-preview",
+        "https://raw.githubusercontent.com/Suwayomi/Suwayomi-WebUI/master/versionToServerVersionMapping.json",
+        "https://api.github.com/repos/Suwayomi/Suwayomi-WebUI-preview/releases/latest",
+        "Suwayomi-WebUI",
     ),
 
     CUSTOM(

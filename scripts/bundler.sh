@@ -155,9 +155,9 @@ move_release_to_output_dir() {
 }
 
 download_launcher() {
-  LAUNCHER_URL=$(curl -s "https://api.github.com/repos/Suwayomi/Tachidesk-Launcher/releases/latest" | grep "browser_download_url" | grep ".jar" | head -n 1 | cut -d '"' -f 4)
-  curl -L "$LAUNCHER_URL" -o "Tachidesk-Launcher.jar"
-  mv "Tachidesk-Launcher.jar" "$RELEASE_NAME/Tachidesk-Launcher.jar"
+  LAUNCHER_URL=$(curl -s "https://api.github.com/repos/Suwayomi/Suwayomi-Launcher/releases/latest" | grep "browser_download_url" | grep ".jar" | head -n 1 | cut -d '"' -f 4)
+  curl -L "$LAUNCHER_URL" -o "Suwayomi-Launcher.jar"
+  mv "Suwayomi-Launcher.jar" "$RELEASE_NAME/Suwayomi-Launcher.jar"
 }
 
 download_jre_and_electron() {
@@ -183,26 +183,26 @@ copy_linux_package_assets_to() {
   local output_dir
   output_dir="$(readlink -e "$1" || exit 1)"
 
-  cp "scripts/resources/pkg/tachidesk-server.sh" "$output_dir/"
-  cp "scripts/resources/pkg/tachidesk-server.desktop" "$output_dir/"
-  cp "scripts/resources/pkg/tachidesk-launcher.sh" "$output_dir/"
-  cp "scripts/resources/pkg/tachidesk-launcher.desktop" "$output_dir/"
+  cp "scripts/resources/pkg/suwayomi-server.sh" "$output_dir/"
+  cp "scripts/resources/pkg/suwayomi-server.desktop" "$output_dir/"
+  cp "scripts/resources/pkg/suwayomi-launcher.sh" "$output_dir/"
+  cp "scripts/resources/pkg/suwayomi-launcher.desktop" "$output_dir/"
   cp "scripts/resources/pkg/systemd"/* "$output_dir/"
   cp "server/src/main/resources/icon/faviconlogo-128.png" \
-    "$output_dir/tachidesk-server.png"
+    "$output_dir/suwayomi-server.png"
 }
 
 make_linux_bundle() {
-  cp "$JAR" "$RELEASE_NAME/bin/Tachidesk-Server.jar"
-  cp "scripts/resources/tachidesk-launcher.sh" "$RELEASE_NAME/"
-  cp "scripts/resources/tachidesk-server.sh" "$RELEASE_NAME/"
+  cp "$JAR" "$RELEASE_NAME/bin/Suwayomi-Server.jar"
+  cp "scripts/resources/suwayomi-launcher.sh" "$RELEASE_NAME/"
+  cp "scripts/resources/suwayomi-server.sh" "$RELEASE_NAME/"
 
   tar -I "gzip -9" -cvf "$RELEASE" "$RELEASE_NAME/"
 }
 
 make_macos_bundle() {
-  cp "$JAR" "$RELEASE_NAME/bin/Tachidesk-Server.jar"
-  cp "scripts/resources/Tachidesk Launcher.command" "$RELEASE_NAME/"
+  cp "$JAR" "$RELEASE_NAME/bin/Suwayomi-Server.jar"
+  cp "scripts/resources/Suwayomi Launcher.command" "$RELEASE_NAME/"
 
   zip -9 -r "$RELEASE" "$RELEASE_NAME/"
 }
@@ -211,13 +211,13 @@ make_macos_bundle() {
 # https://www.debian.org/doc/manuals/packaging-tutorial/packaging-tutorial.pdf
 make_deb_package() {
   #behind $RELEASE_VERSION is hyphen "-"
-  local source_dir="tachidesk-server-$RELEASE_VERSION"
+  local source_dir="suwayomi-server-$RELEASE_VERSION"
   #behind $RELEASE_VERSION is underscore "_"
-  local upstream_source="tachidesk-server_$RELEASE_VERSION.orig.tar.gz"
+  local upstream_source="suwayomi-server_$RELEASE_VERSION.orig.tar.gz"
 
   mkdir "$RELEASE_NAME/$source_dir/"
-  mv "$RELEASE_NAME/Tachidesk-Launcher.jar" "$RELEASE_NAME/$source_dir/Tachidesk-Launcher.jar"
-  cp "$JAR" "$RELEASE_NAME/$source_dir/Tachidesk-Server.jar"
+  mv "$RELEASE_NAME/Suwayomi-Launcher.jar" "$RELEASE_NAME/$source_dir/Suwayomi-Launcher.jar"
+  cp "$JAR" "$RELEASE_NAME/$source_dir/Suwayomi-Server.jar"
   copy_linux_package_assets_to "$RELEASE_NAME/$source_dir/"
   tar -I "gzip" -C "$RELEASE_NAME/" -cvf "$upstream_source" "$source_dir"
 
@@ -231,7 +231,7 @@ make_deb_package() {
   dpkg-buildpackage --no-sign --build=all
   cd -
 
-  local deb="tachidesk-server_$RELEASE_VERSION-1_all.deb"
+  local deb="suwayomi-server_$RELEASE_VERSION-1_all.deb"
   mv "$RELEASE_NAME/$deb" "$RELEASE"
 }
 
@@ -264,8 +264,8 @@ make_windows_bundle() {
   #WINEARCH=win32 wine "$rcedit" "$RELEASE_NAME/electron/electron.exe" \
   #    --set-icon "$icon"
 
-  cp "$JAR" "$RELEASE_NAME/bin/Tachidesk-Server.jar"
-  cp "scripts/resources/Tachidesk Launcher.bat" "$RELEASE_NAME"
+  cp "$JAR" "$RELEASE_NAME/bin/Suwayomi-Server.jar"
+  cp "scripts/resources/Suwayomi Launcher.bat" "$RELEASE_NAME"
 
   zip -9 -r "$RELEASE" "$RELEASE_NAME"
 }
@@ -291,7 +291,7 @@ make_windows_package() {
   local arch=${OS##*-}
 
   wixl -D ProductVersion="$RELEASE_VERSION" -D SourceDir="$RELEASE_NAME" \
-    -D Icon="$icon" --arch "$arch" "scripts/resources/msi/tachidesk-server-$arch.wxs" \
+    -D Icon="$icon" --arch "$arch" "scripts/resources/msi/suwayomi-server-$arch.wxs" \
     "$RELEASE_NAME/jre.wxs" "$RELEASE_NAME/electron.wxs" "$RELEASE_NAME/bin.wxs" -o "$RELEASE"
 }
 
