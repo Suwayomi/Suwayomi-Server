@@ -5,12 +5,12 @@ After=network-online.target
 
 [Service]
 Type=simple
-User=suwayomi
-Group=suwayomi
-SyslogIdentifier=suwayomi
+User=suwayomi-server
+Group=suwayomi-server
+SyslogIdentifier=suwayomi-server
 
 EnvironmentFile=/etc/suwayomi/server.conf
-ExecStart=/usr/bin/java $JAVA_ARGS -Dsuwayomi.tachidesk.config.server.rootDir="${TACHIDESK_ROOT_DIR}" -jar /usr/share/java/tachidesk-server/bin/Suwayomi-Server.jar
+ExecStart=/usr/bin/java $JAVA_ARGS -Dsuwayomi.tachidesk.config.server.rootDir="${TACHIDESK_ROOT_DIR}" -jar /usr/share/java/suwayomi-server/bin/Suwayomi-Server.jar
 Restart=on-failure
 
 ProtectSystem=full
