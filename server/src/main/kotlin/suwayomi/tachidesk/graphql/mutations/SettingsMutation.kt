@@ -55,6 +55,9 @@ class SettingsMutation {
         updateSetting(settings.excludeEntryWithUnreadChapters, serverConfig.excludeEntryWithUnreadChapters)
         updateSetting(settings.autoDownloadAheadLimit, serverConfig.autoDownloadAheadLimit)
 
+        // extension
+        updateSetting(settings.extensionRepos, serverConfig.extensionRepos)
+
         // requests
         updateSetting(settings.maxSourcesInParallel, serverConfig.maxSourcesInParallel)
 

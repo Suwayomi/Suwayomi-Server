@@ -143,7 +143,7 @@ object Chapter {
                     val chapterNumber = ChapterRecognition.parseChapterNumber(manga.title, chapter.name, chapter.chapter_number.toDouble())
                     chapter.chapter_number = chapterNumber.toFloat()
                     chapter.name = chapter.name.sanitize(manga.title)
-                    chapter.scanlator = chapter.scanlator?.ifBlank { null }
+                    chapter.scanlator = chapter.scanlator?.ifBlank { null }?.trim()
                 }
 
                 val now = Instant.now().epochSecond

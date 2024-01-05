@@ -8,6 +8,7 @@
 package suwayomi.tachidesk.graphql.types
 
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
+import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
@@ -37,6 +38,7 @@ class MangaType(
     val status: MangaStatus,
     val inLibrary: Boolean,
     val inLibraryAt: Long,
+    val updateStrategy: UpdateStrategy,
     val realUrl: String?,
     var lastFetchedAt: Long?, // todo
     var chaptersLastFetchedAt: Long?, // todo
@@ -73,6 +75,7 @@ class MangaType(
         MangaStatus.valueOf(row[MangaTable.status]),
         row[MangaTable.inLibrary],
         row[MangaTable.inLibraryAt],
+        UpdateStrategy.valueOf(row[MangaTable.updateStrategy]),
         row[MangaTable.realUrl],
         row[MangaTable.lastFetchedAt],
         row[MangaTable.chaptersLastFetchedAt],
@@ -92,6 +95,7 @@ class MangaType(
         MangaStatus.valueOf(dataClass.status),
         dataClass.inLibrary,
         dataClass.inLibraryAt,
+        dataClass.updateStrategy,
         dataClass.realUrl,
         dataClass.lastFetchedAt,
         dataClass.chaptersLastFetchedAt,
