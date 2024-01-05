@@ -308,7 +308,6 @@ object Chapter {
                     ")",
             )
 
-        // convert numbers to be index based
         val newNumberOfChapters = updatedChapterList.size
         val numberOfNewChapters = newNumberOfChapters - prevNumberOfChapters
 
@@ -340,7 +339,7 @@ object Chapter {
 
         val firstChapterToDownloadIndex =
             if (serverConfig.autoDownloadAheadLimit.value > 0) {
-                (numberOfNewChapters - serverConfig.autoDownloadAheadLimit.value - 1).coerceAtLeast(0)
+                (numberOfNewChapters - serverConfig.autoDownloadAheadLimit.value).coerceAtLeast(0)
             } else {
                 0
             }
