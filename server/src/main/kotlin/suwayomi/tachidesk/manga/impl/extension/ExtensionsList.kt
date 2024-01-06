@@ -23,6 +23,7 @@ import suwayomi.tachidesk.manga.impl.extension.github.ExtensionGithubApi
 import suwayomi.tachidesk.manga.impl.extension.github.OnlineExtension
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
+import suwayomi.tachidesk.server.serverConfig
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.seconds
 
@@ -38,7 +39,17 @@ object ExtensionsList {
             logger.debug("Getting extensions list from the internet")
             lastUpdateCheck = System.currentTimeMillis()
 
-            val foundExtensions = ExtensionGithubApi.findExtensions()
+            val extensions =
+                (listOf(ExtensionGithubApi.REPO_URL_PREFIX) + serverConfig.extensionRepos.value).map { repo ->
+                    kotlin.runCatching {
+                        ExtensionGithubApi.findExtensions(repo)
+                    }.onFailure {
+                        logger.warn(it) {
+                            "Failed to fetch extensions for repo: $repo"
+                        }
+                    }
+                }
+            val foundExtensions = extensions.mapNotNull { it.getOrNull() }.flatten()
             updateExtensionDatabase(foundExtensions)
         } else {
             logger.debug("used cached extension list")
@@ -54,6 +65,7 @@ object ExtensionsList {
         transaction {
             ExtensionTable.selectAll().filter { it[ExtensionTable.name] != LocalSource.EXTENSION_NAME }.map {
                 ExtensionDataClass(
+                    it[ExtensionTable.repo],
                     it[ExtensionTable.apkName],
                     getExtensionIconUrl(it[ExtensionTable.apkName]),
                     it[ExtensionTable.name],
@@ -77,7 +89,7 @@ object ExtensionsList {
             val extensionsToUpdate = mutableListOf<Pair<OnlineExtension, ResultRow>>()
             val extensionsToInsert = mutableListOf<OnlineExtension>()
             val extensionsToDelete =
-                installedExtensions.mapNotNull { (pkgName, extension) ->
+                installedExtensions.filter { it.value[ExtensionTable.repo] != null }.mapNotNull { (pkgName, extension) ->
                     extension.takeUnless { foundExtensions.any { it.pkgName == pkgName } }
                 }
             foundExtensions.forEach {
@@ -124,6 +136,7 @@ object ExtensionsList {
                         extensionsToFullyUpdate.forEach { (foundExtension, extensionRecord) ->
                             addBatch(EntityID(extensionRecord[ExtensionTable.id].value, ExtensionTable))
                             // extension is not installed, so we can overwrite the data without a care
+                            this[ExtensionTable.repo] = foundExtension.repo
                             this[ExtensionTable.name] = foundExtension.name
                             this[ExtensionTable.versionName] = foundExtension.versionName
                             this[ExtensionTable.versionCode] = foundExtension.versionCode
@@ -138,6 +151,7 @@ object ExtensionsList {
             }
             if (extensionsToInsert.isNotEmpty()) {
                 ExtensionTable.batchInsert(extensionsToInsert) { foundExtension ->
+                    this[ExtensionTable.repo] = foundExtension.repo
                     this[ExtensionTable.name] = foundExtension.name
                     this[ExtensionTable.pkgName] = foundExtension.pkgName
                     this[ExtensionTable.versionName] = foundExtension.versionName

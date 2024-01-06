@@ -40,6 +40,9 @@ interface Settings : Node {
     val excludeEntryWithUnreadChapters: Boolean?
     val autoDownloadAheadLimit: Int?
 
+    // extension
+    val extensionRepos: List<String>?
+
     // requests
     val maxSourcesInParallel: Int?
 
@@ -90,6 +93,8 @@ data class PartialSettingsType(
     override val autoDownloadNewChapters: Boolean?,
     override val excludeEntryWithUnreadChapters: Boolean?,
     override val autoDownloadAheadLimit: Int?,
+    // extension
+    override val extensionRepos: List<String>?,
     // requests
     override val maxSourcesInParallel: Int?,
     // updater
@@ -135,6 +140,8 @@ class SettingsType(
     override val autoDownloadNewChapters: Boolean,
     override val excludeEntryWithUnreadChapters: Boolean,
     override val autoDownloadAheadLimit: Int,
+    // extension
+    override val extensionRepos: List<String>,
     // requests
     override val maxSourcesInParallel: Int,
     // updater
@@ -179,6 +186,8 @@ class SettingsType(
         config.autoDownloadNewChapters.value,
         config.excludeEntryWithUnreadChapters.value,
         config.autoDownloadAheadLimit.value,
+        // extension
+        config.extensionRepos.value,
         // requests
         config.maxSourcesInParallel.value,
         // updater

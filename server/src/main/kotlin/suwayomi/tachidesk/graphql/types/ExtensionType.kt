@@ -20,6 +20,7 @@ import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import java.util.concurrent.CompletableFuture
 
 class ExtensionType(
+    val repo: String?,
     val apkName: String,
     val iconUrl: String,
     val name: String,
@@ -33,6 +34,7 @@ class ExtensionType(
     val isObsolete: Boolean,
 ) : Node {
     constructor(row: ResultRow) : this(
+        repo = row[ExtensionTable.repo],
         apkName = row[ExtensionTable.apkName],
         iconUrl = Extension.getExtensionIconUrl(row[ExtensionTable.apkName]),
         name = row[ExtensionTable.name],

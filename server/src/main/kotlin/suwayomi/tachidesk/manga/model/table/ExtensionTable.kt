@@ -11,6 +11,7 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 
 object ExtensionTable : IntIdTable() {
     val apkName = varchar("apk_name", 1024)
+    val repo = varchar("repo", 1024).nullable()
 
     // default is the local source icon from tachiyomi
     @Suppress("ktlint:standard:max-line-length")

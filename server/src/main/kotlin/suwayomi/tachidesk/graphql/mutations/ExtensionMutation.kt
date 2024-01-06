@@ -20,7 +20,7 @@ class ExtensionMutation {
 
     data class UpdateExtensionPayload(
         val clientMutationId: String?,
-        val extension: ExtensionType,
+        val extension: ExtensionType?,
     )
 
     data class UpdateExtensionInput(
@@ -77,7 +77,8 @@ class ExtensionMutation {
         }.thenApply {
             val extension =
                 transaction {
-                    ExtensionType(ExtensionTable.select { ExtensionTable.pkgName eq id }.first())
+                    ExtensionTable.select { ExtensionTable.pkgName eq id }.firstOrNull()
+                        ?.let { ExtensionType(it) }
                 }
 
             UpdateExtensionPayload(
