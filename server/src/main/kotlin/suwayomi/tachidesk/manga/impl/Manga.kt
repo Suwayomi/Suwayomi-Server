@@ -30,6 +30,7 @@ import suwayomi.tachidesk.manga.impl.Source.getSource
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.MissingThumbnailException
+import suwayomi.tachidesk.manga.impl.track.Track
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
@@ -105,6 +106,7 @@ object Manga {
                 chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
                 updateStrategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy]),
                 freshData = true,
+                trackers = Track.getTrackRecordsByMangaId(mangaId),
             )
         }
     }
@@ -221,6 +223,7 @@ object Manga {
         chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
         updateStrategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy]),
         freshData = false,
+        trackers = Track.getTrackRecordsByMangaId(mangaId),
     )
 
     fun getMangaMetaMap(mangaId: Int): Map<String, String> {

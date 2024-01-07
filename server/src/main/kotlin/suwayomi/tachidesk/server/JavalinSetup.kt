@@ -35,6 +35,7 @@ import suwayomi.tachidesk.server.util.WebInterfaceManager
 import java.io.IOException
 import java.lang.IllegalArgumentException
 import java.util.concurrent.CompletableFuture
+import kotlin.NoSuchElementException
 import kotlin.concurrent.thread
 
 object JavalinSetup {
@@ -89,6 +90,13 @@ object JavalinSetup {
                 }
 
                 config.server { server }
+
+                config.addStaticFiles { staticFiles ->
+                    staticFiles.hostedPath = "/static"
+                    staticFiles.directory = "/static"
+                    staticFiles.location = Location.CLASSPATH
+                    staticFiles.headers = mapOf("cache-control" to "max-age=86400")
+                }
 
                 config.enableCorsForAllOrigins()
 

@@ -139,6 +139,10 @@ class MangaType(
     fun source(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<SourceType?> {
         return dataFetchingEnvironment.getValueFromDataLoader<Long, SourceType?>("SourceDataLoader", sourceId)
     }
+
+    // fun trackRecords(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<TrackRecordNodeList> {
+    //     return dataFetchingEnvironment.getValueFromDataLoader<Int, TrackRecordNodeList>("TrackRecordsForMangaIdDataLoader", id)
+    // }
 }
 
 data class MangaNodeList(
