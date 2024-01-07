@@ -290,8 +290,7 @@ class MyAnimeListApi(private val client: OkHttpClient, interceptor: MyAnimeListI
     }
 
     companion object {
-        // TODO: need to replace it with official account, and set callback url to suwayomi://oauth/myanimelist
-        private const val CLIENT_ID = "d9f6f745798cc5b0895e6a274e4b530c"
+        private const val CLIENT_ID = "3fda277931a4f9bc01fa4a715ce8b91d"
 
         private const val BASE_OAUTH_URL = "https://myanimelist.net/v1/oauth2"
         private const val BASE_API_URL = "https://api.myanimelist.net/v2"

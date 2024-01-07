@@ -24,7 +24,6 @@ import suwayomi.tachidesk.graphql.mutations.MangaMutation
 import suwayomi.tachidesk.graphql.mutations.MetaMutation
 import suwayomi.tachidesk.graphql.mutations.SettingsMutation
 import suwayomi.tachidesk.graphql.mutations.SourceMutation
-import suwayomi.tachidesk.graphql.mutations.TrackMutation
 import suwayomi.tachidesk.graphql.mutations.UpdateMutation
 import suwayomi.tachidesk.graphql.queries.BackupQuery
 import suwayomi.tachidesk.graphql.queries.CategoryQuery
@@ -36,7 +35,6 @@ import suwayomi.tachidesk.graphql.queries.MangaQuery
 import suwayomi.tachidesk.graphql.queries.MetaQuery
 import suwayomi.tachidesk.graphql.queries.SettingsQuery
 import suwayomi.tachidesk.graphql.queries.SourceQuery
-import suwayomi.tachidesk.graphql.queries.TrackQuery
 import suwayomi.tachidesk.graphql.queries.UpdateQuery
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLCursor
