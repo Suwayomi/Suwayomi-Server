@@ -23,7 +23,7 @@ object SettingsController {
         handler(
             documentWith = {
                 withOperation {
-                    summary("About Tachidesk")
+                    summary("About Suwayomi-Server")
                     description("Returns some static info about the current app build")
                 }
             },
@@ -40,7 +40,7 @@ object SettingsController {
         handler(
             documentWith = {
                 withOperation {
-                    summary("Tachidesk update check")
+                    summary("Suwayomi-Server update check")
                     description("Check for app updates")
                 }
             },

@@ -80,6 +80,6 @@ enum class MangaStatus(val value: Int) {
     ;
 
     companion object {
-        fun valueOf(value: Int): MangaStatus = values().find { it.value == value } ?: UNKNOWN
+        fun valueOf(value: Int): MangaStatus = entries.find { it.value == value } ?: UNKNOWN
     }
 }

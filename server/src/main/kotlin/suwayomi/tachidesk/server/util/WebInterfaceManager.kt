@@ -7,6 +7,8 @@ package suwayomi.tachidesk.server.util
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.app.Application
+import android.content.Context
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.awaitSuccess
@@ -34,17 +36,20 @@ import net.lingala.zip4j.ZipFile
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
+import suwayomi.tachidesk.graphql.types.AboutWebUI
 import suwayomi.tachidesk.graphql.types.UpdateState
 import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
 import suwayomi.tachidesk.graphql.types.UpdateState.ERROR
 import suwayomi.tachidesk.graphql.types.UpdateState.FINISHED
-import suwayomi.tachidesk.graphql.types.UpdateState.STOPPED
+import suwayomi.tachidesk.graphql.types.UpdateState.IDLE
 import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.HAScheduler
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.InputStream
@@ -53,7 +58,6 @@ import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Date
-import java.util.prefs.Preferences
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
 
@@ -98,10 +102,10 @@ enum class WebUIFlavor(
 ) {
     WEBUI(
         "WebUI",
-        "https://github.com/Suwayomi/Tachidesk-WebUI-preview",
-        "https://raw.githubusercontent.com/Suwayomi/Tachidesk-WebUI/master/versionToServerVersionMapping.json",
-        "https://api.github.com/repos/Suwayomi/Tachidesk-WebUI-preview/releases/latest",
-        "Tachidesk-WebUI",
+        "https://github.com/Suwayomi/Suwayomi-WebUI-preview",
+        "https://raw.githubusercontent.com/Suwayomi/Suwayomi-WebUI/master/versionToServerVersionMapping.json",
+        "https://api.github.com/repos/Suwayomi/Suwayomi-WebUI-preview/releases/latest",
+        "Suwayomi-WebUI",
     ),
 
     CUSTOM(
@@ -114,7 +118,7 @@ enum class WebUIFlavor(
     ;
 
     companion object {
-        fun from(value: String): WebUIFlavor = entries.find { it.name == value } ?: WEBUI
+        fun from(value: String): WebUIFlavor = entries.find { it.uiName == value } ?: WEBUI
     }
 }
 
@@ -122,9 +126,9 @@ object WebInterfaceManager {
     private val logger = KotlinLogging.logger {}
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    private const val LAST_WEBUI_UPDATE_CHECK_KEY = "lastWebUIUpdateCheckKey"
+    private const val LAST_WEBUI_UPDATE_CHECK_KEY = "lastWebUIUpdateCheck"
 
-    private val preferences = Preferences.userNodeForPackage(WebInterfaceManager::class.java)
+    private val preferences = Injekt.get<Application>().getSharedPreferences("server_util", Context.MODE_PRIVATE)
     private var currentUpdateTaskId: String = ""
 
     private val json: Json by injectLazy()
@@ -133,25 +137,22 @@ object WebInterfaceManager {
     private val notifyFlow =
         MutableSharedFlow<WebUIUpdateStatus>(extraBufferCapacity = 1, onBufferOverflow = DROP_OLDEST)
 
-    @OptIn(FlowPreview::class)
+    private val statusFlow = MutableSharedFlow<WebUIUpdateStatus>()
     val status =
-        notifyFlow.sample(1.seconds)
-            .stateIn(
-                scope,
-                SharingStarted.Eagerly,
-                WebUIUpdateStatus(
-                    info =
-                        WebUIUpdateInfo(
-                            channel = serverConfig.webUIChannel.value,
-                            tag = "",
-                            updateAvailable = false,
-                        ),
-                    state = STOPPED,
-                    progress = 0,
-                ),
-            )
+        statusFlow.stateIn(
+            scope,
+            SharingStarted.Eagerly,
+            getStatus(),
+        )
 
     init {
+        scope.launch {
+            @OptIn(FlowPreview::class)
+            notifyFlow.sample(1.seconds).collect {
+                statusFlow.emit(it)
+            }
+        }
+
         serverConfig.subscribeTo(
             combine(serverConfig.webUIUpdateCheckInterval, serverConfig.webUIFlavor) { interval, flavor ->
                 Pair(
@@ -162,6 +163,46 @@ object WebInterfaceManager {
             ::scheduleWebUIUpdateCheck,
             ignoreInitialValue = false,
         )
+    }
+
+    fun getAboutInfo(): AboutWebUI {
+        val currentVersion = getLocalVersion()
+
+        val failedToGetVersion = currentVersion === "r-1"
+        if (failedToGetVersion) {
+            throw Exception("Failed to get current version")
+        }
+
+        return AboutWebUI(
+            channel = serverConfig.webUIChannel.value,
+            tag = currentVersion,
+        )
+    }
+
+    fun getStatus(
+        version: String = "",
+        state: UpdateState = IDLE,
+        progress: Int = 0,
+    ): WebUIUpdateStatus {
+        return WebUIUpdateStatus(
+            info =
+                WebUIUpdateInfo(
+                    channel = serverConfig.webUIChannel.value,
+                    tag = version,
+                ),
+            state,
+            progress,
+        )
+    }
+
+    fun resetStatus() {
+        emitStatus("", IDLE, 0, immediate = true)
+    }
+
+    private var serveWebUI: () -> Unit = {}
+
+    fun setServeWebUI(serveWebUI: () -> Unit) {
+        this.serveWebUI = serveWebUI
     }
 
     private fun isAutoUpdateEnabled(): Boolean {
@@ -326,7 +367,7 @@ object WebInterfaceManager {
     }
 
     private suspend fun checkForUpdate() {
-        preferences.putLong(LAST_WEBUI_UPDATE_CHECK_KEY, System.currentTimeMillis())
+        preferences.edit().putLong(LAST_WEBUI_UPDATE_CHECK_KEY, System.currentTimeMillis()).apply()
         val localVersion = getLocalVersion()
 
         if (!isUpdateAvailable(localVersion).second) {
@@ -511,20 +552,17 @@ object WebInterfaceManager {
         version: String,
         state: UpdateState,
         progress: Int,
+        immediate: Boolean = false,
     ) {
         scope.launch {
-            notifyFlow.emit(
-                WebUIUpdateStatus(
-                    info =
-                        WebUIUpdateInfo(
-                            channel = serverConfig.webUIChannel.value,
-                            tag = version,
-                            updateAvailable = true,
-                        ),
-                    state,
-                    progress,
-                ),
-            )
+            val status = getStatus(version, state, progress)
+
+            if (immediate) {
+                statusFlow.emit(status)
+                return@launch
+            }
+
+            notifyFlow.emit(status)
         }
     }
 
@@ -535,7 +573,7 @@ object WebInterfaceManager {
     }
 
     suspend fun downloadVersion(version: String) {
-        emitStatus(version, DOWNLOADING, 0)
+        emitStatus(version, DOWNLOADING, 0, immediate = true)
 
         try {
             val webUIZip = "${WebUIFlavor.WEBUI.baseFileName}-$version.zip"
@@ -562,9 +600,11 @@ object WebInterfaceManager {
             extractDownload(webUIZipPath, applicationDirs.webUIRoot)
             log.info { "Extracting WebUI zip Done." }
 
-            emitStatus(version, FINISHED, 100)
+            emitStatus(version, FINISHED, 100, immediate = true)
+
+            serveWebUI()
         } catch (e: Exception) {
-            emitStatus(version, ERROR, 0)
+            emitStatus(version, ERROR, 0, immediate = true)
             throw e
         }
     }
@@ -610,16 +650,13 @@ object WebInterfaceManager {
             }
         }
 
-        if (!isDownloadValid(zipFile.name, filePath)) {
+        if (!isDownloadValid(filePath)) {
             throw Exception("Download is invalid")
         }
     }
 
-    private suspend fun isDownloadValid(
-        zipFileName: String,
-        zipFilePath: String,
-    ): Boolean {
-        val tempUnzippedWebUIFolderPath = zipFileName.replace(".zip", "")
+    private suspend fun isDownloadValid(zipFilePath: String): Boolean {
+        val tempUnzippedWebUIFolderPath = zipFilePath.replace(".zip", "")
 
         extractDownload(zipFilePath, tempUnzippedWebUIFolderPath)
 
@@ -638,7 +675,10 @@ object WebInterfaceManager {
         ZipFile(zipFilePath).use { it.extractAll(targetPath) }
     }
 
-    suspend fun isUpdateAvailable(currentVersion: String = getLocalVersion()): Pair<String, Boolean> {
+    suspend fun isUpdateAvailable(
+        currentVersion: String = getLocalVersion(),
+        raiseError: Boolean = false,
+    ): Pair<String, Boolean> {
         return try {
             val latestCompatibleVersion = getLatestCompatibleVersion()
             val isUpdateAvailable = latestCompatibleVersion != currentVersion
@@ -646,6 +686,11 @@ object WebInterfaceManager {
             Pair(latestCompatibleVersion, isUpdateAvailable)
         } catch (e: Exception) {
             logger.warn(e) { "isUpdateAvailable: check failed due to" }
+
+            if (raiseError) {
+                throw e
+            }
+
             Pair("", false)
         }
     }

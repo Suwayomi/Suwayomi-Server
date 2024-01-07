@@ -14,7 +14,7 @@ import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
 import mu.KotlinLogging
-import okhttp3.Request
+import okhttp3.CacheControl
 import okio.buffer
 import okio.sink
 import okio.source
@@ -272,8 +272,10 @@ object Extension {
         url: String,
         savePath: String,
     ) {
-        val request = Request.Builder().url(url).build()
-        val response = network.client.newCall(request).await()
+        val response =
+            network.client.newCall(
+                GET(url, cache = CacheControl.FORCE_NETWORK),
+            ).await()
 
         val downloadedFile = File(savePath)
         downloadedFile.sink().buffer().use { sink ->
@@ -350,7 +352,7 @@ object Extension {
 
         return getImageResponse(cacheSaveDir, apkName) {
             network.client.newCall(
-                GET(iconUrl),
+                GET(iconUrl, cache = CacheControl.FORCE_NETWORK),
             ).await()
         }
     }

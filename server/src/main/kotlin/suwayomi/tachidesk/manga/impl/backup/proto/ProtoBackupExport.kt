@@ -7,6 +7,8 @@ package suwayomi.tachidesk.manga.impl.backup.proto
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.app.Application
+import android.content.Context
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import kotlinx.coroutines.flow.combine
 import mu.KotlinLogging
@@ -38,21 +40,20 @@ import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.HAScheduler
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.concurrent.TimeUnit
-import java.util.prefs.Preferences
 import kotlin.time.Duration.Companion.days
 
 object ProtoBackupExport : ProtoBackupBase() {
     private val logger = KotlinLogging.logger { }
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
     private var backupSchedulerJobId: String = ""
-    private const val LAST_AUTOMATED_BACKUP_KEY = "lastAutomatedBackupKey"
-    private val preferences = Preferences.userNodeForPackage(ProtoBackupExport::class.java)
+    private const val LAST_AUTOMATED_BACKUP_KEY = "lastAutomatedBackup"
+    private val preferences = Injekt.get<Application>().getSharedPreferences("server_util", Context.MODE_PRIVATE)
 
     init {
         serverConfig.subscribeTo(
@@ -77,7 +78,7 @@ object ProtoBackupExport : ProtoBackupBase() {
         val task = {
             cleanupAutomatedBackups()
             createAutomatedBackup()
-            preferences.putLong(LAST_AUTOMATED_BACKUP_KEY, System.currentTimeMillis())
+            preferences.edit().putLong(LAST_AUTOMATED_BACKUP_KEY, System.currentTimeMillis()).apply()
         }
 
         val (hour, minute) = serverConfig.backupTime.value.split(":").map { it.toInt() }
@@ -86,7 +87,7 @@ object ProtoBackupExport : ProtoBackupBase() {
         val backupInterval = serverConfig.backupInterval.value.days.coerceAtLeast(1.days)
 
         // trigger last backup in case the server wasn't running on the scheduled time
-        val lastAutomatedBackup = preferences.getLong(LAST_AUTOMATED_BACKUP_KEY, System.currentTimeMillis())
+        val lastAutomatedBackup = preferences.getLong(LAST_AUTOMATED_BACKUP_KEY, 0)
         val wasPreviousBackupTriggered =
             (System.currentTimeMillis() - lastAutomatedBackup) < backupInterval.inWholeMilliseconds
         if (!wasPreviousBackupTriggered) {
@@ -111,7 +112,7 @@ object ProtoBackupExport : ProtoBackupBase() {
             val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
             automatedBackupDir.mkdirs()
 
-            val backupFile = File(applicationDirs.automatedBackupRoot, getBackupFilename())
+            val backupFile = File(applicationDirs.automatedBackupRoot, Backup.getFilename())
 
             backupFile.outputStream().use { output -> input.copyTo(output) }
         }
@@ -150,11 +151,6 @@ object ProtoBackupExport : ProtoBackupBase() {
         if (isTTLReached) {
             file.delete()
         }
-    }
-
-    fun getBackupFilename(): String {
-        val currentDate = SimpleDateFormat("yyyy-MM-dd_HH-mm").format(Date())
-        return "tachidesk_$currentDate.proto.gz"
     }
 
     fun createBackup(flags: BackupFlags): InputStream {

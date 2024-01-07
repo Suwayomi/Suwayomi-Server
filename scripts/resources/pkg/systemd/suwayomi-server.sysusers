@@ -1,0 +1,2 @@
+#Type    Name              ID    GECOS                                 Home directory              Shell
+u        suwayomi-server   -     "Suwayomi Manga Server"               /var/lib/suwayomi

@@ -114,4 +114,8 @@ object ImageResponse {
             File(it).delete()
         }
     }
+
+    fun clearImages(saveDir: String): Boolean {
+        return File(saveDir).deleteRecursively()
+    }
 }

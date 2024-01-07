@@ -40,7 +40,7 @@ object SystemTray {
 
                 mainMenu.add(
                     MenuItem(
-                        "Open Tachidesk",
+                        "Open Suwayomi",
                     ) {
                         openInBrowser()
                     },

@@ -23,7 +23,7 @@ Note that the issue will be automatically closed if you do not fill out the titl
 ---
 
 ## Device information
-- Tachidesk version: (Example: v0.2.3-r255-win32)
+- Suwayomi-Server version: (Example: v1.0.0-r1438-win32)
 - Server Operating System: (Example: Ubuntu 20.04)
 - Server Desktop Environment: N/A or (Example: Gnome 40)
 - Server JVM version: bundled with win32 or (Example: Java 8 Update 281 or OpenJDK 8u281)

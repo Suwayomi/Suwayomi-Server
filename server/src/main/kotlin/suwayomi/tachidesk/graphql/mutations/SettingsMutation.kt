@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import kotlinx.coroutines.flow.MutableStateFlow
 import suwayomi.tachidesk.graphql.types.PartialSettingsType
 import suwayomi.tachidesk.graphql.types.Settings
 import suwayomi.tachidesk.graphql.types.SettingsType
@@ -19,99 +20,72 @@ class SettingsMutation {
         val settings: SettingsType,
     )
 
+    private fun <SettingType : Any> updateSetting(
+        newSetting: SettingType?,
+        configSetting: MutableStateFlow<SettingType>,
+    ) {
+        if (newSetting == null) {
+            return
+        }
+
+        configSetting.value = newSetting
+    }
+
     private fun updateSettings(settings: Settings) {
-        if (settings.ip != null) serverConfig.ip.value = settings.ip!!
-        if (settings.port != null) serverConfig.port.value = settings.port!!
+        updateSetting(settings.ip, serverConfig.ip)
+        updateSetting(settings.port, serverConfig.port)
 
-        if (settings.socksProxyEnabled != null) {
-            serverConfig.socksProxyEnabled.value = settings.socksProxyEnabled!!
-        }
-        if (settings.socksProxyHost != null) {
-            serverConfig.socksProxyHost.value = settings.socksProxyHost!!
-        }
-        if (settings.socksProxyPort != null) {
-            serverConfig.socksProxyPort.value = settings.socksProxyPort!!
-        }
+        // proxy
+        updateSetting(settings.socksProxyEnabled, serverConfig.socksProxyEnabled)
+        updateSetting(settings.socksProxyHost, serverConfig.socksProxyHost)
+        updateSetting(settings.socksProxyPort, serverConfig.socksProxyPort)
 
-        if (settings.webUIFlavor != null) {
-            serverConfig.webUIFlavor.value = settings.webUIFlavor!!.uiName
-        }
-        if (settings.initialOpenInBrowserEnabled != null) {
-            serverConfig.initialOpenInBrowserEnabled.value = settings.initialOpenInBrowserEnabled!!
-        }
-        if (settings.webUIInterface != null) {
-            serverConfig.webUIInterface.value = settings.webUIInterface!!.name.lowercase()
-        }
-        if (settings.electronPath != null) {
-            serverConfig.electronPath.value = settings.electronPath!!
-        }
-        if (settings.webUIChannel != null) {
-            serverConfig.webUIChannel.value = settings.webUIChannel!!.name.lowercase()
-        }
-        if (settings.webUIUpdateCheckInterval != null) {
-            serverConfig.webUIUpdateCheckInterval.value = settings.webUIUpdateCheckInterval!!
-        }
+        // webUI
+        updateSetting(settings.webUIFlavor?.uiName, serverConfig.webUIFlavor)
+        updateSetting(settings.initialOpenInBrowserEnabled, serverConfig.initialOpenInBrowserEnabled)
+        updateSetting(settings.webUIInterface?.name?.lowercase(), serverConfig.webUIInterface)
+        updateSetting(settings.electronPath, serverConfig.electronPath)
+        updateSetting(settings.webUIChannel?.name?.lowercase(), serverConfig.webUIChannel)
+        updateSetting(settings.webUIUpdateCheckInterval, serverConfig.webUIUpdateCheckInterval)
 
-        if (settings.downloadAsCbz != null) {
-            serverConfig.downloadAsCbz.value = settings.downloadAsCbz!!
-        }
-        if (settings.downloadsPath != null) {
-            serverConfig.downloadsPath.value = settings.downloadsPath!!
-        }
-        if (settings.autoDownloadNewChapters != null) {
-            serverConfig.autoDownloadNewChapters.value = settings.autoDownloadNewChapters!!
-        }
+        // downloader
+        updateSetting(settings.downloadAsCbz, serverConfig.downloadAsCbz)
+        updateSetting(settings.downloadsPath, serverConfig.downloadsPath)
+        updateSetting(settings.autoDownloadNewChapters, serverConfig.autoDownloadNewChapters)
+        updateSetting(settings.excludeEntryWithUnreadChapters, serverConfig.excludeEntryWithUnreadChapters)
+        updateSetting(settings.autoDownloadAheadLimit, serverConfig.autoDownloadAheadLimit)
 
-        if (settings.maxSourcesInParallel != null) {
-            serverConfig.maxSourcesInParallel.value = settings.maxSourcesInParallel!!
-        }
+        // extension
+        updateSetting(settings.extensionRepos, serverConfig.extensionRepos)
 
-        if (settings.excludeUnreadChapters != null) {
-            serverConfig.excludeUnreadChapters.value = settings.excludeUnreadChapters!!
-        }
-        if (settings.excludeNotStarted != null) {
-            serverConfig.excludeNotStarted.value = settings.excludeNotStarted!!
-        }
-        if (settings.excludeCompleted != null) {
-            serverConfig.excludeCompleted.value = settings.excludeCompleted!!
-        }
-        if (settings.globalUpdateInterval != null) {
-            serverConfig.globalUpdateInterval.value = settings.globalUpdateInterval!!
-        }
+        // requests
+        updateSetting(settings.maxSourcesInParallel, serverConfig.maxSourcesInParallel)
 
-        if (settings.basicAuthEnabled != null) {
-            serverConfig.basicAuthEnabled.value = settings.basicAuthEnabled!!
-        }
-        if (settings.basicAuthUsername != null) {
-            serverConfig.basicAuthUsername.value = settings.basicAuthUsername!!
-        }
-        if (settings.basicAuthPassword != null) {
-            serverConfig.basicAuthPassword.value = settings.basicAuthPassword!!
-        }
+        // updater
+        updateSetting(settings.excludeUnreadChapters, serverConfig.excludeUnreadChapters)
+        updateSetting(settings.excludeNotStarted, serverConfig.excludeNotStarted)
+        updateSetting(settings.excludeCompleted, serverConfig.excludeCompleted)
+        updateSetting(settings.globalUpdateInterval, serverConfig.globalUpdateInterval)
+        updateSetting(settings.updateMangas, serverConfig.updateMangas)
 
-        if (settings.debugLogsEnabled != null) {
-            serverConfig.debugLogsEnabled.value = settings.debugLogsEnabled!!
-        }
-        if (settings.systemTrayEnabled != null) {
-            serverConfig.systemTrayEnabled.value = settings.systemTrayEnabled!!
-        }
+        // Authentication
+        updateSetting(settings.basicAuthEnabled, serverConfig.basicAuthEnabled)
+        updateSetting(settings.basicAuthUsername, serverConfig.basicAuthUsername)
+        updateSetting(settings.basicAuthPassword, serverConfig.basicAuthPassword)
 
-        if (settings.backupPath != null) {
-            serverConfig.backupPath.value = settings.backupPath!!
-        }
-        if (settings.backupTime != null) {
-            serverConfig.backupTime.value = settings.backupTime!!
-        }
-        if (settings.backupInterval != null) {
-            serverConfig.backupInterval.value = settings.backupInterval!!
-        }
-        if (settings.backupTTL != null) {
-            serverConfig.backupTTL.value = settings.backupTTL!!
-        }
+        // misc
+        updateSetting(settings.debugLogsEnabled, serverConfig.debugLogsEnabled)
+        updateSetting(settings.gqlDebugLogsEnabled, serverConfig.gqlDebugLogsEnabled)
+        updateSetting(settings.systemTrayEnabled, serverConfig.systemTrayEnabled)
 
-        if (settings.localSourcePath != null) {
-            serverConfig.localSourcePath.value = settings.localSourcePath!!
-        }
+        // backup
+        updateSetting(settings.backupPath, serverConfig.backupPath)
+        updateSetting(settings.backupTime, serverConfig.backupTime)
+        updateSetting(settings.backupInterval, serverConfig.backupInterval)
+        updateSetting(settings.backupTTL, serverConfig.backupTTL)
+
+        // local source
+        updateSetting(settings.localSourcePath, serverConfig.localSourcePath)
     }
 
     fun setSettings(input: SetSettingsInput): SetSettingsPayload {

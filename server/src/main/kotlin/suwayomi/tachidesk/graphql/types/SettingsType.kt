@@ -37,6 +37,11 @@ interface Settings : Node {
     val downloadAsCbz: Boolean?
     val downloadsPath: String?
     val autoDownloadNewChapters: Boolean?
+    val excludeEntryWithUnreadChapters: Boolean?
+    val autoDownloadAheadLimit: Int?
+
+    // extension
+    val extensionRepos: List<String>?
 
     // requests
     val maxSourcesInParallel: Int?
@@ -46,6 +51,7 @@ interface Settings : Node {
     val excludeNotStarted: Boolean?
     val excludeCompleted: Boolean?
     val globalUpdateInterval: Double?
+    val updateMangas: Boolean?
 
     // Authentication
     val basicAuthEnabled: Boolean?
@@ -54,6 +60,7 @@ interface Settings : Node {
 
     // misc
     val debugLogsEnabled: Boolean?
+    val gqlDebugLogsEnabled: Boolean?
     val systemTrayEnabled: Boolean?
 
     // backup
@@ -84,6 +91,10 @@ data class PartialSettingsType(
     override val downloadAsCbz: Boolean?,
     override val downloadsPath: String?,
     override val autoDownloadNewChapters: Boolean?,
+    override val excludeEntryWithUnreadChapters: Boolean?,
+    override val autoDownloadAheadLimit: Int?,
+    // extension
+    override val extensionRepos: List<String>?,
     // requests
     override val maxSourcesInParallel: Int?,
     // updater
@@ -91,12 +102,14 @@ data class PartialSettingsType(
     override val excludeNotStarted: Boolean?,
     override val excludeCompleted: Boolean?,
     override val globalUpdateInterval: Double?,
+    override val updateMangas: Boolean?,
     // Authentication
     override val basicAuthEnabled: Boolean?,
     override val basicAuthUsername: String?,
     override val basicAuthPassword: String?,
     // misc
     override val debugLogsEnabled: Boolean?,
+    override val gqlDebugLogsEnabled: Boolean?,
     override val systemTrayEnabled: Boolean?,
     // backup
     override val backupPath: String?,
@@ -125,6 +138,10 @@ class SettingsType(
     override val downloadAsCbz: Boolean,
     override val downloadsPath: String,
     override val autoDownloadNewChapters: Boolean,
+    override val excludeEntryWithUnreadChapters: Boolean,
+    override val autoDownloadAheadLimit: Int,
+    // extension
+    override val extensionRepos: List<String>,
     // requests
     override val maxSourcesInParallel: Int,
     // updater
@@ -132,12 +149,14 @@ class SettingsType(
     override val excludeNotStarted: Boolean,
     override val excludeCompleted: Boolean,
     override val globalUpdateInterval: Double,
+    override val updateMangas: Boolean,
     // Authentication
     override val basicAuthEnabled: Boolean,
     override val basicAuthUsername: String,
     override val basicAuthPassword: String,
     // misc
     override val debugLogsEnabled: Boolean,
+    override val gqlDebugLogsEnabled: Boolean,
     override val systemTrayEnabled: Boolean,
     // backup
     override val backupPath: String,
@@ -150,32 +169,47 @@ class SettingsType(
     constructor(config: ServerConfig = serverConfig) : this(
         config.ip.value,
         config.port.value,
+        // proxy
         config.socksProxyEnabled.value,
         config.socksProxyHost.value,
         config.socksProxyPort.value,
+        // webUI
         WebUIFlavor.from(config.webUIFlavor.value),
         config.initialOpenInBrowserEnabled.value,
         WebUIInterface.from(config.webUIInterface.value),
         config.electronPath.value,
         WebUIChannel.from(config.webUIChannel.value),
         config.webUIUpdateCheckInterval.value,
+        // downloader
         config.downloadAsCbz.value,
         config.downloadsPath.value,
         config.autoDownloadNewChapters.value,
+        config.excludeEntryWithUnreadChapters.value,
+        config.autoDownloadAheadLimit.value,
+        // extension
+        config.extensionRepos.value,
+        // requests
         config.maxSourcesInParallel.value,
+        // updater
         config.excludeUnreadChapters.value,
         config.excludeNotStarted.value,
         config.excludeCompleted.value,
         config.globalUpdateInterval.value,
+        config.updateMangas.value,
+        // Authentication
         config.basicAuthEnabled.value,
         config.basicAuthUsername.value,
         config.basicAuthPassword.value,
+        // misc
         config.debugLogsEnabled.value,
+        config.gqlDebugLogsEnabled.value,
         config.systemTrayEnabled.value,
+        // backup
         config.backupPath.value,
         config.backupTime.value,
         config.backupInterval.value,
         config.backupTTL.value,
+        // local source
         config.localSourcePath.value,
     )
 }

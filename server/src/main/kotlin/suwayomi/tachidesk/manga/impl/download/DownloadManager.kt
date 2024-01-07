@@ -64,7 +64,7 @@ object DownloadManager {
         Injekt.get<Application>().getSharedPreferences(DownloadManager::class.jvmName, Context.MODE_PRIVATE)
 
     private fun loadDownloadQueue(): List<Int> {
-        return sharedPreferences.getStringSet(DOWNLOAD_QUEUE_KEY, emptySet())?.mapNotNull { it.toInt() } ?: emptyList()
+        return sharedPreferences.getStringSet(DOWNLOAD_QUEUE_KEY, emptySet())?.mapNotNull { it.toInt() }.orEmpty()
     }
 
     private fun saveDownloadQueue() {
@@ -119,15 +119,13 @@ object DownloadManager {
 
     private val notifyFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
-    val status =
-        notifyFlow.sample(1.seconds)
-            .onStart { emit(Unit) }
-            .map { getStatus() }
+    private val statusFlow = MutableSharedFlow<DownloadStatus>()
+    val status = statusFlow.onStart { emit(getStatus()) }
 
     init {
         scope.launch {
             notifyFlow.sample(1.seconds).collect {
-                sendStatusToAllClients()
+                notifyAllClients(immediate = true)
             }
         }
     }
@@ -138,19 +136,26 @@ object DownloadManager {
         saveQueueFlow.onEach { saveDownloadQueue() }.launchIn(scope)
     }
 
-    private fun sendStatusToAllClients() {
-        val status = getStatus()
+    private fun sendStatusToAllClients(status: DownloadStatus) {
         clients.forEach {
             it.value.send(status)
         }
     }
 
     private fun notifyAllClients(immediate: Boolean = false) {
+        if (immediate) {
+            val status = getStatus()
+
+            scope.launch {
+                statusFlow.emit(status)
+                sendStatusToAllClients(status)
+            }
+
+            return
+        }
+
         scope.launch {
             notifyFlow.emit(Unit)
-        }
-        if (immediate) {
-            sendStatusToAllClients()
         }
     }
 

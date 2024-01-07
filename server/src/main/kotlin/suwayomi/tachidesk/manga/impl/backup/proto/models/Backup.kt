@@ -2,6 +2,8 @@ package suwayomi.tachidesk.manga.impl.backup.proto.models
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
+import java.text.SimpleDateFormat
+import java.util.Date
 
 @Serializable
 data class Backup(
@@ -14,5 +16,12 @@ data class Backup(
     fun getSourceMap(): Map<Long, String> {
         return (brokenBackupSources.map { BackupSource(it.name, it.sourceId) } + backupSources)
             .associate { it.sourceId to it.name }
+    }
+
+    companion object {
+        fun getFilename(): String {
+            val date = SimpleDateFormat("yyyy-MM-dd_HH-mm").format(Date())
+            return "org.suwayomi.tachidesk_$date.tachibk"
+        }
     }
 }

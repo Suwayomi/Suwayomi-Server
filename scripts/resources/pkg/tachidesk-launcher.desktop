@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Tachidesk-Launcher
-Comment=Manga Reader
-Exec=/usr/bin/java -jar /usr/share/java/tachidesk-server/Tachidesk-Launcher.jar "\\$@"
-Icon=tachidesk-server
-Terminal=false
-Categories=Network;

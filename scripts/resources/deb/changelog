@@ -1,5 +1,5 @@
-tachidesk-server ($pkgver-$pkgrel) unstable; urgency=medium
+suwayomi-server ($pkgver-$pkgrel) unstable; urgency=medium
 
-  * See CHANGELOG.md on https://github.com/Suwayomi/Tachidesk-Server
+  * See CHANGELOG.md on https://github.com/Suwayomi/Suwayomi-Server
 
  -- Mahor1221 <mahor1221@pm.me>  Fri, 14 Jan 2022 00:00:00 +0000

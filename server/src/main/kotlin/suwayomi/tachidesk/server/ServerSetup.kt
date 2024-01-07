@@ -7,6 +7,8 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.app.Application
+import android.content.Context
 import ch.qos.logback.classic.Level
 import com.typesafe.config.ConfigRenderOptions
 import eu.kanade.tachiyomi.App
@@ -21,6 +23,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.conf.global
+import org.kodein.di.instance
 import org.kodein.di.singleton
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
@@ -31,6 +34,8 @@ import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
 import suwayomi.tachidesk.server.util.SystemTray
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
 import xyz.nulldev.ts.config.ApplicationRootDir
@@ -42,6 +47,7 @@ import xyz.nulldev.ts.config.setLogLevelFor
 import java.io.File
 import java.security.Security
 import java.util.Locale
+import java.util.prefs.Preferences
 
 private val logger = KotlinLogging.logger {}
 
@@ -96,18 +102,18 @@ fun applicationSetup() {
     // gql "notprivacysafe" logs every received request multiple times (received, parsing, validating, executing)
     setupLogLevelUpdating(serverConfig.gqlDebugLogsEnabled, listOf("graphql", "notprivacysafe"), Level.WARN)
 
-    logger.info("Running Tachidesk ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")
+    logger.info("Running Suwayomi-Server ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")
 
     logger.debug {
-        "Loaded config:\n" + GlobalConfigManager.config.root().render(ConfigRenderOptions.concise().setFormatted(true))
+        "Loaded config:\n" +
+            GlobalConfigManager.config.root().render(ConfigRenderOptions.concise().setFormatted(true))
+                .replace(Regex("(\"basicAuth(?:Username|Password)\"\\s:\\s)(?!\"\")\".*\""), "$1\"******\"")
     }
-
-    val updater = Updater()
 
     DI.global.addImport(
         DI.Module("Server") {
             bind<ApplicationDirs>() with singleton { applicationDirs }
-            bind<IUpdater>() with singleton { updater }
+            bind<IUpdater>() with singleton { Updater() }
             bind<JsonMapper>() with singleton { JavalinJackson() }
             bind<Json>() with singleton { Json { ignoreUnknownKeys = true } }
         },
@@ -190,7 +196,7 @@ fun applicationSetup() {
         logger.error("Exception while copying Local source's icon", e)
     }
 
-    // fixes #119 , ref: https://github.com/Suwayomi/Tachidesk-Server/issues/119#issuecomment-894681292 , source Id calculation depends on String.lowercase()
+    // fixes #119 , ref: https://github.com/Suwayomi/Suwayomi-Server/issues/119#issuecomment-894681292 , source Id calculation depends on String.lowercase()
     Locale.setDefault(Locale.ENGLISH)
 
     databaseUp()
@@ -210,6 +216,14 @@ fun applicationSetup() {
             e.printStackTrace()
         }
     }, ignoreInitialValue = false)
+
+    val prefRootNode = "suwayomi/tachidesk"
+    val isMigrationRequired = Preferences.userRoot().nodeExists(prefRootNode)
+    if (isMigrationRequired) {
+        val preferences = Preferences.userRoot().node(prefRootNode)
+        migratePreferences(null, preferences)
+        preferences.removeNode()
+    }
 
     // Disable jetty's logging
     System.setProperty("org.eclipse.jetty.util.log.announce", "false")
@@ -242,11 +256,45 @@ fun applicationSetup() {
     Security.addProvider(BouncyCastleProvider())
 
     // start automated global updates
-    updater.scheduleUpdateTask()
+    val updater by DI.global.instance<IUpdater>()
+    (updater as Updater).scheduleUpdateTask()
 
     // start automated backups
     ProtoBackupExport.scheduleAutomatedBackupTask()
 
     // start DownloadManager and restore + resume downloads
     DownloadManager.restoreAndResumeDownloads()
+}
+
+fun migratePreferences(
+    parent: String?,
+    rootNode: Preferences,
+) {
+    val subNodes = rootNode.childrenNames()
+
+    for (subNodeName in subNodes) {
+        val subNode = rootNode.node(subNodeName)
+        val key =
+            if (parent != null) {
+                "$parent/$subNodeName"
+            } else {
+                subNodeName
+            }
+        val preferences = Injekt.get<Application>().getSharedPreferences(key, Context.MODE_PRIVATE)
+
+        val items: Map<String, String?> =
+            subNode.keys().associateWith {
+                subNode[it, null]?.ifBlank { null }
+            }
+
+        preferences.edit().apply {
+            items.forEach { (key, value) ->
+                if (value != null) {
+                    putString(key, value)
+                }
+            }
+        }.apply()
+
+        migratePreferences(key, subNode) // Recursively migrate sub-level nodes
+    }
 }

@@ -107,13 +107,13 @@ buildConfig {
 
     buildConfigField("String", "NAME", quoteWrap(rootProject.name))
     buildConfigField("String", "VERSION", quoteWrap(tachideskVersion))
-    buildConfigField("String", "REVISION", quoteWrap(tachideskRevision))
+    buildConfigField("String", "REVISION", quoteWrap(getTachideskRevision()))
     buildConfigField("String", "BUILD_TYPE", quoteWrap(if (System.getenv("ProductBuildType") == "Stable") "Stable" else "Preview"))
     buildConfigField("long", "BUILD_TIME", Instant.now().epochSecond.toString())
 
     buildConfigField("String", "WEBUI_TAG", quoteWrap(webUIRevisionTag))
 
-    buildConfigField("String", "GITHUB", quoteWrap("https://github.com/Suwayomi/Tachidesk-Server"))
+    buildConfigField("String", "GITHUB", quoteWrap("https://github.com/Suwayomi/Suwayomi-Server"))
     buildConfigField("String", "DISCORD", quoteWrap("https://discord.gg/DDZdqZWaHA"))
 }
 
@@ -126,12 +126,12 @@ tasks {
                 "Implementation-Title" to rootProject.name,
                 "Implementation-Vendor" to "The Suwayomi Project",
                 "Specification-Version" to tachideskVersion,
-                "Implementation-Version" to tachideskRevision,
+                "Implementation-Version" to getTachideskRevision(),
             )
         }
         archiveBaseName.set(rootProject.name)
         archiveVersion.set(tachideskVersion)
-        archiveClassifier.set(tachideskRevision)
+        archiveClassifier.set(getTachideskRevision())
         destinationDirectory.set(File("$rootDir/server/build"))
     }
 
@@ -158,7 +158,7 @@ tasks {
     }
 
     register<Download>("downloadWebUI") {
-        src("https://github.com/Suwayomi/Tachidesk-WebUI-preview/releases/download/$webUIRevisionTag/Tachidesk-WebUI-$webUIRevisionTag.zip")
+        src("https://github.com/Suwayomi/Suwayomi-WebUI-preview/releases/download/$webUIRevisionTag/Suwayomi-WebUI-$webUIRevisionTag.zip")
         dest("src/main/resources/WebUI.zip")
 
         fun shouldOverwrite(): Boolean {

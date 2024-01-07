@@ -35,8 +35,13 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
     getConfig,
     moduleName,
 ) {
-    inner class OverrideConfigValue<T>(private val configAdapter: ConfigAdapter<T>) {
+    open inner class OverrideConfigValue<T>(private val configAdapter: ConfigAdapter<out Any>) {
         private var flow: MutableStateFlow<T>? = null
+
+        open fun getValueFromConfig(
+            thisRef: ServerConfig,
+            property: KProperty<*>,
+        ): Any = configAdapter.toType(overridableConfig.getValue<ServerConfig, String>(thisRef, property))
 
         operator fun getValue(
             thisRef: ServerConfig,
@@ -46,17 +51,27 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
                 return flow!!
             }
 
-            val getValueFromConfig = { configAdapter.toType(overridableConfig.getValue<ServerConfig, String>(thisRef, property)) }
-            val value = getValueFromConfig()
+            @Suppress("UNCHECKED_CAST")
+            val value = getValueFromConfig(thisRef, property) as T
 
             val stateFlow = MutableStateFlow(value)
             flow = stateFlow
 
-            stateFlow.drop(1).distinctUntilChanged().filter { it != getValueFromConfig() }
+            stateFlow.drop(1).distinctUntilChanged().filter { it != getValueFromConfig(thisRef, property) }
                 .onEach { GlobalConfigManager.updateValue("$moduleName.${property.name}", it as Any) }
                 .launchIn(mutableConfigValueScope)
 
             return stateFlow
+        }
+    }
+
+    inner class OverrideConfigValues<T>(private val configAdapter: ConfigAdapter<out Any>) : OverrideConfigValue<T>(configAdapter) {
+        override fun getValueFromConfig(
+            thisRef: ServerConfig,
+            property: KProperty<*>,
+        ): Any {
+            return overridableConfig.getValue<ServerConfig, List<String>>(thisRef, property)
+                .map { configAdapter.toType(it) }
         }
     }
 
@@ -84,6 +99,9 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
     val excludeEntryWithUnreadChapters: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val autoDownloadAheadLimit: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
 
+    // extensions
+    val extensionRepos: MutableStateFlow<List<String>> by OverrideConfigValues(StringConfigAdapter)
+
     // requests
     val maxSourcesInParallel: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
 
@@ -92,6 +110,7 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
     val excludeNotStarted: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val excludeCompleted: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val globalUpdateInterval: MutableStateFlow<Double> by OverrideConfigValue(DoubleConfigAdapter)
+    val updateMangas: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
 
     // Authentication
     val basicAuthEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)

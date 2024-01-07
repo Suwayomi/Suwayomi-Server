@@ -15,6 +15,7 @@ data class OnlineExtensionSource(
 )
 
 data class OnlineExtension(
+    val repo: String,
     val name: String,
     val pkgName: String,
     val apkName: String,

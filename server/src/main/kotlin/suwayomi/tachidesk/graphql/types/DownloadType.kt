@@ -15,6 +15,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.graphql.types.DownloadState.FINISHED
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
 import suwayomi.tachidesk.manga.impl.download.model.Status
@@ -57,10 +58,20 @@ class DownloadType(
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> {
+        val clearCache = state == FINISHED
+        if (clearCache) {
+            MangaType.clearCacheFor(mangaId, dataFetchingEnvironment)
+        }
+
         return dataFetchingEnvironment.getValueFromDataLoader<Int, MangaType>("MangaDataLoader", mangaId)
     }
 
     fun chapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType> {
+        val clearCache = state == FINISHED
+        if (clearCache) {
+            ChapterType.clearCacheFor(chapterId, mangaId, dataFetchingEnvironment)
+        }
+
         return dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterType>("ChapterDataLoader", chapterId)
     }
 }

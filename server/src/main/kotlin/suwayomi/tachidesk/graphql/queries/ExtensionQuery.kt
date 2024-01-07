@@ -82,6 +82,7 @@ class ExtensionQuery {
     }
 
     data class ExtensionCondition(
+        val repo: String? = null,
         val apkName: String? = null,
         val iconUrl: String? = null,
         val name: String? = null,
@@ -96,6 +97,7 @@ class ExtensionQuery {
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
+            opAnd.eq(repo, ExtensionTable.repo)
             opAnd.eq(apkName, ExtensionTable.apkName)
             opAnd.eq(iconUrl, ExtensionTable.iconUrl)
             opAnd.eq(name, ExtensionTable.name)
@@ -112,6 +114,7 @@ class ExtensionQuery {
     }
 
     data class ExtensionFilter(
+        val repo: StringFilter? = null,
         val apkName: StringFilter? = null,
         val iconUrl: StringFilter? = null,
         val name: StringFilter? = null,
@@ -129,6 +132,7 @@ class ExtensionQuery {
     ) : Filter<ExtensionFilter> {
         override fun getOpList(): List<Op<Boolean>> {
             return listOfNotNull(
+                andFilterWithCompareString(ExtensionTable.repo, repo),
                 andFilterWithCompareString(ExtensionTable.apkName, apkName),
                 andFilterWithCompareString(ExtensionTable.iconUrl, iconUrl),
                 andFilterWithCompareString(ExtensionTable.name, name),

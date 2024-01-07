@@ -73,13 +73,19 @@ object JavalinSetup {
         val app =
             Javalin.create { config ->
                 if (serverConfig.webUIEnabled.value) {
+                    val serveWebUI = {
+                        config.addSinglePageRoot("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
+                    }
+                    WebInterfaceManager.setServeWebUI(serveWebUI)
+
                     runBlocking {
                         WebInterfaceManager.setupWebUI()
                     }
 
                     logger.info { "Serving web static files for ${serverConfig.webUIFlavor.value}" }
                     config.addStaticFiles(applicationDirs.webUIRoot, Location.EXTERNAL)
-                    config.addSinglePageRoot("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
+                    serveWebUI()
+
                     config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
                 }
 
@@ -157,13 +163,13 @@ object JavalinSetup {
         val applicationInfo =
             Info().apply {
                 version("1.0")
-                description("Tachidesk Api")
+                description("Suwayomi-Server Api")
             }
         return OpenApiOptions(applicationInfo).apply {
             path("/api/openapi.json")
             swagger(
                 SwaggerOptions("/api/swagger-ui").apply {
-                    title("Tachidesk Swagger Documentation")
+                    title("Suwayomi-Server Swagger Documentation")
                 },
             )
         }

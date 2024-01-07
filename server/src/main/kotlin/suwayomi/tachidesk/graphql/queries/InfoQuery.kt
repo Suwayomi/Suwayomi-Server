@@ -1,7 +1,8 @@
 package suwayomi.tachidesk.graphql.queries
 
 import suwayomi.tachidesk.global.impl.AppUpdate
-import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
+import suwayomi.tachidesk.graphql.types.AboutWebUI
+import suwayomi.tachidesk.graphql.types.WebUIUpdateCheck
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.generated.BuildConfig
@@ -10,7 +11,7 @@ import suwayomi.tachidesk.server.util.WebInterfaceManager
 import java.util.concurrent.CompletableFuture
 
 class InfoQuery {
-    data class AboutPayload(
+    data class AboutServerPayload(
         val name: String,
         val version: String,
         val revision: String,
@@ -20,8 +21,8 @@ class InfoQuery {
         val discord: String,
     )
 
-    fun about(): AboutPayload {
-        return AboutPayload(
+    fun aboutServer(): AboutServerPayload {
+        return AboutServerPayload(
             BuildConfig.NAME,
             BuildConfig.VERSION,
             BuildConfig.REVISION,
@@ -51,10 +52,16 @@ class InfoQuery {
         }
     }
 
-    fun checkForWebUIUpdate(): CompletableFuture<WebUIUpdateInfo> {
+    fun aboutWebUI(): CompletableFuture<AboutWebUI> {
         return future {
-            val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable()
-            WebUIUpdateInfo(
+            WebInterfaceManager.getAboutInfo()
+        }
+    }
+
+    fun checkForWebUIUpdate(): CompletableFuture<WebUIUpdateCheck> {
+        return future {
+            val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable(raiseError = true)
+            WebUIUpdateCheck(
                 channel = serverConfig.webUIChannel.value,
                 tag = version,
                 updateAvailable,
