@@ -14,7 +14,7 @@ import org.jetbrains.exposed.sql.Table
 import suwayomi.tachidesk.manga.model.table.MangaTable
 
 @Suppress("ClassName", "unused")
-class M0030_TrackRecord : AddTableMigration() {
+class M0033_TrackRecord : AddTableMigration() {
     private class TrackRecordTable : IntIdTable() {
         val mangaId = reference("manga_id", MangaTable, ReferenceOption.CASCADE)
         val syncId = integer("sync_id")
