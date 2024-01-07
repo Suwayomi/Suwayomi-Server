@@ -380,8 +380,7 @@ class AnilistApi(val client: OkHttpClient, interceptor: AnilistInterceptor) {
     }
 
     companion object {
-        // TODO: need to replace it with official account, and set callback url to suwayomi://oauth/anilist
-        private const val CLIENT_ID = "14929"
+        private const val CLIENT_ID = "16186"
         private const val API_URL = "https://graphql.anilist.co/"
         private const val BASE_URL = "https://anilist.co/api/v2/"
         private const val BASE_MANGA_URL = "https://anilist.co/manga/"
