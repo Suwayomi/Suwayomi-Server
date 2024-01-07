@@ -78,7 +78,7 @@ val schema =
                 TopLevelObject(MetaQuery()),
                 TopLevelObject(SettingsQuery()),
                 TopLevelObject(SourceQuery()),
-                TopLevelObject(TrackQuery()),
+                // TopLevelObject(TrackQuery()),
                 TopLevelObject(UpdateQuery()),
             ),
         mutations =
@@ -94,7 +94,7 @@ val schema =
                 TopLevelObject(MetaMutation()),
                 TopLevelObject(SettingsMutation()),
                 TopLevelObject(SourceMutation()),
-                TopLevelObject(TrackMutation()),
+                // TopLevelObject(TrackMutation()),
                 TopLevelObject(UpdateMutation()),
             ),
         subscriptions =

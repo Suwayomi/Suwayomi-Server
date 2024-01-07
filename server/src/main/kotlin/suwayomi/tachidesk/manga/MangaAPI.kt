@@ -134,13 +134,13 @@ object MangaAPI {
             ws("", UpdateController::categoryUpdateWS)
         }
 
-        path("track") {
-            get("list", TrackController.list)
-            post("login", TrackController.login)
-            post("logout", TrackController.logout)
-            post("search", TrackController.search)
-            post("bind", TrackController.bind)
-            post("update", TrackController.update)
-        }
+        // path("track") {
+        //     get("list", TrackController.list)
+        //     post("login", TrackController.login)
+        //     post("logout", TrackController.logout)
+        //     post("search", TrackController.search)
+        //     post("bind", TrackController.bind)
+        //     post("update", TrackController.update)
+        // }
     }
 }
