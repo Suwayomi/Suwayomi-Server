@@ -58,11 +58,11 @@ class TachideskDataLoaderRegistryFactory {
                 SourcesForExtensionDataLoader(),
                 ExtensionDataLoader(),
                 ExtensionForSourceDataLoader(),
-                TrackerDataLoader(),
-                TrackRecordsForMangaIdDataLoader(),
-                DisplayScoreForTrackRecordDataLoader(),
-                TrackRecordsForTrackerIdDataLoader(),
-                TrackRecordDataLoader(),
+                // TrackerDataLoader(),
+                // TrackRecordsForMangaIdDataLoader(),
+                // DisplayScoreForTrackRecordDataLoader(),
+                // TrackRecordsForTrackerIdDataLoader(),
+                // TrackRecordDataLoader(),
             )
         }
     }
