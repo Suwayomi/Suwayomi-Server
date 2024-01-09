@@ -20,8 +20,8 @@ import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import uy.kohesive.injekt.injectLazy
 
 object ExtensionGithubApi {
-    const val REPO_URL_PREFIX = "https://raw.githubusercontent.com/tachiyomiorg/tachiyomi-extensions/repo/"
-    private const val FALLBACK_REPO_URL_PREFIX = "https://gcore.jsdelivr.net/gh/tachiyomiorg/tachiyomi-extensions@repo/"
+    const val REPO_URL_PREFIX = "https://raw.githubusercontent.com/tachiyomiorg/extensions/repo/"
+    private const val FALLBACK_REPO_URL_PREFIX = "https://gcore.jsdelivr.net/gh/tachiyomiorg/extensions@repo/"
     private val logger = KotlinLogging.logger {}
     private val json: Json by injectLazy()
 

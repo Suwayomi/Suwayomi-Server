@@ -15,6 +15,6 @@ class M0032_FixExtensionRepos : SQLMigration() {
     override val sql =
         """
         UPDATE EXTENSION 
-        SET REPO = 'https://raw.githubusercontent.com/tachiyomiorg/tachiyomi-extensions/repo/';
+        SET REPO = 'https://raw.githubusercontent.com/tachiyomiorg/extensions/repo/';
         """.trimIndent()
 }
