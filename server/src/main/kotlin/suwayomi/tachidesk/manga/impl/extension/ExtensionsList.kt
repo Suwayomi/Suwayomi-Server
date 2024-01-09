@@ -83,7 +83,11 @@ object ExtensionsList {
 
     private fun updateExtensionDatabase(foundExtensions: List<OnlineExtension>) {
         transaction {
-            val uniqueExtensions = foundExtensions.distinctBy { it.pkgName }
+            val uniqueExtensions =
+                foundExtensions.groupBy { it.pkgName }.mapValues {
+                        (_, extension) ->
+                    extension.maxBy { it.versionCode }
+                }.values
             val installedExtensions =
                 ExtensionTable.selectAll().toList()
                     .associateBy { it[ExtensionTable.pkgName] }
