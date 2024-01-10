@@ -88,6 +88,11 @@ object ExtensionsList {
 
     private fun updateExtensionDatabase(foundExtensions: List<OnlineExtension>) {
         transaction {
+            val uniqueExtensions =
+                foundExtensions.groupBy { it.pkgName }.mapValues {
+                        (_, extension) ->
+                    extension.maxBy { it.versionCode }
+                }.values
             val installedExtensions =
                 ExtensionTable.selectAll().toList()
                     .associateBy { it[ExtensionTable.pkgName] }
@@ -95,9 +100,9 @@ object ExtensionsList {
             val extensionsToInsert = mutableListOf<OnlineExtension>()
             val extensionsToDelete =
                 installedExtensions.filter { it.value[ExtensionTable.repo] != null }.mapNotNull { (pkgName, extension) ->
-                    extension.takeUnless { foundExtensions.any { it.pkgName == pkgName } }
+                    extension.takeUnless { uniqueExtensions.any { it.pkgName == pkgName } }
                 }
-            foundExtensions.forEach {
+            uniqueExtensions.forEach {
                 val extension = installedExtensions[it.pkgName]
                 if (extension != null) {
                     extensionsToUpdate.add(it to extension)
