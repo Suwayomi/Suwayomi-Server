@@ -35,29 +35,34 @@ object ExtensionsList {
 
     suspend fun fetchExtensions() {
         // update if 60 seconds has passed or requested offline and database is empty
+        val extensions =
+            serverConfig.extensionRepos.value.map { repo ->
+                kotlin.runCatching {
+                    ExtensionGithubApi.findExtensions(repo.repoUrlReplace())
+                }.onFailure {
+                    logger.warn(it) {
+                        "Failed to fetch extensions for repo: $repo"
+                    }
+                }
+            }
+        val foundExtensions = extensions.mapNotNull { it.getOrNull() }.flatten()
+        updateExtensionDatabase(foundExtensions)
+    }
+
+    suspend fun fetchExtensionsCached() {
+        // update if 60 seconds has passed or requested offline and database is empty
         if (lastUpdateCheck + 60.seconds.inWholeMilliseconds < System.currentTimeMillis()) {
             logger.debug("Getting extensions list from the internet")
             lastUpdateCheck = System.currentTimeMillis()
 
-            val extensions =
-                serverConfig.extensionRepos.value.map { repo ->
-                    kotlin.runCatching {
-                        ExtensionGithubApi.findExtensions(repo.repoUrlReplace())
-                    }.onFailure {
-                        logger.warn(it) {
-                            "Failed to fetch extensions for repo: $repo"
-                        }
-                    }
-                }
-            val foundExtensions = extensions.mapNotNull { it.getOrNull() }.flatten()
-            updateExtensionDatabase(foundExtensions)
+            fetchExtensions()
         } else {
             logger.debug("used cached extension list")
         }
     }
 
     suspend fun getExtensionList(): List<ExtensionDataClass> {
-        fetchExtensions()
+        fetchExtensionsCached()
         return extensionTableAsDataClass()
     }
 
