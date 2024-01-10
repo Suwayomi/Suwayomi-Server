@@ -43,9 +43,6 @@ object PackageTools {
     const val LIB_VERSION_MIN = 1.3
     const val LIB_VERSION_MAX = 1.5
 
-    private const val OFFICIAL_SIGNATURE = "7ce04da7773d41b489f4693a366c36bcd0a11fc39b547168553c285bd7348e23" // inorichi's key
-    val trustedSignatures = setOf(OFFICIAL_SIGNATURE)
-
     /**
      * Convert dex to jar, a wrapper for the dex2jar library
      */

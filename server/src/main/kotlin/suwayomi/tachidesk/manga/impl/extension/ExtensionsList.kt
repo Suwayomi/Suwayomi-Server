@@ -40,9 +40,9 @@ object ExtensionsList {
             lastUpdateCheck = System.currentTimeMillis()
 
             val extensions =
-                (listOf(ExtensionGithubApi.REPO_URL_PREFIX) + serverConfig.extensionRepos.value).map { repo ->
+                serverConfig.extensionRepos.value.map { repo ->
                     kotlin.runCatching {
-                        ExtensionGithubApi.findExtensions(repo)
+                        ExtensionGithubApi.findExtensions(repo.repoUrlReplace())
                     }.onFailure {
                         logger.warn(it) {
                             "Failed to fetch extensions for repo: $repo"
@@ -109,8 +109,9 @@ object ExtensionsList {
                     BatchUpdateStatement(ExtensionTable).apply {
                         installedExtensionsToUpdate.forEach { (foundExtension, extensionRecord) ->
                             addBatch(EntityID(extensionRecord[ExtensionTable.id].value, ExtensionTable))
-                            // Always update icon url
+                            // Always update icon url and repo
                             this[ExtensionTable.iconUrl] = foundExtension.iconUrl
+                            this[ExtensionTable.repo] = foundExtension.repo
 
                             // add these because batch updates need matching columns
                             this[ExtensionTable.hasUpdate] = extensionRecord[ExtensionTable.hasUpdate]
@@ -181,4 +182,23 @@ object ExtensionsList {
             }
         }
     }
+
+    private fun String.repoUrlReplace(): String {
+        return if (contains("github")) {
+            replace(repoMatchRegex) {
+                "https://raw.githubusercontent.com/${it.groupValues[2]}/${it.groupValues[3]}/" +
+                    (it.groupValues.getOrNull(4)?.ifBlank { null } ?: "repo") +
+                    "/" +
+                    (it.groupValues.getOrNull(5)?.ifBlank { null } ?: "index.min.json")
+            }
+        } else {
+            this
+        }
+    }
+
+    private val repoMatchRegex =
+        (
+            "https:\\/\\/(?>www\\.|raw\\.)?(github|githubusercontent)\\.com" +
+                "\\/([^\\/]+)\\/([^\\/]+)(?>(?>\\/tree|\\/blob)?\\/([^\\/\\n]*))?(?>\\/([^\\/\\n]*\\.json)?)?"
+        ).toRegex()
 }
