@@ -11,7 +11,7 @@ I acknowledge that:
 
 - I have updated to the latest version of the app.
 - I have tried the troubleshooting guide described in `README.md`
-- If this is a request for adding/changing an extension it should be brought up to Tachiyomi: https://github.com/tachiyomiorg/tachiyomi-extensions/issues/new/choose
+- If this is a request for adding/changing an extension it should be brought up to your extension repo.
 - If this is an issue with some extension not working properly, It does work inside Tachiyomi as intended.
 - I have searched the existing issues and this is a new ticket **NOT** a duplicate or related to another open issue
 - I will fill out the title and the information in this template

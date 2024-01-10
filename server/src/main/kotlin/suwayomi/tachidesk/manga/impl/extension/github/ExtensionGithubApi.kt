@@ -16,12 +16,9 @@ import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import suwayomi.tachidesk.manga.impl.util.PackageTools.LIB_VERSION_MAX
 import suwayomi.tachidesk.manga.impl.util.PackageTools.LIB_VERSION_MIN
-import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import uy.kohesive.injekt.injectLazy
 
 object ExtensionGithubApi {
-    const val REPO_URL_PREFIX = "https://raw.githubusercontent.com/tachiyomiorg/tachiyomi-extensions/repo/"
-    private const val FALLBACK_REPO_URL_PREFIX = "https://gcore.jsdelivr.net/gh/tachiyomiorg/tachiyomi-extensions@repo/"
     private val logger = KotlinLogging.logger {}
     private val json: Json by injectLazy()
 
@@ -47,36 +44,22 @@ object ExtensionGithubApi {
         val baseUrl: String,
     )
 
-    private var requiresFallbackSource = false
-
     suspend fun findExtensions(repo: String): List<OnlineExtension> {
-        val githubResponse =
-            if (requiresFallbackSource) {
-                null
-            } else {
-                try {
-                    client.newCall(GET("${repo.repoUrlReplace()}index.min.json")).awaitSuccess()
-                } catch (e: Throwable) {
-                    logger.error(e) { "Failed to get extensions from GitHub" }
-                    requiresFallbackSource = true
-                    null
-                }
-            }
-
         val response =
-            githubResponse ?: run {
-                client.newCall(GET("${repo.fallbackRepoUrlReplace()}index.min.json")).awaitSuccess()
-            }
+            client.newCall(GET(repo)).awaitSuccess()
 
         return with(json) {
             response
                 .parseAs<List<ExtensionJsonObject>>()
-                .toExtensions(repo.repoUrlReplace())
+                .toExtensions(repo.substringBeforeLast('/') + '/')
         }
     }
 
-    fun getApkUrl(extension: ExtensionDataClass): String {
-        return "${extension.repo!!.repoUrlReplace()}/apk/${extension.apkName}"
+    fun getApkUrl(
+        repo: String,
+        apkName: String,
+    ): String {
+        return "${repo}apk/$apkName"
     }
 
     private val client by lazy {
@@ -125,22 +108,4 @@ object ExtensionGithubApi {
             )
         }
     }
-
-    private fun String.repoUrlReplace() =
-        replace(repoMatchRegex) {
-            "https://raw.githubusercontent.com/${it.groupValues[1]}/${it.groupValues[2]}/" +
-                "${it.groupValues.getOrNull(3)?.ifBlank { null } ?: "repo"}/"
-        }
-
-    private fun String.fallbackRepoUrlReplace() =
-        replace(repoMatchRegex) {
-            "https://gcore.jsdelivr.net/gh/${it.groupValues[1]}/${it.groupValues[2]}@" +
-                "${it.groupValues.getOrNull(3)?.ifBlank { null } ?: "repo"}/"
-        }
-
-    private val repoMatchRegex =
-        (
-            "https:\\/\\/(?:www|raw)?(?:github|githubusercontent)\\.com" +
-                "\\/([^\\/]+)\\/([^\\/]+)(?:\\/(?:tree|blob)\\/(.*))?\\/?"
-        ).toRegex()
 }

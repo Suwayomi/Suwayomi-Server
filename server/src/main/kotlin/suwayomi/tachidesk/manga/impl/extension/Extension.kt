@@ -61,7 +61,11 @@ object Extension {
         val extensionRecord = extensionTableAsDataClass().first { it.pkgName == pkgName }
 
         return installAPK {
-            val apkURL = ExtensionGithubApi.getApkUrl(extensionRecord)
+            val apkURL =
+                ExtensionGithubApi.getApkUrl(
+                    extensionRecord.repo ?: throw NullPointerException("Could not find extension repo"),
+                    extensionRecord.apkName,
+                )
             val apkName = Uri.parse(apkURL).lastPathSegment!!
             val apkSavePath = "${applicationDirs.extensionsRoot}/$apkName"
             // download apk file
