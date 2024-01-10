@@ -120,6 +120,14 @@ object ExtensionsList {
                             // add these because batch updates need matching columns
                             this[ExtensionTable.hasUpdate] = extensionRecord[ExtensionTable.hasUpdate]
                             this[ExtensionTable.isObsolete] = extensionRecord[ExtensionTable.isObsolete]
+
+                            // a previously removed extension is now available again
+                            if (extensionRecord[ExtensionTable.isObsolete] &&
+                                foundExtension.versionCode >= extensionRecord[ExtensionTable.versionCode]
+                            ) {
+                                this[ExtensionTable.isObsolete] = false
+                            }
+
                             when {
                                 foundExtension.versionCode > extensionRecord[ExtensionTable.versionCode] -> {
                                     // there is an update
