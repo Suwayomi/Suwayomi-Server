@@ -109,10 +109,67 @@ class LastReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
                     addLogger(Slf4jSqlDebugLogger)
                     val lastReadChaptersByMangaId =
                         ChapterTable
+                            .select { (ChapterTable.manga inList ids) }
+                            .orderBy(ChapterTable.lastReadAt to SortOrder.DESC)
+                            .groupBy { it[ChapterTable.manga].value }
+                    ids.map { id -> lastReadChaptersByMangaId[id]?.let { chapters -> ChapterType(chapters.first()) } }
+                }
+            }
+        }
+}
+
+class LatestReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
+    override val dataLoaderName = "LatestReadChapterForMangaDataLoader"
+
+    override fun getDataLoader(): DataLoader<Int, ChapterType?> =
+        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val latestReadChaptersByMangaId =
+                        ChapterTable
                             .select { (ChapterTable.manga inList ids) and (ChapterTable.isRead eq true) }
                             .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
                             .groupBy { it[ChapterTable.manga].value }
-                    ids.map { id -> lastReadChaptersByMangaId[id]?.let { chapters -> ChapterType(chapters.first()) } }
+                    ids.map { id -> latestReadChaptersByMangaId[id]?.let { chapters -> ChapterType(chapters.first()) } }
+                }
+            }
+        }
+}
+
+class LatestFetchedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
+    override val dataLoaderName = "LatestFetchedChapterForMangaDataLoader"
+
+    override fun getDataLoader(): DataLoader<Int, ChapterType?> =
+        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val latestFetchedChaptersByMangaId =
+                        ChapterTable
+                            .select { (ChapterTable.manga inList ids) }
+                            .orderBy(ChapterTable.fetchedAt to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC)
+                            .groupBy { it[ChapterTable.manga].value }
+                    ids.map { id -> latestFetchedChaptersByMangaId[id]?.let { chapters -> ChapterType(chapters.first()) } }
+                }
+            }
+        }
+}
+
+class LatestUploadedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
+    override val dataLoaderName = "LatestUploadedChapterForMangaDataLoader"
+
+    override fun getDataLoader(): DataLoader<Int, ChapterType?> =
+        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val latestUploadedChaptersByMangaId =
+                        ChapterTable
+                            .select { (ChapterTable.manga inList ids) }
+                            .orderBy(ChapterTable.date_upload to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC)
+                            .groupBy { it[ChapterTable.manga].value }
+                    ids.map { id -> latestUploadedChaptersByMangaId[id]?.let { chapters -> ChapterType(chapters.first()) } }
                 }
             }
         }
