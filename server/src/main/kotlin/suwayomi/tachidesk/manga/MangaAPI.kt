@@ -20,6 +20,7 @@ import suwayomi.tachidesk.manga.controller.DownloadController
 import suwayomi.tachidesk.manga.controller.ExtensionController
 import suwayomi.tachidesk.manga.controller.MangaController
 import suwayomi.tachidesk.manga.controller.SourceController
+import suwayomi.tachidesk.manga.controller.TrackController
 import suwayomi.tachidesk.manga.controller.UpdateController
 
 object MangaAPI {
@@ -133,13 +134,13 @@ object MangaAPI {
             ws("", UpdateController::categoryUpdateWS)
         }
 
-        // path("track") {
-        //     get("list", TrackController.list)
-        //     post("login", TrackController.login)
-        //     post("logout", TrackController.logout)
-        //     post("search", TrackController.search)
-        //     post("bind", TrackController.bind)
-        //     post("update", TrackController.update)
-        // }
+        path("track") {
+            get("list", TrackController.list)
+            post("login", TrackController.login)
+            post("logout", TrackController.logout)
+            post("search", TrackController.search)
+            post("bind", TrackController.bind)
+            post("update", TrackController.update)
+        }
     }
 }
