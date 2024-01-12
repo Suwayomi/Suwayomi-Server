@@ -16,6 +16,7 @@ package eu.kanade.tachiyomi.network
 // import uy.kohesive.injekt.injectLazy
 import android.content.Context
 import eu.kanade.tachiyomi.network.interceptor.CloudflareInterceptor
+import eu.kanade.tachiyomi.network.interceptor.IgnoreGzipInterceptor
 import eu.kanade.tachiyomi.network.interceptor.UncaughtExceptionInterceptor
 import eu.kanade.tachiyomi.network.interceptor.UserAgentInterceptor
 import mu.KotlinLogging
@@ -61,9 +62,10 @@ class NetworkHelper(context: Context) {
                             maxSize = 5L * 1024 * 1024, // 5 MiB
                         ),
                     )
-                    .addInterceptor(BrotliInterceptor)
                     .addInterceptor(UncaughtExceptionInterceptor())
                     .addInterceptor(UserAgentInterceptor())
+                    .addNetworkInterceptor(IgnoreGzipInterceptor())
+                    .addNetworkInterceptor(BrotliInterceptor)
 
             // if (preferences.verboseLogging().get()) {
             val httpLoggingInterceptor =
