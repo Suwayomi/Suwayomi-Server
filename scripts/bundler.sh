@@ -32,7 +32,7 @@ main() {
   RELEASE_NAME="$(echo "${JAR%.*}" | xargs basename)-$OS"
   RELEASE_VERSION="$(tmp="${JAR%-*}"; echo "${tmp##*-}" | tr -d v)"
   #RELEASE_REVISION_NUMBER="$(tmp="${JAR%.*}" && echo "${tmp##*-}" | tr -d r)"
-  local electron_version="v14.0.0"
+  local electron_version="v28.1.3"
 
   # clean temporary directory on function return
   trap "rm -rf $RELEASE_NAME/" RETURN
