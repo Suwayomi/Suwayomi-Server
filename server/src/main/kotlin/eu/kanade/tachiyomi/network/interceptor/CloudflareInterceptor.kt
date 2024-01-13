@@ -1,24 +1,11 @@
 package eu.kanade.tachiyomi.network.interceptor
 
-import com.microsoft.playwright.Browser
-import com.microsoft.playwright.BrowserType.LaunchOptions
-import com.microsoft.playwright.Page
-import com.microsoft.playwright.Playwright
-import com.microsoft.playwright.PlaywrightException
 import eu.kanade.tachiyomi.network.NetworkHelper
-import eu.kanade.tachiyomi.network.interceptor.CFClearance.resolveWithWebView
 import mu.KotlinLogging
-import okhttp3.Cookie
-import okhttp3.HttpUrl
 import okhttp3.Interceptor
-import okhttp3.Request
 import okhttp3.Response
-import suwayomi.tachidesk.server.ServerConfig
-import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.DurationUnit
 
 class CloudflareInterceptor : Interceptor {
     private val logger = KotlinLogging.logger {}
@@ -38,7 +25,7 @@ class CloudflareInterceptor : Interceptor {
             return originalResponse
         }
 
-        throw IOException("playwrite is diabled for v0.6.7")
+        throw IOException("Cloudflare bypass currently disabled ")
 
         logger.debug { "Cloudflare anti-bot is on, CloudflareInterceptor is kicking in..." }
 
@@ -46,7 +33,7 @@ class CloudflareInterceptor : Interceptor {
             originalResponse.close()
             network.cookieStore.remove(originalRequest.url.toUri())
 
-            val request = resolveWithWebView(originalRequest)
+            val request = originalRequest // resolveWithWebView(originalRequest)
 
             chain.proceed(request)
         } catch (e: Exception) {
@@ -71,7 +58,7 @@ object CFClearance {
     private val logger = KotlinLogging.logger {}
     private val network: NetworkHelper by injectLazy()
 
-    init {
+    /*init {
         // Fix the default DriverJar issue by providing our own implementation
         // ref: https://github.com/microsoft/playwright-java/issues/1138
         System.setProperty("playwright.driver.impl", "suwayomi.tachidesk.server.util.DriverJar")
@@ -140,11 +127,12 @@ object CFClearance {
         return originalRequest.newBuilder()
             .header("Cookie", newCookies.joinToString("; ") { "${it.name}=${it.value}" })
             .build()
-    }
+    }*/
 
     @Suppress("UNREACHABLE_CODE")
     fun getWebViewUserAgent(): String {
-        return try {
+        return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
+        /*return try {
             throw PlaywrightException("playwrite is diabled for v0.6.7")
 
             Playwright.create().use { playwright ->
@@ -162,10 +150,10 @@ object CFClearance {
         } catch (e: PlaywrightException) {
             // Playwright might fail on headless environments like docker
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
-        }
+        }*/
     }
 
-    private fun getCookies(
+    /*private fun getCookies(
         page: Page,
         url: String,
     ): List<Cookie> {
@@ -235,7 +223,7 @@ object CFClearance {
             if (success) return true
         }
         return false
-    }
+    }*/
 
     private class CloudflareBypassException : Exception()
 }

@@ -26,8 +26,6 @@ main() {
   set -- "${POSITIONAL_ARGS[@]}"
 
   OS="$1"
-  PLAYWRIGHT_VERSION="$(cat gradle/libs.versions.toml | grep -oP "playwright = \"\K([0-9\.]*)(?=\")")"
-  PLAYWRIGHT_REVISION="$(curl --silent "https://raw.githubusercontent.com/microsoft/playwright/v$PLAYWRIGHT_VERSION/packages/playwright-core/browsers.json" 2>&1 | grep -ozP "\"name\": \"chromium\",\n *\"revision\": \"\K[0-9]*")"
   JAR="$(ls server/build/*.jar | tail -n1)"
   RELEASE_NAME="$(echo "${JAR%.*}" | xargs basename)-$OS"
   RELEASE_VERSION="$(tmp="${JAR%-*}"; echo "${tmp##*-}" | tr -d v)"
@@ -61,9 +59,6 @@ main() {
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_jre_and_electron
 
-      PLAYWRIGHT_PLATFORM="linux"
-      setup_playwright
-
       RELEASE="$RELEASE_NAME.tar.gz"
       make_linux_bundle
       move_release_to_output_dir
@@ -76,9 +71,6 @@ main() {
       ELECTRON="electron-$electron_version-darwin-x64.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_jre_and_electron
-
-      PLAYWRIGHT_PLATFORM="mac"
-      setup_playwright
 
       RELEASE="$RELEASE_NAME.zip"
       make_macos_bundle
@@ -93,9 +85,6 @@ main() {
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_jre_and_electron
 
-      PLAYWRIGHT_PLATFORM="mac-arm64"
-      setup_playwright
-
       RELEASE="$RELEASE_NAME.zip"
       make_macos_bundle
       move_release_to_output_dir
@@ -108,9 +97,6 @@ main() {
       ELECTRON="electron-$electron_version-win32-ia32.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_jre_and_electron
-
-      PLAYWRIGHT_PLATFORM="win64"
-      setup_playwright
 
       RELEASE="$RELEASE_NAME.zip"
       make_windows_bundle
@@ -128,9 +114,6 @@ main() {
       ELECTRON="electron-$electron_version-win32-x64.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_jre_and_electron
-
-      PLAYWRIGHT_PLATFORM="win64"
-      setup_playwright
 
       RELEASE="$RELEASE_NAME.zip"
       make_windows_bundle
@@ -293,11 +276,6 @@ make_windows_package() {
   wixl -D ProductVersion="$RELEASE_VERSION" -D SourceDir="$RELEASE_NAME" \
     -D Icon="$icon" --arch "$arch" "scripts/resources/msi/suwayomi-server-$arch.wxs" \
     "$RELEASE_NAME/jre.wxs" "$RELEASE_NAME/electron.wxs" "$RELEASE_NAME/bin.wxs" -o "$RELEASE"
-}
-
-setup_playwright() {
-  mkdir "$RELEASE_NAME/bin"
-  curl -L "https://playwright.azureedge.net/builds/chromium/$PLAYWRIGHT_REVISION/chromium-$PLAYWRIGHT_PLATFORM.zip" -o "$RELEASE_NAME/bin/chromium.zip"
 }
 
 # Error handler
