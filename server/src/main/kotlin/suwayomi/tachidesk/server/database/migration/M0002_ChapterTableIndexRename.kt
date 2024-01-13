@@ -13,5 +13,5 @@ import de.neonew.exposed.migrations.helpers.RenameFieldMigration
 class M0002_ChapterTableIndexRename : RenameFieldMigration(
     "Chapter",
     "number_in_list",
-    "index"
+    "index",
 )

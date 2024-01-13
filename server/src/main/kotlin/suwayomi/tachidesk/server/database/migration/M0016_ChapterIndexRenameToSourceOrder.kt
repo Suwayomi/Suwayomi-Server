@@ -11,7 +11,8 @@ import de.neonew.exposed.migrations.helpers.SQLMigration
 
 @Suppress("ClassName", "unused")
 class M0016_ChapterIndexRenameToSourceOrder : SQLMigration() {
-    override val sql = """
+    override val sql =
+        """
         ALTER TABLE CHAPTER ALTER COLUMN INDEX RENAME TO SOURCE_ORDER;
-    """.trimIndent()
+        """.trimIndent()
 }

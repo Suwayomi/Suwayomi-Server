@@ -18,8 +18,12 @@ import io.swagger.v3.oas.models.info.Info
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.future.future
+import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
+import org.eclipse.jetty.server.Server
+import org.eclipse.jetty.server.ServerConnector
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
@@ -31,6 +35,7 @@ import suwayomi.tachidesk.server.util.WebInterfaceManager
 import java.io.IOException
 import java.lang.IllegalArgumentException
 import java.util.concurrent.CompletableFuture
+import kotlin.NoSuchElementException
 import kotlin.concurrent.thread
 
 object JavalinSetup {
@@ -45,44 +50,82 @@ object JavalinSetup {
     }
 
     fun javalinSetup() {
-        val app = Javalin.create { config ->
-            if (serverConfig.webUIEnabled) {
-                WebInterfaceManager.setupWebUI()
-
-                logger.info { "Serving web static files for ${serverConfig.webUIFlavor}" }
-                config.addStaticFiles(applicationDirs.webUIRoot, Location.EXTERNAL)
-                config.addSinglePageRoot("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
-                config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
+        val server = Server()
+        val connector =
+            ServerConnector(server).apply {
+                host = serverConfig.ip.value
+                port = serverConfig.port.value
             }
+        server.addConnector(connector)
 
-            config.enableCorsForAllOrigins()
+        serverConfig.subscribeTo(combine(serverConfig.ip, serverConfig.port) { ip, port -> Pair(ip, port) }, { (newIp, newPort) ->
+            val oldIp = connector.host
+            val oldPort = connector.port
 
-            config.accessManager { handler, ctx, _ ->
-                fun credentialsValid(): Boolean {
-                    val (username, password) = ctx.basicAuthCredentials()
-                    return username == serverConfig.basicAuthUsername && password == serverConfig.basicAuthPassword
+            connector.host = newIp
+            connector.port = newPort
+            connector.stop()
+            connector.start()
+
+            logger.info { "Server ip and/or port changed from $oldIp:$oldPort to $newIp:$newPort " }
+        })
+
+        val app =
+            Javalin.create { config ->
+                if (serverConfig.webUIEnabled.value) {
+                    val serveWebUI = {
+                        config.addSinglePageRoot("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
+                    }
+                    WebInterfaceManager.setServeWebUI(serveWebUI)
+
+                    runBlocking {
+                        WebInterfaceManager.setupWebUI()
+                    }
+
+                    logger.info { "Serving web static files for ${serverConfig.webUIFlavor.value}" }
+                    config.addStaticFiles(applicationDirs.webUIRoot, Location.EXTERNAL)
+                    serveWebUI()
+
+                    config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
                 }
 
-                if (serverConfig.basicAuthEnabled && !(ctx.basicAuthCredentialsExist() && credentialsValid())) {
-                    ctx.header("WWW-Authenticate", "Basic")
-                    ctx.status(401).json("Unauthorized")
-                } else {
-                    handler.handle(ctx)
+                config.server { server }
+
+                config.addStaticFiles { staticFiles ->
+                    staticFiles.hostedPath = "/static"
+                    staticFiles.directory = "/static"
+                    staticFiles.location = Location.CLASSPATH
+                    staticFiles.headers = mapOf("cache-control" to "max-age=86400")
                 }
-            }
-        }.events { event ->
-            event.serverStarted {
-                if (serverConfig.initialOpenInBrowserEnabled) {
-                    Browser.openInBrowser()
+
+                config.enableCorsForAllOrigins()
+
+                config.accessManager { handler, ctx, _ ->
+                    fun credentialsValid(): Boolean {
+                        val (username, password) = ctx.basicAuthCredentials()
+                        return username == serverConfig.basicAuthUsername.value && password == serverConfig.basicAuthPassword.value
+                    }
+
+                    if (serverConfig.basicAuthEnabled.value && !(ctx.basicAuthCredentialsExist() && credentialsValid())) {
+                        ctx.header("WWW-Authenticate", "Basic")
+                        ctx.status(401).json("Unauthorized")
+                    } else {
+                        handler.handle(ctx)
+                    }
                 }
-            }
-        }.start(serverConfig.ip, serverConfig.port)
+            }.events { event ->
+                event.serverStarted {
+                    if (serverConfig.initialOpenInBrowserEnabled.value) {
+                        Browser.openInBrowser()
+                    }
+                }
+            }.start()
 
         // when JVM is prompted to shutdown, stop javalin gracefully
         Runtime.getRuntime().addShutdownHook(
             thread(start = false) {
                 app.stop()
-            }
+            },
         )
 
         app.exception(NullPointerException::class.java) { e, ctx ->
@@ -117,16 +160,17 @@ object JavalinSetup {
     }
 
     private fun getOpenApiOptions(): OpenApiOptions {
-        val applicationInfo = Info().apply {
-            version("1.0")
-            description("Tachidesk Api")
-        }
+        val applicationInfo =
+            Info().apply {
+                version("1.0")
+                description("Suwayomi-Server Api")
+            }
         return OpenApiOptions(applicationInfo).apply {
             path("/api/openapi.json")
             swagger(
                 SwaggerOptions("/api/swagger-ui").apply {
-                    title("Tachidesk Swagger Documentation")
-                }
+                    title("Suwayomi-Server Swagger Documentation")
+                },
             )
         }
     }

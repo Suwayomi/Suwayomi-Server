@@ -4,59 +4,50 @@ import com.github.junrar.Archive
 import com.github.junrar.rarfile.FileHeader
 import eu.kanade.tachiyomi.util.lang.compareToCaseInsensitiveNaturalOrder
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
+import java.io.PipedInputStream
+import java.io.PipedOutputStream
 
 /**
  * Loader used to load a chapter from a .rar or .cbr file.
  */
 class RarPageLoader(file: File) : PageLoader {
+    private val rar = Archive(file)
 
-    /**
-     * The rar archive to load pages from.
-     */
-    private val archive = Archive(file)
-
-    /**
-     * The fully uncompressed files, to be used in case archive is solid.
-     */
-    private var archiveMap = mutableMapOf<FileHeader, InputStream>()
-
-    /**
-     * Returns an observable containing the pages found on this rar archive ordered with a natural
-     * comparator.
-     */
-    override fun getPages(): List<ReaderPage> {
-        if (archive.mainHeader.isSolid) {
-            // Solid means that we need to read all the file sequentially
-            for (header in archive.fileHeaders) {
-                val baos = ByteArrayOutputStream()
-                archive.extractFile(header, baos)
-                archiveMap[header] = ByteArrayInputStream(baos.toByteArray())
-            }
-            // After reading the full archive, proceed to filter and transform
-            return archive.fileHeaders
-                .filter { !it.isDirectory && ImageUtil.isImage(it.fileName) { archiveMap.getValue(it) } }
-                .sortedWith { f1, f2 -> f1.fileName.compareToCaseInsensitiveNaturalOrder(f2.fileName) }
-                .mapIndexed { i, header ->
-                    val streamFn = { archiveMap.getValue(header) }
-
-                    ReaderPage(i).apply {
-                        stream = streamFn
-                    }
-                }
-        }
-        return archive.fileHeaders
-            .filter { !it.isDirectory && ImageUtil.isImage(it.fileName) { archive.getInputStream(it) } }
+    override suspend fun getPages(): List<ReaderPage> {
+        return rar.fileHeaders.asSequence()
+            .filter { !it.isDirectory && ImageUtil.isImage(it.fileName) { rar.getInputStream(it) } }
             .sortedWith { f1, f2 -> f1.fileName.compareToCaseInsensitiveNaturalOrder(f2.fileName) }
             .mapIndexed { i, header ->
-                val streamFn = { archive.getInputStream(header) }
-
                 ReaderPage(i).apply {
-                    stream = streamFn
+                    stream = { getStream(rar, header) }
                 }
             }
+            .toList()
+    }
+
+    override fun recycle() {
+        rar.close()
+    }
+
+    /**
+     * Returns an input stream for the given [header].
+     */
+    private fun getStream(
+        rar: Archive,
+        header: FileHeader,
+    ): InputStream {
+        val pipeIn = PipedInputStream()
+        val pipeOut = PipedOutputStream(pipeIn)
+        synchronized(this) {
+            try {
+                pipeOut.use {
+                    rar.extractFile(header, it)
+                }
+            } catch (_: Exception) {
+            }
+        }
+        return pipeIn
     }
 }

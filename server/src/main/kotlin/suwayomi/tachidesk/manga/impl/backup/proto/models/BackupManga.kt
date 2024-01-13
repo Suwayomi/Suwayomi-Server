@@ -37,7 +37,7 @@ data class BackupManga(
     @ProtoNumber(102) var brokenHistory: List<BrokenBackupHistory> = emptyList(),
     @ProtoNumber(103) var viewer_flags: Int? = null,
     @ProtoNumber(104) var history: List<BackupHistory> = emptyList(),
-    @ProtoNumber(105) var updateStrategy: UpdateStrategy = UpdateStrategy.ALWAYS_UPDATE
+    @ProtoNumber(105) var updateStrategy: UpdateStrategy = UpdateStrategy.ALWAYS_UPDATE,
 ) {
     fun getMangaImpl(): MangaImpl {
         return MangaImpl().apply {
@@ -86,7 +86,7 @@ data class BackupManga(
                 dateAdded = manga.date_added,
                 viewer = manga.readingModeType,
                 viewer_flags = manga.viewer_flags,
-                chapterFlags = manga.chapter_flags
+                chapterFlags = manga.chapter_flags,
             )
         }
     }

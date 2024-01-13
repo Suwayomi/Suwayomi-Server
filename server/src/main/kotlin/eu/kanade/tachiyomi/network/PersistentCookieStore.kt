@@ -15,7 +15,6 @@ import kotlin.time.Duration.Companion.seconds
 
 // from TachiWeb-Server
 class PersistentCookieStore(context: Context) : CookieStore {
-
     private val cookieMap = ConcurrentHashMap<String, List<Cookie>>()
     private val prefs = context.getSharedPreferences("cookie_store", Context.MODE_PRIVATE)
 
@@ -28,8 +27,9 @@ class PersistentCookieStore(context: Context) : CookieStore {
             if (cookies != null) {
                 try {
                     val url = "http://$key".toHttpUrlOrNull() ?: continue
-                    val nonExpiredCookies = cookies.mapNotNull { Cookie.parse(url, it) }
-                        .filter { !it.hasExpired() }
+                    val nonExpiredCookies =
+                        cookies.mapNotNull { Cookie.parse(url, it) }
+                            .filter { !it.hasExpired() }
                     cookieMap.put(key, nonExpiredCookies)
                 } catch (e: Exception) {
                     // Ignore
@@ -38,7 +38,10 @@ class PersistentCookieStore(context: Context) : CookieStore {
         }
     }
 
-    fun addAll(url: HttpUrl, cookies: List<Cookie>) {
+    fun addAll(
+        url: HttpUrl,
+        cookies: List<Cookie>,
+    ) {
         lock.withLock {
             val uri = url.toUri()
 
@@ -75,13 +78,17 @@ class PersistentCookieStore(context: Context) : CookieStore {
         }
     }
 
-    override fun get(uri: URI): List<HttpCookie> = get(uri.host).map {
-        it.toHttpCookie()
-    }
+    override fun get(uri: URI): List<HttpCookie> =
+        get(uri.host).map {
+            it.toHttpCookie()
+        }
 
     fun get(url: HttpUrl) = get(url.toUri().host)
 
-    override fun add(uri: URI?, cookie: HttpCookie) {
+    override fun add(
+        uri: URI?,
+        cookie: HttpCookie,
+    ) {
         @Suppress("NAME_SHADOWING")
         val uri = uri ?: URI("http://" + cookie.domain.removePrefix("."))
         lock.withLock {
@@ -105,15 +112,19 @@ class PersistentCookieStore(context: Context) : CookieStore {
         }
     }
 
-    override fun remove(uri: URI?, cookie: HttpCookie): Boolean {
+    override fun remove(
+        uri: URI?,
+        cookie: HttpCookie,
+    ): Boolean {
         @Suppress("NAME_SHADOWING")
         val uri = uri ?: URI("http://" + cookie.domain.removePrefix("."))
         return lock.withLock {
             val cookies = cookieMap[uri.host].orEmpty()
-            val index = cookies.indexOfFirst {
-                it.name == cookie.name &&
-                    it.path == cookie.path
-            }
+            val index =
+                cookies.indexOfFirst {
+                    it.name == cookie.name &&
+                        it.path == cookie.path
+                }
             if (index >= 0) {
                 val newList = cookies.toMutableList()
                 newList.removeAt(index)
@@ -132,45 +143,47 @@ class PersistentCookieStore(context: Context) : CookieStore {
 
     private fun saveToDisk(uri: URI) {
         // Get cookies to be stored in disk
-        val newValues = cookieMap[uri.host]
-            .orEmpty()
-            .asSequence()
-            .filter { it.persistent && !it.hasExpired() }
-            .map(Cookie::toString)
-            .toSet()
+        val newValues =
+            cookieMap[uri.host]
+                .orEmpty()
+                .asSequence()
+                .filter { it.persistent && !it.hasExpired() }
+                .map(Cookie::toString)
+                .toSet()
 
         prefs.edit().putStringSet(uri.host, newValues).apply()
     }
 
     private fun Cookie.hasExpired() = System.currentTimeMillis() >= expiresAt
 
-    private fun HttpCookie.toCookie(uri: URI) = Cookie.Builder()
-        .name(name)
-        .value(value)
-        .domain(uri.host)
-        .path(path ?: "/")
-        .let {
-            if (maxAge != -1L) {
-                it.expiresAt(System.currentTimeMillis() + maxAge.seconds.inWholeMilliseconds)
-            } else {
-                it.expiresAt(Long.MAX_VALUE)
+    private fun HttpCookie.toCookie(uri: URI) =
+        Cookie.Builder()
+            .name(name)
+            .value(value)
+            .domain(uri.host)
+            .path(path ?: "/")
+            .let {
+                if (maxAge != -1L) {
+                    it.expiresAt(System.currentTimeMillis() + maxAge.seconds.inWholeMilliseconds)
+                } else {
+                    it.expiresAt(Long.MAX_VALUE)
+                }
             }
-        }
-        .let {
-            if (secure) {
-                it.secure()
-            } else {
-                it
+            .let {
+                if (secure) {
+                    it.secure()
+                } else {
+                    it
+                }
             }
-        }
-        .let {
-            if (isHttpOnly) {
-                it.httpOnly()
-            } else {
-                it
+            .let {
+                if (isHttpOnly) {
+                    it.httpOnly()
+                } else {
+                    it
+                }
             }
-        }
-        .build()
+            .build()
 
     private fun Cookie.toHttpCookie(): HttpCookie {
         val it = this
@@ -178,11 +191,12 @@ class PersistentCookieStore(context: Context) : CookieStore {
             domain = it.domain
             path = it.path
             secure = it.secure
-            maxAge = if (it.persistent) {
-                -1
-            } else {
-                (it.expiresAt.milliseconds - System.currentTimeMillis().milliseconds).inWholeSeconds
-            }
+            maxAge =
+                if (it.persistent) {
+                    -1
+                } else {
+                    (it.expiresAt.milliseconds - System.currentTimeMillis().milliseconds).inWholeSeconds
+                }
 
             isHttpOnly = it.httpOnly
         }

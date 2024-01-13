@@ -21,18 +21,17 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 
 fun setLoggingEnabled(enabled: Boolean = true) {
     val logger = (KotlinLogging.logger(Logger.ROOT_LOGGER_NAME).underlyingLogger as ch.qos.logback.classic.Logger)
-    logger.level = if (enabled) {
-        Level.DEBUG
-    } else {
-        Level.ERROR
-    }
+    logger.level =
+        if (enabled) {
+            Level.DEBUG
+        } else {
+            Level.ERROR
+        }
 }
 
 const val BASE_PATH = "build/tmp/TestDesk"
 
-fun createLibraryManga(
-    _title: String
-): Int {
+fun createLibraryManga(_title: String): Int {
     return transaction {
         MangaTable.insertAndGetId {
             it[title] = _title
@@ -43,9 +42,7 @@ fun createLibraryManga(
     }
 }
 
-fun createSMangas(
-    count: Int
-): List<SManga> {
+fun createSMangas(count: Int): List<SManga> {
     return (0 until count).map {
         SManga.create().apply {
             title = "Manga $it"
@@ -57,7 +54,7 @@ fun createSMangas(
 fun createChapters(
     mangaId: Int,
     amount: Int,
-    read: Boolean
+    read: Boolean,
 ) {
     val list = listOf((0 until amount)).flatten().map { 1 }
     transaction {

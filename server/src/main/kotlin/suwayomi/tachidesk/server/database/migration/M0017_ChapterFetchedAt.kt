@@ -14,5 +14,5 @@ class M0017_ChapterFetchedAt : AddColumnMigration(
     "Chapter",
     "fetched_at",
     "BIGINT",
-    "0"
+    "0",
 )

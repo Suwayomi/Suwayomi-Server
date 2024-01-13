@@ -18,22 +18,24 @@ import xyz.nulldev.androidcompat.service.ServiceSupport
  */
 
 class AndroidCompatModule {
-    fun create() = DI.Module("AndroidCompat") {
-        bind<AndroidFiles>() with singleton { AndroidFiles() }
+    fun create() =
+        DI.Module("AndroidCompat") {
+            bind<AndroidFiles>() with singleton { AndroidFiles() }
 
-        bind<ApplicationInfoImpl>() with singleton { ApplicationInfoImpl() }
+            bind<ApplicationInfoImpl>() with singleton { ApplicationInfoImpl() }
 
-        bind<ServiceSupport>() with singleton { ServiceSupport() }
+            bind<ServiceSupport>() with singleton { ServiceSupport() }
 
-        bind<FakePackageManager>() with singleton { FakePackageManager() }
+            bind<FakePackageManager>() with singleton { FakePackageManager() }
 
-        bind<PackageController>() with singleton { PackageController() }
+            bind<PackageController>() with singleton { PackageController() }
 
-        // Context
-        bind<CustomContext>() with singleton { CustomContext() }
-        bind<Context>() with singleton {
-            val context: Context by DI.global.instance<CustomContext>()
-            context
+            // Context
+            bind<CustomContext>() with singleton { CustomContext() }
+            bind<Context>() with
+                singleton {
+                    val context: Context by DI.global.instance<CustomContext>()
+                    context
+                }
         }
-    }
 }

@@ -14,5 +14,5 @@ class M0007_ChapterIsDownloaded : AddColumnMigration(
     "Chapter",
     "is_downloaded",
     "BOOLEAN",
-    "FALSE"
+    "FALSE",
 )

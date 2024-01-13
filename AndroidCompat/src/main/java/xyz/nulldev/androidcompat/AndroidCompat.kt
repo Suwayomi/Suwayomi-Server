@@ -7,7 +7,6 @@ import org.kodein.di.instance
 import xyz.nulldev.androidcompat.androidimpl.CustomContext
 
 class AndroidCompat {
-
     val context: CustomContext by DI.global.instance()
 
     fun startApp(application: Application) {

@@ -11,10 +11,15 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 
 object ExtensionTable : IntIdTable() {
     val apkName = varchar("apk_name", 1024)
+    val repo = varchar("repo", 1024).nullable()
 
     // default is the local source icon from tachiyomi
-    val iconUrl = varchar("icon_url", 2048)
-        .default("https://raw.githubusercontent.com/tachiyomiorg/tachiyomi/64ba127e7d43b1d7e6d58a6f5c9b2bd5fe0543f7/app/src/main/res/mipmap-xxxhdpi/ic_local_source.webp")
+    @Suppress("ktlint:standard:max-line-length")
+    val iconUrl =
+        varchar("icon_url", 2048)
+            .default(
+                "https://raw.githubusercontent.com/tachiyomiorg/tachiyomi/64ba127e7d43b1d7e6d58a6f5c9b2bd5fe0543f7/app/src/main/res/mipmap-xxxhdpi/ic_local_source.webp",
+            )
 
     val name = varchar("name", 128)
     val pkgName = varchar("pkg_name", 128)

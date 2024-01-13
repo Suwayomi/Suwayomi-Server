@@ -15,6 +15,7 @@ import graphql.GraphQL
 import io.javalin.http.Context
 import io.javalin.websocket.WsCloseContext
 import io.javalin.websocket.WsMessageContext
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -25,11 +26,12 @@ class TachideskGraphQLServer(
     requestParser: JavalinGraphQLRequestParser,
     contextFactory: TachideskGraphQLContextFactory,
     requestHandler: GraphQLRequestHandler,
-    subscriptionHandler: GraphQLSubscriptionHandler
+    subscriptionHandler: GraphQLSubscriptionHandler,
 ) : GraphQLServer<Context>(requestParser, contextFactory, requestHandler) {
     private val objectMapper = jacksonObjectMapper()
     private val subscriptionProtocolHandler = ApolloSubscriptionProtocolHandler(contextFactory, subscriptionHandler, objectMapper)
 
+    @OptIn(DelicateCoroutinesApi::class)
     fun handleSubscriptionMessage(context: WsMessageContext) {
         subscriptionProtocolHandler.handleMessage(context)
             .map { objectMapper.writeValueAsString(it) }
@@ -42,9 +44,10 @@ class TachideskGraphQLServer(
     }
 
     companion object {
-        private fun getGraphQLObject(): GraphQL = GraphQL.newGraphQL(schema)
-            .subscriptionExecutionStrategy(FlowSubscriptionExecutionStrategy())
-            .build()
+        private fun getGraphQLObject(): GraphQL =
+            GraphQL.newGraphQL(schema)
+                .subscriptionExecutionStrategy(FlowSubscriptionExecutionStrategy())
+                .build()
 
         fun create(): TachideskGraphQLServer {
             val graphQL = getGraphQLObject()

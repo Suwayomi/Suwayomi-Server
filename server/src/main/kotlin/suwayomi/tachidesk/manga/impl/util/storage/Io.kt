@@ -10,7 +10,10 @@ package suwayomi.tachidesk.manga.impl.util.storage
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
-fun ZipEntry.use(stream: ZipInputStream, block: (ZipEntry) -> Unit) {
+fun ZipEntry.use(
+    stream: ZipInputStream,
+    block: (ZipEntry) -> Unit,
+) {
     var exception: Throwable? = null
     try {
         return block(this)

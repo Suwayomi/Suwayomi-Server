@@ -33,36 +33,36 @@ class CategoryMangaTest : ApplicationTest() {
         assertEquals(
             0,
             CategoryManga.getCategoryMangaList(DEFAULT_CATEGORY_ID)[0].unreadCount,
-            "Manga should not have any unread chapters"
+            "Manga should not have any unread chapters",
         )
         createChapters(mangaId, 10, false)
         assertEquals(
             10,
             CategoryManga.getCategoryMangaList(DEFAULT_CATEGORY_ID)[0].unreadCount,
-            "Manga should have unread chapters"
+            "Manga should have unread chapters",
         )
 
         val categoryId = Category.createCategory("Old")
         assertEquals(
             0,
             CategoryManga.getCategoryMangaList(categoryId).size,
-            "Newly created category shouldn't have any Mangas"
+            "Newly created category shouldn't have any Mangas",
         )
         CategoryManga.addMangaToCategory(mangaId, categoryId)
         assertEquals(
             1,
             CategoryManga.getCategoryMangaList(categoryId).size,
-            "Manga should been moved"
+            "Manga should been moved",
         )
         assertEquals(
             10,
             CategoryManga.getCategoryMangaList(categoryId)[0].unreadCount,
-            "Manga should keep it's unread count in moved category"
+            "Manga should keep it's unread count in moved category",
         )
         assertEquals(
             0,
             CategoryManga.getCategoryMangaList(DEFAULT_CATEGORY_ID).size,
-            "Manga shouldn't be member of default category after moving"
+            "Manga shouldn't be member of default category after moving",
         )
     }
 
@@ -72,7 +72,7 @@ class CategoryMangaTest : ApplicationTest() {
             ChapterTable,
             CategoryMangaTable,
             MangaTable,
-            CategoryTable
+            CategoryTable,
         )
     }
 }

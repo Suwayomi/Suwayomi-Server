@@ -12,16 +12,18 @@ fun ApkMeta.toPackageInfo(apk: File): PackageInfo {
         it.versionCode = versionCode.toInt()
         it.versionName = versionName
 
-        it.reqFeatures = usesFeatures.map {
-            FeatureInfo().apply {
-                name = it.name
-            }
-        }.toTypedArray()
+        it.reqFeatures =
+            usesFeatures.map {
+                FeatureInfo().apply {
+                    name = it.name
+                }
+            }.toTypedArray()
 
-        it.applicationInfo = ApplicationInfo().apply {
-            packageName = it.packageName
-            nonLocalizedLabel = label
-            sourceDir = apk.absolutePath
-        }
+        it.applicationInfo =
+            ApplicationInfo().apply {
+                packageName = it.packageName
+                nonLocalizedLabel = label
+                sourceDir = apk.absolutePath
+            }
     }
 }

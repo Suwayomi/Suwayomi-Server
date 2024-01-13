@@ -20,7 +20,6 @@ import java.util.Calendar
 
 @Suppress("UNCHECKED_CAST")
 class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
-
     private val cachedContent = mutableListOf<ResultSetEntry>()
     private val columnCache = mutableMapOf<String, Int>()
     private var lastReturnWasNull = false
@@ -29,9 +28,10 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
 
     val parentMetadata = parent.metaData
     val columnCount = parentMetadata.columnCount
-    val columnLabels = (1..columnCount).map {
-        parentMetadata.getColumnLabel(it)
-    }.toTypedArray()
+    val columnLabels =
+        (1..columnCount).map {
+            parentMetadata.getColumnLabel(it)
+        }.toTypedArray()
 
     init {
         val columnCount = columnCount
@@ -43,10 +43,11 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
 
         // Fill cache
         while (parent.next()) {
-            cachedContent += ResultSetEntry().apply {
-                for (i in 1..columnCount)
-                    data += parent.getObject(i)
-            }
+            cachedContent +=
+                ResultSetEntry().apply {
+                    for (i in 1..columnCount)
+                        data += parent.getObject(i)
+                }
             resultSetLength++
         }
     }
@@ -92,67 +93,121 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         return obj(columnLabel) as NClob
     }
 
-    override fun updateNString(columnIndex: Int, nString: String?) {
+    override fun updateNString(
+        columnIndex: Int,
+        nString: String?,
+    ) {
         notImplemented()
     }
 
-    override fun updateNString(columnLabel: String?, nString: String?) {
+    override fun updateNString(
+        columnLabel: String?,
+        nString: String?,
+    ) {
         notImplemented()
     }
 
-    override fun updateBinaryStream(columnIndex: Int, x: InputStream?, length: Int) {
+    override fun updateBinaryStream(
+        columnIndex: Int,
+        x: InputStream?,
+        length: Int,
+    ) {
         notImplemented()
     }
 
-    override fun updateBinaryStream(columnLabel: String?, x: InputStream?, length: Int) {
+    override fun updateBinaryStream(
+        columnLabel: String?,
+        x: InputStream?,
+        length: Int,
+    ) {
         notImplemented()
     }
 
-    override fun updateBinaryStream(columnIndex: Int, x: InputStream?, length: Long) {
+    override fun updateBinaryStream(
+        columnIndex: Int,
+        x: InputStream?,
+        length: Long,
+    ) {
         notImplemented()
     }
 
-    override fun updateBinaryStream(columnLabel: String?, x: InputStream?, length: Long) {
+    override fun updateBinaryStream(
+        columnLabel: String?,
+        x: InputStream?,
+        length: Long,
+    ) {
         notImplemented()
     }
 
-    override fun updateBinaryStream(columnIndex: Int, x: InputStream?) {
+    override fun updateBinaryStream(
+        columnIndex: Int,
+        x: InputStream?,
+    ) {
         notImplemented()
     }
 
-    override fun updateBinaryStream(columnLabel: String?, x: InputStream?) {
+    override fun updateBinaryStream(
+        columnLabel: String?,
+        x: InputStream?,
+    ) {
         notImplemented()
     }
 
-    override fun updateTimestamp(columnIndex: Int, x: Timestamp?) {
+    override fun updateTimestamp(
+        columnIndex: Int,
+        x: Timestamp?,
+    ) {
         notImplemented()
     }
 
-    override fun updateTimestamp(columnLabel: String?, x: Timestamp?) {
+    override fun updateTimestamp(
+        columnLabel: String?,
+        x: Timestamp?,
+    ) {
         notImplemented()
     }
 
-    override fun updateNCharacterStream(columnIndex: Int, x: Reader?, length: Long) {
+    override fun updateNCharacterStream(
+        columnIndex: Int,
+        x: Reader?,
+        length: Long,
+    ) {
         notImplemented()
     }
 
-    override fun updateNCharacterStream(columnLabel: String?, reader: Reader?, length: Long) {
+    override fun updateNCharacterStream(
+        columnLabel: String?,
+        reader: Reader?,
+        length: Long,
+    ) {
         notImplemented()
     }
 
-    override fun updateNCharacterStream(columnIndex: Int, x: Reader?) {
+    override fun updateNCharacterStream(
+        columnIndex: Int,
+        x: Reader?,
+    ) {
         notImplemented()
     }
 
-    override fun updateNCharacterStream(columnLabel: String?, reader: Reader?) {
+    override fun updateNCharacterStream(
+        columnLabel: String?,
+        reader: Reader?,
+    ) {
         notImplemented()
     }
 
-    override fun updateInt(columnIndex: Int, x: Int) {
+    override fun updateInt(
+        columnIndex: Int,
+        x: Int,
+    ) {
         notImplemented()
     }
 
-    override fun updateInt(columnLabel: String?, x: Int) {
+    override fun updateInt(
+        columnLabel: String?,
+        x: Int,
+    ) {
         notImplemented()
     }
 
@@ -170,12 +225,18 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun getDate(columnIndex: Int, cal: Calendar?): Date {
+    override fun getDate(
+        columnIndex: Int,
+        cal: Calendar?,
+    ): Date {
         // TODO Maybe?
         notImplemented()
     }
 
-    override fun getDate(columnLabel: String?, cal: Calendar?): Date {
+    override fun getDate(
+        columnLabel: String?,
+        cal: Calendar?,
+    ): Date {
         // TODO Maybe?
         notImplemented()
     }
@@ -185,11 +246,17 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun updateFloat(columnIndex: Int, x: Float) {
+    override fun updateFloat(
+        columnIndex: Int,
+        x: Float,
+    ) {
         notImplemented()
     }
 
-    override fun updateFloat(columnLabel: String?, x: Float) {
+    override fun updateFloat(
+        columnLabel: String?,
+        x: Float,
+    ) {
         notImplemented()
     }
 
@@ -205,12 +272,18 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         return cursor - 1 < resultSetLength
     }
 
-    override fun getBigDecimal(columnIndex: Int, scale: Int): BigDecimal {
+    override fun getBigDecimal(
+        columnIndex: Int,
+        scale: Int,
+    ): BigDecimal {
         // TODO Maybe?
         notImplemented()
     }
 
-    override fun getBigDecimal(columnLabel: String?, scale: Int): BigDecimal {
+    override fun getBigDecimal(
+        columnLabel: String?,
+        scale: Int,
+    ): BigDecimal {
         // TODO Maybe?
         notImplemented()
     }
@@ -223,11 +296,17 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         return obj(columnLabel) as BigDecimal
     }
 
-    override fun updateBytes(columnIndex: Int, x: ByteArray?) {
+    override fun updateBytes(
+        columnIndex: Int,
+        x: ByteArray?,
+    ) {
         notImplemented()
     }
 
-    override fun updateBytes(columnLabel: String?, x: ByteArray?) {
+    override fun updateBytes(
+        columnLabel: String?,
+        x: ByteArray?,
+    ) {
         notImplemented()
     }
 
@@ -249,12 +328,18 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun getTime(columnIndex: Int, cal: Calendar?): Time {
+    override fun getTime(
+        columnIndex: Int,
+        cal: Calendar?,
+    ): Time {
         // TODO Maybe?
         notImplemented()
     }
 
-    override fun getTime(columnLabel: String?, cal: Calendar?): Time {
+    override fun getTime(
+        columnLabel: String?,
+        cal: Calendar?,
+    ): Time {
         // TODO Maybe?
         notImplemented()
     }
@@ -328,27 +413,49 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         return cursorValid()
     }
 
-    override fun updateAsciiStream(columnIndex: Int, x: InputStream?, length: Int) {
+    override fun updateAsciiStream(
+        columnIndex: Int,
+        x: InputStream?,
+        length: Int,
+    ) {
         notImplemented()
     }
 
-    override fun updateAsciiStream(columnLabel: String?, x: InputStream?, length: Int) {
+    override fun updateAsciiStream(
+        columnLabel: String?,
+        x: InputStream?,
+        length: Int,
+    ) {
         notImplemented()
     }
 
-    override fun updateAsciiStream(columnIndex: Int, x: InputStream?, length: Long) {
+    override fun updateAsciiStream(
+        columnIndex: Int,
+        x: InputStream?,
+        length: Long,
+    ) {
         notImplemented()
     }
 
-    override fun updateAsciiStream(columnLabel: String?, x: InputStream?, length: Long) {
+    override fun updateAsciiStream(
+        columnLabel: String?,
+        x: InputStream?,
+        length: Long,
+    ) {
         notImplemented()
     }
 
-    override fun updateAsciiStream(columnIndex: Int, x: InputStream?) {
+    override fun updateAsciiStream(
+        columnIndex: Int,
+        x: InputStream?,
+    ) {
         notImplemented()
     }
 
-    override fun updateAsciiStream(columnLabel: String?, x: InputStream?) {
+    override fun updateAsciiStream(
+        columnLabel: String?,
+        x: InputStream?,
+    ) {
         notImplemented()
     }
 
@@ -360,61 +467,107 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         return obj(columnLabel) as URL
     }
 
-    override fun updateShort(columnIndex: Int, x: Short) {
+    override fun updateShort(
+        columnIndex: Int,
+        x: Short,
+    ) {
         notImplemented()
     }
 
-    override fun updateShort(columnLabel: String?, x: Short) {
+    override fun updateShort(
+        columnLabel: String?,
+        x: Short,
+    ) {
         notImplemented()
     }
 
     override fun getType() = ResultSet.TYPE_SCROLL_INSENSITIVE
 
-    override fun updateNClob(columnIndex: Int, nClob: NClob?) {
+    override fun updateNClob(
+        columnIndex: Int,
+        nClob: NClob?,
+    ) {
         notImplemented()
     }
 
-    override fun updateNClob(columnLabel: String?, nClob: NClob?) {
+    override fun updateNClob(
+        columnLabel: String?,
+        nClob: NClob?,
+    ) {
         notImplemented()
     }
 
-    override fun updateNClob(columnIndex: Int, reader: Reader?, length: Long) {
+    override fun updateNClob(
+        columnIndex: Int,
+        reader: Reader?,
+        length: Long,
+    ) {
         notImplemented()
     }
 
-    override fun updateNClob(columnLabel: String?, reader: Reader?, length: Long) {
+    override fun updateNClob(
+        columnLabel: String?,
+        reader: Reader?,
+        length: Long,
+    ) {
         notImplemented()
     }
 
-    override fun updateNClob(columnIndex: Int, reader: Reader?) {
+    override fun updateNClob(
+        columnIndex: Int,
+        reader: Reader?,
+    ) {
         notImplemented()
     }
 
-    override fun updateNClob(columnLabel: String?, reader: Reader?) {
+    override fun updateNClob(
+        columnLabel: String?,
+        reader: Reader?,
+    ) {
         notImplemented()
     }
 
-    override fun updateRef(columnIndex: Int, x: Ref?) {
+    override fun updateRef(
+        columnIndex: Int,
+        x: Ref?,
+    ) {
         notImplemented()
     }
 
-    override fun updateRef(columnLabel: String?, x: Ref?) {
+    override fun updateRef(
+        columnLabel: String?,
+        x: Ref?,
+    ) {
         notImplemented()
     }
 
-    override fun updateObject(columnIndex: Int, x: Any?, scaleOrLength: Int) {
+    override fun updateObject(
+        columnIndex: Int,
+        x: Any?,
+        scaleOrLength: Int,
+    ) {
         notImplemented()
     }
 
-    override fun updateObject(columnIndex: Int, x: Any?) {
+    override fun updateObject(
+        columnIndex: Int,
+        x: Any?,
+    ) {
         notImplemented()
     }
 
-    override fun updateObject(columnLabel: String?, x: Any?, scaleOrLength: Int) {
+    override fun updateObject(
+        columnLabel: String?,
+        x: Any?,
+        scaleOrLength: Int,
+    ) {
         notImplemented()
     }
 
-    override fun updateObject(columnLabel: String?, x: Any?) {
+    override fun updateObject(
+        columnLabel: String?,
+        x: Any?,
+    ) {
         notImplemented()
     }
 
@@ -422,11 +575,17 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         internalMove(resultSetLength + 1)
     }
 
-    override fun updateLong(columnIndex: Int, x: Long) {
+    override fun updateLong(
+        columnIndex: Int,
+        x: Long,
+    ) {
         notImplemented()
     }
 
-    override fun updateLong(columnLabel: String?, x: Long) {
+    override fun updateLong(
+        columnLabel: String?,
+        x: Long,
+    ) {
         notImplemented()
     }
 
@@ -440,27 +599,47 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun updateClob(columnIndex: Int, x: Clob?) {
+    override fun updateClob(
+        columnIndex: Int,
+        x: Clob?,
+    ) {
         notImplemented()
     }
 
-    override fun updateClob(columnLabel: String?, x: Clob?) {
+    override fun updateClob(
+        columnLabel: String?,
+        x: Clob?,
+    ) {
         notImplemented()
     }
 
-    override fun updateClob(columnIndex: Int, reader: Reader?, length: Long) {
+    override fun updateClob(
+        columnIndex: Int,
+        reader: Reader?,
+        length: Long,
+    ) {
         notImplemented()
     }
 
-    override fun updateClob(columnLabel: String?, reader: Reader?, length: Long) {
+    override fun updateClob(
+        columnLabel: String?,
+        reader: Reader?,
+        length: Long,
+    ) {
         notImplemented()
     }
 
-    override fun updateClob(columnIndex: Int, reader: Reader?) {
+    override fun updateClob(
+        columnIndex: Int,
+        reader: Reader?,
+    ) {
         notImplemented()
     }
 
-    override fun updateClob(columnLabel: String?, reader: Reader?) {
+    override fun updateClob(
+        columnLabel: String?,
+        reader: Reader?,
+    ) {
         notImplemented()
     }
 
@@ -480,19 +659,31 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         return obj(columnLabel) as String?
     }
 
-    override fun updateSQLXML(columnIndex: Int, xmlObject: SQLXML?) {
+    override fun updateSQLXML(
+        columnIndex: Int,
+        xmlObject: SQLXML?,
+    ) {
         notImplemented()
     }
 
-    override fun updateSQLXML(columnLabel: String?, xmlObject: SQLXML?) {
+    override fun updateSQLXML(
+        columnLabel: String?,
+        xmlObject: SQLXML?,
+    ) {
         notImplemented()
     }
 
-    override fun updateDate(columnIndex: Int, x: Date?) {
+    override fun updateDate(
+        columnIndex: Int,
+        x: Date?,
+    ) {
         notImplemented()
     }
 
-    override fun updateDate(columnLabel: String?, x: Date?) {
+    override fun updateDate(
+        columnLabel: String?,
+        x: Date?,
+    ) {
         notImplemented()
     }
 
@@ -504,21 +695,33 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         return obj(columnLabel)
     }
 
-    override fun getObject(columnIndex: Int, map: MutableMap<String, Class<*>>?): Any {
+    override fun getObject(
+        columnIndex: Int,
+        map: MutableMap<String, Class<*>>?,
+    ): Any {
         // TODO Maybe?
         notImplemented()
     }
 
-    override fun getObject(columnLabel: String?, map: MutableMap<String, Class<*>>?): Any {
+    override fun getObject(
+        columnLabel: String?,
+        map: MutableMap<String, Class<*>>?,
+    ): Any {
         // TODO Maybe?
         notImplemented()
     }
 
-    override fun <T : Any?> getObject(columnIndex: Int, type: Class<T>?): T {
+    override fun <T : Any?> getObject(
+        columnIndex: Int,
+        type: Class<T>?,
+    ): T {
         return obj(columnIndex) as T
     }
 
-    override fun <T : Any?> getObject(columnLabel: String?, type: Class<T>?): T {
+    override fun <T : Any?> getObject(
+        columnLabel: String?,
+        type: Class<T>?,
+    ): T {
         return obj(columnLabel) as T
     }
 
@@ -527,11 +730,17 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         return cursorValid()
     }
 
-    override fun updateDouble(columnIndex: Int, x: Double) {
+    override fun updateDouble(
+        columnIndex: Int,
+        x: Double,
+    ) {
         notImplemented()
     }
 
-    override fun updateDouble(columnLabel: String?, x: Double) {
+    override fun updateDouble(
+        columnLabel: String?,
+        x: Double,
+    ) {
         notImplemented()
     }
 
@@ -565,35 +774,61 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun updateBlob(columnIndex: Int, x: Blob?) {
+    override fun updateBlob(
+        columnIndex: Int,
+        x: Blob?,
+    ) {
         notImplemented()
     }
 
-    override fun updateBlob(columnLabel: String?, x: Blob?) {
+    override fun updateBlob(
+        columnLabel: String?,
+        x: Blob?,
+    ) {
         notImplemented()
     }
 
-    override fun updateBlob(columnIndex: Int, inputStream: InputStream?, length: Long) {
+    override fun updateBlob(
+        columnIndex: Int,
+        inputStream: InputStream?,
+        length: Long,
+    ) {
         notImplemented()
     }
 
-    override fun updateBlob(columnLabel: String?, inputStream: InputStream?, length: Long) {
+    override fun updateBlob(
+        columnLabel: String?,
+        inputStream: InputStream?,
+        length: Long,
+    ) {
         notImplemented()
     }
 
-    override fun updateBlob(columnIndex: Int, inputStream: InputStream?) {
+    override fun updateBlob(
+        columnIndex: Int,
+        inputStream: InputStream?,
+    ) {
         notImplemented()
     }
 
-    override fun updateBlob(columnLabel: String?, inputStream: InputStream?) {
+    override fun updateBlob(
+        columnLabel: String?,
+        inputStream: InputStream?,
+    ) {
         notImplemented()
     }
 
-    override fun updateByte(columnIndex: Int, x: Byte) {
+    override fun updateByte(
+        columnIndex: Int,
+        x: Byte,
+    ) {
         notImplemented()
     }
 
-    override fun updateByte(columnLabel: String?, x: Byte) {
+    override fun updateByte(
+        columnLabel: String?,
+        x: Byte,
+    ) {
         notImplemented()
     }
 
@@ -627,11 +862,17 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun updateString(columnIndex: Int, x: String?) {
+    override fun updateString(
+        columnIndex: Int,
+        x: String?,
+    ) {
         notImplemented()
     }
 
-    override fun updateString(columnLabel: String?, x: String?) {
+    override fun updateString(
+        columnLabel: String?,
+        x: String?,
+    ) {
         notImplemented()
     }
 
@@ -651,11 +892,17 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         return cursor - 1 < resultSetLength
     }
 
-    override fun updateBoolean(columnIndex: Int, x: Boolean) {
+    override fun updateBoolean(
+        columnIndex: Int,
+        x: Boolean,
+    ) {
         notImplemented()
     }
 
-    override fun updateBoolean(columnLabel: String?, x: Boolean) {
+    override fun updateBoolean(
+        columnLabel: String?,
+        x: Boolean,
+    ) {
         notImplemented()
     }
 
@@ -665,11 +912,17 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
 
     override fun rowUpdated() = false
 
-    override fun updateBigDecimal(columnIndex: Int, x: BigDecimal?) {
+    override fun updateBigDecimal(
+        columnIndex: Int,
+        x: BigDecimal?,
+    ) {
         notImplemented()
     }
 
-    override fun updateBigDecimal(columnLabel: String?, x: BigDecimal?) {
+    override fun updateBigDecimal(
+        columnLabel: String?,
+        x: BigDecimal?,
+    ) {
         notImplemented()
     }
 
@@ -689,11 +942,17 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         return getBinaryStream(columnLabel)
     }
 
-    override fun updateTime(columnIndex: Int, x: Time?) {
+    override fun updateTime(
+        columnIndex: Int,
+        x: Time?,
+    ) {
         notImplemented()
     }
 
-    override fun updateTime(columnLabel: String?, x: Time?) {
+    override fun updateTime(
+        columnLabel: String?,
+        x: Time?,
+    ) {
         notImplemented()
     }
 
@@ -707,12 +966,18 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun getTimestamp(columnIndex: Int, cal: Calendar?): Timestamp {
+    override fun getTimestamp(
+        columnIndex: Int,
+        cal: Calendar?,
+    ): Timestamp {
         // TODO Maybe?
         notImplemented()
     }
 
-    override fun getTimestamp(columnLabel: String?, cal: Calendar?): Timestamp {
+    override fun getTimestamp(
+        columnLabel: String?,
+        cal: Calendar?,
+    ): Timestamp {
         // TODO Maybe?
         notImplemented()
     }
@@ -729,11 +994,17 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
 
     override fun getConcurrency() = ResultSet.CONCUR_READ_ONLY
 
-    override fun updateRowId(columnIndex: Int, x: RowId?) {
+    override fun updateRowId(
+        columnIndex: Int,
+        x: RowId?,
+    ) {
         notImplemented()
     }
 
-    override fun updateRowId(columnLabel: String?, x: RowId?) {
+    override fun updateRowId(
+        columnLabel: String?,
+        x: RowId?,
+    ) {
         notImplemented()
     }
 
@@ -745,11 +1016,17 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         return getBinaryStream(columnLabel).reader()
     }
 
-    override fun updateArray(columnIndex: Int, x: Array?) {
+    override fun updateArray(
+        columnIndex: Int,
+        x: Array?,
+    ) {
         notImplemented()
     }
 
-    override fun updateArray(columnLabel: String?, x: Array?) {
+    override fun updateArray(
+        columnLabel: String?,
+        x: Array?,
+    ) {
         notImplemented()
     }
 
@@ -814,9 +1091,13 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
     override fun getMetaData(): ResultSetMetaData {
         return object : ResultSetMetaData by parentMetadata {
             override fun isReadOnly(column: Int) = true
+
             override fun isWritable(column: Int) = false
+
             override fun isDefinitelyWritable(column: Int) = false
+
             override fun getColumnCount() = this@ScrollableResultSet.columnCount
+
             override fun getColumnLabel(column: Int): String {
                 return columnLabels[column - 1]
             }
@@ -831,27 +1112,49 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         return (obj(columnLabel) as ByteArray).inputStream()
     }
 
-    override fun updateCharacterStream(columnIndex: Int, x: Reader?, length: Int) {
+    override fun updateCharacterStream(
+        columnIndex: Int,
+        x: Reader?,
+        length: Int,
+    ) {
         notImplemented()
     }
 
-    override fun updateCharacterStream(columnLabel: String?, reader: Reader?, length: Int) {
+    override fun updateCharacterStream(
+        columnLabel: String?,
+        reader: Reader?,
+        length: Int,
+    ) {
         notImplemented()
     }
 
-    override fun updateCharacterStream(columnIndex: Int, x: Reader?, length: Long) {
+    override fun updateCharacterStream(
+        columnIndex: Int,
+        x: Reader?,
+        length: Long,
+    ) {
         notImplemented()
     }
 
-    override fun updateCharacterStream(columnLabel: String?, reader: Reader?, length: Long) {
+    override fun updateCharacterStream(
+        columnLabel: String?,
+        reader: Reader?,
+        length: Long,
+    ) {
         notImplemented()
     }
 
-    override fun updateCharacterStream(columnIndex: Int, x: Reader?) {
+    override fun updateCharacterStream(
+        columnIndex: Int,
+        x: Reader?,
+    ) {
         notImplemented()
     }
 
-    override fun updateCharacterStream(columnLabel: String?, reader: Reader?) {
+    override fun updateCharacterStream(
+        columnLabel: String?,
+        reader: Reader?,
+    ) {
         notImplemented()
     }
 

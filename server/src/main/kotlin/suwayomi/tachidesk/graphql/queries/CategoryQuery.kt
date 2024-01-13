@@ -14,7 +14,6 @@ import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
-import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
@@ -31,6 +30,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
+import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
@@ -40,14 +40,18 @@ import suwayomi.tachidesk.manga.model.table.CategoryTable
 import java.util.concurrent.CompletableFuture
 
 class CategoryQuery {
-    fun category(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<CategoryType?> {
+    fun category(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        id: Int,
+    ): CompletableFuture<CategoryType> {
         return dataFetchingEnvironment.getValueFromDataLoader("CategoryDataLoader", id)
     }
 
     enum class CategoryOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<CategoryType> {
         ID(CategoryTable.id),
         NAME(CategoryTable.name),
-        ORDER(CategoryTable.order);
+        ORDER(CategoryTable.order),
+        ;
 
         override fun greater(cursor: Cursor): Op<Boolean> {
             return when (this) {
@@ -66,11 +70,12 @@ class CategoryQuery {
         }
 
         override fun asCursor(type: CategoryType): Cursor {
-            val value = when (this) {
-                ID -> type.id.toString()
-                NAME -> type.id.toString() + "-" + type.name
-                ORDER -> type.id.toString() + "-" + type.order
-            }
+            val value =
+                when (this) {
+                    ID -> type.id.toString()
+                    NAME -> type.id.toString() + "-" + type.name
+                    ORDER -> type.id.toString() + "-" + type.order
+                }
             return Cursor(value)
         }
     }
@@ -79,7 +84,7 @@ class CategoryQuery {
         val id: Int? = null,
         val order: Int? = null,
         val name: String? = null,
-        val default: Boolean? = null
+        val default: Boolean? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -99,14 +104,14 @@ class CategoryQuery {
         val default: BooleanFilter? = null,
         override val and: List<CategoryFilter>? = null,
         override val or: List<CategoryFilter>? = null,
-        override val not: CategoryFilter? = null
+        override val not: CategoryFilter? = null,
     ) : Filter<CategoryFilter> {
         override fun getOpList(): List<Op<Boolean>> {
             return listOfNotNull(
                 andFilterWithCompareEntity(CategoryTable.id, id),
                 andFilterWithCompare(CategoryTable.order, order),
                 andFilterWithCompareString(CategoryTable.name, name),
-                andFilterWithCompare(CategoryTable.isDefault, default)
+                andFilterWithCompare(CategoryTable.isDefault, default),
             )
         }
     }
@@ -120,49 +125,47 @@ class CategoryQuery {
         after: Cursor? = null,
         first: Int? = null,
         last: Int? = null,
-        offset: Int? = null
+        offset: Int? = null,
     ): CategoryNodeList {
-        val queryResults = transaction {
-            val res = CategoryTable.selectAll()
+        val queryResults =
+            transaction {
+                val res = CategoryTable.selectAll()
 
-            res.applyOps(condition, filter)
+                res.applyOps(condition, filter)
 
-            if (orderBy != null || (last != null || before != null)) {
-                val orderByColumn = orderBy?.column ?: CategoryTable.id
-                val orderType = orderByType.maybeSwap(last ?: before)
+                if (orderBy != null || (last != null || before != null)) {
+                    val orderByColumn = orderBy?.column ?: CategoryTable.id
+                    val orderType = orderByType.maybeSwap(last ?: before)
 
-                if (orderBy == CategoryOrderBy.ID || orderBy == null) {
-                    res.orderBy(orderByColumn to orderType)
-                } else {
-                    res.orderBy(
-                        orderByColumn to orderType,
-                        CategoryTable.id to SortOrder.ASC
-                    )
+                    if (orderBy == CategoryOrderBy.ID || orderBy == null) {
+                        res.orderBy(orderByColumn to orderType)
+                    } else {
+                        res.orderBy(
+                            orderByColumn to orderType,
+                            CategoryTable.id to SortOrder.ASC,
+                        )
+                    }
                 }
-            }
 
-            val total = res.count()
-            val firstResult = res.firstOrNull()?.get(CategoryTable.id)?.value
-            val lastResult = res.lastOrNull()?.get(CategoryTable.id)?.value
+                val total = res.count()
+                val firstResult = res.firstOrNull()?.get(CategoryTable.id)?.value
+                val lastResult = res.lastOrNull()?.get(CategoryTable.id)?.value
 
-            if (after != null) {
-                res.andWhere {
-                    (orderBy ?: CategoryOrderBy.ID).greater(after)
+                res.applyBeforeAfter(
+                    before = before,
+                    after = after,
+                    orderBy = orderBy ?: CategoryOrderBy.ID,
+                    orderByType = orderByType,
+                )
+
+                if (first != null) {
+                    res.limit(first, offset?.toLong() ?: 0)
+                } else if (last != null) {
+                    res.limit(last)
                 }
-            } else if (before != null) {
-                res.andWhere {
-                    (orderBy ?: CategoryOrderBy.ID).less(before)
-                }
-            }
 
-            if (first != null) {
-                res.limit(first, offset?.toLong() ?: 0)
-            } else if (last != null) {
-                res.limit(last)
+                QueryResults(total, firstResult, lastResult, res.toList())
             }
-
-            QueryResults(total, firstResult, lastResult, res.toList())
-        }
 
         val getAsCursor: (CategoryType) -> Cursor = (orderBy ?: CategoryOrderBy.ID)::asCursor
 
@@ -177,24 +180,25 @@ class CategoryQuery {
                     resultsAsType.firstOrNull()?.let {
                         CategoryNodeList.CategoryEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
                     },
                     resultsAsType.lastOrNull()?.let {
                         CategoryNodeList.CategoryEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
-                    }
+                    },
                 )
             },
-            pageInfo = PageInfo(
-                hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.id,
-                hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.id,
-                startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
-                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) }
-            ),
-            totalCount = queryResults.total.toInt()
+            pageInfo =
+                PageInfo(
+                    hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.id,
+                    hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.id,
+                    startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
+                    endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) },
+                ),
+            totalCount = queryResults.total.toInt(),
         )
     }
 }

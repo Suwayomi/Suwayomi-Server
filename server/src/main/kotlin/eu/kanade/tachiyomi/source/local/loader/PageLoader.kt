@@ -6,5 +6,7 @@ interface PageLoader {
      * Returns an observable containing the list of pages of a chapter. Only the first emission
      * will be used.
      */
-    fun getPages(): List<ReaderPage>
+    suspend fun getPages(): List<ReaderPage>
+
+    fun recycle()
 }

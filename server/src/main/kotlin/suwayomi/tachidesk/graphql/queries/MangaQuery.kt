@@ -14,7 +14,6 @@ import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
-import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
@@ -33,17 +32,22 @@ import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
+import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
+import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.util.concurrent.CompletableFuture
 
 class MangaQuery {
-    fun manga(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<MangaType?> {
+    fun manga(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        id: Int,
+    ): CompletableFuture<MangaType> {
         return dataFetchingEnvironment.getValueFromDataLoader("MangaDataLoader", id)
     }
 
@@ -51,7 +55,8 @@ class MangaQuery {
         ID(MangaTable.id),
         TITLE(MangaTable.title),
         IN_LIBRARY_AT(MangaTable.inLibraryAt),
-        LAST_FETCHED_AT(MangaTable.lastFetchedAt);
+        LAST_FETCHED_AT(MangaTable.lastFetchedAt),
+        ;
 
         override fun greater(cursor: Cursor): Op<Boolean> {
             return when (this) {
@@ -72,12 +77,13 @@ class MangaQuery {
         }
 
         override fun asCursor(type: MangaType): Cursor {
-            val value = when (this) {
-                ID -> type.id.toString()
-                TITLE -> type.id.toString() + "-" + type.title
-                IN_LIBRARY_AT -> type.id.toString() + "-" + type.inLibraryAt.toString()
-                LAST_FETCHED_AT -> type.id.toString() + "-" + type.lastFetchedAt.toString()
-            }
+            val value =
+                when (this) {
+                    ID -> type.id.toString()
+                    TITLE -> type.id.toString() + "-" + type.title
+                    IN_LIBRARY_AT -> type.id.toString() + "-" + type.inLibraryAt.toString()
+                    LAST_FETCHED_AT -> type.id.toString() + "-" + type.lastFetchedAt.toString()
+                }
             return Cursor(value)
         }
     }
@@ -98,7 +104,8 @@ class MangaQuery {
         val inLibraryAt: Long? = null,
         val realUrl: String? = null,
         val lastFetchedAt: Long? = null,
-        val chaptersLastFetchedAt: Long? = null
+        val chaptersLastFetchedAt: Long? = null,
+        val categoryIds: List<Int>? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -111,13 +118,14 @@ class MangaQuery {
             opAnd.eq(artist, MangaTable.artist)
             opAnd.eq(author, MangaTable.author)
             opAnd.eq(description, MangaTable.description)
-            opAnd.eq(genre?.joinToString(), MangaTable.genre)
+            genre?.forEach { opAnd.like("%$it%", MangaTable.genre) }
             opAnd.eq(status?.value, MangaTable.status)
             opAnd.eq(inLibrary, MangaTable.inLibrary)
             opAnd.eq(inLibraryAt, MangaTable.inLibraryAt)
             opAnd.eq(realUrl, MangaTable.realUrl)
             opAnd.eq(lastFetchedAt, MangaTable.lastFetchedAt)
             opAnd.eq(chaptersLastFetchedAt, MangaTable.chaptersLastFetchedAt)
+            opAnd.inList(categoryIds, CategoryMangaTable.category)
 
             return opAnd.op
         }
@@ -134,21 +142,21 @@ class MangaQuery {
         override val lessThan: MangaStatus? = null,
         override val lessThanOrEqualTo: MangaStatus? = null,
         override val greaterThan: MangaStatus? = null,
-        override val greaterThanOrEqualTo: MangaStatus? = null
+        override val greaterThanOrEqualTo: MangaStatus? = null,
     ) : ComparableScalarFilter<MangaStatus> {
-        fun asIntFilter() = IntFilter(
-            equalTo = equalTo?.value,
-            notEqualTo = notEqualTo?.value,
-            distinctFrom = distinctFrom?.value,
-            notDistinctFrom = notDistinctFrom?.value,
-            `in` = `in`?.map { it.value },
-            notIn = notIn?.map { it.value },
-            lessThan = lessThan?.value,
-            lessThanOrEqualTo = lessThanOrEqualTo?.value,
-            greaterThan = greaterThan?.value,
-            greaterThanOrEqualTo = greaterThanOrEqualTo?.value
-
-        )
+        fun asIntFilter() =
+            IntFilter(
+                equalTo = equalTo?.value,
+                notEqualTo = notEqualTo?.value,
+                distinctFrom = distinctFrom?.value,
+                notDistinctFrom = notDistinctFrom?.value,
+                `in` = `in`?.map { it.value },
+                notIn = notIn?.map { it.value },
+                lessThan = lessThan?.value,
+                lessThanOrEqualTo = lessThanOrEqualTo?.value,
+                greaterThan = greaterThan?.value,
+                greaterThanOrEqualTo = greaterThanOrEqualTo?.value,
+            )
     }
 
     data class MangaFilter(
@@ -161,16 +169,17 @@ class MangaQuery {
         val artist: StringFilter? = null,
         val author: StringFilter? = null,
         val description: StringFilter? = null,
-        // val genre: List<String>? = null, // todo
+        val genre: StringFilter? = null,
         val status: MangaStatusFilter? = null,
         val inLibrary: BooleanFilter? = null,
         val inLibraryAt: LongFilter? = null,
         val realUrl: StringFilter? = null,
         val lastFetchedAt: LongFilter? = null,
         val chaptersLastFetchedAt: LongFilter? = null,
+        val categoryId: IntFilter? = null,
         override val and: List<MangaFilter>? = null,
         override val or: List<MangaFilter>? = null,
-        override val not: MangaFilter? = null
+        override val not: MangaFilter? = null,
     ) : Filter<MangaFilter> {
         override fun getOpList(): List<Op<Boolean>> {
             return listOfNotNull(
@@ -183,12 +192,14 @@ class MangaQuery {
                 andFilterWithCompareString(MangaTable.artist, artist),
                 andFilterWithCompareString(MangaTable.author, author),
                 andFilterWithCompareString(MangaTable.description, description),
+                andFilterWithCompareString(MangaTable.genre, genre),
                 andFilterWithCompare(MangaTable.status, status?.asIntFilter()),
                 andFilterWithCompare(MangaTable.inLibrary, inLibrary),
                 andFilterWithCompare(MangaTable.inLibraryAt, inLibraryAt),
                 andFilterWithCompareString(MangaTable.realUrl, realUrl),
                 andFilterWithCompare(MangaTable.lastFetchedAt, lastFetchedAt),
-                andFilterWithCompare(MangaTable.chaptersLastFetchedAt, chaptersLastFetchedAt)
+                andFilterWithCompare(MangaTable.chaptersLastFetchedAt, chaptersLastFetchedAt),
+                andFilterWithCompareEntity(CategoryMangaTable.category, categoryId),
             )
         }
     }
@@ -202,49 +213,47 @@ class MangaQuery {
         after: Cursor? = null,
         first: Int? = null,
         last: Int? = null,
-        offset: Int? = null
+        offset: Int? = null,
     ): MangaNodeList {
-        val queryResults = transaction {
-            val res = MangaTable.selectAll()
+        val queryResults =
+            transaction {
+                val res = MangaTable.leftJoin(CategoryMangaTable).selectAll()
 
-            res.applyOps(condition, filter)
+                res.applyOps(condition, filter)
 
-            if (orderBy != null || (last != null || before != null)) {
-                val orderByColumn = orderBy?.column ?: MangaTable.id
-                val orderType = orderByType.maybeSwap(last ?: before)
+                if (orderBy != null || (last != null || before != null)) {
+                    val orderByColumn = orderBy?.column ?: MangaTable.id
+                    val orderType = orderByType.maybeSwap(last ?: before)
 
-                if (orderBy == MangaOrderBy.ID || orderBy == null) {
-                    res.orderBy(orderByColumn to orderType)
-                } else {
-                    res.orderBy(
-                        orderByColumn to orderType,
-                        MangaTable.id to SortOrder.ASC
-                    )
+                    if (orderBy == MangaOrderBy.ID || orderBy == null) {
+                        res.orderBy(orderByColumn to orderType)
+                    } else {
+                        res.orderBy(
+                            orderByColumn to orderType,
+                            MangaTable.id to SortOrder.ASC,
+                        )
+                    }
                 }
-            }
 
-            val total = res.count()
-            val firstResult = res.firstOrNull()?.get(MangaTable.id)?.value
-            val lastResult = res.lastOrNull()?.get(MangaTable.id)?.value
+                val total = res.count()
+                val firstResult = res.firstOrNull()?.get(MangaTable.id)?.value
+                val lastResult = res.lastOrNull()?.get(MangaTable.id)?.value
 
-            if (after != null) {
-                res.andWhere {
-                    (orderBy ?: MangaOrderBy.ID).greater(after)
+                res.applyBeforeAfter(
+                    before = before,
+                    after = after,
+                    orderBy = orderBy ?: MangaOrderBy.ID,
+                    orderByType = orderByType,
+                )
+
+                if (first != null) {
+                    res.limit(first, offset?.toLong() ?: 0)
+                } else if (last != null) {
+                    res.limit(last)
                 }
-            } else if (before != null) {
-                res.andWhere {
-                    (orderBy ?: MangaOrderBy.ID).less(before)
-                }
-            }
 
-            if (first != null) {
-                res.limit(first, offset?.toLong() ?: 0)
-            } else if (last != null) {
-                res.limit(last)
+                QueryResults(total, firstResult, lastResult, res.toList())
             }
-
-            QueryResults(total, firstResult, lastResult, res.toList())
-        }
 
         val getAsCursor: (MangaType) -> Cursor = (orderBy ?: MangaOrderBy.ID)::asCursor
 
@@ -259,24 +268,25 @@ class MangaQuery {
                     resultsAsType.firstOrNull()?.let {
                         MangaNodeList.MangaEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
                     },
                     resultsAsType.lastOrNull()?.let {
                         MangaNodeList.MangaEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
-                    }
+                    },
                 )
             },
-            pageInfo = PageInfo(
-                hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.id,
-                hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.id,
-                startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
-                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) }
-            ),
-            totalCount = queryResults.total.toInt()
+            pageInfo =
+                PageInfo(
+                    hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.id,
+                    hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.id,
+                    startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
+                    endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) },
+                ),
+            totalCount = queryResults.total.toInt(),
         )
     }
 }

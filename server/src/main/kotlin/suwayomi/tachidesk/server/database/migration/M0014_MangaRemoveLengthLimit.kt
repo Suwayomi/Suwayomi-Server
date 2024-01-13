@@ -11,10 +11,11 @@ import de.neonew.exposed.migrations.helpers.SQLMigration
 
 @Suppress("ClassName", "unused")
 class M0014_MangaRemoveLengthLimit : SQLMigration() {
-    override val sql = """
+    override val sql =
+        """
         ALTER TABLE MANGA ALTER COLUMN ARTIST VARCHAR(512);
         ALTER TABLE MANGA ALTER COLUMN AUTHOR VARCHAR(512);
         ALTER TABLE MANGA ALTER COLUMN DESCRIPTION VARCHAR; -- the default length is `Integer.MAX_VALUE`
         ALTER TABLE MANGA ALTER COLUMN GENRE VARCHAR; -- the default length is `Integer.MAX_VALUE`
-    """.trimIndent()
+        """.trimIndent()
 }

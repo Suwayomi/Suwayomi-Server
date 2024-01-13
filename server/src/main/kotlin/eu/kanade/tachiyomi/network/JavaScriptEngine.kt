@@ -8,8 +8,9 @@ import kotlinx.coroutines.withContext
 /**
  * Util for evaluating JavaScript in sources.
  */
-class JavaScriptEngine(context: Context) {
-
+class JavaScriptEngine(
+    @Suppress("UNUSED_PARAMETER") context: Context,
+) {
     /**
      * Evaluate arbitrary JavaScript code and get the result as a primitive type
      * (e.g., String, Int).
@@ -19,9 +20,10 @@ class JavaScriptEngine(context: Context) {
      * @return Result of JavaScript code as a primitive type.
      */
     @Suppress("UNUSED", "UNCHECKED_CAST")
-    suspend fun <T> evaluate(script: String): T = withContext(Dispatchers.IO) {
-        QuickJs.create().use {
-            it.evaluate(script) as T
+    suspend fun <T> evaluate(script: String): T =
+        withContext(Dispatchers.IO) {
+            QuickJs.create().use {
+                it.evaluate(script) as T
+            }
         }
-    }
 }

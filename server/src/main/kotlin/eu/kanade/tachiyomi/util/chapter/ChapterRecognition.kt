@@ -1,111 +1,81 @@
 package eu.kanade.tachiyomi.util.chapter
 
-import eu.kanade.tachiyomi.source.model.SChapter
-import eu.kanade.tachiyomi.source.model.SManga
-
 /**
  * -R> = regex conversion.
  */
 object ChapterRecognition {
+    private const val NUMBER_PATTERN = """([0-9]+)(\.[0-9]+)?(\.?[a-z]+)?"""
+
     /**
      * All cases with Ch.xx
      * Mokushiroku Alice Vol.1 Ch. 4: Misrepresentation -R> 4
      */
-    private val basic = Regex("""(?<=ch\.) *([0-9]+)(\.[0-9]+)?(\.?[a-z]+)?""")
+    private val basic = Regex("""(?<=ch\.) *$NUMBER_PATTERN""")
 
     /**
-     * Regex used when only one number occurrence
      * Example: Bleach 567: Down With Snowwhite -R> 567
      */
-    private val occurrence = Regex("""([0-9]+)(\.[0-9]+)?(\.?[a-z]+)?""")
-
-    /**
-     * Regex used when manga title removed
-     * Example: Solanin 028 Vol. 2 -> 028 Vol.2 -> 028Vol.2 -R> 028
-     */
-    private val withoutManga = Regex("""^([0-9]+)(\.[0-9]+)?(\.?[a-z]+)?""")
+    private val number = Regex(NUMBER_PATTERN)
 
     /**
      * Regex used to remove unwanted tags
      * Example Prison School 12 v.1 vol004 version1243 volume64 -R> Prison School 12
      */
-    private val unwanted = Regex("""(?<![a-z])(v|ver|vol|version|volume|season|s).?[0-9]+""")
+    private val unwanted = Regex("""\b(?:v|ver|vol|version|volume|season|s)[^a-z]?[0-9]+""")
 
     /**
      * Regex used to remove unwanted whitespace
      * Example One Piece 12 special -R> One Piece 12special
      */
-    private val unwantedWhiteSpace = Regex("""(\s)(extra|special|omake)""")
+    private val unwantedWhiteSpace = Regex("""\s(?=extra|special|omake)""")
 
-    fun parseChapterNumber(chapter: SChapter, manga: SManga) {
+    fun parseChapterNumber(
+        mangaTitle: String,
+        chapterName: String,
+        chapterNumber: Double? = null,
+    ): Double {
         // If chapter number is known return.
-        if (chapter.chapter_number == -2f || chapter.chapter_number > -1f) {
-            return
+        if (chapterNumber != null && (chapterNumber == -2.0 || chapterNumber > -1.0)) {
+            return chapterNumber
         }
 
         // Get chapter title with lower case
-        var name = chapter.name.lowercase()
-
-        // Remove comma's from chapter.
-        name = name.replace(',', '.')
-
-        // Remove unwanted white spaces.
-        unwantedWhiteSpace.findAll(name).let {
-            it.forEach { occurrence -> name = name.replace(occurrence.value, occurrence.value.trim()) }
-        }
-
-        // Remove unwanted tags.
-        unwanted.findAll(name).let {
-            it.forEach { occurrence -> name = name.replace(occurrence.value, "") }
-        }
-
-        // Check base case ch.xx
-        if (updateChapter(basic.find(name), chapter)) {
-            return
-        }
-
-        // Check one number occurrence.
-        val occurrences: MutableList<MatchResult> = arrayListOf()
-        occurrence.findAll(name).let {
-            it.forEach { occurrence -> occurrences.add(occurrence) }
-        }
-
-        if (occurrences.size == 1) {
-            if (updateChapter(occurrences[0], chapter)) {
-                return
-            }
-        }
+        var name = chapterName.lowercase()
 
         // Remove manga title from chapter title.
-        val nameWithoutManga = name.replace(manga.title.lowercase(), "").trim()
+        name = name.replace(mangaTitle.lowercase(), "").trim()
 
-        // Check if first value is number after title remove.
-        if (updateChapter(withoutManga.find(nameWithoutManga), chapter)) {
-            return
-        }
+        // Remove comma's or hyphens.
+        name = name.replace(',', '.').replace('-', '.')
+
+        // Remove unwanted white spaces.
+        name = unwantedWhiteSpace.replace(name, "")
+
+        // Remove unwanted tags.
+        name = unwanted.replace(name, "")
+
+        // Check base case ch.xx
+        basic.find(name)?.let { return getChapterNumberFromMatch(it) }
 
         // Take the first number encountered.
-        if (updateChapter(occurrence.find(nameWithoutManga), chapter)) {
-            return
-        }
+        number.find(name)?.let { return getChapterNumberFromMatch(it) }
+
+        return chapterNumber ?: -1.0
     }
 
     /**
-     * Check if volume is found and update chapter
+     * Check if chapter number is found and return it
      * @param match result of regex
-     * @param chapter chapter object
-     * @return true if volume is found
+     * @return chapter number if found else null
      */
-    private fun updateChapter(match: MatchResult?, chapter: SChapter): Boolean {
-        match?.let {
-            val initial = it.groups[1]?.value?.toFloat()!!
+    private fun getChapterNumberFromMatch(match: MatchResult): Double {
+        return match.let {
+            val initial = it.groups[1]?.value?.toDouble()!!
             val subChapterDecimal = it.groups[2]?.value
             val subChapterAlpha = it.groups[3]?.value
             val addition = checkForDecimal(subChapterDecimal, subChapterAlpha)
-            chapter.chapter_number = initial.plus(addition)
-            return true
+            initial.plus(addition)
         }
-        return false
     }
 
     /**
@@ -114,39 +84,42 @@ object ChapterRecognition {
      * @param alpha alpha value of regex
      * @return decimal/alpha float value
      */
-    private fun checkForDecimal(decimal: String?, alpha: String?): Float {
+    private fun checkForDecimal(
+        decimal: String?,
+        alpha: String?,
+    ): Double {
         if (!decimal.isNullOrEmpty()) {
-            return decimal.toFloat()
+            return decimal.toDouble()
         }
 
         if (!alpha.isNullOrEmpty()) {
             if (alpha.contains("extra")) {
-                return .99f
+                return 0.99
             }
 
             if (alpha.contains("omake")) {
-                return .98f
+                return 0.98
             }
 
             if (alpha.contains("special")) {
-                return .97f
+                return 0.97
             }
 
-            return if (alpha[0] == '.') {
-                // Take value after (.)
-                parseAlphaPostFix(alpha[1])
-            } else {
-                parseAlphaPostFix(alpha[0])
+            val trimmedAlpha = alpha.trimStart('.')
+            if (trimmedAlpha.length == 1) {
+                return parseAlphaPostFix(trimmedAlpha[0])
             }
         }
 
-        return .0f
+        return 0.0
     }
 
     /**
      * x.a -> x.1, x.b -> x.2, etc
      */
-    private fun parseAlphaPostFix(alpha: Char): Float {
-        return ("0." + (alpha.code - 96).toString()).toFloat()
+    private fun parseAlphaPostFix(alpha: Char): Double {
+        val number = alpha.code - ('a'.code - 1)
+        if (number >= 10) return 0.0
+        return number / 10.0
     }
 }

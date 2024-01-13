@@ -19,22 +19,26 @@ object UpdaterSocket : Websocket<UpdateStatus>() {
     private val updater by DI.global.instance<IUpdater>()
     private var job: Job? = null
 
-    override fun notifyClient(ctx: WsContext, value: UpdateStatus?) {
+    override fun notifyClient(
+        ctx: WsContext,
+        value: UpdateStatus?,
+    ) {
         ctx.send(value ?: updater.status.value)
     }
 
     override fun handleRequest(ctx: WsMessageContext) {
         when (ctx.message()) {
             "STATUS" -> notifyClient(ctx, updater.status.value)
-            else -> ctx.send(
-                """
+            else ->
+                ctx.send(
+                    """
                         |Invalid command.
                         |Supported commands are:
                         |    - STATUS
                         |       sends the current update status
                         |
-                """.trimMargin()
-            )
+                    """.trimMargin(),
+                )
         }
     }
 

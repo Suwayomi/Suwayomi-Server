@@ -28,27 +28,30 @@ object AppMutex {
     private enum class AppMutexState(val stat: Int) {
         Clear(0),
         TachideskInstanceRunning(1),
-        OtherApplicationRunning(2)
+        OtherApplicationRunning(2),
     }
 
-    private val appIP = if (serverConfig.ip == "0.0.0.0") "127.0.0.1" else serverConfig.ip
+    private val appIP = if (serverConfig.ip.value == "0.0.0.0") "127.0.0.1" else serverConfig.ip.value
 
     private val jsonMapper by DI.global.instance<JsonMapper>()
 
     private fun checkAppMutex(): AppMutexState {
-        val client = OkHttpClient.Builder()
-            .connectTimeout(200, TimeUnit.MILLISECONDS)
-            .build()
+        val client =
+            OkHttpClient.Builder()
+                .connectTimeout(200, TimeUnit.MILLISECONDS)
+                .build()
 
-        val request = Builder()
-            .url("http://$appIP:${serverConfig.port}/api/v1/settings/about/")
-            .build()
+        val request =
+            Builder()
+                .url("http://$appIP:${serverConfig.port.value}/api/v1/settings/about/")
+                .build()
 
-        val response = try {
-            client.newCall(request).execute().body.string()
-        } catch (e: IOException) {
-            return AppMutexState.Clear
-        }
+        val response =
+            try {
+                client.newCall(request).execute().body.string()
+            } catch (e: IOException) {
+                return AppMutexState.Clear
+            }
 
         return try {
             jsonMapper.fromJsonString(response, AboutDataClass::class.java)
@@ -64,9 +67,9 @@ object AppMutex {
                 logger.info("Mutex status is clear, Resuming startup.")
             }
             AppMutexState.TachideskInstanceRunning -> {
-                logger.info("Another instance of Tachidesk is running on $appIP:${serverConfig.port}")
+                logger.info("Another instance of Suwayomi-Server is running on $appIP:${serverConfig.port.value}")
 
-                logger.info("Probably user thought tachidesk is closed so, opening webUI in browser again.")
+                logger.info("Probably user thought Suwayomi-Server is closed so, opening webUI in browser again.")
                 openInBrowser()
 
                 logger.info("Aborting startup.")
@@ -74,7 +77,7 @@ object AppMutex {
                 shutdownApp(MutexCheckFailedTachideskRunning)
             }
             AppMutexState.OtherApplicationRunning -> {
-                logger.error("A non Tachidesk application is running on $appIP:${serverConfig.port}, aborting startup.")
+                logger.error("A non Suwayomi-Server application is running on $appIP:${serverConfig.port.value}, aborting startup.")
                 shutdownApp(MutexCheckFailedAnotherAppRunning)
             }
         }

@@ -6,10 +6,11 @@ enum class JobStatus {
     PENDING,
     RUNNING,
     COMPLETE,
-    FAILED
+    FAILED,
+    SKIPPED,
 }
 
 data class UpdateJob(
     val manga: MangaDataClass,
-    val status: JobStatus = JobStatus.PENDING
+    val status: JobStatus = JobStatus.PENDING,
 )

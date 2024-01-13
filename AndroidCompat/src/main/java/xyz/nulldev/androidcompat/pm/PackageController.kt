@@ -25,7 +25,10 @@ class PackageController {
         return File(androidFiles.packagesDir, pn)
     }
 
-    fun installPackage(apk: File, allowReinstall: Boolean) {
+    fun installPackage(
+        apk: File,
+        allowReinstall: Boolean,
+    ) {
         val root = findRoot(apk)
 
         if (root.exists()) {

@@ -11,7 +11,7 @@ I acknowledge that:
 
 - I have updated to the latest version of the app.
 - I have tried the troubleshooting guide described in `README.md`
-- If this is a request for adding/changing an extension it should be brought up to Tachiyomi: https://github.com/tachiyomiorg/tachiyomi-extensions/issues/new/choose
+- If this is a request for adding/changing an extension it should be brought up to your extension repo.
 - If this is an issue with some extension not working properly, It does work inside Tachiyomi as intended.
 - I have searched the existing issues and this is a new ticket **NOT** a duplicate or related to another open issue
 - I will fill out the title and the information in this template
@@ -23,7 +23,7 @@ Note that the issue will be automatically closed if you do not fill out the titl
 ---
 
 ## Device information
-- Tachidesk version: (Example: v0.2.3-r255-win32)
+- Suwayomi-Server version: (Example: v1.0.0-r1438-win32)
 - Server Operating System: (Example: Ubuntu 20.04)
 - Server Desktop Environment: N/A or (Example: Gnome 40)
 - Server JVM version: bundled with win32 or (Example: Java 8 Update 281 or OpenJDK 8u281)

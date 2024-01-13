@@ -7,6 +7,10 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
@@ -19,13 +23,16 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.time.Instant
 
 object Library {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     suspend fun addMangaToLibrary(mangaId: Int) {
         val manga = getManga(mangaId)
         if (!manga.inLibrary) {
             transaction {
-                val defaultCategories = CategoryTable.select {
-                    (CategoryTable.isDefault eq true) and (CategoryTable.id neq Category.DEFAULT_CATEGORY_ID)
-                }.toList()
+                val defaultCategories =
+                    CategoryTable.select {
+                        (CategoryTable.isDefault eq true) and (CategoryTable.id neq Category.DEFAULT_CATEGORY_ID)
+                    }.toList()
                 val existingCategories = CategoryMangaTable.select { CategoryMangaTable.manga eq mangaId }.toList()
 
                 MangaTable.update({ MangaTable.id eq manga.id }) {
@@ -41,6 +48,8 @@ object Library {
                         }
                     }
                 }
+            }.apply {
+                handleMangaThumbnail(mangaId, true)
             }
         }
     }
@@ -52,6 +61,25 @@ object Library {
                 MangaTable.update({ MangaTable.id eq manga.id }) {
                     it[inLibrary] = false
                 }
+            }.apply {
+                handleMangaThumbnail(mangaId, false)
+            }
+        }
+    }
+
+    fun handleMangaThumbnail(
+        mangaId: Int,
+        inLibrary: Boolean,
+    ) {
+        scope.launch {
+            try {
+                if (inLibrary) {
+                    ThumbnailDownloadHelper.download(mangaId)
+                } else {
+                    ThumbnailDownloadHelper.delete(mangaId)
+                }
+            } catch (e: Exception) {
+                // ignore
             }
         }
     }

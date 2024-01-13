@@ -23,32 +23,56 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 
 class CategoryDataLoader : KotlinDataLoader<Int, CategoryType> {
     override val dataLoaderName = "CategoryDataLoader"
-    override fun getDataLoader(): DataLoader<Int, CategoryType> = DataLoaderFactory.newDataLoader { ids ->
-        future {
-            transaction {
-                addLogger(Slf4jSqlDebugLogger)
-                val categories = CategoryTable.select { CategoryTable.id inList ids }
-                    .map { CategoryType(it) }
-                    .associateBy { it.id }
-                ids.map { categories[it] }
+
+    override fun getDataLoader(): DataLoader<Int, CategoryType> =
+        DataLoaderFactory.newDataLoader { ids ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val categories =
+                        CategoryTable.select { CategoryTable.id inList ids }
+                            .map { CategoryType(it) }
+                            .associateBy { it.id }
+                    ids.map { categories[it] }
+                }
             }
         }
-    }
+}
+
+class CategoryForIdsDataLoader : KotlinDataLoader<List<Int>, CategoryNodeList> {
+    override val dataLoaderName = "CategoryForIdsDataLoader"
+
+    override fun getDataLoader(): DataLoader<List<Int>, CategoryNodeList> =
+        DataLoaderFactory.newDataLoader { categoryIds ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val ids = categoryIds.flatten().distinct()
+                    val categories = CategoryTable.select { CategoryTable.id inList ids }.map { CategoryType(it) }
+                    categoryIds.map { categoryIds ->
+                        categories.filter { it.id in categoryIds }.toNodeList()
+                    }
+                }
+            }
+        }
 }
 
 class CategoriesForMangaDataLoader : KotlinDataLoader<Int, CategoryNodeList> {
     override val dataLoaderName = "CategoriesForMangaDataLoader"
-    override fun getDataLoader(): DataLoader<Int, CategoryNodeList> = DataLoaderFactory.newDataLoader<Int, CategoryNodeList> { ids ->
-        future {
-            transaction {
-                addLogger(Slf4jSqlDebugLogger)
-                val itemsByRef = CategoryMangaTable.innerJoin(CategoryTable)
-                    .select { CategoryMangaTable.manga inList ids }
-                    .map { Pair(it[CategoryMangaTable.manga].value, CategoryType(it)) }
-                    .groupBy { it.first }
-                    .mapValues { it.value.map { pair -> pair.second } }
-                ids.map { (itemsByRef[it] ?: emptyList()).toNodeList() }
+
+    override fun getDataLoader(): DataLoader<Int, CategoryNodeList> =
+        DataLoaderFactory.newDataLoader<Int, CategoryNodeList> { ids ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val itemsByRef =
+                        CategoryMangaTable.innerJoin(CategoryTable)
+                            .select { CategoryMangaTable.manga inList ids }
+                            .map { Pair(it[CategoryMangaTable.manga].value, CategoryType(it)) }
+                            .groupBy { it.first }
+                            .mapValues { it.value.map { pair -> pair.second } }
+                    ids.map { (itemsByRef[it] ?: emptyList()).toNodeList() }
+                }
             }
         }
-    }
 }

@@ -11,10 +11,11 @@ data class OnlineExtensionSource(
     val name: String,
     val lang: String,
     val id: Long,
-    val baseUrl: String
+    val baseUrl: String,
 )
 
 data class OnlineExtension(
+    val repo: String,
     val name: String,
     val pkgName: String,
     val apkName: String,
@@ -25,5 +26,5 @@ data class OnlineExtension(
     val hasReadme: Boolean,
     val hasChangelog: Boolean,
     val sources: List<OnlineExtensionSource>,
-    val iconUrl: String
+    val iconUrl: String,
 )

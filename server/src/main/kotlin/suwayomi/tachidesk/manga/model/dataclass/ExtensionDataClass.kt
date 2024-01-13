@@ -8,17 +8,16 @@ package suwayomi.tachidesk.manga.model.dataclass
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 data class ExtensionDataClass(
+    val repo: String?,
     val apkName: String,
     val iconUrl: String,
-
     val name: String,
     val pkgName: String,
     val versionName: String,
     val versionCode: Int,
     val lang: String,
     val isNsfw: Boolean,
-
     val installed: Boolean,
     val hasUpdate: Boolean,
-    val obsolete: Boolean
+    val obsolete: Boolean,
 )

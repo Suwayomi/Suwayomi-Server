@@ -12,7 +12,7 @@ class CloudflareInterceptor : Interceptor {
 
     private val network: NetworkHelper by injectLazy()
 
-    @Synchronized
+    @Suppress("UNUSED_VARIABLE", "UNREACHABLE_CODE")
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
 
@@ -69,51 +69,56 @@ object CFClearance {
 
         logger.debug { "resolveWithWebView($url)" }
 
-        val cookies = Playwright.create().use { playwright ->
-            playwright.chromium().launch(
-                LaunchOptions()
-                    .setHeadless(false)
-                    .apply {
-                        if (serverConfig.socksProxyEnabled) {
-                            setProxy("socks5://${serverConfig.socksProxyHost}:${serverConfig.socksProxyPort}")
+        val cookies =
+            Playwright.create().use { playwright ->
+                playwright.chromium().launch(
+                    LaunchOptions()
+                        .setHeadless(false)
+                        .apply {
+                            if (serverConfig.socksProxyEnabled.value) {
+                                setProxy("socks5://${serverConfig.socksProxyHost.value}:${serverConfig.socksProxyPort.value}")
+                            }
+                        },
+                ).use { browser ->
+                    val userAgent = originalRequest.header("User-Agent")
+                    if (userAgent != null) {
+                        browser.newContext(Browser.NewContextOptions().setUserAgent(userAgent)).use { browserContext ->
+                            browserContext.newPage().use { getCookies(it, url) }
                         }
+                    } else {
+                        browser.newPage().use { getCookies(it, url) }
                     }
-            ).use { browser ->
-                val userAgent = originalRequest.header("User-Agent")
-                if (userAgent != null) {
-                    browser.newContext(Browser.NewContextOptions().setUserAgent(userAgent)).use { browserContext ->
-                        browserContext.newPage().use { getCookies(it, url) }
-                    }
-                } else {
-                    browser.newPage().use { getCookies(it, url) }
                 }
             }
-        }
 
         // Copy cookies to cookie store
         cookies.groupBy { it.domain }.forEach { (domain, cookies) ->
             network.cookieStore.addAll(
-                url = HttpUrl.Builder()
-                    .scheme("http")
-                    .host(domain)
-                    .build(),
-                cookies = cookies
+                url =
+                    HttpUrl.Builder()
+                        .scheme("http")
+                        .host(domain)
+                        .build(),
+                cookies = cookies,
             )
         }
         // Merge new and existing cookies for this request
         // Find the cookies that we need to merge into this request
-        val convertedForThisRequest = cookies.filter {
-            it.matches(originalRequest.url)
-        }
+        val convertedForThisRequest =
+            cookies.filter {
+                it.matches(originalRequest.url)
+            }
         // Extract cookies from current request
-        val existingCookies = Cookie.parseAll(
-            originalRequest.url,
-            originalRequest.headers
-        )
+        val existingCookies =
+            Cookie.parseAll(
+                originalRequest.url,
+                originalRequest.headers,
+            )
         // Filter out existing values of cookies that we are about to merge in
-        val filteredExisting = existingCookies.filter { existing ->
-            convertedForThisRequest.none { converted -> converted.name == existing.name }
-        }
+        val filteredExisting =
+            existingCookies.filter { existing ->
+                convertedForThisRequest.none { converted -> converted.name == existing.name }
+            }
         logger.trace { "Existing cookies" }
         logger.trace { existingCookies.joinToString("; ") }
         val newCookies = filteredExisting + convertedForThisRequest
@@ -124,6 +129,7 @@ object CFClearance {
             .build()
     }*/
 
+    @Suppress("UNREACHABLE_CODE")
     fun getWebViewUserAgent(): String {
         return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
         /*return try {
@@ -132,7 +138,7 @@ object CFClearance {
             Playwright.create().use { playwright ->
                 playwright.chromium().launch(
                     LaunchOptions()
-                        .setHeadless(true)
+                        .setHeadless(true),
                 ).use { browser ->
                     browser.newPage().use { page ->
                         val userAgent = page.evaluate("() => {return navigator.userAgent}") as String
@@ -147,7 +153,10 @@ object CFClearance {
         }*/
     }
 
-    /*private fun getCookies(page: Page, url: String): List<Cookie> {
+    /*private fun getCookies(
+        page: Page,
+        url: String,
+    ): List<Cookie> {
         applyStealthInitScripts(page)
         page.navigate(url)
         val challengeResolved = waitForChallengeResolve(page)
@@ -187,7 +196,7 @@ object CFClearance {
             ServerConfig::class.java.getResource("/cloudflare-js/navigator.permissions.js")!!.readText(),
             ServerConfig::class.java.getResource("/cloudflare-js/navigator.webdriver.js")!!.readText(),
             ServerConfig::class.java.getResource("/cloudflare-js/chrome.runtime.js")!!.readText(),
-            ServerConfig::class.java.getResource("/cloudflare-js/chrome.plugin.js")!!.readText()
+            ServerConfig::class.java.getResource("/cloudflare-js/chrome.plugin.js")!!.readText(),
         )
     }
 
@@ -204,12 +213,13 @@ object CFClearance {
         val timeoutSeconds = 120
         repeat(timeoutSeconds) {
             page.waitForTimeout(1.seconds.toDouble(DurationUnit.MILLISECONDS))
-            val success = try {
-                page.querySelector("#challenge-form") == null
-            } catch (e: Exception) {
-                logger.debug(e) { "query Error" }
-                false
-            }
+            val success =
+                try {
+                    page.querySelector("#challenge-form") == null
+                } catch (e: Exception) {
+                    logger.debug(e) { "query Error" }
+                    false
+                }
             if (success) return true
         }
         return false

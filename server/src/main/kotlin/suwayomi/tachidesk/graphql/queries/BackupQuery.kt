@@ -8,25 +8,26 @@ import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator
 
 class BackupQuery {
     data class ValidateBackupInput(
-        val backup: UploadedFile
+        val backup: UploadedFile,
     )
+
     data class ValidateBackupSource(
         val id: Long,
-        val name: String
+        val name: String,
     )
+
     data class ValidateBackupResult(
-        val missingSources: List<ValidateBackupSource>
+        val missingSources: List<ValidateBackupSource>,
     )
-    fun validateBackup(
-        input: ValidateBackupInput
-    ): ValidateBackupResult {
+
+    fun validateBackup(input: ValidateBackupInput): ValidateBackupResult {
         val result = ProtoBackupValidator.validate(input.backup.content)
         return ValidateBackupResult(
-            result.missingSourceIds.map { ValidateBackupSource(it.first, it.second) }
+            result.missingSourceIds.map { ValidateBackupSource(it.first, it.second) },
         )
     }
 
-    fun restoreStatus(): BackupRestoreStatus {
-        return ProtoBackupImport.backupRestoreState.value.toStatus()
+    fun restoreStatus(id: String): BackupRestoreStatus? {
+        return ProtoBackupImport.getRestoreState(id)?.toStatus()
     }
 }

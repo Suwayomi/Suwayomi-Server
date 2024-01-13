@@ -20,8 +20,11 @@ class M0001_Initial : AddTableMigration() {
         init {
             varchar("apk_name", 1024)
             // default is the local source icon from tachiyomi
+            @Suppress("ktlint:standard:max-line-length")
             varchar("icon_url", 2048)
-                .default("https://raw.githubusercontent.com/tachiyomiorg/tachiyomi/64ba127e7d43b1d7e6d58a6f5c9b2bd5fe0543f7/app/src/main/res/mipmap-xxxhdpi/ic_local_source.webp")
+                .default(
+                    "https://raw.githubusercontent.com/tachiyomiorg/tachiyomi/64ba127e7d43b1d7e6d58a6f5c9b2bd5fe0543f7/app/src/main/res/mipmap-xxxhdpi/ic_local_source.webp",
+                )
             varchar("name", 128)
             varchar("pkg_name", 128)
             varchar("version_name", 16)
@@ -39,6 +42,7 @@ class M0001_Initial : AddTableMigration() {
 
     private class SourceTable(extensionTable: ExtensionTable) : IdTable<Long>() {
         override val id = long("id").entityId()
+
         init {
             varchar("name", 128)
             varchar("lang", 10)
@@ -128,7 +132,7 @@ class M0001_Initial : AddTableMigration() {
                 chapterTable,
                 pageTable,
                 categoryTable,
-                categoryMangaTable
+                categoryMangaTable,
             )
         }
 }

@@ -33,6 +33,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
+import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
@@ -48,7 +49,10 @@ import java.util.concurrent.CompletableFuture
  * - Get page list?
  */
 class ChapterQuery {
-    fun chapter(dataFetchingEnvironment: DataFetchingEnvironment, id: Int): CompletableFuture<ChapterType?> {
+    fun chapter(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        id: Int,
+    ): CompletableFuture<ChapterType> {
         return dataFetchingEnvironment.getValueFromDataLoader("ChapterDataLoader", id)
     }
 
@@ -59,7 +63,8 @@ class ChapterQuery {
         UPLOAD_DATE(ChapterTable.date_upload),
         CHAPTER_NUMBER(ChapterTable.chapter_number),
         LAST_READ_AT(ChapterTable.lastReadAt),
-        FETCHED_AT(ChapterTable.fetchedAt);
+        FETCHED_AT(ChapterTable.fetchedAt),
+        ;
 
         override fun greater(cursor: Cursor): Op<Boolean> {
             return when (this) {
@@ -86,15 +91,16 @@ class ChapterQuery {
         }
 
         override fun asCursor(type: ChapterType): Cursor {
-            val value = when (this) {
-                ID -> type.id.toString()
-                SOURCE_ORDER -> type.id.toString() + "-" + type.sourceOrder
-                NAME -> type.id.toString() + "-" + type.name
-                UPLOAD_DATE -> type.id.toString() + "-" + type.uploadDate
-                CHAPTER_NUMBER -> type.id.toString() + "-" + type.chapterNumber
-                LAST_READ_AT -> type.id.toString() + "-" + type.lastReadAt
-                FETCHED_AT -> type.id.toString() + "-" + type.fetchedAt
-            }
+            val value =
+                when (this) {
+                    ID -> type.id.toString()
+                    SOURCE_ORDER -> type.id.toString() + "-" + type.sourceOrder
+                    NAME -> type.id.toString() + "-" + type.name
+                    UPLOAD_DATE -> type.id.toString() + "-" + type.uploadDate
+                    CHAPTER_NUMBER -> type.id.toString() + "-" + type.chapterNumber
+                    LAST_READ_AT -> type.id.toString() + "-" + type.lastReadAt
+                    FETCHED_AT -> type.id.toString() + "-" + type.fetchedAt
+                }
             return Cursor(value)
         }
     }
@@ -115,7 +121,7 @@ class ChapterQuery {
         val realUrl: String? = null,
         val fetchedAt: Long? = null,
         val isDownloaded: Boolean? = null,
-        val pageCount: Int? = null
+        val pageCount: Int? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -160,7 +166,7 @@ class ChapterQuery {
         val inLibrary: BooleanFilter? = null,
         override val and: List<ChapterFilter>? = null,
         override val or: List<ChapterFilter>? = null,
-        override val not: ChapterFilter? = null
+        override val not: ChapterFilter? = null,
     ) : Filter<ChapterFilter> {
         override fun getOpList(): List<Op<Boolean>> {
             return listOfNotNull(
@@ -179,7 +185,7 @@ class ChapterQuery {
                 andFilterWithCompareString(ChapterTable.realUrl, realUrl),
                 andFilterWithCompare(ChapterTable.fetchedAt, fetchedAt),
                 andFilterWithCompare(ChapterTable.isDownloaded, isDownloaded),
-                andFilterWithCompare(ChapterTable.pageCount, pageCount)
+                andFilterWithCompare(ChapterTable.pageCount, pageCount),
             )
         }
 
@@ -195,57 +201,55 @@ class ChapterQuery {
         after: Cursor? = null,
         first: Int? = null,
         last: Int? = null,
-        offset: Int? = null
+        offset: Int? = null,
     ): ChapterNodeList {
-        val queryResults = transaction {
-            val res = ChapterTable.selectAll()
+        val queryResults =
+            transaction {
+                val res = ChapterTable.selectAll()
 
-            val libraryOp = filter?.getLibraryOp()
-            if (libraryOp != null) {
-                res.adjustColumnSet {
-                    innerJoin(MangaTable)
+                val libraryOp = filter?.getLibraryOp()
+                if (libraryOp != null) {
+                    res.adjustColumnSet {
+                        innerJoin(MangaTable)
+                    }
+                    res.andWhere { libraryOp }
                 }
-                res.andWhere { libraryOp }
-            }
 
-            res.applyOps(condition, filter)
+                res.applyOps(condition, filter)
 
-            if (orderBy != null || (last != null || before != null)) {
-                val orderByColumn = orderBy?.column ?: ChapterTable.id
-                val orderType = orderByType.maybeSwap(last ?: before)
+                if (orderBy != null || (last != null || before != null)) {
+                    val orderByColumn = orderBy?.column ?: ChapterTable.id
+                    val orderType = orderByType.maybeSwap(last ?: before)
 
-                if (orderBy == ChapterOrderBy.ID || orderBy == null) {
-                    res.orderBy(orderByColumn to orderType)
-                } else {
-                    res.orderBy(
-                        orderByColumn to orderType,
-                        ChapterTable.id to SortOrder.ASC
-                    )
+                    if (orderBy == ChapterOrderBy.ID || orderBy == null) {
+                        res.orderBy(orderByColumn to orderType)
+                    } else {
+                        res.orderBy(
+                            orderByColumn to orderType,
+                            ChapterTable.id to SortOrder.ASC,
+                        )
+                    }
                 }
-            }
 
-            val total = res.count()
-            val firstResult = res.firstOrNull()?.get(ChapterTable.id)?.value
-            val lastResult = res.lastOrNull()?.get(ChapterTable.id)?.value
+                val total = res.count()
+                val firstResult = res.firstOrNull()?.get(ChapterTable.id)?.value
+                val lastResult = res.lastOrNull()?.get(ChapterTable.id)?.value
 
-            if (after != null) {
-                res.andWhere {
-                    (orderBy ?: ChapterOrderBy.ID).greater(after)
+                res.applyBeforeAfter(
+                    before = before,
+                    after = after,
+                    orderBy = orderBy ?: ChapterOrderBy.ID,
+                    orderByType = orderByType,
+                )
+
+                if (first != null) {
+                    res.limit(first, offset?.toLong() ?: 0)
+                } else if (last != null) {
+                    res.limit(last)
                 }
-            } else if (before != null) {
-                res.andWhere {
-                    (orderBy ?: ChapterOrderBy.ID).less(before)
-                }
-            }
 
-            if (first != null) {
-                res.limit(first, offset?.toLong() ?: 0)
-            } else if (last != null) {
-                res.limit(last)
+                QueryResults(total, firstResult, lastResult, res.toList())
             }
-
-            QueryResults(total, firstResult, lastResult, res.toList())
-        }
 
         val getAsCursor: (ChapterType) -> Cursor = (orderBy ?: ChapterOrderBy.ID)::asCursor
 
@@ -260,24 +264,25 @@ class ChapterQuery {
                     resultsAsType.firstOrNull()?.let {
                         ChapterNodeList.ChapterEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
                     },
                     resultsAsType.lastOrNull()?.let {
                         ChapterNodeList.ChapterEdge(
                             getAsCursor(it),
-                            it
+                            it,
                         )
-                    }
+                    },
                 )
             },
-            pageInfo = PageInfo(
-                hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.id,
-                hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.id,
-                startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
-                endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) }
-            ),
-            totalCount = queryResults.total.toInt()
+            pageInfo =
+                PageInfo(
+                    hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.id,
+                    hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.id,
+                    startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
+                    endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) },
+                ),
+            totalCount = queryResults.total.toInt(),
         )
     }
 }

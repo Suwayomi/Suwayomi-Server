@@ -1,10 +1,8 @@
+@file:Suppress("ktlint:standard:property-naming")
+
 package suwayomi.tachidesk.manga.impl.backup.models
 
-import org.jetbrains.exposed.sql.ResultRow
-import suwayomi.tachidesk.manga.model.table.ChapterTable
-
 class ChapterImpl : Chapter {
-
     override var id: Long? = null
 
     override var manga_id: Long? = null
@@ -41,17 +39,4 @@ class ChapterImpl : Chapter {
     override fun hashCode(): Int {
         return url.hashCode() + id.hashCode()
     }
-
-    // Tachidesk -->
-    companion object {
-        fun fromQuery(chapterRecord: ResultRow): ChapterImpl {
-            return ChapterImpl().apply {
-                url = chapterRecord[ChapterTable.url]
-                read = chapterRecord[ChapterTable.isRead]
-                bookmark = chapterRecord[ChapterTable.isBookmarked]
-                last_page_read = chapterRecord[ChapterTable.lastPageRead]
-            }
-        }
-    }
-    // Tachidesk <--
 }

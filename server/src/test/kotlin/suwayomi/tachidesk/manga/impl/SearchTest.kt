@@ -38,7 +38,12 @@ class SearchTest : ApplicationTest() {
     class FakeSearchableSource(id: Long) : StubSource(id) {
         var mangas: List<SManga> = emptyList()
 
-        override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> {
+        @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getSearchManga"))
+        override fun fetchSearchManga(
+            page: Int,
+            query: String,
+            filters: FilterList,
+        ): Observable<MangasPage> {
             return Observable.just(MangasPage(mangas, false))
         }
     }
@@ -56,9 +61,10 @@ class SearchTest : ApplicationTest() {
 
     @Test
     fun searchWorks() {
-        val searchResults = runBlocking {
-            sourceSearch(sourceId, "all the mangas", 1)
-        }
+        val searchResults =
+            runBlocking {
+                sourceSearch(sourceId, "all the mangas", 1)
+            }
 
         assertEquals(mangasCount, searchResults.mangaList.size, "should return all the mangas")
     }
@@ -88,39 +94,45 @@ class FilterListTest : ApplicationTest() {
 
         assertEquals(
             0,
-            filterList.size
+            filterList.size,
         )
     }
 
     class FilterListSource(id: Long) : EmptyFilterListSource(id) {
         class SelectFilter(name: String, values: Array<String>) : Filter.Select<String>(name, values)
+
         class TextFilter(name: String) : Filter.Text(name)
+
         class TestCheckBox(name: String) : Filter.CheckBox(name, false)
+
         class TriState(name: String, state: Int) : Filter.TriState(name, state)
+
         class Group(name: String, state: List<TestCheckBox>) : Filter.Group<TestCheckBox>(name, state)
+
         class Sort(name: String, values: Array<String>, state: Selection) : Filter.Sort(name, values, state)
 
-        override var mFilterList = FilterList(
-            Filter.Header("This is a header"),
-            Filter.Separator(),
-            SelectFilter("Select one of these:", arrayOf("this", "that", "none of them")),
-            TextFilter("text filter"),
-            TestCheckBox("check this or else!"),
-            TriState("wanna hook up?", Filter.TriState.STATE_IGNORE),
-            Group(
-                "my Todo",
-                listOf(
-                    TestCheckBox("Write Tests"),
-                    TestCheckBox("Write More Tests"),
-                    TestCheckBox("Write Even More Tests")
-                )
-            ),
-            Sort(
-                "Sort",
-                arrayOf("Alphabetic", "Date published", "Rating"),
-                Filter.Sort.Selection(2, false)
+        override var mFilterList =
+            FilterList(
+                Filter.Header("This is a header"),
+                Filter.Separator(),
+                SelectFilter("Select one of these:", arrayOf("this", "that", "none of them")),
+                TextFilter("text filter"),
+                TestCheckBox("check this or else!"),
+                TriState("wanna hook up?", Filter.TriState.STATE_IGNORE),
+                Group(
+                    "my Todo",
+                    listOf(
+                        TestCheckBox("Write Tests"),
+                        TestCheckBox("Write More Tests"),
+                        TestCheckBox("Write Even More Tests"),
+                    ),
+                ),
+                Sort(
+                    "Sort",
+                    arrayOf("Alphabetic", "Date published", "Rating"),
+                    Filter.Sort.Selection(2, false),
+                ),
             )
-        )
     }
 
     @Test
@@ -130,27 +142,27 @@ class FilterListTest : ApplicationTest() {
 
         assertEquals(
             FilterObject("Header", source.mFilterList[0]),
-            filterList[0]
+            filterList[0],
         )
         assertEquals(
             FilterObject("Separator", source.mFilterList[1]),
-            filterList[1]
+            filterList[1],
         )
         assertEquals(
             FilterObject("Select", source.mFilterList[2]),
-            filterList[2]
+            filterList[2],
         )
         assertEquals(
             FilterObject("Text", source.mFilterList[3]),
-            filterList[3]
+            filterList[3],
         )
         assertEquals(
             FilterObject("CheckBox", source.mFilterList[4]),
-            filterList[4]
+            filterList[4],
         )
         assertEquals(
             FilterObject("TriState", source.mFilterList[5]),
-            filterList[5]
+            filterList[5],
         )
         assertEquals(
             filterList[6],
@@ -161,14 +173,14 @@ class FilterListTest : ApplicationTest() {
                     listOf(
                         FilterObject("CheckBox", (source.mFilterList[6].state as List<Filter<*>>)[0]),
                         FilterObject("CheckBox", (source.mFilterList[6].state as List<Filter<*>>)[1]),
-                        FilterObject("CheckBox", (source.mFilterList[6].state as List<Filter<*>>)[2])
-                    )
-                )
-            )
+                        FilterObject("CheckBox", (source.mFilterList[6].state as List<Filter<*>>)[2]),
+                    ),
+                ),
+            ),
         )
         assertEquals(
             FilterObject("Sort", source.mFilterList[7]),
-            filterList[7]
+            filterList[7],
         )
 
         // make sure that we can convert this to json
@@ -181,24 +193,24 @@ class FilterListTest : ApplicationTest() {
 
         setFilter(
             source.id,
-            FilterChange(0, "change!")
+            FilterChange(0, "change!"),
         )
 
         setFilter(
             source.id,
-            FilterChange(1, "change!")
+            FilterChange(1, "change!"),
         )
 
         val filterList = getFilterList(source.id, false)
 
         assertEquals(
             filterList[0].filter.state,
-            0
+            0,
         )
 
         assertEquals(
             filterList[1].filter.state,
-            0
+            0,
         )
     }
 
@@ -208,14 +220,14 @@ class FilterListTest : ApplicationTest() {
 
         setFilter(
             source.id,
-            FilterChange(2, "1")
+            FilterChange(2, "1"),
         )
 
         val filterList = getFilterList(source.id, false)
 
         assertEquals(
             filterList[2].filter.state,
-            1
+            1,
         )
     }
 
@@ -225,14 +237,14 @@ class FilterListTest : ApplicationTest() {
 
         setFilter(
             source.id,
-            FilterChange(3, "I'm a changed man!")
+            FilterChange(3, "I'm a changed man!"),
         )
 
         val filterList = getFilterList(source.id, false)
 
         assertEquals(
             filterList[3].filter.state,
-            "I'm a changed man!"
+            "I'm a changed man!",
         )
     }
 
@@ -242,14 +254,14 @@ class FilterListTest : ApplicationTest() {
 
         setFilter(
             source.id,
-            FilterChange(4, "true")
+            FilterChange(4, "true"),
         )
 
         val filterList = getFilterList(source.id, false)
 
         assertEquals(
             filterList[4].filter.state,
-            true
+            true,
         )
     }
 
@@ -259,14 +271,14 @@ class FilterListTest : ApplicationTest() {
 
         setFilter(
             source.id,
-            FilterChange(5, "1")
+            FilterChange(5, "1"),
         )
 
         val filterList = getFilterList(source.id, false)
 
         assertEquals(
             filterList[5].filter.state,
-            Filter.TriState.STATE_INCLUDE
+            Filter.TriState.STATE_INCLUDE,
         )
     }
 
@@ -276,14 +288,14 @@ class FilterListTest : ApplicationTest() {
 
         setFilter(
             source.id,
-            FilterChange(6, """{"position":0,"state":"true"}""")
+            FilterChange(6, """{"position":0,"state":"true"}"""),
         )
 
         val filterList = getFilterList(source.id, false)
 
         assertEquals(
             (filterList[6].filter.state as List<FilterObject>)[0].filter.state,
-            true
+            true,
         )
     }
 
@@ -293,14 +305,14 @@ class FilterListTest : ApplicationTest() {
 
         setFilter(
             source.id,
-            FilterChange(7, """{"index":1,"ascending":"true"}""")
+            FilterChange(7, """{"index":1,"ascending":"true"}"""),
         )
 
         val filterList = getFilterList(source.id, false)
 
         assertEquals(
             filterList[7].filter.state,
-            Filter.Sort.Selection(1, true)
+            Filter.Sort.Selection(1, true),
         )
     }
 

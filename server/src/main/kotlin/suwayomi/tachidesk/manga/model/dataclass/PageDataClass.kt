@@ -9,5 +9,5 @@ package suwayomi.tachidesk.manga.model.dataclass
 
 data class PageDataClass(
     val index: Int,
-    var imageUrl: String
+    var imageUrl: String,
 )

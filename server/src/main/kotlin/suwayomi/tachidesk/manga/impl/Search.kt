@@ -16,34 +16,47 @@ import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.MangaList.processEntries
-import suwayomi.tachidesk.manga.impl.util.lang.awaitSingle
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 
 object Search {
-    suspend fun sourceSearch(sourceId: Long, searchTerm: String, pageNum: Int): PagedMangaListDataClass {
+    suspend fun sourceSearch(
+        sourceId: Long,
+        searchTerm: String,
+        pageNum: Int,
+    ): PagedMangaListDataClass {
         val source = getCatalogueSourceOrStub(sourceId)
-        val searchManga = source.fetchSearchManga(pageNum, searchTerm, getFilterListOf(source)).awaitSingle()
+        val searchManga = source.getSearchManga(pageNum, searchTerm, getFilterListOf(source))
         return searchManga.processEntries(sourceId)
     }
 
-    suspend fun sourceFilter(sourceId: Long, pageNum: Int, filter: FilterData): PagedMangaListDataClass {
+    suspend fun sourceFilter(
+        sourceId: Long,
+        pageNum: Int,
+        filter: FilterData,
+    ): PagedMangaListDataClass {
         val source = getCatalogueSourceOrStub(sourceId)
         val filterList = if (filter.filter != null) buildFilterList(sourceId, filter.filter) else source.getFilterList()
-        val searchManga = source.fetchSearchManga(pageNum, filter.searchTerm ?: "", filterList).awaitSingle()
+        val searchManga = source.getSearchManga(pageNum, filter.searchTerm ?: "", filterList)
         return searchManga.processEntries(sourceId)
     }
 
     private val filterListCache = mutableMapOf<Long, FilterList>()
 
-    private fun getFilterListOf(source: CatalogueSource, reset: Boolean = false): FilterList {
+    private fun getFilterListOf(
+        source: CatalogueSource,
+        reset: Boolean = false,
+    ): FilterList {
         if (reset || !filterListCache.containsKey(source.id)) {
             filterListCache[source.id] = source.getFilterList()
         }
         return filterListCache[source.id]!!
     }
 
-    fun getFilterList(sourceId: Long, reset: Boolean): List<FilterObject> {
+    fun getFilterList(
+        sourceId: Long,
+        reset: Boolean,
+    ): List<FilterObject> {
         val source = getCatalogueSourceOrStub(sourceId)
 
         return getFilterListOf(source, reset).list.map {
@@ -71,30 +84,37 @@ object Search {
                                     is Filter.Select<*> -> FilterObject("Select", item)
                                     else -> throw RuntimeException("Illegal Group item type!")
                                 }
-                            }
+                            },
                         )
                     }
                     else -> it
-                }
+                },
             )
         }
     }
 
     private fun Filter.Select<*>.getValuesType(): String = values::class.java.componentType!!.simpleName
+
     class SerializableGroup(name: String, state: List<FilterObject>) : Filter<List<FilterObject>>(name, state)
 
     data class FilterObject(
         val type: String,
-        val filter: Filter<*>
+        val filter: Filter<*>,
     )
 
-    fun setFilter(sourceId: Long, changes: List<FilterChange>) {
+    fun setFilter(
+        sourceId: Long,
+        changes: List<FilterChange>,
+    ) {
         val source = getCatalogueSourceOrStub(sourceId)
         val filterList = getFilterListOf(source, false)
         updateFilterList(filterList, changes)
     }
 
-    private fun updateFilterList(filterList: FilterList, changes: List<FilterChange>): FilterList {
+    private fun updateFilterList(
+        filterList: FilterList,
+        changes: List<FilterChange>,
+    ): FilterList {
         changes.forEach { change ->
             when (val filter = filterList[change.position]) {
                 is Filter.Header -> {
@@ -125,7 +145,10 @@ object Search {
         return filterList
     }
 
-    fun buildFilterList(sourceId: Long, changes: List<FilterChange>): FilterList {
+    fun buildFilterList(
+        sourceId: Long,
+        changes: List<FilterChange>,
+    ): FilterList {
         val source = getCatalogueSourceOrStub(sourceId)
         val filterList = source.getFilterList()
         return updateFilterList(filterList, changes)
@@ -136,13 +159,13 @@ object Search {
     @Serializable
     data class FilterChange(
         val position: Int,
-        val state: String
+        val state: String,
     )
 
     @Serializable
     data class FilterData(
         val searchTerm: String?,
-        val filter: List<FilterChange>?
+        val filter: List<FilterChange>?,
     )
 
     @Suppress("UNUSED_PARAMETER")

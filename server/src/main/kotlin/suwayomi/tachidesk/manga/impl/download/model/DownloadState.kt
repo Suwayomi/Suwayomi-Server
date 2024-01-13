@@ -11,5 +11,5 @@ enum class DownloadState(val state: Int) {
     Queued(0),
     Downloading(1),
     Finished(2),
-    Error(3)
+    Error(3),
 }

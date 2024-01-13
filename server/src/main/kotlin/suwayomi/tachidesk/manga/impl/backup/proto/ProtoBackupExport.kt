@@ -7,7 +7,10 @@ package suwayomi.tachidesk.manga.impl.backup.proto
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.app.Application
+import android.content.Context
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import kotlinx.coroutines.flow.combine
 import mu.KotlinLogging
 import okio.buffer
 import okio.gzip
@@ -37,26 +40,37 @@ import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.HAScheduler
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.concurrent.TimeUnit
-import java.util.prefs.Preferences
 import kotlin.time.Duration.Companion.days
 
 object ProtoBackupExport : ProtoBackupBase() {
     private val logger = KotlinLogging.logger { }
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
     private var backupSchedulerJobId: String = ""
-    private const val lastAutomatedBackupKey = "lastAutomatedBackupKey"
-    private val preferences = Preferences.userNodeForPackage(ProtoBackupExport::class.java)
+    private const val LAST_AUTOMATED_BACKUP_KEY = "lastAutomatedBackup"
+    private val preferences = Injekt.get<Application>().getSharedPreferences("server_util", Context.MODE_PRIVATE)
+
+    init {
+        serverConfig.subscribeTo(
+            combine(serverConfig.backupInterval, serverConfig.backupTime) { interval, timeOfDay ->
+                Pair(
+                    interval,
+                    timeOfDay,
+                )
+            },
+            ::scheduleAutomatedBackupTask,
+        )
+    }
 
     fun scheduleAutomatedBackupTask() {
         HAScheduler.descheduleCron(backupSchedulerJobId)
 
-        val areAutomatedBackupsDisabled = serverConfig.backupInterval == 0
+        val areAutomatedBackupsDisabled = serverConfig.backupInterval.value == 0
         if (areAutomatedBackupsDisabled) {
             return
         }
@@ -64,16 +78,16 @@ object ProtoBackupExport : ProtoBackupBase() {
         val task = {
             cleanupAutomatedBackups()
             createAutomatedBackup()
-            preferences.putLong(lastAutomatedBackupKey, System.currentTimeMillis())
+            preferences.edit().putLong(LAST_AUTOMATED_BACKUP_KEY, System.currentTimeMillis()).apply()
         }
 
-        val (hour, minute) = serverConfig.backupTime.split(":").map { it.toInt() }
+        val (hour, minute) = serverConfig.backupTime.value.split(":").map { it.toInt() }
         val backupHour = hour.coerceAtLeast(0).coerceAtMost(23)
         val backupMinute = minute.coerceAtLeast(0).coerceAtMost(59)
-        val backupInterval = serverConfig.backupInterval.days.coerceAtLeast(1.days)
+        val backupInterval = serverConfig.backupInterval.value.days.coerceAtLeast(1.days)
 
         // trigger last backup in case the server wasn't running on the scheduled time
-        val lastAutomatedBackup = preferences.getLong(lastAutomatedBackupKey, System.currentTimeMillis())
+        val lastAutomatedBackup = preferences.getLong(LAST_AUTOMATED_BACKUP_KEY, 0)
         val wasPreviousBackupTriggered =
             (System.currentTimeMillis() - lastAutomatedBackup) < backupInterval.inWholeMilliseconds
         if (!wasPreviousBackupTriggered) {
@@ -92,22 +106,22 @@ object ProtoBackupExport : ProtoBackupBase() {
                 includeCategories = true,
                 includeChapters = true,
                 includeTracking = true,
-                includeHistory = true
-            )
+                includeHistory = true,
+            ),
         ).use { input ->
             val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
             automatedBackupDir.mkdirs()
 
-            val backupFile = File(applicationDirs.automatedBackupRoot, getBackupFilename())
+            val backupFile = File(applicationDirs.automatedBackupRoot, Backup.getFilename())
 
             backupFile.outputStream().use { output -> input.copyTo(output) }
         }
     }
 
     private fun cleanupAutomatedBackups() {
-        logger.debug { "Cleanup automated backups (ttl= ${serverConfig.backupTTL})" }
+        logger.debug { "Cleanup automated backups (ttl= ${serverConfig.backupTTL.value})" }
 
-        val isCleanupDisabled = serverConfig.backupTTL == 0
+        val isCleanupDisabled = serverConfig.backupTTL.value == 0
         if (isCleanupDisabled) {
             return
         }
@@ -133,15 +147,10 @@ object ProtoBackupExport : ProtoBackupBase() {
 
         val lastAccessTime = file.lastModified()
         val isTTLReached =
-            System.currentTimeMillis() - lastAccessTime >= serverConfig.backupTTL.days.coerceAtLeast(1.days).inWholeMilliseconds
+            System.currentTimeMillis() - lastAccessTime >= serverConfig.backupTTL.value.days.coerceAtLeast(1.days).inWholeMilliseconds
         if (isTTLReached) {
             file.delete()
         }
-    }
-
-    fun getBackupFilename(): String {
-        val currentDate = SimpleDateFormat("yyyy-MM-dd_HH-mm").format(Date())
-        return "tachidesk_$currentDate.proto.gz"
     }
 
     fun createBackup(flags: BackupFlags): InputStream {
@@ -149,14 +158,15 @@ object ProtoBackupExport : ProtoBackupBase() {
 
         val databaseManga = transaction { MangaTable.select { MangaTable.inLibrary eq true } }
 
-        val backup: Backup = transaction {
-            Backup(
-                backupManga(databaseManga, flags),
-                backupCategories(),
-                emptyList(),
-                backupExtensionInfo(databaseManga)
-            )
-        }
+        val backup: Backup =
+            transaction {
+                Backup(
+                    backupManga(databaseManga, flags),
+                    backupCategories(),
+                    emptyList(),
+                    backupExtensionInfo(databaseManga),
+                )
+            }
 
         val byteArray = parser.encodeToByteArray(BackupSerializer, backup)
 
@@ -166,48 +176,54 @@ object ProtoBackupExport : ProtoBackupBase() {
         return byteStream.toByteArray().inputStream()
     }
 
-    private fun backupManga(databaseManga: Query, flags: BackupFlags): List<BackupManga> {
+    private fun backupManga(
+        databaseManga: Query,
+        flags: BackupFlags,
+    ): List<BackupManga> {
         return databaseManga.map { mangaRow ->
-            val backupManga = BackupManga(
-                source = mangaRow[MangaTable.sourceReference],
-                url = mangaRow[MangaTable.url],
-                title = mangaRow[MangaTable.title],
-                artist = mangaRow[MangaTable.artist],
-                author = mangaRow[MangaTable.author],
-                description = mangaRow[MangaTable.description],
-                genre = mangaRow[MangaTable.genre]?.split(", ") ?: emptyList(),
-                status = MangaStatus.valueOf(mangaRow[MangaTable.status]).value,
-                thumbnailUrl = mangaRow[MangaTable.thumbnail_url],
-                dateAdded = TimeUnit.SECONDS.toMillis(mangaRow[MangaTable.inLibraryAt]),
-                viewer = 0, // not supported in Tachidesk
-                updateStrategy = UpdateStrategy.valueOf(mangaRow[MangaTable.updateStrategy])
-            )
+            val backupManga =
+                BackupManga(
+                    source = mangaRow[MangaTable.sourceReference],
+                    url = mangaRow[MangaTable.url],
+                    title = mangaRow[MangaTable.title],
+                    artist = mangaRow[MangaTable.artist],
+                    author = mangaRow[MangaTable.author],
+                    description = mangaRow[MangaTable.description],
+                    genre = mangaRow[MangaTable.genre]?.split(", ") ?: emptyList(),
+                    status = MangaStatus.valueOf(mangaRow[MangaTable.status]).value,
+                    thumbnailUrl = mangaRow[MangaTable.thumbnail_url],
+                    dateAdded = TimeUnit.SECONDS.toMillis(mangaRow[MangaTable.inLibraryAt]),
+                    viewer = 0, // not supported in Tachidesk
+                    updateStrategy = UpdateStrategy.valueOf(mangaRow[MangaTable.updateStrategy]),
+                )
 
             val mangaId = mangaRow[MangaTable.id].value
 
             if (flags.includeChapters) {
-                val chapters = transaction {
-                    ChapterTable.select { ChapterTable.manga eq mangaId }
-                        .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
-                        .map {
-                            ChapterTable.toDataClass(it)
-                        }
-                }
+                val chapters =
+                    transaction {
+                        ChapterTable.select { ChapterTable.manga eq mangaId }
+                            .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+                            .map {
+                                ChapterTable.toDataClass(it)
+                            }
+                    }
 
-                backupManga.chapters = chapters.map {
-                    BackupChapter(
-                        it.url,
-                        it.name,
-                        it.scanlator,
-                        it.read,
-                        it.bookmarked,
-                        it.lastPageRead,
-                        TimeUnit.SECONDS.toMillis(it.fetchedAt),
-                        it.uploadDate,
-                        it.chapterNumber,
-                        chapters.size - it.index
-                    )
-                }
+                backupManga.chapters =
+                    chapters.map {
+                        BackupChapter(
+                            it.url,
+                            it.name,
+                            it.scanlator,
+                            it.read,
+                            it.bookmarked,
+                            it.lastPageRead,
+                            TimeUnit.SECONDS.toMillis(it.fetchedAt),
+                            it.uploadDate,
+                            it.chapterNumber,
+                            chapters.size - it.index,
+                        )
+                    }
             }
 
             if (flags.includeCategories) {
@@ -233,7 +249,7 @@ object ProtoBackupExport : ProtoBackupBase() {
             BackupCategory(
                 it.name,
                 it.order,
-                0 // not supported in Tachidesk
+                0, // not supported in Tachidesk
             )
         }
     }
@@ -247,7 +263,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                 val sourceRow = SourceTable.select { SourceTable.id eq it }.firstOrNull()
                 BackupSource(
                     sourceRow?.get(SourceTable.name) ?: "",
-                    it
+                    it,
                 )
             }
             .toList()

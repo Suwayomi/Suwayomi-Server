@@ -26,7 +26,7 @@ data class PageInfo(
     @GraphQLDescription("When paginating backwards, the cursor to continue.")
     val startCursor: Cursor?,
     @GraphQLDescription("When paginating forwards, the cursor to continue.")
-    val endCursor: Cursor?
+    val endCursor: Cursor?,
 )
 
 abstract class Edge {

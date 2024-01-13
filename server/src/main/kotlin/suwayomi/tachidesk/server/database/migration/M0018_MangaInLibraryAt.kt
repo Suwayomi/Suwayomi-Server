@@ -14,5 +14,5 @@ class M0018_MangaInLibraryAt : AddColumnMigration(
     "Manga",
     "in_library_at",
     "BIGINT",
-    "0"
+    "0",
 )

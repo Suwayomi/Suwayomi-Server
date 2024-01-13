@@ -21,14 +21,21 @@ open class StubSource(override val id: Long) : CatalogueSource {
     override val name: String
         get() = id.toString()
 
+    @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getPopularManga"))
     override fun fetchPopularManga(page: Int): Observable<MangasPage> {
         return Observable.error(getSourceNotInstalledException())
     }
 
-    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> {
+    @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getSearchManga"))
+    override fun fetchSearchManga(
+        page: Int,
+        query: String,
+        filters: FilterList,
+    ): Observable<MangasPage> {
         return Observable.error(getSourceNotInstalledException())
     }
 
+    @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getLatestUpdates"))
     override fun fetchLatestUpdates(page: Int): Observable<MangasPage> {
         return Observable.error(getSourceNotInstalledException())
     }
@@ -37,14 +44,17 @@ open class StubSource(override val id: Long) : CatalogueSource {
         return FilterList()
     }
 
+    @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getMangaDetails"))
     override fun fetchMangaDetails(manga: SManga): Observable<SManga> {
         return Observable.error(getSourceNotInstalledException())
     }
 
+    @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getChapterList"))
     override fun fetchChapterList(manga: SManga): Observable<List<SChapter>> {
         return Observable.error(getSourceNotInstalledException())
     }
 
+    @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getPageList"))
     override fun fetchPageList(chapter: SChapter): Observable<List<Page>> {
         return Observable.error(getSourceNotInstalledException())
     }

@@ -8,6 +8,7 @@
 package suwayomi.tachidesk.graphql.types
 
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
+import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
@@ -37,10 +38,32 @@ class MangaType(
     val status: MangaStatus,
     val inLibrary: Boolean,
     val inLibraryAt: Long,
+    val updateStrategy: UpdateStrategy,
     val realUrl: String?,
     var lastFetchedAt: Long?, // todo
-    var chaptersLastFetchedAt: Long? // todo
+    var chaptersLastFetchedAt: Long?, // todo
 ) : Node {
+    companion object {
+        fun clearCacheFor(
+            mangaId: Int,
+            dataFetchingEnvironment: DataFetchingEnvironment,
+        ) {
+            dataFetchingEnvironment.getDataLoader<Int, MangaType>("MangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, MangaNodeList>("MangaForIdsDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, Int>("DownloadedChapterCountForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, Int>("UnreadChapterCountForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LastReadChapterForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestReadChapterForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestFetchedChapterForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestUploadedChapterForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterNodeList>(
+                "ChaptersForMangaDataLoader",
+            ).clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, List<MangaMetaType>>("MangaMetaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, CategoryNodeList>("CategoriesForMangaDataLoader").clear(mangaId)
+        }
+    }
+
     constructor(row: ResultRow) : this(
         row[MangaTable.id].value,
         row[MangaTable.sourceReference],
@@ -55,9 +78,10 @@ class MangaType(
         MangaStatus.valueOf(row[MangaTable.status]),
         row[MangaTable.inLibrary],
         row[MangaTable.inLibraryAt],
+        UpdateStrategy.valueOf(row[MangaTable.updateStrategy]),
         row[MangaTable.realUrl],
         row[MangaTable.lastFetchedAt],
-        row[MangaTable.chaptersLastFetchedAt]
+        row[MangaTable.chaptersLastFetchedAt],
     )
 
     constructor(dataClass: MangaDataClass) : this(
@@ -74,10 +98,35 @@ class MangaType(
         MangaStatus.valueOf(dataClass.status),
         dataClass.inLibrary,
         dataClass.inLibraryAt,
+        dataClass.updateStrategy,
         dataClass.realUrl,
         dataClass.lastFetchedAt,
-        dataClass.chaptersLastFetchedAt
+        dataClass.chaptersLastFetchedAt,
     )
+
+    fun downloadCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> {
+        return dataFetchingEnvironment.getValueFromDataLoader("DownloadedChapterCountForMangaDataLoader", id)
+    }
+
+    fun unreadCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> {
+        return dataFetchingEnvironment.getValueFromDataLoader("UnreadChapterCountForMangaDataLoader", id)
+    }
+
+    fun lastReadChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> {
+        return dataFetchingEnvironment.getValueFromDataLoader("LastReadChapterForMangaDataLoader", id)
+    }
+
+    fun latestReadChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> {
+        return dataFetchingEnvironment.getValueFromDataLoader("LatestReadChapterForMangaDataLoader", id)
+    }
+
+    fun latestFetchedChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> {
+        return dataFetchingEnvironment.getValueFromDataLoader("LatestFetchedChapterForMangaDataLoader", id)
+    }
+
+    fun latestUploadedChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> {
+        return dataFetchingEnvironment.getValueFromDataLoader("LatestUploadedChapterForMangaDataLoader", id)
+    }
 
     fun chapters(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterNodeList> {
         return dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterNodeList>("ChaptersForMangaDataLoader", id)
@@ -105,17 +154,21 @@ class MangaType(
     fun source(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<SourceType?> {
         return dataFetchingEnvironment.getValueFromDataLoader<Long, SourceType?>("SourceDataLoader", sourceId)
     }
+
+    fun trackRecords(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<TrackRecordNodeList> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, TrackRecordNodeList>("TrackRecordsForMangaIdDataLoader", id)
+    }
 }
 
 data class MangaNodeList(
     override val nodes: List<MangaType>,
     override val edges: List<MangaEdge>,
     override val pageInfo: PageInfo,
-    override val totalCount: Int
+    override val totalCount: Int,
 ) : NodeList() {
     data class MangaEdge(
         override val cursor: Cursor,
-        override val node: MangaType
+        override val node: MangaType,
     ) : Edge()
 
     companion object {
@@ -123,13 +176,14 @@ data class MangaNodeList(
             return MangaNodeList(
                 nodes = this,
                 edges = getEdges(),
-                pageInfo = PageInfo(
-                    hasNextPage = false,
-                    hasPreviousPage = false,
-                    startCursor = Cursor(0.toString()),
-                    endCursor = Cursor(lastIndex.toString())
-                ),
-                totalCount = size
+                pageInfo =
+                    PageInfo(
+                        hasNextPage = false,
+                        hasPreviousPage = false,
+                        startCursor = Cursor(0.toString()),
+                        endCursor = Cursor(lastIndex.toString()),
+                    ),
+                totalCount = size,
             )
         }
 
@@ -138,12 +192,12 @@ data class MangaNodeList(
             return listOf(
                 MangaEdge(
                     cursor = Cursor("0"),
-                    node = first()
+                    node = first(),
                 ),
                 MangaEdge(
                     cursor = Cursor(lastIndex.toString()),
-                    node = last()
-                )
+                    node = last(),
+                ),
             )
         }
     }

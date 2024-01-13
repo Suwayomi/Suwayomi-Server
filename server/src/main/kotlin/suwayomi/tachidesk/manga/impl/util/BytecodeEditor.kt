@@ -18,6 +18,7 @@ import org.objectweb.asm.Opcodes
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardOpenOption
 import kotlin.streams.asSequence
 
 object BytecodeEditor {
@@ -54,13 +55,14 @@ object BytecodeEditor {
                     // Invalid class size
                     return null
                 }
-                val cafebabe = String.format(
-                    "%02X%02X%02X%02X",
-                    bytes[0],
-                    bytes[1],
-                    bytes[2],
-                    bytes[3]
-                )
+                val cafebabe =
+                    String.format(
+                        "%02X%02X%02X%02X",
+                        bytes[0],
+                        bytes[1],
+                        bytes[2],
+                        bytes[3],
+                    )
                 if (cafebabe.lowercase() != "cafebabe") {
                     // Corrupted class
                     return null
@@ -79,14 +81,15 @@ object BytecodeEditor {
     /**
      * The path where replacement classes will reside
      */
-    private const val replacementPath = "xyz/nulldev/androidcompat/replace"
+    private const val REPLACEMENT_PATH = "xyz/nulldev/androidcompat/replace"
 
     /**
      * List of classes that will be replaced
      */
-    private val classesToReplace = listOf(
-        "java/text/SimpleDateFormat"
-    )
+    private val classesToReplace =
+        listOf(
+            "java/text/SimpleDateFormat",
+        )
 
     /**
      * Replace direct references to the class, used on places
@@ -94,25 +97,24 @@ object BytecodeEditor {
      *
      * @return [String] of class or null if [String] was null
      */
-    private fun String?.replaceDirectly() = when (this) {
-        null -> this
-        in classesToReplace -> "$replacementPath/$this"
-        else -> this
-    }
+    private fun String?.replaceDirectly() =
+        when (this) {
+            null -> null
+            in classesToReplace -> "$REPLACEMENT_PATH/$this"
+            else -> this
+        }
 
     /**
      * Replace references to the class, used in places that have
      * other text around the class references
      *
-     * @return [String] with  class references replaced,
-     *          or null if [String] was null
+     * @return [String] with class references replaced, or null if [String] was null
      */
     private fun String?.replaceIndirectly(): String? {
-        var classReference = this
-        if (classReference != null) {
-            classesToReplace.forEach {
-                classReference = classReference?.replace(it, "$replacementPath/$it")
-            }
+        if (this == null) return null
+        var classReference: String = this
+        classesToReplace.forEach {
+            classReference = classReference.replace(it, "$REPLACEMENT_PATH/$it")
         }
         return classReference
     }
@@ -121,7 +123,7 @@ object BytecodeEditor {
      * Replace all references to certain classes inside the class file
      * with ones that behave more like Androids
      *
-     * @param classfileBuffer Class bytecode to load into ASM for ease of modification
+     * @param pair Class bytecode to load into ASM for ease of modification
      *
      * @return [ByteArray] with modified bytecode
      */
@@ -141,7 +143,7 @@ object BytecodeEditor {
                     name: String?,
                     desc: String?,
                     signature: String?,
-                    cst: Any?
+                    cst: Any?,
                 ): FieldVisitor? {
                     logger.trace { "CLass Field" to "${desc.replaceIndirectly()}: ${cst?.let { it::class.java.simpleName }}: $cst" }
                     return super.visitField(access, name, desc.replaceIndirectly(), signature, cst)
@@ -153,7 +155,7 @@ object BytecodeEditor {
                     name: String?,
                     signature: String?,
                     superName: String?,
-                    interfaces: Array<out String>?
+                    interfaces: Array<out String>?,
                 ) {
                     logger.trace { "Visiting $name: $signature: $superName" }
                     super.visit(version, access, name, signature, superName, interfaces)
@@ -170,16 +172,17 @@ object BytecodeEditor {
                     name: String,
                     desc: String,
                     signature: String?,
-                    exceptions: Array<String?>?
+                    exceptions: Array<String?>?,
                 ): MethodVisitor {
                     logger.trace { "Processing method $name: ${desc.replaceIndirectly()}: $signature" }
-                    val mv: MethodVisitor? = super.visitMethod(
-                        access,
-                        name,
-                        desc.replaceIndirectly(),
-                        signature,
-                        exceptions
-                    )
+                    val mv: MethodVisitor? =
+                        super.visitMethod(
+                            access,
+                            name,
+                            desc.replaceIndirectly(),
+                            signature,
+                            exceptions,
+                        )
                     return object : MethodVisitor(Opcodes.ASM5, mv) {
                         override fun visitLdcInsn(cst: Any?) {
                             logger.trace { "Ldc" to "${cst?.let { "${it::class.java.simpleName}: $it" }}" }
@@ -191,13 +194,16 @@ object BytecodeEditor {
                         // fun fetchChapterList() {
                         //     if (format is SimpleDateFormat)
                         // }
-                        override fun visitTypeInsn(opcode: Int, type: String?) {
+                        override fun visitTypeInsn(
+                            opcode: Int,
+                            type: String?,
+                        ) {
                             logger.trace {
                                 "Type" to "$opcode: ${type.replaceDirectly()}"
                             }
                             super.visitTypeInsn(
                                 opcode,
-                                type.replaceDirectly()
+                                type.replaceDirectly(),
                             )
                         }
 
@@ -210,7 +216,7 @@ object BytecodeEditor {
                             owner: String?,
                             name: String?,
                             desc: String?,
-                            itf: Boolean
+                            itf: Boolean,
                         ) {
                             logger.trace {
                                 "Method" to "$opcode: ${owner.replaceDirectly()}: $name: ${desc.replaceIndirectly()}"
@@ -220,7 +226,7 @@ object BytecodeEditor {
                                 owner.replaceDirectly(),
                                 name,
                                 desc.replaceIndirectly(),
-                                itf
+                                itf,
                             )
                         }
 
@@ -233,7 +239,7 @@ object BytecodeEditor {
                             opcode: Int,
                             owner: String?,
                             name: String?,
-                            desc: String?
+                            desc: String?,
                         ) {
                             logger.trace { "Field" to "$opcode: $owner: $name: ${desc.replaceIndirectly()}" }
                             super.visitFieldInsn(opcode, owner, name, desc.replaceIndirectly())
@@ -243,7 +249,7 @@ object BytecodeEditor {
                             name: String?,
                             desc: String?,
                             bsm: Handle?,
-                            vararg bsmArgs: Any?
+                            vararg bsmArgs: Any?,
                         ) {
                             logger.trace { "InvokeDynamic" to "$name: $desc" }
                             super.visitInvokeDynamicInsn(name, desc, bsm, *bsmArgs)
@@ -251,12 +257,17 @@ object BytecodeEditor {
                     }
                 }
             },
-            0
+            0,
         )
         return pair.first to cw.toByteArray()
     }
 
     private fun write(pair: Pair<Path, ByteArray>) {
-        Files.write(pair.first, pair.second)
+        Files.write(
+            pair.first,
+            pair.second,
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING,
+        )
     }
 }

@@ -20,7 +20,10 @@ object ImageResponse {
     }
 
     /** find file with name when file extension is not known */
-    fun findFileNameStartingWith(directoryPath: String, fileName: String): String? {
+    fun findFileNameStartingWith(
+        directoryPath: String,
+        fileName: String,
+    ): String? {
         val target = "$fileName."
         File(directoryPath).listFiles().orEmpty().forEach { file ->
             if (file.name.startsWith(target)) {
@@ -28,6 +31,17 @@ object ImageResponse {
             }
         }
         return null
+    }
+
+    fun getCachedImageResponse(
+        cachedFile: String,
+        filePath: String,
+    ): Pair<InputStream, String> {
+        val fileType = cachedFile.substringAfter("$filePath.")
+        return Pair(
+            pathToInputStream(cachedFile),
+            "image/$fileType",
+        )
     }
 
     /**
@@ -38,10 +52,10 @@ object ImageResponse {
      * @param cacheSavePath where to save the cached image. Caller should decide to use perma cache or temp cache (OS temp dir)
      * @param fileName what the saved cache file should be named
      */
-    suspend fun getCachedImageResponse(
+    suspend fun getImageResponse(
         saveDir: String,
         fileName: String,
-        fetcher: suspend () -> Response
+        fetcher: suspend () -> Response,
     ): Pair<InputStream, String> {
         File(saveDir).mkdirs()
 
@@ -50,11 +64,7 @@ object ImageResponse {
 
         // in case the cached file is a ".tmp" file something went wrong with the previous download, and it has to be downloaded again
         if (cachedFile != null && !cachedFile.endsWith(".tmp")) {
-            val fileType = cachedFile.substringAfter("$filePath.")
-            return Pair(
-                pathToInputStream(cachedFile),
-                "image/$fileType"
-            )
+            return getCachedImageResponse(cachedFile, filePath)
         }
 
         val response = fetcher()
@@ -76,14 +86,18 @@ object ImageResponse {
     }
 
     /** Save image safely */
-    fun saveImage(filePath: String, image: InputStream): Pair<String, String> {
+    fun saveImage(
+        filePath: String,
+        image: InputStream,
+    ): Pair<String, String> {
         val tmpSavePath = "$filePath.tmp"
         val tmpSaveFile = File(tmpSavePath)
         image.use { input -> tmpSaveFile.outputStream().use { output -> input.copyTo(output) } }
 
         // find image type
-        val imageType = ImageUtil.findImageType { tmpSaveFile.inputStream() }?.mime
-            ?: "image/jpeg"
+        val imageType =
+            ImageUtil.findImageType { tmpSaveFile.inputStream() }?.mime
+                ?: "image/jpeg"
 
         val actualSavePath = "$filePath.${imageType.substringAfter("/")}"
 
@@ -91,10 +105,17 @@ object ImageResponse {
         return Pair(actualSavePath, imageType)
     }
 
-    fun clearCachedImage(saveDir: String, fileName: String) {
+    fun clearCachedImage(
+        saveDir: String,
+        fileName: String,
+    ) {
         val cachedFile = findFileNameStartingWith(saveDir, fileName)
         cachedFile?.also {
             File(it).delete()
         }
+    }
+
+    fun clearImages(saveDir: String): Boolean {
+        return File(saveDir).deleteRecursively()
     }
 }

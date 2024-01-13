@@ -21,22 +21,22 @@ import com.fasterxml.jackson.annotation.JsonInclude
 data class SubscriptionOperationMessage(
     val type: String,
     val id: String? = null,
-    val payload: Any? = null
+    val payload: Any? = null,
 ) {
     enum class CommonMessages(val type: String) {
         GQL_PING("ping"),
         GQL_PONG("pong"),
-        GQL_COMPLETE("complete")
+        GQL_COMPLETE("complete"),
     }
 
     enum class ClientMessages(val type: String) {
         GQL_CONNECTION_INIT("connection_init"),
-        GQL_SUBSCRIBE("subscribe")
+        GQL_SUBSCRIBE("subscribe"),
     }
 
     enum class ServerMessages(val type: String) {
         GQL_CONNECTION_ACK("connection_ack"),
         GQL_NEXT("next"),
-        GQL_ERROR("error")
+        GQL_ERROR("error"),
     }
 }

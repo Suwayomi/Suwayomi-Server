@@ -1,9 +1,10 @@
+@file:Suppress("ktlint:standard:property-naming")
+
 package suwayomi.tachidesk.manga.impl.backup.models
 
 import java.io.Serializable
 
 interface Track : Serializable {
-
     var id: Long?
 
     var manga_id: Long
@@ -29,18 +30,4 @@ interface Track : Serializable {
     var finished_reading_date: Long
 
     var tracking_url: String
-
-    fun copyPersonalFrom(other: Track) {
-        last_chapter_read = other.last_chapter_read
-        score = other.score
-        status = other.status
-        started_reading_date = other.started_reading_date
-        finished_reading_date = other.finished_reading_date
-    }
-
-    companion object {
-        fun create(serviceId: Int): Track = TrackImpl().apply {
-            sync_id = serviceId
-        }
-    }
 }

@@ -7,5 +7,5 @@ class ReaderPage(
     index: Int,
     url: String = "",
     imageUrl: String? = null,
-    var stream: (() -> InputStream)? = null
+    var stream: (() -> InputStream)? = null,
 ) : Page(index, url, imageUrl, null)

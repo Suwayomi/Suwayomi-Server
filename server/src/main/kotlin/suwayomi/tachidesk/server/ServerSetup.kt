@@ -7,17 +7,23 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.app.Application
+import android.content.Context
+import ch.qos.logback.classic.Level
 import com.typesafe.config.ConfigRenderOptions
 import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.source.local.LocalSource
 import io.javalin.plugin.json.JavalinJackson
 import io.javalin.plugin.json.JsonMapper
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.conf.global
+import org.kodein.di.instance
 import org.kodein.di.singleton
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
@@ -25,50 +31,65 @@ import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.Updater
 import suwayomi.tachidesk.manga.impl.util.lang.renameTo
 import suwayomi.tachidesk.server.database.databaseUp
+import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
-import suwayomi.tachidesk.server.util.SystemTray.systemTray
+import suwayomi.tachidesk.server.util.SystemTray
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
 import xyz.nulldev.ts.config.ApplicationRootDir
+import xyz.nulldev.ts.config.BASE_LOGGER_NAME
 import xyz.nulldev.ts.config.ConfigKodeinModule
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.initLoggerConfig
+import xyz.nulldev.ts.config.setLogLevelFor
 import java.io.File
 import java.security.Security
 import java.util.Locale
+import java.util.prefs.Preferences
 
 private val logger = KotlinLogging.logger {}
 
 class ApplicationDirs(
     val dataRoot: String = ApplicationRootDir,
-    val tempRoot: String = "${System.getProperty("java.io.tmpdir")}/Tachidesk"
+    val tempRoot: String = "${System.getProperty("java.io.tmpdir")}/Tachidesk",
 ) {
-    val cacheRoot = System.getProperty("java.io.tmpdir") + "/tachidesk"
     val extensionsRoot = "$dataRoot/extensions"
-    val thumbnailsRoot = "$dataRoot/thumbnails"
-    val mangaDownloadsRoot = serverConfig.downloadsPath.ifBlank { "$dataRoot/downloads" }
-    val localMangaRoot = serverConfig.localSourcePath.ifBlank { "$dataRoot/local" }
+    val downloadsRoot get() = serverConfig.downloadsPath.value.ifBlank { "$dataRoot/downloads" }
+    val localMangaRoot get() = serverConfig.localSourcePath.value.ifBlank { "$dataRoot/local" }
     val webUIRoot = "$dataRoot/webUI"
-    val automatedBackupRoot = serverConfig.backupPath.ifBlank { "$dataRoot/backups" }
+    val automatedBackupRoot get() = serverConfig.backupPath.value.ifBlank { "$dataRoot/backups" }
 
+    val tempThumbnailCacheRoot = "$tempRoot/thumbnails"
     val tempMangaCacheRoot = "$tempRoot/manga-cache"
+
+    val thumbnailDownloadsRoot get() = "$downloadsRoot/thumbnails"
+    val mangaDownloadsRoot get() = "$downloadsRoot/mangas"
 }
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
-val systemTrayInstance by lazy { systemTray() }
-
 val androidCompat by lazy { AndroidCompat() }
 
+fun setupLogLevelUpdating(
+    configFlow: MutableStateFlow<Boolean>,
+    loggerNames: List<String>,
+    defaultLevel: Level = Level.INFO,
+) {
+    serverConfig.subscribeTo(configFlow, { debugLogsEnabled ->
+        loggerNames.forEach { loggerName -> setLogLevelFor(loggerName, if (debugLogsEnabled) Level.DEBUG else defaultLevel) }
+    }, ignoreInitialValue = false)
+}
+
 fun applicationSetup() {
-    Thread.setDefaultUncaughtExceptionHandler {
-            _, throwable ->
+    Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
         KotlinLogging.logger { }.error(throwable) { "unhandled exception" }
     }
 
     // register Tachidesk's config which is dubbed "ServerConfig"
     GlobalConfigManager.registerModule(
-        ServerConfig.register { GlobalConfigManager.config }
+        ServerConfig.register { GlobalConfigManager.config },
     )
 
     // Application dirs
@@ -76,38 +97,60 @@ fun applicationSetup() {
 
     initLoggerConfig(applicationDirs.dataRoot)
 
-    logger.info("Running Tachidesk ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")
+    setupLogLevelUpdating(serverConfig.debugLogsEnabled, listOf(BASE_LOGGER_NAME))
+    // gql "ExecutionStrategy" spams logs with "... completing field ..."
+    // gql "notprivacysafe" logs every received request multiple times (received, parsing, validating, executing)
+    setupLogLevelUpdating(serverConfig.gqlDebugLogsEnabled, listOf("graphql", "notprivacysafe"), Level.WARN)
+
+    logger.info("Running Suwayomi-Server ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")
 
     logger.debug {
-        "Loaded config:\n" + GlobalConfigManager.config.root().render(ConfigRenderOptions.concise().setFormatted(true))
+        "Loaded config:\n" +
+            GlobalConfigManager.config.root().render(ConfigRenderOptions.concise().setFormatted(true))
+                .replace(Regex("(\"basicAuth(?:Username|Password)\"\\s:\\s)(?!\"\")\".*\""), "$1\"******\"")
     }
-
-    val updater = Updater()
 
     DI.global.addImport(
         DI.Module("Server") {
             bind<ApplicationDirs>() with singleton { applicationDirs }
-            bind<IUpdater>() with singleton { updater }
+            bind<IUpdater>() with singleton { Updater() }
             bind<JsonMapper>() with singleton { JavalinJackson() }
             bind<Json>() with singleton { Json { ignoreUnknownKeys = true } }
-        }
+        },
     )
 
     logger.debug("Data Root directory is set to: ${applicationDirs.dataRoot}")
 
     // Migrate Directories from old versions
-    File("$ApplicationRootDir/manga-thumbnails").renameTo(applicationDirs.thumbnailsRoot)
+    File("$ApplicationRootDir/manga-thumbnails").renameTo(applicationDirs.tempThumbnailCacheRoot)
     File("$ApplicationRootDir/manga-local").renameTo(applicationDirs.localMangaRoot)
     File("$ApplicationRootDir/anime-thumbnails").delete()
+
+    val oldMangaDownloadDir = File(applicationDirs.downloadsRoot)
+    val newMangaDownloadDir = File(applicationDirs.mangaDownloadsRoot)
+    val downloadDirs = oldMangaDownloadDir.listFiles().orEmpty()
+
+    val moveDownloadsToNewFolder = !newMangaDownloadDir.exists() && downloadDirs.isNotEmpty()
+    if (moveDownloadsToNewFolder) {
+        newMangaDownloadDir.mkdirs()
+
+        for (downloadDir in downloadDirs) {
+            if (downloadDir == File(applicationDirs.thumbnailDownloadsRoot)) {
+                continue
+            }
+
+            downloadDir.renameTo(File(newMangaDownloadDir, downloadDir.name))
+        }
+    }
 
     // make dirs we need
     listOf(
         applicationDirs.dataRoot,
         applicationDirs.extensionsRoot,
         applicationDirs.extensionsRoot + "/icon",
-        applicationDirs.thumbnailsRoot,
-        applicationDirs.mangaDownloadsRoot,
-        applicationDirs.localMangaRoot
+        applicationDirs.tempThumbnailCacheRoot,
+        applicationDirs.downloadsRoot,
+        applicationDirs.localMangaRoot,
     ).forEach {
         File(it).mkdirs()
     }
@@ -153,7 +196,7 @@ fun applicationSetup() {
         logger.error("Exception while copying Local source's icon", e)
     }
 
-    // fixes #119 , ref: https://github.com/Suwayomi/Tachidesk-Server/issues/119#issuecomment-894681292 , source Id calculation depends on String.lowercase()
+    // fixes #119 , ref: https://github.com/Suwayomi/Suwayomi-Server/issues/119#issuecomment-894681292 , source Id calculation depends on String.lowercase()
     Locale.setDefault(Locale.ENGLISH)
 
     databaseUp()
@@ -161,12 +204,25 @@ fun applicationSetup() {
     LocalSource.register()
 
     // create system tray
-    if (serverConfig.systemTrayEnabled) {
+    serverConfig.subscribeTo(serverConfig.systemTrayEnabled, { systemTrayEnabled ->
         try {
-            systemTrayInstance
-        } catch (e: Throwable) { // cover both java.lang.Exception and java.lang.Error
+            if (systemTrayEnabled) {
+                SystemTray.create()
+            } else {
+                SystemTray.remove()
+            }
+        } catch (e: Throwable) {
+            // cover both java.lang.Exception and java.lang.Error
             e.printStackTrace()
         }
+    }, ignoreInitialValue = false)
+
+    val prefRootNode = "suwayomi/tachidesk"
+    val isMigrationRequired = Preferences.userRoot().nodeExists(prefRootNode)
+    if (isMigrationRequired) {
+        val preferences = Preferences.userRoot().node(prefRootNode)
+        migratePreferences(null, preferences)
+        preferences.removeNode()
     }
 
     // Disable jetty's logging
@@ -175,21 +231,70 @@ fun applicationSetup() {
     System.setProperty("org.eclipse.jetty.LEVEL", "OFF")
 
     // socks proxy settings
-    if (serverConfig.socksProxyEnabled) {
-        System.getProperties()["socksProxyHost"] = serverConfig.socksProxyHost
-        System.getProperties()["socksProxyPort"] = serverConfig.socksProxyPort
-        logger.info("Socks Proxy is enabled to ${serverConfig.socksProxyHost}:${serverConfig.socksProxyPort}")
-    }
+    serverConfig.subscribeTo(
+        combine(
+            serverConfig.socksProxyEnabled,
+            serverConfig.socksProxyHost,
+            serverConfig.socksProxyPort,
+        ) { proxyEnabled, proxyHost, proxyPort ->
+            Triple(proxyEnabled, proxyHost, proxyPort)
+        },
+        { (proxyEnabled, proxyHost, proxyPort) ->
+            logger.info("Socks Proxy changed - enabled= $proxyEnabled, proxy= $proxyHost:$proxyPort")
+            if (proxyEnabled) {
+                System.getProperties()["socksProxyHost"] = proxyHost
+                System.getProperties()["socksProxyPort"] = proxyPort
+            } else {
+                System.getProperties()["socksProxyHost"] = ""
+                System.getProperties()["socksProxyPort"] = ""
+            }
+        },
+        ignoreInitialValue = false,
+    )
 
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
     Security.addProvider(BouncyCastleProvider())
 
     // start automated global updates
-    updater.scheduleUpdateTask()
+    val updater by DI.global.instance<IUpdater>()
+    (updater as Updater).scheduleUpdateTask()
 
     // start automated backups
     ProtoBackupExport.scheduleAutomatedBackupTask()
 
     // start DownloadManager and restore + resume downloads
     DownloadManager.restoreAndResumeDownloads()
+}
+
+fun migratePreferences(
+    parent: String?,
+    rootNode: Preferences,
+) {
+    val subNodes = rootNode.childrenNames()
+
+    for (subNodeName in subNodes) {
+        val subNode = rootNode.node(subNodeName)
+        val key =
+            if (parent != null) {
+                "$parent/$subNodeName"
+            } else {
+                subNodeName
+            }
+        val preferences = Injekt.get<Application>().getSharedPreferences(key, Context.MODE_PRIVATE)
+
+        val items: Map<String, String?> =
+            subNode.keys().associateWith {
+                subNode[it, null]?.ifBlank { null }
+            }
+
+        preferences.edit().apply {
+            items.forEach { (key, value) ->
+                if (value != null) {
+                    putString(key, value)
+                }
+            }
+        }.apply()
+
+        migratePreferences(key, subNode) // Recursively migrate sub-level nodes
+    }
 }
