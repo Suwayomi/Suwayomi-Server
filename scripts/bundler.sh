@@ -164,6 +164,9 @@ download_jre_and_electron() {
   fi
   mv "$JRE_DIR" "$RELEASE_NAME/jre"
   unzip "$ELECTRON" -d "$RELEASE_NAME/electron/"
+
+  mkdir "$RELEASE_NAME/bin"
+
   tree
 }
 
