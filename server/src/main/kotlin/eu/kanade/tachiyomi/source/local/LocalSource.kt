@@ -328,8 +328,8 @@ class LocalSource(
         return when (val format = getFormat(chapter)) {
             is Format.Directory -> {
                 format.file.listFiles().orEmpty()
-                    .sortedBy { it.name }
                     .filter { !it.isDirectory && ImageUtil.isImage(it.name, it::inputStream) }
+                    .sortedWith { f1, f2 -> f1.name.compareToCaseInsensitiveNaturalOrder(f2.name) }
                     .mapIndexed { index, page ->
                         Page(
                             index,
