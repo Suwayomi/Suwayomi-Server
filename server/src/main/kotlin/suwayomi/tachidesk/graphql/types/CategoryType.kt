@@ -25,6 +25,7 @@ class CategoryType(
     val name: String,
     val default: Boolean,
     val includeInUpdate: IncludeOrExclude,
+    val includeInDownload: IncludeOrExclude,
 ) : Node {
     constructor(row: ResultRow) : this(
         row[CategoryTable.id].value,
@@ -32,6 +33,7 @@ class CategoryType(
         row[CategoryTable.name],
         row[CategoryTable.isDefault],
         IncludeOrExclude.fromValue(row[CategoryTable.includeInUpdate]),
+        IncludeOrExclude.fromValue(row[CategoryTable.includeInDownload]),
     )
 
     fun mangas(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> {

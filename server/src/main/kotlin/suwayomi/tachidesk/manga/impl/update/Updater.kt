@@ -277,6 +277,8 @@ class Updater : IUpdater {
         // In case no manga gets updated and no update job was running before, the client would never receive an info about its update request
         updateStatus(emptyList(), mangasToUpdate.isNotEmpty(), updateStatusCategories, skippedMangas)
 
+        logger.debug { "mangasToUpdate $mangasToUpdate" }
+
         if (mangasToUpdate.isEmpty()) {
             return
         }

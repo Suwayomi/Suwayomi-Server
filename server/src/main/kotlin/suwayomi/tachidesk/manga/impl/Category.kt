@@ -55,6 +55,7 @@ object Category {
         name: String?,
         isDefault: Boolean?,
         includeInUpdate: Int?,
+        includeInDownload: Int?,
     ) {
         transaction {
             CategoryTable.update({ CategoryTable.id eq categoryId }) {
@@ -66,6 +67,7 @@ object Category {
                 }
                 if (categoryId != DEFAULT_CATEGORY_ID && isDefault != null) it[CategoryTable.isDefault] = isDefault
                 if (includeInUpdate != null) it[CategoryTable.includeInUpdate] = includeInUpdate
+                if (includeInDownload != null) it[CategoryTable.includeInDownload] = includeInDownload
             }
         }
     }

@@ -18,6 +18,7 @@ object CategoryTable : IntIdTable() {
     val order = integer("order").default(0)
     val isDefault = bool("is_default").default(false)
     val includeInUpdate = integer("include_in_update").default(IncludeOrExclude.UNSET.value)
+    val includeInDownload = integer("include_in_download").default(IncludeOrExclude.UNSET.value)
 }
 
 fun CategoryTable.toDataClass(categoryEntry: ResultRow) =
@@ -28,5 +29,6 @@ fun CategoryTable.toDataClass(categoryEntry: ResultRow) =
         categoryEntry[isDefault],
         Category.getCategorySize(categoryEntry[id].value),
         IncludeOrExclude.fromValue(categoryEntry[includeInUpdate]),
+        IncludeOrExclude.fromValue(categoryEntry[includeInDownload]),
         Category.getCategoryMetaMap(categoryEntry[id].value),
     )
