@@ -8,12 +8,12 @@ package suwayomi.tachidesk.server.database.migration
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import de.neonew.exposed.migrations.helpers.AddColumnMigration
-import suwayomi.tachidesk.manga.model.dataclass.IncludeInUpdate
+import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 
 @Suppress("ClassName", "unused")
 class M0026_CategoryIncludeInUpdate : AddColumnMigration(
     "Category",
     "include_in_update",
     "INT",
-    IncludeInUpdate.UNSET.value.toString(),
+    IncludeOrExclude.UNSET.value.toString(),
 )

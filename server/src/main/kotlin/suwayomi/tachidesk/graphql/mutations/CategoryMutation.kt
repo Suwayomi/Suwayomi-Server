@@ -19,7 +19,7 @@ import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.Category.DEFAULT_CATEGORY_ID
 import suwayomi.tachidesk.manga.impl.util.lang.isEmpty
 import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
-import suwayomi.tachidesk.manga.model.dataclass.IncludeInUpdate
+import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
@@ -85,7 +85,7 @@ class CategoryMutation {
     data class UpdateCategoryPatch(
         val name: String? = null,
         val default: Boolean? = null,
-        val includeInUpdate: IncludeInUpdate? = null,
+        val includeInUpdate: IncludeOrExclude? = null,
     )
 
     data class UpdateCategoryPayload(
@@ -229,7 +229,7 @@ class CategoryMutation {
         val name: String,
         val order: Int? = null,
         val default: Boolean? = null,
-        val includeInUpdate: IncludeInUpdate? = null,
+        val includeInUpdate: IncludeOrExclude? = null,
     )
 
     data class CreateCategoryPayload(
