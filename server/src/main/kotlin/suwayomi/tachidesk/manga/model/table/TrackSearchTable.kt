@@ -35,18 +35,20 @@ fun List<TrackSearch>.insertAll(): List<ResultRow> {
     return transaction {
         val trackerIds = map { it.sync_id }.toSet()
         val remoteIds = map { it.media_id }.toSet()
-        val existing = transaction {
-            TrackSearchTable.select {
-                TrackSearchTable.trackerId inList trackerIds and (TrackSearchTable.remoteId inList remoteIds)
-            }.toList()
-        }
+        val existing =
+            transaction {
+                TrackSearchTable.select {
+                    TrackSearchTable.trackerId inList trackerIds and (TrackSearchTable.remoteId inList remoteIds)
+                }.toList()
+            }
 
         val grouped = mutableMapOf<Boolean, MutableList<Pair<Int?, TrackSearch>>>()
         forEach { trackSearch ->
-            val existingRow = existing.find {
-                it[TrackSearchTable.trackerId] == trackSearch.sync_id &&
-                    it[TrackSearchTable.remoteId] == trackSearch.media_id
-            }
+            val existingRow =
+                existing.find {
+                    it[TrackSearchTable.trackerId] == trackSearch.sync_id &&
+                        it[TrackSearchTable.remoteId] == trackSearch.media_id
+                }
             grouped.getOrPut(existingRow != null) { mutableListOf() }
                 .add(existingRow?.get(TrackSearchTable.id)?.value to trackSearch)
         }
@@ -69,26 +71,28 @@ fun List<TrackSearch>.insertAll(): List<ResultRow> {
                 execute(this@transaction)
             }
         }
-        val insertedRows = if (!toInsert.isNullOrEmpty()) {
-            TrackSearchTable.batchInsert(toInsert) {
-                this[TrackSearchTable.trackerId] = it.sync_id
-                this[TrackSearchTable.remoteId] = it.media_id
-                this[TrackSearchTable.title] = it.title.take(512)
-                this[TrackSearchTable.totalChapters] = it.total_chapters
-                this[TrackSearchTable.trackingUrl] = it.tracking_url.take(512)
-                this[TrackSearchTable.coverUrl] = it.cover_url.take(512)
-                this[TrackSearchTable.summary] = it.summary.take(4096)
-                this[TrackSearchTable.publishingStatus] = it.publishing_status.take(512)
-                this[TrackSearchTable.publishingType] = it.publishing_type.take(512)
-                this[TrackSearchTable.startDate] = it.start_date.take(128)
+        val insertedRows =
+            if (!toInsert.isNullOrEmpty()) {
+                TrackSearchTable.batchInsert(toInsert) {
+                    this[TrackSearchTable.trackerId] = it.sync_id
+                    this[TrackSearchTable.remoteId] = it.media_id
+                    this[TrackSearchTable.title] = it.title.take(512)
+                    this[TrackSearchTable.totalChapters] = it.total_chapters
+                    this[TrackSearchTable.trackingUrl] = it.tracking_url.take(512)
+                    this[TrackSearchTable.coverUrl] = it.cover_url.take(512)
+                    this[TrackSearchTable.summary] = it.summary.take(4096)
+                    this[TrackSearchTable.publishingStatus] = it.publishing_status.take(512)
+                    this[TrackSearchTable.publishingType] = it.publishing_type.take(512)
+                    this[TrackSearchTable.startDate] = it.start_date.take(128)
+                }
+            } else {
+                emptyList()
             }
-        } else {
-            emptyList()
-        }
 
-        val updatedRows = toUpdate?.mapNotNull { it.first }?.let {  ids ->
-            transaction { TrackSearchTable.select { TrackSearchTable.id inList ids }.toList() }
-        }.orEmpty()
+        val updatedRows =
+            toUpdate?.mapNotNull { it.first }?.let { ids ->
+                transaction { TrackSearchTable.select { TrackSearchTable.id inList ids }.toList() }
+            }.orEmpty()
 
         (insertedRows + updatedRows)
             .sortedBy { row ->
