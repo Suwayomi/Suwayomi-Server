@@ -9,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonValue
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-enum class IncludeInUpdate(
+enum class IncludeOrExclude(
     @JsonValue val value: Int,
 ) {
     EXCLUDE(0),
@@ -18,7 +18,7 @@ enum class IncludeInUpdate(
     ;
 
     companion object {
-        fun fromValue(value: Int) = IncludeInUpdate.values().find { it.value == value } ?: UNSET
+        fun fromValue(value: Int) = IncludeOrExclude.values().find { it.value == value } ?: UNSET
     }
 }
 
@@ -28,6 +28,7 @@ data class CategoryDataClass(
     val name: String,
     val default: Boolean,
     val size: Int,
-    val includeInUpdate: IncludeInUpdate,
+    val includeInUpdate: IncludeOrExclude,
+    val includeInDownload: IncludeOrExclude,
     val meta: Map<String, String> = emptyMap(),
 )

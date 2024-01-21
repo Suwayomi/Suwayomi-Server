@@ -11,13 +11,14 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
-import suwayomi.tachidesk.manga.model.dataclass.IncludeInUpdate
+import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 
 object CategoryTable : IntIdTable() {
     val name = varchar("name", 64)
     val order = integer("order").default(0)
     val isDefault = bool("is_default").default(false)
-    val includeInUpdate = integer("include_in_update").default(IncludeInUpdate.UNSET.value)
+    val includeInUpdate = integer("include_in_update").default(IncludeOrExclude.UNSET.value)
+    val includeInDownload = integer("include_in_download").default(IncludeOrExclude.UNSET.value)
 }
 
 fun CategoryTable.toDataClass(categoryEntry: ResultRow) =
@@ -27,6 +28,7 @@ fun CategoryTable.toDataClass(categoryEntry: ResultRow) =
         categoryEntry[name],
         categoryEntry[isDefault],
         Category.getCategorySize(categoryEntry[id].value),
-        IncludeInUpdate.fromValue(categoryEntry[includeInUpdate]),
+        IncludeOrExclude.fromValue(categoryEntry[includeInUpdate]),
+        IncludeOrExclude.fromValue(categoryEntry[includeInDownload]),
         Category.getCategoryMetaMap(categoryEntry[id].value),
     )

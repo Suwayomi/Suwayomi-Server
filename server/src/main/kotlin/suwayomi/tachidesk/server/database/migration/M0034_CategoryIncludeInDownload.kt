@@ -11,9 +11,9 @@ import de.neonew.exposed.migrations.helpers.AddColumnMigration
 import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 
 @Suppress("ClassName", "unused")
-class M0026_CategoryIncludeInUpdate : AddColumnMigration(
+class M0034_CategoryIncludeInDownload : AddColumnMigration(
     "Category",
-    "include_in_update",
+    "include_in_download",
     "INT",
     IncludeOrExclude.UNSET.value.toString(),
 )

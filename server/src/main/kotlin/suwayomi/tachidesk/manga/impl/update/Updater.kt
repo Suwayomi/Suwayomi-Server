@@ -26,7 +26,7 @@ import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
-import suwayomi.tachidesk.manga.model.dataclass.IncludeInUpdate
+import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.server.serverConfig
@@ -222,9 +222,9 @@ class Updater : IUpdater {
         }
 
         val includeInUpdateStatusToCategoryMap = categories.groupBy { it.includeInUpdate }
-        val excludedCategories = includeInUpdateStatusToCategoryMap[IncludeInUpdate.EXCLUDE].orEmpty()
-        val includedCategories = includeInUpdateStatusToCategoryMap[IncludeInUpdate.INCLUDE].orEmpty()
-        val unsetCategories = includeInUpdateStatusToCategoryMap[IncludeInUpdate.UNSET].orEmpty()
+        val excludedCategories = includeInUpdateStatusToCategoryMap[IncludeOrExclude.EXCLUDE].orEmpty()
+        val includedCategories = includeInUpdateStatusToCategoryMap[IncludeOrExclude.INCLUDE].orEmpty()
+        val unsetCategories = includeInUpdateStatusToCategoryMap[IncludeOrExclude.UNSET].orEmpty()
         val categoriesToUpdate =
             if (forceAll) {
                 categories
@@ -276,6 +276,8 @@ class Updater : IUpdater {
 
         // In case no manga gets updated and no update job was running before, the client would never receive an info about its update request
         updateStatus(emptyList(), mangasToUpdate.isNotEmpty(), updateStatusCategories, skippedMangas)
+
+        logger.debug { "mangasToUpdate $mangasToUpdate" }
 
         if (mangasToUpdate.isEmpty()) {
             return

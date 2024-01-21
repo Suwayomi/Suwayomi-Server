@@ -19,7 +19,7 @@ import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.Category.DEFAULT_CATEGORY_ID
 import suwayomi.tachidesk.manga.impl.util.lang.isEmpty
 import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
-import suwayomi.tachidesk.manga.model.dataclass.IncludeInUpdate
+import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
@@ -85,7 +85,8 @@ class CategoryMutation {
     data class UpdateCategoryPatch(
         val name: String? = null,
         val default: Boolean? = null,
-        val includeInUpdate: IncludeInUpdate? = null,
+        val includeInUpdate: IncludeOrExclude? = null,
+        val includeInDownload: IncludeOrExclude? = null,
     )
 
     data class UpdateCategoryPayload(
@@ -133,6 +134,13 @@ class CategoryMutation {
                 CategoryTable.update({ CategoryTable.id inList ids }) { update ->
                     patch.includeInUpdate.also {
                         update[includeInUpdate] = it.value
+                    }
+                }
+            }
+            if (patch.includeInDownload != null) {
+                CategoryTable.update({ CategoryTable.id inList ids }) { update ->
+                    patch.includeInDownload.also {
+                        update[includeInDownload] = it.value
                     }
                 }
             }
@@ -229,7 +237,8 @@ class CategoryMutation {
         val name: String,
         val order: Int? = null,
         val default: Boolean? = null,
-        val includeInUpdate: IncludeInUpdate? = null,
+        val includeInUpdate: IncludeOrExclude? = null,
+        val includeInDownload: IncludeOrExclude? = null,
     )
 
     data class CreateCategoryPayload(
@@ -238,7 +247,7 @@ class CategoryMutation {
     )
 
     fun createCategory(input: CreateCategoryInput): CreateCategoryPayload {
-        val (clientMutationId, name, order, default, includeInUpdate) = input
+        val (clientMutationId, name, order, default, includeInUpdate, includeInDownload) = input
         transaction {
             require(CategoryTable.select { CategoryTable.name eq input.name }.isEmpty()) {
                 "'name' must be unique"
@@ -270,6 +279,9 @@ class CategoryMutation {
                         }
                         if (includeInUpdate != null) {
                             it[CategoryTable.includeInUpdate] = includeInUpdate.value
+                        }
+                        if (includeInDownload != null) {
+                            it[CategoryTable.includeInDownload] = includeInDownload.value
                         }
                     }
 

@@ -37,6 +37,7 @@ import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
 import suwayomi.tachidesk.manga.impl.track.Track
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
+import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
 import suwayomi.tachidesk.manga.model.dataclass.paginatedFrom
@@ -49,6 +50,7 @@ import suwayomi.tachidesk.server.serverConfig
 import java.time.Instant
 import java.util.TreeSet
 import java.util.concurrent.TimeUnit
+import kotlin.collections.listOf
 import kotlin.math.max
 
 object Chapter {
@@ -309,18 +311,63 @@ object Chapter {
                     ")",
             )
 
+        if (!serverConfig.autoDownloadNewChapters.value) {
+            log.debug { "automatic download is not configured" }
+            return
+        }
+
+        // Only download if there are new chapters, or if this is the first fetch
         val newNumberOfChapters = updatedChapterList.size
         val numberOfNewChapters = newNumberOfChapters - prevNumberOfChapters
 
         val areNewChaptersAvailable = numberOfNewChapters > 0
         val wasInitialFetch = prevNumberOfChapters == 0
 
-        // make sure to ignore initial fetch
-        val isDownloadPossible =
-            serverConfig.autoDownloadNewChapters.value && areNewChaptersAvailable && !wasInitialFetch
-        if (!isDownloadPossible) {
-            log.debug { "download is not allowed/possible" }
+        if (!areNewChaptersAvailable) {
+            log.debug { "no new chapters available" }
             return
+        }
+
+        if (wasInitialFetch) {
+            log.debug { "skipping download on initial fetch" }
+            return
+        }
+
+        // Verify the manga is configured to be downloaded based on it's categories.
+        var mangaCategories = CategoryManga.getMangaCategories(mangaId).toSet()
+        // if the manga has no categories, then it's implicitly in the default category
+        if (mangaCategories.isEmpty()) {
+            val defaultCategory = Category.getCategoryById(Category.DEFAULT_CATEGORY_ID)
+            if (defaultCategory != null) {
+                mangaCategories = setOf(defaultCategory)
+            } else {
+                log.warn { "missing default category" }
+            }
+        }
+
+        if (mangaCategories.isNotEmpty()) {
+            var downloadCategoriesMap = Category.getCategoryList().groupBy { it.includeInDownload }
+            val unsetCategories = downloadCategoriesMap[IncludeOrExclude.UNSET].orEmpty()
+            // We only download if it's in the include list, and not in the exclude list.
+            // Use the unset categories as the included categories if the included categories is
+            // empty
+            val includedCategories = downloadCategoriesMap[IncludeOrExclude.INCLUDE].orEmpty().ifEmpty { unsetCategories }
+            val excludedCategories = downloadCategoriesMap[IncludeOrExclude.EXCLUDE].orEmpty()
+            // Only download manga that aren't in any excluded categories
+            val mangaExcludeCategories = mangaCategories.intersect(excludedCategories)
+            if (mangaExcludeCategories.isNotEmpty()) {
+                log.debug { "download excluded by categories: '${mangaExcludeCategories.joinToString("', '") { it.name }}'" }
+                return
+            }
+            val mangaDownloadCategories = mangaCategories.intersect(includedCategories)
+            if (mangaDownloadCategories.isNotEmpty()) {
+                log.debug { "download inluded by categories: '${mangaDownloadCategories.joinToString("', '") { it.name }}'" }
+            } else {
+                log.debug { "skipping download due to download categories configuration" }
+                return
+            }
+        } else {
+            log.debug { "no categories configured, skipping check for category download include/excludes" }
         }
 
         val newChapters = updatedChapterList.subList(0, numberOfNewChapters)
