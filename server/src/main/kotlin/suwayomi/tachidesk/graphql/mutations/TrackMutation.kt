@@ -4,12 +4,11 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.types.TrackRecordType
-import suwayomi.tachidesk.graphql.types.TrackSearchType
 import suwayomi.tachidesk.graphql.types.TrackerType
 import suwayomi.tachidesk.manga.impl.track.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
-import suwayomi.tachidesk.manga.model.dataclass.TrackSearchDataClass
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
+import suwayomi.tachidesk.manga.model.table.TrackSearchTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
 
@@ -104,7 +103,7 @@ class TrackMutation {
     data class BindTrackInput(
         val clientMutationId: String? = null,
         val mangaId: Int,
-        val track: TrackSearchType,
+        val trackSearchId: Int,
     )
 
     data class BindTrackPayload(
@@ -113,28 +112,20 @@ class TrackMutation {
     )
 
     fun bindTrack(input: BindTrackInput): CompletableFuture<BindTrackPayload> {
-        val (clientMutationId, mangaId, track) = input
+        val (clientMutationId, mangaId, trackSearchId) = input
 
         return future {
             Track.bind(
                 mangaId,
-                TrackSearchDataClass(
-                    syncId = track.syncId,
-                    mediaId = track.mediaId,
-                    title = track.title,
-                    totalChapters = track.totalChapters,
-                    trackingUrl = track.trackingUrl,
-                    coverUrl = track.coverUrl,
-                    summary = track.summary,
-                    publishingStatus = track.publishingStatus,
-                    publishingType = track.publishingType,
-                    startDate = track.startDate,
-                ),
+                trackSearchId,
             )
             val trackRecord =
                 transaction {
+                    val trackerId =
+                        TrackSearchTable.select { TrackSearchTable.id eq trackSearchId }
+                            .first()[TrackSearchTable.trackerId]
                     TrackRecordTable.select {
-                        TrackRecordTable.mangaId eq mangaId and (TrackRecordTable.syncId eq track.syncId)
+                        TrackRecordTable.mangaId eq mangaId and (TrackRecordTable.trackerId eq trackerId)
                     }.first()
                 }
             BindTrackPayload(

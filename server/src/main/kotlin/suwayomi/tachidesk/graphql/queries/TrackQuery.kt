@@ -36,6 +36,7 @@ import suwayomi.tachidesk.graphql.types.TrackerNodeList
 import suwayomi.tachidesk.graphql.types.TrackerType
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
+import suwayomi.tachidesk.manga.model.table.insertAll
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
 
@@ -229,7 +230,7 @@ class TrackQuery {
     enum class TrackRecordOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<TrackRecordType> {
         ID(TrackRecordTable.id),
         MANGA_ID(TrackRecordTable.mangaId),
-        SYNC_ID(TrackRecordTable.syncId),
+        TRACKER_ID(TrackRecordTable.trackerId),
         REMOTE_ID(TrackRecordTable.remoteId),
         TITLE(TrackRecordTable.title),
         LAST_CHAPTER_READ(TrackRecordTable.lastChapterRead),
@@ -243,7 +244,7 @@ class TrackQuery {
             return when (this) {
                 ID -> TrackRecordTable.id greater cursor.value.toInt()
                 MANGA_ID -> greaterNotUnique(TrackRecordTable.mangaId, TrackRecordTable.id, cursor)
-                SYNC_ID -> greaterNotUnique(TrackRecordTable.syncId, TrackRecordTable.id, cursor, String::toInt)
+                TRACKER_ID -> greaterNotUnique(TrackRecordTable.trackerId, TrackRecordTable.id, cursor, String::toInt)
                 REMOTE_ID -> greaterNotUnique(TrackRecordTable.remoteId, TrackRecordTable.id, cursor, String::toLong)
                 TITLE -> greaterNotUnique(TrackRecordTable.title, TrackRecordTable.id, cursor, String::toString)
                 LAST_CHAPTER_READ -> greaterNotUnique(TrackRecordTable.lastChapterRead, TrackRecordTable.id, cursor, String::toDouble)
@@ -258,7 +259,7 @@ class TrackQuery {
             return when (this) {
                 ID -> TrackRecordTable.id less cursor.value.toInt()
                 MANGA_ID -> lessNotUnique(TrackRecordTable.mangaId, TrackRecordTable.id, cursor)
-                SYNC_ID -> lessNotUnique(TrackRecordTable.syncId, TrackRecordTable.id, cursor, String::toInt)
+                TRACKER_ID -> lessNotUnique(TrackRecordTable.trackerId, TrackRecordTable.id, cursor, String::toInt)
                 REMOTE_ID -> lessNotUnique(TrackRecordTable.remoteId, TrackRecordTable.id, cursor, String::toLong)
                 TITLE -> lessNotUnique(TrackRecordTable.title, TrackRecordTable.id, cursor, String::toString)
                 LAST_CHAPTER_READ -> lessNotUnique(TrackRecordTable.lastChapterRead, TrackRecordTable.id, cursor, String::toDouble)
@@ -274,7 +275,7 @@ class TrackQuery {
                 when (this) {
                     ID -> type.id.toString()
                     MANGA_ID -> type.id.toString() + "-" + type.mangaId
-                    SYNC_ID -> type.id.toString() + "-" + type.syncId
+                    TRACKER_ID -> type.id.toString() + "-" + type.trackerId
                     REMOTE_ID -> type.id.toString() + "-" + type.remoteId
                     TITLE -> type.id.toString() + "-" + type.title
                     LAST_CHAPTER_READ -> type.id.toString() + "-" + type.lastChapterRead
@@ -290,7 +291,7 @@ class TrackQuery {
     data class TrackRecordCondition(
         val id: Int? = null,
         val mangaId: Int? = null,
-        val syncId: Int? = null,
+        val trackerId: Int? = null,
         val remoteId: Long? = null,
         val libraryId: Long? = null,
         val title: String? = null,
@@ -306,7 +307,7 @@ class TrackQuery {
             val opAnd = OpAnd()
             opAnd.eq(id, TrackRecordTable.id)
             opAnd.eq(mangaId, TrackRecordTable.mangaId)
-            opAnd.eq(syncId, TrackRecordTable.syncId)
+            opAnd.eq(trackerId, TrackRecordTable.trackerId)
             opAnd.eq(remoteId, TrackRecordTable.remoteId)
             opAnd.eq(libraryId, TrackRecordTable.libraryId)
             opAnd.eq(title, TrackRecordTable.title)
@@ -325,7 +326,7 @@ class TrackQuery {
     data class TrackRecordFilter(
         val id: IntFilter? = null,
         val mangaId: IntFilter? = null,
-        val syncId: IntFilter? = null,
+        val trackerId: IntFilter? = null,
         val remoteId: LongFilter? = null,
         val libraryId: LongFilter? = null,
         val title: StringFilter? = null,
@@ -344,7 +345,7 @@ class TrackQuery {
             return listOfNotNull(
                 andFilterWithCompareEntity(TrackRecordTable.id, id),
                 andFilterWithCompareEntity(TrackRecordTable.mangaId, mangaId),
-                andFilterWithCompare(TrackRecordTable.syncId, syncId),
+                andFilterWithCompare(TrackRecordTable.trackerId, trackerId),
                 andFilterWithCompare(TrackRecordTable.remoteId, remoteId),
                 andFilterWithCompare(TrackRecordTable.libraryId, libraryId),
                 andFilterWithCompareString(TrackRecordTable.title, title),
@@ -462,7 +463,7 @@ class TrackQuery {
                 "Tracker needs to be logged-in to search"
             }
             SearchTrackerPayload(
-                tracker.search(input.query).map {
+                tracker.search(input.query).insertAll().map {
                     TrackSearchType(it)
                 },
             )

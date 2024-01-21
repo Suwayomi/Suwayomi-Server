@@ -10,7 +10,7 @@ package suwayomi.tachidesk.manga.model.dataclass
 data class TrackRecordDataClass(
     val id: Int,
     val mangaId: Int,
-    val syncId: Int,
+    val trackerId: Int,
     val remoteId: Long,
     val libraryId: Long?,
     val title: String,

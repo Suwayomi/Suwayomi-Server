@@ -9,8 +9,8 @@ import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
-import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
+import suwayomi.tachidesk.manga.model.table.TrackSearchTable
 import java.util.concurrent.CompletableFuture
 
 class TrackerType(
@@ -45,7 +45,7 @@ class TrackerType(
 class TrackRecordType(
     val id: Int,
     val mangaId: Int,
-    val syncId: Int,
+    val trackerId: Int,
     val remoteId: Long,
     val libraryId: Long?,
     val title: String,
@@ -60,7 +60,7 @@ class TrackRecordType(
     constructor(row: ResultRow) : this(
         row[TrackRecordTable.id].value,
         row[TrackRecordTable.mangaId].value,
-        row[TrackRecordTable.syncId],
+        row[TrackRecordTable.trackerId],
         row[TrackRecordTable.remoteId],
         row[TrackRecordTable.libraryId],
         row[TrackRecordTable.title],
@@ -82,13 +82,14 @@ class TrackRecordType(
     }
 
     fun tracker(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<TrackerType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, TrackerType>("TrackerDataLoader", syncId)
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, TrackerType>("TrackerDataLoader", trackerId)
     }
 }
 
 class TrackSearchType(
-    val syncId: Int,
-    val mediaId: Long,
+    val id: Int,
+    val trackerId: Int,
+    val remoteId: Long,
     val title: String,
     val totalChapters: Int,
     val trackingUrl: String,
@@ -98,21 +99,22 @@ class TrackSearchType(
     val publishingType: String,
     val startDate: String,
 ) {
-    constructor(trackSearch: TrackSearch) : this(
-        trackSearch.sync_id,
-        trackSearch.media_id,
-        trackSearch.title,
-        trackSearch.total_chapters,
-        trackSearch.tracking_url,
-        trackSearch.cover_url,
-        trackSearch.summary,
-        trackSearch.publishing_status,
-        trackSearch.publishing_type,
-        trackSearch.start_date,
+    constructor(row: ResultRow) : this(
+        row[TrackSearchTable.id].value,
+        row[TrackSearchTable.trackerId],
+        row[TrackSearchTable.remoteId],
+        row[TrackSearchTable.title],
+        row[TrackSearchTable.totalChapters],
+        row[TrackSearchTable.trackingUrl],
+        row[TrackSearchTable.coverUrl],
+        row[TrackSearchTable.summary],
+        row[TrackSearchTable.publishingStatus],
+        row[TrackSearchTable.publishingType],
+        row[TrackSearchTable.startDate],
     )
 
     fun tracker(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<TrackerType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, TrackerType>("TrackerDataLoader", syncId)
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, TrackerType>("TrackerDataLoader", trackerId)
     }
 }
 

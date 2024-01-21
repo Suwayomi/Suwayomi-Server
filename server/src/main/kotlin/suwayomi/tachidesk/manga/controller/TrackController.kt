@@ -14,7 +14,6 @@ import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.track.Track
-import suwayomi.tachidesk.manga.model.dataclass.TrackSearchDataClass
 import suwayomi.tachidesk.manga.model.dataclass.TrackerDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.util.handler
@@ -104,17 +103,15 @@ object TrackController {
     val bind =
         handler(
             queryParam<Int>("mangaId"),
+            queryParam<Int>("trackSearchId"),
             documentWith = {
                 withOperation {
                     summary("Track Record Bind")
                     description("Bind a Track Record to a Manga")
                 }
-                body<TrackSearchDataClass>()
             },
-            behaviorOf = { ctx, mangaId ->
-                val input = json.decodeFromString<TrackSearchDataClass>(ctx.body())
-                logger.debug { "tracker bind $input" }
-                ctx.future(future { Track.bind(mangaId, input) })
+            behaviorOf = { ctx, mangaId, trackSearchId ->
+                ctx.future(future { Track.bind(mangaId, trackSearchId) })
             },
             withResults = {
                 httpCode(HttpCode.OK)
