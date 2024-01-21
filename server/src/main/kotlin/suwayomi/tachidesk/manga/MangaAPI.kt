@@ -141,6 +141,7 @@ object MangaAPI {
             post("search", TrackController.search)
             post("bind", TrackController.bind)
             post("update", TrackController.update)
+            get("{trackerId}/thumbnail", TrackController.thumbnail)
         }
     }
 }

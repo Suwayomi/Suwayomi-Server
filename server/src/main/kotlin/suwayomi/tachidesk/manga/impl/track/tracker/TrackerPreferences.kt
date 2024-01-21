@@ -7,7 +7,7 @@ import suwayomi.tachidesk.manga.impl.track.tracker.anilist.Anilist
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
-class TrackerPreferences {
+object TrackerPreferences {
     private val preferenceStore =
         Injekt.get<Application>().getSharedPreferences("tracker", Context.MODE_PRIVATE)
     private val logger = KotlinLogging.logger {}
@@ -57,13 +57,11 @@ class TrackerPreferences {
 
     fun autoUpdateTrack() = preferenceStore.getBoolean("pref_auto_update_manga_sync_key", true)
 
-    companion object {
-        fun trackUsername(trackerId: Int) = "pref_mangasync_username_$trackerId"
+    fun trackUsername(trackerId: Int) = "pref_mangasync_username_$trackerId"
 
-        private fun trackPassword(trackerId: Int) = "pref_mangasync_password_$trackerId"
+    private fun trackPassword(trackerId: Int) = "pref_mangasync_password_$trackerId"
 
-        private fun trackToken(trackerId: Int) = "track_token_$trackerId"
+    private fun trackToken(trackerId: Int) = "track_token_$trackerId"
 
-        private fun scoreType(trackerId: Int) = "score_type_$trackerId"
-    }
+    private fun scoreType(trackerId: Int) = "score_type_$trackerId"
 }

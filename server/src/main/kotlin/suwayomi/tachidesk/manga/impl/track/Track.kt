@@ -26,6 +26,8 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
 import suwayomi.tachidesk.manga.model.table.TrackSearchTable
 import suwayomi.tachidesk.manga.model.table.insertAll
+import suwayomi.tachidesk.server.generated.BuildConfig
+import java.io.InputStream
 
 object Track {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -39,7 +41,7 @@ object Track {
             TrackerDataClass(
                 id = it.id,
                 name = it.name,
-                icon = it.getLogo(),
+                icon = proxyThumbnailUrl(it.id),
                 isLogin = isLogin,
                 authUrl = authUrl,
             )
@@ -58,6 +60,16 @@ object Track {
     fun logout(input: LogoutInput) {
         val tracker = TrackerManager.getTracker(input.trackerId)!!
         tracker.logout()
+    }
+
+    fun proxyThumbnailUrl(trackerId: Int): String {
+        return "/api/v1/track/$trackerId/thumbnail"
+    }
+
+    fun getTrackerThumbnail(trackerId: Int): Pair<InputStream, String> {
+        val tracker = TrackerManager.getTracker(trackerId)!!
+        val logo = BuildConfig::class.java.getResourceAsStream(tracker.getLogo())!!
+        return logo to "image/png"
     }
 
     fun getTrackRecordsByMangaId(mangaId: Int): List<MangaTrackerDataClass> {
@@ -85,7 +97,7 @@ object Track {
                 MangaTrackerDataClass(
                     id = it.id,
                     name = it.name,
-                    icon = it.getLogo(),
+                    icon = proxyThumbnailUrl(it.id),
                     statusList = it.getStatusList(),
                     statusTextMap = it.getStatusList().associateWith { k -> it.getStatus(k) ?: "" },
                     scoreList = it.getScoreList(),

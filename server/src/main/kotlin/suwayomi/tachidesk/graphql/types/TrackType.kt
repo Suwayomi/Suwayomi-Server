@@ -8,6 +8,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.manga.impl.track.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
 import suwayomi.tachidesk.manga.model.table.TrackSearchTable
@@ -28,7 +29,7 @@ class TrackerType(
     constructor(isLoggedIn: Boolean, tracker: Tracker) : this(
         tracker.id,
         tracker.name,
-        tracker.getLogo(),
+        Track.proxyThumbnailUrl(tracker.id),
         isLoggedIn,
         if (isLoggedIn) {
             null
