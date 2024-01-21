@@ -24,6 +24,8 @@ import suwayomi.tachidesk.manga.model.dataclass.TrackSearchDataClass
 import suwayomi.tachidesk.manga.model.dataclass.TrackerDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
+import suwayomi.tachidesk.manga.model.table.TrackSearchTable
+import suwayomi.tachidesk.manga.model.table.insertAll
 
 object Track {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -66,7 +68,7 @@ object Track {
             transaction {
                 TrackRecordTable.select { TrackRecordTable.mangaId eq mangaId }
                     .map { it.toTrackRecordDataClass() }
-            }.associateBy { it.syncId }
+            }.associateBy { it.trackerId }
 
         val trackers = TrackerManager.services
         return trackers
@@ -95,29 +97,42 @@ object Track {
     suspend fun search(input: SearchInput): List<TrackSearchDataClass> {
         val tracker = TrackerManager.getTracker(input.trackerId)!!
         val list = tracker.search(input.title)
-        return list.map {
+        return list.insertAll().map {
             TrackSearchDataClass(
-                syncId = it.sync_id,
-                mediaId = it.media_id,
-                title = it.title,
-                totalChapters = it.total_chapters,
-                trackingUrl = it.tracking_url,
-                coverUrl = it.cover_url,
-                summary = it.summary,
-                publishingStatus = it.publishing_status,
-                publishingType = it.publishing_type,
-                startDate = it.start_date,
+                id = it[TrackSearchTable.id].value,
+                trackerId = it[TrackSearchTable.trackerId],
+                remoteId = it[TrackSearchTable.remoteId],
+                title = it[TrackSearchTable.title],
+                totalChapters = it[TrackSearchTable.totalChapters],
+                trackingUrl = it[TrackSearchTable.trackingUrl],
+                coverUrl = it[TrackSearchTable.coverUrl],
+                summary = it[TrackSearchTable.summary],
+                publishingStatus = it[TrackSearchTable.publishingStatus],
+                publishingType = it[TrackSearchTable.publishingType],
+                startDate = it[TrackSearchTable.startDate],
             )
         }
     }
 
+    private fun ResultRow.toTrack(mangaId: Int): Track =
+        Track.create(this[TrackSearchTable.trackerId]).also {
+            it.manga_id = mangaId
+            it.media_id = this[TrackSearchTable.remoteId]
+            it.title = this[TrackSearchTable.title]
+            it.total_chapters = this[TrackSearchTable.totalChapters]
+            it.tracking_url = this[TrackSearchTable.trackingUrl]
+        }
+
     suspend fun bind(
         mangaId: Int,
-        input: TrackSearchDataClass,
+        trackSearchId: Int,
     ) {
-        val tracker = TrackerManager.getTracker(input.syncId)!!
-
-        val track = input.toTrack(mangaId)
+        val track =
+            transaction {
+                TrackSearchTable.select { TrackSearchTable.id eq trackSearchId }.first()
+                    .toTrack(mangaId)
+            }
+        val tracker = TrackerManager.getTracker(track.sync_id)!!
 
         val chapter = queryMaxReadChapter(mangaId)
         val hasReadChapters = chapter != null
@@ -168,7 +183,7 @@ object Track {
                 TrackRecordTable.select { TrackRecordTable.id eq input.recordId }.first()
             }
 
-        val tracker = TrackerManager.getTracker(recordDb[TrackRecordTable.syncId])!!
+        val tracker = TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])!!
 
         if (input.status != null) {
             recordDb[TrackRecordTable.status] = input.status
@@ -250,7 +265,7 @@ object Track {
             }
 
         records.forEach {
-            val tracker = TrackerManager.getTracker(it[TrackRecordTable.syncId])
+            val tracker = TrackerManager.getTracker(it[TrackRecordTable.trackerId])
             val lastChapterRead = it[TrackRecordTable.lastChapterRead]
             val isLogin = tracker?.isLoggedIn == true
             logger.debug {
@@ -271,14 +286,14 @@ object Track {
             val existingRecord =
                 TrackRecordTable.select {
                     (TrackRecordTable.mangaId eq track.manga_id) and
-                        (TrackRecordTable.syncId eq track.sync_id)
+                        (TrackRecordTable.trackerId eq track.sync_id)
                 }
                     .singleOrNull()
 
             if (existingRecord != null) {
                 TrackRecordTable.update({
                     (TrackRecordTable.mangaId eq track.manga_id) and
-                        (TrackRecordTable.syncId eq track.sync_id)
+                        (TrackRecordTable.trackerId eq track.sync_id)
                 }) {
                     it[remoteId] = track.media_id
                     it[libraryId] = track.library_id
@@ -295,7 +310,7 @@ object Track {
             } else {
                 TrackRecordTable.insertAndGetId {
                     it[mangaId] = track.manga_id
-                    it[syncId] = track.sync_id
+                    it[trackerId] = track.sync_id
                     it[remoteId] = track.media_id
                     it[libraryId] = track.library_id
                     it[title] = track.title

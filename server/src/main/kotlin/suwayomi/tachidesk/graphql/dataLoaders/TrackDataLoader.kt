@@ -84,7 +84,7 @@ class TrackRecordsForTrackerIdDataLoader : KotlinDataLoader<Int, TrackRecordNode
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val trackRecordsBySyncId =
-                        TrackRecordTable.select { TrackRecordTable.syncId inList ids }
+                        TrackRecordTable.select { TrackRecordTable.trackerId inList ids }
                             .map { TrackRecordType(it) }
                             .groupBy { it.mangaId }
                     ids.map { (trackRecordsBySyncId[it] ?: emptyList()).toNodeList() }

@@ -58,12 +58,12 @@ class TrackerPreferences {
     fun autoUpdateTrack() = preferenceStore.getBoolean("pref_auto_update_manga_sync_key", true)
 
     companion object {
-        fun trackUsername(syncId: Int) = "pref_mangasync_username_$syncId"
+        fun trackUsername(trackerId: Int) = "pref_mangasync_username_$trackerId"
 
-        private fun trackPassword(syncId: Int) = "pref_mangasync_password_$syncId"
+        private fun trackPassword(trackerId: Int) = "pref_mangasync_password_$trackerId"
 
-        private fun trackToken(syncId: Int) = "track_token_$syncId"
+        private fun trackToken(trackerId: Int) = "track_token_$trackerId"
 
-        private fun scoreType(syncId: Int) = "score_type_$syncId"
+        private fun scoreType(trackerId: Int) = "score_type_$trackerId"
     }
 }

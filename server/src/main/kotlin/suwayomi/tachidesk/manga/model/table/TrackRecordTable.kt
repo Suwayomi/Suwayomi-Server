@@ -12,7 +12,7 @@ import org.jetbrains.exposed.sql.ReferenceOption
 
 object TrackRecordTable : IntIdTable() {
     val mangaId = reference("manga_id", MangaTable, ReferenceOption.CASCADE)
-    val syncId = integer("sync_id")
+    val trackerId = integer("sync_id")
     val remoteId = long("remote_id")
     val libraryId = long("library_id").nullable()
     val title = varchar("title", 512)

@@ -11,8 +11,9 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class TrackSearchDataClass(
-    val syncId: Int,
-    val mediaId: Long,
+    val id: Int,
+    val trackerId: Int,
+    val remoteId: Long,
     val title: String,
     val totalChapters: Int,
     val trackingUrl: String,

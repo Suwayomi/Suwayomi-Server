@@ -2,23 +2,13 @@ package suwayomi.tachidesk.manga.impl.track.tracker.model
 
 import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.manga.model.dataclass.TrackRecordDataClass
-import suwayomi.tachidesk.manga.model.dataclass.TrackSearchDataClass
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
-
-fun TrackSearchDataClass.toTrack(mangaId: Int): Track =
-    Track.create(syncId).also {
-        it.manga_id = mangaId
-        it.media_id = mediaId
-        it.title = title
-        it.total_chapters = totalChapters
-        it.tracking_url = trackingUrl
-    }
 
 fun ResultRow.toTrackRecordDataClass(): TrackRecordDataClass =
     TrackRecordDataClass(
         id = this[TrackRecordTable.id].value,
         mangaId = this[TrackRecordTable.mangaId].value,
-        syncId = this[TrackRecordTable.syncId],
+        trackerId = this[TrackRecordTable.trackerId],
         remoteId = this[TrackRecordTable.remoteId],
         libraryId = this[TrackRecordTable.libraryId],
         title = this[TrackRecordTable.title],
@@ -32,7 +22,7 @@ fun ResultRow.toTrackRecordDataClass(): TrackRecordDataClass =
     )
 
 fun ResultRow.toTrack(): Track =
-    Track.create(this[TrackRecordTable.syncId]).also {
+    Track.create(this[TrackRecordTable.trackerId]).also {
         it.id = this[TrackRecordTable.id].value
         it.manga_id = this[TrackRecordTable.mangaId].value
         it.media_id = this[TrackRecordTable.remoteId]
