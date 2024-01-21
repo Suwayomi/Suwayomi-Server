@@ -17,8 +17,10 @@ import suwayomi.tachidesk.manga.impl.track.Track
 import suwayomi.tachidesk.manga.model.dataclass.TrackerDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.util.handler
+import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.queryParam
 import suwayomi.tachidesk.server.util.withOperation
+import kotlin.time.Duration.Companion.days
 
 object TrackController {
     private val json by DI.global.instance<Json>()
@@ -134,6 +136,32 @@ object TrackController {
             },
             withResults = {
                 httpCode(HttpCode.OK)
+            },
+        )
+
+    val thumbnail =
+        handler(
+            pathParam<Int>("trackerId"),
+            documentWith = {
+                withOperation {
+                    summary("Get a tracker thumbnail")
+                    description("Get a tracker thumbnail from the resources.")
+                }
+            },
+            behaviorOf = { ctx, trackerId ->
+                ctx.future(
+                    future { Track.getTrackerThumbnail(trackerId) }
+                        .thenApply {
+                            ctx.header("content-type", it.second)
+                            val httpCacheSeconds = 1.days.inWholeSeconds
+                            ctx.header("cache-control", "max-age=$httpCacheSeconds")
+                            it.first
+                        },
+                )
+            },
+            withResults = {
+                image(HttpCode.OK)
+                httpCode(HttpCode.NOT_FOUND)
             },
         )
 }

@@ -91,13 +91,6 @@ object JavalinSetup {
 
                 config.server { server }
 
-                config.addStaticFiles { staticFiles ->
-                    staticFiles.hostedPath = "/static"
-                    staticFiles.directory = "/static"
-                    staticFiles.location = Location.CLASSPATH
-                    staticFiles.headers = mapOf("cache-control" to "max-age=86400")
-                }
-
                 config.enableCorsForAllOrigins()
 
                 config.accessManager { handler, ctx, _ ->
