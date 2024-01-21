@@ -145,7 +145,7 @@ object TrackController {
             documentWith = {
                 withOperation {
                     summary("Get a tracker thumbnail")
-                    description("Get a manga thumbnail from the source or the cache.")
+                    description("Get a tracker thumbnail from the resources.")
                 }
             },
             behaviorOf = { ctx, trackerId ->
