@@ -439,7 +439,7 @@ object Chapter {
         }
 
         if (isRead == true || markPrevRead == true) {
-            Track.asyncTrackChapter(mangaId)
+            Track.asyncTrackChapter(setOf(mangaId))
         }
     }
 
@@ -527,9 +527,9 @@ object Chapter {
                 transaction {
                     ChapterTable.select { condition }
                         .map { it[ChapterTable.manga].value }
-                        .distinct()
+                        .toSet()
                 }
-            mangaIds.forEach { Track.asyncTrackChapter(it) }
+            Track.asyncTrackChapter(mangaIds)
         }
     }
 
