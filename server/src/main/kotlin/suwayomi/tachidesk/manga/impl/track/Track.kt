@@ -235,9 +235,14 @@ object Track {
         upsertTrackRecord(track)
     }
 
-    fun asyncTrackChapter(mangaId: Int) {
+    fun asyncTrackChapter(mangaIds: Set<Int>) {
+        if (!TrackerManager.hasLoggedTracker()) {
+            return
+        }
         scope.launch {
-            trackChapter(mangaId)
+            mangaIds.forEach {
+                trackChapter(it)
+            }
         }
     }
 
@@ -266,10 +271,6 @@ object Track {
         mangaId: Int,
         chapterNumber: Double,
     ) {
-        if (!TrackerManager.hasLoggedTracker()) {
-            return
-        }
-
         val records =
             transaction {
                 TrackRecordTable.select { TrackRecordTable.mangaId eq mangaId }
