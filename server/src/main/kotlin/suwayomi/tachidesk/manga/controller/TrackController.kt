@@ -105,15 +105,16 @@ object TrackController {
     val bind =
         handler(
             queryParam<Int>("mangaId"),
-            queryParam<Int>("trackSearchId"),
+            queryParam<Int>("trackerId"),
+            queryParam<String>("remoteId"),
             documentWith = {
                 withOperation {
                     summary("Track Record Bind")
                     description("Bind a Track Record to a Manga")
                 }
             },
-            behaviorOf = { ctx, mangaId, trackSearchId ->
-                ctx.future(future { Track.bind(mangaId, trackSearchId) })
+            behaviorOf = { ctx, mangaId, trackerId, remoteId ->
+                ctx.future(future { Track.bind(mangaId, trackerId, remoteId.toLong()) })
             },
             withResults = {
                 httpCode(HttpCode.OK)
