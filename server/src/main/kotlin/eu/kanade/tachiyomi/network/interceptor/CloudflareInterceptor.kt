@@ -43,7 +43,7 @@ class CloudflareInterceptor(
             return originalResponse
         }
 
-        if (!serverConfig.flareSolverEnabled.value) {
+        if (!serverConfig.flareSolverrEnabled.value) {
             throw IOException("Cloudflare bypass currently disabled")
         }
 
@@ -147,7 +147,7 @@ object CFClearance {
                 mutex.withLock {
                     network.client.newCall(
                         POST(
-                            url = serverConfig.flareSolverUrl.value.removeSuffix("/") + "/v1",
+                            url = serverConfig.flareSolverrUrl.value.removeSuffix("/") + "/v1",
                             body =
                                 Json.encodeToString(
                                     FlareSolverRequest(
@@ -159,7 +159,7 @@ object CFClearance {
                                             },
                                         returnOnlyCookies = true,
                                         maxTimeout =
-                                            serverConfig.flareSolverTimeout.value
+                                            serverConfig.flareSolverrTimeout.value
                                                 .seconds
                                                 .inWholeMilliseconds
                                                 .toInt(),
