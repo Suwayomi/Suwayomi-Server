@@ -17,6 +17,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.types.TrackRecordNodeList
 import suwayomi.tachidesk.graphql.types.TrackRecordNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.TrackRecordType
+import suwayomi.tachidesk.graphql.types.TrackStatusType
 import suwayomi.tachidesk.graphql.types.TrackerType
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrack
@@ -31,6 +32,36 @@ class TrackerDataLoader : KotlinDataLoader<Int, TrackerType> {
             future {
                 ids.map { id ->
                     TrackerManager.getTracker(id)?.let { TrackerType(it) }
+                }
+            }
+        }
+}
+
+class TrackerStatusesDataLoader : KotlinDataLoader<Int, List<TrackStatusType>> {
+    override val dataLoaderName = "TrackerStatusesDataLoader"
+
+    override fun getDataLoader(): DataLoader<Int, List<TrackStatusType>> =
+        DataLoaderFactory.newDataLoader { ids ->
+            future {
+                ids.map { id ->
+                    TrackerManager.getTracker(id)?.let { tracker ->
+                        tracker.getStatusList().map {
+                            TrackStatusType(it, tracker.getStatus(it)!!)
+                        }
+                    }
+                }
+            }
+        }
+}
+
+class TrackerScoresDataLoader : KotlinDataLoader<Int, List<String>> {
+    override val dataLoaderName = "TrackerStatusesDataLoader"
+
+    override fun getDataLoader(): DataLoader<Int, List<String>> =
+        DataLoaderFactory.newDataLoader { ids ->
+            future {
+                ids.map { id ->
+                    TrackerManager.getTracker(id)?.getScoreList()
                 }
             }
         }
