@@ -99,7 +99,7 @@ object Track {
                     name = it.name,
                     icon = proxyThumbnailUrl(it.id),
                     statusList = it.getStatusList(),
-                    statusTextMap = it.getStatusList().associateWith { k -> it.getStatus(k) ?: "" },
+                    statusTextMap = it.getStatusList().associateWith { k -> it.getStatus(k).orEmpty() },
                     scoreList = it.getScoreList(),
                     record = record,
                 )
@@ -223,7 +223,8 @@ object Track {
         }
         if (input.scoreString != null) {
             val score = tracker.indexToScore(tracker.getScoreList().indexOf(input.scoreString))
-            recordDb[TrackRecordTable.score] = score.toDouble()
+            // conversion issues between Float <-> Double so convert to string before double
+            recordDb[TrackRecordTable.score] = score.toString().toDouble()
         }
         if (input.startDate != null) {
             recordDb[TrackRecordTable.startDate] = input.startDate

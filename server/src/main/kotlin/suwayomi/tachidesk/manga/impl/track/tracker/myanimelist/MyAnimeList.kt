@@ -46,12 +46,12 @@ class MyAnimeList(id: Int) : Tracker(id, "MyAnimeList"), DeletableTrackService {
     @StringRes
     override fun getStatus(status: Int): String? =
         when (status) {
-            READING -> "reading"
-            PLAN_TO_READ -> "plan_to_read"
-            COMPLETED -> "completed"
-            ON_HOLD -> "on_hold"
-            DROPPED -> "dropped"
-            REREADING -> "repeating"
+            READING -> "Reading"
+            PLAN_TO_READ -> "Plan to read"
+            COMPLETED -> "Completed"
+            ON_HOLD -> "On hold"
+            DROPPED -> "Dropped"
+            REREADING -> "Rereading"
             else -> null
         }
 
