@@ -4,7 +4,6 @@ import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.asObservableSuccess
 import eu.kanade.tachiyomi.network.awaitSuccess
-import eu.kanade.tachiyomi.network.interceptor.CFClearance.getWebViewUserAgent
 import eu.kanade.tachiyomi.network.newCachelessCallWithProgress
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.model.FilterList
@@ -107,7 +106,7 @@ abstract class HttpSource : CatalogueSource {
      */
     protected open fun headersBuilder() =
         Headers.Builder().apply {
-            add("User-Agent", DEFAULT_USER_AGENT)
+            add("User-Agent", network.defaultUserAgentProvider())
         }
 
     /**
@@ -480,10 +479,6 @@ abstract class HttpSource : CatalogueSource {
      * Returns the list of filters for the source.
      */
     override fun getFilterList() = FilterList()
-
-    companion object {
-        val DEFAULT_USER_AGENT by lazy { getWebViewUserAgent() }
-    }
 }
 
 class LicensedMangaChaptersException : Exception("Licensed - No chapters to show")

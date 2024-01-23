@@ -131,6 +131,11 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
     // local source
     val localSourcePath: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
 
+    // cloudflare bypass
+    val flareSolverrEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
+    val flareSolverrUrl: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+    val flareSolverrTimeout: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
+
     @OptIn(ExperimentalCoroutinesApi::class)
     fun <T> subscribeTo(
         flow: Flow<T>,

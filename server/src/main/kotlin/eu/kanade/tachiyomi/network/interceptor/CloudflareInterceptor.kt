@@ -1,39 +1,62 @@
 package eu.kanade.tachiyomi.network.interceptor
 
 import eu.kanade.tachiyomi.network.NetworkHelper
+import eu.kanade.tachiyomi.network.POST
+import eu.kanade.tachiyomi.network.awaitSuccess
+import eu.kanade.tachiyomi.network.parseAs
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import mu.KotlinLogging
+import okhttp3.Cookie
+import okhttp3.HttpUrl
 import okhttp3.Interceptor
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
+import kotlin.time.Duration.Companion.seconds
 
-class CloudflareInterceptor : Interceptor {
+class CloudflareInterceptor(
+    private val setUserAgent: (String) -> Unit,
+) : Interceptor {
     private val logger = KotlinLogging.logger {}
 
     private val network: NetworkHelper by injectLazy()
 
-    @Suppress("UNUSED_VARIABLE", "UNREACHABLE_CODE")
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
 
         logger.trace { "CloudflareInterceptor is being used." }
 
-        val originalResponse = chain.proceed(chain.request())
+        val originalResponse = chain.proceed(originalRequest)
 
         // Check if Cloudflare anti-bot is on
         if (!(originalResponse.code in ERROR_CODES && originalResponse.header("Server") in SERVER_CHECK)) {
             return originalResponse
         }
 
-        throw IOException("Cloudflare bypass currently disabled ")
+        if (!serverConfig.flareSolverEnabled.value) {
+            throw IOException("Cloudflare bypass currently disabled")
+        }
 
         logger.debug { "Cloudflare anti-bot is on, CloudflareInterceptor is kicking in..." }
 
         return try {
             originalResponse.close()
-            network.cookieStore.remove(originalRequest.url.toUri())
+            // network.cookieStore.remove(originalRequest.url.toUri())
 
-            val request = originalRequest // resolveWithWebView(originalRequest)
+            val request =
+                runBlocking {
+                    CFClearance.resolveWithFlareSolverr(setUserAgent, originalRequest)
+                }
 
             chain.proceed(request)
         } catch (e: Exception) {
@@ -57,172 +80,140 @@ class CloudflareInterceptor : Interceptor {
 object CFClearance {
     private val logger = KotlinLogging.logger {}
     private val network: NetworkHelper by injectLazy()
+    private val json: Json by injectLazy()
+    private val jsonMediaType = "application/json".toMediaType()
+    private val mutex = Mutex()
 
-    /*init {
-        // Fix the default DriverJar issue by providing our own implementation
-        // ref: https://github.com/microsoft/playwright-java/issues/1138
-        System.setProperty("playwright.driver.impl", "suwayomi.tachidesk.server.util.DriverJar")
-    }
+    @Serializable
+    data class FlareSolverCookie(
+        val name: String,
+        val value: String,
+    )
 
-    fun resolveWithWebView(originalRequest: Request): Request {
-        val url = originalRequest.url.toString()
+    @Serializable
+    data class FlareSolverRequest(
+        val cmd: String,
+        val url: String,
+        val maxTimeout: Int? = null,
+        val session: List<String>? = null,
+        @SerialName("session_ttl_minutes")
+        val sessionTtlMinutes: Int? = null,
+        val cookies: List<FlareSolverCookie>? = null,
+        val returnOnlyCookies: Boolean? = null,
+        val proxy: String? = null,
+        val postData: String? = null, // only used with cmd 'request.post'
+    )
 
-        logger.debug { "resolveWithWebView($url)" }
+    @Serializable
+    data class FlareSolverSolutionCookie(
+        val name: String,
+        val value: String,
+        val domain: String,
+        val path: String,
+        val expires: Double? = null,
+        val size: Int? = null,
+        val httpOnly: Boolean,
+        val secure: Boolean,
+        val session: Boolean? = null,
+        val sameSite: String,
+    )
 
-        val cookies =
-            Playwright.create().use { playwright ->
-                playwright.chromium().launch(
-                    LaunchOptions()
-                        .setHeadless(false)
-                        .apply {
-                            if (serverConfig.socksProxyEnabled.value) {
-                                setProxy("socks5://${serverConfig.socksProxyHost.value}:${serverConfig.socksProxyPort.value}")
+    @Serializable
+    data class FlareSolverSolution(
+        val url: String,
+        val status: Int,
+        val headers: Map<String, String>? = null,
+        val response: String? = null,
+        val cookies: List<FlareSolverSolutionCookie>,
+        val userAgent: String,
+    )
+
+    @Serializable
+    data class FlareSolverResponse(
+        val solution: FlareSolverSolution,
+        val status: String,
+        val message: String,
+        val startTimestamp: Long,
+        val endTimestamp: Long,
+        val version: String,
+    )
+
+    suspend fun resolveWithFlareSolverr(
+        setUserAgent: (String) -> Unit,
+        originalRequest: Request,
+    ): Request {
+        val flareSolverResponse =
+            with(json) {
+                mutex.withLock {
+                    network.client.newCall(
+                        POST(
+                            url = serverConfig.flareSolverUrl.value.removeSuffix("/") + "/v1",
+                            body =
+                                Json.encodeToString(
+                                    FlareSolverRequest(
+                                        "request.get",
+                                        originalRequest.url.toString(),
+                                        cookies =
+                                            network.cookieStore.get(originalRequest.url).map {
+                                                FlareSolverCookie(it.name, it.value)
+                                            },
+                                        returnOnlyCookies = true,
+                                        maxTimeout =
+                                            serverConfig.flareSolverTimeout.value
+                                                .seconds
+                                                .inWholeMilliseconds
+                                                .toInt(),
+                                    ),
+                                ).toRequestBody(jsonMediaType),
+                        ),
+                    ).awaitSuccess().parseAs<FlareSolverResponse>()
+                }
+            }
+
+        if (flareSolverResponse.solution.status in 200..299) {
+            setUserAgent(flareSolverResponse.solution.userAgent)
+            val cookies =
+                flareSolverResponse.solution.cookies
+                    .map { cookie ->
+                        Cookie.Builder()
+                            .name(cookie.name)
+                            .value(cookie.value)
+                            .domain(cookie.domain)
+                            .path(cookie.path)
+                            .expiresAt(cookie.expires?.takeUnless { it < 0.0 }?.toLong() ?: Long.MAX_VALUE)
+                            .also {
+                                if (cookie.httpOnly) it.httpOnly()
+                                if (cookie.secure) it.secure()
                             }
-                        },
-                ).use { browser ->
-                    val userAgent = originalRequest.header("User-Agent")
-                    if (userAgent != null) {
-                        browser.newContext(Browser.NewContextOptions().setUserAgent(userAgent)).use { browserContext ->
-                            browserContext.newPage().use { getCookies(it, url) }
-                        }
-                    } else {
-                        browser.newPage().use { getCookies(it, url) }
+                            .build()
                     }
-                }
-            }
+                    .groupBy { it.domain }
+                    .flatMap { (domain, cookies) ->
+                        network.cookieStore.addAll(
+                            HttpUrl.Builder()
+                                .scheme("http")
+                                .host(domain.removePrefix("."))
+                                .build(),
+                            cookies,
+                        )
 
-        // Copy cookies to cookie store
-        cookies.groupBy { it.domain }.forEach { (domain, cookies) ->
-            network.cookieStore.addAll(
-                url =
-                    HttpUrl.Builder()
-                        .scheme("http")
-                        .host(domain)
-                        .build(),
-                cookies = cookies,
-            )
-        }
-        // Merge new and existing cookies for this request
-        // Find the cookies that we need to merge into this request
-        val convertedForThisRequest =
-            cookies.filter {
-                it.matches(originalRequest.url)
-            }
-        // Extract cookies from current request
-        val existingCookies =
-            Cookie.parseAll(
-                originalRequest.url,
-                originalRequest.headers,
-            )
-        // Filter out existing values of cookies that we are about to merge in
-        val filteredExisting =
-            existingCookies.filter { existing ->
-                convertedForThisRequest.none { converted -> converted.name == existing.name }
-            }
-        logger.trace { "Existing cookies" }
-        logger.trace { existingCookies.joinToString("; ") }
-        val newCookies = filteredExisting + convertedForThisRequest
-        logger.trace { "New cookies" }
-        logger.trace { newCookies.joinToString("; ") }
-        return originalRequest.newBuilder()
-            .header("Cookie", newCookies.joinToString("; ") { "${it.name}=${it.value}" })
-            .build()
-    }*/
-
-    fun getWebViewUserAgent(): String {
-        return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        /*return try {
-            throw PlaywrightException("playwrite is diabled for v0.6.7")
-
-            Playwright.create().use { playwright ->
-                playwright.chromium().launch(
-                    LaunchOptions()
-                        .setHeadless(true),
-                ).use { browser ->
-                    browser.newPage().use { page ->
-                        val userAgent = page.evaluate("() => {return navigator.userAgent}") as String
-                        logger.debug { "WebView User-Agent is $userAgent" }
-                        return userAgent
+                        cookies
                     }
+            logger.trace { "New cookies\n${cookies.joinToString("; ")}" }
+            val finalCookies =
+                network.cookieStore.get(originalRequest.url).joinToString("; ", postfix = "; ") {
+                    "${it.name}=${it.value}"
                 }
-            }
-        } catch (e: PlaywrightException) {
-            // Playwright might fail on headless environments like docker
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
-        }*/
-    }
-
-    /*private fun getCookies(
-        page: Page,
-        url: String,
-    ): List<Cookie> {
-        applyStealthInitScripts(page)
-        page.navigate(url)
-        val challengeResolved = waitForChallengeResolve(page)
-
-        return if (challengeResolved) {
-            val cookies = page.context().cookies()
-
-            logger.debug {
-                val userAgent = page.evaluate("() => {return navigator.userAgent}")
-                "Playwright User-Agent is $userAgent"
-            }
-
-            // Convert PlayWright cookies to OkHttp cookies
-            cookies.map {
-                Cookie.Builder()
-                    .domain(it.domain.removePrefix("."))
-                    .expiresAt(it.expires?.times(1000)?.toLong() ?: Long.MAX_VALUE)
-                    .name(it.name)
-                    .path(it.path)
-                    .value(it.value).apply {
-                        if (it.httpOnly) httpOnly()
-                        if (it.secure) secure()
-                    }.build()
-            }
+            logger.trace { "Final cookies\n$finalCookies" }
+            return originalRequest.newBuilder()
+                .header("Cookie", finalCookies)
+                .header("User-Agent", flareSolverResponse.solution.userAgent)
+                .build()
         } else {
             logger.debug { "Cloudflare challenge failed to resolve" }
             throw CloudflareBypassException()
         }
     }
-
-    // ref: https://github.com/vvanglro/cf-clearance/blob/44124a8f06d8d0ecf2bf558a027082ff88dab435/cf_clearance/stealth.py#L18
-    private val stealthInitScripts by lazy {
-        arrayOf(
-            ServerConfig::class.java.getResource("/cloudflare-js/canvas.fingerprinting.js")!!.readText(),
-            ServerConfig::class.java.getResource("/cloudflare-js/chrome.global.js")!!.readText(),
-            ServerConfig::class.java.getResource("/cloudflare-js/emulate.touch.js")!!.readText(),
-            ServerConfig::class.java.getResource("/cloudflare-js/navigator.permissions.js")!!.readText(),
-            ServerConfig::class.java.getResource("/cloudflare-js/navigator.webdriver.js")!!.readText(),
-            ServerConfig::class.java.getResource("/cloudflare-js/chrome.runtime.js")!!.readText(),
-            ServerConfig::class.java.getResource("/cloudflare-js/chrome.plugin.js")!!.readText(),
-        )
-    }
-
-    // ref: https://github.com/vvanglro/cf-clearance/blob/44124a8f06d8d0ecf2bf558a027082ff88dab435/cf_clearance/stealth.py#L76
-    private fun applyStealthInitScripts(page: Page) {
-        for (script in stealthInitScripts) {
-            page.addInitScript(script)
-        }
-    }
-
-    // ref: https://github.com/vvanglro/cf-clearance/blob/44124a8f06d8d0ecf2bf558a027082ff88dab435/cf_clearance/retry.py#L21
-    private fun waitForChallengeResolve(page: Page): Boolean {
-        // sometimes the user has to solve the captcha challenge manually, potentially wait a long time
-        val timeoutSeconds = 120
-        repeat(timeoutSeconds) {
-            page.waitForTimeout(1.seconds.toDouble(DurationUnit.MILLISECONDS))
-            val success =
-                try {
-                    page.querySelector("#challenge-form") == null
-                } catch (e: Exception) {
-                    logger.debug(e) { "query Error" }
-                    false
-                }
-            if (success) return true
-        }
-        return false
-    }*/
 
     private class CloudflareBypassException : Exception()
 }
