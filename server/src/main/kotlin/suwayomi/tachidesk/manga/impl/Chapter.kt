@@ -50,7 +50,6 @@ import suwayomi.tachidesk.server.serverConfig
 import java.time.Instant
 import java.util.TreeSet
 import java.util.concurrent.TimeUnit
-import kotlin.collections.listOf
 import kotlin.math.max
 
 object Chapter {
@@ -139,6 +138,10 @@ object Chapter {
 
                 val numberOfCurrentChapters = getCountOfMangaChapters(mangaId)
                 val chapterList = source.getChapterList(sManga)
+
+                if (chapterList.isEmpty()) {
+                    throw Exception("No chapters found")
+                }
 
                 // Recognize number for new chapters.
                 chapterList.forEach { chapter ->
@@ -346,7 +349,7 @@ object Chapter {
         }
 
         if (mangaCategories.isNotEmpty()) {
-            var downloadCategoriesMap = Category.getCategoryList().groupBy { it.includeInDownload }
+            val downloadCategoriesMap = Category.getCategoryList().groupBy { it.includeInDownload }
             val unsetCategories = downloadCategoriesMap[IncludeOrExclude.UNSET].orEmpty()
             // We only download if it's in the include list, and not in the exclude list.
             // Use the unset categories as the included categories if the included categories is
@@ -354,12 +357,12 @@ object Chapter {
             val includedCategories = downloadCategoriesMap[IncludeOrExclude.INCLUDE].orEmpty().ifEmpty { unsetCategories }
             val excludedCategories = downloadCategoriesMap[IncludeOrExclude.EXCLUDE].orEmpty()
             // Only download manga that aren't in any excluded categories
-            val mangaExcludeCategories = mangaCategories.intersect(excludedCategories)
+            val mangaExcludeCategories = mangaCategories.intersect(excludedCategories.toSet())
             if (mangaExcludeCategories.isNotEmpty()) {
                 log.debug { "download excluded by categories: '${mangaExcludeCategories.joinToString("', '") { it.name }}'" }
                 return
             }
-            val mangaDownloadCategories = mangaCategories.intersect(includedCategories)
+            val mangaDownloadCategories = mangaCategories.intersect(includedCategories.toSet())
             if (mangaDownloadCategories.isNotEmpty()) {
                 log.debug { "download inluded by categories: '${mangaDownloadCategories.joinToString("', '") { it.name }}'" }
             } else {

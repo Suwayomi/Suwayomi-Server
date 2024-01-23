@@ -137,14 +137,17 @@ object Track {
 
     suspend fun bind(
         mangaId: Int,
-        trackSearchId: Int,
+        trackerId: Int,
+        remoteId: Long,
     ) {
         val track =
             transaction {
-                TrackSearchTable.select { TrackSearchTable.id eq trackSearchId }.first()
-                    .toTrack(mangaId)
+                TrackSearchTable.select {
+                    TrackSearchTable.trackerId eq trackerId and
+                        (TrackSearchTable.remoteId eq remoteId)
+                }.first().toTrack(mangaId)
             }
-        val tracker = TrackerManager.getTracker(track.sync_id)!!
+        val tracker = TrackerManager.getTracker(trackerId)!!
 
         val chapter = queryMaxReadChapter(mangaId)
         val hasReadChapters = chapter != null
