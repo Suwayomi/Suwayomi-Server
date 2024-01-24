@@ -71,6 +71,11 @@ interface Settings : Node {
 
     // local source
     val localSourcePath: String?
+
+    // cloudflare bypass
+    val flareSolverrEnabled: Boolean?
+    val flareSolverrUrl: String?
+    val flareSolverrTimeout: Int?
 }
 
 data class PartialSettingsType(
@@ -118,6 +123,10 @@ data class PartialSettingsType(
     override val backupTTL: Int?,
     // local source
     override val localSourcePath: String?,
+    // cloudflare bypass
+    override val flareSolverrEnabled: Boolean?,
+    override val flareSolverrUrl: String?,
+    override val flareSolverrTimeout: Int?,
 ) : Settings
 
 class SettingsType(
@@ -165,6 +174,10 @@ class SettingsType(
     override val backupTTL: Int,
     // local source
     override val localSourcePath: String,
+    // cloudflare bypass
+    override val flareSolverrEnabled: Boolean?,
+    override val flareSolverrUrl: String?,
+    override val flareSolverrTimeout: Int?,
 ) : Settings {
     constructor(config: ServerConfig = serverConfig) : this(
         config.ip.value,
@@ -211,5 +224,9 @@ class SettingsType(
         config.backupTTL.value,
         // local source
         config.localSourcePath.value,
+        // cloudflare bypass
+        config.flareSolverrEnabled.value,
+        config.flareSolverrUrl.value,
+        config.flareSolverrTimeout.value,
     )
 }

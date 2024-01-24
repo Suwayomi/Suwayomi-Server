@@ -4,6 +4,10 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.network.awaitSuccess
 import eu.kanade.tachiyomi.network.parseAs
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -23,13 +27,12 @@ import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 class CloudflareInterceptor(
     private val setUserAgent: (String) -> Unit,
 ) : Interceptor {
     private val logger = KotlinLogging.logger {}
-
-    private val network: NetworkHelper by injectLazy()
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
@@ -80,6 +83,18 @@ class CloudflareInterceptor(
 object CFClearance {
     private val logger = KotlinLogging.logger {}
     private val network: NetworkHelper by injectLazy()
+    private val client by lazy {
+        @Suppress("OPT_IN_USAGE")
+        serverConfig.flareSolverrTimeout
+            .map { timeoutInt ->
+                val timeout = timeoutInt.seconds
+                network.client.newBuilder()
+                    .callTimeout(timeout.plus(10.seconds).toJavaDuration())
+                    .readTimeout(timeout.plus(5.seconds).toJavaDuration())
+                    .build()
+            }
+            .stateIn(GlobalScope, SharingStarted.Eagerly, network.client)
+    }
     private val json: Json by injectLazy()
     private val jsonMediaType = "application/json".toMediaType()
     private val mutex = Mutex()
@@ -142,10 +157,11 @@ object CFClearance {
         setUserAgent: (String) -> Unit,
         originalRequest: Request,
     ): Request {
+        val timeout = serverConfig.flareSolverrTimeout.value.seconds
         val flareSolverResponse =
             with(json) {
                 mutex.withLock {
-                    network.client.newCall(
+                    client.value.newCall(
                         POST(
                             url = serverConfig.flareSolverrUrl.value.removeSuffix("/") + "/v1",
                             body =
@@ -158,11 +174,7 @@ object CFClearance {
                                                 FlareSolverCookie(it.name, it.value)
                                             },
                                         returnOnlyCookies = true,
-                                        maxTimeout =
-                                            serverConfig.flareSolverrTimeout.value
-                                                .seconds
-                                                .inWholeMilliseconds
-                                                .toInt(),
+                                        maxTimeout = timeout.inWholeMilliseconds.toInt(),
                                     ),
                                 ).toRequestBody(jsonMediaType),
                         ),

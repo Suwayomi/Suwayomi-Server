@@ -86,6 +86,11 @@ class SettingsMutation {
 
         // local source
         updateSetting(settings.localSourcePath, serverConfig.localSourcePath)
+
+        // cloudflare bypass
+        updateSetting(settings.flareSolverrEnabled, serverConfig.flareSolverrEnabled)
+        updateSetting(settings.flareSolverrUrl, serverConfig.flareSolverrUrl)
+        updateSetting(settings.flareSolverrTimeout, serverConfig.flareSolverrTimeout)
     }
 
     fun setSettings(input: SetSettingsInput): SetSettingsPayload {
