@@ -178,7 +178,7 @@ object CFClearance {
                         Cookie.Builder()
                             .name(cookie.name)
                             .value(cookie.value)
-                            .domain(cookie.domain)
+                            .domain(cookie.domain.removePrefix("."))
                             .path(cookie.path)
                             .expiresAt(cookie.expires?.takeUnless { it < 0.0 }?.toLong() ?: Long.MAX_VALUE)
                             .also {
