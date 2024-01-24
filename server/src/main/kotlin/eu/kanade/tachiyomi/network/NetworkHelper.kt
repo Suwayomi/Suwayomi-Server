@@ -97,7 +97,7 @@ class NetworkHelper(context: Context) {
                         }
                     },
                 ).apply {
-                    level = HttpLoggingInterceptor.Level.HEADERS
+                    level = HttpLoggingInterceptor.Level.BASIC
                 }
             builder.addNetworkInterceptor(httpLoggingInterceptor)
             // }

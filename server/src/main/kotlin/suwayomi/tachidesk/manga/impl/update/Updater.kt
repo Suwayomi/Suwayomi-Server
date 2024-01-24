@@ -195,14 +195,14 @@ class Updater : IUpdater {
 
         tracker[job.manga.id] =
             try {
-                logger.info { "Updating \"${job.manga.title}\" (source: ${job.manga.sourceId})" }
+                logger.info { "Updating ${job.manga}" }
                 if (serverConfig.updateMangas.value) {
                     Manga.getManga(job.manga.id, true)
                 }
                 Chapter.getChapterList(job.manga.id, true)
                 job.copy(status = JobStatus.COMPLETE)
             } catch (e: Exception) {
-                logger.error(e) { "Error while updating ${job.manga.title}" }
+                logger.error(e) { "Error while updating ${job.manga}" }
                 if (e is CancellationException) throw e
                 job.copy(status = JobStatus.FAILED)
             }
@@ -276,8 +276,6 @@ class Updater : IUpdater {
 
         // In case no manga gets updated and no update job was running before, the client would never receive an info about its update request
         updateStatus(emptyList(), mangasToUpdate.isNotEmpty(), updateStatusCategories, skippedMangas)
-
-        logger.debug { "mangasToUpdate $mangasToUpdate" }
 
         if (mangasToUpdate.isEmpty()) {
             return
