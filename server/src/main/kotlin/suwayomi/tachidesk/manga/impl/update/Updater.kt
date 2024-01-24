@@ -195,7 +195,7 @@ class Updater : IUpdater {
 
         tracker[job.manga.id] =
             try {
-                logger.info { "Updating \"${job.manga.title}\" (source: ${job.manga.sourceId})" }
+                logger.info { "Updating \"${job.manga.title}\" (${job.manga.id}) (source: ${job.manga.sourceId})" }
                 if (serverConfig.updateMangas.value) {
                     Manga.getManga(job.manga.id, true)
                 }
