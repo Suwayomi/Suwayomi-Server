@@ -85,7 +85,9 @@ class PersistentCookieStore(context: Context) : CookieStore {
             it.toHttpCookie()
         }
 
-    fun get(url: HttpUrl) = get(url.toUri().host)
+    fun get(url: HttpUrl): List<Cookie> {
+        return get(url.toUri().host ?: return emptyList())
+    }
 
     override fun add(
         uri: URI?,
