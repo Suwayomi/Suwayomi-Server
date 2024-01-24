@@ -258,7 +258,11 @@ object WebInterfaceManager {
             logger.info { "setupWebUI: found webUI files - flavor= ${serverConfig.webUIFlavor.value}, version= $currentVersion" }
 
             if (!isLocalWebUIValid(applicationDirs.webUIRoot)) {
-                doInitialSetup()
+                try {
+                    doInitialSetup()
+                } catch (e: Exception) {
+                    logger.warn(e) { "WebUI is invalid and failed to install a valid version, proceeding with invalid version" }
+                }
                 return
             }
 
