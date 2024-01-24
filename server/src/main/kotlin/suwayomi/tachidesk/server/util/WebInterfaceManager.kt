@@ -47,6 +47,7 @@ import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.util.ExitCode.WebUISetupFailure
 import suwayomi.tachidesk.util.HAScheduler
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -291,7 +292,15 @@ object WebInterfaceManager {
         }
 
         logger.warn { "setupWebUI: no webUI files found, starting download..." }
-        doInitialSetup()
+        try {
+            doInitialSetup()
+        } catch (e: Exception) {
+            logger.error(e) {
+                "Failed to setup the webUI. Unable to start the server with a served webUI, change the settings to start" +
+                    "without one. Stopping the server now..."
+            }
+            shutdownApp(WebUISetupFailure)
+        }
     }
 
     /**
