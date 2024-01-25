@@ -110,7 +110,7 @@ object CFClearance {
         val cmd: String,
         val url: String,
         val maxTimeout: Int? = null,
-        val session: List<String>? = null,
+        val session: String? = null,
         @SerialName("session_ttl_minutes")
         val sessionTtlMinutes: Int? = null,
         val cookies: List<FlareSolverCookie>? = null,
@@ -169,6 +169,8 @@ object CFClearance {
                                     FlareSolverRequest(
                                         "request.get",
                                         originalRequest.url.toString(),
+                                        session = "suwayomi",
+                                        sessionTtlMinutes = 15,
                                         cookies =
                                             network.cookieStore.get(originalRequest.url).map {
                                                 FlareSolverCookie(it.name, it.value)
