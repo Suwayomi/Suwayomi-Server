@@ -135,6 +135,8 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
     val flareSolverrEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val flareSolverrUrl: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
     val flareSolverrTimeout: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
+    val flareSolverrSessionName: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+    val flareSolverrSessionTtl: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun <T> subscribeTo(

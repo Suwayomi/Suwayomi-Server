@@ -169,8 +169,8 @@ object CFClearance {
                                     FlareSolverRequest(
                                         "request.get",
                                         originalRequest.url.toString(),
-                                        session = "suwayomi",
-                                        sessionTtlMinutes = 15,
+                                        session = serverConfig.flareSolverrSessionName.value,
+                                        sessionTtlMinutes = serverConfig.flareSolverrSessionTtl.value,
                                         cookies =
                                             network.cookieStore.get(originalRequest.url).map {
                                                 FlareSolverCookie(it.name, it.value)
