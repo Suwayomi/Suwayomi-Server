@@ -175,9 +175,9 @@ class SettingsType(
     // local source
     override val localSourcePath: String,
     // cloudflare bypass
-    override val flareSolverrEnabled: Boolean?,
-    override val flareSolverrUrl: String?,
-    override val flareSolverrTimeout: Int?,
+    override val flareSolverrEnabled: Boolean,
+    override val flareSolverrUrl: String,
+    override val flareSolverrTimeout: Int,
 ) : Settings {
     constructor(config: ServerConfig = serverConfig) : this(
         config.ip.value,
