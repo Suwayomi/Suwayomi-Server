@@ -76,6 +76,8 @@ interface Settings : Node {
     val flareSolverrEnabled: Boolean?
     val flareSolverrUrl: String?
     val flareSolverrTimeout: Int?
+    val flareSolverrSessionName: String?
+    val flareSolverrSessionTtl: Int?
 }
 
 data class PartialSettingsType(
@@ -127,6 +129,8 @@ data class PartialSettingsType(
     override val flareSolverrEnabled: Boolean?,
     override val flareSolverrUrl: String?,
     override val flareSolverrTimeout: Int?,
+    override val flareSolverrSessionName: String?,
+    override val flareSolverrSessionTtl: Int?,
 ) : Settings
 
 class SettingsType(
@@ -178,6 +182,8 @@ class SettingsType(
     override val flareSolverrEnabled: Boolean,
     override val flareSolverrUrl: String,
     override val flareSolverrTimeout: Int,
+    override val flareSolverrSessionName: String,
+    override val flareSolverrSessionTtl: Int,
 ) : Settings {
     constructor(config: ServerConfig = serverConfig) : this(
         config.ip.value,
@@ -228,5 +234,7 @@ class SettingsType(
         config.flareSolverrEnabled.value,
         config.flareSolverrUrl.value,
         config.flareSolverrTimeout.value,
+        config.flareSolverrSessionName.value,
+        config.flareSolverrSessionTtl.value,
     )
 }

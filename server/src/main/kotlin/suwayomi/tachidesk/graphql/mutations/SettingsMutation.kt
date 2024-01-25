@@ -91,6 +91,8 @@ class SettingsMutation {
         updateSetting(settings.flareSolverrEnabled, serverConfig.flareSolverrEnabled)
         updateSetting(settings.flareSolverrUrl, serverConfig.flareSolverrUrl)
         updateSetting(settings.flareSolverrTimeout, serverConfig.flareSolverrTimeout)
+        updateSetting(settings.flareSolverrSessionName, serverConfig.flareSolverrSessionName)
+        updateSetting(settings.flareSolverrSessionTtl, serverConfig.flareSolverrSessionTtl)
     }
 
     fun setSettings(input: SetSettingsInput): SetSettingsPayload {
