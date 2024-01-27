@@ -39,6 +39,7 @@ import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.impl.util.updateMangaDownloadDir
+import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -405,15 +406,16 @@ object Manga {
         mangaIds: List<Int>,
         latestReadChapterIds: List<Int>,
     ) {
+        val toDownloadIds = mangaIds.filter { shouldDownloadManga(it) }
         val mangaToLatestReadChapterIndex =
             transaction {
-                ChapterTable.select { (ChapterTable.manga inList mangaIds) and (ChapterTable.isRead eq true) }
+                ChapterTable.select { (ChapterTable.manga inList toDownloadIds) and (ChapterTable.isRead eq true) }
                     .orderBy(ChapterTable.sourceOrder to SortOrder.DESC).groupBy { it[ChapterTable.manga].value }
             }.mapValues { (_, chapters) -> chapters.firstOrNull()?.let { it[ChapterTable.sourceOrder] } ?: 0 }
 
         val mangaToUnreadChaptersMap =
             transaction {
-                ChapterTable.select { (ChapterTable.manga inList mangaIds) and (ChapterTable.isRead eq false) }
+                ChapterTable.select { (ChapterTable.manga inList toDownloadIds) and (ChapterTable.isRead eq false) }
                     .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
                     .groupBy { it[ChapterTable.manga].value }
             }
@@ -438,5 +440,47 @@ object Manga {
 
         DownloadManager.dequeue(mangaIds, chapterIdsToDownload)
         DownloadManager.enqueue(EnqueueInput(chapterIdsToDownload))
+    }
+
+    fun shouldDownloadManga(mangaId: Int): Boolean {
+        val log = KotlinLogging.logger("${logger.name}::shouldDownloadManga(mangaId=$mangaId)")
+        // Verify the manga is configured to be downloaded based on it's categories.
+        var mangaCategories = CategoryManga.getMangaCategories(mangaId).toSet()
+        // if the manga has no categories, then it's implicitly in the default category
+        if (mangaCategories.isEmpty()) {
+            val defaultCategory = Category.getCategoryById(Category.DEFAULT_CATEGORY_ID)
+            if (defaultCategory != null) {
+                mangaCategories = setOf(defaultCategory)
+            } else {
+                log.warn { "missing default category" }
+            }
+        }
+
+        if (mangaCategories.isNotEmpty()) {
+            val downloadCategoriesMap = Category.getCategoryList().groupBy { it.includeInDownload }
+            val unsetCategories = downloadCategoriesMap[IncludeOrExclude.UNSET].orEmpty()
+            // We only download if it's in the include list, and not in the exclude list.
+            // Use the unset categories as the included categories if the included categories is
+            // empty
+            val includedCategories = downloadCategoriesMap[IncludeOrExclude.INCLUDE].orEmpty().ifEmpty { unsetCategories }
+            val excludedCategories = downloadCategoriesMap[IncludeOrExclude.EXCLUDE].orEmpty()
+            // Only download manga that aren't in any excluded categories
+            val mangaExcludeCategories = mangaCategories.intersect(excludedCategories.toSet())
+            if (mangaExcludeCategories.isNotEmpty()) {
+                log.debug { "download excluded by categories: '${mangaExcludeCategories.joinToString("', '") { it.name }}'" }
+                return false
+            }
+            val mangaDownloadCategories = mangaCategories.intersect(includedCategories.toSet())
+            if (mangaDownloadCategories.isNotEmpty()) {
+                log.debug { "download inluded by categories: '${mangaDownloadCategories.joinToString("', '") { it.name }}'" }
+            } else {
+                log.debug { "skipping download due to download categories configuration" }
+                return false
+            }
+        } else {
+            log.debug { "no categories configured, skipping check for category download include/excludes" }
+        }
+
+        return true
     }
 }
