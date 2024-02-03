@@ -133,6 +133,7 @@ object WebInterfaceManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private const val LAST_WEBUI_UPDATE_CHECK_KEY = "lastWebUIUpdateCheck"
+    private const val SERVED_WEBUI_FLAVOR_KEY = "servedWebUIFlavor"
 
     private val preferences = Injekt.get<Application>().getSharedPreferences("server_util", Context.MODE_PRIVATE)
     private var currentUpdateTaskId: String = ""
@@ -211,6 +212,14 @@ object WebInterfaceManager {
         this.serveWebUI = serveWebUI
     }
 
+    private fun setServedWebUIFlavor(flavor: WebUIFlavor) {
+        preferences.edit().putString(SERVED_WEBUI_FLAVOR_KEY, flavor.uiName).apply()
+    }
+
+    private fun getServedWebUIFlavor(): WebUIFlavor {
+        return WebUIFlavor.from(preferences.getString(SERVED_WEBUI_FLAVOR_KEY, WebUIFlavor.default.uiName)!!)
+    }
+
     private fun isAutoUpdateEnabled(): Boolean {
         return serverConfig.webUIUpdateCheckInterval.value.toInt() != 0
     }
@@ -264,13 +273,18 @@ object WebInterfaceManager {
         if (doesLocalWebUIExist(applicationDirs.webUIRoot)) {
             val currentVersion = getLocalVersion()
 
-            logger.info { "setupWebUI: found webUI files - flavor= ${flavor.uiName}, version= $currentVersion" }
+            logger.info {
+                "setupWebUI: found webUI files - selectedFlavor= ${WebUIFlavor.current.uiName} | servedFlavor= ${preferences.getString(
+                    SERVED_WEBUI_FLAVOR_KEY,
+                    WebUIFlavor.default.uiName,
+                )}, version= $currentVersion"
+            }
 
             if (!isLocalWebUIValid(flavor, applicationDirs.webUIRoot)) {
                 try {
                     doInitialSetup(flavor)
                 } catch (e: Exception) {
-                    logger.warn(e) { "WebUI is invalid and failed to install a valid version, proceeding with invalid version" }
+                    logger.warn(e) { "setupWebUI: WebUI is invalid and failed to install a valid version, proceeding with invalid version" }
                 }
                 return
             }
@@ -304,7 +318,7 @@ object WebInterfaceManager {
             doInitialSetup(flavor)
         } catch (e: Exception) {
             logger.error(e) {
-                "Failed to setup the webUI. Unable to start the server with a served webUI, change the settings to start" +
+                "setupWebUI: Failed to setup the webUI. Unable to start the server with a served webUI, change the settings to start" +
                     "without one. Stopping the server now..."
             }
             shutdownApp(WebUISetupFailure)
@@ -360,6 +374,7 @@ object WebInterfaceManager {
     private suspend fun setupBundledWebUI() {
         try {
             extractBundledWebUI()
+            setServedWebUIFlavor(WebUIFlavor.default)
             return
         } catch (e: BundledWebUIMissing) {
             logger.warn(e) { "setupBundledWebUI: fallback to downloading the version of the bundled webUI" }
@@ -642,6 +657,8 @@ object WebInterfaceManager {
             extractDownload(webUIZipPath, applicationDirs.webUIRoot)
             log.info { "Extracting WebUI zip Done." }
 
+            setServedWebUIFlavor(flavor)
+
             emitStatus(version, FINISHED, 100, immediate = true)
 
             serveWebUI()
@@ -727,9 +744,11 @@ object WebInterfaceManager {
         raiseError: Boolean = false,
     ): Pair<String, Boolean> {
         return try {
+            val isServedWebUIForCurrentFlavor = flavor.uiName == getServedWebUIFlavor().uiName
             val latestCompatibleVersion = getLatestCompatibleVersion(flavor)
-            val isUpdateAvailable = latestCompatibleVersion != currentVersion
+            val isVersionUpdateAvailable = latestCompatibleVersion != currentVersion
 
+            val isUpdateAvailable = !isServedWebUIForCurrentFlavor || isVersionUpdateAvailable
             Pair(latestCompatibleVersion, isUpdateAvailable)
         } catch (e: Exception) {
             logger.warn(e) { "isUpdateAvailable: check failed due to" }
