@@ -269,22 +269,32 @@ object WebInterfaceManager {
         }
 
         val flavor = WebUIFlavor.current
+        val servedFlavor = getServedWebUIFlavor()
+
+        val log =
+            KotlinLogging.logger("${logger.name} setupWebUI(flavor= ${flavor.uiName}, servedFlavor= ${servedFlavor.uiName})")
 
         if (doesLocalWebUIExist(applicationDirs.webUIRoot)) {
             val currentVersion = getLocalVersion()
 
-            logger.info {
-                "setupWebUI: found webUI files - selectedFlavor= ${WebUIFlavor.current.uiName} | servedFlavor= ${preferences.getString(
-                    SERVED_WEBUI_FLAVOR_KEY,
-                    WebUIFlavor.default.uiName,
-                )}, version= $currentVersion"
+            log.info { "found webUI files - version= $currentVersion" }
+
+            val hasFlavorChanged = flavor.uiName != servedFlavor.uiName
+            if (hasFlavorChanged) {
+                try {
+                    doInitialSetup(flavor)
+                    return
+                } catch (e: Exception) {
+                    log.warn(e) { "Failed to install the version of the new flavor, proceeding with version of previous flavor" }
+                }
             }
 
-            if (!isLocalWebUIValid(flavor, applicationDirs.webUIRoot)) {
+            val flavorToValidate = if (hasFlavorChanged) servedFlavor else flavor
+            if (!isLocalWebUIValid(flavorToValidate, applicationDirs.webUIRoot)) {
                 try {
-                    doInitialSetup(flavor, isInvalid = true)
+                    doInitialSetup(flavorToValidate, isInvalid = true)
                 } catch (e: Exception) {
-                    logger.warn(e) { "setupWebUI: WebUI is invalid and failed to install a valid version, proceeding with invalid version" }
+                    log.warn(e) { "WebUI is invalid and failed to install a valid version, proceeding with invalid version" }
                 }
                 return
             }
@@ -301,24 +311,24 @@ object WebInterfaceManager {
                         BuildConfig.WEBUI_TAG,
                     )
             if (shouldUpdateToBundledVersion) {
-                logger.debug { "setupWebUI: update to bundled version \"${BuildConfig.WEBUI_TAG}\"" }
+                log.debug { "update to bundled version \"${BuildConfig.WEBUI_TAG}\"" }
 
                 try {
                     setupBundledWebUI()
                 } catch (e: Exception) {
-                    logger.error(e) { "setupWebUI: failed the update to the bundled webUI" }
+                    log.error(e) { "failed the update to the bundled webUI" }
                 }
             }
 
             return
         }
 
-        logger.warn { "setupWebUI: no webUI files found, starting download..." }
+        log.warn { "no webUI files found, starting download..." }
         try {
             doInitialSetup(flavor)
         } catch (e: Exception) {
-            logger.error(e) {
-                "setupWebUI: Failed to setup the webUI. Unable to start the server with a served webUI, change the settings to start" +
+            log.error(e) {
+                "Failed to setup the webUI. Unable to start the server with a served webUI, change the settings to start" +
                     "without one. Stopping the server now..."
             }
             shutdownApp(WebUISetupFailure)
@@ -332,6 +342,9 @@ object WebInterfaceManager {
         flavor: WebUIFlavor,
         isInvalid: Boolean = false,
     ) {
+        val log =
+            KotlinLogging.logger("${logger.name} doInitialSetup(flavor= ${flavor.uiName})")
+
         val isLocalWebUIValid = !isInvalid && isLocalWebUIValid(flavor, applicationDirs.webUIRoot)
 
         /**
@@ -355,7 +368,7 @@ object WebInterfaceManager {
         }
 
         if (flavor.uiName != WebUIFlavor.default.uiName) {
-            logger.warn { "doInitialSetup: fallback to default webUI \"${WebUIFlavor.default.uiName}\"" }
+            log.warn { "fallback to default webUI \"${WebUIFlavor.default.uiName}\"" }
 
             serverConfig.webUIFlavor.value = WebUIFlavor.default.uiName
 
@@ -365,7 +378,7 @@ object WebInterfaceManager {
             }
         }
 
-        logger.warn { "doInitialSetup: fallback to bundled default webUI \"${WebUIFlavor.default.uiName}\"" }
+        log.warn { "fallback to bundled default webUI \"${WebUIFlavor.default.uiName}\"" }
 
         try {
             setupBundledWebUI()
