@@ -282,7 +282,7 @@ object WebInterfaceManager {
 
             if (!isLocalWebUIValid(flavor, applicationDirs.webUIRoot)) {
                 try {
-                    doInitialSetup(flavor)
+                    doInitialSetup(flavor, isInvalid = true)
                 } catch (e: Exception) {
                     logger.warn(e) { "setupWebUI: WebUI is invalid and failed to install a valid version, proceeding with invalid version" }
                 }
@@ -328,8 +328,11 @@ object WebInterfaceManager {
     /**
      * Tries to download the latest compatible version for the selected webUI and falls back to the default webUI in case of errors.
      */
-    private suspend fun doInitialSetup(flavor: WebUIFlavor) {
-        val isLocalWebUIValid = isLocalWebUIValid(flavor, applicationDirs.webUIRoot)
+    private suspend fun doInitialSetup(
+        flavor: WebUIFlavor,
+        isInvalid: Boolean = false,
+    ) {
+        val isLocalWebUIValid = !isInvalid && isLocalWebUIValid(flavor, applicationDirs.webUIRoot)
 
         /**
          * Performs the download and returns if the download was successful.
