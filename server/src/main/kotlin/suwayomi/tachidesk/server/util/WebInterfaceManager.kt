@@ -119,7 +119,9 @@ enum class WebUIFlavor(
     ;
 
     companion object {
-        fun from(value: String): WebUIFlavor = entries.find { it.uiName == value } ?: WEBUI
+        val default: WebUIFlavor = WEBUI
+
+        fun from(value: String): WebUIFlavor = entries.find { it.uiName == value } ?: default
 
         val current: WebUIFlavor
             get() = from(serverConfig.webUIFlavor.value)
@@ -280,7 +282,7 @@ object WebInterfaceManager {
             // check if the bundled webUI version is a newer version than the current used version
             // this could be the case in case no compatible webUI version is available and a newer server version was installed
             val shouldUpdateToBundledVersion =
-                flavor.uiName == WebUIFlavor.WEBUI.uiName && extractVersion(getLocalVersion()) <
+                flavor.uiName == WebUIFlavor.default.uiName && extractVersion(getLocalVersion()) <
                     extractVersion(
                         BuildConfig.WEBUI_TAG,
                     )
@@ -335,10 +337,10 @@ object WebInterfaceManager {
             return
         }
 
-        if (flavor.uiName != WebUIFlavor.WEBUI.uiName) {
-            logger.warn { "doInitialSetup: fallback to default webUI \"${WebUIFlavor.WEBUI.uiName}\"" }
+        if (flavor.uiName != WebUIFlavor.default.uiName) {
+            logger.warn { "doInitialSetup: fallback to default webUI \"${WebUIFlavor.default.uiName}\"" }
 
-            serverConfig.webUIFlavor.value = WebUIFlavor.WEBUI.uiName
+            serverConfig.webUIFlavor.value = WebUIFlavor.default.uiName
 
             val fallbackToBundledVersion = !doDownload { getLatestCompatibleVersion(flavor) }
             if (!fallbackToBundledVersion) {
@@ -346,7 +348,7 @@ object WebInterfaceManager {
             }
         }
 
-        logger.warn { "doInitialSetup: fallback to bundled default webUI \"${WebUIFlavor.WEBUI.uiName}\"" }
+        logger.warn { "doInitialSetup: fallback to bundled default webUI \"${WebUIFlavor.default.uiName}\"" }
 
         try {
             setupBundledWebUI()
@@ -363,7 +365,7 @@ object WebInterfaceManager {
             logger.warn(e) { "setupBundledWebUI: fallback to downloading the version of the bundled webUI" }
         }
 
-        downloadVersion(WebUIFlavor.WEBUI, BuildConfig.WEBUI_TAG)
+        downloadVersion(WebUIFlavor.default, BuildConfig.WEBUI_TAG)
     }
 
     private fun extractBundledWebUI() {
@@ -372,7 +374,7 @@ object WebInterfaceManager {
 
         logger.info { "extractBundledWebUI: Using the bundled WebUI zip..." }
 
-        val webUIZip = WebUIFlavor.WEBUI.baseFileName
+        val webUIZip = WebUIFlavor.default.baseFileName
         val webUIZipPath = "$tmpDir/$webUIZip"
         val webUIZipFile = File(webUIZipPath)
         resourceWebUI.use { input ->
