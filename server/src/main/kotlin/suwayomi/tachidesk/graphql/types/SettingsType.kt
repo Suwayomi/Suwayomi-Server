@@ -38,7 +38,7 @@ interface Settings : Node {
     val downloadsPath: String?
     val autoDownloadNewChapters: Boolean?
     val excludeEntryWithUnreadChapters: Boolean?
-    val autoDownloadAheadLimit: Int?
+    val autoDownloadNewChaptersLimit: Int?
 
     // extension
     val extensionRepos: List<String>?
@@ -99,7 +99,7 @@ data class PartialSettingsType(
     override val downloadsPath: String?,
     override val autoDownloadNewChapters: Boolean?,
     override val excludeEntryWithUnreadChapters: Boolean?,
-    override val autoDownloadAheadLimit: Int?,
+    override val autoDownloadNewChaptersLimit: Int?,
     // extension
     override val extensionRepos: List<String>?,
     // requests
@@ -152,7 +152,7 @@ class SettingsType(
     override val downloadsPath: String,
     override val autoDownloadNewChapters: Boolean,
     override val excludeEntryWithUnreadChapters: Boolean,
-    override val autoDownloadAheadLimit: Int,
+    override val autoDownloadNewChaptersLimit: Int,
     // extension
     override val extensionRepos: List<String>,
     // requests
@@ -204,7 +204,7 @@ class SettingsType(
         config.downloadsPath.value,
         config.autoDownloadNewChapters.value,
         config.excludeEntryWithUnreadChapters.value,
-        config.autoDownloadAheadLimit.value,
+        config.autoDownloadNewChaptersLimit.value,
         // extension
         config.extensionRepos.value,
         // requests

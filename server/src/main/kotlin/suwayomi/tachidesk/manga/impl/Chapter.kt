@@ -310,7 +310,7 @@ object Chapter {
                     "mangaId= $mangaId, " +
                     "prevNumberOfChapters= $prevNumberOfChapters, " +
                     "updatedChapterList= ${updatedChapterList.size}, " +
-                    "downloadAheadLimit= ${serverConfig.autoDownloadAheadLimit.value}" +
+                    "autoDownloadNewChaptersLimit= ${serverConfig.autoDownloadNewChaptersLimit.value}" +
                     ")",
             )
 
@@ -389,8 +389,8 @@ object Chapter {
         }
 
         val firstChapterToDownloadIndex =
-            if (serverConfig.autoDownloadAheadLimit.value > 0) {
-                (numberOfNewChapters - serverConfig.autoDownloadAheadLimit.value).coerceAtLeast(0)
+            if (serverConfig.autoDownloadNewChaptersLimit.value > 0) {
+                (numberOfNewChapters - serverConfig.autoDownloadNewChaptersLimit.value).coerceAtLeast(0)
             } else {
                 0
             }
