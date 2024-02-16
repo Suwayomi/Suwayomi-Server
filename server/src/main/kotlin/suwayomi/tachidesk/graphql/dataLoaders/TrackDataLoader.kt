@@ -55,7 +55,7 @@ class TrackerStatusesDataLoader : KotlinDataLoader<Int, List<TrackStatusType>> {
 }
 
 class TrackerScoresDataLoader : KotlinDataLoader<Int, List<String>> {
-    override val dataLoaderName = "TrackerStatusesDataLoader"
+    override val dataLoaderName = "TrackerScoresDataLoader"
 
     override fun getDataLoader(): DataLoader<Int, List<String>> =
         DataLoaderFactory.newDataLoader { ids ->
