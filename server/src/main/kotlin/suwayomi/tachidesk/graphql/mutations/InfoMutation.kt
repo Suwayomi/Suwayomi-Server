@@ -8,6 +8,7 @@ import suwayomi.tachidesk.graphql.types.UpdateState.IDLE
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.util.WebInterfaceManager
+import suwayomi.tachidesk.server.util.WebUIFlavor
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
 
@@ -28,7 +29,9 @@ class InfoMutation {
                     return@withTimeout WebUIUpdatePayload(input.clientMutationId, WebInterfaceManager.status.value)
                 }
 
-                val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable()
+                val flavor = WebUIFlavor.current
+
+                val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable(flavor)
 
                 if (!updateAvailable) {
                     val didUpdateCheckFail = version.isEmpty()
@@ -39,7 +42,7 @@ class InfoMutation {
                     )
                 }
                 try {
-                    WebInterfaceManager.startDownloadInScope(version)
+                    WebInterfaceManager.startDownloadInScope(flavor, version)
                 } catch (e: Exception) {
                     // ignore since we use the status anyway
                 }

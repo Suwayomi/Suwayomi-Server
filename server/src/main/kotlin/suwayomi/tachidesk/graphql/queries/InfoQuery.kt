@@ -8,6 +8,7 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.util.WebInterfaceManager
+import suwayomi.tachidesk.server.util.WebUIFlavor
 import java.util.concurrent.CompletableFuture
 
 class InfoQuery {
@@ -60,7 +61,7 @@ class InfoQuery {
 
     fun checkForWebUIUpdate(): CompletableFuture<WebUIUpdateCheck> {
         return future {
-            val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable(raiseError = true)
+            val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable(WebUIFlavor.current, raiseError = true)
             WebUIUpdateCheck(
                 channel = serverConfig.webUIChannel.value,
                 tag = version,
