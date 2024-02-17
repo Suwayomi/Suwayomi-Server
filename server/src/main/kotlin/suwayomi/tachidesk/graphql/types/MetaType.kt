@@ -12,6 +12,7 @@ import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
+import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import java.util.concurrent.CompletableFuture
 
 interface MetaType : Node {
@@ -64,6 +65,22 @@ class CategoryMetaType(
 
     fun category(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<CategoryType> {
         return dataFetchingEnvironment.getValueFromDataLoader<Int, CategoryType>("CategoryDataLoader", categoryId)
+    }
+}
+
+class SourceMetaType(
+    override val key: String,
+    override val value: String,
+    val sourceId: Long,
+) : MetaType {
+    constructor(row: ResultRow) : this(
+        key = row[SourceMetaTable.key],
+        value = row[SourceMetaTable.value],
+        sourceId = row[SourceMetaTable.ref],
+    )
+
+    fun source(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<SourceType> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Long, SourceType>("SourceDataLoader", sourceId)
     }
 }
 

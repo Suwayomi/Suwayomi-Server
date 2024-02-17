@@ -82,6 +82,10 @@ class SourceType(
     fun filters(): List<Filter> {
         return getCatalogueSourceOrStub(id).getFilterList().map { filterOf(it) }
     }
+
+    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<SourceMetaType>> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Long, List<SourceMetaType>>("SourceMetaDataLoader", id)
+    }
 }
 
 @Suppress("ktlint:standard:function-naming")
