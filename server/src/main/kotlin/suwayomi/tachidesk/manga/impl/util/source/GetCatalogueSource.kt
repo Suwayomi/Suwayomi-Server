@@ -83,6 +83,8 @@ object GetCatalogueSource {
     }
 
     fun unregisterAllCatalogueSources() {
-        sourceCache.clear()
+        (sourceCache - 0L).forEach { (id, _) ->
+            sourceCache.remove(id)
+        }
     }
 }
