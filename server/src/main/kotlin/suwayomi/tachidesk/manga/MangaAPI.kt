@@ -7,6 +7,8 @@ package suwayomi.tachidesk.manga
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.network.POST
+import eu.kanade.tachiyomi.network.awaitSuccess
 import io.javalin.apibuilder.ApiBuilder.delete
 import io.javalin.apibuilder.ApiBuilder.get
 import io.javalin.apibuilder.ApiBuilder.patch
@@ -14,6 +16,14 @@ import io.javalin.apibuilder.ApiBuilder.path
 import io.javalin.apibuilder.ApiBuilder.post
 import io.javalin.apibuilder.ApiBuilder.put
 import io.javalin.apibuilder.ApiBuilder.ws
+import io.javalin.http.HttpCode
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.RequestBody.Companion.toRequestBody
 import suwayomi.tachidesk.manga.controller.BackupController
 import suwayomi.tachidesk.manga.controller.CategoryController
 import suwayomi.tachidesk.manga.controller.DownloadController
@@ -22,6 +32,8 @@ import suwayomi.tachidesk.manga.controller.MangaController
 import suwayomi.tachidesk.manga.controller.SourceController
 import suwayomi.tachidesk.manga.controller.TrackController
 import suwayomi.tachidesk.manga.controller.UpdateController
+import suwayomi.tachidesk.server.util.handler
+import suwayomi.tachidesk.server.util.withOperation
 
 object MangaAPI {
     fun defineEndpoints() {
@@ -142,6 +154,74 @@ object MangaAPI {
             post("bind", TrackController.bind)
             post("update", TrackController.update)
             get("{trackerId}/thumbnail", TrackController.thumbnail)
+        }
+
+        val jsonMediaType = "application/json".toMediaType()
+
+        @Serializable
+        data class AnilistCredential(
+            val grant_type: String = "authorization_code",
+            val client_id: String? = null,
+            val client_secret: String? = null,
+            val redirect_uri: String? = null,
+            val code: String? = null,
+        )
+
+        path("anilist") {
+            get(
+                "{test2}",
+                handler(
+                    documentWith = {
+                        withOperation {
+                            summary("List Supported Trackers")
+                            description("List all supported Trackers")
+                        }
+                    },
+                    behaviorOf = { ctx ->
+                        val here = ctx.pathParam("test2")
+                        println("worked the get")
+                        ctx.result("lskdjl$here")
+                        ctx.status(200)
+                    },
+                    withResults = {
+                        HttpCode.OK
+                    },
+                ),
+            )
+            post("{code}") { ctx ->
+                println("********HERE, posting *****")
+                runBlocking {
+                    val code = ctx.pathParam("code")
+//
+                    val client = OkHttpClient()
+//
+                    val aniResond =
+                        client.newCall(
+                            POST(
+
+                                url = "https://anilist.co/api/v2/oauth/token",
+                                body =
+                                    Json.encodeToString(
+                                        AnilistCredential(
+                                            grant_type = "authorization_code",
+                                            client_id = "11324",
+                                            client_secret = "sdsdfsdfsdfsdfaasdfsdafz9sgdaPwHK",
+                                            redirect_uri = "http://192.168.113.63:3000/oath/ainilist/auth",
+                                            code
+                                        ),
+                                    ).toRequestBody(jsonMediaType),
+                            ),
+                        ).awaitSuccess()
+
+                    // Handle the response and retrieve the access_token
+                    println(aniResond)
+
+                    ctx.result("Hello: $aniResond")
+                    ctx.status(201)
+                }
+//                ctx.result("post: $code")
+//                ctx.status(201)
+            }
         }
     }
 }
