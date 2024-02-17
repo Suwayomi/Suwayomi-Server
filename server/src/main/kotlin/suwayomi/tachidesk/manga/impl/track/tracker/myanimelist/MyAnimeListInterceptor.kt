@@ -4,6 +4,7 @@ import eu.kanade.tachiyomi.network.parseAs
 import kotlinx.serialization.json.Json
 import okhttp3.Interceptor
 import okhttp3.Response
+import suwayomi.tachidesk.manga.impl.track.tracker.TokenExpired
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 
@@ -13,6 +14,9 @@ class MyAnimeListInterceptor(private val myanimelist: MyAnimeList, private var t
     private var oauth: OAuth? = null
 
     override fun intercept(chain: Interceptor.Chain): Response {
+        if (myanimelist.getIfAuthExpired()) {
+            throw TokenExpired()
+        }
         val originalRequest = chain.request()
 
         if (token.isNullOrEmpty()) {
@@ -71,22 +75,19 @@ class MyAnimeListInterceptor(private val myanimelist: MyAnimeList, private var t
     }
 
     private fun refreshToken(chain: Interceptor.Chain): OAuth {
-        val newOauth =
-            runCatching {
-                val oauthResponse = chain.proceed(MyAnimeListApi.refreshTokenRequest(oauth!!))
-
-                if (oauthResponse.isSuccessful) {
-                    with(json) { oauthResponse.parseAs<OAuth>() }
-                } else {
-                    oauthResponse.close()
-                    null
-                }
+        return runCatching {
+            val oauthResponse = chain.proceed(MyAnimeListApi.refreshTokenRequest(oauth!!))
+            if (oauthResponse.code == 401) {
+                myanimelist.setAuthExpired()
             }
-
-        if (newOauth.getOrNull() == null) {
-            throw IOException("Failed to refresh the access token")
+            if (oauthResponse.isSuccessful) {
+                with(json) { oauthResponse.parseAs<OAuth>() }
+            } else {
+                oauthResponse.close()
+                null
+            }
         }
-
-        return newOauth.getOrNull()!!
+            .getOrNull()
+            ?: throw TokenExpired()
     }
 }

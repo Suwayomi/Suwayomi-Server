@@ -5,6 +5,7 @@ import okhttp3.OkHttpClient
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
+import java.io.IOException
 
 abstract class Tracker(val id: Int, val name: String) {
     val trackPreferences = TrackerPreferences
@@ -81,6 +82,14 @@ abstract class Tracker(val id: Int, val name: String) {
     ) {
         trackPreferences.setTrackCredentials(this, username, password)
     }
+
+    fun getIfAuthExpired(): Boolean {
+        return trackPreferences.trackAuthExpired(this)
+    }
+
+    fun setAuthExpired() {
+        trackPreferences.setTrackTokenExpired(this)
+    }
 }
 
 fun String.extractToken(key: String): String? {
@@ -93,3 +102,5 @@ fun String.extractToken(key: String): String? {
     }
     return null
 }
+
+class TokenExpired : IOException("Token is expired, re-logging required")
