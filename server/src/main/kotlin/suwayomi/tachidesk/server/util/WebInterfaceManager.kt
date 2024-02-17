@@ -109,6 +109,14 @@ enum class WebUIFlavor(
         "Suwayomi-WebUI",
     ),
 
+    VUI(
+        "VUI",
+        "https://github.com/Suwayomi/Suwayomi-VUI",
+        "https://raw.githubusercontent.com/Suwayomi/Suwayomi-VUI/main/versionToServerVersionMapping.json",
+        "https://api.github.com/repos/Suwayomi/Suwayomi-VUI/releases/latest",
+        "Suwayomi-VUI-Web",
+    ),
+
     CUSTOM(
         "Custom",
         "repoURL",
