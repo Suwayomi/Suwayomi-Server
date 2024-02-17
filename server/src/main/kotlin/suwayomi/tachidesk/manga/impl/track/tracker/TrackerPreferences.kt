@@ -16,10 +16,11 @@ object TrackerPreferences {
 
     fun getTrackPassword(sync: Tracker) = preferenceStore.getString(trackPassword(sync.id), "")
 
-    fun trackAuthExpired(tracker: Tracker) = preferenceStore.getBoolean(
-        trackTokenExpired(tracker.id),
-        false,
-    )
+    fun trackAuthExpired(tracker: Tracker) =
+        preferenceStore.getBoolean(
+            trackTokenExpired(tracker.id),
+            false,
+        )
 
     fun setTrackCredentials(
         sync: Tracker,
