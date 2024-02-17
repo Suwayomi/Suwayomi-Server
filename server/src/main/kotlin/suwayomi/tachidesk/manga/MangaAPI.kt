@@ -206,7 +206,7 @@ object MangaAPI {
                                             grant_type = "authorization_code",
                                             client_id = "11324",
                                             client_secret = "sdsdfsdfsdfsdfaasdfsdafz9sgdaPwHK",
-                                            redirect_uri = "http://192.168.113.63:3000/oath/ainilist/auth",
+                                            redirect_uri = "http://localhost:3000/oath/ainilist/auth",
                                             code
                                         ),
                                     ).toRequestBody(jsonMediaType),
