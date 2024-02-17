@@ -7,6 +7,7 @@
 
 package suwayomi.tachidesk.graphql.types
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
@@ -38,7 +39,13 @@ interface Settings : Node {
     val downloadsPath: String?
     val autoDownloadNewChapters: Boolean?
     val excludeEntryWithUnreadChapters: Boolean?
+
+    @GraphQLDeprecated(
+        "Replaced with autoDownloadNewChaptersLimit",
+        replaceWith = ReplaceWith("autoDownloadNewChaptersLimit"),
+    )
     val autoDownloadAheadLimit: Int?
+    val autoDownloadNewChaptersLimit: Int?
 
     // extension
     val extensionRepos: List<String>?
@@ -99,7 +106,12 @@ data class PartialSettingsType(
     override val downloadsPath: String?,
     override val autoDownloadNewChapters: Boolean?,
     override val excludeEntryWithUnreadChapters: Boolean?,
+    @GraphQLDeprecated(
+        "Replaced with autoDownloadNewChaptersLimit",
+        replaceWith = ReplaceWith("autoDownloadNewChaptersLimit"),
+    )
     override val autoDownloadAheadLimit: Int?,
+    override val autoDownloadNewChaptersLimit: Int?,
     // extension
     override val extensionRepos: List<String>?,
     // requests
@@ -152,7 +164,12 @@ class SettingsType(
     override val downloadsPath: String,
     override val autoDownloadNewChapters: Boolean,
     override val excludeEntryWithUnreadChapters: Boolean,
+    @GraphQLDeprecated(
+        "Replaced with autoDownloadNewChaptersLimit",
+        replaceWith = ReplaceWith("autoDownloadNewChaptersLimit"),
+    )
     override val autoDownloadAheadLimit: Int,
+    override val autoDownloadNewChaptersLimit: Int,
     // extension
     override val extensionRepos: List<String>,
     // requests
@@ -204,7 +221,8 @@ class SettingsType(
         config.downloadsPath.value,
         config.autoDownloadNewChapters.value,
         config.excludeEntryWithUnreadChapters.value,
-        config.autoDownloadAheadLimit.value,
+        config.autoDownloadNewChaptersLimit.value, // deprecated
+        config.autoDownloadNewChaptersLimit.value,
         // extension
         config.extensionRepos.value,
         // requests

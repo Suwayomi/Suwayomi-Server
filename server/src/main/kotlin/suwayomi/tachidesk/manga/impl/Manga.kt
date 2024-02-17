@@ -27,8 +27,6 @@ import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.impl.Source.getSource
-import suwayomi.tachidesk.manga.impl.download.DownloadManager
-import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.MissingThumbnailException
 import suwayomi.tachidesk.manga.impl.track.Track
 import suwayomi.tachidesk.manga.impl.util.network.await
@@ -47,15 +45,11 @@ import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.ApplicationDirs
-import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.time.Instant
-import java.util.Timer
-import java.util.TimerTask
-import java.util.concurrent.ConcurrentHashMap
 
 private val logger = KotlinLogging.logger { }
 
@@ -338,105 +332,5 @@ object Manga {
 
         clearCachedImage(applicationDirs.tempThumbnailCacheRoot, fileName)
         clearCachedImage(applicationDirs.thumbnailDownloadsRoot, fileName)
-    }
-
-    private val downloadAheadQueue = ConcurrentHashMap<String, ConcurrentHashMap.KeySetView<Int, Boolean>>()
-    private var downloadAheadTimer: Timer? = null
-
-    private const val MANGAS_KEY = "mangaIds"
-    private const val CHAPTERS_KEY = "chapterIds"
-
-    fun downloadAhead(
-        mangaIds: List<Int>,
-        latestReadChapterIds: List<Int> = emptyList(),
-    ) {
-        if (serverConfig.autoDownloadAheadLimit.value == 0) {
-            return
-        }
-
-        val updateDownloadAheadQueue = { key: String, ids: List<Int> ->
-            val idSet = downloadAheadQueue[key] ?: ConcurrentHashMap.newKeySet()
-            idSet.addAll(ids)
-            downloadAheadQueue[key] = idSet
-        }
-
-        updateDownloadAheadQueue(MANGAS_KEY, mangaIds)
-        updateDownloadAheadQueue(CHAPTERS_KEY, latestReadChapterIds)
-
-        // handle cases where this function gets called multiple times in quick succession.
-        // this could happen in case e.g. multiple chapters get marked as read without batching the operation
-        downloadAheadTimer?.cancel()
-        downloadAheadTimer =
-            Timer().apply {
-                schedule(
-                    object : TimerTask() {
-                        override fun run() {
-                            downloadAheadChapters(
-                                downloadAheadQueue[MANGAS_KEY]?.toList().orEmpty(),
-                                downloadAheadQueue[CHAPTERS_KEY]?.toList().orEmpty(),
-                            )
-                            downloadAheadQueue.clear()
-                        }
-                    },
-                    5000,
-                )
-            }
-    }
-
-    /**
-     * Downloads the latest unread and not downloaded chapters for each passed manga id.
-     *
-     * To pass a specific chapter as the latest read chapter for a manga, it can be provided in the "latestReadChapterIds" list.
-     * This makes it possible to handle cases, where the actual latest read chapter isn't marked as read yet.
-     * E.g. the client marks a chapter as read and at the same time sends the "downloadAhead" mutation.
-     * In this case, the latest read chapter could potentially be the one, that just got send to get marked as read by the client.
-     * Without providing it in "latestReadChapterIds" it could be incorrectly included in the chapters, that will get downloaded.
-     *
-     * The latest read chapter will be considered the starting point.
-     * E.g.:
-     * - 20 chapters
-     * - chapter 15 marked as read
-     * - 16 - 20 marked as unread
-     * - 10 - 14 marked as unread
-     *
-     * will download the unread chapters starting from chapter 15
-     */
-    private fun downloadAheadChapters(
-        mangaIds: List<Int>,
-        latestReadChapterIds: List<Int>,
-    ) {
-        val mangaToLatestReadChapterIndex =
-            transaction {
-                ChapterTable.select { (ChapterTable.manga inList mangaIds) and (ChapterTable.isRead eq true) }
-                    .orderBy(ChapterTable.sourceOrder to SortOrder.DESC).groupBy { it[ChapterTable.manga].value }
-            }.mapValues { (_, chapters) -> chapters.firstOrNull()?.let { it[ChapterTable.sourceOrder] } ?: 0 }
-
-        val mangaToUnreadChaptersMap =
-            transaction {
-                ChapterTable.select { (ChapterTable.manga inList mangaIds) and (ChapterTable.isRead eq false) }
-                    .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
-                    .groupBy { it[ChapterTable.manga].value }
-            }
-
-        val chapterIdsToDownload =
-            mangaToUnreadChaptersMap.map { (mangaId, unreadChapters) ->
-                val latestReadChapterIndex = mangaToLatestReadChapterIndex[mangaId] ?: 0
-                val lastChapterToDownloadIndex =
-                    unreadChapters.indexOfLast {
-                        it[ChapterTable.sourceOrder] > latestReadChapterIndex &&
-                            it[ChapterTable.id].value !in latestReadChapterIds
-                    }
-                val unreadChaptersToConsider = unreadChapters.subList(0, lastChapterToDownloadIndex + 1)
-                val firstChapterToDownloadIndex =
-                    (unreadChaptersToConsider.size - serverConfig.autoDownloadAheadLimit.value).coerceAtLeast(0)
-                unreadChaptersToConsider.subList(firstChapterToDownloadIndex, lastChapterToDownloadIndex + 1)
-                    .filter { !it[ChapterTable.isDownloaded] }
-                    .map { it[ChapterTable.id].value }
-            }.flatten()
-
-        logger.info { "downloadAheadChapters: download chapters [${chapterIdsToDownload.joinToString(", ")}]" }
-
-        DownloadManager.dequeue(mangaIds, chapterIdsToDownload)
-        DownloadManager.enqueue(EnqueueInput(chapterIdsToDownload))
     }
 }
