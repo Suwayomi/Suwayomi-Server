@@ -44,10 +44,12 @@ object TrackerPreferences {
         if (token == null) {
             preferenceStore.edit()
                 .remove(trackToken(sync.id))
+                .putBoolean(trackTokenExpired(sync.id), false)
                 .apply()
         } else {
             preferenceStore.edit()
                 .putString(trackToken(sync.id), token)
+                .putBoolean(trackTokenExpired(sync.id), false)
                 .apply()
         }
     }
