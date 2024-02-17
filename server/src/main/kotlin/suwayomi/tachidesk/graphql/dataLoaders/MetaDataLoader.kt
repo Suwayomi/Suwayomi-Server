@@ -12,9 +12,11 @@ import suwayomi.tachidesk.graphql.types.CategoryMetaType
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.GlobalMetaType
 import suwayomi.tachidesk.graphql.types.MangaMetaType
+import suwayomi.tachidesk.graphql.types.SourceMetaType
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
+import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 
 class GlobalMetaDataLoader : KotlinDataLoader<String, GlobalMetaType?> {
@@ -83,6 +85,24 @@ class CategoryMetaDataLoader : KotlinDataLoader<Int, List<CategoryMetaType>> {
                         CategoryMetaTable.select { CategoryMetaTable.ref inList ids }
                             .map { CategoryMetaType(it) }
                             .groupBy { it.categoryId }
+                    ids.map { metasByRefId[it].orEmpty() }
+                }
+            }
+        }
+}
+
+class SourceMetaDataLoader : KotlinDataLoader<Long, List<SourceMetaType>> {
+    override val dataLoaderName = "SourceMetaDataLoader"
+
+    override fun getDataLoader(): DataLoader<Long, List<SourceMetaType>> =
+        DataLoaderFactory.newDataLoader<Long, List<SourceMetaType>> { ids ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val metasByRefId =
+                        SourceMetaTable.select { SourceMetaTable.ref inList ids }
+                            .map { SourceMetaType(it) }
+                            .groupBy { it.sourceId }
                     ids.map { metasByRefId[it].orEmpty() }
                 }
             }
