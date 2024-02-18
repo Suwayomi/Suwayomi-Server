@@ -106,13 +106,15 @@ object JavalinSetup {
                         handler.handle(ctx)
                     }
                 }
-            }.events { event ->
-                event.serverStarted {
-                    if (serverConfig.initialOpenInBrowserEnabled.value) {
-                        Browser.openInBrowser()
-                    }
+            }
+
+        app.events { event ->
+            event.serverStarted {
+                if (serverConfig.initialOpenInBrowserEnabled.value) {
+                    Browser.openInBrowser()
                 }
             }
+        }
 
         // when JVM is prompted to shutdown, stop javalin gracefully
         Runtime.getRuntime().addShutdownHook(
