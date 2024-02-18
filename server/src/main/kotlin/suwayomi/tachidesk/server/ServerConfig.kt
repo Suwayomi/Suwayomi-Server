@@ -82,6 +82,8 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
     val socksProxyEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val socksProxyHost: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
     val socksProxyPort: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+    val socksProxyUsername: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+    val socksProxyPassword: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
 
     // webUI
     val webUIEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)

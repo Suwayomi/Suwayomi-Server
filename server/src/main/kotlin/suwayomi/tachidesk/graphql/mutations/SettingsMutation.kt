@@ -39,6 +39,8 @@ class SettingsMutation {
         updateSetting(settings.socksProxyEnabled, serverConfig.socksProxyEnabled)
         updateSetting(settings.socksProxyHost, serverConfig.socksProxyHost)
         updateSetting(settings.socksProxyPort, serverConfig.socksProxyPort)
+        updateSetting(settings.socksProxyUsername, serverConfig.socksProxyUsername)
+        updateSetting(settings.socksProxyPassword, serverConfig.socksProxyPassword)
 
         // webUI
         updateSetting(settings.webUIFlavor?.uiName, serverConfig.webUIFlavor)

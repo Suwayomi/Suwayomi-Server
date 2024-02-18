@@ -23,6 +23,8 @@ interface Settings : Node {
     val socksProxyEnabled: Boolean?
     val socksProxyHost: String?
     val socksProxyPort: String?
+    val socksProxyUsername: String?
+    val socksProxyPassword: String?
 
     // webUI
 //    requires restart (found no way to mutate (serve + "unserve") served files during runtime), exclude for now
@@ -94,6 +96,8 @@ data class PartialSettingsType(
     override val socksProxyEnabled: Boolean?,
     override val socksProxyHost: String?,
     override val socksProxyPort: String?,
+    override val socksProxyUsername: String?,
+    override val socksProxyPassword: String?,
     // webUI
     override val webUIFlavor: WebUIFlavor?,
     override val initialOpenInBrowserEnabled: Boolean?,
@@ -152,6 +156,8 @@ class SettingsType(
     override val socksProxyEnabled: Boolean,
     override val socksProxyHost: String,
     override val socksProxyPort: String,
+    override val socksProxyUsername: String,
+    override val socksProxyPassword: String,
     // webUI
     override val webUIFlavor: WebUIFlavor,
     override val initialOpenInBrowserEnabled: Boolean,
@@ -209,6 +215,8 @@ class SettingsType(
         config.socksProxyEnabled.value,
         config.socksProxyHost.value,
         config.socksProxyPort.value,
+        config.socksProxyUsername.value,
+        config.socksProxyPassword.value,
         // webUI
         WebUIFlavor.from(config.webUIFlavor.value),
         config.initialOpenInBrowserEnabled.value,

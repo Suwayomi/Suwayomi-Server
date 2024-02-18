@@ -236,14 +236,25 @@ fun applicationSetup() {
             serverConfig.socksProxyEnabled,
             serverConfig.socksProxyHost,
             serverConfig.socksProxyPort,
-        ) { proxyEnabled, proxyHost, proxyPort ->
-            Triple(proxyEnabled, proxyHost, proxyPort)
+            serverConfig.socksProxyUsername,
+            serverConfig.socksProxyPassword,
+        ) { proxyEnabled, proxyHost, proxyPort, proxyUsername, proxyPassword ->
+            data class DataClassForDestruction(
+                val proxyEnabled: Boolean,
+                val proxyHost: String,
+                val proxyPort: String,
+                val proxyUsername: String,
+                val proxyPassword: String,
+            )
+            DataClassForDestruction(proxyEnabled, proxyHost, proxyPort, proxyUsername, proxyPassword)
         },
-        { (proxyEnabled, proxyHost, proxyPort) ->
+        { (proxyEnabled, proxyHost, proxyPort, proxyUsername, proxyPassword) ->
             logger.info("Socks Proxy changed - enabled= $proxyEnabled, proxy= $proxyHost:$proxyPort")
             if (proxyEnabled) {
                 System.getProperties()["socksProxyHost"] = proxyHost
                 System.getProperties()["socksProxyPort"] = proxyPort
+                System.getProperties()["java.net.socks.username"] = proxyUsername
+                System.getProperties()["java.net.socks.password"] = proxyPassword
             } else {
                 System.getProperties()["socksProxyHost"] = ""
                 System.getProperties()["socksProxyPort"] = ""
