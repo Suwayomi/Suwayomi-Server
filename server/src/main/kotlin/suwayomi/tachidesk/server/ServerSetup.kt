@@ -287,7 +287,7 @@ fun runMigrations(applicationDirs: ApplicationDirs) {
             )
     val version = migrationPreferences.getInt("version", 0)
     val logger = KotlinLogging.logger("Migration")
-    logger.info { "Running migrations, current version $version, target version $MIGRATION_VERSION" }
+    logger.info { "Running migrations, previous version $version, target version $MIGRATION_VERSION" }
 
     if (version < 1) {
         logger.info { "Running migration for version: 1" }
