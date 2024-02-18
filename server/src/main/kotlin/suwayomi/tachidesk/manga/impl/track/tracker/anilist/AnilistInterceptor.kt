@@ -30,7 +30,7 @@ class AnilistInterceptor(val anilist: Anilist, private var token: String?) : Int
             oauth = anilist.loadOAuth()
         }
         // Refresh access token if null or expired.
-        if (oauth!!.isExpired()) {
+        if (oauth?.isExpired() == true) {
             anilist.setAuthExpired()
             throw TokenExpired()
         }

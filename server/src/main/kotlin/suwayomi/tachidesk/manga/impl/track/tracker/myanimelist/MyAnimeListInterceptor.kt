@@ -1,10 +1,12 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.myanimelist
 
+import eu.kanade.tachiyomi.AppInfo
 import eu.kanade.tachiyomi.network.parseAs
 import kotlinx.serialization.json.Json
 import okhttp3.Interceptor
 import okhttp3.Response
 import suwayomi.tachidesk.manga.impl.track.tracker.TokenExpired
+import suwayomi.tachidesk.manga.impl.track.tracker.TokenRefreshFailed
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 
@@ -19,49 +21,21 @@ class MyAnimeListInterceptor(private val myanimelist: MyAnimeList, private var t
         }
         val originalRequest = chain.request()
 
-        if (token.isNullOrEmpty()) {
-            throw IOException("Not authenticated with MyAnimeList")
-        }
-        if (oauth == null) {
-            oauth = myanimelist.loadOAuth()
-        }
-        // Refresh access token if expired
-        if (oauth != null && oauth!!.isExpired()) {
-            setAuth(refreshToken(chain))
+        if (oauth?.isExpired() == true) {
+            refreshToken(chain)
         }
 
         if (oauth == null) {
-            throw IOException("No authentication token")
+            throw IOException("MAL: User is not authenticated")
         }
 
         // Add the authorization header to the original request
-        val authRequest =
-            originalRequest.newBuilder()
-                .addHeader("Authorization", "Bearer ${oauth!!.access_token}")
-                .build()
+        val authRequest = originalRequest.newBuilder()
+            .addHeader("Authorization", "Bearer ${oauth!!.access_token}")
+            .header("User-Agent", "Suwayomi v${AppInfo.getVersionName()}")
+            .build()
 
-        val response = chain.proceed(authRequest)
-        val tokenIsExpired =
-            response.headers["www-authenticate"]
-                ?.contains("The access token expired") ?: false
-
-        // Retry the request once with a new token in case it was not already refreshed
-        // by the is expired check before.
-        if (response.code == 401 && tokenIsExpired) {
-            response.close()
-
-            val newToken = refreshToken(chain)
-            setAuth(newToken)
-
-            val newRequest =
-                originalRequest.newBuilder()
-                    .addHeader("Authorization", "Bearer ${newToken.access_token}")
-                    .build()
-
-            return chain.proceed(newRequest)
-        }
-
-        return response
+        return chain.proceed(authRequest)
     }
 
     /**
@@ -74,20 +48,34 @@ class MyAnimeListInterceptor(private val myanimelist: MyAnimeList, private var t
         myanimelist.saveOAuth(oauth)
     }
 
-    private fun refreshToken(chain: Interceptor.Chain): OAuth {
+    private fun refreshToken(chain: Interceptor.Chain): OAuth = synchronized(this) {
+        if (myanimelist.getIfAuthExpired()) throw TokenExpired()
+        oauth?.takeUnless { it.isExpired() }?.let { return@synchronized it }
+
+        val response = try {
+            chain.proceed(MyAnimeListApi.refreshTokenRequest(oauth!!))
+        } catch (_: Throwable) {
+            throw TokenRefreshFailed()
+        }
+
+        if (response.code == 401) {
+            myanimelist.setAuthExpired()
+            throw TokenExpired()
+        }
+
         return runCatching {
-            val oauthResponse = chain.proceed(MyAnimeListApi.refreshTokenRequest(oauth!!))
-            if (oauthResponse.code == 401) {
-                myanimelist.setAuthExpired()
-            }
-            if (oauthResponse.isSuccessful) {
-                with(json) { oauthResponse.parseAs<OAuth>() }
+            if (response.isSuccessful) {
+                with(json) { response.parseAs<OAuth>() }
             } else {
-                oauthResponse.close()
+                response.close()
                 null
             }
         }
             .getOrNull()
-            ?: throw TokenExpired()
+            ?.also {
+                this.oauth = it
+                myanimelist.saveOAuth(it)
+            }
+            ?: throw TokenRefreshFailed()
     }
 }

@@ -104,3 +104,4 @@ fun String.extractToken(key: String): String? {
 }
 
 class TokenExpired : IOException("Token is expired, re-logging required")
+class TokenRefreshFailed : IOException("Token refresh failed")
