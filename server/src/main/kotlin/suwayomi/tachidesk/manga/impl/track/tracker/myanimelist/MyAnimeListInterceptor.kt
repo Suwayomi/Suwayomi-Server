@@ -30,10 +30,11 @@ class MyAnimeListInterceptor(private val myanimelist: MyAnimeList, private var t
         }
 
         // Add the authorization header to the original request
-        val authRequest = originalRequest.newBuilder()
-            .addHeader("Authorization", "Bearer ${oauth!!.access_token}")
-            .header("User-Agent", "Suwayomi v${AppInfo.getVersionName()}")
-            .build()
+        val authRequest =
+            originalRequest.newBuilder()
+                .addHeader("Authorization", "Bearer ${oauth!!.access_token}")
+                .header("User-Agent", "Suwayomi v${AppInfo.getVersionName()}")
+                .build()
 
         return chain.proceed(authRequest)
     }
@@ -48,34 +49,36 @@ class MyAnimeListInterceptor(private val myanimelist: MyAnimeList, private var t
         myanimelist.saveOAuth(oauth)
     }
 
-    private fun refreshToken(chain: Interceptor.Chain): OAuth = synchronized(this) {
-        if (myanimelist.getIfAuthExpired()) throw TokenExpired()
-        oauth?.takeUnless { it.isExpired() }?.let { return@synchronized it }
+    private fun refreshToken(chain: Interceptor.Chain): OAuth =
+        synchronized(this) {
+            if (myanimelist.getIfAuthExpired()) throw TokenExpired()
+            oauth?.takeUnless { it.isExpired() }?.let { return@synchronized it }
 
-        val response = try {
-            chain.proceed(MyAnimeListApi.refreshTokenRequest(oauth!!))
-        } catch (_: Throwable) {
-            throw TokenRefreshFailed()
-        }
+            val response =
+                try {
+                    chain.proceed(MyAnimeListApi.refreshTokenRequest(oauth!!))
+                } catch (_: Throwable) {
+                    throw TokenRefreshFailed()
+                }
 
-        if (response.code == 401) {
-            myanimelist.setAuthExpired()
-            throw TokenExpired()
-        }
-
-        return runCatching {
-            if (response.isSuccessful) {
-                with(json) { response.parseAs<OAuth>() }
-            } else {
-                response.close()
-                null
+            if (response.code == 401) {
+                myanimelist.setAuthExpired()
+                throw TokenExpired()
             }
-        }
-            .getOrNull()
-            ?.also {
-                this.oauth = it
-                myanimelist.saveOAuth(it)
+
+            return runCatching {
+                if (response.isSuccessful) {
+                    with(json) { response.parseAs<OAuth>() }
+                } else {
+                    response.close()
+                    null
+                }
             }
-            ?: throw TokenRefreshFailed()
-    }
+                .getOrNull()
+                ?.also {
+                    this.oauth = it
+                    myanimelist.saveOAuth(it)
+                }
+                ?: throw TokenRefreshFailed()
+        }
 }
