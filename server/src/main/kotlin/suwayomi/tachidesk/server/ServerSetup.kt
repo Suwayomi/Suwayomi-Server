@@ -249,7 +249,9 @@ fun applicationSetup() {
             DataClassForDestruction(proxyEnabled, proxyHost, proxyPort, proxyUsername, proxyPassword)
         },
         { (proxyEnabled, proxyHost, proxyPort, proxyUsername, proxyPassword) ->
-            logger.info("Socks Proxy changed - enabled=$proxyEnabled address=$proxyHost:$proxyPort , username=$proxyUsername, password=[REDACTED]")
+            logger.info(
+                "Socks Proxy changed - enabled=$proxyEnabled address=$proxyHost:$proxyPort , username=$proxyUsername, password=[REDACTED]",
+            )
             if (proxyEnabled) {
                 System.getProperties()["socksProxyHost"] = proxyHost
                 System.getProperties()["socksProxyPort"] = proxyPort
