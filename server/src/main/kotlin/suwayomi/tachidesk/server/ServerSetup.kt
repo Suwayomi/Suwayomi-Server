@@ -126,23 +126,6 @@ fun applicationSetup() {
     File("$ApplicationRootDir/manga-local").renameTo(applicationDirs.localMangaRoot)
     File("$ApplicationRootDir/anime-thumbnails").delete()
 
-    val oldMangaDownloadDir = File(applicationDirs.downloadsRoot)
-    val newMangaDownloadDir = File(applicationDirs.mangaDownloadsRoot)
-    val downloadDirs = oldMangaDownloadDir.listFiles().orEmpty()
-
-    val moveDownloadsToNewFolder = !newMangaDownloadDir.exists() && downloadDirs.isNotEmpty()
-    if (moveDownloadsToNewFolder) {
-        newMangaDownloadDir.mkdirs()
-
-        for (downloadDir in downloadDirs) {
-            if (downloadDir == File(applicationDirs.thumbnailDownloadsRoot)) {
-                continue
-            }
-
-            downloadDir.renameTo(File(newMangaDownloadDir, downloadDir.name))
-        }
-    }
-
     // make dirs we need
     listOf(
         applicationDirs.dataRoot,
@@ -217,13 +200,7 @@ fun applicationSetup() {
         }
     }, ignoreInitialValue = false)
 
-    val prefRootNode = "suwayomi/tachidesk"
-    val isMigrationRequired = Preferences.userRoot().nodeExists(prefRootNode)
-    if (isMigrationRequired) {
-        val preferences = Preferences.userRoot().node(prefRootNode)
-        migratePreferences(null, preferences)
-        preferences.removeNode()
-    }
+    runMigrations(applicationDirs)
 
     // Disable jetty's logging
     System.setProperty("org.eclipse.jetty.util.log.announce", "false")
@@ -297,4 +274,48 @@ fun migratePreferences(
 
         migratePreferences(key, subNode) // Recursively migrate sub-level nodes
     }
+}
+
+const val MIGRATION_VERSION = 1
+
+fun runMigrations(applicationDirs: ApplicationDirs) {
+    val migrationPreferences =
+        Injekt.get<Application>()
+            .getSharedPreferences(
+                "migrations",
+                Context.MODE_PRIVATE,
+            )
+    val version = migrationPreferences.getInt("version", 0)
+    val logger = KotlinLogging.logger("Migration")
+    logger.info { "Running migrations, current version $version, target version $MIGRATION_VERSION" }
+
+    if (version < 1) {
+        logger.info { "Running migration for version: 1" }
+        val oldMangaDownloadDir = File(applicationDirs.downloadsRoot)
+        val newMangaDownloadDir = File(applicationDirs.mangaDownloadsRoot)
+        val downloadDirs = oldMangaDownloadDir.listFiles().orEmpty()
+
+        val moveDownloadsToNewFolder = !newMangaDownloadDir.exists() && downloadDirs.isNotEmpty()
+        if (moveDownloadsToNewFolder) {
+            newMangaDownloadDir.mkdirs()
+
+            for (downloadDir in downloadDirs) {
+                if (downloadDir == File(applicationDirs.thumbnailDownloadsRoot)) {
+                    continue
+                }
+
+                downloadDir.renameTo(File(newMangaDownloadDir, downloadDir.name))
+            }
+        }
+
+        // Migrate from old preferences api
+        val prefRootNode = "suwayomi/tachidesk"
+        val isMigrationRequired = Preferences.userRoot().nodeExists(prefRootNode)
+        if (isMigrationRequired) {
+            val preferences = Preferences.userRoot().node(prefRootNode)
+            migratePreferences(null, preferences)
+            preferences.removeNode()
+        }
+    }
+    migrationPreferences.edit().putInt("version", MIGRATION_VERSION).apply()
 }
