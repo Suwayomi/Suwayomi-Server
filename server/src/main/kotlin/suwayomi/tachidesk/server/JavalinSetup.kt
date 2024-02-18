@@ -112,7 +112,7 @@ object JavalinSetup {
                         Browser.openInBrowser()
                     }
                 }
-            }.start()
+            }
 
         // when JVM is prompted to shutdown, stop javalin gracefully
         Runtime.getRuntime().addShutdownHook(
@@ -150,6 +150,8 @@ object JavalinSetup {
                 GraphQL.defineEndpoints()
             }
         }
+
+        app.start()
     }
 
     private fun getOpenApiOptions(): OpenApiOptions {
