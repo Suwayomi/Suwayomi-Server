@@ -67,6 +67,19 @@ class TrackerScoresDataLoader : KotlinDataLoader<Int, List<String>> {
         }
 }
 
+class TrackerTokenExpiredDataLoader : KotlinDataLoader<Int, Boolean> {
+    override val dataLoaderName = "TrackerTokenExpiredDataLoader"
+
+    override fun getDataLoader(): DataLoader<Int, Boolean> =
+        DataLoaderFactory.newDataLoader { ids ->
+            future {
+                ids.map { id ->
+                    TrackerManager.getTracker(id)?.getIfAuthExpired()
+                }
+            }
+        }
+}
+
 class TrackRecordsForMangaIdDataLoader : KotlinDataLoader<Int, TrackRecordNodeList> {
     override val dataLoaderName = "TrackRecordsForMangaIdDataLoader"
 

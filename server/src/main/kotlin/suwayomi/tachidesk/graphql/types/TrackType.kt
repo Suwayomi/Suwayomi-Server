@@ -49,6 +49,10 @@ class TrackerType(
     fun trackRecords(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<TrackRecordNodeList> {
         return dataFetchingEnvironment.getValueFromDataLoader<Int, TrackRecordNodeList>("TrackRecordsForTrackerIdDataLoader", id)
     }
+
+    fun isTokenExpired(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Boolean> {
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, Boolean>("TrackerTokenExpiredDataLoader", id)
+    }
 }
 
 class TrackStatusType(

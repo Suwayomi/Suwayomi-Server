@@ -38,6 +38,7 @@ import suwayomi.tachidesk.graphql.dataLoaders.TrackRecordsForTrackerIdDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.TrackerDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.TrackerScoresDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.TrackerStatusesDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.TrackerTokenExpiredDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.UnreadChapterCountForMangaDataLoader
 
 class TachideskDataLoaderRegistryFactory {
@@ -71,6 +72,7 @@ class TachideskDataLoaderRegistryFactory {
                 TrackerDataLoader(),
                 TrackerStatusesDataLoader(),
                 TrackerScoresDataLoader(),
+                TrackerTokenExpiredDataLoader(),
                 TrackRecordsForMangaIdDataLoader(),
                 DisplayScoreForTrackRecordDataLoader(),
                 TrackRecordsForTrackerIdDataLoader(),
