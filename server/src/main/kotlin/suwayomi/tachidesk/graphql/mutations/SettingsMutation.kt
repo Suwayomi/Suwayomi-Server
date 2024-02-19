@@ -37,6 +37,7 @@ class SettingsMutation {
 
         // proxy
         updateSetting(settings.socksProxyEnabled, serverConfig.socksProxyEnabled)
+        updateSetting(settings.socksProxyVersion, serverConfig.socksProxyVersion)
         updateSetting(settings.socksProxyHost, serverConfig.socksProxyHost)
         updateSetting(settings.socksProxyPort, serverConfig.socksProxyPort)
         updateSetting(settings.socksProxyUsername, serverConfig.socksProxyUsername)

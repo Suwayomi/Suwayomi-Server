@@ -21,6 +21,7 @@ interface Settings : Node {
 
     // proxy
     val socksProxyEnabled: Boolean?
+    val socksProxyVersion: Int?
     val socksProxyHost: String?
     val socksProxyPort: String?
     val socksProxyUsername: String?
@@ -94,6 +95,7 @@ data class PartialSettingsType(
     override val port: Int?,
     // proxy
     override val socksProxyEnabled: Boolean?,
+    override val socksProxyVersion: Int?,
     override val socksProxyHost: String?,
     override val socksProxyPort: String?,
     override val socksProxyUsername: String?,
@@ -154,6 +156,7 @@ class SettingsType(
     override val port: Int,
     // proxy
     override val socksProxyEnabled: Boolean,
+    override val socksProxyVersion: Int,
     override val socksProxyHost: String,
     override val socksProxyPort: String,
     override val socksProxyUsername: String,
@@ -213,6 +216,7 @@ class SettingsType(
         config.port.value,
         // proxy
         config.socksProxyEnabled.value,
+        config.socksProxyVersion.value,
         config.socksProxyHost.value,
         config.socksProxyPort.value,
         config.socksProxyUsername.value,

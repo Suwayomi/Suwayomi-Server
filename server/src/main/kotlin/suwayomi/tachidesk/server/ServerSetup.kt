@@ -17,6 +17,7 @@ import io.javalin.plugin.json.JavalinJackson
 import io.javalin.plugin.json.JsonMapper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -234,32 +235,52 @@ fun applicationSetup() {
     serverConfig.subscribeTo(
         combine(
             serverConfig.socksProxyEnabled,
+            serverConfig.socksProxyVersion,
             serverConfig.socksProxyHost,
             serverConfig.socksProxyPort,
             serverConfig.socksProxyUsername,
             serverConfig.socksProxyPassword,
-        ) { proxyEnabled, proxyHost, proxyPort, proxyUsername, proxyPassword ->
-            data class DataClassForDestruction(
+        ) { vargs ->
+            data class ProxySettings(
                 val proxyEnabled: Boolean,
+                val socksProxyVersion: Int,
                 val proxyHost: String,
                 val proxyPort: String,
                 val proxyUsername: String,
                 val proxyPassword: String,
             )
-            DataClassForDestruction(proxyEnabled, proxyHost, proxyPort, proxyUsername, proxyPassword)
-        },
-        { (proxyEnabled, proxyHost, proxyPort, proxyUsername, proxyPassword) ->
+            ProxySettings(
+                vargs[0] as Boolean,
+                vargs[1] as Int,
+                vargs[2] as String,
+                vargs[3] as String,
+                vargs[4] as String,
+                vargs[5] as String,
+            )
+        }.distinctUntilChanged(),
+        { (proxyEnabled, proxyVersion, proxyHost, proxyPort, proxyUsername, proxyPassword) ->
             logger.info(
                 "Socks Proxy changed - enabled=$proxyEnabled address=$proxyHost:$proxyPort , username=$proxyUsername, password=[REDACTED]",
             )
             if (proxyEnabled) {
-                System.getProperties()["socksProxyHost"] = proxyHost
-                System.getProperties()["socksProxyPort"] = proxyPort
-                System.getProperties()["java.net.socks.username"] = proxyUsername
-                System.getProperties()["java.net.socks.password"] = proxyPassword
+                System.setProperty("socksProxyHost", proxyHost)
+                System.setProperty("socksProxyPort", proxyPort)
+                System.setProperty("socksProxyVersion", proxyVersion.toString())
+
+                if (proxyUsername.isNotBlank()) {
+                    System.setProperty("java.net.socks.username", proxyUsername)
+                } else {
+                    System.clearProperty("java.net.socks.username")
+                }
+                if (proxyPassword.isNotBlank()) {
+                    System.setProperty("java.net.socks.password", proxyPassword)
+                } else {
+                    System.clearProperty("java.net.socks.password")
+                }
             } else {
-                System.getProperties()["socksProxyHost"] = ""
-                System.getProperties()["socksProxyPort"] = ""
+                System.clearProperty("socksProxyHost")
+                System.clearProperty("socksProxyPort")
+                System.clearProperty("socksProxyVersion")
             }
         },
         ignoreInitialValue = false,
