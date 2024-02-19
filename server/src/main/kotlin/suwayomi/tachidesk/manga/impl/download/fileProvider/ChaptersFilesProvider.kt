@@ -53,7 +53,7 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
                                 step(null, false) // don't throw on canceled download here since we can't do anything
                             }
                             .launchIn(scope)
-                }
+                }.first.close()
             } finally {
                 // always cancel the page progress job even if it throws an exception to avoid memory leaks
                 pageProgressJob?.cancel()
