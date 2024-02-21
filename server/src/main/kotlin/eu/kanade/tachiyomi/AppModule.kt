@@ -19,6 +19,10 @@ import android.app.Application
 import eu.kanade.tachiyomi.network.JavaScriptEngine
 import eu.kanade.tachiyomi.network.NetworkHelper
 import kotlinx.serialization.json.Json
+import nl.adaptivity.xmlutil.serialization.XML
+import org.kodein.di.DI
+import org.kodein.di.conf.global
+import org.kodein.di.instance
 import rx.Observable
 import rx.schedulers.Schedulers
 import uy.kohesive.injekt.api.InjektModule
@@ -53,7 +57,15 @@ class AppModule(val app: Application) : InjektModule {
 //
 //        addSingletonFactory { LibrarySyncManager(app) }
 
-        addSingletonFactory { Json { ignoreUnknownKeys = true } }
+        addSingletonFactory {
+            val json by DI.global.instance<Json>()
+            json
+        }
+
+        addSingletonFactory {
+            val xml by DI.global.instance<XML>()
+            xml
+        }
 
         // Asynchronously init expensive components for a faster cold start
 
