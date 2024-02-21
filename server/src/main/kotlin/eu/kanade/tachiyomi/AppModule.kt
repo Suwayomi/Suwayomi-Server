@@ -19,6 +19,7 @@ import android.app.Application
 import eu.kanade.tachiyomi.network.JavaScriptEngine
 import eu.kanade.tachiyomi.network.NetworkHelper
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.protobuf.ProtoBuf
 import nl.adaptivity.xmlutil.serialization.XML
 import org.kodein.di.DI
 import org.kodein.di.conf.global
@@ -65,6 +66,11 @@ class AppModule(val app: Application) : InjektModule {
         addSingletonFactory {
             val xml by DI.global.instance<XML>()
             xml
+        }
+
+        addSingletonFactory {
+            val protobuf by DI.global.instance<ProtoBuf>()
+            protobuf
         }
 
         // Asynchronously init expensive components for a faster cold start

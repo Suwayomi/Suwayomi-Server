@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.protobuf.ProtoBuf
 import mu.KotlinLogging
 import nl.adaptivity.xmlutil.XmlDeclMode
 import nl.adaptivity.xmlutil.core.XmlVersion
@@ -114,7 +115,13 @@ fun applicationSetup() {
             bind<ApplicationDirs>() with singleton { applicationDirs }
             bind<IUpdater>() with singleton { Updater() }
             bind<JsonMapper>() with singleton { JavalinJackson() }
-            bind<Json>() with singleton { Json { ignoreUnknownKeys = true } }
+            bind<Json>() with
+                singleton {
+                    Json {
+                        ignoreUnknownKeys = true
+                        explicitNulls = false
+                    }
+                }
             bind<XML>() with
                 singleton {
                     XML {
@@ -126,6 +133,10 @@ fun applicationSetup() {
                         indent = 2
                         xmlVersion = XmlVersion.XML10
                     }
+                }
+            bind<ProtoBuf>() with
+                singleton {
+                    ProtoBuf
                 }
         },
     )
