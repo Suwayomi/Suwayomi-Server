@@ -108,7 +108,7 @@ jobs:
           path: server/src/main/resources/icon
 
       - name: Download scripts.tar.gz
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: scripts
 
