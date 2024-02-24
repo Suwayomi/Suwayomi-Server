@@ -7,8 +7,6 @@ package suwayomi.tachidesk.manga
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import eu.kanade.tachiyomi.network.POST
-import eu.kanade.tachiyomi.network.awaitSuccess
 import io.javalin.apibuilder.ApiBuilder.delete
 import io.javalin.apibuilder.ApiBuilder.get
 import io.javalin.apibuilder.ApiBuilder.patch
@@ -19,11 +17,16 @@ import io.javalin.apibuilder.ApiBuilder.ws
 import io.javalin.http.HttpCode
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import suwayomi.tachidesk.manga.controller.BackupController
 import suwayomi.tachidesk.manga.controller.CategoryController
 import suwayomi.tachidesk.manga.controller.DownloadController
@@ -32,8 +35,10 @@ import suwayomi.tachidesk.manga.controller.MangaController
 import suwayomi.tachidesk.manga.controller.SourceController
 import suwayomi.tachidesk.manga.controller.TrackController
 import suwayomi.tachidesk.manga.controller.UpdateController
+import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.withOperation
+import java.io.IOException
 
 object MangaAPI {
     fun defineEndpoints() {
@@ -156,7 +161,7 @@ object MangaAPI {
             get("{trackerId}/thumbnail", TrackController.thumbnail)
         }
 
-        val jsonMediaType = "application/json".toMediaType()
+        val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
         @Serializable
         data class AnilistCredential(
@@ -167,9 +172,19 @@ object MangaAPI {
             val code: String? = null,
         )
 
+        @Serializable
+        data class AnilistBearerToken(
+            val token_type: String,
+            val expires_in: Long,
+            val access_token: String,
+            val refresh_token: String,
+        )
+
         path("anilist") {
+            val anilist = TrackerManager.aniList
+
             get(
-                "{test2}",
+                "test2",
                 handler(
                     documentWith = {
                         withOperation {
@@ -189,38 +204,72 @@ object MangaAPI {
                 ),
             )
             post("{code}") { ctx ->
-                println("********HERE, posting *****")
+//
+                print("********HERE, posting *****")
+                println(anilist.isLoggedIn)
+
                 runBlocking {
-                    val code = ctx.pathParam("code")
-//
+                    val accessCode = ctx.pathParam("code")
+
+                    val payload =
+                        buildJsonObject {
+                            put("grant_type", "authorization_code")
+                            put("client_id", "16")
+                            put("client_secret", "xIJuPwHK")
+                            put("redirect_uri", "http://localhost:3000/oath/ainilist/auth")
+                            put("code", accessCode)
+                        }
+
                     val client = OkHttpClient()
-//
-                    val aniResond =
-                        client.newCall(
-                            POST(
 
-                                url = "https://anilist.co/api/v2/oauth/token",
-                                body =
-                                    Json.encodeToString(
-                                        AnilistCredential(
-                                            grant_type = "authorization_code",
-                                            client_id = "11324",
-                                            client_secret = "sdsdfsdfsdfsdfaasdfsdafz9sgdaPwHK",
-                                            redirect_uri = "http://localhost:3000/oath/ainilist/auth",
-                                            code
-                                        ),
-                                    ).toRequestBody(jsonMediaType),
-                            ),
-                        ).awaitSuccess()
+                    val request =
+                        Request.Builder()
+//                            .url("https://jsonplaceholder.typicode.com/posts")
+                            .url("https://anilist.co/api/v2/oauth/token")
+                            .addHeader("Content-Type", "application/json")
+                            .addHeader("Accept", "application/json")
+                            .post(payload.toString().toRequestBody(jsonMediaType))
+                            .build()
 
-                    // Handle the response and retrieve the access_token
-                    println(aniResond)
+                    val aniResponse =
+                        client.newCall(request).enqueue(
+                            object : Callback {
+                                override fun onFailure(
+                                    call: Call,
+                                    e: IOException,
+                                ) {
+                                    e.printStackTrace()
+                                }
 
-                    ctx.result("Hello: $aniResond")
+                                override fun onResponse(
+                                    call: Call,
+                                    response: Response,
+                                ) {
+                                    runBlocking {
+                                        response.use {
+                                            if (!response.isSuccessful) throw IOException("Unexpected code $response")
+
+                                            // Print the access token
+                                            val responseBody =
+                                                Json.decodeFromString<AnilistBearerToken>(response.body!!.string())
+                                            print("HERE IS THE BODY: ")
+                                            println(responseBody)
+
+                                            anilist.loginWithToken(responseBody.access_token)
+                                            print("ANILIST logged in: " )
+                                            println(anilist.isLoggedIn)
+
+//                                        println(response.body!!.string())
+                                            // Need to save the token using the anilist login method
+                                        }
+                                    }
+                                }
+                            },
+                        )
+
+                    ctx.result("Hello: it worked $aniResponse")
                     ctx.status(201)
                 }
-//                ctx.result("post: $code")
-//                ctx.status(201)
             }
         }
     }
