@@ -178,6 +178,7 @@ class ApolloSubscriptionProtocolHandler(
     }
 
     private fun onDisconnect(context: WsContext): Flow<SubscriptionOperationMessage> {
+        logger.debug("Session \"${context.sessionId}\" disconnected")
         sessionState.terminateSession(context, CloseStatus(1000, "Normal Closure"))
         return emptyFlow()
     }

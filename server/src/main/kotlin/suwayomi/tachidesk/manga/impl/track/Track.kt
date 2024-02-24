@@ -99,7 +99,7 @@ object Track {
                     name = it.name,
                     icon = proxyThumbnailUrl(it.id),
                     statusList = it.getStatusList(),
-                    statusTextMap = it.getStatusList().associateWith { k -> it.getStatus(k) ?: "" },
+                    statusTextMap = it.getStatusList().associateWith { k -> it.getStatus(k).orEmpty() },
                     scoreList = it.getScoreList(),
                     record = record,
                 )
@@ -137,14 +137,17 @@ object Track {
 
     suspend fun bind(
         mangaId: Int,
-        trackSearchId: Int,
+        trackerId: Int,
+        remoteId: Long,
     ) {
         val track =
             transaction {
-                TrackSearchTable.select { TrackSearchTable.id eq trackSearchId }.first()
-                    .toTrack(mangaId)
+                TrackSearchTable.select {
+                    TrackSearchTable.trackerId eq trackerId and
+                        (TrackSearchTable.remoteId eq remoteId)
+                }.first().toTrack(mangaId)
             }
-        val tracker = TrackerManager.getTracker(track.sync_id)!!
+        val tracker = TrackerManager.getTracker(trackerId)!!
 
         val chapter = queryMaxReadChapter(mangaId)
         val hasReadChapters = chapter != null
@@ -220,7 +223,8 @@ object Track {
         }
         if (input.scoreString != null) {
             val score = tracker.indexToScore(tracker.getScoreList().indexOf(input.scoreString))
-            recordDb[TrackRecordTable.score] = score.toDouble()
+            // conversion issues between Float <-> Double so convert to string before double
+            recordDb[TrackRecordTable.score] = score.toString().toDouble()
         }
         if (input.startDate != null) {
             recordDb[TrackRecordTable.startDate] = input.startDate

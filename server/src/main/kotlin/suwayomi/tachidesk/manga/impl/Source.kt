@@ -13,9 +13,12 @@ import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.sourcePreferences
 import io.javalin.plugin.json.JsonMapper
 import mu.KotlinLogging
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
@@ -25,6 +28,7 @@ import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogue
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.unregisterCatalogueSource
 import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
+import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import uy.kohesive.injekt.api.get
 import xyz.nulldev.androidcompat.androidimpl.CustomContext
@@ -149,5 +153,30 @@ object Source {
 
         // must reload the source because a preference was changed
         unregisterCatalogueSource(sourceId)
+    }
+
+    fun modifyMeta(
+        sourceId: Long,
+        key: String,
+        value: String,
+    ) {
+        transaction {
+            val meta =
+                transaction {
+                    SourceMetaTable.select { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
+                }.firstOrNull()
+
+            if (meta == null) {
+                SourceMetaTable.insert {
+                    it[SourceMetaTable.key] = key
+                    it[SourceMetaTable.value] = value
+                    it[SourceMetaTable.ref] = sourceId
+                }
+            } else {
+                SourceMetaTable.update({ (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }) {
+                    it[SourceMetaTable.value] = value
+                }
+            }
+        }
     }
 }

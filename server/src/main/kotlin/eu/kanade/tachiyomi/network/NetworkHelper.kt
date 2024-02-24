@@ -7,30 +7,29 @@ package eu.kanade.tachiyomi.network
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-// import android.content.Context
-// import eu.kanade.tachiyomi.BuildConfig
-// import eu.kanade.tachiyomi.data.preference.PreferencesHelper
-// import okhttp3.HttpUrl.Companion.toHttpUrl
-// import okhttp3.dnsoverhttps.DnsOverHttps
-// import okhttp3.logging.HttpLoggingInterceptor
-// import uy.kohesive.injekt.injectLazy
 import android.content.Context
 import eu.kanade.tachiyomi.network.interceptor.CloudflareInterceptor
 import eu.kanade.tachiyomi.network.interceptor.IgnoreGzipInterceptor
 import eu.kanade.tachiyomi.network.interceptor.UncaughtExceptionInterceptor
 import eu.kanade.tachiyomi.network.interceptor.UserAgentInterceptor
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import mu.KotlinLogging
 import okhttp3.Cache
 import okhttp3.OkHttpClient
 import okhttp3.brotli.BrotliInterceptor
 import okhttp3.logging.HttpLoggingInterceptor
+import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import java.io.File
 import java.net.CookieHandler
 import java.net.CookieManager
 import java.net.CookiePolicy
 import java.util.concurrent.TimeUnit
 
-@Suppress("UNUSED_PARAMETER")
 class NetworkHelper(context: Context) {
     //    private val preferences: PreferencesHelper by injectLazy()
 
@@ -48,6 +47,26 @@ class NetworkHelper(context: Context) {
     }
     // Tachidesk <--
 
+    private val userAgent =
+        MutableStateFlow(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        )
+
+    fun defaultUserAgentProvider(): String {
+        return userAgent.value
+    }
+
+    init {
+        @OptIn(DelicateCoroutinesApi::class)
+        userAgent
+            .drop(1)
+            .onEach {
+                GetCatalogueSource.unregisterAllCatalogueSources() // need to reset the headers
+            }
+            .launchIn(GlobalScope)
+    }
+
     private val baseClientBuilder: OkHttpClient.Builder
         get() {
             val builder =
@@ -63,7 +82,7 @@ class NetworkHelper(context: Context) {
                         ),
                     )
                     .addInterceptor(UncaughtExceptionInterceptor())
-                    .addInterceptor(UserAgentInterceptor())
+                    .addInterceptor(UserAgentInterceptor(::defaultUserAgentProvider))
                     .addNetworkInterceptor(IgnoreGzipInterceptor())
                     .addNetworkInterceptor(BrotliInterceptor)
 
@@ -83,9 +102,9 @@ class NetworkHelper(context: Context) {
             builder.addNetworkInterceptor(httpLoggingInterceptor)
             // }
 
-            // builder.addInterceptor(
-            //     CloudflareInterceptor(context, cookieJar, ::defaultUserAgentProvider),
-            // )
+            builder.addInterceptor(
+                CloudflareInterceptor(setUserAgent = { userAgent.value = it }),
+            )
 
             // when (preferences.dohProvider().get()) {
             //     PREF_DOH_CLOUDFLARE -> builder.dohCloudflare()
@@ -108,9 +127,5 @@ class NetworkHelper(context: Context) {
 //    val client by lazy { baseClientBuilder.cache(Cache(cacheDir, cacheSize)).build() }
     val client by lazy { baseClientBuilder.build() }
 
-    val cloudflareClient by lazy {
-        client.newBuilder()
-            .addInterceptor(CloudflareInterceptor())
-            .build()
-    }
+    val cloudflareClient by lazy { client }
 }

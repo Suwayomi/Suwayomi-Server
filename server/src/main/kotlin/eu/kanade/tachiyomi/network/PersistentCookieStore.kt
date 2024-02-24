@@ -21,16 +21,18 @@ class PersistentCookieStore(context: Context) : CookieStore {
     private val lock = ReentrantLock()
 
     init {
-        for ((key, value) in prefs.all) {
-            @Suppress("UNCHECKED_CAST")
-            val cookies = value as? Set<String>
-            if (cookies != null) {
+        val domains =
+            prefs.all.keys.map { it.substringBeforeLast(".") }
+                .toSet()
+        domains.forEach { domain ->
+            val cookies = prefs.getStringSet(domain, emptySet())
+            if (!cookies.isNullOrEmpty()) {
                 try {
-                    val url = "http://$key".toHttpUrlOrNull() ?: continue
+                    val url = "http://$domain".toHttpUrlOrNull() ?: return@forEach
                     val nonExpiredCookies =
                         cookies.mapNotNull { Cookie.parse(url, it) }
                             .filter { !it.hasExpired() }
-                    cookieMap.put(key, nonExpiredCookies)
+                    cookieMap[domain] = nonExpiredCookies
                 } catch (e: Exception) {
                     // Ignore
                 }
@@ -83,7 +85,9 @@ class PersistentCookieStore(context: Context) : CookieStore {
             it.toHttpCookie()
         }
 
-    fun get(url: HttpUrl) = get(url.toUri().host)
+    fun get(url: HttpUrl): List<Cookie> {
+        return get(url.toUri().host ?: return emptyList())
+    }
 
     override fun add(
         uri: URI?,

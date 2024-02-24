@@ -7,6 +7,7 @@
 
 package suwayomi.tachidesk.graphql.types
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
@@ -20,8 +21,11 @@ interface Settings : Node {
 
     // proxy
     val socksProxyEnabled: Boolean?
+    val socksProxyVersion: Int?
     val socksProxyHost: String?
     val socksProxyPort: String?
+    val socksProxyUsername: String?
+    val socksProxyPassword: String?
 
     // webUI
 //    requires restart (found no way to mutate (serve + "unserve") served files during runtime), exclude for now
@@ -38,7 +42,13 @@ interface Settings : Node {
     val downloadsPath: String?
     val autoDownloadNewChapters: Boolean?
     val excludeEntryWithUnreadChapters: Boolean?
+
+    @GraphQLDeprecated(
+        "Replaced with autoDownloadNewChaptersLimit",
+        replaceWith = ReplaceWith("autoDownloadNewChaptersLimit"),
+    )
     val autoDownloadAheadLimit: Int?
+    val autoDownloadNewChaptersLimit: Int?
 
     // extension
     val extensionRepos: List<String>?
@@ -71,6 +81,13 @@ interface Settings : Node {
 
     // local source
     val localSourcePath: String?
+
+    // cloudflare bypass
+    val flareSolverrEnabled: Boolean?
+    val flareSolverrUrl: String?
+    val flareSolverrTimeout: Int?
+    val flareSolverrSessionName: String?
+    val flareSolverrSessionTtl: Int?
 }
 
 data class PartialSettingsType(
@@ -78,8 +95,11 @@ data class PartialSettingsType(
     override val port: Int?,
     // proxy
     override val socksProxyEnabled: Boolean?,
+    override val socksProxyVersion: Int?,
     override val socksProxyHost: String?,
     override val socksProxyPort: String?,
+    override val socksProxyUsername: String?,
+    override val socksProxyPassword: String?,
     // webUI
     override val webUIFlavor: WebUIFlavor?,
     override val initialOpenInBrowserEnabled: Boolean?,
@@ -92,7 +112,12 @@ data class PartialSettingsType(
     override val downloadsPath: String?,
     override val autoDownloadNewChapters: Boolean?,
     override val excludeEntryWithUnreadChapters: Boolean?,
+    @GraphQLDeprecated(
+        "Replaced with autoDownloadNewChaptersLimit",
+        replaceWith = ReplaceWith("autoDownloadNewChaptersLimit"),
+    )
     override val autoDownloadAheadLimit: Int?,
+    override val autoDownloadNewChaptersLimit: Int?,
     // extension
     override val extensionRepos: List<String>?,
     // requests
@@ -118,6 +143,12 @@ data class PartialSettingsType(
     override val backupTTL: Int?,
     // local source
     override val localSourcePath: String?,
+    // cloudflare bypass
+    override val flareSolverrEnabled: Boolean?,
+    override val flareSolverrUrl: String?,
+    override val flareSolverrTimeout: Int?,
+    override val flareSolverrSessionName: String?,
+    override val flareSolverrSessionTtl: Int?,
 ) : Settings
 
 class SettingsType(
@@ -125,8 +156,11 @@ class SettingsType(
     override val port: Int,
     // proxy
     override val socksProxyEnabled: Boolean,
+    override val socksProxyVersion: Int,
     override val socksProxyHost: String,
     override val socksProxyPort: String,
+    override val socksProxyUsername: String,
+    override val socksProxyPassword: String,
     // webUI
     override val webUIFlavor: WebUIFlavor,
     override val initialOpenInBrowserEnabled: Boolean,
@@ -139,7 +173,12 @@ class SettingsType(
     override val downloadsPath: String,
     override val autoDownloadNewChapters: Boolean,
     override val excludeEntryWithUnreadChapters: Boolean,
+    @GraphQLDeprecated(
+        "Replaced with autoDownloadNewChaptersLimit",
+        replaceWith = ReplaceWith("autoDownloadNewChaptersLimit"),
+    )
     override val autoDownloadAheadLimit: Int,
+    override val autoDownloadNewChaptersLimit: Int,
     // extension
     override val extensionRepos: List<String>,
     // requests
@@ -165,14 +204,23 @@ class SettingsType(
     override val backupTTL: Int,
     // local source
     override val localSourcePath: String,
+    // cloudflare bypass
+    override val flareSolverrEnabled: Boolean,
+    override val flareSolverrUrl: String,
+    override val flareSolverrTimeout: Int,
+    override val flareSolverrSessionName: String,
+    override val flareSolverrSessionTtl: Int,
 ) : Settings {
     constructor(config: ServerConfig = serverConfig) : this(
         config.ip.value,
         config.port.value,
         // proxy
         config.socksProxyEnabled.value,
+        config.socksProxyVersion.value,
         config.socksProxyHost.value,
         config.socksProxyPort.value,
+        config.socksProxyUsername.value,
+        config.socksProxyPassword.value,
         // webUI
         WebUIFlavor.from(config.webUIFlavor.value),
         config.initialOpenInBrowserEnabled.value,
@@ -185,7 +233,8 @@ class SettingsType(
         config.downloadsPath.value,
         config.autoDownloadNewChapters.value,
         config.excludeEntryWithUnreadChapters.value,
-        config.autoDownloadAheadLimit.value,
+        config.autoDownloadNewChaptersLimit.value, // deprecated
+        config.autoDownloadNewChaptersLimit.value,
         // extension
         config.extensionRepos.value,
         // requests
@@ -211,5 +260,11 @@ class SettingsType(
         config.backupTTL.value,
         // local source
         config.localSourcePath.value,
+        // cloudflare bypass
+        config.flareSolverrEnabled.value,
+        config.flareSolverrUrl.value,
+        config.flareSolverrTimeout.value,
+        config.flareSolverrSessionName.value,
+        config.flareSolverrSessionTtl.value,
     )
 }

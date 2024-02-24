@@ -16,6 +16,12 @@ object TrackerPreferences {
 
     fun getTrackPassword(sync: Tracker) = preferenceStore.getString(trackPassword(sync.id), "")
 
+    fun trackAuthExpired(tracker: Tracker) =
+        preferenceStore.getBoolean(
+            trackTokenExpired(tracker.id),
+            false,
+        )
+
     fun setTrackCredentials(
         sync: Tracker,
         username: String,
@@ -25,6 +31,7 @@ object TrackerPreferences {
         preferenceStore.edit()
             .putString(trackUsername(sync.id), username)
             .putString(trackPassword(sync.id), password)
+            .putBoolean(trackTokenExpired(sync.id), false)
             .apply()
     }
 
@@ -38,12 +45,20 @@ object TrackerPreferences {
         if (token == null) {
             preferenceStore.edit()
                 .remove(trackToken(sync.id))
+                .putBoolean(trackTokenExpired(sync.id), false)
                 .apply()
         } else {
             preferenceStore.edit()
                 .putString(trackToken(sync.id), token)
+                .putBoolean(trackTokenExpired(sync.id), false)
                 .apply()
         }
+    }
+
+    fun setTrackTokenExpired(sync: Tracker) {
+        preferenceStore.edit()
+            .putBoolean(trackTokenExpired(sync.id), true)
+            .apply()
     }
 
     fun getScoreType(sync: Tracker) = preferenceStore.getString(scoreType(sync.id), Anilist.POINT_10)
@@ -62,6 +77,8 @@ object TrackerPreferences {
     private fun trackPassword(trackerId: Int) = "pref_mangasync_password_$trackerId"
 
     private fun trackToken(trackerId: Int) = "track_token_$trackerId"
+
+    private fun trackTokenExpired(trackerId: Int) = "track_token_expired_$trackerId"
 
     private fun scoreType(trackerId: Int) = "score_type_$trackerId"
 }

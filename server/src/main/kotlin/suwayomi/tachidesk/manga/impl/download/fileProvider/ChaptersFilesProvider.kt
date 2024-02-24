@@ -7,9 +7,14 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
+import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
+import suwayomi.tachidesk.manga.impl.util.createComicInfoFile
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
+import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.io.File
 import java.io.InputStream
 
@@ -53,7 +58,7 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
                                 step(null, false) // don't throw on canceled download here since we can't do anything
                             }
                             .launchIn(scope)
-                }
+                }.first.close()
             } finally {
                 // always cancel the page progress job even if it throws an exception to avoid memory leaks
                 pageProgressJob?.cancel()
@@ -62,6 +67,17 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
             download.progress = ((pageNum + 1).toFloat()) / pageCount
             step(download, false)
         }
+
+        createComicInfoFile(
+            folder.toPath(),
+            transaction {
+                MangaTable.select { MangaTable.id eq mangaId }.first()
+            },
+            transaction {
+                ChapterTable.select { ChapterTable.id eq chapterId }.first()
+            },
+        )
+
         return true
     }
 

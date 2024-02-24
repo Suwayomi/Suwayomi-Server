@@ -106,13 +106,15 @@ object JavalinSetup {
                         handler.handle(ctx)
                     }
                 }
-            }.events { event ->
-                event.serverStarted {
-                    if (serverConfig.initialOpenInBrowserEnabled.value) {
-                        Browser.openInBrowser()
-                    }
+            }
+
+        app.events { event ->
+            event.serverStarted {
+                if (serverConfig.initialOpenInBrowserEnabled.value) {
+                    Browser.openInBrowser()
                 }
-            }.start()
+            }
+        }
 
         // when JVM is prompted to shutdown, stop javalin gracefully
         Runtime.getRuntime().addShutdownHook(
@@ -150,6 +152,8 @@ object JavalinSetup {
                 GraphQL.defineEndpoints()
             }
         }
+
+        app.start()
     }
 
     private fun getOpenApiOptions(): OpenApiOptions {

@@ -80,8 +80,11 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
 
     // proxy
     val socksProxyEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
+    val socksProxyVersion: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
     val socksProxyHost: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
     val socksProxyPort: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+    val socksProxyUsername: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+    val socksProxyPassword: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
 
     // webUI
     val webUIEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
@@ -97,7 +100,7 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
     val downloadsPath: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
     val autoDownloadNewChapters: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val excludeEntryWithUnreadChapters: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val autoDownloadAheadLimit: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
+    val autoDownloadNewChaptersLimit: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
 
     // extensions
     val extensionRepos: MutableStateFlow<List<String>> by OverrideConfigValues(StringConfigAdapter)
@@ -130,6 +133,13 @@ class ServerConfig(getConfig: () -> Config, val moduleName: String = SERVER_CONF
 
     // local source
     val localSourcePath: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+
+    // cloudflare bypass
+    val flareSolverrEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
+    val flareSolverrUrl: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+    val flareSolverrTimeout: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
+    val flareSolverrSessionName: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+    val flareSolverrSessionTtl: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun <T> subscribeTo(

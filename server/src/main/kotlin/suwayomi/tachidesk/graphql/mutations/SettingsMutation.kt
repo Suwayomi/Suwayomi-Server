@@ -37,8 +37,11 @@ class SettingsMutation {
 
         // proxy
         updateSetting(settings.socksProxyEnabled, serverConfig.socksProxyEnabled)
+        updateSetting(settings.socksProxyVersion, serverConfig.socksProxyVersion)
         updateSetting(settings.socksProxyHost, serverConfig.socksProxyHost)
         updateSetting(settings.socksProxyPort, serverConfig.socksProxyPort)
+        updateSetting(settings.socksProxyUsername, serverConfig.socksProxyUsername)
+        updateSetting(settings.socksProxyPassword, serverConfig.socksProxyPassword)
 
         // webUI
         updateSetting(settings.webUIFlavor?.uiName, serverConfig.webUIFlavor)
@@ -53,7 +56,8 @@ class SettingsMutation {
         updateSetting(settings.downloadsPath, serverConfig.downloadsPath)
         updateSetting(settings.autoDownloadNewChapters, serverConfig.autoDownloadNewChapters)
         updateSetting(settings.excludeEntryWithUnreadChapters, serverConfig.excludeEntryWithUnreadChapters)
-        updateSetting(settings.autoDownloadAheadLimit, serverConfig.autoDownloadAheadLimit)
+        updateSetting(settings.autoDownloadAheadLimit, serverConfig.autoDownloadNewChaptersLimit) // deprecated
+        updateSetting(settings.autoDownloadNewChaptersLimit, serverConfig.autoDownloadNewChaptersLimit)
 
         // extension
         updateSetting(settings.extensionRepos, serverConfig.extensionRepos)
@@ -86,6 +90,13 @@ class SettingsMutation {
 
         // local source
         updateSetting(settings.localSourcePath, serverConfig.localSourcePath)
+
+        // cloudflare bypass
+        updateSetting(settings.flareSolverrEnabled, serverConfig.flareSolverrEnabled)
+        updateSetting(settings.flareSolverrUrl, serverConfig.flareSolverrUrl)
+        updateSetting(settings.flareSolverrTimeout, serverConfig.flareSolverrTimeout)
+        updateSetting(settings.flareSolverrSessionName, serverConfig.flareSolverrSessionName)
+        updateSetting(settings.flareSolverrSessionTtl, serverConfig.flareSolverrSessionTtl)
     }
 
     fun setSettings(input: SetSettingsInput): SetSettingsPayload {

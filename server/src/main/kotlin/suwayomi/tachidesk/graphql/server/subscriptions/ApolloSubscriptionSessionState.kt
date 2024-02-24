@@ -90,7 +90,7 @@ internal class ApolloSubscriptionSessionState {
         code: CloseStatus,
     ) {
         sessionToOperationId.remove(context.sessionId)?.forEach {
-            activeOperations[it]?.cancel()
+            removeActiveOperation(it)
         }
         cachedGraphQLContext.remove(context.sessionId)
         context.closeSession(code)
