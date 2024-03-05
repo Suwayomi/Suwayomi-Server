@@ -315,7 +315,7 @@ object Manga {
     suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
         val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
 
-        if (mangaEntry[MangaTable.inLibrary]) {
+        if (mangaEntry[MangaTable.inLibrary] && mangaEntry[MangaTable.sourceReference] != LocalSource.ID) {
             return try {
                 ThumbnailDownloadHelper.getImage(mangaId)
             } catch (_: MissingThumbnailException) {
