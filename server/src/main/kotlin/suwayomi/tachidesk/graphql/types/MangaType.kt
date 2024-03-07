@@ -57,6 +57,7 @@ class MangaType(
             dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestReadChapterForMangaDataLoader").clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestFetchedChapterForMangaDataLoader").clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestUploadedChapterForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("FirstUnreadChapterForMangaDataLoader").clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, ChapterNodeList>(
                 "ChaptersForMangaDataLoader",
             ).clear(mangaId)
@@ -129,6 +130,10 @@ class MangaType(
 
     fun latestUploadedChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> {
         return dataFetchingEnvironment.getValueFromDataLoader("LatestUploadedChapterForMangaDataLoader", id)
+    }
+
+    fun firstUnreadChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> {
+        return dataFetchingEnvironment.getValueFromDataLoader("FirstUnreadChapterForMangaDataLoader", id)
     }
 
     fun chapters(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterNodeList> {

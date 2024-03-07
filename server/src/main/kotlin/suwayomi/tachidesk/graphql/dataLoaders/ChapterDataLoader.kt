@@ -174,3 +174,22 @@ class LatestUploadedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTyp
             }
         }
 }
+
+class FirstUnreadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
+    override val dataLoaderName = "FirstUnreadChapterForMangaDataLoader"
+
+    override fun getDataLoader(): DataLoader<Int, ChapterType?> =
+        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val firstUnreadChaptersByMangaId =
+                        ChapterTable
+                            .select { (ChapterTable.manga inList ids) and (ChapterTable.isRead eq false) }
+                            .orderBy(ChapterTable.sourceOrder to SortOrder.ASC)
+                            .groupBy { it[ChapterTable.manga].value }
+                    ids.map { id -> firstUnreadChaptersByMangaId[id]?.let { chapters -> ChapterType(chapters.first()) } }
+                }
+            }
+        }
+}
