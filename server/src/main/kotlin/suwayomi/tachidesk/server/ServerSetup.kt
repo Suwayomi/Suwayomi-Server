@@ -218,7 +218,7 @@ fun applicationSetup() {
             }
         } catch (e: Throwable) {
             // cover both java.lang.Exception and java.lang.Error
-            e.printStackTrace()
+            logger.error(e) { "Failed to create/remove SystemTray due to" }
         }
     }, ignoreInitialValue = false)
 

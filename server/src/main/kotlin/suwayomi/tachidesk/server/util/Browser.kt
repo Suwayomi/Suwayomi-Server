@@ -8,9 +8,11 @@ package suwayomi.tachidesk.server.util
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import dorkbox.desktop.Desktop
+import mu.KotlinLogging
 import suwayomi.tachidesk.server.serverConfig
 
 object Browser {
+    private val logger = KotlinLogging.logger { }
     private val electronInstances = mutableListOf<Any>()
 
     private fun getAppBaseUrl(): String {
@@ -28,14 +30,14 @@ object Browser {
                     electronInstances.add(ProcessBuilder(electronPath, appBaseUrl).start())
                 } catch (e: Throwable) {
                     // cover both java.lang.Exception and java.lang.Error
-                    e.printStackTrace()
+                    logger.error(e) { "openInBrowser: failed to launch electron due to" }
                 }
             } else {
                 try {
                     Desktop.browseURL(appBaseUrl)
                 } catch (e: Throwable) {
                     // cover both java.lang.Exception and java.lang.Error
-                    e.printStackTrace()
+                    logger.error(e) { "openInBrowser: failed to launch browser due to" }
                 }
             }
         }
