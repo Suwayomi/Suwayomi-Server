@@ -248,4 +248,8 @@ class Anilist(id: Int) : Tracker(id, "AniList"), DeletableTrackService {
             null
         }
     }
+
+    suspend fun loginWithToken(token: String) {
+        login(token)
+    }
 }
