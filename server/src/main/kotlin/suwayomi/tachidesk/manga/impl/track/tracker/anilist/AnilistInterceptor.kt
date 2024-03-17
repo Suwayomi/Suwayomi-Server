@@ -16,6 +16,7 @@ class AnilistInterceptor(private val anilist: Anilist) : Interceptor {
         set(value) {
             field = value?.copy(expires = value.expires * 1000 - 60 * 1000)
         }
+
     init {
         oauth = anilist.loadOAuth()
     }
