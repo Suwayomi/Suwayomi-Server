@@ -10,7 +10,7 @@ import suwayomi.tachidesk.manga.impl.track.tracker.TokenRefreshFailed
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 
-class MyAnimeListInterceptor(private val myanimelist: MyAnimeList, private var token: String?) : Interceptor {
+class MyAnimeListInterceptor(private val myanimelist: MyAnimeList) : Interceptor {
     private val json: Json by injectLazy()
 
     private var oauth: OAuth? = myanimelist.loadOAuth()
@@ -44,7 +44,6 @@ class MyAnimeListInterceptor(private val myanimelist: MyAnimeList, private var t
      * and the oauth object.
      */
     fun setAuth(oauth: OAuth?) {
-        token = oauth?.access_token
         this.oauth = oauth
         myanimelist.saveOAuth(oauth)
     }
@@ -75,10 +74,7 @@ class MyAnimeListInterceptor(private val myanimelist: MyAnimeList, private var t
                 }
             }
                 .getOrNull()
-                ?.also {
-                    this.oauth = it
-                    myanimelist.saveOAuth(it)
-                }
+                ?.also(::setAuth)
                 ?: throw TokenRefreshFailed()
         }
 }
