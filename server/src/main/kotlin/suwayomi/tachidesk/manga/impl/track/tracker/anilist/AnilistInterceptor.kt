@@ -5,7 +5,7 @@ import okhttp3.Response
 import suwayomi.tachidesk.manga.impl.track.tracker.TokenExpired
 import java.io.IOException
 
-class AnilistInterceptor(val anilist: Anilist, private var token: String?) : Interceptor {
+class AnilistInterceptor(val anilist: Anilist) : Interceptor {
     /**
      * OAuth object used for authenticated requests.
      *
@@ -16,6 +16,9 @@ class AnilistInterceptor(val anilist: Anilist, private var token: String?) : Int
         set(value) {
             field = value?.copy(expires = value.expires * 1000 - 60 * 1000)
         }
+    init {
+        oauth = anilist.loadOAuth()
+    }
 
     override fun intercept(chain: Interceptor.Chain): Response {
         if (anilist.getIfAuthExpired()) {
@@ -23,12 +26,6 @@ class AnilistInterceptor(val anilist: Anilist, private var token: String?) : Int
         }
         val originalRequest = chain.request()
 
-        if (token.isNullOrEmpty()) {
-            throw Exception("Not authenticated with Anilist")
-        }
-        if (oauth == null) {
-            oauth = anilist.loadOAuth()
-        }
         // Refresh access token if null or expired.
         if (oauth?.isExpired() == true) {
             anilist.setAuthExpired()
@@ -37,7 +34,7 @@ class AnilistInterceptor(val anilist: Anilist, private var token: String?) : Int
 
         // Throw on null auth.
         if (oauth == null) {
-            throw IOException("No authentication token")
+            throw Exception("Anilist: User is not authenticated")
         }
 
         // Add the authorization header to the original request.
@@ -54,7 +51,6 @@ class AnilistInterceptor(val anilist: Anilist, private var token: String?) : Int
      * and the oauth object.
      */
     fun setAuth(oauth: OAuth?) {
-        token = oauth?.access_token
         this.oauth = oauth
         anilist.saveOAuth(oauth)
     }

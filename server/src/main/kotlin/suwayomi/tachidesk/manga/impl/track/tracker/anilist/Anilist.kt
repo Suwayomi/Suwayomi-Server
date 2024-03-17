@@ -31,7 +31,7 @@ class Anilist(id: Int) : Tracker(id, "AniList"), DeletableTrackService {
 
     private val json: Json by injectLazy()
 
-    private val interceptor by lazy { AnilistInterceptor(this, getPassword()) }
+    private val interceptor by lazy { AnilistInterceptor(this) }
 
     private val api by lazy { AnilistApi(client, interceptor) }
 
