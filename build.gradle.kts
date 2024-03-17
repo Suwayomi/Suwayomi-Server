@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
+import org.jetbrains.kotlin.gradle.plugin.KotlinPluginWrapper
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 import org.jlleitschuh.gradle.ktlint.KtlintExtension
 import org.jlleitschuh.gradle.ktlint.KtlintPlugin
@@ -26,8 +28,14 @@ allprojects {
 subprojects {
     plugins.withType<JavaPlugin> {
         extensions.configure<JavaPluginExtension> {
-            sourceCompatibility = JavaVersion.VERSION_1_8
-            targetCompatibility = JavaVersion.VERSION_1_8
+            sourceCompatibility = JavaVersion.VERSION_17
+            targetCompatibility = JavaVersion.VERSION_17
+        }
+    }
+
+    plugins.withType<KotlinPluginWrapper> {
+        extensions.configure<KotlinProjectExtension> {
+            jvmToolchain(17)
         }
     }
 
@@ -44,7 +52,7 @@ subprojects {
         withType<KotlinJvmCompile> {
             dependsOn("ktlintFormat")
             kotlinOptions {
-                jvmTarget = JavaVersion.VERSION_1_8.toString()
+                jvmTarget = JavaVersion.VERSION_17.toString()
 
                 freeCompilerArgs += listOf(
                     "-Xcontext-receivers",
