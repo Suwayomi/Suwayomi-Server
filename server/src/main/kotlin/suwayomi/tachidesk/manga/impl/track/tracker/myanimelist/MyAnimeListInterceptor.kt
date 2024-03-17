@@ -13,7 +13,7 @@ import java.io.IOException
 class MyAnimeListInterceptor(private val myanimelist: MyAnimeList, private var token: String?) : Interceptor {
     private val json: Json by injectLazy()
 
-    private var oauth: OAuth? = null
+    private var oauth: OAuth? = myanimelist.loadOAuth()
 
     override fun intercept(chain: Interceptor.Chain): Response {
         if (myanimelist.getIfAuthExpired()) {
