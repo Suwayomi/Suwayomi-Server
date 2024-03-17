@@ -5,7 +5,7 @@ import okhttp3.Response
 import suwayomi.tachidesk.manga.impl.track.tracker.TokenExpired
 import java.io.IOException
 
-class AnilistInterceptor(val anilist: Anilist) : Interceptor {
+class AnilistInterceptor(private val anilist: Anilist) : Interceptor {
     /**
      * OAuth object used for authenticated requests.
      *
