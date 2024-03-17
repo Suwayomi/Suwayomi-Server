@@ -34,7 +34,7 @@ class AnilistInterceptor(val anilist: Anilist) : Interceptor {
 
         // Throw on null auth.
         if (oauth == null) {
-            throw Exception("Anilist: User is not authenticated")
+            throw IOException("Anilist: User is not authenticated")
         }
 
         // Add the authorization header to the original request.
