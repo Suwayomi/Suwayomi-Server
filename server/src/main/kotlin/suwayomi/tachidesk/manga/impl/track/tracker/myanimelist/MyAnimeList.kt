@@ -28,7 +28,7 @@ class MyAnimeList(id: Int) : Tracker(id, "MyAnimeList"), DeletableTrackService {
 
     private val json: Json by injectLazy()
 
-    private val interceptor by lazy { MyAnimeListInterceptor(this, getPassword()) }
+    private val interceptor by lazy { MyAnimeListInterceptor(this) }
     private val api by lazy { MyAnimeListApi(client, interceptor) }
 
     override val supportsReadingDates: Boolean = true
