@@ -207,7 +207,12 @@ class Updater : IUpdater {
                 job.copy(status = JobStatus.FAILED)
             }
 
-        updateStatus(tracker.values.toList())
+        updateStatus(tracker.values.toList(), running = true)
+
+        val wasLastJob = tracker.values.none { it.status == JobStatus.PENDING || it.status == JobStatus.RUNNING }
+        if (wasLastJob) {
+            updateStatus(tracker.values.toList(), running = false)
+        }
     }
 
     override fun addCategoriesToUpdateQueue(
