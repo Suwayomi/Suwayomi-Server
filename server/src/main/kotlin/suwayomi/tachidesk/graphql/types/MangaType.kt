@@ -11,6 +11,7 @@ import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.ResultRow
+import suwayomi.tachidesk.graphql.cache.CustomCacheMap
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
@@ -46,11 +47,24 @@ class MangaType(
 ) : Node {
     companion object {
         fun clearCacheFor(
+            mangaIds: List<Int>,
+            dataFetchingEnvironment: DataFetchingEnvironment,
+        ) {
+            mangaIds.forEach { clearCacheFor(it, dataFetchingEnvironment) }
+        }
+
+        fun clearCacheFor(
             mangaId: Int,
             dataFetchingEnvironment: DataFetchingEnvironment,
         ) {
             dataFetchingEnvironment.getDataLoader<Int, MangaType>("MangaDataLoader").clear(mangaId)
-            dataFetchingEnvironment.getDataLoader<Int, MangaNodeList>("MangaForIdsDataLoader").clear(mangaId)
+
+            val mangaForIdsDataLoader =
+                dataFetchingEnvironment.getDataLoader<List<Int>, MangaNodeList>("MangaForIdsDataLoader")
+            @Suppress("UNCHECKED_CAST")
+            (mangaForIdsDataLoader.cacheMap as CustomCacheMap<List<Int>, MangaNodeList>).getKeys()
+                .filter { it.contains(mangaId) }.forEach { mangaForIdsDataLoader.clear(it) }
+
             dataFetchingEnvironment.getDataLoader<Int, Int>("DownloadedChapterCountForMangaDataLoader").clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, Int>("UnreadChapterCountForMangaDataLoader").clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LastReadChapterForMangaDataLoader").clear(mangaId)
