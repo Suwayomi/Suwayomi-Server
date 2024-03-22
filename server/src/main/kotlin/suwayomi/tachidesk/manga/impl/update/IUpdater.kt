@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.manga.impl.update
 
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 
@@ -12,7 +13,9 @@ interface IUpdater {
         forceAll: Boolean,
     )
 
-    val status: StateFlow<UpdateStatus>
+    val status: Flow<UpdateStatus>
+
+    val statusDeprecated: StateFlow<UpdateStatus>
 
     fun reset()
 }

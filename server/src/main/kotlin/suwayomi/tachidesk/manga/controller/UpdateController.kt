@@ -117,7 +117,7 @@ object UpdateController {
             },
             behaviorOf = { ctx ->
                 val updater by DI.global.instance<IUpdater>()
-                ctx.json(updater.status.value)
+                ctx.json(updater.statusDeprecated.value)
             },
             withResults = {
                 json<UpdateStatus>(HttpCode.OK)

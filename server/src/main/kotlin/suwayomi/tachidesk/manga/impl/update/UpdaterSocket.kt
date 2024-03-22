@@ -23,12 +23,12 @@ object UpdaterSocket : Websocket<UpdateStatus>() {
         ctx: WsContext,
         value: UpdateStatus?,
     ) {
-        ctx.send(value ?: updater.status.value)
+        ctx.send(value ?: updater.statusDeprecated.value)
     }
 
     override fun handleRequest(ctx: WsMessageContext) {
         when (ctx.message()) {
-            "STATUS" -> notifyClient(ctx, updater.status.value)
+            "STATUS" -> notifyClient(ctx, updater.statusDeprecated.value)
             else ->
                 ctx.send(
                     """

@@ -10,11 +10,13 @@ package suwayomi.tachidesk.graphql.dataLoaders
 import com.expediagroup.graphql.dataloader.KotlinDataLoader
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
+import org.dataloader.DataLoaderOptions
 import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.cache.CustomCacheMap
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
@@ -95,18 +97,21 @@ class MangaForIdsDataLoader : KotlinDataLoader<List<Int>, MangaNodeList> {
     override val dataLoaderName = "MangaForIdsDataLoader"
 
     override fun getDataLoader(): DataLoader<List<Int>, MangaNodeList> =
-        DataLoaderFactory.newDataLoader { mangaIds ->
-            future {
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
-                    val ids = mangaIds.flatten().distinct()
-                    val manga =
-                        MangaTable.select { MangaTable.id inList ids }
-                            .map { MangaType(it) }
-                    mangaIds.map { mangaIds ->
-                        manga.filter { it.id in mangaIds }.toNodeList()
+        DataLoaderFactory.newDataLoader(
+            { mangaIds ->
+                future {
+                    transaction {
+                        addLogger(Slf4jSqlDebugLogger)
+                        val ids = mangaIds.flatten().distinct()
+                        val manga =
+                            MangaTable.select { MangaTable.id inList ids }
+                                .map { MangaType(it) }
+                        mangaIds.map { mangaIds ->
+                            manga.filter { it.id in mangaIds }.toNodeList()
+                        }
                     }
                 }
-            }
-        }
+            },
+            DataLoaderOptions.newOptions().setCacheMap(CustomCacheMap<List<Int>, MangaNodeList>()),
+        )
 }

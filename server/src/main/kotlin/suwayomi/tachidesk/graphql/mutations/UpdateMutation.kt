@@ -1,5 +1,7 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeout
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.kodein.di.DI
@@ -10,6 +12,9 @@ import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import suwayomi.tachidesk.server.JavalinSetup.future
+import java.util.concurrent.CompletableFuture
+import kotlin.time.Duration.Companion.seconds
 
 class UpdateMutation {
     private val updater by DI.global.instance<IUpdater>()
@@ -23,14 +28,22 @@ class UpdateMutation {
         val updateStatus: UpdateStatus,
     )
 
-    fun updateLibraryManga(input: UpdateLibraryMangaInput): UpdateLibraryMangaPayload {
+    fun updateLibraryManga(input: UpdateLibraryMangaInput): CompletableFuture<UpdateLibraryMangaPayload> {
         updater.addCategoriesToUpdateQueue(
             Category.getCategoryList(),
             clear = true,
             forceAll = false,
         )
 
-        return UpdateLibraryMangaPayload(input.clientMutationId, UpdateStatus(updater.status.value))
+        return future {
+            UpdateLibraryMangaPayload(
+                input.clientMutationId,
+                updateStatus =
+                    withTimeout(30.seconds) {
+                        UpdateStatus(updater.status.first())
+                    },
+            )
+        }
     }
 
     data class UpdateCategoryMangaInput(
@@ -43,7 +56,7 @@ class UpdateMutation {
         val updateStatus: UpdateStatus,
     )
 
-    fun updateCategoryManga(input: UpdateCategoryMangaInput): UpdateCategoryMangaPayload {
+    fun updateCategoryManga(input: UpdateCategoryMangaInput): CompletableFuture<UpdateCategoryMangaPayload> {
         val categories =
             transaction {
                 CategoryTable.select { CategoryTable.id inList input.categories }.map {
@@ -52,10 +65,15 @@ class UpdateMutation {
             }
         updater.addCategoriesToUpdateQueue(categories, clear = true, forceAll = true)
 
-        return UpdateCategoryMangaPayload(
-            clientMutationId = input.clientMutationId,
-            updateStatus = UpdateStatus(updater.status.value),
-        )
+        return future {
+            UpdateCategoryMangaPayload(
+                input.clientMutationId,
+                updateStatus =
+                    withTimeout(30.seconds) {
+                        UpdateStatus(updater.status.first())
+                    },
+            )
+        }
     }
 
     data class UpdateStopInput(
