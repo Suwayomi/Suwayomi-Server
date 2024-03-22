@@ -6,9 +6,12 @@ import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
@@ -16,6 +19,8 @@ import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
@@ -37,14 +42,33 @@ import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.seconds
 
+@OptIn(FlowPreview::class)
 class Updater : IUpdater {
     private val logger = KotlinLogging.logger {}
+    private val notifyFlowScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    private val _status = MutableStateFlow(UpdateStatus())
-    override val status = _status.asStateFlow()
+    private val notifyFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
+    private val statusFlow = MutableSharedFlow<UpdateStatus>()
+    override val status = statusFlow.onStart { emit(getStatus()) }
+
+    init {
+        // has to be in its own scope (notifyFlowScope), otherwise, the collection gets canceled due to canceling the scopes (scope) children in the reset function
+        notifyFlowScope.launch {
+            notifyFlow.sample(1.seconds).collect {
+                updateStatus(immediate = true)
+            }
+        }
+    }
+
+    private val _status = MutableStateFlow(UpdateStatus())
+    override val statusDeprecated = _status.asStateFlow()
+
+    private var updateStatusCategories: Map<CategoryUpdateStatus, List<CategoryDataClass>> = emptyMap()
+    private var updateStatusSkippedMangas: List<MangaDataClass> = emptyList()
     private val tracker = ConcurrentHashMap<Int, UpdateJob>()
     private val updateChannels = ConcurrentHashMap<String, Channel<UpdateJob>>()
 
@@ -87,7 +111,7 @@ class Updater : IUpdater {
         val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
         preferences.edit().putLong(lastAutomatedUpdateKey, System.currentTimeMillis()).apply()
 
-        if (status.value.running) {
+        if (getStatus().running) {
             logger.debug { "Global update is already in progress" }
             return
         }
@@ -123,23 +147,33 @@ class Updater : IUpdater {
         HAScheduler.schedule(::autoUpdateTask, updateInterval, timeToNextExecution, "global-update")
     }
 
-    /**
-     * Updates the status and sustains the "skippedMangas"
-     */
-    private fun updateStatus(
-        jobs: List<UpdateJob>,
-        running: Boolean? = null,
-        categories: Map<CategoryUpdateStatus, List<CategoryDataClass>>? = null,
-        skippedMangas: List<MangaDataClass>? = null,
-    ) {
+    private fun getStatus(running: Boolean? = null): UpdateStatus {
+        val jobs = tracker.values.toList()
         val isRunning =
             running
                 ?: jobs.any { job ->
                     job.status == JobStatus.PENDING || job.status == JobStatus.RUNNING
                 }
-        val updateStatusCategories = categories ?: _status.value.categoryStatusMap
-        val tmpSkippedMangas = skippedMangas ?: _status.value.mangaStatusMap[JobStatus.SKIPPED] ?: emptyList()
-        _status.update { UpdateStatus(updateStatusCategories, jobs, tmpSkippedMangas, isRunning) }
+        return UpdateStatus(this.updateStatusCategories, jobs, this.updateStatusSkippedMangas, isRunning)
+    }
+
+    /**
+     * Pass "isRunning" to force a specific running state
+     */
+    private suspend fun updateStatus(
+        immediate: Boolean = false,
+        isRunning: Boolean? = null,
+    ) {
+        if (immediate) {
+            val status = getStatus(running = isRunning)
+
+            statusFlow.emit(status)
+            _status.update { status }
+
+            return
+        }
+
+        notifyFlow.emit(Unit)
     }
 
     private fun getOrCreateUpdateChannelFor(source: String): Channel<UpdateJob> {
@@ -166,7 +200,7 @@ class Updater : IUpdater {
         return channel
     }
 
-    private fun handleChannelUpdateFailure(source: String) {
+    private suspend fun handleChannelUpdateFailure(source: String) {
         val isFailedSourceUpdate = { job: UpdateJob ->
             val isForSource = job.manga.sourceId == source
             val hasFailed = job.status == JobStatus.FAILED
@@ -181,17 +215,12 @@ class Updater : IUpdater {
                 tracker[mangaId] = job.copy(status = JobStatus.FAILED)
             }
 
-        updateStatus(
-            tracker.values.toList(),
-            tracker.any { (_, job) ->
-                job.status == JobStatus.PENDING || job.status == JobStatus.RUNNING
-            },
-        )
+        updateStatus()
     }
 
     private suspend fun process(job: UpdateJob) {
         tracker[job.manga.id] = job.copy(status = JobStatus.RUNNING)
-        updateStatus(tracker.values.toList(), true)
+        updateStatus()
 
         tracker[job.manga.id] =
             try {
@@ -207,11 +236,14 @@ class Updater : IUpdater {
                 job.copy(status = JobStatus.FAILED)
             }
 
-        updateStatus(tracker.values.toList(), running = true)
-
         val wasLastJob = tracker.values.none { it.status == JobStatus.PENDING || it.status == JobStatus.RUNNING }
+
+        // in case this is the last update job, the running flag has to be true, before it gets set to false, to be able
+        // to properly clear the dataloader store in UpdateType
+        updateStatus(immediate = wasLastJob, isRunning = true)
+
         if (wasLastJob) {
-            updateStatus(tracker.values.toList(), running = false)
+            updateStatus(isRunning = false)
         }
     }
 
@@ -279,10 +311,15 @@ class Updater : IUpdater {
                 .toList()
         val skippedMangas = categoriesToUpdateMangas.subtract(mangasToUpdate.toSet()).toList()
 
-        // In case no manga gets updated and no update job was running before, the client would never receive an info about its update request
-        updateStatus(emptyList(), mangasToUpdate.isNotEmpty(), updateStatusCategories, skippedMangas)
+        this.updateStatusCategories = updateStatusCategories
+        this.updateStatusSkippedMangas = skippedMangas
 
         if (mangasToUpdate.isEmpty()) {
+            // In case no manga gets updated and no update job was running before, the client would never receive an info
+            // about its update request
+            scope.launch {
+                updateStatus(immediate = true)
+            }
             return
         }
 
@@ -293,8 +330,9 @@ class Updater : IUpdater {
     }
 
     private fun addMangasToQueue(mangasToUpdate: List<MangaDataClass>) {
+        // create all manga update jobs before adding them to the queue so that the client is able to calculate the
+        // progress properly right form the start
         mangasToUpdate.forEach { tracker[it.id] = UpdateJob(it) }
-        updateStatus(tracker.values.toList(), mangasToUpdate.isNotEmpty())
         mangasToUpdate.forEach { addMangaToQueue(it) }
     }
 
@@ -308,7 +346,11 @@ class Updater : IUpdater {
     override fun reset() {
         scope.coroutineContext.cancelChildren()
         tracker.clear()
-        updateStatus(emptyList(), false)
+        this.updateStatusCategories = emptyMap()
+        this.updateStatusSkippedMangas = emptyList()
+        scope.launch {
+            updateStatus(immediate = true, isRunning = false)
+        }
         updateChannels.forEach { (_, channel) -> channel.cancel() }
         updateChannels.clear()
     }
