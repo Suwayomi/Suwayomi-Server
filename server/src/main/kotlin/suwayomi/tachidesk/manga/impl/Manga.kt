@@ -251,11 +251,11 @@ object Manga {
         }
     }
 
-    private suspend fun fetchThumbnailUrl(mangaId: Int): String {
+    private suspend fun fetchThumbnailUrl(mangaId: Int): String? {
         getManga(mangaId)
         return transaction {
             MangaTable.select { MangaTable.id eq mangaId }.first()
-        }[MangaTable.thumbnail_url]!!
+        }[MangaTable.thumbnail_url]
     }
 
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
@@ -279,7 +279,7 @@ object Manga {
                             } else {
                                 // source provides no thumbnail url for this manga
                                 throw NullPointerException("No thumbnail found")
-                            }
+                            } ?: throw NullPointerException("No thumbnail found")
 
                     source.client.newCall(
                         GET(thumbnailUrl, source.headers, cache = CacheControl.FORCE_NETWORK),
