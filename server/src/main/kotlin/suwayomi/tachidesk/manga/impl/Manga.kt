@@ -8,13 +8,17 @@ package suwayomi.tachidesk.manga.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.HttpException
 import eu.kanade.tachiyomi.network.NetworkHelper
+import eu.kanade.tachiyomi.network.awaitSuccess
 import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import eu.kanade.tachiyomi.source.online.HttpSource
+import io.javalin.http.HttpCode
 import mu.KotlinLogging
 import okhttp3.CacheControl
+import okhttp3.Response
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
@@ -252,7 +256,7 @@ object Manga {
     }
 
     private suspend fun fetchThumbnailUrl(mangaId: Int): String? {
-        getManga(mangaId)
+        getManga(mangaId, true)
         return transaction {
             MangaTable.select { MangaTable.id eq mangaId }.first()
         }[MangaTable.thumbnail_url]
@@ -260,6 +264,37 @@ object Manga {
 
     private val applicationDirs by DI.global.instance<ApplicationDirs>()
     private val network: NetworkHelper by injectLazy()
+
+    private suspend fun fetchHttpSourceMangaThumbnail(
+        source: HttpSource,
+        mangaEntry: ResultRow,
+        refreshUrl: Boolean = false,
+    ): Response {
+        val mangaId = mangaEntry[MangaTable.id].value
+
+        val requiresInitialization = mangaEntry[MangaTable.thumbnail_url] == null && !mangaEntry[MangaTable.initialized]
+        val refreshThumbnailUrl = refreshUrl || requiresInitialization
+
+        val thumbnailUrl =
+            if (refreshThumbnailUrl) {
+                fetchThumbnailUrl(mangaId)
+            } else {
+                mangaEntry[MangaTable.thumbnail_url]
+            } ?: throw NullPointerException("No thumbnail found")
+
+        return try {
+            source.client.newCall(
+                GET(thumbnailUrl, source.headers, cache = CacheControl.FORCE_NETWORK),
+            ).awaitSuccess()
+        } catch (e: HttpException) {
+            val tryToRefreshUrl = !refreshUrl && HttpCode.NOT_FOUND.status == e.code
+            if (!tryToRefreshUrl) {
+                throw e
+            }
+
+            fetchHttpSourceMangaThumbnail(source, mangaEntry, refreshUrl = true)
+        }
+    }
 
     suspend fun fetchMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
         val cacheSaveDir = applicationDirs.tempThumbnailCacheRoot
@@ -271,19 +306,7 @@ object Manga {
         return when (val source = getCatalogueSourceOrStub(sourceId)) {
             is HttpSource ->
                 getImageResponse(cacheSaveDir, fileName) {
-                    val thumbnailUrl =
-                        mangaEntry[MangaTable.thumbnail_url]
-                            ?: if (!mangaEntry[MangaTable.initialized]) {
-                                // initialize then try again
-                                fetchThumbnailUrl(mangaId)
-                            } else {
-                                // source provides no thumbnail url for this manga
-                                throw NullPointerException("No thumbnail found")
-                            } ?: throw NullPointerException("No thumbnail found")
-
-                    source.client.newCall(
-                        GET(thumbnailUrl, source.headers, cache = CacheControl.FORCE_NETWORK),
-                    ).await()
+                    fetchHttpSourceMangaThumbnail(source, mangaEntry)
                 }
 
             is LocalSource -> {
