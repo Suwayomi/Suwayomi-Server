@@ -287,7 +287,13 @@ object Manga {
                 GET(thumbnailUrl, source.headers, cache = CacheControl.FORCE_NETWORK),
             ).awaitSuccess()
         } catch (e: HttpException) {
-            val tryToRefreshUrl = !refreshUrl && HttpCode.NOT_FOUND.status == e.code
+            val tryToRefreshUrl =
+                !refreshUrl &&
+                    listOf(
+                        HttpCode.NOT_FOUND.status,
+                        523, // (Cloudflare) Origin Is Unreachable
+                        522, // (Cloudflare) Connection timed out
+                    ).contains(e.code)
             if (!tryToRefreshUrl) {
                 throw e
             }
