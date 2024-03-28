@@ -53,6 +53,7 @@ class MangaType(
             dataFetchingEnvironment.getDataLoader<Int, MangaNodeList>("MangaForIdsDataLoader").clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, Int>("DownloadedChapterCountForMangaDataLoader").clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, Int>("UnreadChapterCountForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, Int>("BookmarkedChapterCountForMangaDataLoader").clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LastReadChapterForMangaDataLoader").clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestReadChapterForMangaDataLoader").clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestFetchedChapterForMangaDataLoader").clear(mangaId)
@@ -114,6 +115,10 @@ class MangaType(
 
     fun unreadCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> {
         return dataFetchingEnvironment.getValueFromDataLoader("UnreadChapterCountForMangaDataLoader", id)
+    }
+
+    fun bookmarkCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> {
+        return dataFetchingEnvironment.getValueFromDataLoader("BookmarkedChapterCountForMangaDataLoader", id)
     }
 
     fun lastReadChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> {
