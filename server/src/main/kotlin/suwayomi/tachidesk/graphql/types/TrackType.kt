@@ -60,7 +60,7 @@ class TrackStatusType(
     val name: String,
 )
 
-        class TrackRecordType(
+class TrackRecordType(
     val id: Int,
     val mangaId: Int,
     val trackerId: Int,
@@ -74,8 +74,8 @@ class TrackStatusType(
     val remoteUrl: String,
     val startDate: Long,
     val finishDate: Long,
-    ) : Node {
-        constructor(row: ResultRow) : this(
+) : Node {
+    constructor(row: ResultRow) : this(
         row[TrackRecordTable.id].value,
         row[TrackRecordTable.mangaId].value,
         row[TrackRecordTable.trackerId],
