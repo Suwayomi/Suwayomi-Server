@@ -220,6 +220,9 @@ object Track {
                 recordDb[TrackRecordTable.status] = tracker.getCompletionStatus()
                 recordDb[TrackRecordTable.finishDate] = System.currentTimeMillis()
             }
+        } else {
+            recordDb[TrackRecordTable.status] = tracker.getReadingStatus()
+
         }
         if (input.scoreString != null) {
             val score = tracker.indexToScore(tracker.getScoreList().indexOf(input.scoreString))
