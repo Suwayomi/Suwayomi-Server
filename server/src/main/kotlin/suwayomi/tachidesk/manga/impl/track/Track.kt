@@ -200,6 +200,10 @@ object Track {
 
         val tracker = TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])!!
 
+        val track = recordDb.toTrack()
+
+        tracker.refresh(track)
+
         if (input.status != null) {
             recordDb[TrackRecordTable.status] = input.status
             if (input.status == tracker.getCompletionStatus() && recordDb[TrackRecordTable.totalChapters] != 0) {
@@ -220,9 +224,6 @@ object Track {
                 recordDb[TrackRecordTable.status] = tracker.getCompletionStatus()
                 recordDb[TrackRecordTable.finishDate] = System.currentTimeMillis()
             }
-        } else {
-            recordDb[TrackRecordTable.status] = tracker.getReadingStatus()
-
         }
         if (input.scoreString != null) {
             val score = tracker.indexToScore(tracker.getScoreList().indexOf(input.scoreString))
@@ -236,7 +237,6 @@ object Track {
             recordDb[TrackRecordTable.finishDate] = input.finishDate
         }
 
-        val track = recordDb.toTrack()
         tracker.update(track)
 
         upsertTrackRecord(track)
