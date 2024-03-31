@@ -1,5 +1,7 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -133,6 +135,36 @@ class TrackMutation {
         }
     }
 
+    data class UnbindTrackInput(
+        val clientMutationId: String? = null,
+        val recordId: Int,
+        @GraphQLDescription("This will only work if the tracker of the track record supports deleting tracks")
+        val deleteRemoteTrack: Boolean? = null,
+    )
+
+    data class UnbindTrackPayload(
+        val clientMutationId: String?,
+        val trackRecord: TrackRecordType?,
+    )
+
+    fun unbindTrack(input: UnbindTrackInput): CompletableFuture<UnbindTrackPayload> {
+        val (clientMutationId, recordId, deleteRemoteTrack) = input
+
+        return future {
+            Track.unbind(recordId, deleteRemoteTrack)
+            val trackRecord =
+                transaction {
+                    TrackRecordTable.select {
+                        TrackRecordTable.id eq recordId
+                    }.firstOrNull()
+                }
+            UnbindTrackPayload(
+                clientMutationId,
+                trackRecord?.let { TrackRecordType(it) },
+            )
+        }
+    }
+
     data class TrackProgressInput(
         val clientMutationId: String? = null,
         val mangaId: Int,
@@ -168,6 +200,7 @@ class TrackMutation {
         val scoreString: String? = null,
         val startDate: Long? = null,
         val finishDate: Long? = null,
+        @GraphQLDeprecated("Replaced with \"unbindTrack\" mutation", replaceWith = ReplaceWith("unbindTrack"))
         val unbind: Boolean? = null,
     )
 

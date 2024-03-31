@@ -15,6 +15,7 @@ import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTrackService
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrack
@@ -186,11 +187,29 @@ object Track {
         }
     }
 
+    suspend fun unbind(
+        recordId: Int,
+        deleteRemoteTrack: Boolean? = false,
+    ) {
+        val recordDb =
+            transaction {
+                TrackRecordTable.select { TrackRecordTable.id eq recordId }.first()
+            }
+
+        val tracker = TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])!!
+
+        if (deleteRemoteTrack == true && tracker is DeletableTrackService) {
+            tracker.delete(recordDb.toTrack())
+        }
+
+        transaction {
+            TrackRecordTable.deleteWhere { TrackRecordTable.id eq recordId }
+        }
+    }
+
     suspend fun update(input: UpdateInput) {
         if (input.unbind == true) {
-            transaction {
-                TrackRecordTable.deleteWhere { TrackRecordTable.id eq input.recordId }
-            }
+            unbind(input.recordId)
             return
         }
         val recordDb =
