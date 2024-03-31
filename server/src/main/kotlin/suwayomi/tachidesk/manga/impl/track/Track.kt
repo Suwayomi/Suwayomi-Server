@@ -186,6 +186,19 @@ object Track {
         }
     }
 
+    suspend fun refresh(recordId: Int) {
+        val recordDb =
+            transaction {
+                TrackRecordTable.select { TrackRecordTable.id eq recordId }.first()
+            }
+
+        val tracker = TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])!!
+
+        val track = recordDb.toTrack()
+        tracker.refresh(track)
+        upsertTrackRecord(track)
+    }
+
     suspend fun update(input: UpdateInput) {
         if (input.unbind == true) {
             transaction {
