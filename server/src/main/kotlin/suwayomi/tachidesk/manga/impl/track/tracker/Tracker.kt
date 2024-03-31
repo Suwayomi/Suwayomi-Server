@@ -19,6 +19,8 @@ abstract class Tracker(val id: Int, val name: String) {
 
     abstract val supportsTrackDeletion: Boolean
 
+    override fun toString() = "$name ($id) (isLoggedIn= $isLoggedIn, isAuthExpired= ${getIfAuthExpired()})"
+
     abstract fun getLogo(): String
 
     abstract fun getStatusList(): List<Int>

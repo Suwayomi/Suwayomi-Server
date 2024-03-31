@@ -99,6 +99,26 @@ class UnreadChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
         }
 }
 
+class BookmarkedChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
+    override val dataLoaderName = "BookmarkedChapterCountForMangaDataLoader"
+
+    override fun getDataLoader(): DataLoader<Int, Int> =
+        DataLoaderFactory.newDataLoader<Int, Int> { ids ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val bookmarkedChapterCountByMangaId =
+                        ChapterTable
+                            .slice(ChapterTable.manga, ChapterTable.isBookmarked.count())
+                            .select { (ChapterTable.manga inList ids) and (ChapterTable.isBookmarked eq true) }
+                            .groupBy(ChapterTable.manga)
+                            .associate { it[ChapterTable.manga].value to it[ChapterTable.isBookmarked.count()] }
+                    ids.map { bookmarkedChapterCountByMangaId[it]?.toInt() ?: 0 }
+                }
+            }
+        }
+}
+
 class LastReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
     override val dataLoaderName = "LastReadChapterForMangaDataLoader"
 

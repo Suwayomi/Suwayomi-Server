@@ -10,7 +10,6 @@ import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyById
-import suwayomi.tachidesk.manga.impl.track.Track
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -69,13 +68,6 @@ class ChapterMutation {
                         update[lastPageRead] = it
                         update[lastReadAt] = now
                     }
-                }
-                if (patch.isRead == true) {
-                    val mangaIds =
-                        ChapterTable.slice(ChapterTable.manga).select { ChapterTable.id inList ids }
-                            .map { it[ChapterTable.manga].value }
-                            .toSet()
-                    Track.asyncTrackChapter(mangaIds)
                 }
             }
         }
