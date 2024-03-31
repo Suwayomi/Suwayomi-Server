@@ -186,11 +186,15 @@ object Track {
         }
     }
 
+    private fun unbind(recordId: Int) {
+        transaction {
+            TrackRecordTable.deleteWhere { TrackRecordTable.id eq recordId }
+        }
+    }
+
     suspend fun update(input: UpdateInput) {
         if (input.unbind == true) {
-            transaction {
-                TrackRecordTable.deleteWhere { TrackRecordTable.id eq input.recordId }
-            }
+            unbind(input.recordId)
             return
         }
         val recordDb =
