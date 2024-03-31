@@ -158,7 +158,7 @@ object Track {
 
         var lastChapterRead: Double? = null
         var startDate: Long? = null
-        if (chapterNumber != null && chapterNumber > 0) {
+        if (chapterNumber != null && chapterNumber > 0 && chapterNumber > track.last_chapter_read) {
             lastChapterRead = chapterNumber.toDouble()
         }
         if (track.started_reading_date <= 0) {
