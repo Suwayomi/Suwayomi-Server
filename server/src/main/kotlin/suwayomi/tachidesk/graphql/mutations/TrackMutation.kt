@@ -135,6 +135,34 @@ class TrackMutation {
         }
     }
 
+    data class FetchTrackInput(
+        val clientMutationId: String? = null,
+        val recordId: Int,
+    )
+
+    data class FetchTrackPayload(
+        val clientMutationId: String?,
+        val trackRecord: TrackRecordType,
+    )
+
+    fun fetchTrack(input: FetchTrackInput): CompletableFuture<FetchTrackPayload> {
+        val (clientMutationId, recordId) = input
+
+        return future {
+            Track.refresh(recordId)
+            val trackRecord =
+                transaction {
+                    TrackRecordTable.select {
+                        TrackRecordTable.id eq recordId
+                    }.first()
+                }
+            FetchTrackPayload(
+                clientMutationId,
+                TrackRecordType(trackRecord),
+            )
+        }
+    }
+
     data class UnbindTrackInput(
         val clientMutationId: String? = null,
         val recordId: Int,
