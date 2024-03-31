@@ -282,17 +282,21 @@ object Track {
             }
 
         records.forEach {
-            val tracker = TrackerManager.getTracker(it[TrackRecordTable.trackerId])
-            val lastChapterRead = it[TrackRecordTable.lastChapterRead]
-            val isLogin = tracker?.isLoggedIn == true
+            val tracker = TrackerManager.getTracker(it[TrackRecordTable.trackerId]) ?: return@forEach
+
+            val track = it.toTrack()
+            tracker.refresh(track)
+            upsertTrackRecord(track)
+
+            val lastChapterRead = track.last_chapter_read
+            val isLogin = tracker.isLoggedIn == true
             logger.debug {
-                "[Tracker]trackChapter id:${tracker?.id} login:$isLogin " +
-                    "mangaId:$mangaId dbChapter:$lastChapterRead toChapter:$chapterNumber"
+                "[Tracker]trackChapter id:${tracker.id} login:$isLogin " +
+                    "mangaId:$mangaId lastReadChapter:$lastChapterRead toChapter:$chapterNumber"
             }
             if (isLogin && chapterNumber > lastChapterRead) {
-                it[TrackRecordTable.lastChapterRead] = chapterNumber
-                val track = it.toTrack()
-                tracker?.update(track, true)
+                track.last_chapter_read = chapterNumber.toFloat()
+                tracker.update(track, true)
                 upsertTrackRecord(track)
             }
         }
