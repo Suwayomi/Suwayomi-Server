@@ -133,6 +133,33 @@ class TrackMutation {
         }
     }
 
+    data class TrackProgressInput(
+        val clientMutationId: String? = null,
+        val mangaId: Int,
+    )
+
+    data class TrackProgressPayload(
+        val clientMutationId: String?,
+        val trackRecords: List<TrackRecordType>,
+    )
+
+    fun trackProgress(input: TrackProgressInput): CompletableFuture<TrackProgressPayload> {
+        val (clientMutationId, mangaId) = input
+
+        return future {
+            Track.trackChapter(mangaId)
+            val trackRecords =
+                transaction {
+                    TrackRecordTable.select { TrackRecordTable.mangaId eq mangaId }
+                        .toList()
+                }
+            TrackProgressPayload(
+                clientMutationId,
+                trackRecords.map { TrackRecordType(it) },
+            )
+        }
+    }
+
     data class UpdateTrackInput(
         val clientMutationId: String? = null,
         val recordId: Int,

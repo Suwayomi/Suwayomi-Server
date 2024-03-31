@@ -250,7 +250,7 @@ object Track {
         }
     }
 
-    private suspend fun trackChapter(mangaId: Int) {
+    suspend fun trackChapter(mangaId: Int) {
         val chapter = queryMaxReadChapter(mangaId)
         val chapterNumber = chapter?.get(ChapterTable.chapter_number)
 
