@@ -115,7 +115,7 @@ class AnilistApi(val client: OkHttpClient, interceptor: AnilistInterceptor) {
         }
     }
 
-    suspend fun deleteLibManga(track: Track): Track {
+    suspend fun deleteLibManga(track: Track) {
         return withIOContext {
             val query =
                 """
@@ -135,7 +135,6 @@ class AnilistApi(val client: OkHttpClient, interceptor: AnilistInterceptor) {
                 }
             authClient.newCall(POST(API_URL, body = payload.toString().toRequestBody(jsonMime)))
                 .awaitSuccess()
-            track
         }
     }
 

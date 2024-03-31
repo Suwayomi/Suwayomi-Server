@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates
 
+import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTrackService
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
 import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.ListItem
 import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.Rating
@@ -8,8 +9,7 @@ import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.toTrackSearc
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 
-class MangaUpdates(id: Int) : Tracker(id, "MangaUpdates") {
-    // , DeletableTracker
+class MangaUpdates(id: Int) : Tracker(id, "MangaUpdates"), DeletableTrackService {
     companion object {
         const val READING_LIST = 0
         const val WISH_LIST = 1
@@ -30,6 +30,8 @@ class MangaUpdates(id: Int) : Tracker(id, "MangaUpdates") {
                     }
                 }
     }
+
+    override val supportsTrackDeletion: Boolean = true
 
     private val interceptor by lazy { MangaUpdatesInterceptor(this) }
 
@@ -74,9 +76,9 @@ class MangaUpdates(id: Int) : Tracker(id, "MangaUpdates") {
         return track
     }
 
-    // override suspend fun delete(track: Track) {
-    //     api.deleteSeriesFromList(track)
-    // }
+    override suspend fun delete(track: Track) {
+        api.deleteSeriesFromList(track)
+    }
 
     override suspend fun bind(
         track: Track,

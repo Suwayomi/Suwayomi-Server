@@ -1,7 +1,6 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.myanimelist
 
 import android.annotation.StringRes
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
@@ -25,6 +24,8 @@ class MyAnimeList(id: Int) : Tracker(id, "MyAnimeList"), DeletableTrackService {
         private const val SEARCH_ID_PREFIX = "id:"
         private const val SEARCH_LIST_PREFIX = "my:"
     }
+
+    override val supportsTrackDeletion: Boolean = true
 
     private val json: Json by injectLazy()
 
@@ -94,8 +95,8 @@ class MyAnimeList(id: Int) : Tracker(id, "MyAnimeList"), DeletableTrackService {
         return api.updateItem(track)
     }
 
-    override suspend fun delete(track: Track): Track {
-        return api.deleteItem(track)
+    override suspend fun delete(track: Track) {
+        api.deleteItem(track)
     }
 
     override suspend fun bind(

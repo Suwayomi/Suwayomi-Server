@@ -1,7 +1,6 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.anilist
 
 import android.annotation.StringRes
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
@@ -28,6 +27,8 @@ class Anilist(id: Int) : Tracker(id, "AniList"), DeletableTrackService {
         const val POINT_5 = "POINT_5"
         const val POINT_3 = "POINT_3"
     }
+
+    override val supportsTrackDeletion: Boolean = true
 
     private val json: Json by injectLazy()
 
@@ -157,13 +158,13 @@ class Anilist(id: Int) : Tracker(id, "AniList"), DeletableTrackService {
         return api.updateLibManga(track)
     }
 
-    override suspend fun delete(track: Track): Track {
+    override suspend fun delete(track: Track) {
         if (track.library_id == null || track.library_id!! == 0L) {
-            val libManga = api.findLibManga(track, getUsername().toInt()) ?: return track
+            val libManga = api.findLibManga(track, getUsername().toInt()) ?: return
             track.library_id = libManga.library_id
         }
 
-        return api.deleteLibManga(track)
+        api.deleteLibManga(track)
     }
 
     override suspend fun bind(

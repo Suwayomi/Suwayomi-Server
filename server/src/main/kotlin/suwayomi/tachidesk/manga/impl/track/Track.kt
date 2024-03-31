@@ -15,6 +15,7 @@ import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTrackService
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrack
@@ -158,7 +159,7 @@ object Track {
 
         var lastChapterRead: Double? = null
         var startDate: Long? = null
-        if (chapterNumber != null && chapterNumber > 0) {
+        if (chapterNumber != null && chapterNumber > 0 && chapterNumber > track.last_chapter_read) {
             lastChapterRead = chapterNumber.toDouble()
         }
         if (track.started_reading_date <= 0) {
@@ -199,11 +200,30 @@ object Track {
         upsertTrackRecord(track)
     }
 
+    suspend fun unbind(
+        recordId: Int,
+        deleteRemoteTrack: Boolean? = false,
+    ) {
+        val recordDb =
+
+            transaction {
+                TrackRecordTable.select { TrackRecordTable.id eq recordId }.first()
+            }
+
+        val tracker = TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])!!
+
+        if (deleteRemoteTrack == true && tracker is DeletableTrackService) {
+            tracker.delete(recordDb.toTrack())
+        }
+
+        transaction {
+            TrackRecordTable.deleteWhere { TrackRecordTable.id eq recordId }
+        }
+    }
+
     suspend fun update(input: UpdateInput) {
         if (input.unbind == true) {
-            transaction {
-                TrackRecordTable.deleteWhere { TrackRecordTable.id eq input.recordId }
-            }
+            unbind(input.recordId)
             return
         }
         val recordDb =
@@ -263,13 +283,14 @@ object Track {
         }
     }
 
-    private suspend fun trackChapter(mangaId: Int) {
+    suspend fun trackChapter(mangaId: Int) {
         val chapter = queryMaxReadChapter(mangaId)
         val chapterNumber = chapter?.get(ChapterTable.chapter_number)
+
         logger.debug {
-            "[Tracker]mangaId $mangaId chapter:${chapter?.get(ChapterTable.name)} " +
-                "chapterNumber:$chapterNumber"
+            "trackChapter(mangaId= $mangaId): maxReadChapter= #$chapterNumber ${chapter?.get(ChapterTable.name)}"
         }
+
         if (chapterNumber != null && chapterNumber > 0) {
             trackChapter(mangaId, chapterNumber.toDouble())
         }
@@ -295,17 +316,21 @@ object Track {
             }
 
         records.forEach {
-            val tracker = TrackerManager.getTracker(it[TrackRecordTable.trackerId])
-            val lastChapterRead = it[TrackRecordTable.lastChapterRead]
-            val isLogin = tracker?.isLoggedIn == true
+            val tracker = TrackerManager.getTracker(it[TrackRecordTable.trackerId]) ?: return@forEach
+
+            val track = it.toTrack()
+            tracker.refresh(track)
+            upsertTrackRecord(track)
+
+            val lastChapterRead = track.last_chapter_read
+
             logger.debug {
-                "[Tracker]trackChapter id:${tracker?.id} login:$isLogin " +
-                    "mangaId:$mangaId dbChapter:$lastChapterRead toChapter:$chapterNumber"
+                "trackChapter(mangaId= $mangaId, chapterNumber= $chapterNumber): tracker= $tracker, remoteLastReadChapter= $lastChapterRead"
             }
-            if (isLogin && chapterNumber > lastChapterRead) {
-                it[TrackRecordTable.lastChapterRead] = chapterNumber
-                val track = it.toTrack()
-                tracker?.update(track, true)
+
+            if (tracker.isLoggedIn && chapterNumber > lastChapterRead) {
+                track.last_chapter_read = chapterNumber.toFloat()
+                tracker.update(track, true)
                 upsertTrackRecord(track)
             }
         }
