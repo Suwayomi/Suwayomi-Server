@@ -253,10 +253,11 @@ object Track {
     private suspend fun trackChapter(mangaId: Int) {
         val chapter = queryMaxReadChapter(mangaId)
         val chapterNumber = chapter?.get(ChapterTable.chapter_number)
+
         logger.debug {
-            "[Tracker]mangaId $mangaId chapter:${chapter?.get(ChapterTable.name)} " +
-                "chapterNumber:$chapterNumber"
+            "trackChapter(mangaId= $mangaId): maxReadChapter= #$chapterNumber ${chapter?.get(ChapterTable.name)}"
         }
+
         if (chapterNumber != null && chapterNumber > 0) {
             trackChapter(mangaId, chapterNumber.toDouble())
         }
@@ -289,12 +290,12 @@ object Track {
             upsertTrackRecord(track)
 
             val lastChapterRead = track.last_chapter_read
-            val isLogin = tracker.isLoggedIn == true
+
             logger.debug {
-                "[Tracker]trackChapter id:${tracker.id} login:$isLogin " +
-                    "mangaId:$mangaId lastReadChapter:$lastChapterRead toChapter:$chapterNumber"
+                "trackChapter(mangaId= $mangaId, chapterNumber= $chapterNumber): tracker= $tracker, remoteLastReadChapter= $lastChapterRead"
             }
-            if (isLogin && chapterNumber > lastChapterRead) {
+
+            if (tracker.isLoggedIn && chapterNumber > lastChapterRead) {
                 track.last_chapter_read = chapterNumber.toFloat()
                 tracker.update(track, true)
                 upsertTrackRecord(track)
