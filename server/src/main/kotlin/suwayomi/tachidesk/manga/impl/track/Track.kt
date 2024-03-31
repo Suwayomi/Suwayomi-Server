@@ -205,7 +205,6 @@ object Track {
         deleteRemoteTrack: Boolean? = false,
     ) {
         val recordDb =
-
             transaction {
                 TrackRecordTable.select { TrackRecordTable.id eq recordId }.first()
             }
