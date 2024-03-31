@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -133,6 +134,34 @@ class TrackMutation {
         }
     }
 
+    data class UnbindTrackInput(
+        val clientMutationId: String? = null,
+        val recordId: Int,
+    )
+
+    data class UnbindTrackPayload(
+        val clientMutationId: String?,
+        val trackRecord: TrackRecordType,
+    )
+
+    fun unbindTrack(input: UnbindTrackInput): CompletableFuture<UnbindTrackPayload> {
+        val (clientMutationId, recordId) = input
+
+        return future {
+            Track.unbind(recordId)
+            val trackRecord =
+                transaction {
+                    TrackRecordTable.select {
+                        TrackRecordTable.trackerId eq recordId
+                    }.first()
+                }
+            UnbindTrackPayload(
+                clientMutationId,
+                TrackRecordType(trackRecord),
+            )
+        }
+    }
+
     data class UpdateTrackInput(
         val clientMutationId: String? = null,
         val recordId: Int,
@@ -141,6 +170,7 @@ class TrackMutation {
         val scoreString: String? = null,
         val startDate: Long? = null,
         val finishDate: Long? = null,
+        @GraphQLDeprecated("Will be replaced by \"unbindTrack\" mutation")
         val unbind: Boolean? = null,
     )
 

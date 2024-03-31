@@ -186,7 +186,7 @@ object Track {
         }
     }
 
-    private fun unbind(recordId: Int) {
+    fun unbind(recordId: Int) {
         transaction {
             TrackRecordTable.deleteWhere { TrackRecordTable.id eq recordId }
         }
