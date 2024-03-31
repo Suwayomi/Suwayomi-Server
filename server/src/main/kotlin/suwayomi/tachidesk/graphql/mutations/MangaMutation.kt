@@ -13,6 +13,7 @@ import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.JavalinSetup.future
+import java.time.Instant
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -56,6 +57,7 @@ class MangaMutation {
                 MangaTable.update({ MangaTable.id inList ids }) { update ->
                     patch.inLibrary.also {
                         update[inLibrary] = it
+                        if (it) update[inLibraryAt] = Instant.now().epochSecond
                     }
                 }
             }
