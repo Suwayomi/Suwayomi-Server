@@ -101,6 +101,8 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
 
         handleSuccessfulDownload()
 
+        File(cacheChapterDir).deleteRecursively()
+
         return true
     }
 
