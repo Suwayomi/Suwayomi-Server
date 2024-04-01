@@ -341,10 +341,26 @@ object Chapter {
             return
         }
 
-        val reUploadedChapters = newChapters.filter { it.index < prevLatestChapterNumber }
+        val chapterIdsToDownload = getNewChapterIdsToDownload(newChapters, prevLatestChapterNumber)
+
+        if (chapterIdsToDownload.isEmpty()) {
+            log.debug { "no chapters available for download" }
+            return
+        }
+
+        log.info { "download ${chapterIdsToDownload.size} new chapter(s)..." }
+
+        DownloadManager.enqueue(EnqueueInput(chapterIdsToDownload))
+    }
+
+    private fun getNewChapterIdsToDownload(
+        newChapters: List<ChapterDataClass>,
+        prevLatestChapterNumber: Float,
+    ): List<Int> {
+        val reUploadedChapters = newChapters.filter { it.chapterNumber < prevLatestChapterNumber }
         val actualNewChapters = newChapters.subtract(reUploadedChapters.toSet())
         val chaptersToConsiderForDownloadLimit =
-            if (serverConfig.autoDownloadExcludeReUploadsFromLimit.value || serverConfig.autoDownloadIgnoreReUploads.value) {
+            if (serverConfig.autoDownloadIgnoreReUploads.value) {
                 actualNewChapters
             } else {
                 newChapters
@@ -357,16 +373,7 @@ object Chapter {
                 serverConfig.autoDownloadNewChaptersLimit.value.coerceAtMost(chaptersToConsiderForDownloadLimit.size)
             }
 
-        val chapterIdsToDownload = chaptersToConsiderForDownloadLimit.subList(0, latestChapterToDownloadIndex).map { it.id }
-
-        if (chapterIdsToDownload.isEmpty()) {
-            log.debug { "no chapters available for download" }
-            return
-        }
-
-        log.info { "download ${chapterIdsToDownload.size} new chapter(s)..." }
-
-        DownloadManager.enqueue(EnqueueInput(chapterIdsToDownload))
+        return chaptersToConsiderForDownloadLimit.subList(0, latestChapterToDownloadIndex).map { it.id }
     }
 
     fun modifyChapter(
