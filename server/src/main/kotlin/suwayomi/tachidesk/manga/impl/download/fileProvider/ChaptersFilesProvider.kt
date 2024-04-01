@@ -13,6 +13,7 @@ import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.util.createComicInfoFile
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
+import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.io.File
@@ -28,7 +29,10 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
         return RetrieveFile1Args(::getImageImpl)
     }
 
-    protected abstract fun handleExistingDownloadFolder()
+    /**
+     * Extract the existing download to the base download folder (see [getChapterDownloadPath])
+     */
+    protected abstract fun extractExistingDownload()
 
     protected abstract suspend fun handleSuccessfulDownload()
 
@@ -38,17 +42,24 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
         scope: CoroutineScope,
         step: suspend (DownloadChapter?, Boolean) -> Unit,
     ): Boolean {
-        handleExistingDownloadFolder()
+        extractExistingDownload()
+
+        val finalDownloadFolder = getChapterDownloadPath(mangaId, chapterId)
+
+        val cacheChapterDir = getChapterCachePath(mangaId, chapterId)
+        val downloadCacheFolder = File(cacheChapterDir)
+        downloadCacheFolder.mkdirs()
 
         val pageCount = download.chapter.pageCount
-        val chapterDir = getChapterCachePath(mangaId, chapterId)
-        val folder = File(chapterDir)
-        folder.mkdirs()
-
         for (pageNum in 0 until pageCount) {
             var pageProgressJob: Job? = null
             val fileName = Page.getPageName(pageNum) // might have to change this to index stored in database
-            if (File(folder, fileName).exists()) continue
+
+            val doesPageAlreadyExist = File(finalDownloadFolder, fileName).exists() || File(downloadCacheFolder, fileName).exists()
+            if (doesPageAlreadyExist) {
+                continue
+            }
+
             try {
                 Page.getPageImage(
                     mangaId = download.mangaId,
@@ -75,7 +86,7 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
         }
 
         createComicInfoFile(
-            folder.toPath(),
+            downloadCacheFolder.toPath(),
             transaction {
                 MangaTable.select { MangaTable.id eq mangaId }.first()
             },

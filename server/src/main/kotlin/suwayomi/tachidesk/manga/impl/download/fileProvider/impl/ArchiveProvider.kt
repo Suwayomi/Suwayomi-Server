@@ -30,7 +30,7 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mang
         return Pair(inputStream.buffered(), "image/$fileType")
     }
 
-    override fun handleExistingDownloadFolder() {
+    override fun extractExistingDownload() {
         val outputFile = File(getChapterCbzPath(mangaId, chapterId))
         val chapterCacheFolder = File(getChapterCachePath(mangaId, chapterId))
 
@@ -38,7 +38,7 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mang
             return
         }
 
-        extractExistingCbzIntoFolder(outputFile, chapterCacheFolder)
+        extractCbzFile(outputFile, chapterCacheFolder)
     }
 
     override suspend fun handleSuccessfulDownload() {
@@ -83,7 +83,7 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mang
         return cbzDeleted
     }
 
-    private fun extractExistingCbzIntoFolder(
+    private fun extractCbzFile(
         cbzFile: File,
         chapterFolder: File,
     ) {

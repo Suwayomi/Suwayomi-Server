@@ -27,7 +27,7 @@ class FolderProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(manga
         return Pair(FileInputStream(file).buffered(), "image/$fileType")
     }
 
-    override fun handleExistingDownloadFolder() {
+    override fun extractExistingDownload() {
         // nothing to do
     }
 
