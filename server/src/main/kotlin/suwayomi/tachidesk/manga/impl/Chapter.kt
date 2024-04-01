@@ -309,7 +309,8 @@ object Chapter {
                     "prevLatestChapterNumber= $prevLatestChapterNumber, " +
                     "prevNumberOfChapters= $prevNumberOfChapters, " +
                     "newChapters= ${newChapters.size}, " +
-                    "autoDownloadNewChaptersLimit= ${serverConfig.autoDownloadNewChaptersLimit.value}" +
+                    "autoDownloadNewChaptersLimit= ${serverConfig.autoDownloadNewChaptersLimit.value}, " +
+                    "autoDownloadIgnoreReUploads= ${serverConfig.autoDownloadIgnoreReUploads.value}" +
                     ")",
             )
 
@@ -374,14 +375,23 @@ object Chapter {
             return
         }
 
+        val reUploadedChapters = newChapters.filter { it.index < prevLatestChapterNumber }
+        val actualNewChapters = newChapters.subtract(reUploadedChapters.toSet())
+        val chaptersToConsiderForDownloadLimit =
+            if (serverConfig.autoDownloadExcludeReUploadsFromLimit.value || serverConfig.autoDownloadIgnoreReUploads.value) {
+                actualNewChapters
+            } else {
+                newChapters
+            }.sortedBy { it.index }
+
         val latestChapterToDownloadIndex =
             if (serverConfig.autoDownloadNewChaptersLimit.value == 0) {
-                newChapters.size
+                chaptersToConsiderForDownloadLimit.size
             } else {
-                serverConfig.autoDownloadNewChaptersLimit.value.coerceAtMost(newChapters.size)
+                serverConfig.autoDownloadNewChaptersLimit.value.coerceAtMost(chaptersToConsiderForDownloadLimit.size)
             }
 
-        val chapterIdsToDownload = newChapters.sortedBy { it.index }.subList(0, latestChapterToDownloadIndex).map { it.id }
+        val chapterIdsToDownload = chaptersToConsiderForDownloadLimit.subList(0, latestChapterToDownloadIndex).map { it.id }
 
         if (chapterIdsToDownload.isEmpty()) {
             log.debug { "no chapters available for download" }
