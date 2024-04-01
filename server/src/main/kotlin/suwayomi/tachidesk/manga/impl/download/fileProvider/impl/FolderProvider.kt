@@ -1,11 +1,9 @@
 package suwayomi.tachidesk.manga.impl.download.fileProvider.impl
 
-import kotlinx.coroutines.CoroutineScope
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
-import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.storage.FileDeletionHelper
@@ -29,23 +27,16 @@ class FolderProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(manga
         return Pair(FileInputStream(file).buffered(), "image/$fileType")
     }
 
-    override suspend fun downloadImpl(
-        download: DownloadChapter,
-        scope: CoroutineScope,
-        step: suspend (DownloadChapter?, Boolean) -> Unit,
-    ): Boolean {
+    override fun handleExistingDownloadFolder() {
+        // nothing to do
+    }
+
+    override suspend fun handleSuccessfulDownload() {
         val chapterDir = getChapterDownloadPath(mangaId, chapterId)
         val folder = File(chapterDir)
 
-        val downloadSucceeded = super.downloadImpl(download, scope, step)
-        if (!downloadSucceeded) {
-            return false
-        }
-
         val cacheChapterDir = getChapterCachePath(mangaId, chapterId)
         File(cacheChapterDir).copyRecursively(folder, true)
-
-        return true
     }
 
     override fun delete(): Boolean {

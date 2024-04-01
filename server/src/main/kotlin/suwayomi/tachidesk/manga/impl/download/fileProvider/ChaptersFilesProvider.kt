@@ -28,12 +28,18 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
         return RetrieveFile1Args(::getImageImpl)
     }
 
+    protected abstract fun handleExistingDownloadFolder()
+
+    protected abstract suspend fun handleSuccessfulDownload()
+
     @OptIn(FlowPreview::class)
-    open suspend fun downloadImpl(
+    private suspend fun downloadImpl(
         download: DownloadChapter,
         scope: CoroutineScope,
         step: suspend (DownloadChapter?, Boolean) -> Unit,
     ): Boolean {
+        handleExistingDownloadFolder()
+
         val pageCount = download.chapter.pageCount
         val chapterDir = getChapterCachePath(mangaId, chapterId)
         val folder = File(chapterDir)
@@ -77,6 +83,8 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
                 ChapterTable.select { ChapterTable.id eq chapterId }.first()
             },
         )
+
+        handleSuccessfulDownload()
 
         return true
     }
