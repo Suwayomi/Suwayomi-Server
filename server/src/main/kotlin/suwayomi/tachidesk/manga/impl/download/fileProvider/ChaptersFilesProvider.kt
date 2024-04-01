@@ -14,6 +14,7 @@ import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.util.createComicInfoFile
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.io.File
@@ -55,7 +56,10 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
             var pageProgressJob: Job? = null
             val fileName = Page.getPageName(pageNum) // might have to change this to index stored in database
 
-            val doesPageAlreadyExist = File(finalDownloadFolder, fileName).exists() || File(downloadCacheFolder, fileName).exists()
+            val pageExistsInFinalDownloadFolder = ImageResponse.findFileNameStartingWith(finalDownloadFolder, fileName) != null
+            val pageExistsInCacheDownloadFolder = ImageResponse.findFileNameStartingWith(cacheChapterDir, fileName) != null
+
+            val doesPageAlreadyExist = pageExistsInFinalDownloadFolder || pageExistsInCacheDownloadFolder
             if (doesPageAlreadyExist) {
                 continue
             }
