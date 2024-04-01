@@ -41,6 +41,7 @@ import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.impl.util.updateMangaDownloadDir
+import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -365,5 +366,19 @@ object Manga {
 
         clearCachedImage(applicationDirs.tempThumbnailCacheRoot, fileName)
         clearCachedImage(applicationDirs.thumbnailDownloadsRoot, fileName)
+    }
+
+    fun getLatestChapter(mangaId: Int): ChapterDataClass? {
+        return transaction {
+            ChapterTable.select { ChapterTable.manga eq mangaId }.maxByOrNull { it[ChapterTable.sourceOrder] }
+        }?.let { ChapterTable.toDataClass(it) }
+    }
+
+    fun getUnreadChapters(mangaId: Int): List<ChapterDataClass> {
+        return transaction {
+            ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.isRead eq false) }
+                .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+                .map { ChapterTable.toDataClass(it) }
+        }
     }
 }

@@ -20,7 +20,6 @@ import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Op
-import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.and
@@ -136,6 +135,7 @@ object Chapter {
                         url = manga.url
                     }
 
+                val currentLatestChapterNumber = Manga.getLatestChapter(mangaId)?.chapterNumber ?: 0f
                 val numberOfCurrentChapters = getCountOfMangaChapters(mangaId)
                 val chapterList = source.getChapterList(sManga)
 
@@ -164,7 +164,10 @@ object Chapter {
                             .toList()
                     }
 
-                val chaptersToInsert = mutableListOf<ChapterDataClass>()
+                // new chapters after they have been added to the database for auto downloads
+                val insertedChapters = mutableListOf<ChapterDataClass>()
+
+                val chaptersToInsert = mutableListOf<ChapterDataClass>() // do not yet have an ID from the database
                 val chaptersToUpdate = mutableListOf<ChapterDataClass>()
 
                 chapterList.reversed().forEachIndexed { index, fetchedChapter ->
@@ -260,7 +263,7 @@ object Chapter {
                                     this[ChapterTable.fetchedAt] = it
                                 }
                             }
-                        }
+                        }.forEach { insertedChapters.add(ChapterTable.toDataClass(it)) }
                     }
 
                     if (chaptersToUpdate.isNotEmpty()) {
@@ -283,14 +286,8 @@ object Chapter {
                     }
                 }
 
-                val newChapters =
-                    transaction {
-                        ChapterTable.select { ChapterTable.manga eq mangaId }
-                            .orderBy(ChapterTable.sourceOrder to SortOrder.DESC).toList()
-                    }
-
                 if (manga.inLibrary) {
-                    downloadNewChapters(mangaId, numberOfCurrentChapters, newChapters)
+                    downloadNewChapters(mangaId, currentLatestChapterNumber, numberOfCurrentChapters, insertedChapters)
                 }
 
                 chapterList
@@ -301,15 +298,17 @@ object Chapter {
 
     private fun downloadNewChapters(
         mangaId: Int,
+        prevLatestChapterNumber: Float,
         prevNumberOfChapters: Int,
-        updatedChapterList: List<ResultRow>,
+        newChapters: List<ChapterDataClass>,
     ) {
         val log =
             KotlinLogging.logger(
                 "${logger.name}::downloadNewChapters(" +
                     "mangaId= $mangaId, " +
+                    "prevLatestChapterNumber= $prevLatestChapterNumber, " +
                     "prevNumberOfChapters= $prevNumberOfChapters, " +
-                    "updatedChapterList= ${updatedChapterList.size}, " +
+                    "newChapters= ${newChapters.size}, " +
                     "autoDownloadNewChaptersLimit= ${serverConfig.autoDownloadNewChaptersLimit.value}" +
                     ")",
             )
@@ -319,18 +318,12 @@ object Chapter {
             return
         }
 
-        // Only download if there are new chapters, or if this is the first fetch
-        val newNumberOfChapters = updatedChapterList.size
-        val numberOfNewChapters = newNumberOfChapters - prevNumberOfChapters
-
-        val areNewChaptersAvailable = numberOfNewChapters > 0
-        val wasInitialFetch = prevNumberOfChapters == 0
-
-        if (!areNewChaptersAvailable) {
+        if (newChapters.isEmpty()) {
             log.debug { "no new chapters available" }
             return
         }
 
+        val wasInitialFetch = prevNumberOfChapters == 0
         if (wasInitialFetch) {
             log.debug { "skipping download on initial fetch" }
             return
@@ -373,14 +366,7 @@ object Chapter {
             log.debug { "no categories configured, skipping check for category download include/excludes" }
         }
 
-        val newChapters = updatedChapterList.subList(0, numberOfNewChapters)
-
-        // make sure to only consider the latest chapters. e.g. old unread chapters should be ignored
-        val latestReadChapterIndex =
-            updatedChapterList.indexOfFirst { it[ChapterTable.isRead] }.takeIf { it > -1 } ?: (updatedChapterList.size)
-        val unreadChapters =
-            updatedChapterList.subList(numberOfNewChapters, latestReadChapterIndex)
-                .filter { !it[ChapterTable.isRead] }
+        val unreadChapters = Manga.getUnreadChapters(mangaId).subtract(newChapters.toSet())
 
         val skipDueToUnreadChapters = serverConfig.excludeEntryWithUnreadChapters.value && unreadChapters.isNotEmpty()
         if (skipDueToUnreadChapters) {
@@ -388,17 +374,14 @@ object Chapter {
             return
         }
 
-        val firstChapterToDownloadIndex =
-            if (serverConfig.autoDownloadNewChaptersLimit.value > 0) {
-                (numberOfNewChapters - serverConfig.autoDownloadNewChaptersLimit.value).coerceAtLeast(0)
+        val latestChapterToDownloadIndex =
+            if (serverConfig.autoDownloadNewChaptersLimit.value == 0) {
+                newChapters.size
             } else {
-                0
+                serverConfig.autoDownloadNewChaptersLimit.value.coerceAtMost(newChapters.size)
             }
 
-        val chapterIdsToDownload =
-            newChapters.subList(firstChapterToDownloadIndex, numberOfNewChapters)
-                .filter { !it[ChapterTable.isRead] && !it[ChapterTable.isDownloaded] }
-                .map { it[ChapterTable.id].value }
+        val chapterIdsToDownload = newChapters.sortedBy { it.index }.subList(0, latestChapterToDownloadIndex).map { it.id }
 
         if (chapterIdsToDownload.isEmpty()) {
             log.debug { "no chapters available for download" }
