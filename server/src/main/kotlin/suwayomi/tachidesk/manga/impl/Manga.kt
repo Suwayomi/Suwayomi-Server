@@ -394,37 +394,29 @@ object Manga {
         var mangaCategories = CategoryManga.getMangaCategories(mangaId).toSet()
         // if the manga has no categories, then it's implicitly in the default category
         if (mangaCategories.isEmpty()) {
-            val defaultCategory = Category.getCategoryById(Category.DEFAULT_CATEGORY_ID)
-            if (defaultCategory != null) {
-                mangaCategories = setOf(defaultCategory)
-            } else {
-                log.warn { "missing default category" }
-            }
+            val defaultCategory = Category.getCategoryById(Category.DEFAULT_CATEGORY_ID)!!
+            mangaCategories = setOf(defaultCategory)
         }
 
-        if (mangaCategories.isNotEmpty()) {
-            val downloadCategoriesMap = Category.getCategoryList().groupBy { it.includeInDownload }
-            val unsetCategories = downloadCategoriesMap[IncludeOrExclude.UNSET].orEmpty()
-            // We only download if it's in the include list, and not in the exclude list.
-            // Use the unset categories as the included categories if the included categories is
-            // empty
-            val includedCategories = downloadCategoriesMap[IncludeOrExclude.INCLUDE].orEmpty().ifEmpty { unsetCategories }
-            val excludedCategories = downloadCategoriesMap[IncludeOrExclude.EXCLUDE].orEmpty()
-            // Only download manga that aren't in any excluded categories
-            val mangaExcludeCategories = mangaCategories.intersect(excludedCategories.toSet())
-            if (mangaExcludeCategories.isNotEmpty()) {
-                log.debug { "download excluded by categories: '${mangaExcludeCategories.joinToString("', '") { it.name }}'" }
-                return false
-            }
-            val mangaDownloadCategories = mangaCategories.intersect(includedCategories.toSet())
-            if (mangaDownloadCategories.isNotEmpty()) {
-                log.debug { "download inluded by categories: '${mangaDownloadCategories.joinToString("', '") { it.name }}'" }
-            } else {
-                log.debug { "skipping download due to download categories configuration" }
-                return false
-            }
+        val downloadCategoriesMap = Category.getCategoryList().groupBy { it.includeInDownload }
+        val unsetCategories = downloadCategoriesMap[IncludeOrExclude.UNSET].orEmpty()
+        // We only download if it's in the include list, and not in the exclude list.
+        // Use the unset categories as the included categories if the included categories is
+        // empty
+        val includedCategories = downloadCategoriesMap[IncludeOrExclude.INCLUDE].orEmpty().ifEmpty { unsetCategories }
+        val excludedCategories = downloadCategoriesMap[IncludeOrExclude.EXCLUDE].orEmpty()
+        // Only download manga that aren't in any excluded categories
+        val mangaExcludeCategories = mangaCategories.intersect(excludedCategories.toSet())
+        if (mangaExcludeCategories.isNotEmpty()) {
+            log.debug { "download excluded by categories: '${mangaExcludeCategories.joinToString("', '") { it.name }}'" }
+            return false
+        }
+        val mangaDownloadCategories = mangaCategories.intersect(includedCategories.toSet())
+        if (mangaDownloadCategories.isNotEmpty()) {
+            log.debug { "download inluded by categories: '${mangaDownloadCategories.joinToString("', '") { it.name }}'" }
         } else {
-            log.debug { "no categories configured, skipping check for category download include/excludes" }
+            log.debug { "skipping download due to download categories configuration" }
+            return false
         }
 
         return true
