@@ -28,6 +28,7 @@ import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompare
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
+import suwayomi.tachidesk.graphql.queries.util.distinctOn
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
@@ -217,7 +218,12 @@ class MangaQuery {
     ): MangaNodeList {
         val queryResults =
             transaction {
-                val res = MangaTable.leftJoin(CategoryMangaTable).selectAll()
+                val res =
+                    MangaTable.leftJoin(CategoryMangaTable).slice(
+                        distinctOn(MangaTable.id),
+                        *(MangaTable.columns).toTypedArray(),
+                        *(CategoryMangaTable.columns).toTypedArray(),
+                    ).selectAll()
 
                 res.applyOps(condition, filter)
 
