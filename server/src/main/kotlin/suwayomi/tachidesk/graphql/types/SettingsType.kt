@@ -49,6 +49,7 @@ interface Settings : Node {
     )
     val autoDownloadAheadLimit: Int?
     val autoDownloadNewChaptersLimit: Int?
+    val autoDownloadIgnoreReUploads: Boolean?
 
     // extension
     val extensionRepos: List<String>?
@@ -118,6 +119,7 @@ data class PartialSettingsType(
     )
     override val autoDownloadAheadLimit: Int?,
     override val autoDownloadNewChaptersLimit: Int?,
+    override val autoDownloadIgnoreReUploads: Boolean?,
     // extension
     override val extensionRepos: List<String>?,
     // requests
@@ -179,6 +181,7 @@ class SettingsType(
     )
     override val autoDownloadAheadLimit: Int,
     override val autoDownloadNewChaptersLimit: Int,
+    override val autoDownloadIgnoreReUploads: Boolean?,
     // extension
     override val extensionRepos: List<String>,
     // requests
@@ -235,6 +238,7 @@ class SettingsType(
         config.excludeEntryWithUnreadChapters.value,
         config.autoDownloadNewChaptersLimit.value, // deprecated
         config.autoDownloadNewChaptersLimit.value,
+        config.autoDownloadIgnoreReUploads.value,
         // extension
         config.extensionRepos.value,
         // requests
