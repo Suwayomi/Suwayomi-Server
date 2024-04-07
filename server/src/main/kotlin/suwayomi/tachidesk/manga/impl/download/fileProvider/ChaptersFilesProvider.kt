@@ -13,6 +13,8 @@ import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.util.createComicInfoFile
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
+import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.io.File
@@ -28,21 +30,40 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
         return RetrieveFile1Args(::getImageImpl)
     }
 
+    /**
+     * Extract the existing download to the base download folder (see [getChapterDownloadPath])
+     */
+    protected abstract fun extractExistingDownload()
+
+    protected abstract suspend fun handleSuccessfulDownload()
+
     @OptIn(FlowPreview::class)
-    open suspend fun downloadImpl(
+    private suspend fun downloadImpl(
         download: DownloadChapter,
         scope: CoroutineScope,
         step: suspend (DownloadChapter?, Boolean) -> Unit,
     ): Boolean {
-        val pageCount = download.chapter.pageCount
-        val chapterDir = getChapterCachePath(mangaId, chapterId)
-        val folder = File(chapterDir)
-        folder.mkdirs()
+        extractExistingDownload()
 
+        val finalDownloadFolder = getChapterDownloadPath(mangaId, chapterId)
+
+        val cacheChapterDir = getChapterCachePath(mangaId, chapterId)
+        val downloadCacheFolder = File(cacheChapterDir)
+        downloadCacheFolder.mkdirs()
+
+        val pageCount = download.chapter.pageCount
         for (pageNum in 0 until pageCount) {
             var pageProgressJob: Job? = null
             val fileName = Page.getPageName(pageNum) // might have to change this to index stored in database
-            if (File(folder, fileName).exists()) continue
+
+            val pageExistsInFinalDownloadFolder = ImageResponse.findFileNameStartingWith(finalDownloadFolder, fileName) != null
+            val pageExistsInCacheDownloadFolder = ImageResponse.findFileNameStartingWith(cacheChapterDir, fileName) != null
+
+            val doesPageAlreadyExist = pageExistsInFinalDownloadFolder || pageExistsInCacheDownloadFolder
+            if (doesPageAlreadyExist) {
+                continue
+            }
+
             try {
                 Page.getPageImage(
                     mangaId = download.mangaId,
@@ -69,7 +90,7 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
         }
 
         createComicInfoFile(
-            folder.toPath(),
+            downloadCacheFolder.toPath(),
             transaction {
                 MangaTable.select { MangaTable.id eq mangaId }.first()
             },
@@ -77,6 +98,10 @@ abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : Dow
                 ChapterTable.select { ChapterTable.id eq chapterId }.first()
             },
         )
+
+        handleSuccessfulDownload()
+
+        File(cacheChapterDir).deleteRecursively()
 
         return true
     }

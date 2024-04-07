@@ -1,6 +1,5 @@
 package suwayomi.tachidesk.manga.impl.download.fileProvider.impl
 
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
@@ -11,7 +10,6 @@ import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
-import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getMangaDownloadDir
@@ -32,17 +30,21 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mang
         return Pair(inputStream.buffered(), "image/$fileType")
     }
 
-    override suspend fun downloadImpl(
-        download: DownloadChapter,
-        scope: CoroutineScope,
-        step: suspend (DownloadChapter?, Boolean) -> Unit,
-    ): Boolean {
+    override fun extractExistingDownload() {
+        val outputFile = File(getChapterCbzPath(mangaId, chapterId))
+        val chapterCacheFolder = File(getChapterCachePath(mangaId, chapterId))
+
+        if (!outputFile.exists()) {
+            return
+        }
+
+        extractCbzFile(outputFile, chapterCacheFolder)
+    }
+
+    override suspend fun handleSuccessfulDownload() {
         val mangaDownloadFolder = File(getMangaDownloadDir(mangaId))
         val outputFile = File(getChapterCbzPath(mangaId, chapterId))
         val chapterCacheFolder = File(getChapterCachePath(mangaId, chapterId))
-        if (outputFile.exists()) handleExistingCbzFile(outputFile, chapterCacheFolder)
-
-        super.downloadImpl(download, scope, step)
 
         withContext(Dispatchers.IO) {
             mangaDownloadFolder.mkdirs()
@@ -68,8 +70,6 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mang
         if (chapterCacheFolder.exists() && chapterCacheFolder.isDirectory) {
             chapterCacheFolder.deleteRecursively()
         }
-
-        return true
     }
 
     override fun delete(): Boolean {
@@ -83,7 +83,7 @@ class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mang
         return cbzDeleted
     }
 
-    private fun handleExistingCbzFile(
+    private fun extractCbzFile(
         cbzFile: File,
         chapterFolder: File,
     ) {
