@@ -50,6 +50,15 @@ import java.util.TreeSet
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
 
+private fun List<ChapterDataClass>.removeDuplicates(currentChapter: ChapterDataClass): List<ChapterDataClass> {
+    return groupBy { it.chapterNumber }
+        .map { (_, chapters) ->
+            chapters.find { it.id == currentChapter.id }
+                ?: chapters.find { it.scanlator == currentChapter.scanlator }
+                ?: chapters.first()
+        }
+}
+
 object Chapter {
     private val logger = KotlinLogging.logger { }
 
@@ -358,12 +367,12 @@ object Chapter {
         prevLatestChapterNumber: Float,
     ): List<Int> {
         val reUploadedChapters = newChapters.filter { it.chapterNumber < prevLatestChapterNumber }
-        val actualNewChapters = newChapters.subtract(reUploadedChapters.toSet())
+        val actualNewChapters = newChapters.subtract(reUploadedChapters.toSet()).toList()
         val chaptersToConsiderForDownloadLimit =
             if (serverConfig.autoDownloadIgnoreReUploads.value) {
-                actualNewChapters
+                actualNewChapters.removeDuplicates(actualNewChapters[0])
             } else {
-                newChapters
+                newChapters.removeDuplicates(newChapters[0])
             }.sortedBy { it.index }
 
         val latestChapterToDownloadIndex =
@@ -372,8 +381,16 @@ object Chapter {
             } else {
                 serverConfig.autoDownloadNewChaptersLimit.value.coerceAtMost(chaptersToConsiderForDownloadLimit.size)
             }
+        val limitedChaptersToDownload = chaptersToConsiderForDownloadLimit.subList(0, latestChapterToDownloadIndex)
+        val limitedChaptersToDownloadWithDuplicates =
+            (
+                limitedChaptersToDownload +
+                    newChapters.filter { newChapter ->
+                        limitedChaptersToDownload.find { it.chapterNumber == newChapter.chapterNumber } != null
+                    }
+            ).toSet()
 
-        return chaptersToConsiderForDownloadLimit.subList(0, latestChapterToDownloadIndex).map { it.id }
+        return limitedChaptersToDownloadWithDuplicates.map { it.id }
     }
 
     fun modifyChapter(
