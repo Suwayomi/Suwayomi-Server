@@ -317,15 +317,22 @@ object Track {
         records.forEach {
             val tracker = TrackerManager.getTracker(it[TrackRecordTable.trackerId]) ?: return@forEach
 
+            val localLastReadChapter = it[TrackRecordTable.lastChapterRead]
+
+            val log = KotlinLogging.logger { "${logger.name}::trackChapter(mangaId= $mangaId, chapterNumber= $chapterNumber)" }
+
+            if (localLastReadChapter == chapterNumber) {
+                log.debug { "new chapter is the same as the local last read chapter" }
+                return@forEach
+            }
+
             val track = it.toTrack()
             tracker.refresh(track)
             upsertTrackRecord(track)
 
             val lastChapterRead = track.last_chapter_read
 
-            logger.debug {
-                "trackChapter(mangaId= $mangaId, chapterNumber= $chapterNumber): tracker= $tracker, remoteLastReadChapter= $lastChapterRead"
-            }
+            log.debug { "tracker= $tracker, remoteLastReadChapter= $lastChapterRead" }
 
             if (tracker.isLoggedIn && chapterNumber > lastChapterRead) {
                 track.last_chapter_read = chapterNumber.toFloat()
