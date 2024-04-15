@@ -12,6 +12,7 @@ import com.expediagroup.graphql.server.execution.GraphQLRequestHandler
 import com.expediagroup.graphql.server.execution.GraphQLServer
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import graphql.GraphQL
+import graphql.execution.AsyncExecutionStrategy
 import io.javalin.http.Context
 import io.javalin.websocket.WsCloseContext
 import io.javalin.websocket.WsMessageContext
@@ -47,6 +48,7 @@ class TachideskGraphQLServer(
         private fun getGraphQLObject(): GraphQL =
             GraphQL.newGraphQL(schema)
                 .subscriptionExecutionStrategy(FlowSubscriptionExecutionStrategy())
+                .mutationExecutionStrategy(AsyncExecutionStrategy())
                 .build()
 
         fun create(): TachideskGraphQLServer {
