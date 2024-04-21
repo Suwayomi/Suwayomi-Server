@@ -370,7 +370,7 @@ object Chapter {
         val actualNewChapters = newChapters.subtract(reUploadedChapters.toSet()).toList()
         val chaptersToConsiderForDownloadLimit =
             if (serverConfig.autoDownloadIgnoreReUploads.value) {
-                actualNewChapters.removeDuplicates(actualNewChapters[0])
+                if (actualNewChapters.isNotEmpty()) actualNewChapters.removeDuplicates(actualNewChapters[0]) else emptyList()
             } else {
                 newChapters.removeDuplicates(newChapters[0])
             }.sortedBy { it.index }
