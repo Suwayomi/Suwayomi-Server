@@ -1,11 +1,12 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.impl.Chapter
@@ -55,19 +56,34 @@ class ChapterMutation {
         patch: UpdateChapterPatch,
     ) {
         transaction {
+            val chapterIdToPageCount =
+                if (patch.lastPageRead != null) {
+                    ChapterTable
+                        .slice(ChapterTable.id, ChapterTable.pageCount)
+                        .select { ChapterTable.id inList ids }
+                        .groupBy { it[ChapterTable.id].value }
+                        .mapValues { it.value.firstOrNull()?.let { it[ChapterTable.pageCount] } }
+                } else {
+                    emptyMap()
+                }
             if (patch.isRead != null || patch.isBookmarked != null || patch.lastPageRead != null) {
                 val now = Instant.now().epochSecond
-                ChapterTable.update({ ChapterTable.id inList ids }) { update ->
-                    patch.isRead?.also {
-                        update[isRead] = it
+
+                BatchUpdateStatement(ChapterTable).apply {
+                    ids.forEach { chapterId ->
+                        addBatch(EntityID(chapterId, ChapterTable))
+                        patch.isRead?.also {
+                            this[ChapterTable.isRead] = it
+                        }
+                        patch.isBookmarked?.also {
+                            this[ChapterTable.isBookmarked] = it
+                        }
+                        patch.lastPageRead?.also {
+                            this[ChapterTable.lastPageRead] = it.coerceAtMost(chapterIdToPageCount[it] ?: 0).coerceAtLeast(0)
+                            this[ChapterTable.lastReadAt] = now
+                        }
                     }
-                    patch.isBookmarked?.also {
-                        update[isBookmarked] = it
-                    }
-                    patch.lastPageRead?.also {
-                        update[lastPageRead] = it
-                        update[lastReadAt] = now
-                    }
+                    execute(this@transaction)
                 }
             }
         }
