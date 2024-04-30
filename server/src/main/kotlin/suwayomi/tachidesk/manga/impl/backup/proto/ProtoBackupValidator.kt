@@ -15,6 +15,7 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSerializer
+import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import java.io.InputStream
 
@@ -39,17 +40,18 @@ object ProtoBackupValidator {
                 sources.filter { SourceTable.select { SourceTable.id eq it.key }.firstOrNull() == null }
             }
 
-//        val trackers = backup.backupManga
-//            .flatMap { it.tracking }
-//            .map { it.syncId }
-//            .distinct()
+        val trackers =
+            backup.backupManga
+                .flatMap { it.tracking }
+                .map { it.syncId }
+                .distinct()
 
-        val missingTrackers = listOf("")
-//        val missingTrackers = trackers
-//            .mapNotNull { trackManager.getService(it) }
-//            .filter { !it.isLogged }
-//            .map { context.getString(it.nameRes()) }
-//            .sorted()
+        val missingTrackers =
+            trackers
+                .mapNotNull { TrackerManager.getTracker(it) }
+                .filter { !it.isLoggedIn }
+                .map { it.name }
+                .sorted()
 
         return ValidationResult(
             missingSources
