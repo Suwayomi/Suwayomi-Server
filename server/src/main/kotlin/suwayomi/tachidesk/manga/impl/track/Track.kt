@@ -74,9 +74,6 @@ object Track {
     }
 
     fun getTrackRecordsByMangaId(mangaId: Int): List<MangaTrackerDataClass> {
-        if (!TrackerManager.hasLoggedTracker()) {
-            return emptyList()
-        }
         val recordMap =
             transaction {
                 TrackRecordTable.select { TrackRecordTable.mangaId eq mangaId }
