@@ -339,7 +339,7 @@ object Track {
         }
     }
 
-    private fun upsertTrackRecord(track: Track): Int {
+    fun upsertTrackRecord(track: Track): Int {
         return transaction {
             val existingRecord =
                 TrackRecordTable.select {
@@ -349,40 +349,52 @@ object Track {
                     .singleOrNull()
 
             if (existingRecord != null) {
-                TrackRecordTable.update({
-                    (TrackRecordTable.mangaId eq track.manga_id) and
-                        (TrackRecordTable.trackerId eq track.sync_id)
-                }) {
-                    it[remoteId] = track.media_id
-                    it[libraryId] = track.library_id
-                    it[title] = track.title
-                    it[lastChapterRead] = track.last_chapter_read.toDouble()
-                    it[totalChapters] = track.total_chapters
-                    it[status] = track.status
-                    it[score] = track.score.toDouble()
-                    it[remoteUrl] = track.tracking_url
-                    it[startDate] = track.started_reading_date
-                    it[finishDate] = track.finished_reading_date
-                }
+                updateTrackRecord(track)
                 existingRecord[TrackRecordTable.id].value
             } else {
-                TrackRecordTable.insertAndGetId {
-                    it[mangaId] = track.manga_id
-                    it[trackerId] = track.sync_id
-                    it[remoteId] = track.media_id
-                    it[libraryId] = track.library_id
-                    it[title] = track.title
-                    it[lastChapterRead] = track.last_chapter_read.toDouble()
-                    it[totalChapters] = track.total_chapters
-                    it[status] = track.status
-                    it[score] = track.score.toDouble()
-                    it[remoteUrl] = track.tracking_url
-                    it[startDate] = track.started_reading_date
-                    it[finishDate] = track.finished_reading_date
-                }.value
+                insertTrackRecord(track)
             }
         }
     }
+
+    fun updateTrackRecord(track: Track): Int =
+        transaction {
+            TrackRecordTable.update(
+                {
+                    (TrackRecordTable.mangaId eq track.manga_id) and
+                        (TrackRecordTable.trackerId eq track.sync_id)
+                },
+            ) {
+                it[remoteId] = track.media_id
+                it[libraryId] = track.library_id
+                it[title] = track.title
+                it[lastChapterRead] = track.last_chapter_read.toDouble()
+                it[totalChapters] = track.total_chapters
+                it[status] = track.status
+                it[score] = track.score.toDouble()
+                it[remoteUrl] = track.tracking_url
+                it[startDate] = track.started_reading_date
+                it[finishDate] = track.finished_reading_date
+            }
+        }
+
+    fun insertTrackRecord(track: Track): Int =
+        transaction {
+            TrackRecordTable.insertAndGetId {
+                it[mangaId] = track.manga_id
+                it[trackerId] = track.sync_id
+                it[remoteId] = track.media_id
+                it[libraryId] = track.library_id
+                it[title] = track.title
+                it[lastChapterRead] = track.last_chapter_read.toDouble()
+                it[totalChapters] = track.total_chapters
+                it[status] = track.status
+                it[score] = track.score.toDouble()
+                it[remoteUrl] = track.tracking_url
+                it[startDate] = track.started_reading_date
+                it[finishDate] = track.finished_reading_date
+            }.value
+        }
 
     @Serializable
     data class LoginInput(
