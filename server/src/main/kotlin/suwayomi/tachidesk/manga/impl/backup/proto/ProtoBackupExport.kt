@@ -31,6 +31,8 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSerializer
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSource
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupTracking
+import suwayomi.tachidesk.manga.impl.track.Track
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
@@ -230,9 +232,32 @@ object ProtoBackupExport : ProtoBackupBase() {
                 backupManga.categories = CategoryManga.getMangaCategories(mangaId).map { it.order }
             }
 
-//            if(flags.includeTracking) {
-//                backupManga.tracking = TODO()
-//            }
+            if (flags.includeTracking) {
+                val tracks =
+                    Track.getTrackRecordsByMangaId(mangaRow[MangaTable.id].value).mapNotNull {
+                        if (it.record == null) {
+                            null
+                        } else {
+                            BackupTracking(
+                                syncId = it.record.trackerId,
+                                // forced not null so its compatible with 1.x backup system
+                                libraryId = it.record.libraryId ?: 0,
+                                mediaId = it.record.remoteId,
+                                title = it.record.title,
+                                lastChapterRead = it.record.lastChapterRead.toFloat(),
+                                totalChapters = it.record.totalChapters,
+                                score = it.record.score.toFloat(),
+                                status = it.record.status,
+                                startedReadingDate = it.record.startDate,
+                                finishedReadingDate = it.record.finishDate,
+                                trackingUrl = it.record.remoteUrl,
+                            )
+                        }
+                    }
+                if (tracks.isNotEmpty()) {
+                    backupManga.tracking = tracks
+                }
+            }
 
 //            if (flags.includeHistory) {
 //                backupManga.history = TODO()

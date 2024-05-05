@@ -9,7 +9,7 @@ class TrackImpl : Track {
 
     override var sync_id: Int = 0
 
-    override var media_id: Int = 0
+    override var media_id: Long = 0L
 
     override var library_id: Long? = null
 
@@ -43,7 +43,7 @@ class TrackImpl : Track {
     override fun hashCode(): Int {
         var result = (manga_id xor manga_id.ushr(32)).toInt()
         result = 31 * result + sync_id
-        result = 31 * result + media_id
+        result = (31 * result + media_id).toInt()
         return result
     }
 }

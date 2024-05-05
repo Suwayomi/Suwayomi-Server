@@ -34,22 +34,26 @@ import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Manga.clearThumbnail
 import suwayomi.tachidesk.manga.impl.backup.models.Chapter
 import suwayomi.tachidesk.manga.impl.backup.models.Manga
-import suwayomi.tachidesk.manga.impl.backup.models.Track
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.ValidationResult
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.validate
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupHistory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSerializer
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupTracking
+import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrack
+import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrackRecordDataClass
+import suwayomi.tachidesk.manga.model.dataclass.TrackRecordDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.io.InputStream
-import java.lang.Integer.max
 import java.util.Date
 import java.util.Timer
 import java.util.TimerTask
 import java.util.concurrent.TimeUnit
+import kotlin.math.max
+import suwayomi.tachidesk.manga.impl.track.Track as Tracker
 
 object ProtoBackupImport : ProtoBackupBase() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -239,10 +243,9 @@ object ProtoBackupImport : ProtoBackupBase() {
         val chapters = backupManga.getChaptersImpl()
         val categories = backupManga.categories
         val history = backupManga.brokenHistory.map { BackupHistory(it.url, it.lastRead) } + backupManga.history
-        val tracks = backupManga.getTrackingImpl()
 
         try {
-            restoreMangaData(manga, chapters, categories, history, tracks, backupCategories, categoryMapping)
+            restoreMangaData(manga, chapters, categories, history, backupManga.tracking, backupCategories, categoryMapping)
         } catch (e: Exception) {
             val sourceName = sourceMapping[manga.source] ?: manga.source.toString()
             errors.add(Date() to "${manga.title} [$sourceName]: ${e.message}")
@@ -255,7 +258,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         chapters: List<Chapter>,
         categories: List<Int>,
         history: List<BackupHistory>,
-        tracks: List<Track>,
+        tracks: List<BackupTracking>,
         backupCategories: List<BackupCategory>,
         categoryMapping: Map<Int, Int>,
     ) {
@@ -265,127 +268,159 @@ object ProtoBackupImport : ProtoBackupBase() {
                     .firstOrNull()
             }
 
-        if (dbManga == null) { // Manga not in database
-            transaction {
-                // insert manga to database
-                val mangaId =
-                    MangaTable.insertAndGetId {
-                        it[url] = manga.url
-                        it[title] = manga.title
+        val mangaId =
+            if (dbManga == null) { // Manga not in database
+                transaction {
+                    // insert manga to database
+                    val mangaId =
+                        MangaTable.insertAndGetId {
+                            it[url] = manga.url
+                            it[title] = manga.title
 
-                        it[artist] = manga.artist
-                        it[author] = manga.author
-                        it[description] = manga.description
-                        it[genre] = manga.genre
+                            it[artist] = manga.artist
+                            it[author] = manga.author
+                            it[description] = manga.description
+                            it[genre] = manga.genre
+                            it[status] = manga.status
+                            it[thumbnail_url] = manga.thumbnail_url
+                            it[updateStrategy] = manga.update_strategy.name
+
+                            it[sourceReference] = manga.source
+
+                            it[initialized] = manga.description != null
+
+                            it[inLibrary] = manga.favorite
+
+                            it[inLibraryAt] = TimeUnit.MILLISECONDS.toSeconds(manga.date_added)
+                        }.value
+
+                    // delete thumbnail in case cached data still exists
+                    clearThumbnail(mangaId)
+
+                    // insert chapter data
+                    val chaptersLength = chapters.size
+                    ChapterTable.batchInsert(chapters) { chapter ->
+                        this[ChapterTable.url] = chapter.url
+                        this[ChapterTable.name] = chapter.name
+                        if (chapter.date_upload == 0L) {
+                            this[ChapterTable.date_upload] = chapter.date_fetch
+                        } else {
+                            this[ChapterTable.date_upload] = chapter.date_upload
+                        }
+                        this[ChapterTable.chapter_number] = chapter.chapter_number
+                        this[ChapterTable.scanlator] = chapter.scanlator
+
+                        this[ChapterTable.sourceOrder] = chaptersLength - chapter.source_order
+                        this[ChapterTable.manga] = mangaId
+
+                        this[ChapterTable.isRead] = chapter.read
+                        this[ChapterTable.lastPageRead] = chapter.last_page_read
+                        this[ChapterTable.isBookmarked] = chapter.bookmark
+
+                        this[ChapterTable.fetchedAt] = TimeUnit.MILLISECONDS.toSeconds(chapter.date_fetch)
+                    }
+
+                    // insert categories
+                    categories.forEach { backupCategoryOrder ->
+                        CategoryManga.addMangaToCategory(mangaId, categoryMapping[backupCategoryOrder]!!)
+                    }
+
+                    mangaId
+                }
+            } else { // Manga in database
+                transaction {
+                    val mangaId = dbManga[MangaTable.id].value
+
+                    // Merge manga data
+                    MangaTable.update({ MangaTable.id eq mangaId }) {
+                        it[artist] = manga.artist ?: dbManga[artist]
+                        it[author] = manga.author ?: dbManga[author]
+                        it[description] = manga.description ?: dbManga[description]
+                        it[genre] = manga.genre ?: dbManga[genre]
                         it[status] = manga.status
-                        it[thumbnail_url] = manga.thumbnail_url
+                        it[thumbnail_url] = manga.thumbnail_url ?: dbManga[thumbnail_url]
                         it[updateStrategy] = manga.update_strategy.name
 
-                        it[sourceReference] = manga.source
+                        it[initialized] = dbManga[initialized] || manga.description != null
 
-                        it[initialized] = manga.description != null
-
-                        it[inLibrary] = manga.favorite
+                        it[inLibrary] = manga.favorite || dbManga[inLibrary]
 
                         it[inLibraryAt] = TimeUnit.MILLISECONDS.toSeconds(manga.date_added)
-                    }.value
-
-                // delete thumbnail in case cached data still exists
-                clearThumbnail(mangaId)
-
-                // insert chapter data
-                val chaptersLength = chapters.size
-                ChapterTable.batchInsert(chapters) { chapter ->
-                    this[ChapterTable.url] = chapter.url
-                    this[ChapterTable.name] = chapter.name
-                    if (chapter.date_upload == 0L) {
-                        this[ChapterTable.date_upload] = chapter.date_fetch
-                    } else {
-                        this[ChapterTable.date_upload] = chapter.date_upload
                     }
-                    this[ChapterTable.chapter_number] = chapter.chapter_number
-                    this[ChapterTable.scanlator] = chapter.scanlator
 
-                    this[ChapterTable.sourceOrder] = chaptersLength - chapter.source_order
-                    this[ChapterTable.manga] = mangaId
+                    // merge chapter data
+                    val chaptersLength = chapters.size
+                    val dbChapters = ChapterTable.select { ChapterTable.manga eq mangaId }
 
-                    this[ChapterTable.isRead] = chapter.read
-                    this[ChapterTable.lastPageRead] = chapter.last_page_read
-                    this[ChapterTable.isBookmarked] = chapter.bookmark
+                    chapters.forEach { chapter ->
+                        val dbChapter = dbChapters.find { it[ChapterTable.url] == chapter.url }
 
-                    this[ChapterTable.fetchedAt] = TimeUnit.MILLISECONDS.toSeconds(chapter.date_fetch)
-                }
+                        if (dbChapter == null) {
+                            ChapterTable.insert {
+                                it[url] = chapter.url
+                                it[name] = chapter.name
+                                if (chapter.date_upload == 0L) {
+                                    it[date_upload] = chapter.date_fetch
+                                } else {
+                                    it[date_upload] = chapter.date_upload
+                                }
+                                it[chapter_number] = chapter.chapter_number
+                                it[scanlator] = chapter.scanlator
 
-                // insert categories
-                categories.forEach { backupCategoryOrder ->
-                    CategoryManga.addMangaToCategory(mangaId, categoryMapping[backupCategoryOrder]!!)
-                }
-            }
-        } else { // Manga in database
-            transaction {
-                val mangaId = dbManga[MangaTable.id].value
+                                it[sourceOrder] = chaptersLength - chapter.source_order
+                                it[ChapterTable.manga] = mangaId
 
-                // Merge manga data
-                MangaTable.update({ MangaTable.id eq mangaId }) {
-                    it[artist] = manga.artist ?: dbManga[artist]
-                    it[author] = manga.author ?: dbManga[author]
-                    it[description] = manga.description ?: dbManga[description]
-                    it[genre] = manga.genre ?: dbManga[genre]
-                    it[status] = manga.status
-                    it[thumbnail_url] = manga.thumbnail_url ?: dbManga[thumbnail_url]
-                    it[updateStrategy] = manga.update_strategy.name
-
-                    it[initialized] = dbManga[initialized] || manga.description != null
-
-                    it[inLibrary] = manga.favorite || dbManga[inLibrary]
-
-                    it[inLibraryAt] = TimeUnit.MILLISECONDS.toSeconds(manga.date_added)
-                }
-
-                // merge chapter data
-                val chaptersLength = chapters.size
-                val dbChapters = ChapterTable.select { ChapterTable.manga eq mangaId }
-
-                chapters.forEach { chapter ->
-                    val dbChapter = dbChapters.find { it[ChapterTable.url] == chapter.url }
-
-                    if (dbChapter == null) {
-                        ChapterTable.insert {
-                            it[url] = chapter.url
-                            it[name] = chapter.name
-                            if (chapter.date_upload == 0L) {
-                                it[date_upload] = chapter.date_fetch
-                            } else {
-                                it[date_upload] = chapter.date_upload
+                                it[isRead] = chapter.read
+                                it[lastPageRead] = chapter.last_page_read
+                                it[isBookmarked] = chapter.bookmark
                             }
-                            it[chapter_number] = chapter.chapter_number
-                            it[scanlator] = chapter.scanlator
-
-                            it[sourceOrder] = chaptersLength - chapter.source_order
-                            it[ChapterTable.manga] = mangaId
-
-                            it[isRead] = chapter.read
-                            it[lastPageRead] = chapter.last_page_read
-                            it[isBookmarked] = chapter.bookmark
-                        }
-                    } else {
-                        ChapterTable.update({ (ChapterTable.url eq dbChapter[ChapterTable.url]) and (ChapterTable.manga eq mangaId) }) {
-                            it[isRead] = chapter.read || dbChapter[isRead]
-                            it[lastPageRead] = max(chapter.last_page_read, dbChapter[lastPageRead])
-                            it[isBookmarked] = chapter.bookmark || dbChapter[isBookmarked]
+                        } else {
+                            ChapterTable.update({ (ChapterTable.url eq dbChapter[ChapterTable.url]) and (ChapterTable.manga eq mangaId) }) {
+                                it[isRead] = chapter.read || dbChapter[isRead]
+                                it[lastPageRead] = max(chapter.last_page_read, dbChapter[lastPageRead])
+                                it[isBookmarked] = chapter.bookmark || dbChapter[isBookmarked]
+                            }
                         }
                     }
-                }
 
-                // merge categories
-                categories.forEach { backupCategoryOrder ->
-                    CategoryManga.addMangaToCategory(mangaId, categoryMapping[backupCategoryOrder]!!)
+                    // merge categories
+                    categories.forEach { backupCategoryOrder ->
+                        CategoryManga.addMangaToCategory(mangaId, categoryMapping[backupCategoryOrder]!!)
+                    }
+
+                    mangaId
                 }
             }
-        }
+
+        val dbTrackRecordsByTrackerId =
+            Tracker.getTrackRecordsByMangaId(mangaId)
+                .mapNotNull { it.record?.toTrack() }
+                .associateBy { it.sync_id }
+
+        val (existingTracks, newTracks) =
+            tracks.mapNotNull { backupTrack ->
+                val track = backupTrack.toTrack(mangaId)
+                val dbTrack =
+                    dbTrackRecordsByTrackerId[backupTrack.syncId]
+                        ?: // new track
+                        return@mapNotNull track
+
+                if (track.toTrackRecordDataClass().forComparison() == dbTrack.toTrackRecordDataClass().forComparison()) {
+                    return@mapNotNull null
+                }
+
+                dbTrack.also {
+                    it.media_id = track.media_id
+                    it.library_id = track.library_id
+                    it.last_chapter_read = max(dbTrack.last_chapter_read, track.last_chapter_read)
+                }
+            }.partition { (it.id ?: -1) > 0 }
+
+        existingTracks.forEach(Tracker::updateTrackRecord)
+        newTracks.forEach(Tracker::insertTrackRecord)
 
         // TODO: insert/merge history
-
-        // TODO: insert/merge tracking
     }
+
+    private fun TrackRecordDataClass.forComparison() = this.copy(id = 0, mangaId = 0)
 }
