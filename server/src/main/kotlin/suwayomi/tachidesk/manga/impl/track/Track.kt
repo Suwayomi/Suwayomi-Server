@@ -81,27 +81,25 @@ object Track {
             }.associateBy { it.trackerId }
 
         val trackers = TrackerManager.services
-        return trackers
-            .filter { it.isLoggedIn }
-            .map {
-                val record = recordMap[it.id]
-                if (record != null) {
-                    val track =
-                        Track.create(it.id).also { t ->
-                            t.score = record.score.toFloat()
-                        }
-                    record.scoreString = it.displayScore(track)
-                }
-                MangaTrackerDataClass(
-                    id = it.id,
-                    name = it.name,
-                    icon = proxyThumbnailUrl(it.id),
-                    statusList = it.getStatusList(),
-                    statusTextMap = it.getStatusList().associateWith { k -> it.getStatus(k).orEmpty() },
-                    scoreList = it.getScoreList(),
-                    record = record,
-                )
+        return trackers.map {
+            val record = recordMap[it.id]
+            if (record != null) {
+                val track =
+                    Track.create(it.id).also { t ->
+                        t.score = record.score.toFloat()
+                    }
+                record.scoreString = it.displayScore(track)
             }
+            MangaTrackerDataClass(
+                id = it.id,
+                name = it.name,
+                icon = proxyThumbnailUrl(it.id),
+                statusList = it.getStatusList(),
+                statusTextMap = it.getStatusList().associateWith { k -> it.getStatus(k).orEmpty() },
+                scoreList = it.getScoreList(),
+                record = record,
+            )
+        }
     }
 
     suspend fun search(input: SearchInput): List<TrackSearchDataClass> {
