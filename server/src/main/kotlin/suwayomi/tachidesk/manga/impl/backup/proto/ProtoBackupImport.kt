@@ -41,6 +41,7 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupHistory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSerializer
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupTracking
+import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrack
 import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrackRecordDataClass
 import suwayomi.tachidesk.manga.model.dataclass.TrackRecordDataClass
@@ -404,6 +405,11 @@ object ProtoBackupImport : ProtoBackupBase() {
                     dbTrackRecordsByTrackerId[backupTrack.syncId]
                         ?: // new track
                         return@mapNotNull track
+
+                val isUnsupportedTracker = TrackerManager.getTracker(track.sync_id) == null
+                if (isUnsupportedTracker) {
+                    return@mapNotNull null
+                }
 
                 if (track.toTrackRecordDataClass().forComparison() == dbTrack.toTrackRecordDataClass().forComparison()) {
                     return@mapNotNull null
