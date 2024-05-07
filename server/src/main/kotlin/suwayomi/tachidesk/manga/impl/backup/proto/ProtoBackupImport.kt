@@ -401,15 +401,16 @@ object ProtoBackupImport : ProtoBackupBase() {
         val (existingTracks, newTracks) =
             tracks.mapNotNull { backupTrack ->
                 val track = backupTrack.toTrack(mangaId)
-                val dbTrack =
-                    dbTrackRecordsByTrackerId[backupTrack.syncId]
-                        ?: // new track
-                        return@mapNotNull track
 
                 val isUnsupportedTracker = TrackerManager.getTracker(track.sync_id) == null
                 if (isUnsupportedTracker) {
                     return@mapNotNull null
                 }
+
+                val dbTrack =
+                    dbTrackRecordsByTrackerId[backupTrack.syncId]
+                        ?: // new track
+                        return@mapNotNull track
 
                 if (track.toTrackRecordDataClass().forComparison() == dbTrack.toTrackRecordDataClass().forComparison()) {
                     return@mapNotNull null
