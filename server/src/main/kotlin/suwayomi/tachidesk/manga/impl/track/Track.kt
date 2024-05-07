@@ -204,7 +204,7 @@ object Track {
                 TrackRecordTable.select { TrackRecordTable.id eq recordId }.first()
             }
 
-        val tracker = TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])!!
+        val tracker = TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])
 
         if (deleteRemoteTrack == true && tracker is DeletableTrackService) {
             tracker.delete(recordDb.toTrack())
