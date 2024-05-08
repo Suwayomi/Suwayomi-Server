@@ -313,7 +313,7 @@ object Track {
             try {
                 trackChapterForTracker(it, chapterNumber)
             } catch (e: Exception) {
-                KotlinLogging.logger { "${logger.name}::trackChapter(mangaId= $mangaId, chapterNumber= $chapterNumber)" }
+                KotlinLogging.logger("${logger.name}::trackChapter(mangaId= $mangaId, chapterNumber= $chapterNumber)")
                     .error(e) { "failed due to" }
             }
         }
