@@ -1,11 +1,13 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import graphql.execution.DataFetcherResult
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.global.impl.GlobalMeta
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
+import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.types.GlobalMetaType
 
 class MetaMutation {
@@ -19,12 +21,14 @@ class MetaMutation {
         val meta: GlobalMetaType,
     )
 
-    fun setGlobalMeta(input: SetGlobalMetaInput): SetGlobalMetaPayload {
+    fun setGlobalMeta(input: SetGlobalMetaInput): DataFetcherResult<SetGlobalMetaPayload?> {
         val (clientMutationId, meta) = input
 
-        GlobalMeta.modifyMeta(meta.key, meta.value)
+        return asDataFetcherResult {
+            GlobalMeta.modifyMeta(meta.key, meta.value)
 
-        return SetGlobalMetaPayload(clientMutationId, meta)
+            SetGlobalMetaPayload(clientMutationId, meta)
+        }
     }
 
     data class DeleteGlobalMetaInput(
@@ -37,24 +41,26 @@ class MetaMutation {
         val meta: GlobalMetaType?,
     )
 
-    fun deleteGlobalMeta(input: DeleteGlobalMetaInput): DeleteGlobalMetaPayload {
+    fun deleteGlobalMeta(input: DeleteGlobalMetaInput): DataFetcherResult<DeleteGlobalMetaPayload?> {
         val (clientMutationId, key) = input
 
-        val meta =
-            transaction {
-                val meta =
-                    GlobalMetaTable.select { GlobalMetaTable.key eq key }
-                        .firstOrNull()
+        return asDataFetcherResult {
+            val meta =
+                transaction {
+                    val meta =
+                        GlobalMetaTable.select { GlobalMetaTable.key eq key }
+                            .firstOrNull()
 
-                GlobalMetaTable.deleteWhere { GlobalMetaTable.key eq key }
+                    GlobalMetaTable.deleteWhere { GlobalMetaTable.key eq key }
 
-                if (meta != null) {
-                    GlobalMetaType(meta)
-                } else {
-                    null
+                    if (meta != null) {
+                        GlobalMetaType(meta)
+                    } else {
+                        null
+                    }
                 }
-            }
 
-        return DeleteGlobalMetaPayload(clientMutationId, meta)
+            DeleteGlobalMetaPayload(clientMutationId, meta)
+        }
     }
 }

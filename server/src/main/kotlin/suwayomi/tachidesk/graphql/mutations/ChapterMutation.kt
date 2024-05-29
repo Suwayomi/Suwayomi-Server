@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import graphql.execution.DataFetcherResult
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
@@ -7,6 +8,7 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.impl.Chapter
@@ -89,36 +91,40 @@ class ChapterMutation {
         }
     }
 
-    fun updateChapter(input: UpdateChapterInput): UpdateChapterPayload {
-        val (clientMutationId, id, patch) = input
+    fun updateChapter(input: UpdateChapterInput): DataFetcherResult<UpdateChapterPayload?> {
+        return asDataFetcherResult {
+            val (clientMutationId, id, patch) = input
 
-        updateChapters(listOf(id), patch)
+            updateChapters(listOf(id), patch)
 
-        val chapter =
-            transaction {
-                ChapterType(ChapterTable.select { ChapterTable.id eq id }.first())
-            }
+            val chapter =
+                transaction {
+                    ChapterType(ChapterTable.select { ChapterTable.id eq id }.first())
+                }
 
-        return UpdateChapterPayload(
-            clientMutationId = clientMutationId,
-            chapter = chapter,
-        )
+            UpdateChapterPayload(
+                clientMutationId = clientMutationId,
+                chapter = chapter,
+            )
+        }
     }
 
-    fun updateChapters(input: UpdateChaptersInput): UpdateChaptersPayload {
-        val (clientMutationId, ids, patch) = input
+    fun updateChapters(input: UpdateChaptersInput): DataFetcherResult<UpdateChaptersPayload?> {
+        return asDataFetcherResult {
+            val (clientMutationId, ids, patch) = input
 
-        updateChapters(ids, patch)
+            updateChapters(ids, patch)
 
-        val chapters =
-            transaction {
-                ChapterTable.select { ChapterTable.id inList ids }.map { ChapterType(it) }
-            }
+            val chapters =
+                transaction {
+                    ChapterTable.select { ChapterTable.id inList ids }.map { ChapterType(it) }
+                }
 
-        return UpdateChaptersPayload(
-            clientMutationId = clientMutationId,
-            chapters = chapters,
-        )
+            UpdateChaptersPayload(
+                clientMutationId = clientMutationId,
+                chapters = chapters,
+            )
+        }
     }
 
     data class FetchChaptersInput(
@@ -131,23 +137,25 @@ class ChapterMutation {
         val chapters: List<ChapterType>,
     )
 
-    fun fetchChapters(input: FetchChaptersInput): CompletableFuture<FetchChaptersPayload> {
+    fun fetchChapters(input: FetchChaptersInput): CompletableFuture<DataFetcherResult<FetchChaptersPayload?>> {
         val (clientMutationId, mangaId) = input
 
         return future {
-            Chapter.fetchChapterList(mangaId)
-        }.thenApply {
-            val chapters =
-                transaction {
-                    ChapterTable.select { ChapterTable.manga eq mangaId }
-                        .orderBy(ChapterTable.sourceOrder)
-                        .map { ChapterType(it) }
-                }
+            asDataFetcherResult {
+                Chapter.fetchChapterList(mangaId)
 
-            FetchChaptersPayload(
-                clientMutationId = clientMutationId,
-                chapters = chapters,
-            )
+                val chapters =
+                    transaction {
+                        ChapterTable.select { ChapterTable.manga eq mangaId }
+                            .orderBy(ChapterTable.sourceOrder)
+                            .map { ChapterType(it) }
+                    }
+
+                FetchChaptersPayload(
+                    clientMutationId = clientMutationId,
+                    chapters = chapters,
+                )
+            }
         }
     }
 
@@ -161,12 +169,14 @@ class ChapterMutation {
         val meta: ChapterMetaType,
     )
 
-    fun setChapterMeta(input: SetChapterMetaInput): SetChapterMetaPayload {
-        val (clientMutationId, meta) = input
+    fun setChapterMeta(input: SetChapterMetaInput): DataFetcherResult<SetChapterMetaPayload?> {
+        return asDataFetcherResult {
+            val (clientMutationId, meta) = input
 
-        Chapter.modifyChapterMeta(meta.chapterId, meta.key, meta.value)
+            Chapter.modifyChapterMeta(meta.chapterId, meta.key, meta.value)
 
-        return SetChapterMetaPayload(clientMutationId, meta)
+            SetChapterMetaPayload(clientMutationId, meta)
+        }
     }
 
     data class DeleteChapterMetaInput(
@@ -181,30 +191,32 @@ class ChapterMutation {
         val chapter: ChapterType,
     )
 
-    fun deleteChapterMeta(input: DeleteChapterMetaInput): DeleteChapterMetaPayload {
-        val (clientMutationId, chapterId, key) = input
+    fun deleteChapterMeta(input: DeleteChapterMetaInput): DataFetcherResult<DeleteChapterMetaPayload?> {
+        return asDataFetcherResult {
+            val (clientMutationId, chapterId, key) = input
 
-        val (meta, chapter) =
-            transaction {
-                val meta =
-                    ChapterMetaTable.select { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
-                        .firstOrNull()
+            val (meta, chapter) =
+                transaction {
+                    val meta =
+                        ChapterMetaTable.select { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
+                            .firstOrNull()
 
-                ChapterMetaTable.deleteWhere { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
+                    ChapterMetaTable.deleteWhere { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
 
-                val chapter =
-                    transaction {
-                        ChapterType(ChapterTable.select { ChapterTable.id eq chapterId }.first())
-                    }
+                    val chapter =
+                        transaction {
+                            ChapterType(ChapterTable.select { ChapterTable.id eq chapterId }.first())
+                        }
 
-                if (meta != null) {
-                    ChapterMetaType(meta)
-                } else {
-                    null
-                } to chapter
-            }
+                    if (meta != null) {
+                        ChapterMetaType(meta)
+                    } else {
+                        null
+                    } to chapter
+                }
 
-        return DeleteChapterMetaPayload(clientMutationId, meta, chapter)
+            DeleteChapterMetaPayload(clientMutationId, meta, chapter)
+        }
     }
 
     data class FetchChapterPagesInput(
@@ -218,20 +230,22 @@ class ChapterMutation {
         val chapter: ChapterType,
     )
 
-    fun fetchChapterPages(input: FetchChapterPagesInput): CompletableFuture<FetchChapterPagesPayload> {
+    fun fetchChapterPages(input: FetchChapterPagesInput): CompletableFuture<DataFetcherResult<FetchChapterPagesPayload?>> {
         val (clientMutationId, chapterId) = input
 
         return future {
-            getChapterDownloadReadyById(chapterId)
-        }.thenApply { chapter ->
-            FetchChapterPagesPayload(
-                clientMutationId = clientMutationId,
-                pages =
-                    List(chapter.pageCount) { index ->
-                        "/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}/page/$index"
-                    },
-                chapter = ChapterType(chapter),
-            )
+            asDataFetcherResult {
+                val chapter = getChapterDownloadReadyById(chapterId)
+
+                FetchChapterPagesPayload(
+                    clientMutationId = clientMutationId,
+                    pages =
+                        List(chapter.pageCount) { index ->
+                            "/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}/page/$index"
+                        },
+                    chapter = ChapterType(chapter),
+                )
+            }
         }
     }
 }
