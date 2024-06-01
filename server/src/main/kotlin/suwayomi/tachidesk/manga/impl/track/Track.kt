@@ -322,6 +322,12 @@ object Track {
             }
 
             val track = it.toTrack()
+
+            if (!tracker.isLoggedIn) {
+                upsertTrackRecord(track)
+                return@forEach
+            }
+
             tracker.refresh(track)
             upsertTrackRecord(track)
 
@@ -329,7 +335,7 @@ object Track {
 
             log.debug { "tracker= $tracker, remoteLastReadChapter= $lastChapterRead" }
 
-            if (tracker.isLoggedIn && chapterNumber > lastChapterRead) {
+            if (chapterNumber > lastChapterRead) {
                 track.last_chapter_read = chapterNumber.toFloat()
                 tracker.update(track, true)
                 upsertTrackRecord(track)
