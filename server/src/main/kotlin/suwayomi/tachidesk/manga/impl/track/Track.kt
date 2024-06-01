@@ -310,36 +310,51 @@ object Track {
             }
 
         records.forEach {
-            val tracker = TrackerManager.getTracker(it[TrackRecordTable.trackerId]) ?: return@forEach
-
-            val localLastReadChapter = it[TrackRecordTable.lastChapterRead]
-
-            val log = KotlinLogging.logger { "${logger.name}::trackChapter(mangaId= $mangaId, chapterNumber= $chapterNumber)" }
-
-            if (localLastReadChapter == chapterNumber) {
-                log.debug { "new chapter is the same as the local last read chapter" }
-                return@forEach
+            try {
+                trackChapterForTracker(it, chapterNumber)
+            } catch (e: Exception) {
+                KotlinLogging.logger { "${logger.name}::trackChapter(mangaId= $mangaId, chapterNumber= $chapterNumber)" }
+                    .error(e) { "failed due to" }
             }
+        }
+    }
 
-            val track = it.toTrack()
+    private suspend fun trackChapterForTracker(
+        it: ResultRow,
+        chapterNumber: Double,
+    ) {
+        val tracker = TrackerManager.getTracker(it[TrackRecordTable.trackerId]) ?: return
+        val track = it.toTrack()
 
-            if (!tracker.isLoggedIn) {
-                upsertTrackRecord(track)
-                return@forEach
+        val log =
+            KotlinLogging.logger {
+                "${logger.name}::trackChapterForTracker(chapterNumber= $chapterNumber, tracker= ${tracker.id}, recordId= ${track.id})"
             }
+        log.debug { "called for $tracker, ${track.title} (recordId= ${track.id}, mangaId= ${track.manga_id})" }
 
-            tracker.refresh(track)
+        val localLastReadChapter = it[TrackRecordTable.lastChapterRead]
+
+        if (localLastReadChapter == chapterNumber) {
+            log.debug { "new chapter is the same as the local last read chapter" }
+            return
+        }
+
+        if (!tracker.isLoggedIn) {
             upsertTrackRecord(track)
+            return
+        }
 
-            val lastChapterRead = track.last_chapter_read
+        tracker.refresh(track)
+        upsertTrackRecord(track)
 
-            log.debug { "tracker= $tracker, remoteLastReadChapter= $lastChapterRead" }
+        val lastChapterRead = track.last_chapter_read
 
-            if (chapterNumber > lastChapterRead) {
-                track.last_chapter_read = chapterNumber.toFloat()
-                tracker.update(track, true)
-                upsertTrackRecord(track)
-            }
+        log.debug { "remoteLastReadChapter= $lastChapterRead" }
+
+        if (chapterNumber > lastChapterRead) {
+            track.last_chapter_read = chapterNumber.toFloat()
+            tracker.update(track, true)
+            upsertTrackRecord(track)
         }
     }
 
