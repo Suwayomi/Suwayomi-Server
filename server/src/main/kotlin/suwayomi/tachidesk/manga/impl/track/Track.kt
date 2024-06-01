@@ -281,7 +281,7 @@ object Track {
         val chapter = queryMaxReadChapter(mangaId)
         val chapterNumber = chapter?.get(ChapterTable.chapter_number)
 
-        logger.debug {
+        logger.info {
             "trackChapter(mangaId= $mangaId): maxReadChapter= #$chapterNumber ${chapter?.get(ChapterTable.name)}"
         }
 
