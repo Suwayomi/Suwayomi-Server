@@ -293,6 +293,7 @@ object Manga {
             val tryToRefreshUrl =
                 !refreshUrl &&
                     listOf(
+                        HttpCode.GONE.status,
                         HttpCode.NOT_FOUND.status,
                         523, // (Cloudflare) Origin Is Unreachable
                         522, // (Cloudflare) Connection timed out
