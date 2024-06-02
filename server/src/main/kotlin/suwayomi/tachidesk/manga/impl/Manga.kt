@@ -294,6 +294,7 @@ object Manga {
                 !refreshUrl &&
                     listOf(
                         HttpCode.GONE.status,
+                        HttpCode.MOVED_PERMANENTLY.status,
                         HttpCode.NOT_FOUND.status,
                         523, // (Cloudflare) Origin Is Unreachable
                         522, // (Cloudflare) Connection timed out
