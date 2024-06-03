@@ -390,7 +390,7 @@ object Manga {
         logContext: KLogger = logger,
         mangaId: Int,
     ): Boolean {
-        val log = KotlinLogging.logger { "${logContext.name}::isInExcludedDownloadCategory($mangaId)" }
+        val log = KotlinLogging.logger("${logContext.name}::isInExcludedDownloadCategory($mangaId)")
 
         // Verify the manga is configured to be downloaded based on it's categories.
         var mangaCategories = CategoryManga.getMangaCategories(mangaId).toSet()
