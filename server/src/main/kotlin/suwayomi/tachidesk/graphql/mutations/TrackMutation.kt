@@ -2,9 +2,11 @@ package suwayomi.tachidesk.graphql.mutations
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
+import graphql.execution.DataFetcherResult
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.types.TrackRecordType
 import suwayomi.tachidesk.graphql.types.TrackerType
 import suwayomi.tachidesk.manga.impl.track.Track
@@ -203,20 +205,22 @@ class TrackMutation {
         val trackRecords: List<TrackRecordType>,
     )
 
-    fun trackProgress(input: TrackProgressInput): CompletableFuture<TrackProgressPayload> {
+    fun trackProgress(input: TrackProgressInput): CompletableFuture<DataFetcherResult<TrackProgressPayload?>> {
         val (clientMutationId, mangaId) = input
 
         return future {
-            Track.trackChapter(mangaId)
-            val trackRecords =
-                transaction {
-                    TrackRecordTable.select { TrackRecordTable.mangaId eq mangaId }
-                        .toList()
-                }
-            TrackProgressPayload(
-                clientMutationId,
-                trackRecords.map { TrackRecordType(it) },
-            )
+            asDataFetcherResult {
+                Track.trackChapter(mangaId)
+                val trackRecords =
+                    transaction {
+                        TrackRecordTable.select { TrackRecordTable.mangaId eq mangaId }
+                            .toList()
+                    }
+                TrackProgressPayload(
+                    clientMutationId,
+                    trackRecords.map { TrackRecordType(it) },
+                )
+            }
         }
     }
 

@@ -5,11 +5,13 @@ import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.SwitchPreferenceCompat
+import graphql.execution.DataFetcherResult
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.types.FilterChange
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.graphql.types.Preference
@@ -37,12 +39,14 @@ class SourceMutation {
         val meta: SourceMetaType,
     )
 
-    fun setSourceMeta(input: SetSourceMetaInput): SetSourceMetaPayload {
+    fun setSourceMeta(input: SetSourceMetaInput): DataFetcherResult<SetSourceMetaPayload?> {
         val (clientMutationId, meta) = input
 
-        Source.modifyMeta(meta.sourceId, meta.key, meta.value)
+        return asDataFetcherResult {
+            Source.modifyMeta(meta.sourceId, meta.key, meta.value)
 
-        return SetSourceMetaPayload(clientMutationId, meta)
+            SetSourceMetaPayload(clientMutationId, meta)
+        }
     }
 
     data class DeleteSourceMetaInput(
@@ -57,31 +61,33 @@ class SourceMutation {
         val source: SourceType?,
     )
 
-    fun deleteSourceMeta(input: DeleteSourceMetaInput): DeleteSourceMetaPayload {
+    fun deleteSourceMeta(input: DeleteSourceMetaInput): DataFetcherResult<DeleteSourceMetaPayload?> {
         val (clientMutationId, sourceId, key) = input
 
-        val (meta, source) =
-            transaction {
-                val meta =
-                    SourceMetaTable.select { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
-                        .firstOrNull()
+        return asDataFetcherResult {
+            val (meta, source) =
+                transaction {
+                    val meta =
+                        SourceMetaTable.select { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
+                            .firstOrNull()
 
-                SourceMetaTable.deleteWhere { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
+                    SourceMetaTable.deleteWhere { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
 
-                val source =
-                    transaction {
-                        SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
-                            ?.let { SourceType(it) }
-                    }
+                    val source =
+                        transaction {
+                            SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
+                                ?.let { SourceType(it) }
+                        }
 
-                if (meta != null) {
-                    SourceMetaType(meta)
-                } else {
-                    null
-                } to source
-            }
+                    if (meta != null) {
+                        SourceMetaType(meta)
+                    } else {
+                        null
+                    } to source
+                }
 
-        return DeleteSourceMetaPayload(clientMutationId, meta, source)
+            DeleteSourceMetaPayload(clientMutationId, meta, source)
+        }
     }
 
     enum class FetchSourceMangaType {
@@ -105,44 +111,46 @@ class SourceMutation {
         val hasNextPage: Boolean,
     )
 
-    fun fetchSourceManga(input: FetchSourceMangaInput): CompletableFuture<FetchSourceMangaPayload> {
+    fun fetchSourceManga(input: FetchSourceMangaInput): CompletableFuture<DataFetcherResult<FetchSourceMangaPayload?>> {
         val (clientMutationId, sourceId, type, page, query, filters) = input
 
         return future {
-            val source = GetCatalogueSource.getCatalogueSourceOrNull(sourceId)!!
-            val mangasPage =
-                when (type) {
-                    FetchSourceMangaType.SEARCH -> {
-                        source.getSearchManga(
-                            page = page,
-                            query = query.orEmpty(),
-                            filters = updateFilterList(source, filters),
-                        )
+            asDataFetcherResult {
+                val source = GetCatalogueSource.getCatalogueSourceOrNull(sourceId)!!
+                val mangasPage =
+                    when (type) {
+                        FetchSourceMangaType.SEARCH -> {
+                            source.getSearchManga(
+                                page = page,
+                                query = query.orEmpty(),
+                                filters = updateFilterList(source, filters),
+                            )
+                        }
+                        FetchSourceMangaType.POPULAR -> {
+                            source.getPopularManga(page)
+                        }
+                        FetchSourceMangaType.LATEST -> {
+                            if (!source.supportsLatest) throw Exception("Source does not support latest")
+                            source.getLatestUpdates(page)
+                        }
                     }
-                    FetchSourceMangaType.POPULAR -> {
-                        source.getPopularManga(page)
+
+                val mangaIds = mangasPage.insertOrGet(sourceId)
+
+                val mangas =
+                    transaction {
+                        MangaTable.select { MangaTable.id inList mangaIds }
+                            .map { MangaType(it) }
+                    }.sortedBy {
+                        mangaIds.indexOf(it.id)
                     }
-                    FetchSourceMangaType.LATEST -> {
-                        if (!source.supportsLatest) throw Exception("Source does not support latest")
-                        source.getLatestUpdates(page)
-                    }
-                }
 
-            val mangaIds = mangasPage.insertOrGet(sourceId)
-
-            val mangas =
-                transaction {
-                    MangaTable.select { MangaTable.id inList mangaIds }
-                        .map { MangaType(it) }
-                }.sortedBy {
-                    mangaIds.indexOf(it.id)
-                }
-
-            FetchSourceMangaPayload(
-                clientMutationId = clientMutationId,
-                mangas = mangas,
-                hasNextPage = mangasPage.hasNextPage,
-            )
+                FetchSourceMangaPayload(
+                    clientMutationId = clientMutationId,
+                    mangas = mangas,
+                    hasNextPage = mangasPage.hasNextPage,
+                )
+            }
         }
     }
 
@@ -167,27 +175,29 @@ class SourceMutation {
         val source: SourceType,
     )
 
-    fun updateSourcePreference(input: UpdateSourcePreferenceInput): UpdateSourcePreferencePayload {
+    fun updateSourcePreference(input: UpdateSourcePreferenceInput): DataFetcherResult<UpdateSourcePreferencePayload?> {
         val (clientMutationId, sourceId, change) = input
 
-        Source.setSourcePreference(sourceId, change.position, "") { preference ->
-            when (preference) {
-                is SwitchPreferenceCompat -> change.switchState
-                is CheckBoxPreference -> change.checkBoxState
-                is EditTextPreference -> change.editTextState
-                is ListPreference -> change.listState
-                is MultiSelectListPreference -> change.multiSelectState?.toSet()
-                else -> throw RuntimeException("sealed class cannot have more subtypes!")
-            } ?: throw Exception("Expected change to ${preference::class.simpleName}")
-        }
+        return asDataFetcherResult {
+            Source.setSourcePreference(sourceId, change.position, "") { preference ->
+                when (preference) {
+                    is SwitchPreferenceCompat -> change.switchState
+                    is CheckBoxPreference -> change.checkBoxState
+                    is EditTextPreference -> change.editTextState
+                    is ListPreference -> change.listState
+                    is MultiSelectListPreference -> change.multiSelectState?.toSet()
+                    else -> throw RuntimeException("sealed class cannot have more subtypes!")
+                } ?: throw Exception("Expected change to ${preference::class.simpleName}")
+            }
 
-        return UpdateSourcePreferencePayload(
-            clientMutationId = clientMutationId,
-            preferences = Source.getSourcePreferencesRaw(sourceId).map { preferenceOf(it) },
-            source =
-                transaction {
-                    SourceType(SourceTable.select { SourceTable.id eq sourceId }.first())!!
-                },
-        )
+            UpdateSourcePreferencePayload(
+                clientMutationId = clientMutationId,
+                preferences = Source.getSourcePreferencesRaw(sourceId).map { preferenceOf(it) },
+                source =
+                    transaction {
+                        SourceType(SourceTable.select { SourceTable.id eq sourceId }.first())!!
+                    },
+            )
+        }
     }
 }
