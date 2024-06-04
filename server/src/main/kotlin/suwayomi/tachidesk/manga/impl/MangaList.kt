@@ -83,12 +83,6 @@ object MangaList {
                     resultRow[MangaTable.inLibrary]
                 }
 
-            mangaToUpdate.forEach { (sManga, manga) ->
-                if (manga[MangaTable.thumbnail_url] != sManga.thumbnail_url) {
-                    Manga.clearThumbnail(manga[MangaTable.id].value)
-                }
-            }
-
             BatchUpdateStatement(MangaTable).apply {
                 mangaToUpdate.forEach { (sManga, manga) ->
                     addBatch(EntityID(manga[MangaTable.id].value, MangaTable))
@@ -102,6 +96,7 @@ object MangaList {
                     this[MangaTable.updateStrategy] = sManga.update_strategy.name
                     if (!sManga.thumbnail_url.isNullOrEmpty() && manga[MangaTable.thumbnail_url] != sManga.thumbnail_url) {
                         this[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
+                        Manga.clearThumbnail(manga[MangaTable.id].value)
                     } else {
                         this[MangaTable.thumbnailUrlLastFetched] = manga[MangaTable.thumbnailUrlLastFetched]
                     }
