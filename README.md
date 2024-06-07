@@ -108,6 +108,21 @@ sudo apt update
 sudo apt install suwayomi-server
 ```
 
+### NixOS
+You can deploy Suwayomi on NixOS using the module `services.suwayomi-server` in your configuration:
+
+```
+{
+  services.suwayomi-server = {
+    enable = true;
+  };
+}
+```
+
+For more information, see [the NixOS manual](https://nixos.org/manual/nixos/stable/#module-services-suwayomi-server).
+
+You can also directly use the package from [nixpkgs](https://search.nixos.org/packages?channel=unstable&type=packages&query=suwayomi-server).
+
 ### Docker
 Check our Official Docker release [Suwayomi Container](https://github.com/orgs/Suwayomi/packages/container/package/tachidesk) for running Suwayomi Server in a docker container. Source code for our container is available at [docker-tachidesk](https://github.com/Suwayomi/docker-tachidesk). By default, the server will be running on http://localhost:4567 open this url in your browser.
 
