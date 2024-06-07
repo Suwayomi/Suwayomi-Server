@@ -19,7 +19,7 @@ import suwayomi.tachidesk.graphql.types.SourceMetaType
 import suwayomi.tachidesk.graphql.types.SourceType
 import suwayomi.tachidesk.graphql.types.preferenceOf
 import suwayomi.tachidesk.graphql.types.updateFilterList
-import suwayomi.tachidesk.manga.impl.MangaList.insertOrGet
+import suwayomi.tachidesk.manga.impl.MangaList.insertOrUpdate
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -135,7 +135,7 @@ class SourceMutation {
                         }
                     }
 
-                val mangaIds = mangasPage.insertOrGet(sourceId)
+                val mangaIds = mangasPage.insertOrUpdate(sourceId)
 
                 val mangas =
                     transaction {
