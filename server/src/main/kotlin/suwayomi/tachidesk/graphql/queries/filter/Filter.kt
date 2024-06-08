@@ -400,9 +400,8 @@ class OpAnd(var op: Op<Boolean>? = null) {
         values: List<T>?,
         andPart: SqlExpressionBuilder.(List<T>) -> Op<Boolean>,
     ) {
-        values ?: return
-        val expr = Op.build { andPart(values) }
-        op = if (op == null) expr else (op!! and expr)
+        @Suppress("UNCHECKED_CAST")
+        return andWhere(values as T?, andPart as SqlExpressionBuilder.(Any) -> Op<Boolean>)
     }
 
     fun <T> eq(
@@ -451,15 +450,8 @@ fun <T : Comparable<T>> andFilterWithCompareEntity(
     column: Column<EntityID<T>>,
     filter: ComparableScalarFilter<T>?,
 ): Op<Boolean>? {
-    filter ?: return null
-    val opAnd = OpAnd(andFilterEntity(column, filter))
-
-    opAnd.andWhere(filter.lessThan) { column less it }
-    opAnd.andWhere(filter.lessThanOrEqualTo) { column lessEq it }
-    opAnd.andWhere(filter.greaterThan) { column greater it }
-    opAnd.andWhere(filter.greaterThanOrEqualTo) { column greaterEq it }
-
-    return opAnd.op
+    @Suppress("UNCHECKED_CAST")
+    return andFilterWithCompare(column as Column<T>, filter)
 }
 
 @Suppress("UNCHECKED_CAST")
@@ -480,27 +472,6 @@ fun <T : Comparable<T>, S : T?> andFilter(
     }
     if (!filter.notIn.isNullOrEmpty()) {
         opAnd.andWhere(filter.notIn) { column notInList it as List<S> }
-    }
-    return opAnd.op
-}
-
-fun <T : Comparable<T>> andFilterEntity(
-    column: Column<EntityID<T>>,
-    filter: ScalarFilter<T>?,
-): Op<Boolean>? {
-    filter ?: return null
-    val opAnd = OpAnd()
-
-    opAnd.andWhere(filter.isNull) { if (filter.isNull!!) column.isNull() else column.isNotNull() }
-    opAnd.andWhere(filter.equalTo) { column eq filter.equalTo!! }
-    opAnd.andWhere(filter.notEqualTo) { column neq filter.notEqualTo!! }
-    opAnd.andWhere(filter.distinctFrom) { DistinctFromOp.distinctFrom(column, it) }
-    opAnd.andWhere(filter.notDistinctFrom) { DistinctFromOp.notDistinctFrom(column, it) }
-    if (!filter.`in`.isNullOrEmpty()) {
-        opAnd.andWhere(filter.`in`) { column inList filter.`in`!! }
-    }
-    if (!filter.notIn.isNullOrEmpty()) {
-        opAnd.andWhere(filter.notIn) { column notInList filter.notIn!! }
     }
     return opAnd.op
 }
