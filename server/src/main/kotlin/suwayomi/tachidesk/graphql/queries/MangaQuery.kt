@@ -119,7 +119,7 @@ class MangaQuery {
             opAnd.eq(artist, MangaTable.artist)
             opAnd.eq(author, MangaTable.author)
             opAnd.eq(description, MangaTable.description)
-            genre?.forEach { opAnd.andWhere(it) { MangaTable.genre like "%$it%" } }
+            opAnd.andWhereAll(genre) { MangaTable.genre like "%$it%" }
             opAnd.eq(status?.value, MangaTable.status)
             opAnd.eq(inLibrary, MangaTable.inLibrary)
             opAnd.eq(inLibraryAt, MangaTable.inLibraryAt)
@@ -136,7 +136,9 @@ class MangaQuery {
         override val isNull: Boolean? = null,
         override val equalTo: MangaStatus? = null,
         override val notEqualTo: MangaStatus? = null,
+        override val notEqualToAll: List<MangaStatus>? = null,
         override val distinctFrom: MangaStatus? = null,
+        override val distinctFromAll: List<MangaStatus>? = null,
         override val notDistinctFrom: MangaStatus? = null,
         override val `in`: List<MangaStatus>? = null,
         override val notIn: List<MangaStatus>? = null,
@@ -149,7 +151,9 @@ class MangaQuery {
             IntFilter(
                 equalTo = equalTo?.value,
                 notEqualTo = notEqualTo?.value,
+                notEqualToAll = notEqualToAll?.map { it.value },
                 distinctFrom = distinctFrom?.value,
+                distinctFromAll = distinctFromAll?.map { it.value },
                 notDistinctFrom = notDistinctFrom?.value,
                 `in` = `in`?.map { it.value },
                 notIn = notIn?.map { it.value },
