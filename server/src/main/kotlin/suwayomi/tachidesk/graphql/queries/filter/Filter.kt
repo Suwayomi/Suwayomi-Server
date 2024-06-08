@@ -183,8 +183,10 @@ interface ScalarFilter<T> {
     val equalTo: T?
     val notEqualTo: T?
     val notEqualToAll: List<T>?
+    val notEqualToAny: List<T>?
     val distinctFrom: T?
     val distinctFromAll: List<T>?
+    val distinctFromAny: List<T>?
     val notDistinctFrom: T?
 
     @Suppress("ktlint:standard:property-naming")
@@ -210,8 +212,10 @@ data class LongFilter(
     override val equalTo: Long? = null,
     override val notEqualTo: Long? = null,
     override val notEqualToAll: List<Long>? = null,
+    override val notEqualToAny: List<Long>? = null,
     override val distinctFrom: Long? = null,
     override val distinctFromAll: List<Long>? = null,
+    override val distinctFromAny: List<Long>? = null,
     override val notDistinctFrom: Long? = null,
     override val `in`: List<Long>? = null,
     override val notIn: List<Long>? = null,
@@ -226,8 +230,10 @@ data class BooleanFilter(
     override val equalTo: Boolean? = null,
     override val notEqualTo: Boolean? = null,
     override val notEqualToAll: List<Boolean>? = null,
+    override val notEqualToAny: List<Boolean>? = null,
     override val distinctFrom: Boolean? = null,
     override val distinctFromAll: List<Boolean>? = null,
+    override val distinctFromAny: List<Boolean>? = null,
     override val notDistinctFrom: Boolean? = null,
     override val `in`: List<Boolean>? = null,
     override val notIn: List<Boolean>? = null,
@@ -242,8 +248,10 @@ data class IntFilter(
     override val equalTo: Int? = null,
     override val notEqualTo: Int? = null,
     override val notEqualToAll: List<Int>? = null,
+    override val notEqualToAny: List<Int>? = null,
     override val distinctFrom: Int? = null,
     override val distinctFromAll: List<Int>? = null,
+    override val distinctFromAny: List<Int>? = null,
     override val notDistinctFrom: Int? = null,
     override val `in`: List<Int>? = null,
     override val notIn: List<Int>? = null,
@@ -258,8 +266,10 @@ data class FloatFilter(
     override val equalTo: Float? = null,
     override val notEqualTo: Float? = null,
     override val notEqualToAll: List<Float>? = null,
+    override val notEqualToAny: List<Float>? = null,
     override val distinctFrom: Float? = null,
     override val distinctFromAll: List<Float>? = null,
+    override val distinctFromAny: List<Float>? = null,
     override val notDistinctFrom: Float? = null,
     override val `in`: List<Float>? = null,
     override val notIn: List<Float>? = null,
@@ -274,8 +284,10 @@ data class DoubleFilter(
     override val equalTo: Double? = null,
     override val notEqualTo: Double? = null,
     override val notEqualToAll: List<Double>? = null,
+    override val notEqualToAny: List<Double>? = null,
     override val distinctFrom: Double? = null,
     override val distinctFromAll: List<Double>? = null,
+    override val distinctFromAny: List<Double>? = null,
     override val notDistinctFrom: Double? = null,
     override val `in`: List<Double>? = null,
     override val notIn: List<Double>? = null,
@@ -290,8 +302,10 @@ data class StringFilter(
     override val equalTo: String? = null,
     override val notEqualTo: String? = null,
     override val notEqualToAll: List<String>? = null,
+    override val notEqualToAny: List<String>? = null,
     override val distinctFrom: String? = null,
     override val distinctFromAll: List<String>? = null,
+    override val distinctFromAny: List<String>? = null,
     override val notDistinctFrom: String? = null,
     override val `in`: List<String>? = null,
     override val notIn: List<String>? = null,
@@ -301,38 +315,55 @@ data class StringFilter(
     override val greaterThanOrEqualTo: String? = null,
     val includes: String? = null,
     val includesAll: List<String>? = null,
+    val includesAny: List<String>? = null,
     val notIncludes: String? = null,
     val notIncludesAll: List<String>? = null,
+    val notIncludesAny: List<String>? = null,
     val includesInsensitive: String? = null,
     val includesInsensitiveAll: List<String>? = null,
+    val includesInsensitiveAny: List<String>? = null,
     val notIncludesInsensitive: String? = null,
     val notIncludesInsensitiveAll: List<String>? = null,
+    val notIncludesInsensitiveAny: List<String>? = null,
     val startsWith: String? = null,
     val startsWithAll: List<String>? = null,
+    val startsWithAny: List<String>? = null,
     val notStartsWith: String? = null,
     val notStartsWithAll: List<String>? = null,
+    val notStartsWithAny: List<String>? = null,
     val startsWithInsensitive: String? = null,
     val startsWithInsensitiveAll: List<String>? = null,
+    val startsWithInsensitiveAny: List<String>? = null,
     val notStartsWithInsensitive: String? = null,
     val notStartsWithInsensitiveAll: List<String>? = null,
+    val notStartsWithInsensitiveAny: List<String>? = null,
     val endsWith: String? = null,
     val endsWithAll: List<String>? = null,
+    val endsWithAny: List<String>? = null,
     val notEndsWith: String? = null,
     val notEndsWithAll: List<String>? = null,
+    val notEndsWithAny: List<String>? = null,
     val endsWithInsensitive: String? = null,
     val endsWithInsensitiveAll: List<String>? = null,
+    val endsWithInsensitiveAny: List<String>? = null,
     val notEndsWithInsensitive: String? = null,
     val notEndsWithInsensitiveAll: List<String>? = null,
+    val notEndsWithInsensitiveAny: List<String>? = null,
     val like: String? = null,
     val likeAll: List<String>? = null,
+    val likeAny: List<String>? = null,
     val notLike: String? = null,
     val notLikeAll: List<String>? = null,
+    val notLikeAny: List<String>? = null,
     val likeInsensitive: String? = null,
     val likeInsensitiveAll: List<String>? = null,
+    val likeInsensitiveAny: List<String>? = null,
     val notLikeInsensitive: String? = null,
     val notLikeInsensitiveAll: List<String>? = null,
+    val notLikeInsensitiveAny: List<String>? = null,
     val distinctFromInsensitive: String? = null,
     val distinctFromInsensitiveAll: List<String>? = null,
+    val distinctFromInsensitiveAny: List<String>? = null,
     val notDistinctFromInsensitive: String? = null,
     val inInsensitive: List<String>? = null,
     val notInInsensitive: List<String>? = null,
@@ -347,8 +378,10 @@ data class StringListFilter(
     override val equalTo: String? = null,
     override val notEqualTo: String? = null,
     override val notEqualToAll: List<String>? = null,
+    override val notEqualToAny: List<String>? = null,
     override val distinctFrom: String? = null,
     override val distinctFromAll: List<String>? = null,
+    override val distinctFromAny: List<String>? = null,
     override val notDistinctFrom: String? = null,
     override val `in`: List<String>? = null,
     override val notIn: List<String>? = null,
@@ -372,8 +405,10 @@ fun <T : String, S : T?> andFilterWithCompareString(
     opAnd.andWhere(filter.equalTo) { column eq it as S }
     opAnd.andWhere(filter.notEqualTo) { column neq it as S }
     opAnd.andWhereAll(filter.notEqualToAll) { column neq it as S }
+    opAnd.andWhereAny(filter.notEqualToAny) { column neq it as S }
     opAnd.andWhere(filter.distinctFrom) { DistinctFromOp.distinctFrom(column, it as S) }
     opAnd.andWhereAll(filter.distinctFromAll) { DistinctFromOp.distinctFrom(column, it as S) }
+    opAnd.andWhereAny(filter.distinctFromAny) { DistinctFromOp.distinctFrom(column, it as S) }
     opAnd.andWhere(filter.notDistinctFrom) { DistinctFromOp.notDistinctFrom(column, it as S) }
     if (!filter.`in`.isNullOrEmpty()) {
         opAnd.andWhere(filter.`in`) { column inList it as List<S> }
@@ -389,42 +424,59 @@ fun <T : String, S : T?> andFilterWithCompareString(
 
     opAnd.andWhere(filter.includes) { column like "%$it%" }
     opAnd.andWhereAll(filter.includesAll) { column like "%$it%" }
+    opAnd.andWhereAny(filter.includesAny) { column like "%$it%" }
     opAnd.andWhere(filter.notIncludes) { column notLike "%$it%" }
     opAnd.andWhereAll(filter.notIncludesAll) { column notLike "%$it%" }
+    opAnd.andWhereAny(filter.notIncludesAny) { column notLike "%$it%" }
     opAnd.andWhere(filter.includesInsensitive) { ILikeEscapeOp.iLike(column, "%$it%") }
     opAnd.andWhereAll(filter.includesInsensitiveAll) { ILikeEscapeOp.iLike(column, "%$it%") }
+    opAnd.andWhereAny(filter.includesInsensitiveAny) { ILikeEscapeOp.iLike(column, "%$it%") }
     opAnd.andWhere(filter.notIncludesInsensitive) { ILikeEscapeOp.iNotLike(column, "%$it%") }
     opAnd.andWhereAll(filter.notIncludesInsensitiveAll) { ILikeEscapeOp.iNotLike(column, "%$it%") }
+    opAnd.andWhereAny(filter.notIncludesInsensitiveAny) { ILikeEscapeOp.iNotLike(column, "%$it%") }
 
     opAnd.andWhere(filter.startsWith) { column like "$it%" }
     opAnd.andWhereAll(filter.startsWithAll) { column like "$it%" }
+    opAnd.andWhereAny(filter.startsWithAny) { column like "$it%" }
     opAnd.andWhere(filter.notStartsWith) { column notLike "$it%" }
     opAnd.andWhereAll(filter.notStartsWithAll) { column notLike "$it%" }
+    opAnd.andWhereAny(filter.notStartsWithAny) { column notLike "$it%" }
     opAnd.andWhere(filter.startsWithInsensitive) { ILikeEscapeOp.iLike(column, "$it%") }
     opAnd.andWhereAll(filter.startsWithInsensitiveAll) { ILikeEscapeOp.iLike(column, "$it%") }
+    opAnd.andWhereAny(filter.startsWithInsensitiveAny) { ILikeEscapeOp.iLike(column, "$it%") }
     opAnd.andWhere(filter.notStartsWithInsensitive) { ILikeEscapeOp.iNotLike(column, "$it%") }
     opAnd.andWhereAll(filter.notStartsWithInsensitiveAll) { ILikeEscapeOp.iNotLike(column, "$it%") }
+    opAnd.andWhereAny(filter.notStartsWithInsensitiveAny) { ILikeEscapeOp.iNotLike(column, "$it%") }
 
     opAnd.andWhere(filter.endsWith) { column like "%$it" }
     opAnd.andWhereAll(filter.endsWithAll) { column like "%$it" }
+    opAnd.andWhereAny(filter.endsWithAny) { column like "%$it" }
     opAnd.andWhere(filter.notEndsWith) { column notLike "%$it" }
     opAnd.andWhereAll(filter.notEndsWithAll) { column notLike "%$it" }
+    opAnd.andWhereAny(filter.notEndsWithAny) { column notLike "%$it" }
     opAnd.andWhere(filter.endsWithInsensitive) { ILikeEscapeOp.iLike(column, "%$it") }
     opAnd.andWhereAll(filter.endsWithInsensitiveAll) { ILikeEscapeOp.iLike(column, "%$it") }
+    opAnd.andWhereAny(filter.endsWithInsensitiveAny) { ILikeEscapeOp.iLike(column, "%$it") }
     opAnd.andWhere(filter.notEndsWithInsensitive) { ILikeEscapeOp.iNotLike(column, "%$it") }
     opAnd.andWhereAll(filter.notEndsWithInsensitiveAll) { ILikeEscapeOp.iNotLike(column, "%$it") }
+    opAnd.andWhereAny(filter.notEndsWithInsensitiveAny) { ILikeEscapeOp.iNotLike(column, "%$it") }
 
     opAnd.andWhere(filter.like) { column like it }
     opAnd.andWhereAll(filter.likeAll) { column like it }
+    opAnd.andWhereAny(filter.likeAny) { column like it }
     opAnd.andWhere(filter.notLike) { column notLike it }
     opAnd.andWhereAll(filter.notLikeAll) { column notLike it }
+    opAnd.andWhereAny(filter.notLikeAny) { column notLike it }
     opAnd.andWhere(filter.likeInsensitive) { ILikeEscapeOp.iLike(column, it) }
     opAnd.andWhereAll(filter.likeInsensitiveAll) { ILikeEscapeOp.iLike(column, it) }
+    opAnd.andWhereAny(filter.likeInsensitiveAny) { ILikeEscapeOp.iLike(column, it) }
     opAnd.andWhere(filter.notLikeInsensitive) { ILikeEscapeOp.iNotLike(column, it) }
     opAnd.andWhereAll(filter.notLikeInsensitiveAll) { ILikeEscapeOp.iNotLike(column, it) }
+    opAnd.andWhereAny(filter.notLikeInsensitiveAny) { ILikeEscapeOp.iNotLike(column, it) }
 
     opAnd.andWhere(filter.distinctFromInsensitive) { DistinctFromOp.distinctFrom(column.upperCase(), it.uppercase() as S) }
     opAnd.andWhereAll(filter.distinctFromInsensitiveAll) { DistinctFromOp.distinctFrom(column.upperCase(), it.uppercase() as S) }
+    opAnd.andWhereAny(filter.distinctFromInsensitiveAny) { DistinctFromOp.distinctFrom(column.upperCase(), it.uppercase() as S) }
     opAnd.andWhere(filter.notDistinctFromInsensitive) { DistinctFromOp.notDistinctFrom(column.upperCase(), it.uppercase() as S) }
 
     opAnd.andWhere(filter.inInsensitive) { column.upperCase() inList (it.map { it.uppercase() } as List<S>) }
@@ -461,6 +513,15 @@ class OpAnd(var op: Op<Boolean>? = null) {
         andPart: SqlExpressionBuilder.(T) -> Op<Boolean>,
     ) {
         values?.map { andWhere(it, andPart) }
+    }
+
+    fun <T : Any> andWhereAny(
+        values: List<T>?,
+        andPart: SqlExpressionBuilder.(T) -> Op<Boolean>,
+    ) {
+        values ?: return
+        val expr = values.map { Op.build { andPart(it) } }.reduce { acc, op -> acc or op }
+        op = if (op == null) expr else (op!! and expr)
     }
 
     fun <T> eq(
@@ -509,8 +570,10 @@ fun <T : Comparable<T>, S : T?> andFilter(
     opAnd.andWhere(filter.equalTo) { column eq it as S }
     opAnd.andWhere(filter.notEqualTo) { column neq it as S }
     opAnd.andWhereAll(filter.notEqualToAll) { column neq it as S }
+    opAnd.andWhereAny(filter.notEqualToAny) { column neq it as S }
     opAnd.andWhere(filter.distinctFrom) { DistinctFromOp.distinctFrom(column, it as S) }
     opAnd.andWhereAll(filter.distinctFromAll) { DistinctFromOp.distinctFrom(column, it as S) }
+    opAnd.andWhereAny(filter.distinctFromAny) { DistinctFromOp.distinctFrom(column, it as S) }
     opAnd.andWhere(filter.notDistinctFrom) { DistinctFromOp.notDistinctFrom(column, it as S) }
     if (!filter.`in`.isNullOrEmpty()) {
         opAnd.andWhere(filter.`in`) { column inList it as List<S> }
