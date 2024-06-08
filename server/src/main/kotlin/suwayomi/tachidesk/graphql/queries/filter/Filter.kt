@@ -413,22 +413,6 @@ class OpAnd(var op: Op<Boolean>? = null) {
         value: T?,
         column: Column<EntityID<T>>,
     ) = andWhere(value) { column eq it }
-
-    fun <T> inList(
-        values: List<T>?,
-        column: Column<T>,
-    ) = andWhere(values) { column inList it }
-
-    @JvmName("inListComparable")
-    fun <T : Comparable<T>> inList(
-        values: List<T>?,
-        column: Column<EntityID<T>>,
-    ) = andWhere(values) { column inList it }
-
-    fun like(
-        value: String?,
-        column: Column<String?>,
-    ) = andWhere(value) { column like it }
 }
 
 fun <T : Comparable<T>, S : T?> andFilterWithCompare(

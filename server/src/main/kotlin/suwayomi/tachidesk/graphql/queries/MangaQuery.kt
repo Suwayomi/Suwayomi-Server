@@ -119,14 +119,14 @@ class MangaQuery {
             opAnd.eq(artist, MangaTable.artist)
             opAnd.eq(author, MangaTable.author)
             opAnd.eq(description, MangaTable.description)
-            genre?.forEach { opAnd.like("%$it%", MangaTable.genre) }
+            genre?.forEach { opAnd.andWhere(it) { MangaTable.genre like "%$it%" } }
             opAnd.eq(status?.value, MangaTable.status)
             opAnd.eq(inLibrary, MangaTable.inLibrary)
             opAnd.eq(inLibraryAt, MangaTable.inLibraryAt)
             opAnd.eq(realUrl, MangaTable.realUrl)
             opAnd.eq(lastFetchedAt, MangaTable.lastFetchedAt)
             opAnd.eq(chaptersLastFetchedAt, MangaTable.chaptersLastFetchedAt)
-            opAnd.inList(categoryIds, CategoryMangaTable.category)
+            opAnd.andWhere(categoryIds) { CategoryMangaTable.category inList it }
 
             return opAnd.op
         }
