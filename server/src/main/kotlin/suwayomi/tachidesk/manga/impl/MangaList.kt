@@ -88,12 +88,12 @@ object MangaList {
                     mangaToUpdate.forEach { (sManga, manga) ->
                         addBatch(EntityID(manga[MangaTable.id].value, MangaTable))
                         this[MangaTable.title] = sManga.title
-                        this[MangaTable.artist] = sManga.artist
-                        this[MangaTable.author] = sManga.author
-                        this[MangaTable.description] = sManga.description
-                        this[MangaTable.genre] = sManga.genre
+                        this[MangaTable.artist] = sManga.artist ?: manga[MangaTable.artist]
+                        this[MangaTable.author] = sManga.author ?: manga[MangaTable.author]
+                        this[MangaTable.description] = sManga.description ?: manga[MangaTable.description]
+                        this[MangaTable.genre] = sManga.genre ?: manga[MangaTable.genre]
                         this[MangaTable.status] = sManga.status
-                        this[MangaTable.thumbnail_url] = sManga.thumbnail_url
+                        this[MangaTable.thumbnail_url] = sManga.thumbnail_url ?: manga[MangaTable.thumbnail_url]
                         this[MangaTable.updateStrategy] = sManga.update_strategy.name
                         if (!sManga.thumbnail_url.isNullOrEmpty() && manga[MangaTable.thumbnail_url] != sManga.thumbnail_url) {
                             this[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
