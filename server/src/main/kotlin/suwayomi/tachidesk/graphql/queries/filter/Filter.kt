@@ -403,12 +403,12 @@ fun <T : String, S : T?> andFilterWithCompareString(
 
     opAnd.andWhere(filter.isNull) { if (it) column.isNull() else column.isNotNull() }
     opAnd.andWhere(filter.equalTo) { column eq it as S }
-    opAnd.andWhere(filter.notEqualTo) { column neq it as S }
-    opAnd.andWhereAll(filter.notEqualToAll) { column neq it as S }
-    opAnd.andWhereAny(filter.notEqualToAny) { column neq it as S }
-    opAnd.andWhere(filter.distinctFrom) { DistinctFromOp.distinctFrom(column, it as S) }
-    opAnd.andWhereAll(filter.distinctFromAll) { DistinctFromOp.distinctFrom(column, it as S) }
-    opAnd.andWhereAny(filter.distinctFromAny) { DistinctFromOp.distinctFrom(column, it as S) }
+    opAnd.andWhere(filter.notEqualTo, filter.notEqualToAll, filter.notEqualToAny) { column neq it as S }
+    opAnd.andWhere(
+        filter.distinctFrom,
+        filter.distinctFromAll,
+        filter.distinctFromAny,
+    ) { DistinctFromOp.distinctFrom(column, it as S) }
     opAnd.andWhere(filter.notDistinctFrom) { DistinctFromOp.notDistinctFrom(column, it as S) }
     if (!filter.`in`.isNullOrEmpty()) {
         opAnd.andWhere(filter.`in`) { column inList it as List<S> }
@@ -422,61 +422,43 @@ fun <T : String, S : T?> andFilterWithCompareString(
     opAnd.andWhere(filter.greaterThan) { column greater it }
     opAnd.andWhere(filter.greaterThanOrEqualTo) { column greaterEq it }
 
-    opAnd.andWhere(filter.includes) { column like "%$it%" }
-    opAnd.andWhereAll(filter.includesAll) { column like "%$it%" }
-    opAnd.andWhereAny(filter.includesAny) { column like "%$it%" }
-    opAnd.andWhere(filter.notIncludes) { column notLike "%$it%" }
-    opAnd.andWhereAll(filter.notIncludesAll) { column notLike "%$it%" }
-    opAnd.andWhereAny(filter.notIncludesAny) { column notLike "%$it%" }
-    opAnd.andWhere(filter.includesInsensitive) { ILikeEscapeOp.iLike(column, "%$it%") }
-    opAnd.andWhereAll(filter.includesInsensitiveAll) { ILikeEscapeOp.iLike(column, "%$it%") }
-    opAnd.andWhereAny(filter.includesInsensitiveAny) { ILikeEscapeOp.iLike(column, "%$it%") }
-    opAnd.andWhere(filter.notIncludesInsensitive) { ILikeEscapeOp.iNotLike(column, "%$it%") }
-    opAnd.andWhereAll(filter.notIncludesInsensitiveAll) { ILikeEscapeOp.iNotLike(column, "%$it%") }
-    opAnd.andWhereAny(filter.notIncludesInsensitiveAny) { ILikeEscapeOp.iNotLike(column, "%$it%") }
+    opAnd.andWhere(filter.includes, filter.includesAll, filter.includesAny) { column like "%$it%" }
+    opAnd.andWhere(filter.notIncludes, filter.notIncludesAll, filter.notIncludesAny) { column notLike "%$it%" }
+    opAnd.andWhere(filter.includesInsensitive, filter.includesInsensitiveAll, filter.includesInsensitiveAny) {
+        ILikeEscapeOp.iLike(column, "%$it%")
+    }
+    opAnd.andWhere(filter.notIncludesInsensitive, filter.notIncludesInsensitiveAll, filter.notIncludesInsensitiveAny) {
+        ILikeEscapeOp.iNotLike(column, "%$it%")
+    }
 
-    opAnd.andWhere(filter.startsWith) { column like "$it%" }
-    opAnd.andWhereAll(filter.startsWithAll) { column like "$it%" }
-    opAnd.andWhereAny(filter.startsWithAny) { column like "$it%" }
-    opAnd.andWhere(filter.notStartsWith) { column notLike "$it%" }
-    opAnd.andWhereAll(filter.notStartsWithAll) { column notLike "$it%" }
-    opAnd.andWhereAny(filter.notStartsWithAny) { column notLike "$it%" }
-    opAnd.andWhere(filter.startsWithInsensitive) { ILikeEscapeOp.iLike(column, "$it%") }
-    opAnd.andWhereAll(filter.startsWithInsensitiveAll) { ILikeEscapeOp.iLike(column, "$it%") }
-    opAnd.andWhereAny(filter.startsWithInsensitiveAny) { ILikeEscapeOp.iLike(column, "$it%") }
-    opAnd.andWhere(filter.notStartsWithInsensitive) { ILikeEscapeOp.iNotLike(column, "$it%") }
-    opAnd.andWhereAll(filter.notStartsWithInsensitiveAll) { ILikeEscapeOp.iNotLike(column, "$it%") }
-    opAnd.andWhereAny(filter.notStartsWithInsensitiveAny) { ILikeEscapeOp.iNotLike(column, "$it%") }
+    opAnd.andWhere(filter.startsWith, filter.startsWithAll, filter.startsWithAny) { column like "$it%" }
+    opAnd.andWhere(filter.notStartsWith, filter.notStartsWithAll, filter.notStartsWithAny) { column notLike "$it%" }
+    opAnd.andWhere(filter.startsWithInsensitive, filter.startsWithInsensitiveAll, filter.startsWithInsensitiveAny) {
+        ILikeEscapeOp.iLike(column, "$it%")
+    }
+    opAnd.andWhere(filter.notStartsWithInsensitive, filter.notStartsWithInsensitiveAll, filter.notStartsWithInsensitiveAny) {
+        ILikeEscapeOp.iNotLike(column, "$it%")
+    }
 
-    opAnd.andWhere(filter.endsWith) { column like "%$it" }
-    opAnd.andWhereAll(filter.endsWithAll) { column like "%$it" }
-    opAnd.andWhereAny(filter.endsWithAny) { column like "%$it" }
-    opAnd.andWhere(filter.notEndsWith) { column notLike "%$it" }
-    opAnd.andWhereAll(filter.notEndsWithAll) { column notLike "%$it" }
-    opAnd.andWhereAny(filter.notEndsWithAny) { column notLike "%$it" }
-    opAnd.andWhere(filter.endsWithInsensitive) { ILikeEscapeOp.iLike(column, "%$it") }
-    opAnd.andWhereAll(filter.endsWithInsensitiveAll) { ILikeEscapeOp.iLike(column, "%$it") }
-    opAnd.andWhereAny(filter.endsWithInsensitiveAny) { ILikeEscapeOp.iLike(column, "%$it") }
-    opAnd.andWhere(filter.notEndsWithInsensitive) { ILikeEscapeOp.iNotLike(column, "%$it") }
-    opAnd.andWhereAll(filter.notEndsWithInsensitiveAll) { ILikeEscapeOp.iNotLike(column, "%$it") }
-    opAnd.andWhereAny(filter.notEndsWithInsensitiveAny) { ILikeEscapeOp.iNotLike(column, "%$it") }
+    opAnd.andWhere(filter.endsWith, filter.endsWithAll, filter.endsWithAny) { column like "%$it" }
+    opAnd.andWhere(filter.notEndsWith, filter.notEndsWithAll, filter.notEndsWithAny) { column notLike "%$it" }
+    opAnd.andWhere(filter.endsWithInsensitive, filter.endsWithInsensitiveAll, filter.endsWithInsensitiveAny) {
+        ILikeEscapeOp.iLike(column, "%$it")
+    }
+    opAnd.andWhere(filter.notEndsWithInsensitive, filter.notEndsWithInsensitiveAll, filter.notEndsWithInsensitiveAny) {
+        ILikeEscapeOp.iNotLike(column, "%$it")
+    }
 
-    opAnd.andWhere(filter.like) { column like it }
-    opAnd.andWhereAll(filter.likeAll) { column like it }
-    opAnd.andWhereAny(filter.likeAny) { column like it }
-    opAnd.andWhere(filter.notLike) { column notLike it }
-    opAnd.andWhereAll(filter.notLikeAll) { column notLike it }
-    opAnd.andWhereAny(filter.notLikeAny) { column notLike it }
-    opAnd.andWhere(filter.likeInsensitive) { ILikeEscapeOp.iLike(column, it) }
-    opAnd.andWhereAll(filter.likeInsensitiveAll) { ILikeEscapeOp.iLike(column, it) }
-    opAnd.andWhereAny(filter.likeInsensitiveAny) { ILikeEscapeOp.iLike(column, it) }
-    opAnd.andWhere(filter.notLikeInsensitive) { ILikeEscapeOp.iNotLike(column, it) }
-    opAnd.andWhereAll(filter.notLikeInsensitiveAll) { ILikeEscapeOp.iNotLike(column, it) }
-    opAnd.andWhereAny(filter.notLikeInsensitiveAny) { ILikeEscapeOp.iNotLike(column, it) }
+    opAnd.andWhere(filter.like, filter.likeAll, filter.likeAny) { column like it }
+    opAnd.andWhere(filter.notLike, filter.notLikeAll, filter.notLikeAny) { column notLike it }
+    opAnd.andWhere(filter.likeInsensitive, filter.likeInsensitiveAll, filter.likeInsensitiveAny) { ILikeEscapeOp.iLike(column, it) }
+    opAnd.andWhere(filter.notLikeInsensitive, filter.notLikeInsensitiveAll, filter.notLikeInsensitiveAny) {
+        ILikeEscapeOp.iNotLike(column, it)
+    }
 
-    opAnd.andWhere(filter.distinctFromInsensitive) { DistinctFromOp.distinctFrom(column.upperCase(), it.uppercase() as S) }
-    opAnd.andWhereAll(filter.distinctFromInsensitiveAll) { DistinctFromOp.distinctFrom(column.upperCase(), it.uppercase() as S) }
-    opAnd.andWhereAny(filter.distinctFromInsensitiveAny) { DistinctFromOp.distinctFrom(column.upperCase(), it.uppercase() as S) }
+    opAnd.andWhere(filter.distinctFromInsensitive, filter.distinctFromInsensitiveAll, filter.distinctFromInsensitiveAny) {
+        DistinctFromOp.distinctFrom(column.upperCase(), it.uppercase() as S)
+    }
     opAnd.andWhere(filter.notDistinctFromInsensitive) { DistinctFromOp.notDistinctFrom(column.upperCase(), it.uppercase() as S) }
 
     opAnd.andWhere(filter.inInsensitive) { column.upperCase() inList (it.map { it.uppercase() } as List<S>) }
@@ -506,6 +488,17 @@ class OpAnd(var op: Op<Boolean>? = null) {
     ) {
         @Suppress("UNCHECKED_CAST")
         return andWhere(values as T?, andPart as SqlExpressionBuilder.(Any) -> Op<Boolean>)
+    }
+
+    fun <T : Any> andWhere(
+        valueDefault: T?,
+        valueAll: List<T>?,
+        valueAny: List<T>?,
+        expr: SqlExpressionBuilder.(T) -> Op<Boolean>,
+    ) {
+        andWhere(valueDefault, expr)
+        andWhereAll(valueAll, expr)
+        andWhereAny(valueAny, expr)
     }
 
     fun <T : Any> andWhereAll(
@@ -568,12 +561,8 @@ fun <T : Comparable<T>, S : T?> andFilter(
 
     opAnd.andWhere(filter.isNull) { if (it) column.isNull() else column.isNotNull() }
     opAnd.andWhere(filter.equalTo) { column eq it as S }
-    opAnd.andWhere(filter.notEqualTo) { column neq it as S }
-    opAnd.andWhereAll(filter.notEqualToAll) { column neq it as S }
-    opAnd.andWhereAny(filter.notEqualToAny) { column neq it as S }
-    opAnd.andWhere(filter.distinctFrom) { DistinctFromOp.distinctFrom(column, it as S) }
-    opAnd.andWhereAll(filter.distinctFromAll) { DistinctFromOp.distinctFrom(column, it as S) }
-    opAnd.andWhereAny(filter.distinctFromAny) { DistinctFromOp.distinctFrom(column, it as S) }
+    opAnd.andWhere(filter.notEqualTo, filter.notEqualToAll, filter.notEqualToAny) { column neq it as S }
+    opAnd.andWhere(filter.distinctFrom, filter.distinctFromAll, filter.distinctFromAny) { DistinctFromOp.distinctFrom(column, it as S) }
     opAnd.andWhere(filter.notDistinctFrom) { DistinctFromOp.notDistinctFrom(column, it as S) }
     if (!filter.`in`.isNullOrEmpty()) {
         opAnd.andWhere(filter.`in`) { column inList it as List<S> }
