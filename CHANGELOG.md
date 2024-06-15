@@ -1,3 +1,50 @@
+# Server: v1.1.0 + WevUI: v1.1.0
+## TL;DR
+- Update Manga Info in browse
+- Full Tracking support
+- Import Tracking from backups
+- Improved support for library filters
+- Improved thumbnail handling
+- Many minor bugfixes
+- WebUI changes: https://github.com/Suwayomi/Suwayomi-WebUI/releases/tag/v1.1.0
+
+## Suwayomi-Server Changelog
+- ([r1531](https://github.com/Suwayomi/Suwayomi-Server/commit/ecd1604e25a17a6ef68d568b5d81e69f6e9f7702)) Update metadata in source browse only if new data is not null ([#962](https://github.com/Suwayomi/Suwayomi-Server/pull/962) by @schroda)
+- ([r1530](https://github.com/Suwayomi/Suwayomi-Server/commit/0f061900afbd4036b4d081bcb3f39e4f60160ac3)) Fix browse source ([#961](https://github.com/Suwayomi/Suwayomi-Server/pull/961) by @Syer10)
+- ([r1529](https://github.com/Suwayomi/Suwayomi-Server/commit/c47f5ea85e75c7119d828a19eda392b2fb9faecd)) [skip ci] doc: add NixOS installation ([#959](https://github.com/Suwayomi/Suwayomi-Server/pull/959) by @RatCornu)
+- ([r1528](https://github.com/Suwayomi/Suwayomi-Server/commit/306eb0e3c774b5a8d0d2d4ade2d7091904fe6e58)) Update manga info when browsing if not in library ([#958](https://github.com/Suwayomi/Suwayomi-Server/pull/958) by @Syer10)
+- ([r1527](https://github.com/Suwayomi/Suwayomi-Server/commit/e64025ded814a15129999586133d84085e0c5779)) Correctly set name of logger ([#956](https://github.com/Suwayomi/Suwayomi-Server/pull/956) by @schroda)
+- ([r1526](https://github.com/Suwayomi/Suwayomi-Server/commit/c1fe2da636b675091ec0ac93162764883938ffc6)) Fix/failing thumbnail requests with http 410 ([#955](https://github.com/Suwayomi/Suwayomi-Server/pull/955) by @schroda)
+- ([r1525](https://github.com/Suwayomi/Suwayomi-Server/commit/ff23f58a4f4e8e0b4d459957f0e0701265e0c364)) Support partial mutation responses ([#954](https://github.com/Suwayomi/Suwayomi-Server/pull/954) by @schroda)
+- ([r1524](https://github.com/Suwayomi/Suwayomi-Server/commit/fc2f5ffdf9c1e8675f9b978031a49fb4ce3af601)) Fix/failing track progress update for logged out trackers ([#953](https://github.com/Suwayomi/Suwayomi-Server/pull/953) by @schroda)
+- ([r1523](https://github.com/Suwayomi/Suwayomi-Server/commit/6dd9ed7fb0816b2f163bec43d04c433099e7e529)) Fix/prevent importing unsupported trackers from backup II ([#945](https://github.com/Suwayomi/Suwayomi-Server/pull/945) by @schroda)
+- ([r1522](https://github.com/Suwayomi/Suwayomi-Server/commit/2f362abb91be875e943b1364eb86d70a4144dd6f)) Prevent importing unsupported tracker from backup ([#944](https://github.com/Suwayomi/Suwayomi-Server/pull/944) by @schroda)
+- ([r1521](https://github.com/Suwayomi/Suwayomi-Server/commit/96807a64cf1b13b6db655d46e90c42717170ce62)) [skip ci] Update README.md ([#941](https://github.com/Suwayomi/Suwayomi-Server/pull/941) by @FumoVite)
+- ([r1520](https://github.com/Suwayomi/Suwayomi-Server/commit/7df5f1c4c4408cfbbd56697ba10f018393df2b4a)) Feature/backup tracking ([#940](https://github.com/Suwayomi/Suwayomi-Server/pull/940) by @schroda)
+- ([r1519](https://github.com/Suwayomi/Suwayomi-Server/commit/cf1ede9cf70a2d72a7ff84b9ead24a394ceee2ce)) Update lastPageRead on chapter update ([#939](https://github.com/Suwayomi/Suwayomi-Server/pull/939) by @schroda)
+- ([r1518](https://github.com/Suwayomi/Suwayomi-Server/commit/729385588a3d8e06ec8be38865a12c47e88f6bcb)) Prevent greater last page read than page count ([#938](https://github.com/Suwayomi/Suwayomi-Server/pull/938) by @schroda)
+- ([r1517](https://github.com/Suwayomi/Suwayomi-Server/commit/668d5cf8f02e35cc53d1430a239ae67837c64f51)) Prevent IndexOutOfBoundsException when removing duplicated chapters ([#935](https://github.com/Suwayomi/Suwayomi-Server/pull/935) by @schroda)
+- ([r1516](https://github.com/Suwayomi/Suwayomi-Server/commit/72b1b5b0f9b86f82a0e203802d9a4b6339277c01)) Exit track progress update early in case new chapter is same as current local ([#937](https://github.com/Suwayomi/Suwayomi-Server/pull/937) by @schroda)
+- ([r1515](https://github.com/Suwayomi/Suwayomi-Server/commit/fbf726c17434212cdf94b39f52a25a0050d77287)) Use "AsyncExecutionStrategy" for mutations ([#932](https://github.com/Suwayomi/Suwayomi-Server/pull/932) by @schroda)
+- ([r1514](https://github.com/Suwayomi/Suwayomi-Server/commit/c441eed84773fdc295e6d004e4f4628453b54659)) Exclude duplicated chapters from auto download limit ([#923](https://github.com/Suwayomi/Suwayomi-Server/pull/923) by @schroda)
+- ([r1513](https://github.com/Suwayomi/Suwayomi-Server/commit/e8e83ed49caac2d25f29073d1bd3b5b385aa2d98)) Remove duplicated mangas from gql "mangas" query ([#924](https://github.com/Suwayomi/Suwayomi-Server/pull/924) by @schroda)
+- ([r1512](https://github.com/Suwayomi/Suwayomi-Server/commit/cdc21b067c1a341d68ea7a9c1ee565dc3959f552)) Fix/recognition of already downloaded chapters ([#922](https://github.com/Suwayomi/Suwayomi-Server/pull/922) by @schroda)
+- ([r1511](https://github.com/Suwayomi/Suwayomi-Server/commit/48e19f7914fee1ea1789b217d5df9b05acb49203)) Feature/auto download of new chapters improve handling of unhandable reuploads ([#921](https://github.com/Suwayomi/Suwayomi-Server/pull/921) by @schroda)
+- ([r1510](https://github.com/Suwayomi/Suwayomi-Server/commit/89dd570b3057bee34643858b4a42bfac7d88a82b)) Add mutation to fetch the latest track data from the tracker ([#920](https://github.com/Suwayomi/Suwayomi-Server/pull/920) by @schroda, @Syer10)
+- ([r1509](https://github.com/Suwayomi/Suwayomi-Server/commit/16474d4328651f1236722556b7f59628a0f9dbda)) Feature/tracking gql add option to delete remote binding on tracker ([#919](https://github.com/Suwayomi/Suwayomi-Server/pull/919) by @schroda, @Syer10)
+- ([r1508](https://github.com/Suwayomi/Suwayomi-Server/commit/9db612bf0317950d0291047b9ee64a0787e49bf2)) Move trigger for track progress update to client ([#918](https://github.com/Suwayomi/Suwayomi-Server/pull/918) by @schroda)
+- ([r1507](https://github.com/Suwayomi/Suwayomi-Server/commit/7d92dbc5c0a47176099eb310eaf17a4788ba2ce4)) Fix/tracking progress update in case local chapter is smaller than remote ([#917](https://github.com/Suwayomi/Suwayomi-Server/pull/917) by @schroda)
+- ([r1506](https://github.com/Suwayomi/Suwayomi-Server/commit/a9efca86870cec6d74f58535e2e007eb6c8831c2)) Add chapter bookmark count field to MangaType ([#912](https://github.com/Suwayomi/Suwayomi-Server/pull/912) by @schroda)
+- ([r1505](https://github.com/Suwayomi/Suwayomi-Server/commit/dbfea5d02b898884fdeb2be2959fe8a73a465704)) Update inLibraryAt timestamp when adding manga to library ([#911](https://github.com/Suwayomi/Suwayomi-Server/pull/911) by @schroda)
+- ([r1504](https://github.com/Suwayomi/Suwayomi-Server/commit/a6b05c4a2759d0d5f834a54cad6c8417fe49a0d2)) Feature/refresh outdated thumbnail url on fetch failure ([#910](https://github.com/Suwayomi/Suwayomi-Server/pull/910) by @schroda)
+- ([r1503](https://github.com/Suwayomi/Suwayomi-Server/commit/6d539d34040c4e95692b57ce4fedfbeaa73083d0)) Fix/update subscription clear data loader cache ([#908](https://github.com/Suwayomi/Suwayomi-Server/pull/908) by @schroda)
+- ([r1502](https://github.com/Suwayomi/Suwayomi-Server/commit/b2aff1efc9e6527e70ba519e5171096394e6ccf7)) Fix MAL after restarting the server ([#903](https://github.com/Suwayomi/Suwayomi-Server/pull/903) by @Syer10)
+- ([r1501](https://github.com/Suwayomi/Suwayomi-Server/commit/8a20a1ef5094efc05426ed420bbde40358fdf2dd)) Add first unread chapter field to MangaType ([#900](https://github.com/Suwayomi/Suwayomi-Server/pull/900) by @schroda)
+- ([r1500](https://github.com/Suwayomi/Suwayomi-Server/commit/33cbfa9751c3ef7a6babfcff9595782cbac5acae)) Fix/electron launch error not logged ([#895](https://github.com/Suwayomi/Suwayomi-Server/pull/895) by @schroda)
+- ([r1499](https://github.com/Suwayomi/Suwayomi-Server/commit/b95a8d44d4bb7c94a04e66b3d6cc0fc101f4880b)) Always fetch thumbnail of manga from local source ([#898](https://github.com/Suwayomi/Suwayomi-Server/pull/898) by @schroda)
+
+## [Suwayomi-WebUI Changelog](https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#v110-r1689)
+
 # Server: v1.0.0 + WevUI: r1409
 ## TL;DR
 - GraphQL API
