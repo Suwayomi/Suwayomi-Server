@@ -597,16 +597,19 @@ object WebInterfaceManager {
                     ?: throw Exception("Invalid mappingFile")
             val minServerVersionNumber = extractVersion(minServerVersionString)
 
+            // is a STABLE webUI release, without a specified webUI version, which requires same handling as the PREVIEW release
+            val isUnknownStableVersion = webUIVersion == "STABLEPREVIEW"
+
             if (!WebUIChannel.doesConfigChannelEqual(WebUIChannel.from(webUIVersion))) {
                 // allow only STABLE versions for STABLE channel
-                if (WebUIChannel.doesConfigChannelEqual(WebUIChannel.STABLE)) {
+                if (WebUIChannel.doesConfigChannelEqual(WebUIChannel.STABLE) && !isUnknownStableVersion) {
                     continue
                 }
 
                 // allow all versions for PREVIEW channel
             }
 
-            if (webUIVersion == WebUIChannel.PREVIEW.name) {
+            if (webUIVersion == WebUIChannel.PREVIEW.name || isUnknownStableVersion) {
                 webUIVersion = fetchPreviewVersion(flavor)
             }
 
