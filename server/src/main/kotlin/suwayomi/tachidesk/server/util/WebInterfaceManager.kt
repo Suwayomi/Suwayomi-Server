@@ -611,7 +611,7 @@ object WebInterfaceManager {
             }
 
             val isCompatibleVersion =
-                minServerVersionNumber <= currentServerVersionNumber && minServerVersionNumber >=
+                minServerVersionNumber <= currentServerVersionNumber && extractVersion(webUIVersion) >=
                     extractVersion(
                         BuildConfig.WEBUI_TAG,
                     )
