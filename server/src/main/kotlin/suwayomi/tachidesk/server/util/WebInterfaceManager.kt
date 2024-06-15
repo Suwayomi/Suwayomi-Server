@@ -136,6 +136,8 @@ enum class WebUIFlavor(
     }
 }
 
+fun WebUIFlavor.isDefault(): Boolean = this == WebUIFlavor.default
+
 object WebInterfaceManager {
     private val logger = KotlinLogging.logger {}
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -314,10 +316,7 @@ object WebInterfaceManager {
             // check if the bundled webUI version is a newer version than the current used version
             // this could be the case in case no compatible webUI version is available and a newer server version was installed
             val shouldUpdateToBundledVersion =
-                flavor.uiName == WebUIFlavor.default.uiName && extractVersion(getLocalVersion()) <
-                    extractVersion(
-                        BuildConfig.WEBUI_TAG,
-                    )
+                flavor.isDefault() && extractVersion(getLocalVersion()) < extractVersion(BuildConfig.WEBUI_TAG)
             if (shouldUpdateToBundledVersion) {
                 log.debug { "update to bundled version \"${BuildConfig.WEBUI_TAG}\"" }
 
@@ -375,7 +374,7 @@ object WebInterfaceManager {
             return
         }
 
-        if (flavor.uiName != WebUIFlavor.default.uiName) {
+        if (!flavor.isDefault()) {
             log.warn { "fallback to default webUI \"${WebUIFlavor.default.uiName}\"" }
 
             serverConfig.webUIFlavor.value = WebUIFlavor.default.uiName
@@ -610,8 +609,8 @@ object WebInterfaceManager {
                 webUIVersion = fetchPreviewVersion(flavor)
             }
 
-            val isDefaultFlavor = WebUIFlavor.default == WebUIFlavor.current
-            val isNewerThanBundled = !isDefaultFlavor || extractVersion(webUIVersion) >= extractVersion(BuildConfig.WEBUI_TAG)
+            val isNewerThanBundled =
+                !flavor.isDefault() || extractVersion(webUIVersion) >= extractVersion(BuildConfig.WEBUI_TAG)
             val isCompatibleVersion = minServerVersionNumber <= currentServerVersionNumber && isNewerThanBundled
             if (isCompatibleVersion) {
                 return webUIVersion
