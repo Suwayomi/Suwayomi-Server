@@ -610,11 +610,9 @@ object WebInterfaceManager {
                 webUIVersion = fetchPreviewVersion(flavor)
             }
 
-            val isCompatibleVersion =
-                minServerVersionNumber <= currentServerVersionNumber && extractVersion(webUIVersion) >=
-                    extractVersion(
-                        BuildConfig.WEBUI_TAG,
-                    )
+            val isDefaultFlavor = WebUIFlavor.default == WebUIFlavor.current
+            val isNewerThanBundled = !isDefaultFlavor || extractVersion(webUIVersion) >= extractVersion(BuildConfig.WEBUI_TAG)
+            val isCompatibleVersion = minServerVersionNumber <= currentServerVersionNumber && isNewerThanBundled
             if (isCompatibleVersion) {
                 return webUIVersion
             }
