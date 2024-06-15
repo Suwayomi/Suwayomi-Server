@@ -10,7 +10,7 @@ import java.io.BufferedReader
 const val MainClass = "suwayomi.tachidesk.MainKt"
 
 // should be bumped with each stable release
-val tachideskVersion = System.getenv("ProductVersion") ?: "v1.1.0"
+val tachideskVersion = System.getenv("ProductVersion") ?: "v1.1.1"
 
 val webUIRevisionTag = System.getenv("WebUIRevision") ?: "r1689"
 

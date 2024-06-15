@@ -1,3 +1,11 @@
+# Server: v1.1.1 + WevUI: v1.1.0
+## TL;DR
+- WebUI update bugfixes
+
+## Suwayomi-Server Changelog
+- ([r1534](https://github.com/Suwayomi/Suwayomi-Server/commit/d9cb54b28593e4df87522090f03a6e5b9c7d9fa2)) Compare webUI version with bundled webUI version ([#969](https://github.com/Suwayomi/Suwayomi-Server/pull/969) by @schroda)
+- ([r1533](https://github.com/Suwayomi/Suwayomi-Server/commit/f738a162d3cd4582612d4986b3d3887e1c309bdd)) Support for "STABLEPREVIEW" webUI version ([#970](https://github.com/Suwayomi/Suwayomi-Server/pull/970) by @schroda)
+
 # Server: v1.1.0 + WevUI: v1.1.0
 ## TL;DR
 - Update Manga Info in browse

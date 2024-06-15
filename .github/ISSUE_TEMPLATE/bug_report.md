@@ -23,7 +23,7 @@ Note that the issue will be automatically closed if you do not fill out the titl
 ---
 
 ## Device information
-- Suwayomi-Server version: (Example: v1.1.0-r1532-win32)
+- Suwayomi-Server version: (Example: v1.1.1-r1535-win32)
 - Server Operating System: (Example: Ubuntu 20.04)
 - Server Desktop Environment: N/A or (Example: Gnome 40)
 - Server JVM version: bundled with win32 or (Example: Java 8 Update 281 or OpenJDK 8u281)
