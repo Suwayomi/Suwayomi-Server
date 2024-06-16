@@ -124,16 +124,7 @@ For more information, see [the NixOS manual](https://nixos.org/manual/nixos/stab
 You can also directly use the package from [nixpkgs](https://search.nixos.org/packages?channel=unstable&type=packages&query=suwayomi-server).
 
 ### Docker
-Check our Official Docker release [Suwayomi Container](https://github.com/orgs/Suwayomi/packages/container/package/tachidesk) for running Suwayomi Server in a docker container. Source code for our container is available at [docker-tachidesk](https://github.com/Suwayomi/docker-tachidesk). By default, the server will be running on http://localhost:4567 open this url in your browser.
-
-Install from the command line:
-```
-    $ docker pull ghcr.io/suwayomi/tachidesk
-```
-Run Container from the command line:
-```
-    $ docker run -p 4567:4567 ghcr.io/suwayomi/tachidesk
-```
+Check our Official Docker release [Suwayomi Container](https://github.com/orgs/Suwayomi/packages/container/package/tachidesk) for running Suwayomi Server in a docker container. Source code for our container is available at [docker-tachidesk](https://github.com/Suwayomi/docker-tachidesk), an example compose file can also be found there. By default, the server will be running on http://localhost:4567 open this url in your browser.
 
 ## Advanced Methods
 ### Running the jar release directly
