@@ -57,6 +57,10 @@ class ChapterMutation {
         ids: List<Int>,
         patch: UpdateChapterPatch,
     ) {
+        if (ids.isEmpty()) {
+            return
+        }
+
         transaction {
             val chapterIdToPageCount =
                 if (patch.lastPageRead != null) {
