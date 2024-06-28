@@ -149,7 +149,7 @@ class SourceQuery {
 
                 res.applyOps(condition, filter)
 
-                if (order != null || (last != null || before != null)) {
+                if (order != null || orderBy != null || (last != null || before != null)) {
                     val baseSort = listOf(SourceOrder(SourceOrderBy.ID, SortOrder.ASC))
                     val deprecatedSort = listOfNotNull(orderBy?.let { SourceOrder(orderBy, orderByType) })
                     val actualSort = (order.orEmpty() + deprecatedSort + baseSort)

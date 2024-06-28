@@ -183,7 +183,7 @@ class ExtensionQuery {
 
                 res.applyOps(condition, filter)
 
-                if (order != null || (last != null || before != null)) {
+                if (order != null || orderBy != null || (last != null || before != null)) {
                     val baseSort = listOf(ExtensionOrder(ExtensionOrderBy.PKG_NAME, SortOrder.ASC))
                     val deprecatedSort = listOfNotNull(orderBy?.let { ExtensionOrder(orderBy, orderByType) })
                     val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
