@@ -151,7 +151,7 @@ class TrackQuery {
                         }
                 }
 
-                if (order != null || (last != null || before != null)) {
+                if (order != null || orderBy != null || (last != null || before != null)) {
                     val baseSort = listOf(TrackerOrder(TrackerOrderBy.ID, SortOrder.ASC))
                     val deprecatedSort = listOfNotNull(orderBy?.let { TrackerOrder(orderBy, orderByType) })
                     val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
@@ -412,7 +412,7 @@ class TrackQuery {
 
                 res.applyOps(condition, filter)
 
-                if (order != null || (last != null || before != null)) {
+                if (order != null || orderBy != null || (last != null || before != null)) {
                     val baseSort = listOf(TrackRecordOrder(TrackRecordOrderBy.ID, SortOrder.ASC))
                     val deprecatedSort = listOfNotNull(orderBy?.let { TrackRecordOrder(orderBy, orderByType) })
                     val actualSort = (order.orEmpty() + deprecatedSort + baseSort)

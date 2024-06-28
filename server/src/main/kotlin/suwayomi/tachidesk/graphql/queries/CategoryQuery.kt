@@ -149,7 +149,7 @@ class CategoryQuery {
 
                 res.applyOps(condition, filter)
 
-                if (order != null || (last != null || before != null)) {
+                if (order != null || orderBy != null || (last != null || before != null)) {
                     val baseSort = listOf(CategoryOrder(CategoryOrderBy.ID, SortOrder.ASC))
                     val deprecatedSort = listOfNotNull(orderBy?.let { CategoryOrder(orderBy, orderByType) })
                     val actualSort = (order.orEmpty() + deprecatedSort + baseSort)

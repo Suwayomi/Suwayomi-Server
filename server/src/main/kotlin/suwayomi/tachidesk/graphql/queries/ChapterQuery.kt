@@ -233,7 +233,7 @@ class ChapterQuery {
 
                 res.applyOps(condition, filter)
 
-                if (order != null || (last != null || before != null)) {
+                if (order != null || orderBy != null || (last != null || before != null)) {
                     val baseSort = listOf(ChapterOrder(ChapterOrderBy.ID, SortOrder.ASC))
                     val deprecatedSort = listOfNotNull(orderBy?.let { ChapterOrder(orderBy, orderByType) })
                     val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
