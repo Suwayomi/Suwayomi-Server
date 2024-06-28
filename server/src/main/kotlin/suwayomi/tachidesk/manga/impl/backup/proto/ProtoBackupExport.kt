@@ -56,6 +56,7 @@ object ProtoBackupExport : ProtoBackupBase() {
     private var backupSchedulerJobId: String = ""
     private const val LAST_AUTOMATED_BACKUP_KEY = "lastAutomatedBackup"
     private val preferences = Injekt.get<Application>().getSharedPreferences("server_util", Context.MODE_PRIVATE)
+    private const val AUTO_BACKUP_FILENAME = "auto"
 
     init {
         serverConfig.subscribeTo(
@@ -114,7 +115,7 @@ object ProtoBackupExport : ProtoBackupBase() {
             val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
             automatedBackupDir.mkdirs()
 
-            val backupFile = File(applicationDirs.automatedBackupRoot, Backup.getFilename())
+            val backupFile = File(applicationDirs.automatedBackupRoot, Backup.getFilename(AUTO_BACKUP_FILENAME))
 
             backupFile.outputStream().use { output -> input.copyTo(output) }
         }
@@ -133,7 +134,7 @@ object ProtoBackupExport : ProtoBackupBase() {
             return
         }
 
-        automatedBackupDir.walkTopDown().forEach { file ->
+        automatedBackupDir.listFiles { file -> file.name.startsWith(Backup.getBasename(AUTO_BACKUP_FILENAME)) }?.forEach { file ->
             try {
                 cleanupAutomatedBackupFile(file)
             } catch (e: Exception) {

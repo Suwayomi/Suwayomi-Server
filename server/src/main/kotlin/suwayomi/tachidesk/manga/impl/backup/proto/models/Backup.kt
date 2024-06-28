@@ -2,6 +2,7 @@ package suwayomi.tachidesk.manga.impl.backup.proto.models
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
+import xyz.nulldev.androidcompat.util.SafePath
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -19,9 +20,18 @@ data class Backup(
     }
 
     companion object {
-        fun getFilename(): String {
+        fun getBasename(name: String = ""): String {
+            val namePrefix = "org.suwayomi.tachidesk"
+            val namePrefixSeparator = if (name.isNotEmpty()) "." else ""
+
+            return SafePath.buildValidFilename(namePrefix + namePrefixSeparator + name)
+        }
+
+        fun getFilename(name: String = ""): String {
             val date = SimpleDateFormat("yyyy-MM-dd_HH-mm").format(Date())
-            return "org.suwayomi.tachidesk_$date.tachibk"
+            val ext = ".tachibk"
+
+            return getBasename(name + "_$date") + ext
         }
     }
 }
