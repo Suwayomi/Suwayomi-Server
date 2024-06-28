@@ -126,14 +126,14 @@ class MangaQuery {
             opAnd.eq(artist, MangaTable.artist)
             opAnd.eq(author, MangaTable.author)
             opAnd.eq(description, MangaTable.description)
-            genre?.forEach { opAnd.like("%$it%", MangaTable.genre) }
+            opAnd.andWhereAll(genre) { MangaTable.genre like "%$it%" }
             opAnd.eq(status?.value, MangaTable.status)
             opAnd.eq(inLibrary, MangaTable.inLibrary)
             opAnd.eq(inLibraryAt, MangaTable.inLibraryAt)
             opAnd.eq(realUrl, MangaTable.realUrl)
             opAnd.eq(lastFetchedAt, MangaTable.lastFetchedAt)
             opAnd.eq(chaptersLastFetchedAt, MangaTable.chaptersLastFetchedAt)
-            opAnd.inList(categoryIds, CategoryMangaTable.category)
+            opAnd.andWhere(categoryIds) { CategoryMangaTable.category inList it }
 
             return opAnd.op
         }
@@ -143,7 +143,11 @@ class MangaQuery {
         override val isNull: Boolean? = null,
         override val equalTo: MangaStatus? = null,
         override val notEqualTo: MangaStatus? = null,
+        override val notEqualToAll: List<MangaStatus>? = null,
+        override val notEqualToAny: List<MangaStatus>? = null,
         override val distinctFrom: MangaStatus? = null,
+        override val distinctFromAll: List<MangaStatus>? = null,
+        override val distinctFromAny: List<MangaStatus>? = null,
         override val notDistinctFrom: MangaStatus? = null,
         override val `in`: List<MangaStatus>? = null,
         override val notIn: List<MangaStatus>? = null,
@@ -156,7 +160,11 @@ class MangaQuery {
             IntFilter(
                 equalTo = equalTo?.value,
                 notEqualTo = notEqualTo?.value,
+                notEqualToAll = notEqualToAll?.map { it.value },
+                notEqualToAny = notEqualToAny?.map { it.value },
                 distinctFrom = distinctFrom?.value,
+                distinctFromAll = distinctFromAll?.map { it.value },
+                distinctFromAny = distinctFromAny?.map { it.value },
                 notDistinctFrom = notDistinctFrom?.value,
                 `in` = `in`?.map { it.value },
                 notIn = notIn?.map { it.value },
