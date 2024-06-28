@@ -7,6 +7,7 @@
 
 package suwayomi.tachidesk.graphql.queries
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
@@ -27,6 +28,7 @@ import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
+import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
@@ -80,6 +82,11 @@ class CategoryQuery {
         }
     }
 
+    data class CategoryOrder(
+        override val by: CategoryOrderBy,
+        override val byType: SortOrder? = null,
+    ) : Order<CategoryOrderBy>
+
     data class CategoryCondition(
         val id: Int? = null,
         val order: Int? = null,
@@ -119,8 +126,17 @@ class CategoryQuery {
     fun categories(
         condition: CategoryCondition? = null,
         filter: CategoryFilter? = null,
+        @GraphQLDeprecated(
+            "Replaced with order",
+            replaceWith = ReplaceWith("order"),
+        )
         orderBy: CategoryOrderBy? = null,
+        @GraphQLDeprecated(
+            "Replaced with order",
+            replaceWith = ReplaceWith("order"),
+        )
         orderByType: SortOrder? = null,
+        order: List<CategoryOrder>? = null,
         before: Cursor? = null,
         after: Cursor? = null,
         first: Int? = null,
@@ -133,17 +149,15 @@ class CategoryQuery {
 
                 res.applyOps(condition, filter)
 
-                if (orderBy != null || (last != null || before != null)) {
-                    val orderByColumn = orderBy?.column ?: CategoryTable.id
-                    val orderType = orderByType.maybeSwap(last ?: before)
+                if (order != null || (last != null || before != null)) {
+                    val baseSort = listOf(CategoryOrder(CategoryOrderBy.ID, SortOrder.ASC))
+                    val deprecatedSort = listOfNotNull(orderBy?.let { CategoryOrder(orderBy, orderByType) })
+                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                    actualSort.forEach { (orderBy, orderByType) ->
+                        val orderByColumn = orderBy.column
+                        val orderType = orderByType.maybeSwap(last ?: before)
 
-                    if (orderBy == CategoryOrderBy.ID || orderBy == null) {
                         res.orderBy(orderByColumn to orderType)
-                    } else {
-                        res.orderBy(
-                            orderByColumn to orderType,
-                            CategoryTable.id to SortOrder.ASC,
-                        )
                     }
                 }
 
@@ -154,8 +168,8 @@ class CategoryQuery {
                 res.applyBeforeAfter(
                     before = before,
                     after = after,
-                    orderBy = orderBy ?: CategoryOrderBy.ID,
-                    orderByType = orderByType,
+                    orderBy = order?.firstOrNull()?.by ?: CategoryOrderBy.ID,
+                    orderByType = order?.firstOrNull()?.byType,
                 )
 
                 if (first != null) {
@@ -167,7 +181,7 @@ class CategoryQuery {
                 QueryResults(total, firstResult, lastResult, res.toList())
             }
 
-        val getAsCursor: (CategoryType) -> Cursor = (orderBy ?: CategoryOrderBy.ID)::asCursor
+        val getAsCursor: (CategoryType) -> Cursor = (order?.firstOrNull()?.by ?: CategoryOrderBy.ID)::asCursor
 
         val resultsAsType = queryResults.results.map { CategoryType(it) }
 

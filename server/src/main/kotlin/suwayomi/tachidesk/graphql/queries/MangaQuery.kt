@@ -7,6 +7,7 @@
 
 package suwayomi.tachidesk.graphql.queries
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
@@ -30,6 +31,7 @@ import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
 import suwayomi.tachidesk.graphql.queries.util.distinctOn
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
+import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
@@ -88,6 +90,11 @@ class MangaQuery {
             return Cursor(value)
         }
     }
+
+    data class MangaOrder(
+        override val by: MangaOrderBy,
+        override val byType: SortOrder? = null,
+    ) : Order<MangaOrderBy>
 
     data class MangaCondition(
         val id: Int? = null,
@@ -208,8 +215,17 @@ class MangaQuery {
     fun mangas(
         condition: MangaCondition? = null,
         filter: MangaFilter? = null,
+        @GraphQLDeprecated(
+            "Replaced with order",
+            replaceWith = ReplaceWith("order"),
+        )
         orderBy: MangaOrderBy? = null,
+        @GraphQLDeprecated(
+            "Replaced with order",
+            replaceWith = ReplaceWith("order"),
+        )
         orderByType: SortOrder? = null,
+        order: List<MangaOrder>? = null,
         before: Cursor? = null,
         after: Cursor? = null,
         first: Int? = null,
@@ -227,17 +243,15 @@ class MangaQuery {
 
                 res.applyOps(condition, filter)
 
-                if (orderBy != null || (last != null || before != null)) {
-                    val orderByColumn = orderBy?.column ?: MangaTable.id
-                    val orderType = orderByType.maybeSwap(last ?: before)
+                if (order != null || (last != null || before != null)) {
+                    val baseSort = listOf(MangaOrder(MangaOrderBy.ID, SortOrder.ASC))
+                    val deprecatedSort = listOfNotNull(orderBy?.let { MangaOrder(orderBy, orderByType) })
+                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                    actualSort.forEach { (orderBy, orderByType) ->
+                        val orderByColumn = orderBy.column
+                        val orderType = orderByType.maybeSwap(last ?: before)
 
-                    if (orderBy == MangaOrderBy.ID || orderBy == null) {
                         res.orderBy(orderByColumn to orderType)
-                    } else {
-                        res.orderBy(
-                            orderByColumn to orderType,
-                            MangaTable.id to SortOrder.ASC,
-                        )
                     }
                 }
 
@@ -248,8 +262,8 @@ class MangaQuery {
                 res.applyBeforeAfter(
                     before = before,
                     after = after,
-                    orderBy = orderBy ?: MangaOrderBy.ID,
-                    orderByType = orderByType,
+                    orderBy = order?.firstOrNull()?.by ?: MangaOrderBy.ID,
+                    orderByType = order?.firstOrNull()?.byType,
                 )
 
                 if (first != null) {
@@ -261,7 +275,7 @@ class MangaQuery {
                 QueryResults(total, firstResult, lastResult, res.toList())
             }
 
-        val getAsCursor: (MangaType) -> Cursor = (orderBy ?: MangaOrderBy.ID)::asCursor
+        val getAsCursor: (MangaType) -> Cursor = (order?.firstOrNull()?.by ?: MangaOrderBy.ID)::asCursor
 
         val resultsAsType = queryResults.results.map { MangaType(it) }
 

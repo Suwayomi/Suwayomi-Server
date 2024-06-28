@@ -7,6 +7,7 @@
 
 package suwayomi.tachidesk.graphql.queries
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
@@ -24,6 +25,7 @@ import suwayomi.tachidesk.graphql.queries.filter.StringFilter
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
+import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
@@ -72,6 +74,11 @@ class MetaQuery {
         }
     }
 
+    data class MetaOrder(
+        override val by: MetaOrderBy,
+        override val byType: SortOrder? = null,
+    ) : Order<MetaOrderBy>
+
     data class MetaCondition(
         val key: String? = null,
         val value: String? = null,
@@ -103,8 +110,17 @@ class MetaQuery {
     fun metas(
         condition: MetaCondition? = null,
         filter: MetaFilter? = null,
+        @GraphQLDeprecated(
+            "Replaced with order",
+            replaceWith = ReplaceWith("order"),
+        )
         orderBy: MetaOrderBy? = null,
+        @GraphQLDeprecated(
+            "Replaced with order",
+            replaceWith = ReplaceWith("order"),
+        )
         orderByType: SortOrder? = null,
+        order: List<MetaOrder>? = null,
         before: Cursor? = null,
         after: Cursor? = null,
         first: Int? = null,
@@ -117,17 +133,15 @@ class MetaQuery {
 
                 res.applyOps(condition, filter)
 
-                if (orderBy != null || (last != null || before != null)) {
-                    val orderByColumn = orderBy?.column ?: GlobalMetaTable.key
-                    val orderType = orderByType.maybeSwap(last ?: before)
+                if (order != null || (last != null || before != null)) {
+                    val baseSort = listOf(MetaOrder(MetaOrderBy.KEY, SortOrder.ASC))
+                    val deprecatedSort = listOfNotNull(orderBy?.let { MetaOrder(orderBy, orderByType) })
+                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                    actualSort.forEach { (orderBy, orderByType) ->
+                        val orderByColumn = orderBy.column
+                        val orderType = orderByType.maybeSwap(last ?: before)
 
-                    if (orderBy == MetaOrderBy.KEY || orderBy == null) {
                         res.orderBy(orderByColumn to orderType)
-                    } else {
-                        res.orderBy(
-                            orderByColumn to orderType,
-                            GlobalMetaTable.key to SortOrder.ASC,
-                        )
                     }
                 }
 
@@ -138,8 +152,8 @@ class MetaQuery {
                 res.applyBeforeAfter(
                     before = before,
                     after = after,
-                    orderBy = orderBy ?: MetaOrderBy.KEY,
-                    orderByType = orderByType,
+                    orderBy = order?.firstOrNull()?.by ?: MetaOrderBy.KEY,
+                    orderByType = order?.firstOrNull()?.byType,
                 )
 
                 if (first != null) {
@@ -151,7 +165,7 @@ class MetaQuery {
                 QueryResults(total, firstResult, lastResult, res.toList())
             }
 
-        val getAsCursor: (GlobalMetaType) -> Cursor = (orderBy ?: MetaOrderBy.KEY)::asCursor
+        val getAsCursor: (GlobalMetaType) -> Cursor = (order?.firstOrNull()?.by ?: MetaOrderBy.KEY)::asCursor
 
         val resultsAsType = queryResults.results.map { GlobalMetaType(it) }
 
