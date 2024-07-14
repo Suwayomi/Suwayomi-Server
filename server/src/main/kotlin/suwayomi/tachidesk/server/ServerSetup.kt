@@ -267,15 +267,17 @@ fun applicationSetup() {
                 System.setProperty("socksProxyPort", proxyPort)
                 System.setProperty("socksProxyVersion", proxyVersion.toString())
 
-                Authenticator.setDefault(object : Authenticator() {
-                    override fun getPasswordAuthentication(): PasswordAuthentication? {
-                        if (requestingProtocol.startsWith("SOCKS", ignoreCase = true)) {
-                            return PasswordAuthentication(proxyUsername, proxyPassword.toCharArray())
-                        }
+                Authenticator.setDefault(
+                    object : Authenticator() {
+                        override fun getPasswordAuthentication(): PasswordAuthentication? {
+                            if (requestingProtocol.startsWith("SOCKS", ignoreCase = true)) {
+                                return PasswordAuthentication(proxyUsername, proxyPassword.toCharArray())
+                            }
 
-                        return null
-                    }
-                })
+                            return null
+                        }
+                    },
+                )
             } else {
                 System.clearProperty("socksProxyHost")
                 System.clearProperty("socksProxyPort")
