@@ -145,14 +145,20 @@ object Chapter {
 
                 val currentLatestChapterNumber = Manga.getLatestChapter(mangaId)?.chapterNumber ?: 0f
                 val numberOfCurrentChapters = getCountOfMangaChapters(mangaId)
-                val chapterList = source.getChapterList(sManga)
 
-                if (chapterList.isEmpty()) {
+                val chapters = source.getChapterList(sManga)
+                // it's possible that the source returns a list containing chapters with the same url
+                // once such duplicated chapters have been added, they aren't being removed anymore as long as there is
+                // a chapter with the same url in the fetched chapter list, even if the duplicated chapter itself
+                // does not exist anymore on the source
+                val uniqueChapters = chapters.distinctBy { it.url }
+
+                if (uniqueChapters.isEmpty()) {
                     throw Exception("No chapters found")
                 }
 
                 // Recognize number for new chapters.
-                chapterList.forEach { chapter ->
+                uniqueChapters.forEach { chapter ->
                     (source as? HttpSource)?.prepareNewChapter(chapter, sManga)
                     val chapterNumber = ChapterRecognition.parseChapterNumber(manga.title, chapter.name, chapter.chapter_number.toDouble())
                     chapter.chapter_number = chapterNumber.toFloat()
@@ -178,7 +184,7 @@ object Chapter {
                 val chaptersToInsert = mutableListOf<ChapterDataClass>() // do not yet have an ID from the database
                 val chaptersToUpdate = mutableListOf<ChapterDataClass>()
 
-                chapterList.reversed().forEachIndexed { index, fetchedChapter ->
+                uniqueChapters.reversed().forEachIndexed { index, fetchedChapter ->
                     val chapterEntry = chaptersInDb.find { it.url == fetchedChapter.url }
 
                     val chapterData =
@@ -221,7 +227,7 @@ object Chapter {
                 val deletedChapterNumberDateFetchMap = mutableMapOf<Float, Long>()
 
                 // clear any orphaned/duplicate chapters that are in the db but not in `chapterList`
-                val chapterUrls = chapterList.map { it.url }.toSet()
+                val chapterUrls = uniqueChapters.map { it.url }.toSet()
 
                 val chaptersIdsToDelete =
                     chaptersInDb.mapNotNull { dbChapter ->
@@ -298,7 +304,7 @@ object Chapter {
                     downloadNewChapters(mangaId, currentLatestChapterNumber, numberOfCurrentChapters, insertedChapters)
                 }
 
-                chapterList
+                uniqueChapters
             }
 
         return chapterList
