@@ -119,6 +119,27 @@ class BookmarkedChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
         }
 }
 
+class HasDuplicateChaptersForMangaDataLoader : KotlinDataLoader<Int, Boolean> {
+    override val dataLoaderName = "HasDuplicateChaptersForMangaDataLoader"
+
+    override fun getDataLoader(): DataLoader<Int, Boolean> =
+        DataLoaderFactory.newDataLoader { ids ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val duplicatedChapterCountByMangaId =
+                        ChapterTable.slice(ChapterTable.manga, ChapterTable.chapter_number, ChapterTable.chapter_number.count())
+                            .select { (ChapterTable.manga inList ids) and (ChapterTable.chapter_number greaterEq 0f) }
+                            .groupBy(ChapterTable.manga, ChapterTable.chapter_number)
+                            .having { ChapterTable.chapter_number.count() greater 1 }
+                            .associate { it[ChapterTable.manga].value to it[ChapterTable.chapter_number.count()] }
+
+                    ids.map { duplicatedChapterCountByMangaId.contains(it) }
+                }
+            }
+        }
+}
+
 class LastReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
     override val dataLoaderName = "LastReadChapterForMangaDataLoader"
 
