@@ -40,6 +40,13 @@ class ChapterType(
 ) : Node {
     companion object {
         fun clearCacheFor(
+            chapterIdToMangaIdMap: Map<Int, Int>,
+            dataFetchingEnvironment: DataFetchingEnvironment,
+        ) {
+            chapterIdToMangaIdMap.forEach { clearCacheFor(it.key, it.value, dataFetchingEnvironment) }
+        }
+
+        fun clearCacheFor(
             chapterId: Int,
             mangaId: Int,
             dataFetchingEnvironment: DataFetchingEnvironment,

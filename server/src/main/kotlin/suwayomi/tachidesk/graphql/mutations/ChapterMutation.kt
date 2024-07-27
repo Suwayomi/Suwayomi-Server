@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import graphql.execution.DataFetcherResult
+import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
@@ -56,24 +57,21 @@ class ChapterMutation {
     private fun updateChapters(
         ids: List<Int>,
         patch: UpdateChapterPatch,
+        dataFetchingEnvironment: DataFetchingEnvironment,
     ) {
         if (ids.isEmpty()) {
             return
         }
 
         transaction {
-            val chapterIdToPageCount =
-                if (patch.lastPageRead != null) {
-                    ChapterTable
-                        .slice(ChapterTable.id, ChapterTable.pageCount)
-                        .select { ChapterTable.id inList ids }
-                        .groupBy { it[ChapterTable.id].value }
-                        .mapValues { it.value.firstOrNull()?.let { it[ChapterTable.pageCount] } }
-                } else {
-                    emptyMap()
-                }
             if (patch.isRead != null || patch.isBookmarked != null || patch.lastPageRead != null) {
                 val now = Instant.now().epochSecond
+
+                val chapterIdToInfoMap =
+                    ChapterTable
+                        .slice(ChapterTable.id, ChapterTable.manga, ChapterTable.pageCount)
+                        .select { ChapterTable.id inList ids }
+                        .associateBy { it[ChapterTable.id].value }
 
                 BatchUpdateStatement(ChapterTable).apply {
                     ids.forEach { chapterId ->
@@ -85,21 +83,27 @@ class ChapterMutation {
                             this[ChapterTable.isBookmarked] = it
                         }
                         patch.lastPageRead?.also {
-                            this[ChapterTable.lastPageRead] = it.coerceAtMost(chapterIdToPageCount[chapterId] ?: 0).coerceAtLeast(0)
+                            val pageCount = chapterIdToInfoMap[chapterId]?.let { resultRow -> resultRow[ChapterTable.pageCount] } ?: 0
+                            this[ChapterTable.lastPageRead] = it.coerceAtMost(pageCount).coerceAtLeast(0)
                             this[ChapterTable.lastReadAt] = now
                         }
                     }
                     execute(this@transaction)
                 }
+
+                ChapterType.clearCacheFor(chapterIdToInfoMap.mapValues { it.value[ChapterTable.manga].value }, dataFetchingEnvironment)
             }
         }
     }
 
-    fun updateChapter(input: UpdateChapterInput): DataFetcherResult<UpdateChapterPayload?> {
+    fun updateChapter(
+        input: UpdateChapterInput,
+        dataFetchingEnvironment: DataFetchingEnvironment,
+    ): DataFetcherResult<UpdateChapterPayload?> {
         return asDataFetcherResult {
             val (clientMutationId, id, patch) = input
 
-            updateChapters(listOf(id), patch)
+            updateChapters(listOf(id), patch, dataFetchingEnvironment)
 
             val chapter =
                 transaction {
@@ -113,11 +117,14 @@ class ChapterMutation {
         }
     }
 
-    fun updateChapters(input: UpdateChaptersInput): DataFetcherResult<UpdateChaptersPayload?> {
+    fun updateChapters(
+        input: UpdateChaptersInput,
+        dataFetchingEnvironment: DataFetchingEnvironment,
+    ): DataFetcherResult<UpdateChaptersPayload?> {
         return asDataFetcherResult {
             val (clientMutationId, ids, patch) = input
 
-            updateChapters(ids, patch)
+            updateChapters(ids, patch, dataFetchingEnvironment)
 
             val chapters =
                 transaction {
@@ -141,7 +148,10 @@ class ChapterMutation {
         val chapters: List<ChapterType>,
     )
 
-    fun fetchChapters(input: FetchChaptersInput): CompletableFuture<DataFetcherResult<FetchChaptersPayload?>> {
+    fun fetchChapters(
+        input: FetchChaptersInput,
+        dataFetchingEnvironment: DataFetchingEnvironment,
+    ): CompletableFuture<DataFetcherResult<FetchChaptersPayload?>> {
         val (clientMutationId, mangaId) = input
 
         return future {
@@ -154,6 +164,8 @@ class ChapterMutation {
                             .orderBy(ChapterTable.sourceOrder)
                             .map { ChapterType(it) }
                     }
+
+                ChapterType.clearCacheFor(chapters.associate { it.id to it.mangaId }, dataFetchingEnvironment)
 
                 FetchChaptersPayload(
                     clientMutationId = clientMutationId,
@@ -173,11 +185,18 @@ class ChapterMutation {
         val meta: ChapterMetaType,
     )
 
-    fun setChapterMeta(input: SetChapterMetaInput): DataFetcherResult<SetChapterMetaPayload?> {
+    fun setChapterMeta(
+        input: SetChapterMetaInput,
+        dateFetchingEnvironment: DataFetchingEnvironment,
+    ): DataFetcherResult<SetChapterMetaPayload?> {
         return asDataFetcherResult {
             val (clientMutationId, meta) = input
 
             Chapter.modifyChapterMeta(meta.chapterId, meta.key, meta.value)
+
+            val chapterId = input.meta.chapterId
+            val mangaId = transaction { ChapterTable.select { ChapterTable.id eq chapterId }.first()[ChapterTable.manga].value }
+            ChapterType.clearCacheFor(chapterId, mangaId, dateFetchingEnvironment)
 
             SetChapterMetaPayload(clientMutationId, meta)
         }
@@ -195,7 +214,10 @@ class ChapterMutation {
         val chapter: ChapterType,
     )
 
-    fun deleteChapterMeta(input: DeleteChapterMetaInput): DataFetcherResult<DeleteChapterMetaPayload?> {
+    fun deleteChapterMeta(
+        input: DeleteChapterMetaInput,
+        dataFetchingEnvironment: DataFetchingEnvironment,
+    ): DataFetcherResult<DeleteChapterMetaPayload?> {
         return asDataFetcherResult {
             val (clientMutationId, chapterId, key) = input
 
@@ -211,6 +233,8 @@ class ChapterMutation {
                         transaction {
                             ChapterType(ChapterTable.select { ChapterTable.id eq chapterId }.first())
                         }
+
+                    ChapterType.clearCacheFor(chapter.id, chapter.mangaId, dataFetchingEnvironment)
 
                     if (meta != null) {
                         ChapterMetaType(meta)
@@ -234,12 +258,17 @@ class ChapterMutation {
         val chapter: ChapterType,
     )
 
-    fun fetchChapterPages(input: FetchChapterPagesInput): CompletableFuture<DataFetcherResult<FetchChapterPagesPayload?>> {
+    fun fetchChapterPages(
+        input: FetchChapterPagesInput,
+        dataFetchingEnvironment: DataFetchingEnvironment,
+    ): CompletableFuture<DataFetcherResult<FetchChapterPagesPayload?>> {
         val (clientMutationId, chapterId) = input
 
         return future {
             asDataFetcherResult {
                 val chapter = getChapterDownloadReadyById(chapterId)
+
+                ChapterType.clearCacheFor(chapter.id, chapter.mangaId, dataFetchingEnvironment)
 
                 FetchChapterPagesPayload(
                     clientMutationId = clientMutationId,
