@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import graphql.execution.DataFetcherResult
+import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
@@ -53,6 +54,7 @@ class MangaMutation {
     private suspend fun updateMangas(
         ids: List<Int>,
         patch: UpdateMangaPatch,
+        dataFetchingEnvironment: DataFetchingEnvironment,
     ) {
         transaction {
             if (patch.inLibrary != null) {
@@ -63,6 +65,8 @@ class MangaMutation {
                     }
                 }
             }
+
+            MangaType.clearCacheFor(ids, dataFetchingEnvironment)
         }.apply {
             if (patch.inLibrary != null) {
                 ids.forEach {
@@ -72,12 +76,15 @@ class MangaMutation {
         }
     }
 
-    fun updateManga(input: UpdateMangaInput): CompletableFuture<DataFetcherResult<UpdateMangaPayload?>> {
+    fun updateManga(
+        input: UpdateMangaInput,
+        dataFetchingEnvironment: DataFetchingEnvironment,
+    ): CompletableFuture<DataFetcherResult<UpdateMangaPayload?>> {
         val (clientMutationId, id, patch) = input
 
         return future {
             asDataFetcherResult {
-                updateMangas(listOf(id), patch)
+                updateMangas(listOf(id), patch, dataFetchingEnvironment)
 
                 val manga =
                     transaction {
@@ -92,12 +99,15 @@ class MangaMutation {
         }
     }
 
-    fun updateMangas(input: UpdateMangasInput): CompletableFuture<DataFetcherResult<UpdateMangasPayload?>> {
+    fun updateMangas(
+        input: UpdateMangasInput,
+        dataFetchingEnvironment: DataFetchingEnvironment,
+    ): CompletableFuture<DataFetcherResult<UpdateMangasPayload?>> {
         val (clientMutationId, ids, patch) = input
 
         return future {
             asDataFetcherResult {
-                updateMangas(ids, patch)
+                updateMangas(ids, patch, dataFetchingEnvironment)
 
                 val mangas =
                     transaction {
@@ -122,12 +132,17 @@ class MangaMutation {
         val manga: MangaType,
     )
 
-    fun fetchManga(input: FetchMangaInput): CompletableFuture<DataFetcherResult<FetchMangaPayload?>> {
+    fun fetchManga(
+        input: FetchMangaInput,
+        dataFetchingEnvironment: DataFetchingEnvironment,
+    ): CompletableFuture<DataFetcherResult<FetchMangaPayload?>> {
         val (clientMutationId, id) = input
 
         return future {
             asDataFetcherResult {
                 Manga.fetchManga(id)
+
+                MangaType.clearCacheFor(id, dataFetchingEnvironment)
 
                 val manga =
                     transaction {
@@ -151,11 +166,16 @@ class MangaMutation {
         val meta: MangaMetaType,
     )
 
-    fun setMangaMeta(input: SetMangaMetaInput): DataFetcherResult<SetMangaMetaPayload?> {
+    fun setMangaMeta(
+        input: SetMangaMetaInput,
+        dataFetchingEnvironment: DataFetchingEnvironment,
+    ): DataFetcherResult<SetMangaMetaPayload?> {
         val (clientMutationId, meta) = input
 
         return asDataFetcherResult {
             Manga.modifyMangaMeta(meta.mangaId, meta.key, meta.value)
+
+            MangaType.clearCacheFor(meta.mangaId, dataFetchingEnvironment)
 
             SetMangaMetaPayload(clientMutationId, meta)
         }
@@ -173,7 +193,10 @@ class MangaMutation {
         val manga: MangaType,
     )
 
-    fun deleteMangaMeta(input: DeleteMangaMetaInput): DataFetcherResult<DeleteMangaMetaPayload?> {
+    fun deleteMangaMeta(
+        input: DeleteMangaMetaInput,
+        dataFetchingEnvironment: DataFetchingEnvironment,
+    ): DataFetcherResult<DeleteMangaMetaPayload?> {
         val (clientMutationId, mangaId, key) = input
 
         return asDataFetcherResult {
@@ -184,6 +207,8 @@ class MangaMutation {
                             .firstOrNull()
 
                     MangaMetaTable.deleteWhere { (MangaMetaTable.ref eq mangaId) and (MangaMetaTable.key eq key) }
+
+                    MangaType.clearCacheFor(mangaId, dataFetchingEnvironment)
 
                     val manga =
                         transaction {
