@@ -76,6 +76,7 @@ class MangaType(
             dataFetchingEnvironment.getDataLoader<Int, ChapterNodeList>(
                 "ChaptersForMangaDataLoader",
             ).clear(mangaId)
+
             dataFetchingEnvironment.getDataLoader<Int, List<MangaMetaType>>("MangaMetaDataLoader").clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, CategoryNodeList>("CategoriesForMangaDataLoader").clear(mangaId)
         }

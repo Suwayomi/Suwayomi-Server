@@ -52,9 +52,18 @@ class ChapterType(
             dataFetchingEnvironment: DataFetchingEnvironment,
         ) {
             dataFetchingEnvironment.getDataLoader<Int, ChapterType>("ChapterDataLoader").clear(chapterId)
-            dataFetchingEnvironment.getDataLoader<Int, ChapterNodeList>("ChaptersForMangaDataLoader").clear(mangaId)
+
             dataFetchingEnvironment.getDataLoader<Int, Int>("DownloadedChapterCountForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, Int>("UnreadChapterCountForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, Int>("BookmarkedChapterCountForMangaDataLoader").clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LastReadChapterForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestReadChapterForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestFetchedChapterForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestUploadedChapterForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("FirstUnreadChapterForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterNodeList>(
+                "ChaptersForMangaDataLoader",
+            ).clear(mangaId)
         }
     }
 
