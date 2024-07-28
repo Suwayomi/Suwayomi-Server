@@ -294,7 +294,7 @@ class Updater : IUpdater {
                     }
                 }
                 .filter {
-                    if (serverConfig.excludeNotStarted.value) {
+                    if (it.initialized && serverConfig.excludeNotStarted.value) {
                         it.lastReadAt != null
                     } else {
                         true
