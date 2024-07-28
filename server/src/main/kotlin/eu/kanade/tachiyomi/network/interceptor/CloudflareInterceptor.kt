@@ -23,6 +23,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
@@ -56,10 +57,37 @@ class CloudflareInterceptor(
             originalResponse.close()
             // network.cookieStore.remove(originalRequest.url.toUri())
 
-            val request =
+            val flareResponseFallback = serverConfig.flareSolverrAsResponseFallback.value
+            val flareResponse =
                 runBlocking {
-                    CFClearance.resolveWithFlareSolverr(setUserAgent, originalRequest)
+                    CFClearance.resolveWithFlareSolver(originalRequest, !flareResponseFallback)
                 }
+
+            if (flareResponse.message.contains("not detected", ignoreCase = true)) {
+                logger.debug { "FlareSolverr failed to detect Cloudflare challenge" }
+
+                if (flareResponseFallback &&
+                    flareResponse.solution.status in 200..299 &&
+                    flareResponse.solution.response != null
+                ) {
+                    val isImage = flareResponse.solution.response.contains(CHROME_IMAGE_TEMPLATE_REGEX)
+                    if (!isImage) {
+                        logger.debug { "Falling back to FlareSolverr response" }
+
+                        setUserAgent(flareResponse.solution.userAgent)
+
+                        return originalResponse
+                            .newBuilder()
+                            .code(flareResponse.solution.status)
+                            .body(flareResponse.solution.response.toResponseBody())
+                            .build()
+                    } else {
+                        logger.debug { "FlareSolverr response is an image html template, not falling back" }
+                    }
+                }
+            }
+
+            val request = CFClearance.requestWithFlareSolverr(flareResponse, setUserAgent, originalRequest)
 
             chain.proceed(request)
         } catch (e: Exception) {
@@ -73,6 +101,7 @@ class CloudflareInterceptor(
         private val ERROR_CODES = listOf(403, 503)
         private val SERVER_CHECK = arrayOf("cloudflare-nginx", "cloudflare")
         private val COOKIE_NAMES = listOf("cf_clearance")
+        private val CHROME_IMAGE_TEMPLATE_REGEX = Regex("""<title>(.*?) \(\d+×\d+\)</title>""")
     }
 }
 
@@ -153,37 +182,43 @@ object CFClearance {
         val version: String,
     )
 
-    suspend fun resolveWithFlareSolverr(
+    suspend fun resolveWithFlareSolver(
+        originalRequest: Request,
+        onlyCookies: Boolean,
+    ): FlareSolverResponse {
+        val timeout = serverConfig.flareSolverrTimeout.value.seconds
+
+        return with(json) {
+            mutex.withLock {
+                client.value.newCall(
+                    POST(
+                        url = serverConfig.flareSolverrUrl.value.removeSuffix("/") + "/v1",
+                        body =
+                            Json.encodeToString(
+                                FlareSolverRequest(
+                                    "request.get",
+                                    originalRequest.url.toString(),
+                                    session = serverConfig.flareSolverrSessionName.value,
+                                    sessionTtlMinutes = serverConfig.flareSolverrSessionTtl.value,
+                                    cookies =
+                                        network.cookieStore.get(originalRequest.url).map {
+                                            FlareSolverCookie(it.name, it.value)
+                                        },
+                                    returnOnlyCookies = onlyCookies,
+                                    maxTimeout = timeout.inWholeMilliseconds.toInt(),
+                                ),
+                            ).toRequestBody(jsonMediaType),
+                    ),
+                ).awaitSuccess().parseAs<FlareSolverResponse>()
+            }
+        }
+    }
+
+    fun requestWithFlareSolverr(
+        flareSolverResponse: FlareSolverResponse,
         setUserAgent: (String) -> Unit,
         originalRequest: Request,
     ): Request {
-        val timeout = serverConfig.flareSolverrTimeout.value.seconds
-        val flareSolverResponse =
-            with(json) {
-                mutex.withLock {
-                    client.value.newCall(
-                        POST(
-                            url = serverConfig.flareSolverrUrl.value.removeSuffix("/") + "/v1",
-                            body =
-                                Json.encodeToString(
-                                    FlareSolverRequest(
-                                        "request.get",
-                                        originalRequest.url.toString(),
-                                        session = serverConfig.flareSolverrSessionName.value,
-                                        sessionTtlMinutes = serverConfig.flareSolverrSessionTtl.value,
-                                        cookies =
-                                            network.cookieStore.get(originalRequest.url).map {
-                                                FlareSolverCookie(it.name, it.value)
-                                            },
-                                        returnOnlyCookies = true,
-                                        maxTimeout = timeout.inWholeMilliseconds.toInt(),
-                                    ),
-                                ).toRequestBody(jsonMediaType),
-                        ),
-                    ).awaitSuccess().parseAs<FlareSolverResponse>()
-                }
-            }
-
         if (flareSolverResponse.solution.status in 200..299) {
             setUserAgent(flareSolverResponse.solution.userAgent)
             val cookies =
