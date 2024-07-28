@@ -46,6 +46,8 @@ import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.initLoggerConfig
 import xyz.nulldev.ts.config.setLogLevelFor
 import java.io.File
+import java.net.Authenticator
+import java.net.PasswordAuthentication
 import java.security.Security
 import java.util.Locale
 
@@ -265,20 +267,23 @@ fun applicationSetup() {
                 System.setProperty("socksProxyPort", proxyPort)
                 System.setProperty("socksProxyVersion", proxyVersion.toString())
 
-                if (proxyUsername.isNotBlank()) {
-                    System.setProperty("java.net.socks.username", proxyUsername)
-                } else {
-                    System.clearProperty("java.net.socks.username")
-                }
-                if (proxyPassword.isNotBlank()) {
-                    System.setProperty("java.net.socks.password", proxyPassword)
-                } else {
-                    System.clearProperty("java.net.socks.password")
-                }
+                Authenticator.setDefault(
+                    object : Authenticator() {
+                        override fun getPasswordAuthentication(): PasswordAuthentication? {
+                            if (requestingProtocol.startsWith("SOCKS", ignoreCase = true)) {
+                                return PasswordAuthentication(proxyUsername, proxyPassword.toCharArray())
+                            }
+
+                            return null
+                        }
+                    },
+                )
             } else {
                 System.clearProperty("socksProxyHost")
                 System.clearProperty("socksProxyPort")
                 System.clearProperty("socksProxyVersion")
+
+                Authenticator.setDefault(null)
             }
         },
         ignoreInitialValue = false,
