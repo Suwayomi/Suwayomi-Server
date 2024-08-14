@@ -24,8 +24,6 @@ This project has two components:
 
 ### API
 #### GraphQL
-*Only available in the preview at the moment*
-
 The GraphQL API can be queried with a POST request to `/api/graphql`. There is also the GraphiQL IDE accessible by the browser at `/api/graphql` to perform ad-hoc queries and explore the API.
 
 #### REST
