@@ -20,7 +20,7 @@
   * [Advanced Methods](#advanced-methods)
     + [Running the jar release directly](#running-the-jar-release-directly)
     + [Using Suwayomi Remotely](#using-suwayomi-remotely)
-- [Syncing With Tachiyomi](#syncing-with-tachiyomi)
+- [Syncing With Mihon (Tachiyomi)](#syncing-with-mihon-tachiyomi)
 - [Troubleshooting and Support](#troubleshooting-and-support)
 - [Contributing and Technical info](#contributing-and-technical-info)
 - [Credit](#credit)
@@ -30,13 +30,13 @@
 # What is Suwayomi?
 <img src="https://github.com/Suwayomi/Suwayomi-Server/raw/master/server/src/main/resources/icon/faviconlogo.png" alt="drawing" width="200"/>
 
-A free and open source manga reader server that runs extensions built for [Tachiyomi](https://tachiyomi.org/). 
+A free and open source manga reader server that runs extensions built for [Mihon (Tachiyomi)](https://mihon.app/). 
 
-Suwayomi is an independent Tachiyomi compatible software and is **not a Fork of** Tachiyomi.
+Suwayomi is an independent Mihon (Tachiyomi) compatible software and is **not a Fork of** Mihon (Tachiyomi).
 
 Suwayomi-Server is as multi-platform as you can get. Any platform that runs java and/or has a modern browser can run it. This includes Windows, Linux, macOS, chrome OS, etc. Follow [Downloading and Running the app](#downloading-and-running-the-app) for installation instructions.
 
-Ability to sync with Tachiyomi is a planned feature, for more info look [here](#syncing-with-tachiyomi).
+Ability to sync with Mihon (Tachiyomi) is a planned feature, for more info look [here](#syncing-with-mihon-tachiyomi).
 
 # Suwayomi client projects
 **You need a client/user interface app as a front-end for Suwayomi-Server, if you [Directly Download Suwayomi-Server](https://github.com/Suwayomi/Suwayomi-Server/releases/latest) you'll get a bundled version of [Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI) with it.**
@@ -45,7 +45,7 @@ Here's a list of known clients/user interfaces for Suwayomi-Server:
 ##### Actively Developed Clients
 - [Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI): The web/ElectronJS front-end that Suwayomi-Server ships with by default.
 - [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): The native desktop front-end for Suwayomi-Server. Currently, the most advanced.
-- [Tachidesk-Sorayomi](https://github.com/Suwayomi/Tachidesk-Sorayomi): A Flutter front-end for Desktop(Linux, windows, etc.), Web and Android with a User Interface inspired by Tachiyomi.
+- [Tachidesk-Sorayomi](https://github.com/Suwayomi/Tachidesk-Sorayomi): A Flutter front-end for Desktop(Linux, windows, etc.), Web and Android with a User Interface inspired by Mihon (Tachiyomi).
 - [Tachidesk-VaadinUI](https://github.com/Suwayomi/Tachidesk-VaadinUI): A Web front-end for Suwayomi-Server built with Vaadin.
 - [Suwayomi-VUI](https://github.com/Suwayomi/Suwayomi-VUI): A preview focused web frontend built with svelte with some features the other UIs might not have (migration)
 ##### Inactive/Abandoned Clients
@@ -56,11 +56,11 @@ Here's a list of known clients/user interfaces for Suwayomi-Server:
 ## Is this application usable? Should I test it?
 Here is a list of current features:
 
-- Installing and executing Tachiyomi's Extensions, So you'll get the same sources
+- Installing and executing Mihon (Tachiyomi)'s Extensions, So you'll get the same sources
 - A library to save your mangas and categories to put them into
 - Searching and browsing installed sources
 - Ability to download Manga for offline read
-- Backup and restore support powered by Tachiyomi-compatible Backups
+- Backup and restore support powered by Mihon (Tachiyomi)-compatible Backups
 - Viewing latest updated chapters.
 
 **Note:** These are capabilities of Suwayomi-Server, the actual working support is provided by each front-end app, checkout their respective readme for more info.
@@ -145,13 +145,13 @@ Check out [this wiki page](https://github.com/Suwayomi/Suwayomi-Server/wiki/Conf
 
 If you face issues with your setup then we are happy to provide help, just join our discord server(a discord badge is on the top of the page, you are just a click-clack away!).
 
-## Syncing With Tachiyomi
+## Syncing With Mihon (Tachiyomi)
 ### The Suwayomi extension and tracker
-- You can install the `Suwayomi` extension inside tachiyomi.
+- You can install the `Suwayomi` extension inside Mihon (Tachiyomi).
 - The extension will load your Suwayomi library.
 - By manipulating extension search filters you can browse your categories.
 - You can enable the Suwayomi tracker to track reading progress with your Suwayomi server.
-  - Note: Tachiyomi [only allows tracking one way](https://github.com/tachiyomiorg/tachiyomi/issues/1626), meaning that by reading chapters on other Suwayomi clients the last read chapter number will update on the tracker but tachiyomi won't automatically mark them as read for you.
+  - Note: Mihon (Tachiyomi) [only allows tracking one way](https://github.com/tachiyomiorg/tachiyomi/issues/1626), meaning that by reading chapters on other Suwayomi clients the last read chapter number will update on the tracker but Mihon (Tachiyomi) won't automatically mark them as read for you.
 
 ### Other methods
 Checkout [this issue](https://github.com/Suwayomi/Suwayomi-Server/issues/159) for tracking progress.
@@ -167,7 +167,7 @@ This project is a spiritual successor of [TachiWeb-Server](https://github.com/Ta
 
 The `AndroidCompat` module was originally developed by [@null-dev](https://github.com/null-dev) for [TachiWeb-Server](https://github.com/Tachiweb/TachiWeb-server) and is licensed under `Apache License Version 2.0` and `Copyright 2019 Andy Bao and contributors`.
 
-Parts of [tachiyomi](https://github.com/tachiyomiorg/tachiyomi) is adopted into this codebase, also licensed under `Apache License Version 2.0` and `Copyright 2015 Javier Tomás`.
+Parts of [Mihon (Tachiyomi)](https://github.com/mihonapp/mihon) is adopted into this codebase, also licensed under `Apache License Version 2.0` and `Copyright 2015 Javier Tomás`.
 
 You can obtain a copy of `Apache License Version 2.0` from  http://www.apache.org/licenses/LICENSE-2.0
 
