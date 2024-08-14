@@ -151,7 +151,9 @@ If you face issues with your setup then we are happy to provide help, just join 
 - The extension will load your Suwayomi library.
 - By manipulating extension search filters you can browse your categories.
 - You can enable the Suwayomi tracker to track reading progress with your Suwayomi server.
-  - Note: Mihon (Tachiyomi) [only allows tracking one way](https://github.com/tachiyomiorg/tachiyomi/issues/1626), meaning that by reading chapters on other Suwayomi clients the last read chapter number will update on the tracker but Mihon (Tachiyomi) won't automatically mark them as read for you.
+  - Note: to sync from
+    - Mihon (Tachiyomi) to Suwayomi: Mihon (Tachiyomi) automatically updates the chapters read status when it's updating the tracker (e.g. while reading)
+    - Suwayomi to Mihon (Tachiyomi): To sync Mihon (Tachiyomi) with Suwayomi, you have to open the manga's track information, then, Mihon (Tachiyomi) will automatically update its chapter list with the state from Suwayomi
 
 ### Other methods
 Checkout [this issue](https://github.com/Suwayomi/Suwayomi-Server/issues/159) for tracking progress.
