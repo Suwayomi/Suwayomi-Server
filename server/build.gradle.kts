@@ -39,7 +39,7 @@ dependencies {
     // tray icon
     implementation(libs.bundles.systemtray)
 
-    // dependencies of Tachiyomi extensions, some are duplicate, keeping it here for reference
+    // dependencies of Mihon (Tachiyomi) extensions, some are duplicate, keeping it here for reference
     implementation(libs.injekt)
     implementation(libs.okhttp.core)
     implementation(libs.rxjava)

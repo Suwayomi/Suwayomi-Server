@@ -8,9 +8,9 @@ Checkout [This Kanban Board](https://github.com/Suwayomi/Suwayomi-Server/project
 - We hate big pull requests, make them as small as possible, change one meaningful thing. Spam pull requests, we don't mind.
 
 ### Project goals and vision
-- Porting Tachiyomi and covering its features
-- Syncing with Tachiyomi, [main issue](https://github.com/Suwayomi/Suwayomi-Server/issues/159)
-- Generally rejecting features that Tachiyomi(main app) doesn't have,
+- Porting Mihon (Tachiyomi) and covering its features
+- Syncing with Mihon (Tachiyomi), [main issue](https://github.com/Suwayomi/Suwayomi-Server/issues/159)
+- Generally rejecting features that Mihon (Tachiyomi) (main app) doesn't have,
     - Unless it's something that makes sense for desktop sizes or desktop form factor (keyboard + mouse)
     - Additional/crazy features can go in forks and alternative clients
 - [Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI) should
@@ -19,13 +19,11 @@ Checkout [This Kanban Board](https://github.com/Suwayomi/Suwayomi-Server/project
      
 ## How does Suwayomi-Server work?
 This project has two components: 
-1. **Server:** contains the implementation of [tachiyomi's extensions library](https://github.com/tachiyomiorg/extensions-lib) and uses an Android compatibility library to run jar libraries converted from apk extensions. All this concludes to serving a GraphQL API.
+1. **Server:** contains the implementation of [Mihon (Tachiyomi)'s source library](https://github.com/mihonapp/mihon/tree/main/source-api) and uses an Android compatibility library to run jar libraries converted from apk extensions. All this concludes to serving a GraphQL API.
 2. **WebUI:** A React SPA(`create-react-app`) project that works with the server to do the presentation located at https://github.com/Suwayomi/Suwayomi-WebUI
 
 ### API
 #### GraphQL
-*Only available in the preview at the moment*
-
 The GraphQL API can be queried with a POST request to `/api/graphql`. There is also the GraphiQL IDE accessible by the browser at `/api/graphql` to perform ad-hoc queries and explore the API.
 
 #### REST
