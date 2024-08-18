@@ -5,8 +5,8 @@
 
 ## Table of Content
 - [What is Suwayomi?](#what-is-suwayomi)
+- [Features](#Features)
 - [Suwayomi client projects](#Suwayomi-client-projects)
-  * [Is this application usable? Should I test it?](#is-this-application-usable-should-i-test-it)
 - [Downloading and Running the app](#downloading-and-running-the-app)
   * [Using Operating System Specific Bundles](#using-operating-system-specific-bundles)
       - [Launcher Scripts](#launcher-scripts)
@@ -36,34 +36,41 @@ Suwayomi is an independent Mihon (Tachiyomi) compatible software and is **not a 
 
 Suwayomi-Server is as multi-platform as you can get. Any platform that runs java and/or has a modern browser can run it. This includes Windows, Linux, macOS, chrome OS, etc. Follow [Downloading and Running the app](#downloading-and-running-the-app) for installation instructions.
 
-Ability to sync with Mihon (Tachiyomi) is a planned feature, for more info look [here](#syncing-with-mihon-tachiyomi).
+You can use Mihon (Tachiyomi) to access your Suwayomi-Server. For more info look [here](#syncing-with-mihon-tachiyomi).
+
+## Features
+> [!NOTE]
+>
+> These are capabilities of Suwayomi-Server, the actual working support is provided by each front-end app, checkout their respective readme for more info.
+
+- Installing and executing Mihon (Tachiyomi)'s Extensions, So you'll get the same sources
+- Searching and browsing installed sources
+- A library to save your mangas and categories to put them into
+- Automated library updates to check for new chapters
+- Automated download of new chapters
+- Viewing latest updated chapters
+- Ability to download Manga for offline read
+- Backup and restore support powered by Mihon (Tachiyomi)-compatible Backups
+- Automated backup creations
+- Tracking via [MyAnimeList](https://myanimelist.net/), [AniList](https://anilist.co/), [MangaUpdates](https://www.mangaupdates.com/)
+- [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) support to bypass Cloudflare protection
+- Automated WebUI updates (supports the default WebUI and VUI)
 
 # Suwayomi client projects
 **You need a client/user interface app as a front-end for Suwayomi-Server, if you [Directly Download Suwayomi-Server](https://github.com/Suwayomi/Suwayomi-Server/releases/latest) you'll get a bundled version of [Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI) with it.**
 
-Here's a list of known clients/user interfaces for Suwayomi-Server:
+Here's a list of known clients/user interfaces for Suwayomi-Server (checkout the respective GitHub repository for their features):
 ##### Actively Developed Clients
-- [Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI): The web/ElectronJS front-end that Suwayomi-Server ships with by default.
-- [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): The native desktop front-end for Suwayomi-Server. Currently, the most advanced.
-- [Tachidesk-Sorayomi](https://github.com/Suwayomi/Tachidesk-Sorayomi): A Flutter front-end for Desktop(Linux, windows, etc.), Web and Android with a User Interface inspired by Mihon (Tachiyomi).
+- [Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI): The web front-end that Suwayomi-Server ships with by default.
+- [Suwayomi-VUI](https://github.com/Suwayomi/Suwayomi-VUI): A Suwayomi-Server preview focused web frontend built with svelte
 - [Tachidesk-VaadinUI](https://github.com/Suwayomi/Tachidesk-VaadinUI): A Web front-end for Suwayomi-Server built with Vaadin.
-- [Suwayomi-VUI](https://github.com/Suwayomi/Suwayomi-VUI): A preview focused web frontend built with svelte with some features the other UIs might not have (migration)
-##### Inactive/Abandoned Clients
+##### Inactive Clients (functional but outdated)
+- [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): The native desktop front-end for Suwayomi-Server.
+- [Tachidesk-Sorayomi](https://github.com/Suwayomi/Tachidesk-Sorayomi): A Flutter front-end for Desktop(Linux, windows, etc.), Web and Android with a User Interface inspired by Mihon (Tachiyomi).
+#####  Abandoned Clients (functionality unknown)
 - [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): A C++/Qt front-end for mobile devices(Android/linux), feature support is basic.
 - [Tachidesk-GTK](https://github.com/mahor1221/Tachidesk-GTK): A native Rust/GTK desktop client.
 - [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js.
-
-## Is this application usable? Should I test it?
-Here is a list of current features:
-
-- Installing and executing Mihon (Tachiyomi)'s Extensions, So you'll get the same sources
-- A library to save your mangas and categories to put them into
-- Searching and browsing installed sources
-- Ability to download Manga for offline read
-- Backup and restore support powered by Mihon (Tachiyomi)-compatible Backups
-- Viewing latest updated chapters.
-
-**Note:** These are capabilities of Suwayomi-Server, the actual working support is provided by each front-end app, checkout their respective readme for more info.
 
 # Downloading and Running the app
 ## Using Operating System Specific Bundles
@@ -87,6 +94,9 @@ Download the latest `linux-x64`(x86_64) release from [the releases section](http
 `tar xvf` the downloaded file and double-click on one of the launcher scripts or run them using the terminal.
 
 ## Other methods of getting Suwayomi
+### Docker
+Check our Official Docker release [Suwayomi Container](https://github.com/orgs/Suwayomi/packages/container/package/tachidesk) for running Suwayomi Server in a docker container. Source code for our container is available at [docker-tachidesk](https://github.com/Suwayomi/docker-tachidesk), an example compose file can also be found there. By default, the server will be running on http://localhost:4567 open this url in your browser.
+
 ### Arch Linux
 You can install Suwayomi from the AUR:
 ```
@@ -122,9 +132,6 @@ You can deploy Suwayomi on NixOS using the module `services.suwayomi-server` in 
 For more information, see [the NixOS manual](https://nixos.org/manual/nixos/stable/#module-services-suwayomi-server).
 
 You can also directly use the package from [nixpkgs](https://search.nixos.org/packages?channel=unstable&type=packages&query=suwayomi-server).
-
-### Docker
-Check our Official Docker release [Suwayomi Container](https://github.com/orgs/Suwayomi/packages/container/package/tachidesk) for running Suwayomi Server in a docker container. Source code for our container is available at [docker-tachidesk](https://github.com/Suwayomi/docker-tachidesk), an example compose file can also be found there. By default, the server will be running on http://localhost:4567 open this url in your browser.
 
 ## Advanced Methods
 ### Running the jar release directly
