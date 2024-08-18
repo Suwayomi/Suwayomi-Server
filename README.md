@@ -5,7 +5,7 @@
 
 ## Table of Content
 - [What is Suwayomi?](#what-is-suwayomi)
-- [Is this application usable? Should I test it?](#is-this-application-usable-should-i-test-it)
+- [Features](#Features)
 - [Suwayomi client projects](#Suwayomi-client-projects)
 - [Downloading and Running the app](#downloading-and-running-the-app)
   * [Using Operating System Specific Bundles](#using-operating-system-specific-bundles)
@@ -38,7 +38,7 @@ Suwayomi-Server is as multi-platform as you can get. Any platform that runs java
 
 You can use Mihon (Tachiyomi) to access your Suwayomi-Server. For more info look [here](#syncing-with-mihon-tachiyomi).
 
-## Is this application usable? Should I test it?
+## Features
 > [!NOTE]
 >
 > These are capabilities of Suwayomi-Server, the actual working support is provided by each front-end app, checkout their respective readme for more info.
