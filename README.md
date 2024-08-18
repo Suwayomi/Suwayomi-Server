@@ -36,7 +36,7 @@ Suwayomi is an independent Mihon (Tachiyomi) compatible software and is **not a 
 
 Suwayomi-Server is as multi-platform as you can get. Any platform that runs java and/or has a modern browser can run it. This includes Windows, Linux, macOS, chrome OS, etc. Follow [Downloading and Running the app](#downloading-and-running-the-app) for installation instructions.
 
-Ability to sync with Mihon (Tachiyomi) is a planned feature, for more info look [here](#syncing-with-mihon-tachiyomi).
+You can use Mihon (Tachiyomi) to access your Suwayomi-Server. For more info look [here](#syncing-with-mihon-tachiyomi).
 
 # Suwayomi client projects
 **You need a client/user interface app as a front-end for Suwayomi-Server, if you [Directly Download Suwayomi-Server](https://github.com/Suwayomi/Suwayomi-Server/releases/latest) you'll get a bundled version of [Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI) with it.**
