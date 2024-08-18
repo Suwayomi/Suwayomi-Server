@@ -57,11 +57,17 @@ Here's a list of known clients/user interfaces for Suwayomi-Server:
 Here is a list of current features:
 
 - Installing and executing Mihon (Tachiyomi)'s Extensions, So you'll get the same sources
-- A library to save your mangas and categories to put them into
 - Searching and browsing installed sources
+- A library to save your mangas and categories to put them into
+- Automated library updates to check for new chapters
+- Automated download of new chapters
+- Viewing latest updated chapters
 - Ability to download Manga for offline read
 - Backup and restore support powered by Mihon (Tachiyomi)-compatible Backups
-- Viewing latest updated chapters.
+- Automated backup creations
+- Tracking via [MyAnimeList](https://myanimelist.net/), [AniList](https://anilist.co/), [MangaUpdates](https://www.mangaupdates.com/)
+- [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) support to bypass Cloudflare protection
+- Automated WebUI updates (supports the default WebUI and VUI)
 
 **Note:** These are capabilities of Suwayomi-Server, the actual working support is provided by each front-end app, checkout their respective readme for more info.
 
