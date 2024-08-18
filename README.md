@@ -5,8 +5,8 @@
 
 ## Table of Content
 - [What is Suwayomi?](#what-is-suwayomi)
+- [Is this application usable? Should I test it?](#is-this-application-usable-should-i-test-it)
 - [Suwayomi client projects](#Suwayomi-client-projects)
-  * [Is this application usable? Should I test it?](#is-this-application-usable-should-i-test-it)
 - [Downloading and Running the app](#downloading-and-running-the-app)
   * [Using Operating System Specific Bundles](#using-operating-system-specific-bundles)
       - [Launcher Scripts](#launcher-scripts)
@@ -38,23 +38,10 @@ Suwayomi-Server is as multi-platform as you can get. Any platform that runs java
 
 You can use Mihon (Tachiyomi) to access your Suwayomi-Server. For more info look [here](#syncing-with-mihon-tachiyomi).
 
-# Suwayomi client projects
-**You need a client/user interface app as a front-end for Suwayomi-Server, if you [Directly Download Suwayomi-Server](https://github.com/Suwayomi/Suwayomi-Server/releases/latest) you'll get a bundled version of [Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI) with it.**
-
-Here's a list of known clients/user interfaces for Suwayomi-Server:
-##### Actively Developed Clients
-- [Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI): The web front-end that Suwayomi-Server ships with by default.
-- [Suwayomi-VUI](https://github.com/Suwayomi/Suwayomi-VUI): A Suwayomi-Server preview focused web frontend built with svelte
-- [Tachidesk-VaadinUI](https://github.com/Suwayomi/Tachidesk-VaadinUI): A Web front-end for Suwayomi-Server built with Vaadin.
-##### Inactive/Abandoned Clients
-- [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): The native desktop front-end for Suwayomi-Server.
-- [Tachidesk-Sorayomi](https://github.com/Suwayomi/Tachidesk-Sorayomi): A Flutter front-end for Desktop(Linux, windows, etc.), Web and Android with a User Interface inspired by Mihon (Tachiyomi).
-- [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): A C++/Qt front-end for mobile devices(Android/linux), feature support is basic.
-- [Tachidesk-GTK](https://github.com/mahor1221/Tachidesk-GTK): A native Rust/GTK desktop client.
-- [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js.
-
 ## Is this application usable? Should I test it?
-Here is a list of current features:
+> [!NOTE]
+>
+> These are capabilities of Suwayomi-Server, the actual working support is provided by each front-end app, checkout their respective readme for more info.
 
 - Installing and executing Mihon (Tachiyomi)'s Extensions, So you'll get the same sources
 - Searching and browsing installed sources
@@ -69,7 +56,20 @@ Here is a list of current features:
 - [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) support to bypass Cloudflare protection
 - Automated WebUI updates (supports the default WebUI and VUI)
 
-**Note:** These are capabilities of Suwayomi-Server, the actual working support is provided by each front-end app, checkout their respective readme for more info.
+# Suwayomi client projects
+**You need a client/user interface app as a front-end for Suwayomi-Server, if you [Directly Download Suwayomi-Server](https://github.com/Suwayomi/Suwayomi-Server/releases/latest) you'll get a bundled version of [Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI) with it.**
+
+Here's a list of known clients/user interfaces for Suwayomi-Server (checkout the respective GitHub repository for their features):
+##### Actively Developed Clients
+- [Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI): The web front-end that Suwayomi-Server ships with by default.
+- [Suwayomi-VUI](https://github.com/Suwayomi/Suwayomi-VUI): A Suwayomi-Server preview focused web frontend built with svelte
+- [Tachidesk-VaadinUI](https://github.com/Suwayomi/Tachidesk-VaadinUI): A Web front-end for Suwayomi-Server built with Vaadin.
+##### Inactive/Abandoned Clients
+- [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): The native desktop front-end for Suwayomi-Server.
+- [Tachidesk-Sorayomi](https://github.com/Suwayomi/Tachidesk-Sorayomi): A Flutter front-end for Desktop(Linux, windows, etc.), Web and Android with a User Interface inspired by Mihon (Tachiyomi).
+- [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): A C++/Qt front-end for mobile devices(Android/linux), feature support is basic.
+- [Tachidesk-GTK](https://github.com/mahor1221/Tachidesk-GTK): A native Rust/GTK desktop client.
+- [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js.
 
 # Downloading and Running the app
 ## Using Operating System Specific Bundles
