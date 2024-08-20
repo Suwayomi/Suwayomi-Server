@@ -246,20 +246,26 @@ object WebInterfaceManager {
         val lastAutomatedUpdate = preferences.getLong(LAST_WEBUI_UPDATE_CHECK_KEY, System.currentTimeMillis())
 
         val task = {
-            logger.debug {
-                "Checking for webUI update (" +
-                    "flavor= ${WebUIFlavor.current.uiName}, " +
-                    "channel= ${serverConfig.webUIChannel.value}, " +
-                    "interval= ${serverConfig.webUIUpdateCheckInterval.value}h, " +
-                    "lastAutomatedUpdate= ${
-                        Date(
-                            lastAutomatedUpdate,
-                        )
-                    })"
-            }
+            val log =
+                KotlinLogging.logger(
+                    "${logger.name}::scheduleWebUIUpdateCheck(" +
+                        "flavor= ${WebUIFlavor.current.uiName}, " +
+                        "channel= ${serverConfig.webUIChannel.value}, " +
+                        "interval= ${serverConfig.webUIUpdateCheckInterval.value}h, " +
+                        "lastAutomatedUpdate= ${
+                            Date(
+                                lastAutomatedUpdate,
+                            )
+                        })",
+                )
+            log.debug { "called" }
 
             runBlocking {
-                checkForUpdate(WebUIFlavor.current)
+                try {
+                    checkForUpdate(WebUIFlavor.current)
+                } catch (e: Exception) {
+                    log.error(e) { "failed due to" }
+                }
             }
         }
 
