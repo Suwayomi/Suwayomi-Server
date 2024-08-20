@@ -108,20 +108,24 @@ class Updater : IUpdater {
     }
 
     private fun autoUpdateTask() {
-        val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
-        preferences.edit().putLong(lastAutomatedUpdateKey, System.currentTimeMillis()).apply()
+        try {
+            val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
+            preferences.edit().putLong(lastAutomatedUpdateKey, System.currentTimeMillis()).apply()
 
-        if (getStatus().running) {
-            logger.debug { "Global update is already in progress" }
-            return
-        }
+            if (getStatus().running) {
+                logger.debug { "Global update is already in progress" }
+                return
+            }
 
-        logger.info {
-            "Trigger global update (interval= ${serverConfig.globalUpdateInterval.value}h, lastAutomatedUpdate= ${Date(
-                lastAutomatedUpdate,
-            )})"
+            logger.info {
+                "Trigger global update (interval= ${serverConfig.globalUpdateInterval.value}h, lastAutomatedUpdate= ${Date(
+                    lastAutomatedUpdate,
+                )})"
+            }
+            addCategoriesToUpdateQueue(Category.getCategoryList(), clear = true, forceAll = false)
+        } catch (e: Exception) {
+            logger.error(e) { "autoUpdateTask: failed due to" }
         }
-        addCategoriesToUpdateQueue(Category.getCategoryList(), clear = true, forceAll = false)
     }
 
     fun scheduleUpdateTask() {
