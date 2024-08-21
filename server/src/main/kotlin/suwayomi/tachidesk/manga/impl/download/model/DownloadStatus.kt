@@ -16,3 +16,8 @@ data class DownloadStatus(
     val status: Status,
     val queue: List<DownloadChapter>,
 )
+
+data class DownloadUpdates(
+    val status: Status,
+    val updates: List<DownloadUpdate>,
+)
