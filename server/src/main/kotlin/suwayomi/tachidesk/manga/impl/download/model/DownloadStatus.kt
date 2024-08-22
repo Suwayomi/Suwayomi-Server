@@ -20,4 +20,5 @@ data class DownloadStatus(
 data class DownloadUpdates(
     val status: Status,
     val updates: List<DownloadUpdate>,
+    val initial: List<DownloadChapter>?,
 )

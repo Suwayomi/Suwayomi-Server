@@ -7,6 +7,7 @@
 
 package suwayomi.tachidesk.graphql.types
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
@@ -41,6 +42,8 @@ data class DownloadStatus(
 data class DownloadUpdates(
     val state: DownloaderState,
     val updates: List<suwayomi.tachidesk.graphql.types.DownloadUpdate>,
+    @GraphQLDescription("The current download queue at the time of sending initial message. Is null for all following messages")
+    val initial: List<DownloadType>?,
 ) {
     constructor(downloadUpdates: DownloadUpdates) : this(
         when (downloadUpdates.status) {
@@ -48,6 +51,7 @@ data class DownloadUpdates(
             Status.Started -> DownloaderState.STARTED
         },
         downloadUpdates.updates.map { DownloadUpdate(it) },
+        downloadUpdates.initial?.map { DownloadType(it) },
     )
 }
 

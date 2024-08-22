@@ -142,7 +142,7 @@ object DownloadManager {
     val status = statusFlow.onStart { emit(getStatus()) }
 
     private val updatesFlow = MutableSharedFlow<DownloadUpdates>()
-    val updates = updatesFlow.onStart { emit(getDownloadUpdates()) }
+    val updates = updatesFlow.onStart { emit(getDownloadUpdates(addInitial = true)) }
 
     init {
         scope.launch {
@@ -200,7 +200,7 @@ object DownloadManager {
             downloadQueue.toList(),
         )
 
-    private fun getDownloadUpdates(): DownloadUpdates {
+    private fun getDownloadUpdates(addInitial: Boolean = false): DownloadUpdates {
         return DownloadUpdates(
             if (downloadQueue.none { it.state == Downloading }) {
                 Status.Stopped
@@ -208,6 +208,7 @@ object DownloadManager {
                 Status.Started
             },
             downloadUpdates.toList(),
+            if (addInitial) downloadQueue.toList() else null,
         )
     }
 
