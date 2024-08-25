@@ -9,6 +9,8 @@ package suwayomi.tachidesk.manga.impl.chapter
 
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
+import mu.KLogger
+import mu.KotlinLogging
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
@@ -51,8 +53,25 @@ private class ChapterForDownload(
     optChapterIndex: Int? = null,
     optMangaId: Int? = null,
 ) {
+    var chapterEntry: ResultRow
+    val chapterId: Int
+    val chapterIndex: Int
+    val mangaId: Int
+
+    val logger: KLogger
+
     suspend fun asDownloadReady(): ChapterDataClass {
-        if (isNotCompletelyDownloaded()) {
+        val log = KotlinLogging.logger("${logger.name}::asDownloadReady")
+
+        val isMarkedAsDownloaded = chapterEntry[ChapterTable.isDownloaded]
+        val doesFirstPageExist = firstPageExists()
+        val isDownloaded = isMarkedAsDownloaded && doesFirstPageExist
+
+        log.debug { "isDownloaded= $isDownloaded (isMarkedAsDownloaded= $isMarkedAsDownloaded, doesFirstPageExist= $doesFirstPageExist)" }
+
+        if (!isDownloaded) {
+            log.debug { "reset download status and fetch page list" }
+
             markAsNotDownloaded()
 
             val pageList = fetchPageList()
@@ -65,16 +84,16 @@ private class ChapterForDownload(
 
     private fun asDataClass() = ChapterTable.toDataClass(chapterEntry)
 
-    var chapterEntry: ResultRow
-    val chapterId: Int
-    val chapterIndex: Int
-    val mangaId: Int
-
     init {
         chapterEntry = freshChapterEntry(optChapterId, optChapterIndex, optMangaId)
         chapterId = chapterEntry[ChapterTable.id].value
         chapterIndex = chapterEntry[ChapterTable.sourceOrder]
         mangaId = chapterEntry[ChapterTable.manga].value
+
+        logger =
+            KotlinLogging.logger(
+                "${ChapterForDownload::class.java.name}(mangaId= $mangaId, chapterId= $chapterId, chapterIndex= $chapterIndex)",
+            )
     }
 
     private fun freshChapterEntry(
@@ -145,10 +164,6 @@ private class ChapterForDownload(
                 it[ChapterTable.lastPageRead] = chapterEntry[ChapterTable.lastPageRead].coerceAtMost(pageCount - 1)
             }
         }
-    }
-
-    private fun isNotCompletelyDownloaded(): Boolean {
-        return !(chapterEntry[ChapterTable.isDownloaded] && firstPageExists())
     }
 
     private fun firstPageExists(): Boolean {
