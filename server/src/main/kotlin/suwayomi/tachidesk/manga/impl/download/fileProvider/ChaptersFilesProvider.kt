@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Page
@@ -20,11 +21,54 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.io.File
 import java.io.InputStream
 
+sealed class FileType {
+    data class RegularFile(val file: File) : FileType()
+
+    data class ZipFile(val entry: ZipArchiveEntry) : FileType()
+
+    fun getName(): String {
+        return when (this) {
+            is FileType.RegularFile -> {
+                this.file.name
+            }
+            is FileType.ZipFile -> {
+                this.entry.name
+            }
+        }
+    }
+
+    fun getExtension(): String {
+        return when (this) {
+            is FileType.RegularFile -> {
+                this.file.extension
+            }
+            is FileType.ZipFile -> {
+                this.entry.name.substringAfterLast(".")
+            }
+        }
+    }
+}
+
 /*
 * Base class for downloaded chapter files provider, example: Folder, Archive
 */
-abstract class ChaptersFilesProvider(val mangaId: Int, val chapterId: Int) : DownloadedFilesProvider {
-    abstract fun getImageImpl(index: Int): Pair<InputStream, String>
+abstract class ChaptersFilesProvider<Type : FileType>(val mangaId: Int, val chapterId: Int) : DownloadedFilesProvider {
+    protected abstract fun getImageFiles(): List<Type>
+
+    protected abstract fun getImageInputStream(image: Type): InputStream
+
+    fun getImageImpl(index: Int): Pair<InputStream, String> {
+        val images = getImageFiles().sortedBy { it.getName() }
+
+        if (images.isEmpty()) {
+            throw Exception("no downloaded images found")
+        }
+
+        val image = images[index]
+        val imageFileType = image.getExtension()
+
+        return Pair(getImageInputStream(image).buffered(), "image/$imageFileType")
+    }
 
     override fun getImage(): RetrieveFile1Args<Int> {
         return RetrieveFile1Args(::getImageImpl)
