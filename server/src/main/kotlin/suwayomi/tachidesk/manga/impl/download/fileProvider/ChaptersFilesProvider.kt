@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.manga.impl.download.fileProvider
 
+import eu.kanade.tachiyomi.source.local.metadata.COMIC_INFO_FILE
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -58,7 +59,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(val mangaId: Int, val chap
     protected abstract fun getImageInputStream(image: Type): InputStream
 
     fun getImageImpl(index: Int): Pair<InputStream, String> {
-        val images = getImageFiles().sortedBy { it.getName() }
+        val images = getImageFiles().filter { it.getName() != COMIC_INFO_FILE }.sortedBy { it.getName() }
 
         if (images.isEmpty()) {
             throw Exception("no downloaded images found")
