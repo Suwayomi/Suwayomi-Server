@@ -5,8 +5,10 @@ import android.content.Context
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.channels.BufferOverflow
@@ -124,6 +126,7 @@ class Updater : IUpdater {
         addCategoriesToUpdateQueue(Category.getCategoryList(), clear = true, forceAll = false)
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     fun scheduleUpdateTask() {
         HAScheduler.deschedule(currentUpdateTaskId)
 
@@ -141,7 +144,9 @@ class Updater : IUpdater {
                 if (lastAutomatedUpdate > 0) lastAutomatedUpdate else System.currentTimeMillis()
             ) < updateInterval
         if (!wasPreviousUpdateTriggered) {
-            autoUpdateTask()
+            GlobalScope.launch {
+                autoUpdateTask()
+            }
         }
 
         HAScheduler.schedule(::autoUpdateTask, updateInterval, timeToNextExecution, "global-update")
