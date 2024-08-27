@@ -7,13 +7,18 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import org.kodein.di.DI
+import org.kodein.di.conf.global
+import org.kodein.di.instance
 import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.types.MangaMetaType
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
+import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
@@ -24,6 +29,8 @@ import java.util.concurrent.CompletableFuture
  * - Delete read/all downloaded chapters
  */
 class MangaMutation {
+    private val updater by DI.global.instance<IUpdater>()
+
     data class UpdateMangaPatch(
         val inLibrary: Boolean? = null,
     )
@@ -65,6 +72,17 @@ class MangaMutation {
             }
         }.apply {
             if (patch.inLibrary != null) {
+                transaction {
+                    // try to initialize uninitialized in library manga to ensure that the expected data is available (chapter list, metadata, ...)
+                    val mangas =
+                        transaction {
+                            MangaTable.select { (MangaTable.id inList ids) and (MangaTable.initialized eq false) }
+                                .map { MangaTable.toDataClass(it) }
+                        }
+
+                    updater.addMangasToQueue(mangas)
+                }
+
                 ids.forEach {
                     Library.handleMangaThumbnail(it, patch.inLibrary)
                 }

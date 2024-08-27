@@ -329,11 +329,11 @@ class Updater : IUpdater {
         )
     }
 
-    private fun addMangasToQueue(mangasToUpdate: List<MangaDataClass>) {
+    override fun addMangasToQueue(mangas: List<MangaDataClass>) {
         // create all manga update jobs before adding them to the queue so that the client is able to calculate the
         // progress properly right form the start
-        mangasToUpdate.forEach { tracker[it.id] = UpdateJob(it) }
-        mangasToUpdate.forEach { addMangaToQueue(it) }
+        mangas.forEach { tracker[it.id] = UpdateJob(it) }
+        mangas.forEach { addMangaToQueue(it) }
     }
 
     private fun addMangaToQueue(manga: MangaDataClass) {
