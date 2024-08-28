@@ -44,14 +44,20 @@ data class DownloadUpdates(
     val updates: List<suwayomi.tachidesk.graphql.types.DownloadUpdate>,
     @GraphQLDescription("The current download queue at the time of sending initial message. Is null for all following messages")
     val initial: List<DownloadType>?,
+    @GraphQLDescription(
+        "Indicates whether updates have been omitted based on the \"maxUpdates\" subscription variable. " +
+            "In case updates have been omitted, the \"downloadStatus\" query should be re-fetched.",
+    )
+    val omittedUpdates: Boolean,
 ) {
-    constructor(downloadUpdates: DownloadUpdates) : this(
+    constructor(downloadUpdates: DownloadUpdates, omittedUpdates: Boolean) : this(
         when (downloadUpdates.status) {
             Status.Stopped -> DownloaderState.STOPPED
             Status.Started -> DownloaderState.STARTED
         },
         downloadUpdates.updates.map { DownloadUpdate(it) },
         downloadUpdates.initial?.map { DownloadType(it) },
+        omittedUpdates,
     )
 }
 
