@@ -46,7 +46,7 @@ private fun createRollingFileAppender(
             setParent(appender)
             fileNamePattern = "$logDirPath/${logFilename}_%d{yyyy-MM-dd}_%i.log.gz"
             setMaxFileSize(FileSize.valueOf("10mb"))
-            maxHistory = 14
+            maxHistory = 31
             setTotalSizeCap(FileSize.valueOf("1gb"))
             start()
         }
