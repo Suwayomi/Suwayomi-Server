@@ -9,6 +9,24 @@ import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
 import xyz.nulldev.ts.config.GlobalConfigManager
 
+private fun validateString(
+    value: String?,
+    pattern: Regex,
+    name: String,
+) {
+    validateString(value, pattern, Exception("Invalid format for \"$name\" [$value]"))
+}
+
+private fun validateString(
+    value: String?,
+    pattern: Regex,
+    exception: Exception,
+) {
+    if (value != null && !value.matches(pattern)) {
+        throw exception
+    }
+}
+
 class SettingsMutation {
     data class SetSettingsInput(
         val clientMutationId: String? = null,
@@ -19,6 +37,13 @@ class SettingsMutation {
         val clientMutationId: String?,
         val settings: SettingsType,
     )
+
+    private fun validateSettings(settings: Settings) {
+        // misc
+        val logbackSizePattern = "^[0-9]+(|kb|KB|mb|MB|gb|GB)\$".toRegex()
+        validateString(settings.maxLogFileSize, logbackSizePattern, "maxLogFileSize")
+        validateString(settings.maxLogFolderSize, logbackSizePattern, "maxLogFolderSize")
+    }
 
     private fun <SettingType : Any> updateSetting(
         newSetting: SettingType?,
@@ -82,6 +107,9 @@ class SettingsMutation {
         updateSetting(settings.debugLogsEnabled, serverConfig.debugLogsEnabled)
         updateSetting(settings.gqlDebugLogsEnabled, serverConfig.gqlDebugLogsEnabled)
         updateSetting(settings.systemTrayEnabled, serverConfig.systemTrayEnabled)
+        updateSetting(settings.maxLogFiles, serverConfig.maxLogFiles)
+        updateSetting(settings.maxLogFileSize, serverConfig.maxLogFileSize)
+        updateSetting(settings.maxLogFolderSize, serverConfig.maxLogFolderSize)
 
         // backup
         updateSetting(settings.backupPath, serverConfig.backupPath)
@@ -104,6 +132,7 @@ class SettingsMutation {
     fun setSettings(input: SetSettingsInput): SetSettingsPayload {
         val (clientMutationId, settings) = input
 
+        validateSettings(settings)
         updateSettings(settings)
 
         return SetSettingsPayload(clientMutationId, SettingsType())

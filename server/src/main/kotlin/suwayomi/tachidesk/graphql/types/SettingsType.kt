@@ -73,6 +73,9 @@ interface Settings : Node {
     val debugLogsEnabled: Boolean?
     val gqlDebugLogsEnabled: Boolean?
     val systemTrayEnabled: Boolean?
+    val maxLogFiles: Int?
+    val maxLogFileSize: String?
+    val maxLogFolderSize: String?
 
     // backup
     val backupPath: String?
@@ -139,6 +142,9 @@ data class PartialSettingsType(
     override val debugLogsEnabled: Boolean?,
     override val gqlDebugLogsEnabled: Boolean?,
     override val systemTrayEnabled: Boolean?,
+    override val maxLogFiles: Int?,
+    override val maxLogFileSize: String?,
+    override val maxLogFolderSize: String?,
     // backup
     override val backupPath: String?,
     override val backupTime: String?,
@@ -202,6 +208,9 @@ class SettingsType(
     override val debugLogsEnabled: Boolean,
     override val gqlDebugLogsEnabled: Boolean,
     override val systemTrayEnabled: Boolean,
+    override val maxLogFiles: Int,
+    override val maxLogFileSize: String,
+    override val maxLogFolderSize: String,
     // backup
     override val backupPath: String,
     override val backupTime: String,
@@ -260,6 +269,9 @@ class SettingsType(
         config.debugLogsEnabled.value,
         config.gqlDebugLogsEnabled.value,
         config.systemTrayEnabled.value,
+        config.maxLogFiles.value,
+        config.maxLogFileSize.value,
+        config.maxLogFolderSize.value,
         // backup
         config.backupPath.value,
         config.backupTime.value,
