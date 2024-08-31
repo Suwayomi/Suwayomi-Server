@@ -9,6 +9,8 @@ package suwayomi.tachidesk.manga.impl.chapter
 
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
+import mu.KLogger
+import mu.KotlinLogging
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
@@ -17,17 +19,13 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import suwayomi.tachidesk.manga.impl.Page.getPageName
-import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
-import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
+import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
-import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
-import java.io.File
 
 suspend fun getChapterDownloadReady(
     chapterId: Int? = null,
@@ -55,8 +53,25 @@ private class ChapterForDownload(
     optChapterIndex: Int? = null,
     optMangaId: Int? = null,
 ) {
+    var chapterEntry: ResultRow
+    val chapterId: Int
+    val chapterIndex: Int
+    val mangaId: Int
+
+    val logger: KLogger
+
     suspend fun asDownloadReady(): ChapterDataClass {
-        if (isNotCompletelyDownloaded()) {
+        val log = KotlinLogging.logger("${logger.name}::asDownloadReady")
+
+        val isMarkedAsDownloaded = chapterEntry[ChapterTable.isDownloaded]
+        val doesFirstPageExist = firstPageExists()
+        val isDownloaded = isMarkedAsDownloaded && doesFirstPageExist
+
+        log.debug { "isDownloaded= $isDownloaded (isMarkedAsDownloaded= $isMarkedAsDownloaded, doesFirstPageExist= $doesFirstPageExist)" }
+
+        if (!isDownloaded) {
+            log.debug { "reset download status and fetch page list" }
+
             markAsNotDownloaded()
 
             val pageList = fetchPageList()
@@ -69,16 +84,16 @@ private class ChapterForDownload(
 
     private fun asDataClass() = ChapterTable.toDataClass(chapterEntry)
 
-    var chapterEntry: ResultRow
-    val chapterId: Int
-    val chapterIndex: Int
-    val mangaId: Int
-
     init {
         chapterEntry = freshChapterEntry(optChapterId, optChapterIndex, optMangaId)
         chapterId = chapterEntry[ChapterTable.id].value
         chapterIndex = chapterEntry[ChapterTable.sourceOrder]
         mangaId = chapterEntry[ChapterTable.manga].value
+
+        logger =
+            KotlinLogging.logger(
+                "${ChapterForDownload::class.java.name}(mangaId= $mangaId, chapterId= $chapterId, chapterIndex= $chapterIndex)",
+            )
     }
 
     private fun freshChapterEntry(
@@ -151,24 +166,12 @@ private class ChapterForDownload(
         }
     }
 
-    private fun isNotCompletelyDownloaded(): Boolean {
-        return !(
-            chapterEntry[ChapterTable.isDownloaded] &&
-                (firstPageExists() || File(getChapterCbzPath(mangaId, chapterEntry[ChapterTable.id].value)).exists())
-        )
-    }
-
     private fun firstPageExists(): Boolean {
-        val chapterId = chapterEntry[ChapterTable.id].value
-
-        val chapterDir = getChapterDownloadPath(mangaId, chapterId)
-
-        println(chapterDir)
-        println(getPageName(0))
-
-        return ImageResponse.findFileNameStartingWith(
-            chapterDir,
-            getPageName(0),
-        ) != null
+        return try {
+            ChapterDownloadHelper.getImage(mangaId, chapterId, 0).first.close()
+            true
+        } catch (e: Exception) {
+            false
+        }
     }
 }

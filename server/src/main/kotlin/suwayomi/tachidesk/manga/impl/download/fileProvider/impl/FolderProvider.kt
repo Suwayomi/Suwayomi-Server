@@ -4,27 +4,32 @@ import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
+import suwayomi.tachidesk.manga.impl.download.fileProvider.FileType.RegularFile
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.storage.FileDeletionHelper
 import suwayomi.tachidesk.server.ApplicationDirs
 import java.io.File
 import java.io.FileInputStream
-import java.io.InputStream
 
 private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
 /*
 * Provides downloaded files when pages were downloaded into folders
 * */
-class FolderProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider(mangaId, chapterId) {
-    override fun getImageImpl(index: Int): Pair<InputStream, String> {
-        val chapterDir = getChapterDownloadPath(mangaId, chapterId)
-        val folder = File(chapterDir)
-        folder.mkdirs()
-        val file = folder.listFiles()?.sortedBy { it.name }?.get(index)
-        val fileType = file!!.name.substringAfterLast(".")
-        return Pair(FileInputStream(file).buffered(), "image/$fileType")
+class FolderProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider<RegularFile>(mangaId, chapterId) {
+    override fun getImageFiles(): List<RegularFile> {
+        val chapterFolder = File(getChapterDownloadPath(mangaId, chapterId))
+
+        if (!chapterFolder.exists()) {
+            throw Exception("download folder does not exist")
+        }
+
+        return chapterFolder.listFiles().orEmpty().toList().map(::RegularFile)
+    }
+
+    override fun getImageInputStream(image: RegularFile): FileInputStream {
+        return FileInputStream(image.file)
     }
 
     override fun extractExistingDownload() {

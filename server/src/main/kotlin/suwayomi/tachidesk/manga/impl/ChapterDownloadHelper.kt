@@ -41,7 +41,7 @@ object ChapterDownloadHelper {
     private fun provider(
         mangaId: Int,
         chapterId: Int,
-    ): ChaptersFilesProvider {
+    ): ChaptersFilesProvider<*> {
         val chapterFolder = File(getChapterDownloadPath(mangaId, chapterId))
         val cbzFile = File(getChapterCbzPath(mangaId, chapterId))
         if (cbzFile.exists()) return ArchiveProvider(mangaId, chapterId)
