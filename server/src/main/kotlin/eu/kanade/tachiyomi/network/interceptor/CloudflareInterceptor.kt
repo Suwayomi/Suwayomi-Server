@@ -153,13 +153,13 @@ object CFClearance {
         val name: String,
         val value: String,
         val domain: String,
-        val path: String,
+        val path: String? = null,
         val expires: Double? = null,
         val size: Int? = null,
-        val httpOnly: Boolean,
-        val secure: Boolean,
+        val httpOnly: Boolean? = null,
+        val secure: Boolean? = null,
         val session: Boolean? = null,
-        val sameSite: String,
+        val sameSite: String? = null,
     )
 
     @Serializable
@@ -228,11 +228,11 @@ object CFClearance {
                             .name(cookie.name)
                             .value(cookie.value)
                             .domain(cookie.domain.removePrefix("."))
-                            .path(cookie.path)
                             .expiresAt(cookie.expires?.takeUnless { it < 0.0 }?.toLong() ?: Long.MAX_VALUE)
                             .also {
-                                if (cookie.httpOnly) it.httpOnly()
-                                if (cookie.secure) it.secure()
+                                if (cookie.httpOnly != null && cookie.httpOnly) it.httpOnly()
+                                if (cookie.secure != null && cookie.secure) it.secure()
+                                if (!cookie.path.isNullOrEmpty()) it.path(cookie.path)
                             }
                             .build()
                     }
