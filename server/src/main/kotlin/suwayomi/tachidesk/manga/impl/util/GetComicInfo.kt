@@ -29,9 +29,7 @@ fun getComicInfo(
 ): ComicInfo {
     val dateUpload = chapter[ChapterTable.date_upload]
     val localDate =
-        dateUpload.let {
-            Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
-        }
+        Instant.ofEpochMilli(dateUpload).atZone(ZoneId.systemDefault()).toLocalDate()
 
     return ComicInfo(
         title = ComicInfo.Title(chapter[ChapterTable.name]),
@@ -60,9 +58,9 @@ fun getComicInfo(
         letterer = null,
         coverArtist = null,
         tags = null,
-        day = localDate?.dayOfMonth.let { it?.let { it1 -> ComicInfo.Day(it1) } },
-        month = localDate?.monthValue.let { it?.let { it1 -> ComicInfo.Month(it1) } },
-        year = localDate?.year.let { it?.let { it1 -> ComicInfo.Year(it1) } },
+        day = localDate?.dayOfMonth?.let { ComicInfo.Day(it) },
+        month = localDate?.monthValue?.let { ComicInfo.Month(it) },
+        year = localDate?.year?.let { ComicInfo.Year(it) },
     )
 }
 
