@@ -10,7 +10,11 @@ package suwayomi.tachidesk.manga.impl.backup.proto
 import android.app.Application
 import android.content.Context
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 import mu.KotlinLogging
 import okio.buffer
 import okio.gzip
@@ -70,6 +74,7 @@ object ProtoBackupExport : ProtoBackupBase() {
         )
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     fun scheduleAutomatedBackupTask() {
         HAScheduler.descheduleCron(backupSchedulerJobId)
 
@@ -94,7 +99,9 @@ object ProtoBackupExport : ProtoBackupBase() {
         val wasPreviousBackupTriggered =
             (System.currentTimeMillis() - lastAutomatedBackup) < backupInterval.inWholeMilliseconds
         if (!wasPreviousBackupTriggered) {
-            task()
+            GlobalScope.launch(Dispatchers.IO) {
+                task()
+            }
         }
 
         HAScheduler.scheduleCron(task, "$backupMinute $backupHour */${backupInterval.inWholeDays} * *", "backup")
