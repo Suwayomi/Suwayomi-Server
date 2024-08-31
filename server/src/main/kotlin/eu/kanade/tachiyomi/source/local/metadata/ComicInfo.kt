@@ -58,6 +58,9 @@ data class ComicInfo(
     val web: Web?,
     val publishingStatus: PublishingStatusTachiyomi?,
     val categories: CategoriesTachiyomi?,
+    val day: Day?,
+    val month: Month?,
+    val year: Year?,
 ) {
     @Suppress("UNUSED")
     @XmlElement(false)
@@ -85,6 +88,24 @@ data class ComicInfo(
     @XmlSerialName("Number", "", "")
     data class Number(
         @XmlValue(true) val value: String = "",
+    )
+
+    @Serializable
+    @XmlSerialName("Day", "", "")
+    data class Day(
+        @XmlValue(true) val value: Int = 0,
+    )
+
+    @Serializable
+    @XmlSerialName("Month", "", "")
+    data class Month(
+        @XmlValue(true) val value: Int = 0,
+    )
+
+    @Serializable
+    @XmlSerialName("Year", "", "")
+    data class Year(
+        @XmlValue(true) val value: Int = 0,
     )
 
     @Serializable
