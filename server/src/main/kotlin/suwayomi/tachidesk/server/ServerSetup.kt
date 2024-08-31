@@ -45,6 +45,7 @@ import xyz.nulldev.ts.config.ConfigKodeinModule
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.initLoggerConfig
 import xyz.nulldev.ts.config.setLogLevelFor
+import xyz.nulldev.ts.config.updateFileAppender
 import java.io.File
 import java.net.Authenticator
 import java.net.PasswordAuthentication
@@ -97,7 +98,28 @@ fun applicationSetup() {
     // Application dirs
     val applicationDirs = ApplicationDirs()
 
-    initLoggerConfig(applicationDirs.dataRoot)
+    initLoggerConfig(
+        applicationDirs.dataRoot,
+        serverConfig.maxLogFiles.value,
+        serverConfig.maxLogFileSize.value,
+        serverConfig.maxLogFolderSize.value,
+    )
+
+    serverConfig.subscribeTo(
+        combine(
+            serverConfig.maxLogFiles,
+            serverConfig.maxLogFileSize,
+            serverConfig.maxLogFolderSize,
+        ) { maxLogFiles, maxLogFileSize, maxLogFolderSize ->
+            Triple(maxLogFiles, maxLogFileSize, maxLogFolderSize)
+        }.distinctUntilChanged(),
+        { (maxLogFiles, maxLogFileSize, maxLogFolderSize) ->
+            logger.debug {
+                "updateFileAppender: maxLogFiles= $maxLogFiles, maxLogFileSize= $maxLogFileSize, maxLogFolderSize= $maxLogFolderSize"
+            }
+            updateFileAppender(maxLogFiles, maxLogFileSize, maxLogFolderSize)
+        },
+    )
 
     setupLogLevelUpdating(serverConfig.debugLogsEnabled, listOf(BASE_LOGGER_NAME))
     // gql "ExecutionStrategy" spams logs with "... completing field ..."
