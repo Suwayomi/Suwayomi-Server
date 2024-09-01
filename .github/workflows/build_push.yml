@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clone repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Validate Gradle Wrapper
         uses: gradle/wrapper-validation-action@v1
@@ -161,7 +161,7 @@ jobs:
           path: release
 
       - name: Checkout Preview branch
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: "Suwayomi/Suwayomi-Server-preview"
           ref: main
