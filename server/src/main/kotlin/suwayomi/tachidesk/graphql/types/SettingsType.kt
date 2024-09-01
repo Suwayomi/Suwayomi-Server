@@ -185,7 +185,7 @@ class SettingsType(
     )
     override val autoDownloadAheadLimit: Int,
     override val autoDownloadNewChaptersLimit: Int,
-    override val autoDownloadIgnoreReUploads: Boolean?,
+    override val autoDownloadIgnoreReUploads: Boolean,
     override val autoDownloadDeleteExistingFiles: Boolean,
     // extension
     override val extensionRepos: List<String>,
