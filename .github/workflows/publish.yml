@@ -47,7 +47,7 @@ jobs:
             ~/.gradle/gradle.properties
 
       - name: Build and copy webUI, Build Jar
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/gradle-build-action@v3
         env:
           ProductBuildType: "Stable"
         with:
