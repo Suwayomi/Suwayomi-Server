@@ -167,7 +167,7 @@ jobs:
         run: cd release && sha256sum * > Checksums.sha256
 
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           token: ${{ secrets.DEPLOY_RELEASE_TOKEN }}
           draft: true
