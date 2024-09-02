@@ -54,14 +54,14 @@ jobs:
         run: ./gradlew :server:shadowJar --stacktrace
 
       - name: Upload Jar
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: jar
           path: master/server/build/*.jar
           if-no-files-found: error
 
       - name: Upload icons
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: icon
           path: master/server/src/main/resources/icon
@@ -71,7 +71,7 @@ jobs:
         run: tar -cvzf scripts.tar.gz -C master/ scripts/
 
       - name: Upload scripts.tar.gz
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: scripts
           path: scripts.tar.gz
@@ -95,19 +95,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Jar
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: jar
           path: server/build
 
       - name: Download icons
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: icon
           path: server/src/main/resources/icon
 
       - name: Download scripts.tar.gz
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: scripts
 
@@ -118,7 +118,7 @@ jobs:
           scripts/bundler.sh -o upload/ ${{ matrix.os }}
 
       - name: Upload ${{ matrix.os }} release
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}
           path: upload/*
@@ -128,35 +128,35 @@ jobs:
     needs: bundle
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: jar
           path: release
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: debian-all
           path: release
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: linux-assets
           path: release
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: linux-x64
           path: release
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: macOS-x64
           path: release
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: macOS-arm64
           path: release
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: windows-x64
           path: release
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: windows-x86
           path: release
