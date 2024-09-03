@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 import org.jlleitschuh.gradle.ktlint.KtlintExtension
 import org.jlleitschuh.gradle.ktlint.KtlintPlugin
@@ -43,12 +44,9 @@ subprojects {
     tasks {
         withType<KotlinJvmCompile> {
             dependsOn("ktlintFormat")
-            kotlinOptions {
-                jvmTarget = JavaVersion.VERSION_1_8.toString()
-
-                freeCompilerArgs += listOf(
-                    "-Xcontext-receivers",
-                )
+            compilerOptions {
+                jvmTarget = JvmTarget.JVM_1_8
+                freeCompilerArgs.add("-Xcontext-receivers")
             }
         }
     }

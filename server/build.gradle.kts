@@ -141,11 +141,10 @@ tasks {
     }
 
     withType<KotlinJvmCompile> {
-        kotlinOptions {
-            freeCompilerArgs +=
-                listOf(
-                    "-opt-in=kotlinx.serialization.ExperimentalSerializationApi",
-                )
+        compilerOptions {
+            freeCompilerArgs.add(
+                "-opt-in=kotlinx.serialization.ExperimentalSerializationApi",
+            )
         }
     }
 
