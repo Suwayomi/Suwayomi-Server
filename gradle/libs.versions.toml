@@ -1,6 +1,6 @@
 [versions]
 kotlin = "2.0.20"
-coroutines = "1.7.3"
+coroutines = "1.8.1"
 serialization = "1.6.0"
 okhttp = "5.0.0-alpha.14" # Major version is locked by Tachiyomi extensions
 javalin = "4.6.8" # Javalin 5.0.0+ requires Java 11
