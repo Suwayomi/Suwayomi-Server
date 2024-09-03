@@ -72,7 +72,7 @@ kodein = "org.kodein.di:kodein-di-conf-jvm:7.20.2"
 # tray icon
 systemtray-core = "com.dorkbox:SystemTray:4.2.1"
 systemtray-utils = "com.dorkbox:Utilities:1.39" # version locked by SystemTray
-systemtray-desktop = "com.dorkbox:Desktop:1.0"
+systemtray-desktop = "com.dorkbox:Desktop:1.1"
 
 # dependencies of Tachiyomi extensions
 injekt = "com.github.inorichi.injekt:injekt-core:65b0440"
