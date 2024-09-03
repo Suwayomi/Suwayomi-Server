@@ -70,7 +70,7 @@ exposed-migrations = "com.github.Suwayomi:exposed-migrations:3.2.0"
 kodein = "org.kodein.di:kodein-di-conf-jvm:7.20.2"
 
 # tray icon
-systemtray-core = "com.dorkbox:SystemTray:4.2.1"
+systemtray-core = "com.dorkbox:SystemTray:4.4"
 systemtray-utils = "com.dorkbox:Utilities:1.39" # version locked by SystemTray
 systemtray-desktop = "com.dorkbox:Desktop:1.0"
 
