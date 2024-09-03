@@ -14,10 +14,6 @@ jobs:
         uses: tachiyomiorg/issue-moderator-action@v2
         with:
           repo-token: ${{ github.token }}
-          duplicate-check-enabled: true
-          duplicate-check-label: Source request
-          existing-check-enabled: true
-          existing-check-label: Source request
           auto-close-rules: |
             [
               {
