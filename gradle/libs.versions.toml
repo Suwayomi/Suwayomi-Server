@@ -33,7 +33,7 @@ serialization-xml-core = { module = "io.github.pdvrieze.xmlutil:core-jvm", versi
 serialization-xml = { module = "io.github.pdvrieze.xmlutil:serialization-jvm", version.ref = "xmlserialization" }
 
 # Logging
-slf4japi = "org.slf4j:slf4j-api:2.0.9"
+slf4japi = "org.slf4j:slf4j-api:2.0.16"
 logback = "ch.qos.logback:logback-classic:1.3.11"
 kotlinlogging = "io.github.microutils:kotlin-logging:3.0.5"
 
