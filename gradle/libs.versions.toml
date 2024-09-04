@@ -71,7 +71,7 @@ kodein = "org.kodein.di:kodein-di-conf-jvm:7.20.2"
 
 # tray icon
 systemtray-core = "com.dorkbox:SystemTray:4.4"
-systemtray-utils = "com.dorkbox:Utilities:1.46" # version locked by SystemTray
+systemtray-utils = "com.dorkbox:Utilities:1.48" # version locked by SystemTray
 systemtray-desktop = "com.dorkbox:Desktop:1.1" # version locked by SystemTray
 
 # dependencies of Tachiyomi extensions
