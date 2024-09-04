@@ -81,7 +81,7 @@ jsoup = "org.jsoup:jsoup:1.16.1"
 
 # Config
 config = "com.typesafe:config:1.4.3"
-config4k = "io.github.config4k:config4k:0.5.0"
+config4k = "io.github.config4k:config4k:0.7.0"
 
 # Sort
 sort = "com.github.gpanther:java-nat-sort:natural-comparator-1.1"
