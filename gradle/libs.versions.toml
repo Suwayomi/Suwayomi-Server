@@ -67,7 +67,7 @@ h2 = "com.h2database:h2:1.4.200" # current database driver, can't update to h2 v
 exposed-migrations = "com.github.Suwayomi:exposed-migrations:3.2.0"
 
 # Dependency Injection
-kodein = "org.kodein.di:kodein-di-conf-jvm:7.20.2"
+kodein = "org.kodein.di:kodein-di-conf-jvm:7.22.0"
 
 # tray icon
 systemtray-core = "com.dorkbox:SystemTray:4.4"
