@@ -8,8 +8,7 @@ data class Rating(
     val rating: Float? = null,
 )
 
-fun Rating.copyTo(track: Track): Track {
-    return track.apply {
+fun Rating.copyTo(track: Track): Track =
+    track.apply {
         this.score = rating ?: 0f
     }
-}

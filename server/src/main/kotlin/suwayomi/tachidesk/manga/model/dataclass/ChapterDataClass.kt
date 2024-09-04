@@ -49,8 +49,8 @@ data class ChapterDataClass(
             fetchedAt: Long,
             mangaId: Int,
             realUrl: String?,
-        ): ChapterDataClass {
-            return ChapterDataClass(
+        ): ChapterDataClass =
+            ChapterDataClass(
                 id = id,
                 url = sChapter.url,
                 name = sChapter.name,
@@ -67,6 +67,5 @@ data class ChapterDataClass(
                 lastReadAt = 0,
                 downloaded = false,
             )
-        }
     }
 }

@@ -32,79 +32,89 @@ import uy.kohesive.injekt.injectLazy
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-class MyAnimeListApi(private val client: OkHttpClient, interceptor: MyAnimeListInterceptor) {
+class MyAnimeListApi(
+    private val client: OkHttpClient,
+    interceptor: MyAnimeListInterceptor,
+) {
     private val json: Json by injectLazy()
 
     private val authClient = client.newBuilder().addInterceptor(interceptor).build()
 
-    suspend fun getAccessToken(authCode: String): OAuth {
-        return withIOContext {
+    suspend fun getAccessToken(authCode: String): OAuth =
+        withIOContext {
             val formBody: RequestBody =
-                FormBody.Builder()
+                FormBody
+                    .Builder()
                     .add("client_id", CLIENT_ID)
                     .add("code", authCode)
                     .add("code_verifier", codeVerifier)
                     .add("grant_type", "authorization_code")
                     .build()
             with(json) {
-                client.newCall(POST("$BASE_OAUTH_URL/token", body = formBody))
+                client
+                    .newCall(POST("$BASE_OAUTH_URL/token", body = formBody))
                     .awaitSuccess()
                     .parseAs()
             }
         }
-    }
 
-    suspend fun getCurrentUser(): String {
-        return withIOContext {
+    suspend fun getCurrentUser(): String =
+        withIOContext {
             val request =
-                Request.Builder()
+                Request
+                    .Builder()
                     .url("$BASE_API_URL/users/@me")
                     .get()
                     .build()
             with(json) {
-                authClient.newCall(request)
+                authClient
+                    .newCall(request)
                     .awaitSuccess()
                     .parseAs<JsonObject>()
                     .let { it["name"]!!.jsonPrimitive.content }
             }
         }
-    }
 
-    suspend fun search(query: String): List<TrackSearch> {
-        return withIOContext {
+    suspend fun search(query: String): List<TrackSearch> =
+        withIOContext {
             val url =
-                "$BASE_API_URL/manga".toUri().buildUpon()
+                "$BASE_API_URL/manga"
+                    .toUri()
+                    .buildUpon()
                     // MAL API throws a 400 when the query is over 64 characters...
                     .appendQueryParameter("q", query.take(64))
                     .appendQueryParameter("nsfw", "true")
                     .build()
             with(json) {
-                authClient.newCall(GET(url.toString()))
+                authClient
+                    .newCall(GET(url.toString()))
                     .awaitSuccess()
                     .parseAs<JsonObject>()
                     .let {
-                        it["data"]!!.jsonArray
+                        it["data"]!!
+                            .jsonArray
                             .map { data -> data.jsonObject["node"]!!.jsonObject }
                             .map { node ->
                                 val id = node["id"]!!.jsonPrimitive.int
                                 async { getMangaDetails(id) }
-                            }
-                            .awaitAll()
+                            }.awaitAll()
                             .filter { trackSearch -> !trackSearch.publishing_type.contains("novel") }
                     }
             }
         }
-    }
 
-    suspend fun getMangaDetails(id: Int): TrackSearch {
-        return withIOContext {
+    suspend fun getMangaDetails(id: Int): TrackSearch =
+        withIOContext {
             val url =
-                "$BASE_API_URL/manga".toUri().buildUpon()
+                "$BASE_API_URL/manga"
+                    .toUri()
+                    .buildUpon()
                     .appendPath(id.toString())
                     .appendQueryParameter("fields", "id,title,synopsis,num_chapters,main_picture,status,media_type,start_date")
                     .build()
             with(json) {
-                authClient.newCall(GET(url.toString()))
+                authClient
+                    .newCall(GET(url.toString()))
                     .awaitSuccess()
                     .parseAs<JsonObject>()
                     .let {
@@ -115,7 +125,11 @@ class MyAnimeListApi(private val client: OkHttpClient, interceptor: MyAnimeListI
                             summary = obj["synopsis"]?.jsonPrimitive?.content ?: ""
                             total_chapters = obj["num_chapters"]!!.jsonPrimitive.int
                             cover_url =
-                                obj["main_picture"]?.jsonObject?.get("large")?.jsonPrimitive?.content
+                                obj["main_picture"]
+                                    ?.jsonObject
+                                    ?.get("large")
+                                    ?.jsonPrimitive
+                                    ?.content
                                     ?: ""
                             tracking_url = "https://myanimelist.net/manga/$media_id"
                             publishing_status =
@@ -133,12 +147,12 @@ class MyAnimeListApi(private val client: OkHttpClient, interceptor: MyAnimeListI
                     }
             }
         }
-    }
 
-    suspend fun updateItem(track: Track): Track {
-        return withIOContext {
+    suspend fun updateItem(track: Track): Track =
+        withIOContext {
             val formBodyBuilder =
-                FormBody.Builder()
+                FormBody
+                    .Builder()
                     .add("status", track.toMyAnimeListStatus() ?: "reading")
                     .add("is_rereading", (track.status == MyAnimeList.REREADING).toString())
                     .add("score", track.score.toString())
@@ -151,40 +165,45 @@ class MyAnimeListApi(private val client: OkHttpClient, interceptor: MyAnimeListI
             }
 
             val request =
-                Request.Builder()
+                Request
+                    .Builder()
                     .url(mangaUrl(track.media_id).toString())
                     .put(formBodyBuilder.build())
                     .build()
             with(json) {
-                authClient.newCall(request)
+                authClient
+                    .newCall(request)
                     .awaitSuccess()
                     .parseAs<JsonObject>()
                     .let { parseMangaItem(it, track) }
             }
         }
-    }
 
-    suspend fun deleteItem(track: Track) {
-        return withIOContext {
+    suspend fun deleteItem(track: Track) =
+        withIOContext {
             val request =
-                Request.Builder()
+                Request
+                    .Builder()
                     .url(mangaUrl(track.media_id).toString())
                     .delete()
                     .build()
-            authClient.newCall(request)
+            authClient
+                .newCall(request)
                 .awaitSuccess()
         }
-    }
 
-    suspend fun findListItem(track: Track): Track? {
-        return withIOContext {
+    suspend fun findListItem(track: Track): Track? =
+        withIOContext {
             val uri =
-                "$BASE_API_URL/manga".toUri().buildUpon()
+                "$BASE_API_URL/manga"
+                    .toUri()
+                    .buildUpon()
                     .appendPath(track.media_id.toString())
                     .appendQueryParameter("fields", "num_chapters,my_list_status{start_date,finish_date}")
                     .build()
             with(json) {
-                authClient.newCall(GET(uri.toString()))
+                authClient
+                    .newCall(GET(uri.toString()))
                     .awaitSuccess()
                     .parseAs<JsonObject>()
                     .let { obj ->
@@ -195,43 +214,50 @@ class MyAnimeListApi(private val client: OkHttpClient, interceptor: MyAnimeListI
                     }
             }
         }
-    }
 
     suspend fun findListItems(
         query: String,
         offset: Int = 0,
-    ): List<TrackSearch> {
-        return withIOContext {
+    ): List<TrackSearch> =
+        withIOContext {
             val json = getListPage(offset)
             val obj = json.jsonObject
 
             val matches =
-                obj["data"]!!.jsonArray
+                obj["data"]!!
+                    .jsonArray
                     .filter {
                         it.jsonObject["node"]!!.jsonObject["title"]!!.jsonPrimitive.content.contains(
                             query,
                             ignoreCase = true,
                         )
-                    }
-                    .map {
-                        val id = it.jsonObject["node"]!!.jsonObject["id"]!!.jsonPrimitive.int
+                    }.map {
+                        val id =
+                            it.jsonObject["node"]!!
+                                .jsonObject["id"]!!
+                                .jsonPrimitive.int
                         async { getMangaDetails(id) }
-                    }
-                    .awaitAll()
+                    }.awaitAll()
 
             // Check next page if there's more
-            if (!obj["paging"]!!.jsonObject["next"]?.jsonPrimitive?.contentOrNull.isNullOrBlank()) {
+            if (!obj["paging"]!!
+                    .jsonObject["next"]
+                    ?.jsonPrimitive
+                    ?.contentOrNull
+                    .isNullOrBlank()
+            ) {
                 matches + findListItems(query, offset + LIST_PAGINATION_AMOUNT)
             } else {
                 matches
             }
         }
-    }
 
-    private suspend fun getListPage(offset: Int): JsonObject {
-        return withIOContext {
+    private suspend fun getListPage(offset: Int): JsonObject =
+        withIOContext {
             val urlBuilder =
-                "$BASE_API_URL/users/@me/mangalist".toUri().buildUpon()
+                "$BASE_API_URL/users/@me/mangalist"
+                    .toUri()
+                    .buildUpon()
                     .appendQueryParameter("fields", "list_status{start_date,finish_date}")
                     .appendQueryParameter("limit", LIST_PAGINATION_AMOUNT.toString())
             if (offset > 0) {
@@ -239,17 +265,18 @@ class MyAnimeListApi(private val client: OkHttpClient, interceptor: MyAnimeListI
             }
 
             val request =
-                Request.Builder()
+                Request
+                    .Builder()
                     .url(urlBuilder.build().toString())
                     .get()
                     .build()
             with(json) {
-                authClient.newCall(request)
+                authClient
+                    .newCall(request)
                     .awaitSuccess()
                     .parseAs()
             }
         }
-    }
 
     private fun parseMangaItem(
         response: JsonObject,
@@ -270,9 +297,7 @@ class MyAnimeListApi(private val client: OkHttpClient, interceptor: MyAnimeListI
         }
     }
 
-    private fun parseDate(isoDate: String): Long {
-        return SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(isoDate)?.time ?: 0L
-    }
+    private fun parseDate(isoDate: String): Long = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(isoDate)?.time ?: 0L
 
     private fun convertToIsoDate(epochTime: Long): String? {
         if (epochTime == 0L) {
@@ -297,21 +322,26 @@ class MyAnimeListApi(private val client: OkHttpClient, interceptor: MyAnimeListI
         private var codeVerifier: String = ""
 
         fun authUrl(): Uri =
-            "$BASE_OAUTH_URL/authorize".toUri().buildUpon()
+            "$BASE_OAUTH_URL/authorize"
+                .toUri()
+                .buildUpon()
                 .appendQueryParameter("client_id", CLIENT_ID)
                 .appendQueryParameter("code_challenge", getPkceChallengeCode())
                 .appendQueryParameter("response_type", "code")
                 .build()
 
         fun mangaUrl(id: Long): Uri =
-            "$BASE_API_URL/manga".toUri().buildUpon()
+            "$BASE_API_URL/manga"
+                .toUri()
+                .buildUpon()
                 .appendPath(id.toString())
                 .appendPath("my_list_status")
                 .build()
 
         fun refreshTokenRequest(oauth: OAuth): Request {
             val formBody: RequestBody =
-                FormBody.Builder()
+                FormBody
+                    .Builder()
                     .add("client_id", CLIENT_ID)
                     .add("refresh_token", oauth.refresh_token)
                     .add("grant_type", "refresh_token")
@@ -321,7 +351,8 @@ class MyAnimeListApi(private val client: OkHttpClient, interceptor: MyAnimeListI
             // request is called by the interceptor itself so it doesn't reach
             // the part where the token is added automatically.
             val headers =
-                Headers.Builder()
+                Headers
+                    .Builder()
                     .add("Authorization", "Bearer ${oauth.access_token}")
                     .build()
 

@@ -36,10 +36,11 @@ object Category {
         return transaction {
             if (CategoryTable.select { CategoryTable.name eq name }.firstOrNull() == null) {
                 val newCategoryId =
-                    CategoryTable.insertAndGetId {
-                        it[CategoryTable.name] = name
-                        it[CategoryTable.order] = Int.MAX_VALUE
-                    }.value
+                    CategoryTable
+                        .insertAndGetId {
+                            it[CategoryTable.name] = name
+                            it[CategoryTable.order] = Int.MAX_VALUE
+                        }.value
 
                 normalizeCategories()
 
@@ -60,7 +61,8 @@ object Category {
         transaction {
             CategoryTable.update({ CategoryTable.id eq categoryId }) {
                 if (
-                    categoryId != DEFAULT_CATEGORY_ID && name != null &&
+                    categoryId != DEFAULT_CATEGORY_ID &&
+                    name != null &&
                     !name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)
                 ) {
                     it[CategoryTable.name] = name
@@ -82,9 +84,11 @@ object Category {
         if (from == 0 || to == 0) return
         transaction {
             val categories =
-                CategoryTable.select {
-                    CategoryTable.id neq DEFAULT_CATEGORY_ID
-                }.orderBy(CategoryTable.order to SortOrder.ASC).toMutableList()
+                CategoryTable
+                    .select {
+                        CategoryTable.id neq DEFAULT_CATEGORY_ID
+                    }.orderBy(CategoryTable.order to SortOrder.ASC)
+                    .toMutableList()
             categories.add(to - 1, categories.removeAt(from - 1))
             categories.forEachIndexed { index, cat ->
                 CategoryTable.update({ CategoryTable.id eq cat[CategoryTable.id].value }) {
@@ -106,7 +110,8 @@ object Category {
     /** make sure category order numbers starts from 1 and is consecutive */
     fun normalizeCategories() {
         transaction {
-            CategoryTable.selectAll()
+            CategoryTable
+                .selectAll()
                 .orderBy(CategoryTable.order to SortOrder.ASC)
                 .sortedWith(compareBy({ it[CategoryTable.id].value != 0 }, { it[CategoryTable.order] }))
                 .forEachIndexed { index, cat ->
@@ -130,9 +135,10 @@ object Category {
     const val DEFAULT_CATEGORY_ID = 0
     const val DEFAULT_CATEGORY_NAME = "Default"
 
-    fun getCategoryList(): List<CategoryDataClass> {
-        return transaction {
-            CategoryTable.selectAll()
+    fun getCategoryList(): List<CategoryDataClass> =
+        transaction {
+            CategoryTable
+                .selectAll()
                 .orderBy(CategoryTable.order to SortOrder.ASC)
                 .let {
                     if (needsDefaultCategory()) {
@@ -140,41 +146,39 @@ object Category {
                     } else {
                         it.andWhere { CategoryTable.id neq DEFAULT_CATEGORY_ID }
                     }
-                }
-                .map {
+                }.map {
                     CategoryTable.toDataClass(it)
                 }
         }
-    }
 
-    fun getCategoryById(categoryId: Int): CategoryDataClass? {
-        return transaction {
+    fun getCategoryById(categoryId: Int): CategoryDataClass? =
+        transaction {
             CategoryTable.select { CategoryTable.id eq categoryId }.firstOrNull()?.let {
                 CategoryTable.toDataClass(it)
             }
         }
-    }
 
-    fun getCategorySize(categoryId: Int): Int {
-        return transaction {
+    fun getCategorySize(categoryId: Int): Int =
+        transaction {
             if (categoryId == DEFAULT_CATEGORY_ID) {
                 MangaTable
                     .leftJoin(CategoryMangaTable)
                     .select { MangaTable.inLibrary eq true }
                     .andWhere { CategoryMangaTable.manga.isNull() }
             } else {
-                CategoryMangaTable.leftJoin(MangaTable).select { CategoryMangaTable.category eq categoryId }
+                CategoryMangaTable
+                    .leftJoin(MangaTable)
+                    .select { CategoryMangaTable.category eq categoryId }
                     .andWhere { MangaTable.inLibrary eq true }
             }.count().toInt()
         }
-    }
 
-    fun getCategoryMetaMap(categoryId: Int): Map<String, String> {
-        return transaction {
-            CategoryMetaTable.select { CategoryMetaTable.ref eq categoryId }
+    fun getCategoryMetaMap(categoryId: Int): Map<String, String> =
+        transaction {
+            CategoryMetaTable
+                .select { CategoryMetaTable.ref eq categoryId }
                 .associate { it[CategoryMetaTable.key] to it[CategoryMetaTable.value] }
         }
-    }
 
     fun modifyMeta(
         categoryId: Int,

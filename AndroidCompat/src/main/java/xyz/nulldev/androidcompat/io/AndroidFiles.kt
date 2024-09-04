@@ -8,7 +8,9 @@ import java.io.File
 /**
  * Android file constants.
  */
-class AndroidFiles(val configManager: ConfigManager = GlobalConfigManager) {
+class AndroidFiles(
+    val configManager: ConfigManager = GlobalConfigManager,
+) {
     val filesConfig: FilesConfigModule
         get() = configManager.module()
 
@@ -30,9 +32,8 @@ class AndroidFiles(val configManager: ConfigManager = GlobalConfigManager) {
 
     val packagesDir: File get() = registerFile(filesConfig.packageDir)
 
-    fun registerFile(file: String): File {
-        return File(file).apply {
+    fun registerFile(file: String): File =
+        File(file).apply {
             mkdirs()
         }
-    }
 }

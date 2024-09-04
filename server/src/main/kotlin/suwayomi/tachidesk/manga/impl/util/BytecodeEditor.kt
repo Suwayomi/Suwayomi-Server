@@ -31,7 +31,9 @@ object BytecodeEditor {
      */
     fun fixAndroidClasses(jarFile: Path) {
         FileSystems.newFileSystem(jarFile, null as ClassLoader?)?.use {
-            Files.walk(it.getPath("/")).asSequence()
+            Files
+                .walk(it.getPath("/"))
+                .asSequence()
                 .filterNotNull()
                 .filterNot(Files::isDirectory)
                 .mapNotNull(::getClassBytes)

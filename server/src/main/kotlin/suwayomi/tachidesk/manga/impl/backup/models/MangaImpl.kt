@@ -63,7 +63,5 @@ open class MangaImpl : Manga {
         return id == manga.id
     }
 
-    override fun hashCode(): Int {
-        return url.hashCode() + id.hashCode()
-    }
+    override fun hashCode(): Int = url.hashCode() + id.hashCode()
 }

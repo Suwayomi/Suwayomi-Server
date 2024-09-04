@@ -30,9 +30,10 @@ object Library {
         if (!manga.inLibrary) {
             transaction {
                 val defaultCategories =
-                    CategoryTable.select {
-                        (CategoryTable.isDefault eq true) and (CategoryTable.id neq Category.DEFAULT_CATEGORY_ID)
-                    }.toList()
+                    CategoryTable
+                        .select {
+                            (CategoryTable.isDefault eq true) and (CategoryTable.id neq Category.DEFAULT_CATEGORY_ID)
+                        }.toList()
                 val existingCategories = CategoryMangaTable.select { CategoryMangaTable.manga eq mangaId }.toList()
 
                 MangaTable.update({ MangaTable.id eq manga.id }) {

@@ -14,10 +14,9 @@ data class Backup(
     @ProtoNumber(100) var brokenBackupSources: List<BrokenBackupSource> = emptyList(),
     @ProtoNumber(101) var backupSources: List<BackupSource> = emptyList(),
 ) {
-    fun getSourceMap(): Map<Long, String> {
-        return (brokenBackupSources.map { BackupSource(it.name, it.sourceId) } + backupSources)
+    fun getSourceMap(): Map<Long, String> =
+        (brokenBackupSources.map { BackupSource(it.name, it.sourceId) } + backupSources)
             .associate { it.sourceId to it.name }
-    }
 
     companion object {
         fun getBasename(name: String = ""): String {

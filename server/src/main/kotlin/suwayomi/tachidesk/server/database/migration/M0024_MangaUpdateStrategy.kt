@@ -11,9 +11,10 @@ import de.neonew.exposed.migrations.helpers.AddColumnMigration
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 
 @Suppress("ClassName", "unused")
-class M0024_MangaUpdateStrategy : AddColumnMigration(
-    "Manga",
-    "update_strategy",
-    "VARCHAR(256)",
-    "'${UpdateStrategy.ALWAYS_UPDATE.name}'",
-)
+class M0024_MangaUpdateStrategy :
+    AddColumnMigration(
+        "Manga",
+        "update_strategy",
+        "VARCHAR(256)",
+        "'${UpdateStrategy.ALWAYS_UPDATE.name}'",
+    )

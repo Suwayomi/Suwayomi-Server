@@ -17,7 +17,8 @@ class MangaUpdatesInterceptor(
 
         // Add the authorization header to the original request.
         val authRequest =
-            originalRequest.newBuilder()
+            originalRequest
+                .newBuilder()
                 .addHeader("Authorization", "Bearer $token")
                 .header("User-Agent", "Suwayomi ${BuildConfig.VERSION} (${BuildConfig.REVISION})")
                 .build()

@@ -1,11 +1,10 @@
 package eu.kanade.tachiyomi.util.chapter
 
 object ChapterSanitizer {
-    fun String.sanitize(title: String): String {
-        return trim()
+    fun String.sanitize(title: String): String =
+        trim()
             .removePrefix(title)
             .trim(*CHAPTER_TRIM_CHARS)
-    }
 
     private val CHAPTER_TRIM_CHARS =
         arrayOf(

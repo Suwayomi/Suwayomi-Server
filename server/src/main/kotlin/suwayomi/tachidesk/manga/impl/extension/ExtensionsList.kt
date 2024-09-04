@@ -39,13 +39,14 @@ object ExtensionsList {
         // update if 60 seconds has passed or requested offline and database is empty
         val extensions =
             serverConfig.extensionRepos.value.map { repo ->
-                kotlin.runCatching {
-                    ExtensionGithubApi.findExtensions(repo.repoUrlReplace())
-                }.onFailure {
-                    logger.warn(it) {
-                        "Failed to fetch extensions for repo: $repo"
+                kotlin
+                    .runCatching {
+                        ExtensionGithubApi.findExtensions(repo.repoUrlReplace())
+                    }.onFailure {
+                        logger.warn(it) {
+                            "Failed to fetch extensions for repo: $repo"
+                        }
                     }
-                }
             }
         val foundExtensions = extensions.mapNotNull { it.getOrNull() }.flatten()
         updateExtensionDatabase(foundExtensions)
@@ -94,12 +95,15 @@ object ExtensionsList {
         updateExtensionDatabaseMutex.withLock {
             transaction {
                 val uniqueExtensions =
-                    foundExtensions.groupBy { it.pkgName }.mapValues {
-                            (_, extension) ->
-                        extension.maxBy { it.versionCode }
-                    }.values
+                    foundExtensions
+                        .groupBy { it.pkgName }
+                        .mapValues { (_, extension) ->
+                            extension.maxBy { it.versionCode }
+                        }.values
                 val installedExtensions =
-                    ExtensionTable.selectAll().toList()
+                    ExtensionTable
+                        .selectAll()
+                        .toList()
                         .associateBy { it[ExtensionTable.pkgName] }
                 val extensionsToUpdate = mutableListOf<Pair<OnlineExtension, ResultRow>>()
                 val extensionsToInsert = mutableListOf<OnlineExtension>()
@@ -189,7 +193,8 @@ object ExtensionsList {
 
                 // deal with obsolete extensions
                 val extensionsToRemove =
-                    extensionsToDelete.groupBy { it[ExtensionTable.isInstalled] }
+                    extensionsToDelete
+                        .groupBy { it[ExtensionTable.isInstalled] }
                         .mapValues { (_, extensions) -> extensions.map { it[ExtensionTable.pkgName] } }
                 // not in the repo, so these extensions are obsolete
                 val obsoleteExtensions = extensionsToRemove[true].orEmpty()
@@ -207,8 +212,8 @@ object ExtensionsList {
         }
     }
 
-    private fun String.repoUrlReplace(): String {
-        return if (contains("github")) {
+    private fun String.repoUrlReplace(): String =
+        if (contains("github")) {
             replace(repoMatchRegex) {
                 "https://raw.githubusercontent.com/${it.groupValues[2]}/${it.groupValues[3]}/" +
                     (it.groupValues.getOrNull(4)?.ifBlank { null } ?: "repo") +
@@ -218,7 +223,6 @@ object ExtensionsList {
         } else {
             this
         }
-    }
 
     private val repoMatchRegex =
         (

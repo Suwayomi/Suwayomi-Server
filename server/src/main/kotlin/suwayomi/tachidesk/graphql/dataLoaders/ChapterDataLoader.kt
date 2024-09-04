@@ -32,7 +32,8 @@ class ChapterDataLoader : KotlinDataLoader<Int, ChapterType?> {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val chapters =
-                        ChapterTable.select { ChapterTable.id inList ids }
+                        ChapterTable
+                            .select { ChapterTable.id inList ids }
                             .map { ChapterType(it) }
                             .associateBy { it.id }
                     ids.map { chapters[it] }
@@ -50,7 +51,8 @@ class ChaptersForMangaDataLoader : KotlinDataLoader<Int, ChapterNodeList> {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val chaptersByMangaId =
-                        ChapterTable.select { ChapterTable.manga inList ids }
+                        ChapterTable
+                            .select { ChapterTable.manga inList ids }
                             .map { ChapterType(it) }
                             .groupBy { it.mangaId }
                     ids.map { (chaptersByMangaId[it] ?: emptyList()).toNodeList() }
@@ -128,7 +130,8 @@ class HasDuplicateChaptersForMangaDataLoader : KotlinDataLoader<Int, Boolean> {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val duplicatedChapterCountByMangaId =
-                        ChapterTable.slice(ChapterTable.manga, ChapterTable.chapter_number, ChapterTable.chapter_number.count())
+                        ChapterTable
+                            .slice(ChapterTable.manga, ChapterTable.chapter_number, ChapterTable.chapter_number.count())
                             .select { (ChapterTable.manga inList ids) and (ChapterTable.chapter_number greaterEq 0f) }
                             .groupBy(ChapterTable.manga, ChapterTable.chapter_number)
                             .having { ChapterTable.chapter_number.count() greater 1 }

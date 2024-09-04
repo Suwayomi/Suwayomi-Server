@@ -14,7 +14,9 @@ import java.io.File
 import javax.imageio.ImageIO
 import javax.xml.parsers.DocumentBuilderFactory
 
-data class InstalledPackage(val root: File) {
+data class InstalledPackage(
+    val root: File,
+) {
     val apk = File(root, "package.apk")
     val jar = File(root, "translated.jar")
     val icon = File(root, "icon.png")
@@ -34,18 +36,21 @@ data class InstalledPackage(val root: File) {
                     Bundle().apply {
                         val appTag = doc.getElementsByTagName("application").item(0)
 
-                        appTag?.childNodes?.toList()?.filter {
-                            it.nodeType == Node.ELEMENT_NODE
-                        }?.map {
-                            it as Element
-                        }?.filter {
-                            it.tagName == "meta-data"
-                        }?.map {
-                            putString(
-                                it.attributes.getNamedItem("android:name").nodeValue,
-                                it.attributes.getNamedItem("android:value").nodeValue,
-                            )
-                        }
+                        appTag
+                            ?.childNodes
+                            ?.toList()
+                            ?.filter {
+                                it.nodeType == Node.ELEMENT_NODE
+                            }?.map {
+                                it as Element
+                            }?.filter {
+                                it.tagName == "meta-data"
+                            }?.map {
+                                putString(
+                                    it.attributes.getNamedItem("android:name").nodeValue,
+                                    it.attributes.getNamedItem("android:value").nodeValue,
+                                )
+                            }
                     }
 
                 it.signatures =
@@ -53,12 +58,14 @@ data class InstalledPackage(val root: File) {
                         parsed.apkSingers.flatMap { it.certificateMetas }
                         // + parsed.apkV2Singers.flatMap { it.certificateMetas }
                     ) // Blocked by: https://github.com/hsiafan/apk-parser/issues/72
-                        .map { Signature(it.data) }.toTypedArray()
+                        .map { Signature(it.data) }
+                        .toTypedArray()
             }
 
     fun verify(): Boolean {
         val res =
-            ApkVerifier.Builder(apk)
+            ApkVerifier
+                .Builder(apk)
                 .build()
                 .verify()
 
@@ -70,11 +77,14 @@ data class InstalledPackage(val root: File) {
             val icons = ApkFile(apk).allIcons
 
             val read =
-                icons.filter { it.isFile }.map {
-                    it.data.inputStream().use {
-                        ImageIO.read(it)
-                    }
-                }.sortedByDescending { it.width * it.height }.firstOrNull() ?: return
+                icons
+                    .filter { it.isFile }
+                    .map {
+                        it.data.inputStream().use {
+                            ImageIO.read(it)
+                        }
+                    }.sortedByDescending { it.width * it.height }
+                    .firstOrNull() ?: return
 
             ImageIO.write(read, "png", icon)
         } catch (e: Exception) {
@@ -94,8 +104,9 @@ data class InstalledPackage(val root: File) {
         fun NodeList.toList(): List<Node> {
             val out = mutableListOf<Node>()
 
-            for (i in 0 until length)
+            for (i in 0 until length) {
                 out += item(i)
+            }
 
             return out
         }

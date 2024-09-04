@@ -17,8 +17,7 @@ fun SManga.copyFromComicInfo(comicInfo: ComicInfo) {
         comicInfo.genre?.value,
         comicInfo.tags?.value,
         comicInfo.categories?.value,
-    )
-        .distinct()
+    ).distinct()
         .joinToString(", ") { it.trim() }
         .takeIf { it.isNotEmpty() }
         ?.let { genre = it }
@@ -29,8 +28,7 @@ fun SManga.copyFromComicInfo(comicInfo: ComicInfo) {
         comicInfo.colorist?.value,
         comicInfo.letterer?.value,
         comicInfo.coverArtist?.value,
-    )
-        .flatMap { it.split(", ") }
+    ).flatMap { it.split(", ") }
         .distinct()
         .joinToString(", ") { it.trim() }
         .takeIf { it.isNotEmpty() }
@@ -202,14 +200,12 @@ enum class ComicInfoPublishingStatus(
     ;
 
     companion object {
-        fun toComicInfoValue(value: Long): String {
-            return entries.firstOrNull { it.sMangaModelValue == value.toInt() }?.comicInfoValue
+        fun toComicInfoValue(value: Long): String =
+            entries.firstOrNull { it.sMangaModelValue == value.toInt() }?.comicInfoValue
                 ?: UNKNOWN.comicInfoValue
-        }
 
-        fun toSMangaValue(value: String?): Int {
-            return entries.firstOrNull { it.comicInfoValue == value }?.sMangaModelValue
+        fun toSMangaValue(value: String?): Int =
+            entries.firstOrNull { it.comicInfoValue == value }?.sMangaModelValue
                 ?: UNKNOWN.sMangaModelValue
-        }
     }
 }

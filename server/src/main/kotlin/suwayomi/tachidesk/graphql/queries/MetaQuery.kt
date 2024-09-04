@@ -41,28 +41,26 @@ class MetaQuery {
     fun meta(
         dataFetchingEnvironment: DataFetchingEnvironment,
         key: String,
-    ): CompletableFuture<GlobalMetaType> {
-        return dataFetchingEnvironment.getValueFromDataLoader("GlobalMetaDataLoader", key)
-    }
+    ): CompletableFuture<GlobalMetaType> = dataFetchingEnvironment.getValueFromDataLoader("GlobalMetaDataLoader", key)
 
-    enum class MetaOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<GlobalMetaType> {
+    enum class MetaOrderBy(
+        override val column: Column<out Comparable<*>>,
+    ) : OrderBy<GlobalMetaType> {
         KEY(GlobalMetaTable.key),
         VALUE(GlobalMetaTable.value),
         ;
 
-        override fun greater(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun greater(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 KEY -> GlobalMetaTable.key greater cursor.value
                 VALUE -> greaterNotUnique(GlobalMetaTable.value, GlobalMetaTable.key, cursor, String::toString)
             }
-        }
 
-        override fun less(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun less(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 KEY -> GlobalMetaTable.key less cursor.value
                 VALUE -> lessNotUnique(GlobalMetaTable.value, GlobalMetaTable.key, cursor, String::toString)
             }
-        }
 
         override fun asCursor(type: GlobalMetaType): Cursor {
             val value =
@@ -99,12 +97,11 @@ class MetaQuery {
         override val or: List<MetaFilter>? = null,
         override val not: MetaFilter? = null,
     ) : Filter<MetaFilter> {
-        override fun getOpList(): List<Op<Boolean>> {
-            return listOfNotNull(
+        override fun getOpList(): List<Op<Boolean>> =
+            listOfNotNull(
                 andFilterWithCompareString(GlobalMetaTable.key, key),
                 andFilterWithCompareString(GlobalMetaTable.value, value),
             )
-        }
     }
 
     fun metas(

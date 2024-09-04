@@ -105,9 +105,7 @@ class Updater : IUpdater {
         )
     }
 
-    override fun getLastUpdateTimestamp(): Long {
-        return preferences.getLong(lastUpdateKey, 0)
-    }
+    override fun getLastUpdateTimestamp(): Long = preferences.getLong(lastUpdateKey, 0)
 
     private fun autoUpdateTask() {
         try {
@@ -139,7 +137,10 @@ class Updater : IUpdater {
             return
         }
 
-        val updateInterval = serverConfig.globalUpdateInterval.value.hours.coerceAtLeast(6.hours).inWholeMilliseconds
+        val updateInterval =
+            serverConfig.globalUpdateInterval.value.hours
+                .coerceAtLeast(6.hours)
+                .inWholeMilliseconds
         val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
         val timeToNextExecution = (updateInterval - (System.currentTimeMillis() - lastAutomatedUpdate)).mod(updateInterval)
 
@@ -185,26 +186,24 @@ class Updater : IUpdater {
         notifyFlow.emit(Unit)
     }
 
-    private fun getOrCreateUpdateChannelFor(source: String): Channel<UpdateJob> {
-        return updateChannels.getOrPut(source) {
+    private fun getOrCreateUpdateChannelFor(source: String): Channel<UpdateJob> =
+        updateChannels.getOrPut(source) {
             logger.debug { "getOrCreateUpdateChannelFor: created channel for $source - channels: ${updateChannels.size + 1}" }
             createUpdateChannel(source)
         }
-    }
 
     private fun createUpdateChannel(source: String): Channel<UpdateJob> {
         val channel = Channel<UpdateJob>(Channel.UNLIMITED)
-        channel.consumeAsFlow()
+        channel
+            .consumeAsFlow()
             .onEach { job ->
                 semaphore.withPermit {
                     process(job)
                 }
-            }
-            .catch {
+            }.catch {
                 logger.error(it) { "Error during updates (source: $source)" }
                 handleChannelUpdateFailure(source)
-            }
-            .onCompletion { updateChannels.remove(source) }
+            }.onCompletion { updateChannels.remove(source) }
             .launchIn(scope)
         return channel
     }
@@ -301,22 +300,19 @@ class Updater : IUpdater {
                     } else {
                         true
                     }
-                }
-                .filter {
+                }.filter {
                     if (it.initialized && serverConfig.excludeNotStarted.value) {
                         it.lastReadAt != null
                     } else {
                         true
                     }
-                }
-                .filter {
+                }.filter {
                     if (serverConfig.excludeCompleted.value) {
                         it.status != MangaStatus.COMPLETED.name
                     } else {
                         true
                     }
-                }
-                .filter { forceAll || !excludedCategories.any { category -> mangasToCategoriesMap[it.id]?.contains(category) == true } }
+                }.filter { forceAll || !excludedCategories.any { category -> mangasToCategoriesMap[it.id]?.contains(category) == true } }
                 .toList()
         val skippedMangas = categoriesToUpdateMangas.subtract(mangasToUpdate.toSet()).toList()
 

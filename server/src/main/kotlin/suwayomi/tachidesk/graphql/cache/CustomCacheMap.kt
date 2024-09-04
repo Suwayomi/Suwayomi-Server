@@ -10,21 +10,13 @@ class CustomCacheMap<K, V> : CacheMap<K, V> {
         cache = HashMap()
     }
 
-    override fun containsKey(key: K): Boolean {
-        return cache.containsKey(key)
-    }
+    override fun containsKey(key: K): Boolean = cache.containsKey(key)
 
-    override fun get(key: K): CompletableFuture<V> {
-        return cache[key]!!
-    }
+    override fun get(key: K): CompletableFuture<V> = cache[key]!!
 
-    fun getKeys(): Collection<K> {
-        return cache.keys.toSet()
-    }
+    fun getKeys(): Collection<K> = cache.keys.toSet()
 
-    override fun getAll(): Collection<CompletableFuture<V>> {
-        return cache.values
-    }
+    override fun getAll(): Collection<CompletableFuture<V>> = cache.values
 
     override fun set(
         key: K,

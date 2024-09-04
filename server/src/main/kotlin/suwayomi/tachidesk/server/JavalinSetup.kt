@@ -45,9 +45,7 @@ object JavalinSetup {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    fun <T> future(block: suspend CoroutineScope.() -> T): CompletableFuture<T> {
-        return scope.future(block = block)
-    }
+    fun <T> future(block: suspend CoroutineScope.() -> T): CompletableFuture<T> = scope.future(block = block)
 
     fun javalinSetup() {
         val server = Server()

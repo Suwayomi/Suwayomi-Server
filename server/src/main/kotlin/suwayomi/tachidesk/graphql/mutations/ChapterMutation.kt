@@ -95,8 +95,8 @@ class ChapterMutation {
         }
     }
 
-    fun updateChapter(input: UpdateChapterInput): DataFetcherResult<UpdateChapterPayload?> {
-        return asDataFetcherResult {
+    fun updateChapter(input: UpdateChapterInput): DataFetcherResult<UpdateChapterPayload?> =
+        asDataFetcherResult {
             val (clientMutationId, id, patch) = input
 
             updateChapters(listOf(id), patch)
@@ -111,10 +111,9 @@ class ChapterMutation {
                 chapter = chapter,
             )
         }
-    }
 
-    fun updateChapters(input: UpdateChaptersInput): DataFetcherResult<UpdateChaptersPayload?> {
-        return asDataFetcherResult {
+    fun updateChapters(input: UpdateChaptersInput): DataFetcherResult<UpdateChaptersPayload?> =
+        asDataFetcherResult {
             val (clientMutationId, ids, patch) = input
 
             updateChapters(ids, patch)
@@ -129,7 +128,6 @@ class ChapterMutation {
                 chapters = chapters,
             )
         }
-    }
 
     data class FetchChaptersInput(
         val clientMutationId: String? = null,
@@ -150,7 +148,8 @@ class ChapterMutation {
 
                 val chapters =
                     transaction {
-                        ChapterTable.select { ChapterTable.manga eq mangaId }
+                        ChapterTable
+                            .select { ChapterTable.manga eq mangaId }
                             .orderBy(ChapterTable.sourceOrder)
                             .map { ChapterType(it) }
                     }
@@ -173,15 +172,14 @@ class ChapterMutation {
         val meta: ChapterMetaType,
     )
 
-    fun setChapterMeta(input: SetChapterMetaInput): DataFetcherResult<SetChapterMetaPayload?> {
-        return asDataFetcherResult {
+    fun setChapterMeta(input: SetChapterMetaInput): DataFetcherResult<SetChapterMetaPayload?> =
+        asDataFetcherResult {
             val (clientMutationId, meta) = input
 
             Chapter.modifyChapterMeta(meta.chapterId, meta.key, meta.value)
 
             SetChapterMetaPayload(clientMutationId, meta)
         }
-    }
 
     data class DeleteChapterMetaInput(
         val clientMutationId: String? = null,
@@ -195,14 +193,15 @@ class ChapterMutation {
         val chapter: ChapterType,
     )
 
-    fun deleteChapterMeta(input: DeleteChapterMetaInput): DataFetcherResult<DeleteChapterMetaPayload?> {
-        return asDataFetcherResult {
+    fun deleteChapterMeta(input: DeleteChapterMetaInput): DataFetcherResult<DeleteChapterMetaPayload?> =
+        asDataFetcherResult {
             val (clientMutationId, chapterId, key) = input
 
             val (meta, chapter) =
                 transaction {
                     val meta =
-                        ChapterMetaTable.select { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
+                        ChapterMetaTable
+                            .select { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
                             .firstOrNull()
 
                     ChapterMetaTable.deleteWhere { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
@@ -221,7 +220,6 @@ class ChapterMutation {
 
             DeleteChapterMetaPayload(clientMutationId, meta, chapter)
         }
-    }
 
     data class FetchChapterPagesInput(
         val clientMutationId: String? = null,

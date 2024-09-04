@@ -59,7 +59,8 @@ import com.github.junrar.Archive as JunrarArchive
 class LocalSource(
     private val fileSystem: LocalSourceFileSystem,
     private val coverManager: LocalCoverManager,
-) : CatalogueSource, UnmeteredSource {
+) : CatalogueSource,
+    UnmeteredSource {
     private val json: Json by injectLazy()
     private val xml: XML by injectLazy()
 
@@ -93,7 +94,8 @@ class LocalSource(
                 // Filter out files that are hidden and is not a folder
                 .filter { it.isDirectory && !it.name.startsWith('.') }
                 .distinctBy { it.name }
-                .filter { // Filter by query or last modified
+                .filter {
+                    // Filter by query or last modified
                     if (lastModifiedLimit == 0L) {
                         it.name.contains(query, ignoreCase = true)
                     } else {
@@ -134,7 +136,8 @@ class LocalSource(
                     url = mangaDir.name
 
                     // Try to find the cover
-                    coverManager.find(mangaDir.name)
+                    coverManager
+                        .find(mangaDir.name)
                         ?.takeIf(File::exists)
                         ?.let { thumbnail_url = it.absolutePath }
                 }
@@ -238,7 +241,7 @@ class LocalSource(
         for (chapter in chapterArchives) {
             when (Format.valueOf(chapter)) {
                 is Format.Zip -> {
-                    ZipFile(chapter).use { zip: ZipFile ->
+                    ZipFile.builder().setFile(chapter).get().use { zip: ZipFile ->
                         zip.getEntry(COMIC_INFO_FILE)?.let { comicInfoFile ->
                             zip.getInputStream(comicInfoFile).buffered().use { stream ->
                                 return copyComicInfoFile(stream, folderPath)
@@ -264,13 +267,12 @@ class LocalSource(
     private fun copyComicInfoFile(
         comicInfoFileStream: InputStream,
         folderPath: String?,
-    ): File {
-        return File("$folderPath/$COMIC_INFO_FILE").apply {
+    ): File =
+        File("$folderPath/$COMIC_INFO_FILE").apply {
             outputStream().use { outputStream ->
                 comicInfoFileStream.use { it.copyTo(outputStream) }
             }
         }
-    }
 
     @OptIn(ExperimentalXmlUtilApi::class)
     private fun setMangaDetailsFromComicInfoFile(
@@ -286,8 +288,9 @@ class LocalSource(
     }
 
     // Chapters
-    override suspend fun getChapterList(manga: SManga): List<SChapter> {
-        return fileSystem.getFilesInMangaDirectory(manga.url)
+    override suspend fun getChapterList(manga: SManga): List<SChapter> =
+        fileSystem
+            .getFilesInMangaDirectory(manga.url)
             // Only keep supported formats
             .filter { it.isDirectory || Archive.isSupported(it) }
             .map { chapterFile ->
@@ -312,22 +315,21 @@ class LocalSource(
                         }
                     }
                 }
-            }
-            .sortedWith { c1, c2 ->
+            }.sortedWith { c1, c2 ->
                 val c = c2.chapter_number.compareTo(c1.chapter_number)
                 if (c == 0) c2.name.compareToCaseInsensitiveNaturalOrder(c1.name) else c
-            }
-            .toList()
-    }
+            }.toList()
 
     // Filters
     override fun getFilterList() = FilterList(OrderBy.Popular())
 
     // TODO Fix Memory Leak
-    override suspend fun getPageList(chapter: SChapter): List<Page> {
-        return when (val format = getFormat(chapter)) {
+    override suspend fun getPageList(chapter: SChapter): List<Page> =
+        when (val format = getFormat(chapter)) {
             is Format.Directory -> {
-                format.file.listFiles().orEmpty()
+                format.file
+                    .listFiles()
+                    .orEmpty()
                     .filter { !it.isDirectory && ImageUtil.isImage(it.name, it::inputStream) }
                     .sortedWith { f1, f2 -> f1.name.compareToCaseInsensitiveNaturalOrder(f2.name) }
                     .mapIndexed { index, page ->
@@ -359,11 +361,11 @@ class LocalSource(
                 pages
             }
         }
-    }
 
     fun getFormat(chapter: SChapter): Format {
         try {
-            return fileSystem.getBaseDirectories()
+            return fileSystem
+                .getBaseDirectories()
                 .map { dir -> File(dir, chapter.url) }
                 .find { it.exists() }
                 ?.let(Format.Companion::valueOf)
@@ -378,21 +380,23 @@ class LocalSource(
     private fun updateCover(
         chapter: SChapter,
         manga: SManga,
-    ): File? {
-        return try {
+    ): File? =
+        try {
             when (val format = getFormat(chapter)) {
                 is Format.Directory -> {
                     val entry =
-                        format.file.listFiles()
+                        format.file
+                            .listFiles()
                             ?.sortedWith { f1, f2 -> f1.name.compareToCaseInsensitiveNaturalOrder(f2.name) }
                             ?.find { !it.isDirectory && ImageUtil.isImage(it.name) { FileInputStream(it) } }
 
                     entry?.let { coverManager.update(manga, it.inputStream()) }
                 }
                 is Format.Zip -> {
-                    ZipFile(format.file).use { zip ->
+                    ZipFile.builder().setFile(format.file).get().use { zip ->
                         val entry =
-                            zip.entries.toList()
+                            zip.entries
+                                .toList()
                                 .sortedWith { f1, f2 -> f1.name.compareToCaseInsensitiveNaturalOrder(f2.name) }
                                 .find { !it.isDirectory && ImageUtil.isImage(it.name) { zip.getInputStream(it) } }
 
@@ -412,7 +416,8 @@ class LocalSource(
                 is Format.Epub -> {
                     EpubFile(format.file).use { epub ->
                         val entry =
-                            epub.getImagesFromPages()
+                            epub
+                                .getImagesFromPages()
                                 .firstOrNull()
                                 ?.let { epub.getEntry(it) }
 
@@ -424,7 +429,6 @@ class LocalSource(
             logger.error(e) { "Error updating cover for ${manga.title}" }
             null
         }
-    }
 
     companion object {
         const val ID = 0L

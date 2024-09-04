@@ -23,9 +23,7 @@ interface CatalogueSource : Source {
      * @param page the page number to retrieve.
      */
     @Suppress("DEPRECATION")
-    suspend fun getPopularManga(page: Int): MangasPage {
-        return fetchPopularManga(page).awaitSingle()
-    }
+    suspend fun getPopularManga(page: Int): MangasPage = fetchPopularManga(page).awaitSingle()
 
     /**
      * Get a page with a list of manga.
@@ -40,9 +38,7 @@ interface CatalogueSource : Source {
         page: Int,
         query: String,
         filters: FilterList,
-    ): MangasPage {
-        return fetchSearchManga(page, query, filters).awaitSingle()
-    }
+    ): MangasPage = fetchSearchManga(page, query, filters).awaitSingle()
 
     /**
      * Get a page with a list of latest manga updates.
@@ -51,9 +47,7 @@ interface CatalogueSource : Source {
      * @param page the page number to retrieve.
      */
     @Suppress("DEPRECATION")
-    suspend fun getLatestUpdates(page: Int): MangasPage {
-        return fetchLatestUpdates(page).awaitSingle()
-    }
+    suspend fun getLatestUpdates(page: Int): MangasPage = fetchLatestUpdates(page).awaitSingle()
 
     /**
      * Returns the list of filters for the source.

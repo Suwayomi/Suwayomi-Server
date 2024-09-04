@@ -50,34 +50,32 @@ class MangaQuery {
     fun manga(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Int,
-    ): CompletableFuture<MangaType> {
-        return dataFetchingEnvironment.getValueFromDataLoader("MangaDataLoader", id)
-    }
+    ): CompletableFuture<MangaType> = dataFetchingEnvironment.getValueFromDataLoader("MangaDataLoader", id)
 
-    enum class MangaOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<MangaType> {
+    enum class MangaOrderBy(
+        override val column: Column<out Comparable<*>>,
+    ) : OrderBy<MangaType> {
         ID(MangaTable.id),
         TITLE(MangaTable.title),
         IN_LIBRARY_AT(MangaTable.inLibraryAt),
         LAST_FETCHED_AT(MangaTable.lastFetchedAt),
         ;
 
-        override fun greater(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun greater(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 ID -> MangaTable.id greater cursor.value.toInt()
                 TITLE -> greaterNotUnique(MangaTable.title, MangaTable.id, cursor, String::toString)
                 IN_LIBRARY_AT -> greaterNotUnique(MangaTable.inLibraryAt, MangaTable.id, cursor, String::toLong)
                 LAST_FETCHED_AT -> greaterNotUnique(MangaTable.lastFetchedAt, MangaTable.id, cursor, String::toLong)
             }
-        }
 
-        override fun less(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun less(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 ID -> MangaTable.id less cursor.value.toInt()
                 TITLE -> lessNotUnique(MangaTable.title, MangaTable.id, cursor, String::toString)
                 IN_LIBRARY_AT -> lessNotUnique(MangaTable.inLibraryAt, MangaTable.id, cursor, String::toLong)
                 LAST_FETCHED_AT -> lessNotUnique(MangaTable.lastFetchedAt, MangaTable.id, cursor, String::toLong)
             }
-        }
 
         override fun asCursor(type: MangaType): Cursor {
             val value =
@@ -197,8 +195,8 @@ class MangaQuery {
         override val or: List<MangaFilter>? = null,
         override val not: MangaFilter? = null,
     ) : Filter<MangaFilter> {
-        override fun getOpList(): List<Op<Boolean>> {
-            return listOfNotNull(
+        override fun getOpList(): List<Op<Boolean>> =
+            listOfNotNull(
                 andFilterWithCompareEntity(MangaTable.id, id),
                 andFilterWithCompare(MangaTable.sourceReference, sourceId),
                 andFilterWithCompareString(MangaTable.url, url),
@@ -217,7 +215,6 @@ class MangaQuery {
                 andFilterWithCompare(MangaTable.chaptersLastFetchedAt, chaptersLastFetchedAt),
                 andFilterWithCompareEntity(CategoryMangaTable.category, categoryId),
             )
-        }
     }
 
     fun mangas(
@@ -243,11 +240,13 @@ class MangaQuery {
         val queryResults =
             transaction {
                 val res =
-                    MangaTable.leftJoin(CategoryMangaTable).slice(
-                        distinctOn(MangaTable.id),
-                        *(MangaTable.columns).toTypedArray(),
-                        *(CategoryMangaTable.columns).toTypedArray(),
-                    ).selectAll()
+                    MangaTable
+                        .leftJoin(CategoryMangaTable)
+                        .slice(
+                            distinctOn(MangaTable.id),
+                            *(MangaTable.columns).toTypedArray(),
+                            *(CategoryMangaTable.columns).toTypedArray(),
+                        ).selectAll()
 
                 res.applyOps(condition, filter)
 

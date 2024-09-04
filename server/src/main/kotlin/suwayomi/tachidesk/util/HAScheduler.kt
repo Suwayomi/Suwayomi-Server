@@ -32,15 +32,12 @@ abstract class BaseHATask(
 
     abstract fun getTimeToNextExecution(): Long
 
-    override fun compareTo(other: BaseHATask): Int {
-        return getTimeToNextExecution().compareTo(other.getTimeToNextExecution())
-    }
+    override fun compareTo(other: BaseHATask): Int = getTimeToNextExecution().compareTo(other.getTimeToNextExecution())
 
-    override fun toString(): String {
-        return "Task \"$name\" ($id) " +
+    override fun toString(): String =
+        "Task \"$name\" ($id) " +
             "lastExecution= ${Date(getLastExecutionTime())} " +
             "nextExecution= ${Date(getNextExecutionTime())}"
-    }
 }
 
 class HACronTask(
@@ -51,29 +48,25 @@ class HACronTask(
 ) : BaseHATask(id, execute, name) {
     private val executionTime = ExecutionTime.forCron(cronParser.parse(cronExpr))
 
-    override fun getLastExecutionTime(): Long {
-        return executionTime.lastExecution(ZonedDateTime.now())
+    override fun getLastExecutionTime(): Long =
+        executionTime
+            .lastExecution(ZonedDateTime.now())
             .get()
             .toEpochSecond()
             .seconds
             .inWholeMilliseconds
-    }
 
-    override fun getNextExecutionTime(): Long {
-        return executionTime.nextExecution(ZonedDateTime.now())
+    override fun getNextExecutionTime(): Long =
+        executionTime
+            .nextExecution(ZonedDateTime.now())
             .get()
             .toEpochSecond()
             .seconds
             .inWholeMilliseconds
-    }
 
-    override fun getTimeToNextExecution(): Long {
-        return executionTime.timeToNextExecution(ZonedDateTime.now()).get().toMillis()
-    }
+    override fun getTimeToNextExecution(): Long = executionTime.timeToNextExecution(ZonedDateTime.now()).get().toMillis()
 
-    override fun toString(): String {
-        return "${super.toString()} interval= $cronExpr"
-    }
+    override fun toString(): String = "${super.toString()} interval= $cronExpr"
 }
 
 class HATask(
@@ -105,17 +98,11 @@ class HATask(
         return lastExecutionTime
     }
 
-    override fun getNextExecutionTime(): Long {
-        return System.currentTimeMillis() + getTimeToNextExecution()
-    }
+    override fun getNextExecutionTime(): Long = System.currentTimeMillis() + getTimeToNextExecution()
 
-    override fun getTimeToNextExecution(): Long {
-        return interval - getElapsedTimeOfCurrentInterval()
-    }
+    override fun getTimeToNextExecution(): Long = interval - getElapsedTimeOfCurrentInterval()
 
-    override fun toString(): String {
-        return "${super.toString()} interval= $interval, initialDelay= $initialDelay"
-    }
+    override fun toString(): String = "${super.toString()} interval= $interval, initialDelay= $initialDelay"
 }
 
 /**

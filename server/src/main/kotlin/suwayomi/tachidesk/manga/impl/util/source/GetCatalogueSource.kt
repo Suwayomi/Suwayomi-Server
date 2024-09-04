@@ -61,18 +61,15 @@ object GetCatalogueSource {
         return sourceCache[sourceId]!!
     }
 
-    fun getCatalogueSourceOrNull(sourceId: Long): CatalogueSource? {
-        return try {
+    fun getCatalogueSourceOrNull(sourceId: Long): CatalogueSource? =
+        try {
             getCatalogueSource(sourceId)
         } catch (e: Exception) {
             logger.warn(e) { "getCatalogueSource($sourceId) failed" }
             null
         }
-    }
 
-    fun getCatalogueSourceOrStub(sourceId: Long): CatalogueSource {
-        return getCatalogueSourceOrNull(sourceId) ?: StubSource(sourceId)
-    }
+    fun getCatalogueSourceOrStub(sourceId: Long): CatalogueSource = getCatalogueSourceOrNull(sourceId) ?: StubSource(sourceId)
 
     fun registerCatalogueSource(sourcePair: Pair<Long, CatalogueSource>) {
         sourceCache += sourcePair

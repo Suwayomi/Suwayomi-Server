@@ -12,7 +12,10 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 
-class MyAnimeList(id: Int) : Tracker(id, "MyAnimeList"), DeletableTrackService {
+class MyAnimeList(
+    id: Int,
+) : Tracker(id, "MyAnimeList"),
+    DeletableTrackService {
     companion object {
         const val READING = 1
         const val COMPLETED = 2
@@ -36,13 +39,9 @@ class MyAnimeList(id: Int) : Tracker(id, "MyAnimeList"), DeletableTrackService {
 
     private val logger = KotlinLogging.logger {}
 
-    override fun getLogo(): String {
-        return "/static/tracker/mal.png"
-    }
+    override fun getLogo(): String = "/static/tracker/mal.png"
 
-    override fun getStatusList(): List<Int> {
-        return listOf(READING, COMPLETED, ON_HOLD, DROPPED, PLAN_TO_READ, REREADING)
-    }
+    override fun getStatusList(): List<Int> = listOf(READING, COMPLETED, ON_HOLD, DROPPED, PLAN_TO_READ, REREADING)
 
     @StringRes
     override fun getStatus(status: Int): String? =
@@ -62,17 +61,11 @@ class MyAnimeList(id: Int) : Tracker(id, "MyAnimeList"), DeletableTrackService {
 
     override fun getCompletionStatus(): Int = COMPLETED
 
-    override fun getScoreList(): List<String> {
-        return IntRange(0, 10).map(Int::toString)
-    }
+    override fun getScoreList(): List<String> = IntRange(0, 10).map(Int::toString)
 
-    override fun displayScore(track: Track): String {
-        return track.score.toInt().toString()
-    }
+    override fun displayScore(track: Track): String = track.score.toInt().toString()
 
-    private suspend fun add(track: Track): Track {
-        return api.updateItem(track)
-    }
+    private suspend fun add(track: Track): Track = api.updateItem(track)
 
     override suspend fun update(
         track: Track,
@@ -138,13 +131,9 @@ class MyAnimeList(id: Int) : Tracker(id, "MyAnimeList"), DeletableTrackService {
         return api.search(query)
     }
 
-    override suspend fun refresh(track: Track): Track {
-        return api.findListItem(track) ?: add(track)
-    }
+    override suspend fun refresh(track: Track): Track = api.findListItem(track) ?: add(track)
 
-    override fun authUrl(): String {
-        return MyAnimeListApi.authUrl().toString()
-    }
+    override fun authUrl(): String = MyAnimeListApi.authUrl().toString()
 
     override suspend fun authCallback(url: String) {
         val code = url.extractToken("code") ?: throw IOException("cannot find token")
@@ -180,12 +169,11 @@ class MyAnimeList(id: Int) : Tracker(id, "MyAnimeList"), DeletableTrackService {
         trackPreferences.setTrackToken(this, json.encodeToString(oAuth))
     }
 
-    fun loadOAuth(): OAuth? {
-        return try {
+    fun loadOAuth(): OAuth? =
+        try {
             json.decodeFromString<OAuth>(trackPreferences.getTrackToken(this)!!)
         } catch (e: Exception) {
             logger.error(e) { "loadOAuth err" }
             null
         }
-    }
 }

@@ -10,7 +10,8 @@ import io.javalin.http.UploadedFile
 import java.util.Locale
 
 val GraphQLUpload =
-    GraphQLScalarType.newScalar()
+    GraphQLScalarType
+        .newScalar()
         .name("Upload")
         .description("A file part in a multipart request")
         .coercing(GraphqlUploadCoercing())
@@ -34,35 +35,25 @@ private class GraphqlUploadCoercing : Coercing<UploadedFile, Void?> {
     }
 
     @Deprecated("")
-    override fun serialize(dataFetcherResult: Any): Void? {
-        throw CoercingSerializeException("Upload is an input-only type")
-    }
+    override fun serialize(dataFetcherResult: Any): Void? = throw CoercingSerializeException("Upload is an input-only type")
 
     @Throws(CoercingSerializeException::class)
     override fun serialize(
         dataFetcherResult: Any,
         graphQLContext: GraphQLContext,
         locale: Locale,
-    ): Void? {
-        throw CoercingSerializeException("Upload is an input-only type")
-    }
+    ): Void? = throw CoercingSerializeException("Upload is an input-only type")
 
     @Deprecated("")
-    override fun parseValue(input: Any): UploadedFile {
-        return parseValueImpl(input, Locale.getDefault())
-    }
+    override fun parseValue(input: Any): UploadedFile = parseValueImpl(input, Locale.getDefault())
 
     @Throws(CoercingParseValueException::class)
     override fun parseValue(
         input: Any,
         graphQLContext: GraphQLContext,
         locale: Locale,
-    ): UploadedFile {
-        return parseValueImpl(input, locale)
-    }
+    ): UploadedFile = parseValueImpl(input, locale)
 
     @Deprecated("")
-    override fun parseLiteral(input: Any): UploadedFile {
-        return parseValueImpl(input, Locale.getDefault())
-    }
+    override fun parseLiteral(input: Any): UploadedFile = parseValueImpl(input, Locale.getDefault())
 }

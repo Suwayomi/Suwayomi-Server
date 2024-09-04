@@ -5,7 +5,9 @@ import okhttp3.Response
 import suwayomi.tachidesk.manga.impl.track.tracker.TokenExpired
 import java.io.IOException
 
-class AnilistInterceptor(private val anilist: Anilist) : Interceptor {
+class AnilistInterceptor(
+    private val anilist: Anilist,
+) : Interceptor {
     /**
      * OAuth object used for authenticated requests.
      *
@@ -40,7 +42,8 @@ class AnilistInterceptor(private val anilist: Anilist) : Interceptor {
 
         // Add the authorization header to the original request.
         val authRequest =
-            originalRequest.newBuilder()
+            originalRequest
+                .newBuilder()
                 .addHeader("Authorization", "Bearer ${oauth!!.access_token}")
                 .build()
 

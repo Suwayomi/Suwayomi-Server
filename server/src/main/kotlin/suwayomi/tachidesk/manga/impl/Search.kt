@@ -95,7 +95,10 @@ object Search {
 
     private fun Filter.Select<*>.getValuesType(): String = values::class.java.componentType!!.simpleName
 
-    class SerializableGroup(name: String, state: List<FilterObject>) : Filter<List<FilterObject>>(name, state)
+    class SerializableGroup(
+        name: String,
+        state: List<FilterObject>,
+    ) : Filter<List<FilterObject>>(name, state)
 
     data class FilterObject(
         val type: String,

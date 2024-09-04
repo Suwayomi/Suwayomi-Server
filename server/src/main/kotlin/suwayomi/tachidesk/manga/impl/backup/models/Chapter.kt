@@ -5,7 +5,9 @@ package suwayomi.tachidesk.manga.impl.backup.models
 import eu.kanade.tachiyomi.source.model.SChapter
 import java.io.Serializable
 
-interface Chapter : SChapter, Serializable {
+interface Chapter :
+    SChapter,
+    Serializable {
     var id: Long?
 
     var manga_id: Long?

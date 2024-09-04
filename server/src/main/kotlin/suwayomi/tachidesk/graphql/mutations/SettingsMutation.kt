@@ -138,7 +138,9 @@ class SettingsMutation {
         return SetSettingsPayload(clientMutationId, SettingsType())
     }
 
-    data class ResetSettingsInput(val clientMutationId: String? = null)
+    data class ResetSettingsInput(
+        val clientMutationId: String? = null,
+    )
 
     data class ResetSettingsPayload(
         val clientMutationId: String?,

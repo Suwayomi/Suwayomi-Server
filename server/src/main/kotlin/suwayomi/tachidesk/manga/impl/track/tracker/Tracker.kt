@@ -7,7 +7,10 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 
-abstract class Tracker(val id: Int, val name: String) {
+abstract class Tracker(
+    val id: Int,
+    val name: String,
+) {
     val trackPreferences = TrackerPreferences
     private val networkService: NetworkHelper by injectLazy()
 
@@ -35,9 +38,7 @@ abstract class Tracker(val id: Int, val name: String) {
 
     abstract fun getScoreList(): List<String>
 
-    open fun indexToScore(index: Int): Float {
-        return index.toFloat()
-    }
+    open fun indexToScore(index: Int): Float = index.toFloat()
 
     abstract fun displayScore(track: Track): String
 
@@ -55,9 +56,7 @@ abstract class Tracker(val id: Int, val name: String) {
 
     abstract suspend fun refresh(track: Track): Track
 
-    open fun authUrl(): String? {
-        return null
-    }
+    open fun authUrl(): String? = null
 
     open suspend fun authCallback(url: String) {}
 
@@ -87,9 +86,7 @@ abstract class Tracker(val id: Int, val name: String) {
         trackPreferences.setTrackCredentials(this, username, password)
     }
 
-    fun getIfAuthExpired(): Boolean {
-        return trackPreferences.trackAuthExpired(this)
-    }
+    fun getIfAuthExpired(): Boolean = trackPreferences.trackAuthExpired(this)
 
     fun setAuthExpired() {
         trackPreferences.setTrackTokenExpired(this)

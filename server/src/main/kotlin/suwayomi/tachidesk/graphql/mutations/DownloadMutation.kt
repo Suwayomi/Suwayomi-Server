@@ -37,7 +37,8 @@ class DownloadMutation {
                 clientMutationId = clientMutationId,
                 chapters =
                     transaction {
-                        ChapterTable.select { ChapterTable.id inList chapters }
+                        ChapterTable
+                            .select { ChapterTable.id inList chapters }
                             .map { ChapterType(it) }
                     },
             )
@@ -195,8 +196,8 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
-    fun startDownloader(input: StartDownloaderInput): CompletableFuture<DataFetcherResult<StartDownloaderPayload?>> {
-        return future {
+    fun startDownloader(input: StartDownloaderInput): CompletableFuture<DataFetcherResult<StartDownloaderPayload?>> =
+        future {
             asDataFetcherResult {
                 DownloadManager.start()
 
@@ -211,7 +212,6 @@ class DownloadMutation {
                 )
             }
         }
-    }
 
     data class StopDownloaderInput(
         val clientMutationId: String? = null,
@@ -222,8 +222,8 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
-    fun stopDownloader(input: StopDownloaderInput): CompletableFuture<DataFetcherResult<StopDownloaderPayload?>> {
-        return future {
+    fun stopDownloader(input: StopDownloaderInput): CompletableFuture<DataFetcherResult<StopDownloaderPayload?>> =
+        future {
             asDataFetcherResult {
                 DownloadManager.stop()
 
@@ -238,7 +238,6 @@ class DownloadMutation {
                 )
             }
         }
-    }
 
     data class ClearDownloaderInput(
         val clientMutationId: String? = null,
@@ -249,8 +248,8 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
-    fun clearDownloader(input: ClearDownloaderInput): CompletableFuture<DataFetcherResult<ClearDownloaderPayload?>> {
-        return future {
+    fun clearDownloader(input: ClearDownloaderInput): CompletableFuture<DataFetcherResult<ClearDownloaderPayload?>> =
+        future {
             asDataFetcherResult {
                 DownloadManager.clear()
 
@@ -265,7 +264,6 @@ class DownloadMutation {
                 )
             }
         }
-    }
 
     data class ReorderChapterDownloadInput(
         val clientMutationId: String? = null,

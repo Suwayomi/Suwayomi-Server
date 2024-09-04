@@ -90,13 +90,11 @@ class ChapterType(
         dataClass.pageCount,
     )
 
-    fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, MangaType>("MangaDataLoader", mangaId)
-    }
+    fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, MangaType>("MangaDataLoader", mangaId)
 
-    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<ChapterMetaType>> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, List<ChapterMetaType>>("ChapterMetaDataLoader", id)
-    }
+    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<ChapterMetaType>> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, List<ChapterMetaType>>("ChapterMetaDataLoader", id)
 }
 
 data class ChapterNodeList(
@@ -111,8 +109,8 @@ data class ChapterNodeList(
     ) : Edge()
 
     companion object {
-        fun List<ChapterType>.toNodeList(): ChapterNodeList {
-            return ChapterNodeList(
+        fun List<ChapterType>.toNodeList(): ChapterNodeList =
+            ChapterNodeList(
                 nodes = this,
                 edges = getEdges(),
                 pageInfo =
@@ -124,7 +122,6 @@ data class ChapterNodeList(
                     ),
                 totalCount = size,
             )
-        }
 
         private fun List<ChapterType>.getEdges(): List<ChapterEdge> {
             if (isEmpty()) return emptyList()

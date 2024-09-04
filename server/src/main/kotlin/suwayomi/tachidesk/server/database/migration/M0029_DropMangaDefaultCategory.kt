@@ -10,7 +10,8 @@ package suwayomi.tachidesk.server.database.migration
 import de.neonew.exposed.migrations.helpers.DropColumnMigration
 
 @Suppress("ClassName", "unused")
-class M0029_DropMangaDefaultCategory : DropColumnMigration(
-    "Manga",
-    "default_category",
-)
+class M0029_DropMangaDefaultCategory :
+    DropColumnMigration(
+        "Manga",
+        "default_category",
+    )

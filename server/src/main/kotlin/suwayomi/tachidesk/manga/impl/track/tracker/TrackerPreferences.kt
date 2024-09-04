@@ -28,7 +28,8 @@ object TrackerPreferences {
         password: String,
     ) {
         logger.debug { "setTrackCredentials: id=${sync.id} username=$username" }
-        preferenceStore.edit()
+        preferenceStore
+            .edit()
             .putString(trackUsername(sync.id), username)
             .putString(trackPassword(sync.id), password)
             .putBoolean(trackTokenExpired(sync.id), false)
@@ -43,12 +44,14 @@ object TrackerPreferences {
     ) {
         logger.debug { "setTrackToken: id=${sync.id} token=$token" }
         if (token == null) {
-            preferenceStore.edit()
+            preferenceStore
+                .edit()
                 .remove(trackToken(sync.id))
                 .putBoolean(trackTokenExpired(sync.id), false)
                 .apply()
         } else {
-            preferenceStore.edit()
+            preferenceStore
+                .edit()
                 .putString(trackToken(sync.id), token)
                 .putBoolean(trackTokenExpired(sync.id), false)
                 .apply()
@@ -56,7 +59,8 @@ object TrackerPreferences {
     }
 
     fun setTrackTokenExpired(sync: Tracker) {
-        preferenceStore.edit()
+        preferenceStore
+            .edit()
             .putBoolean(trackTokenExpired(sync.id), true)
             .apply()
     }
@@ -66,7 +70,8 @@ object TrackerPreferences {
     fun setScoreType(
         sync: Tracker,
         scoreType: String,
-    ) = preferenceStore.edit()
+    ) = preferenceStore
+        .edit()
         .putString(scoreType(sync.id), scoreType)
         .apply()
 

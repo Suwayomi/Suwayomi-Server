@@ -10,9 +10,10 @@ package suwayomi.tachidesk.server.database.migration
 import de.neonew.exposed.migrations.helpers.AddColumnMigration
 
 @Suppress("ClassName", "unused")
-class M0025_ChapterRealUrl : AddColumnMigration(
-    "Chapter",
-    "real_url",
-    "VARCHAR(2048)",
-    "NULL",
-)
+class M0025_ChapterRealUrl :
+    AddColumnMigration(
+        "Chapter",
+        "real_url",
+        "VARCHAR(2048)",
+        "NULL",
+    )

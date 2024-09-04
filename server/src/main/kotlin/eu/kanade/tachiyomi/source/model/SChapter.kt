@@ -24,8 +24,6 @@ interface SChapter : Serializable {
     }
 
     companion object {
-        fun create(): SChapter {
-            return SChapterImpl()
-        }
+        fun create(): SChapter = SChapterImpl()
     }
 }

@@ -28,7 +28,8 @@ class ExtensionDataLoader : KotlinDataLoader<String, ExtensionType?> {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val extensions =
-                        ExtensionTable.select { ExtensionTable.pkgName inList ids }
+                        ExtensionTable
+                            .select { ExtensionTable.pkgName inList ids }
                             .map { ExtensionType(it) }
                             .associateBy { it.pkgName }
                     ids.map { extensions[it] }
@@ -46,7 +47,8 @@ class ExtensionForSourceDataLoader : KotlinDataLoader<Long, ExtensionType?> {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val extensions =
-                        ExtensionTable.innerJoin(SourceTable)
+                        ExtensionTable
+                            .innerJoin(SourceTable)
                             .select { SourceTable.id inList ids }
                             .toList()
                             .map { Triple(it[SourceTable.id].value, it[ExtensionTable.pkgName], it) }

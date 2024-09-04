@@ -71,9 +71,7 @@ internal class ApolloSubscriptionSessionState {
             .onCompletion { removeActiveOperation(operationMessage.id ?: return@onCompletion) }
     }
 
-    private fun getCompleteMessage(): Flow<SubscriptionOperationMessage> {
-        return emptyFlow()
-    }
+    private fun getCompleteMessage(): Flow<SubscriptionOperationMessage> = emptyFlow()
 
     /**
      * Remove active running subscription from the cache and cancel if needed

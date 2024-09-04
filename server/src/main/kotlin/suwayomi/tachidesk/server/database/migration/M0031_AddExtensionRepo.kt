@@ -10,9 +10,10 @@ package suwayomi.tachidesk.server.database.migration
 import de.neonew.exposed.migrations.helpers.AddColumnMigration
 
 @Suppress("ClassName", "unused")
-class M0031_AddExtensionRepo : AddColumnMigration(
-    "Extension",
-    "repo",
-    "VARCHAR(1024)",
-    "NULL",
-)
+class M0031_AddExtensionRepo :
+    AddColumnMigration(
+        "Extension",
+        "repo",
+        "VARCHAR(1024)",
+        "NULL",
+    )

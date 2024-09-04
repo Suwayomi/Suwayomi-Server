@@ -16,8 +16,8 @@ data class BackupRestoreStatus(
     val mangaProgress: Int,
 )
 
-fun ProtoBackupImport.BackupRestoreState.toStatus(): BackupRestoreStatus {
-    return when (this) {
+fun ProtoBackupImport.BackupRestoreState.toStatus(): BackupRestoreStatus =
+    when (this) {
         ProtoBackupImport.BackupRestoreState.Idle ->
             BackupRestoreStatus(
                 state = BackupRestoreState.IDLE,
@@ -49,4 +49,3 @@ fun ProtoBackupImport.BackupRestoreState.toStatus(): BackupRestoreStatus {
                 mangaProgress = current,
             )
     }
-}

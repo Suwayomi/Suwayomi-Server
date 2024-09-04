@@ -40,21 +40,17 @@ class TrackerType(
         tracker.supportsTrackDeletion,
     )
 
-    fun statuses(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<TrackStatusType>> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, List<TrackStatusType>>("TrackerStatusesDataLoader", id)
-    }
+    fun statuses(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<TrackStatusType>> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, List<TrackStatusType>>("TrackerStatusesDataLoader", id)
 
-    fun scores(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<String>> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, List<String>>("TrackerScoresDataLoader", id)
-    }
+    fun scores(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<String>> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, List<String>>("TrackerScoresDataLoader", id)
 
-    fun trackRecords(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<TrackRecordNodeList> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, TrackRecordNodeList>("TrackRecordsForTrackerIdDataLoader", id)
-    }
+    fun trackRecords(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<TrackRecordNodeList> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, TrackRecordNodeList>("TrackRecordsForTrackerIdDataLoader", id)
 
-    fun isTokenExpired(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Boolean> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, Boolean>("TrackerTokenExpiredDataLoader", id)
-    }
+    fun isTokenExpired(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Boolean> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, Boolean>("TrackerTokenExpiredDataLoader", id)
 }
 
 class TrackStatusType(
@@ -93,17 +89,14 @@ class TrackRecordType(
         row[TrackRecordTable.finishDate],
     )
 
-    fun displayScore(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<String> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, String>("DisplayScoreForTrackRecordDataLoader", id)
-    }
+    fun displayScore(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<String> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, String>("DisplayScoreForTrackRecordDataLoader", id)
 
-    fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, MangaType>("MangaDataLoader", mangaId)
-    }
+    fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, MangaType>("MangaDataLoader", mangaId)
 
-    fun tracker(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<TrackerType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, TrackerType>("TrackerDataLoader", trackerId)
-    }
+    fun tracker(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<TrackerType> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, TrackerType>("TrackerDataLoader", trackerId)
 }
 
 class TrackSearchType(
@@ -133,9 +126,8 @@ class TrackSearchType(
         row[TrackSearchTable.startDate],
     )
 
-    fun tracker(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<TrackerType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, TrackerType>("TrackerDataLoader", trackerId)
-    }
+    fun tracker(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<TrackerType> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, TrackerType>("TrackerDataLoader", trackerId)
 }
 
 data class TrackRecordNodeList(
@@ -150,8 +142,8 @@ data class TrackRecordNodeList(
     ) : Edge()
 
     companion object {
-        fun List<TrackRecordType>.toNodeList(): TrackRecordNodeList {
-            return TrackRecordNodeList(
+        fun List<TrackRecordType>.toNodeList(): TrackRecordNodeList =
+            TrackRecordNodeList(
                 nodes = this,
                 edges = getEdges(),
                 pageInfo =
@@ -163,7 +155,6 @@ data class TrackRecordNodeList(
                     ),
                 totalCount = size,
             )
-        }
 
         private fun List<TrackRecordType>.getEdges(): List<TrackRecordEdge> {
             if (isEmpty()) return emptyList()
@@ -193,8 +184,8 @@ data class TrackerNodeList(
     ) : Edge()
 
     companion object {
-        fun List<TrackerType>.toNodeList(): TrackerNodeList {
-            return TrackerNodeList(
+        fun List<TrackerType>.toNodeList(): TrackerNodeList =
+            TrackerNodeList(
                 nodes = this,
                 edges = getEdges(),
                 pageInfo =
@@ -206,7 +197,6 @@ data class TrackerNodeList(
                     ),
                 totalCount = size,
             )
-        }
 
         private fun List<TrackerType>.getEdges(): List<TrackerEdge> {
             if (isEmpty()) return emptyList()

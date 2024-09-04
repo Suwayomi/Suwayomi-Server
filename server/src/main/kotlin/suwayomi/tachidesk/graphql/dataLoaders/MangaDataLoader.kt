@@ -33,7 +33,8 @@ class MangaDataLoader : KotlinDataLoader<Int, MangaType?> {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val manga =
-                        MangaTable.select { MangaTable.id inList ids }
+                        MangaTable
+                            .select { MangaTable.id inList ids }
                             .map { MangaType(it) }
                             .associateBy { it.id }
                     ids.map { manga[it] }
@@ -63,7 +64,8 @@ class MangaForCategoryDataLoader : KotlinDataLoader<Int, MangaNodeList> {
                         } else {
                             emptyMap()
                         } +
-                            CategoryMangaTable.innerJoin(MangaTable)
+                            CategoryMangaTable
+                                .innerJoin(MangaTable)
                                 .select { CategoryMangaTable.category inList ids }
                                 .map { Pair(it[CategoryMangaTable.category].value, MangaType(it)) }
                                 .groupBy { it.first }
@@ -84,7 +86,8 @@ class MangaForSourceDataLoader : KotlinDataLoader<Long, MangaNodeList> {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val mangaBySourceId =
-                        MangaTable.select { MangaTable.sourceReference inList ids }
+                        MangaTable
+                            .select { MangaTable.sourceReference inList ids }
                             .map { MangaType(it) }
                             .groupBy { it.sourceId }
                     ids.map { (mangaBySourceId[it] ?: emptyList()).toNodeList() }
@@ -104,7 +107,8 @@ class MangaForIdsDataLoader : KotlinDataLoader<List<Int>, MangaNodeList> {
                         addLogger(Slf4jSqlDebugLogger)
                         val ids = mangaIds.flatten().distinct()
                         val manga =
-                            MangaTable.select { MangaTable.id inList ids }
+                            MangaTable
+                                .select { MangaTable.id inList ids }
                                 .map { MangaType(it) }
                         mangaIds.map { mangaIds ->
                             manga.filter { it.id in mangaIds }.toNodeList()

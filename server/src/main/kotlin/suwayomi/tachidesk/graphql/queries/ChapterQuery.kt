@@ -54,11 +54,11 @@ class ChapterQuery {
     fun chapter(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Int,
-    ): CompletableFuture<ChapterType> {
-        return dataFetchingEnvironment.getValueFromDataLoader("ChapterDataLoader", id)
-    }
+    ): CompletableFuture<ChapterType> = dataFetchingEnvironment.getValueFromDataLoader("ChapterDataLoader", id)
 
-    enum class ChapterOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<ChapterType> {
+    enum class ChapterOrderBy(
+        override val column: Column<out Comparable<*>>,
+    ) : OrderBy<ChapterType> {
         ID(ChapterTable.id),
         SOURCE_ORDER(ChapterTable.sourceOrder),
         NAME(ChapterTable.name),
@@ -68,8 +68,8 @@ class ChapterQuery {
         FETCHED_AT(ChapterTable.fetchedAt),
         ;
 
-        override fun greater(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun greater(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 ID -> ChapterTable.id greater cursor.value.toInt()
                 SOURCE_ORDER -> greaterNotUnique(ChapterTable.sourceOrder, ChapterTable.id, cursor, String::toInt)
                 NAME -> greaterNotUnique(ChapterTable.name, ChapterTable.id, cursor, String::toString)
@@ -78,10 +78,9 @@ class ChapterQuery {
                 LAST_READ_AT -> greaterNotUnique(ChapterTable.lastReadAt, ChapterTable.id, cursor, String::toLong)
                 FETCHED_AT -> greaterNotUnique(ChapterTable.fetchedAt, ChapterTable.id, cursor, String::toLong)
             }
-        }
 
-        override fun less(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun less(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 ID -> ChapterTable.id less cursor.value.toInt()
                 SOURCE_ORDER -> lessNotUnique(ChapterTable.sourceOrder, ChapterTable.id, cursor, String::toInt)
                 NAME -> lessNotUnique(ChapterTable.name, ChapterTable.id, cursor, String::toString)
@@ -90,7 +89,6 @@ class ChapterQuery {
                 LAST_READ_AT -> lessNotUnique(ChapterTable.lastReadAt, ChapterTable.id, cursor, String::toLong)
                 FETCHED_AT -> lessNotUnique(ChapterTable.fetchedAt, ChapterTable.id, cursor, String::toLong)
             }
-        }
 
         override fun asCursor(type: ChapterType): Cursor {
             val value =
@@ -175,8 +173,8 @@ class ChapterQuery {
         override val or: List<ChapterFilter>? = null,
         override val not: ChapterFilter? = null,
     ) : Filter<ChapterFilter> {
-        override fun getOpList(): List<Op<Boolean>> {
-            return listOfNotNull(
+        override fun getOpList(): List<Op<Boolean>> =
+            listOfNotNull(
                 andFilterWithCompareEntity(ChapterTable.id, id),
                 andFilterWithCompareString(ChapterTable.url, url),
                 andFilterWithCompareString(ChapterTable.name, name),
@@ -194,7 +192,6 @@ class ChapterQuery {
                 andFilterWithCompare(ChapterTable.isDownloaded, isDownloaded),
                 andFilterWithCompare(ChapterTable.pageCount, pageCount),
             )
-        }
 
         fun getLibraryOp() = andFilterWithCompare(MangaTable.inLibrary, inLibrary)
     }

@@ -17,7 +17,10 @@ private val applicationDirs by DI.global.instance<ApplicationDirs>()
 /*
 * Provides downloaded files when pages were downloaded into folders
 * */
-class FolderProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider<RegularFile>(mangaId, chapterId) {
+class FolderProvider(
+    mangaId: Int,
+    chapterId: Int,
+) : ChaptersFilesProvider<RegularFile>(mangaId, chapterId) {
     override fun getImageFiles(): List<RegularFile> {
         val chapterFolder = File(getChapterDownloadPath(mangaId, chapterId))
 
@@ -25,12 +28,14 @@ class FolderProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider<Regul
             throw Exception("download folder does not exist")
         }
 
-        return chapterFolder.listFiles().orEmpty().toList().map(::RegularFile)
+        return chapterFolder
+            .listFiles()
+            .orEmpty()
+            .toList()
+            .map(::RegularFile)
     }
 
-    override fun getImageInputStream(image: RegularFile): FileInputStream {
-        return FileInputStream(image.file)
-    }
+    override fun getImageInputStream(image: RegularFile): FileInputStream = FileInputStream(image.file)
 
     override fun extractExistingDownload() {
         // nothing to do

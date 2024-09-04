@@ -9,7 +9,10 @@ import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.toTrackSearc
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 
-class MangaUpdates(id: Int) : Tracker(id, "MangaUpdates"), DeletableTrackService {
+class MangaUpdates(
+    id: Int,
+) : Tracker(id, "MangaUpdates"),
+    DeletableTrackService {
     companion object {
         const val READING_LIST = 0
         const val WISH_LIST = 1
@@ -39,9 +42,7 @@ class MangaUpdates(id: Int) : Tracker(id, "MangaUpdates"), DeletableTrackService
 
     override fun getLogo(): String = "/static/tracker/manga_updates.png"
 
-    override fun getStatusList(): List<Int> {
-        return listOf(READING_LIST, COMPLETE_LIST, ON_HOLD_LIST, UNFINISHED_LIST, WISH_LIST)
-    }
+    override fun getStatusList(): List<Int> = listOf(READING_LIST, COMPLETE_LIST, ON_HOLD_LIST, UNFINISHED_LIST, WISH_LIST)
 
     override fun getStatus(status: Int): String? =
         when (status) {
@@ -83,8 +84,8 @@ class MangaUpdates(id: Int) : Tracker(id, "MangaUpdates"), DeletableTrackService
     override suspend fun bind(
         track: Track,
         hasReadChapters: Boolean,
-    ): Track {
-        return try {
+    ): Track =
+        try {
             val (series, rating) = api.getSeriesListItem(track)
             track.copyFrom(series, rating)
         } catch (e: Exception) {
@@ -92,14 +93,13 @@ class MangaUpdates(id: Int) : Tracker(id, "MangaUpdates"), DeletableTrackService
             api.addSeriesToList(track, hasReadChapters)
             track
         }
-    }
 
-    override suspend fun search(query: String): List<TrackSearch> {
-        return api.search(query)
+    override suspend fun search(query: String): List<TrackSearch> =
+        api
+            .search(query)
             .map {
                 it.toTrackSearch(id)
             }
-    }
 
     override suspend fun refresh(track: Track): Track {
         val (series, rating) = api.getSeriesListItem(track)
@@ -124,7 +124,5 @@ class MangaUpdates(id: Int) : Tracker(id, "MangaUpdates"), DeletableTrackService
         interceptor.newAuth(authenticated.sessionToken)
     }
 
-    fun restoreSession(): String? {
-        return trackPreferences.getTrackPassword(this)
-    }
+    fun restoreSession(): String? = trackPreferences.getTrackPassword(this)
 }

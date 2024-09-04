@@ -45,31 +45,29 @@ class SourceQuery {
     fun source(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Long,
-    ): CompletableFuture<SourceType> {
-        return dataFetchingEnvironment.getValueFromDataLoader("SourceDataLoader", id)
-    }
+    ): CompletableFuture<SourceType> = dataFetchingEnvironment.getValueFromDataLoader("SourceDataLoader", id)
 
-    enum class SourceOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<SourceType> {
+    enum class SourceOrderBy(
+        override val column: Column<out Comparable<*>>,
+    ) : OrderBy<SourceType> {
         ID(SourceTable.id),
         NAME(SourceTable.name),
         LANG(SourceTable.lang),
         ;
 
-        override fun greater(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun greater(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 ID -> SourceTable.id greater cursor.value.toLong()
                 NAME -> greaterNotUnique(SourceTable.name, SourceTable.id, cursor, String::toString)
                 LANG -> greaterNotUnique(SourceTable.lang, SourceTable.id, cursor, String::toString)
             }
-        }
 
-        override fun less(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun less(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 ID -> SourceTable.id less cursor.value.toLong()
                 NAME -> lessNotUnique(SourceTable.name, SourceTable.id, cursor, String::toString)
                 LANG -> lessNotUnique(SourceTable.lang, SourceTable.id, cursor, String::toString)
             }
-        }
 
         override fun asCursor(type: SourceType): Cursor {
             val value =
@@ -113,14 +111,13 @@ class SourceQuery {
         override val or: List<SourceFilter>? = null,
         override val not: SourceFilter? = null,
     ) : Filter<SourceFilter> {
-        override fun getOpList(): List<Op<Boolean>> {
-            return listOfNotNull(
+        override fun getOpList(): List<Op<Boolean>> =
+            listOfNotNull(
                 andFilterWithCompareEntity(SourceTable.id, id),
                 andFilterWithCompareString(SourceTable.name, name),
                 andFilterWithCompareString(SourceTable.lang, lang),
                 andFilterWithCompare(SourceTable.isNsfw, isNsfw),
             )
-        }
     }
 
     fun sources(

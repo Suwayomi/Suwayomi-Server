@@ -22,8 +22,8 @@ class InfoQuery {
         val discord: String,
     )
 
-    fun aboutServer(): AboutServerPayload {
-        return AboutServerPayload(
+    fun aboutServer(): AboutServerPayload =
+        AboutServerPayload(
             BuildConfig.NAME,
             BuildConfig.VERSION,
             BuildConfig.REVISION,
@@ -32,7 +32,6 @@ class InfoQuery {
             BuildConfig.GITHUB,
             BuildConfig.DISCORD,
         )
-    }
 
     data class CheckForServerUpdatesPayload(
         /** [channel] mirrors [suwayomi.tachidesk.server.BuildConfig.BUILD_TYPE] */
@@ -41,8 +40,8 @@ class InfoQuery {
         val url: String,
     )
 
-    fun checkForServerUpdates(): CompletableFuture<List<CheckForServerUpdatesPayload>> {
-        return future {
+    fun checkForServerUpdates(): CompletableFuture<List<CheckForServerUpdatesPayload>> =
+        future {
             AppUpdate.checkUpdate().map {
                 CheckForServerUpdatesPayload(
                     channel = it.channel,
@@ -51,16 +50,14 @@ class InfoQuery {
                 )
             }
         }
-    }
 
-    fun aboutWebUI(): CompletableFuture<AboutWebUI> {
-        return future {
+    fun aboutWebUI(): CompletableFuture<AboutWebUI> =
+        future {
             WebInterfaceManager.getAboutInfo()
         }
-    }
 
-    fun checkForWebUIUpdate(): CompletableFuture<WebUIUpdateCheck> {
-        return future {
+    fun checkForWebUIUpdate(): CompletableFuture<WebUIUpdateCheck> =
+        future {
             val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable(WebUIFlavor.current, raiseError = true)
             WebUIUpdateCheck(
                 channel = serverConfig.webUIChannel.value,
@@ -68,9 +65,6 @@ class InfoQuery {
                 updateAvailable,
             )
         }
-    }
 
-    fun getWebUIUpdateStatus(): WebUIUpdateStatus {
-        return WebInterfaceManager.status.value
-    }
+    fun getWebUIUpdateStatus(): WebUIUpdateStatus = WebInterfaceManager.status.value
 }

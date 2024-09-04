@@ -30,7 +30,9 @@ import kotlin.io.path.inputStream
 import kotlin.io.path.outputStream
 
 @OptIn(ExperimentalSerializationApi::class, ExperimentalSettingsApi::class)
-class JavaSharedPreferences(key: String) : SharedPreferences {
+class JavaSharedPreferences(
+    key: String,
+) : SharedPreferences {
     companion object {
         private val logger = KotlinLogging.logger {}
     }
@@ -72,20 +74,17 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
     private val listeners = mutableMapOf<SharedPreferences.OnSharedPreferenceChangeListener, (String) -> Unit>()
 
     // TODO: 2021-05-29 Need to find a way to get this working with all pref types
-    override fun getAll(): MutableMap<String, *> {
-        return preferences.keys.associateWith { preferences.getStringOrNull(it) }.toMutableMap()
-    }
+    override fun getAll(): MutableMap<String, *> = preferences.keys.associateWith { preferences.getStringOrNull(it) }.toMutableMap()
 
     override fun getString(
         key: String,
         defValue: String?,
-    ): String? {
-        return if (defValue != null) {
+    ): String? =
+        if (defValue != null) {
             preferences.getString(key, defValue)
         } else {
             preferences.getStringOrNull(key)
         }
-    }
 
     override fun getStringSet(
         key: String,
@@ -105,50 +104,48 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
     override fun getInt(
         key: String,
         defValue: Int,
-    ): Int {
-        return preferences.getInt(key, defValue)
-    }
+    ): Int = preferences.getInt(key, defValue)
 
     override fun getLong(
         key: String,
         defValue: Long,
-    ): Long {
-        return preferences.getLong(key, defValue)
-    }
+    ): Long = preferences.getLong(key, defValue)
 
     override fun getFloat(
         key: String,
         defValue: Float,
-    ): Float {
-        return preferences.getFloat(key, defValue)
-    }
+    ): Float = preferences.getFloat(key, defValue)
 
     override fun getBoolean(
         key: String,
         defValue: Boolean,
-    ): Boolean {
-        return preferences.getBoolean(key, defValue)
-    }
+    ): Boolean = preferences.getBoolean(key, defValue)
 
-    override fun contains(key: String): Boolean {
-        return key in preferences.keys
-    }
+    override fun contains(key: String): Boolean = key in preferences.keys
 
-    override fun edit(): SharedPreferences.Editor {
-        return Editor(preferences) { key ->
+    override fun edit(): SharedPreferences.Editor =
+        Editor(preferences) { key ->
             listeners.forEach { (_, listener) ->
                 listener(key)
             }
         }
-    }
 
-    class Editor(private val preferences: Settings, private val notify: (String) -> Unit) : SharedPreferences.Editor {
+    class Editor(
+        private val preferences: Settings,
+        private val notify: (String) -> Unit,
+    ) : SharedPreferences.Editor {
         private val actions = mutableListOf<Action>()
 
         private sealed class Action {
-            data class Add(val key: String, val value: Any) : Action()
+            data class Add(
+                val key: String,
+                val value: Any,
+            ) : Action()
 
-            data class Remove(val key: String) : Action()
+            data class Remove(
+                val key: String,
+            ) : Action()
+
             data object Clear : Action()
         }
 

@@ -16,11 +16,10 @@ data class BackupSource(
     @ProtoNumber(2) var sourceId: Long,
 ) {
     companion object {
-        fun copyFrom(source: Source): BackupSource {
-            return BackupSource(
+        fun copyFrom(source: Source): BackupSource =
+            BackupSource(
                 name = source.name,
                 sourceId = source.id,
             )
-        }
     }
 }

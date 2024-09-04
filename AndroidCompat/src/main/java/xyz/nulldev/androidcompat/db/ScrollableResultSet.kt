@@ -19,7 +19,9 @@ import java.sql.Timestamp
 import java.util.Calendar
 
 @Suppress("UNCHECKED_CAST")
-class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
+class ScrollableResultSet(
+    val parent: ResultSet,
+) : ResultSet by parent {
     private val cachedContent = mutableListOf<ResultSetEntry>()
     private val columnCache = mutableMapOf<String, Int>()
     private var lastReturnWasNull = false
@@ -29,9 +31,10 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
     val parentMetadata = parent.metaData
     val columnCount = parentMetadata.columnCount
     val columnLabels =
-        (1..columnCount).map {
-            parentMetadata.getColumnLabel(it)
-        }.toTypedArray()
+        (1..columnCount)
+            .map {
+                parentMetadata.getColumnLabel(it)
+            }.toTypedArray()
 
     init {
         val columnCount = columnCount
@@ -45,20 +48,17 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         while (parent.next()) {
             cachedContent +=
                 ResultSetEntry().apply {
-                    for (i in 1..columnCount)
+                    for (i in 1..columnCount) {
                         data += parent.getObject(i)
+                    }
                 }
             resultSetLength++
         }
     }
 
-    private fun notImplemented(): Nothing {
-        throw UnsupportedOperationException("This class currently does not support this operation!")
-    }
+    private fun notImplemented(): Nothing = throw UnsupportedOperationException("This class currently does not support this operation!")
 
-    private fun cursorValid(): Boolean {
-        return isAfterLast || isBeforeFirst
-    }
+    private fun cursorValid(): Boolean = isAfterLast || isBeforeFirst
 
     private fun internalMove(row: Int) {
         if (cursor < 0) {
@@ -76,22 +76,16 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         return obj
     }
 
-    private fun obj(column: String?): Any? {
-        return obj(cachedFindColumn(column))
-    }
+    private fun obj(column: String?): Any? = obj(cachedFindColumn(column))
 
     private fun cachedFindColumn(column: String?) =
         columnCache.getOrPut(column!!, {
             findColumn(column)
         })
 
-    override fun getNClob(columnIndex: Int): NClob {
-        return obj(columnIndex) as NClob
-    }
+    override fun getNClob(columnIndex: Int): NClob = obj(columnIndex) as NClob
 
-    override fun getNClob(columnLabel: String?): NClob {
-        return obj(columnLabel) as NClob
-    }
+    override fun getNClob(columnLabel: String?): NClob = obj(columnLabel) as NClob
 
     override fun updateNString(
         columnIndex: Int,
@@ -260,17 +254,11 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun getBoolean(columnIndex: Int): Boolean {
-        return obj(columnIndex) as Boolean
-    }
+    override fun getBoolean(columnIndex: Int): Boolean = obj(columnIndex) as Boolean
 
-    override fun getBoolean(columnLabel: String?): Boolean {
-        return obj(columnLabel) as Boolean
-    }
+    override fun getBoolean(columnLabel: String?): Boolean = obj(columnLabel) as Boolean
 
-    override fun isFirst(): Boolean {
-        return cursor - 1 < resultSetLength
-    }
+    override fun isFirst(): Boolean = cursor - 1 < resultSetLength
 
     override fun getBigDecimal(
         columnIndex: Int,
@@ -288,13 +276,9 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun getBigDecimal(columnIndex: Int): BigDecimal {
-        return obj(columnIndex) as BigDecimal
-    }
+    override fun getBigDecimal(columnIndex: Int): BigDecimal = obj(columnIndex) as BigDecimal
 
-    override fun getBigDecimal(columnLabel: String?): BigDecimal {
-        return obj(columnLabel) as BigDecimal
-    }
+    override fun getBigDecimal(columnLabel: String?): BigDecimal = obj(columnLabel) as BigDecimal
 
     override fun updateBytes(
         columnIndex: Int,
@@ -310,9 +294,7 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun isLast(): Boolean {
-        return cursor == resultSetLength
-    }
+    override fun isLast(): Boolean = cursor == resultSetLength
 
     override fun insertRow() {
         notImplemented()
@@ -351,9 +333,7 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         return cursorValid()
     }
 
-    override fun isAfterLast(): Boolean {
-        return cursor > resultSetLength
-    }
+    override fun isAfterLast(): Boolean = cursor > resultSetLength
 
     override fun relative(rows: Int): Boolean {
         internalMove(cursor + rows)
@@ -365,8 +345,9 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
             internalMove(row)
         } else {
             last()
-            for (i in 1..row)
+            for (i in 1..row) {
                 previous()
+            }
         }
         return cursorValid()
     }
@@ -394,19 +375,13 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         return cursorValid()
     }
 
-    override fun getFloat(columnIndex: Int): Float {
-        return obj(columnIndex) as Float
-    }
+    override fun getFloat(columnIndex: Int): Float = obj(columnIndex) as Float
 
-    override fun getFloat(columnLabel: String?): Float {
-        return obj(columnLabel) as Float
-    }
+    override fun getFloat(columnLabel: String?): Float = obj(columnLabel) as Float
 
     override fun wasNull() = lastReturnWasNull
 
-    override fun getRow(): Int {
-        return cursor
-    }
+    override fun getRow(): Int = cursor
 
     override fun first(): Boolean {
         internalMove(1)
@@ -459,13 +434,9 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun getURL(columnIndex: Int): URL {
-        return obj(columnIndex) as URL
-    }
+    override fun getURL(columnIndex: Int): URL = obj(columnIndex) as URL
 
-    override fun getURL(columnLabel: String?): URL {
-        return obj(columnLabel) as URL
-    }
+    override fun getURL(columnLabel: String?): URL = obj(columnLabel) as URL
 
     override fun updateShort(
         columnIndex: Int,
@@ -643,21 +614,13 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun getByte(columnIndex: Int): Byte {
-        return obj(columnIndex) as Byte
-    }
+    override fun getByte(columnIndex: Int): Byte = obj(columnIndex) as Byte
 
-    override fun getByte(columnLabel: String?): Byte {
-        return obj(columnLabel) as Byte
-    }
+    override fun getByte(columnLabel: String?): Byte = obj(columnLabel) as Byte
 
-    override fun getString(columnIndex: Int): String? {
-        return obj(columnIndex) as String?
-    }
+    override fun getString(columnIndex: Int): String? = obj(columnIndex) as String?
 
-    override fun getString(columnLabel: String?): String? {
-        return obj(columnLabel) as String?
-    }
+    override fun getString(columnLabel: String?): String? = obj(columnLabel) as String?
 
     override fun updateSQLXML(
         columnIndex: Int,
@@ -687,13 +650,9 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun getObject(columnIndex: Int): Any? {
-        return obj(columnIndex)
-    }
+    override fun getObject(columnIndex: Int): Any? = obj(columnIndex)
 
-    override fun getObject(columnLabel: String?): Any? {
-        return obj(columnLabel)
-    }
+    override fun getObject(columnLabel: String?): Any? = obj(columnLabel)
 
     override fun getObject(
         columnIndex: Int,
@@ -714,16 +673,12 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
     override fun <T : Any?> getObject(
         columnIndex: Int,
         type: Class<T>?,
-    ): T {
-        return obj(columnIndex) as T
-    }
+    ): T = obj(columnIndex) as T
 
     override fun <T : Any?> getObject(
         columnLabel: String?,
         type: Class<T>?,
-    ): T {
-        return obj(columnLabel) as T
-    }
+    ): T = obj(columnLabel) as T
 
     override fun previous(): Boolean {
         internalMove(cursor - 1)
@@ -756,13 +711,9 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         }
     }
 
-    override fun getLong(columnIndex: Int): Long {
-        return castToLong(obj(columnIndex))
-    }
+    override fun getLong(columnIndex: Int): Long = castToLong(obj(columnIndex))
 
-    override fun getLong(columnLabel: String?): Long {
-        return castToLong(obj(columnLabel))
-    }
+    override fun getLong(columnLabel: String?): Long = castToLong(obj(columnLabel))
 
     override fun getClob(columnIndex: Int): Clob {
         // TODO Maybe?
@@ -840,13 +791,9 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun getNString(columnIndex: Int): String {
-        return obj(columnIndex) as String
-    }
+    override fun getNString(columnIndex: Int): String = obj(columnIndex) as String
 
-    override fun getNString(columnLabel: String?): String {
-        return obj(columnLabel) as String
-    }
+    override fun getNString(columnLabel: String?): String = obj(columnLabel) as String
 
     override fun getArray(columnIndex: Int): Array {
         // TODO Maybe?
@@ -880,17 +827,11 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun getCharacterStream(columnIndex: Int): Reader {
-        return getNCharacterStream(columnIndex)
-    }
+    override fun getCharacterStream(columnIndex: Int): Reader = getNCharacterStream(columnIndex)
 
-    override fun getCharacterStream(columnLabel: String?): Reader {
-        return getNCharacterStream(columnLabel)
-    }
+    override fun getCharacterStream(columnLabel: String?): Reader = getNCharacterStream(columnLabel)
 
-    override fun isBeforeFirst(): Boolean {
-        return cursor - 1 < resultSetLength
-    }
+    override fun isBeforeFirst(): Boolean = cursor - 1 < resultSetLength
 
     override fun updateBoolean(
         columnIndex: Int,
@@ -926,21 +867,13 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun getShort(columnIndex: Int): Short {
-        return obj(columnIndex) as Short
-    }
+    override fun getShort(columnIndex: Int): Short = obj(columnIndex) as Short
 
-    override fun getShort(columnLabel: String?): Short {
-        return obj(columnLabel) as Short
-    }
+    override fun getShort(columnLabel: String?): Short = obj(columnLabel) as Short
 
-    override fun getAsciiStream(columnIndex: Int): InputStream {
-        return getBinaryStream(columnIndex)
-    }
+    override fun getAsciiStream(columnIndex: Int): InputStream = getBinaryStream(columnIndex)
 
-    override fun getAsciiStream(columnLabel: String?): InputStream {
-        return getBinaryStream(columnLabel)
-    }
+    override fun getAsciiStream(columnLabel: String?): InputStream = getBinaryStream(columnLabel)
 
     override fun updateTime(
         columnIndex: Int,
@@ -1008,13 +941,9 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun getNCharacterStream(columnIndex: Int): Reader {
-        return getBinaryStream(columnIndex).reader()
-    }
+    override fun getNCharacterStream(columnIndex: Int): Reader = getBinaryStream(columnIndex).reader()
 
-    override fun getNCharacterStream(columnLabel: String?): Reader {
-        return getBinaryStream(columnLabel).reader()
-    }
+    override fun getNCharacterStream(columnLabel: String?): Reader = getBinaryStream(columnLabel).reader()
 
     override fun updateArray(
         columnIndex: Int,
@@ -1030,45 +959,27 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun getBytes(columnIndex: Int): ByteArray {
-        return obj(columnIndex) as ByteArray
-    }
+    override fun getBytes(columnIndex: Int): ByteArray = obj(columnIndex) as ByteArray
 
-    override fun getBytes(columnLabel: String?): ByteArray {
-        return obj(columnLabel) as ByteArray
-    }
+    override fun getBytes(columnLabel: String?): ByteArray = obj(columnLabel) as ByteArray
 
-    override fun getDouble(columnIndex: Int): Double {
-        return obj(columnIndex) as Double
-    }
+    override fun getDouble(columnIndex: Int): Double = obj(columnIndex) as Double
 
-    override fun getDouble(columnLabel: String?): Double {
-        return obj(columnLabel) as Double
-    }
+    override fun getDouble(columnLabel: String?): Double = obj(columnLabel) as Double
 
-    override fun getUnicodeStream(columnIndex: Int): InputStream {
-        return getBinaryStream(columnIndex)
-    }
+    override fun getUnicodeStream(columnIndex: Int): InputStream = getBinaryStream(columnIndex)
 
-    override fun getUnicodeStream(columnLabel: String?): InputStream {
-        return getBinaryStream(columnLabel)
-    }
+    override fun getUnicodeStream(columnLabel: String?): InputStream = getBinaryStream(columnLabel)
 
     override fun rowInserted() = false
 
     private fun thisIsWrapperFor(iface: Class<*>?) = this.javaClass.isInstance(iface)
 
-    override fun isWrapperFor(iface: Class<*>?): Boolean {
-        return thisIsWrapperFor(iface) || parent.isWrapperFor(iface)
-    }
+    override fun isWrapperFor(iface: Class<*>?): Boolean = thisIsWrapperFor(iface) || parent.isWrapperFor(iface)
 
-    override fun getInt(columnIndex: Int): Int {
-        return obj(columnIndex) as Int
-    }
+    override fun getInt(columnIndex: Int): Int = obj(columnIndex) as Int
 
-    override fun getInt(columnLabel: String?): Int {
-        return obj(columnLabel) as Int
-    }
+    override fun getInt(columnLabel: String?): Int = obj(columnLabel) as Int
 
     override fun updateNull(columnIndex: Int) {
         notImplemented()
@@ -1088,8 +999,8 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
         notImplemented()
     }
 
-    override fun getMetaData(): ResultSetMetaData {
-        return object : ResultSetMetaData by parentMetadata {
+    override fun getMetaData(): ResultSetMetaData =
+        object : ResultSetMetaData by parentMetadata {
             override fun isReadOnly(column: Int) = true
 
             override fun isWritable(column: Int) = false
@@ -1098,19 +1009,12 @@ class ScrollableResultSet(val parent: ResultSet) : ResultSet by parent {
 
             override fun getColumnCount() = this@ScrollableResultSet.columnCount
 
-            override fun getColumnLabel(column: Int): String {
-                return columnLabels[column - 1]
-            }
+            override fun getColumnLabel(column: Int): String = columnLabels[column - 1]
         }
-    }
 
-    override fun getBinaryStream(columnIndex: Int): InputStream {
-        return (obj(columnIndex) as ByteArray).inputStream()
-    }
+    override fun getBinaryStream(columnIndex: Int): InputStream = (obj(columnIndex) as ByteArray).inputStream()
 
-    override fun getBinaryStream(columnLabel: String?): InputStream {
-        return (obj(columnLabel) as ByteArray).inputStream()
-    }
+    override fun getBinaryStream(columnLabel: String?): InputStream = (obj(columnLabel) as ByteArray).inputStream()
 
     override fun updateCharacterStream(
         columnIndex: Int,

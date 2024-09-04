@@ -34,7 +34,8 @@ class TachideskGraphQLServer(
 
     @OptIn(DelicateCoroutinesApi::class)
     fun handleSubscriptionMessage(context: WsMessageContext) {
-        subscriptionProtocolHandler.handleMessage(context)
+        subscriptionProtocolHandler
+            .handleMessage(context)
             .map { objectMapper.writeValueAsString(it) }
             .map { context.send(it) }
             .launchIn(GlobalScope)
@@ -46,7 +47,8 @@ class TachideskGraphQLServer(
 
     companion object {
         private fun getGraphQLObject(): GraphQL =
-            GraphQL.newGraphQL(schema)
+            GraphQL
+                .newGraphQL(schema)
                 .subscriptionExecutionStrategy(FlowSubscriptionExecutionStrategy())
                 .mutationExecutionStrategy(AsyncExecutionStrategy())
                 .build()

@@ -25,7 +25,9 @@ import java.util.concurrent.TimeUnit
 object AppMutex {
     private val logger = KotlinLogging.logger {}
 
-    private enum class AppMutexState(val stat: Int) {
+    private enum class AppMutexState(
+        val stat: Int,
+    ) {
         Clear(0),
         TachideskInstanceRunning(1),
         OtherApplicationRunning(2),
@@ -37,7 +39,8 @@ object AppMutex {
 
     private fun checkAppMutex(): AppMutexState {
         val client =
-            OkHttpClient.Builder()
+            OkHttpClient
+                .Builder()
                 .connectTimeout(200, TimeUnit.MILLISECONDS)
                 .build()
 
@@ -48,7 +51,11 @@ object AppMutex {
 
         val response =
             try {
-                client.newCall(request).execute().body.string()
+                client
+                    .newCall(request)
+                    .execute()
+                    .body
+                    .string()
             } catch (e: IOException) {
                 return AppMutexState.Clear
             }

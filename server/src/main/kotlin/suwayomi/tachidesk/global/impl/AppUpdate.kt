@@ -31,18 +31,26 @@ object AppUpdate {
 
     suspend fun checkUpdate(): List<UpdateDataClass> {
         val stableJson =
-            json.parseToJsonElement(
-                network.client.newCall(
-                    GET(LATEST_STABLE_CHANNEL_URL),
-                ).await().body.string(),
-            ).jsonObject
+            json
+                .parseToJsonElement(
+                    network.client
+                        .newCall(
+                            GET(LATEST_STABLE_CHANNEL_URL),
+                        ).await()
+                        .body
+                        .string(),
+                ).jsonObject
 
         val previewJson =
-            json.parseToJsonElement(
-                network.client.newCall(
-                    GET(LATEST_PREVIEW_CHANNEL_URL),
-                ).await().body.string(),
-            ).jsonObject
+            json
+                .parseToJsonElement(
+                    network.client
+                        .newCall(
+                            GET(LATEST_PREVIEW_CHANNEL_URL),
+                        ).await()
+                        .body
+                        .string(),
+                ).jsonObject
 
         return listOf(
             UpdateDataClass(

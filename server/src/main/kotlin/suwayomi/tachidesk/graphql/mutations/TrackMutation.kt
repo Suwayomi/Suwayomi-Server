@@ -126,9 +126,10 @@ class TrackMutation {
             )
             val trackRecord =
                 transaction {
-                    TrackRecordTable.select {
-                        TrackRecordTable.mangaId eq mangaId and (TrackRecordTable.trackerId eq trackerId)
-                    }.first()
+                    TrackRecordTable
+                        .select {
+                            TrackRecordTable.mangaId eq mangaId and (TrackRecordTable.trackerId eq trackerId)
+                        }.first()
                 }
             BindTrackPayload(
                 clientMutationId,
@@ -154,9 +155,10 @@ class TrackMutation {
             Track.refresh(recordId)
             val trackRecord =
                 transaction {
-                    TrackRecordTable.select {
-                        TrackRecordTable.id eq recordId
-                    }.first()
+                    TrackRecordTable
+                        .select {
+                            TrackRecordTable.id eq recordId
+                        }.first()
                 }
             FetchTrackPayload(
                 clientMutationId,
@@ -184,9 +186,10 @@ class TrackMutation {
             Track.unbind(recordId, deleteRemoteTrack)
             val trackRecord =
                 transaction {
-                    TrackRecordTable.select {
-                        TrackRecordTable.id eq recordId
-                    }.firstOrNull()
+                    TrackRecordTable
+                        .select {
+                            TrackRecordTable.id eq recordId
+                        }.firstOrNull()
                 }
             UnbindTrackPayload(
                 clientMutationId,
@@ -213,7 +216,8 @@ class TrackMutation {
                 Track.trackChapter(mangaId)
                 val trackRecords =
                     transaction {
-                        TrackRecordTable.select { TrackRecordTable.mangaId eq mangaId }
+                        TrackRecordTable
+                            .select { TrackRecordTable.mangaId eq mangaId }
                             .toList()
                     }
                 TrackProgressPayload(
@@ -241,8 +245,8 @@ class TrackMutation {
         val trackRecord: TrackRecordType?,
     )
 
-    fun updateTrack(input: UpdateTrackInput): CompletableFuture<UpdateTrackPayload> {
-        return future {
+    fun updateTrack(input: UpdateTrackInput): CompletableFuture<UpdateTrackPayload> =
+        future {
             Track.update(
                 Track.UpdateInput(
                     input.recordId,
@@ -257,14 +261,14 @@ class TrackMutation {
 
             val trackRecord =
                 transaction {
-                    TrackRecordTable.select {
-                        TrackRecordTable.id eq input.recordId
-                    }.firstOrNull()
+                    TrackRecordTable
+                        .select {
+                            TrackRecordTable.id eq input.recordId
+                        }.firstOrNull()
                 }
             UpdateTrackPayload(
                 input.clientMutationId,
                 trackRecord?.let { TrackRecordType(it) },
             )
         }
-    }
 }

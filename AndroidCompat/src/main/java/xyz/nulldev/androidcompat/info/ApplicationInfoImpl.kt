@@ -8,7 +8,10 @@ import org.kodein.di.instance
 import xyz.nulldev.androidcompat.config.ApplicationInfoConfigModule
 import xyz.nulldev.ts.config.ConfigManager
 
-class ApplicationInfoImpl(override val di: DI = DI.global) : ApplicationInfo(), DIAware {
+class ApplicationInfoImpl(
+    override val di: DI = DI.global,
+) : ApplicationInfo(),
+    DIAware {
     val configManager: ConfigManager by di.instance()
 
     val appInfoConfig: ApplicationInfoConfigModule

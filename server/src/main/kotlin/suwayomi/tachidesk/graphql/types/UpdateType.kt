@@ -28,9 +28,10 @@ class UpdateStatus(
         runningJobs = UpdateStatusType(status.mangaStatusMap[JobStatus.RUNNING]?.map { it.id }.orEmpty()),
         completeJobs =
             UpdateStatusType(
-                status.mangaStatusMap[JobStatus.COMPLETE]?.map {
-                    it.id
-                }.orEmpty(),
+                status.mangaStatusMap[JobStatus.COMPLETE]
+                    ?.map {
+                        it.id
+                    }.orEmpty(),
                 JobStatus.COMPLETE,
                 status.running,
                 true,
@@ -50,9 +51,8 @@ class UpdateStatusCategoryType(
     @get:GraphQLIgnore
     val categoryIds: List<Int>,
 ) {
-    fun categories(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<CategoryNodeList> {
-        return dataFetchingEnvironment.getValueFromDataLoader("CategoryForIdsDataLoader", categoryIds)
-    }
+    fun categories(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<CategoryNodeList> =
+        dataFetchingEnvironment.getValueFromDataLoader("CategoryForIdsDataLoader", categoryIds)
 }
 
 class UpdateStatusType(

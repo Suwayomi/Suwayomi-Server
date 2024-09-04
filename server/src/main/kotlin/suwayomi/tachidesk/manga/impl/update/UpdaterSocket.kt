@@ -58,11 +58,9 @@ object UpdaterSocket : Websocket<UpdateStatus>() {
         }
     }
 
-    fun start(): Job {
-        return updater.status
+    fun start(): Job =
+        updater.status
             .onEach {
                 notifyAllClients(it)
-            }
-            .launchIn(scope)
-    }
+            }.launchIn(scope)
 }

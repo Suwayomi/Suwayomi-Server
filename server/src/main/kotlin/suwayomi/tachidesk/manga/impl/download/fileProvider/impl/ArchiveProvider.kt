@@ -21,15 +21,21 @@ import java.io.InputStream
 
 private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
-class ArchiveProvider(mangaId: Int, chapterId: Int) : ChaptersFilesProvider<FileType.ZipFile>(mangaId, chapterId) {
+class ArchiveProvider(
+    mangaId: Int,
+    chapterId: Int,
+) : ChaptersFilesProvider<FileType.ZipFile>(mangaId, chapterId) {
     override fun getImageFiles(): List<FileType.ZipFile> {
-        val zipFile = ZipFile(getChapterCbzPath(mangaId, chapterId))
+        val zipFile = ZipFile.builder().setFile(getChapterCbzPath(mangaId, chapterId)).get()
         return zipFile.entries.toList().map { FileType.ZipFile(it) }
     }
 
-    override fun getImageInputStream(image: FileType.ZipFile): InputStream {
-        return ZipFile(getChapterCbzPath(mangaId, chapterId)).getInputStream(image.entry)
-    }
+    override fun getImageInputStream(image: FileType.ZipFile): InputStream =
+        ZipFile
+            .builder()
+            .setFile(getChapterCbzPath(mangaId, chapterId))
+            .get()
+            .getInputStream(image.entry)
 
     override fun extractExistingDownload() {
         val outputFile = File(getChapterCbzPath(mangaId, chapterId))

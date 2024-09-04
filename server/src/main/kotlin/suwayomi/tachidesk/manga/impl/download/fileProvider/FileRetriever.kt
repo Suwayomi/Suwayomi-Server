@@ -9,18 +9,14 @@ fun interface RetrieveFile {
 fun interface RetrieveFile0Args : RetrieveFile {
     fun execute(): Pair<InputStream, String>
 
-    override fun executeGetImage(vararg args: Any): Pair<InputStream, String> {
-        return execute()
-    }
+    override fun executeGetImage(vararg args: Any): Pair<InputStream, String> = execute()
 }
 
 @Suppress("UNCHECKED_CAST")
 fun interface RetrieveFile1Args<A> : RetrieveFile {
     fun execute(a: A): Pair<InputStream, String>
 
-    override fun executeGetImage(vararg args: Any): Pair<InputStream, String> {
-        return execute(args[0] as A)
-    }
+    override fun executeGetImage(vararg args: Any): Pair<InputStream, String> = execute(args[0] as A)
 }
 
 fun interface FileRetriever {

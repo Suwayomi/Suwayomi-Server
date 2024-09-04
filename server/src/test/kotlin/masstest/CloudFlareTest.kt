@@ -40,7 +40,8 @@ class CloudFlareTest {
             }
 
             nhentai =
-                Source.getSourceList()
+                Source
+                    .getSourceList()
                     .firstNotNullOf { it.id.toLong().takeIf { it == 3122156392225024195L } }
                     .let(GetCatalogueSource::getCatalogueSourceOrNull) as HttpSource
         }

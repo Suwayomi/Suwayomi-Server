@@ -22,13 +22,12 @@ import org.slf4j.LoggerFactory
 private fun fileSizeValueOfOrDefault(
     fileSizeStr: String,
     default: String,
-): FileSize {
-    return try {
+): FileSize =
+    try {
         FileSize.valueOf(fileSizeStr)
     } catch (e: IllegalArgumentException) {
         FileSize.valueOf(default)
     }
-}
 
 private const val FILE_APPENDER_NAME = "SuwayomiDefaultAppender"
 
@@ -73,9 +72,8 @@ private fun createRollingFileAppender(
     return appender
 }
 
-private fun getBaseLogger(): ch.qos.logback.classic.Logger {
-    return (KotlinLogging.logger(Logger.ROOT_LOGGER_NAME).underlyingLogger as ch.qos.logback.classic.Logger)
-}
+private fun getBaseLogger(): ch.qos.logback.classic.Logger =
+    (KotlinLogging.logger(Logger.ROOT_LOGGER_NAME).underlyingLogger as ch.qos.logback.classic.Logger)
 
 private fun getLogger(name: String): ch.qos.logback.classic.Logger {
     val context = LoggerFactory.getILoggerFactory() as LoggerContext

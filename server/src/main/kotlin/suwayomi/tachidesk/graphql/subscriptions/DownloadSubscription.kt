@@ -13,9 +13,8 @@ import suwayomi.tachidesk.graphql.types.DownloadStatus
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 
 class DownloadSubscription {
-    fun downloadChanged(): Flow<DownloadStatus> {
-        return DownloadManager.status.map { downloadStatus ->
+    fun downloadChanged(): Flow<DownloadStatus> =
+        DownloadManager.status.map { downloadStatus ->
             DownloadStatus(downloadStatus)
         }
-    }
 }

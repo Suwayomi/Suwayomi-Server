@@ -64,7 +64,12 @@ object ProtoBackupValidator {
     }
 
     fun validate(sourceStream: InputStream): ValidationResult {
-        val backupString = sourceStream.source().gzip().buffer().use { it.readByteArray() }
+        val backupString =
+            sourceStream
+                .source()
+                .gzip()
+                .buffer()
+                .use { it.readByteArray() }
         val backup = ProtoBackupImport.parser.decodeFromByteArray(BackupSerializer, backupString)
 
         return validate(backup)

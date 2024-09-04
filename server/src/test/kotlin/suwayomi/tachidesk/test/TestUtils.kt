@@ -31,25 +31,24 @@ fun setLoggingEnabled(enabled: Boolean = true) {
 
 const val BASE_PATH = "build/tmp/TestDesk"
 
-fun createLibraryManga(_title: String): Int {
-    return transaction {
-        MangaTable.insertAndGetId {
-            it[title] = _title
-            it[url] = _title
-            it[sourceReference] = 1
-            it[inLibrary] = true
-        }.value
+fun createLibraryManga(_title: String): Int =
+    transaction {
+        MangaTable
+            .insertAndGetId {
+                it[title] = _title
+                it[url] = _title
+                it[sourceReference] = 1
+                it[inLibrary] = true
+            }.value
     }
-}
 
-fun createSMangas(count: Int): List<SManga> {
-    return (0 until count).map {
+fun createSMangas(count: Int): List<SManga> =
+    (0 until count).map {
         SManga.create().apply {
             title = "Manga $it"
             url = "https://$title"
         }
     }
-}
 
 fun createChapters(
     mangaId: Int,

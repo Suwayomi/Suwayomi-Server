@@ -10,8 +10,9 @@ package suwayomi.tachidesk.server.database.migration
 import de.neonew.exposed.migrations.helpers.RenameFieldMigration
 
 @Suppress("ClassName", "unused")
-class M0003_DefaultCategory : RenameFieldMigration(
-    "Category",
-    "is_landing",
-    "is_default",
-)
+class M0003_DefaultCategory :
+    RenameFieldMigration(
+        "Category",
+        "is_landing",
+        "is_default",
+    )

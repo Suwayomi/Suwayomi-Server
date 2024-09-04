@@ -64,13 +64,12 @@ object Manga {
     private fun truncate(
         text: String?,
         maxLength: Int,
-    ): String? {
-        return if (text?.length ?: 0 > maxLength) {
+    ): String? =
+        if (text?.length ?: 0 > maxLength) {
             text?.take(maxLength - 3) + "..."
         } else {
             text
         }
-    }
 
     suspend fun getManga(
         mangaId: Int,
@@ -227,12 +226,12 @@ object Manga {
         trackers = Track.getTrackRecordsByMangaId(mangaId),
     )
 
-    fun getMangaMetaMap(mangaId: Int): Map<String, String> {
-        return transaction {
-            MangaMetaTable.select { MangaMetaTable.ref eq mangaId }
+    fun getMangaMetaMap(mangaId: Int): Map<String, String> =
+        transaction {
+            MangaMetaTable
+                .select { MangaMetaTable.ref eq mangaId }
                 .associate { it[MangaMetaTable.key] to it[MangaMetaTable.value] }
         }
-    }
 
     fun modifyMangaMeta(
         mangaId: Int,
@@ -241,7 +240,8 @@ object Manga {
     ) {
         transaction {
             val meta =
-                MangaMetaTable.select { (MangaMetaTable.ref eq mangaId) and (MangaMetaTable.key eq key) }
+                MangaMetaTable
+                    .select { (MangaMetaTable.ref eq mangaId) and (MangaMetaTable.key eq key) }
                     .firstOrNull()
 
             if (meta == null) {
@@ -286,9 +286,10 @@ object Manga {
             } ?: throw NullPointerException("No thumbnail found")
 
         return try {
-            source.client.newCall(
-                GET(thumbnailUrl, source.headers, cache = CacheControl.FORCE_NETWORK),
-            ).awaitSuccess()
+            source.client
+                .newCall(
+                    GET(thumbnailUrl, source.headers, cache = CacheControl.FORCE_NETWORK),
+                ).awaitSuccess()
         } catch (e: HttpException) {
             val tryToRefreshUrl =
                 !refreshUrl &&
@@ -341,9 +342,10 @@ object Manga {
                     val thumbnailUrl =
                         mangaEntry[MangaTable.thumbnail_url]
                             ?: throw NullPointerException("No thumbnail found")
-                    network.client.newCall(
-                        GET(thumbnailUrl, cache = CacheControl.FORCE_NETWORK),
-                    ).await()
+                    network.client
+                        .newCall(
+                            GET(thumbnailUrl, cache = CacheControl.FORCE_NETWORK),
+                        ).await()
                 }
 
             else -> throw IllegalArgumentException("Unknown source")
@@ -372,19 +374,18 @@ object Manga {
         clearCachedImage(applicationDirs.thumbnailDownloadsRoot, fileName)
     }
 
-    fun getLatestChapter(mangaId: Int): ChapterDataClass? {
-        return transaction {
+    fun getLatestChapter(mangaId: Int): ChapterDataClass? =
+        transaction {
             ChapterTable.select { ChapterTable.manga eq mangaId }.maxByOrNull { it[ChapterTable.sourceOrder] }
         }?.let { ChapterTable.toDataClass(it) }
-    }
 
-    fun getUnreadChapters(mangaId: Int): List<ChapterDataClass> {
-        return transaction {
-            ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.isRead eq false) }
+    fun getUnreadChapters(mangaId: Int): List<ChapterDataClass> =
+        transaction {
+            ChapterTable
+                .select { (ChapterTable.manga eq mangaId) and (ChapterTable.isRead eq false) }
                 .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
                 .map { ChapterTable.toDataClass(it) }
         }
-    }
 
     fun isInIncludedDownloadCategory(
         logContext: KLogger = logger,

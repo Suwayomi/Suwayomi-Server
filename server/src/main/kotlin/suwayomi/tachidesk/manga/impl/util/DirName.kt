@@ -48,34 +48,24 @@ private fun getChapterDir(
     return getMangaDir(mangaId) + "/$chapterDir"
 }
 
-fun getThumbnailDownloadPath(mangaId: Int): String {
-    return applicationDirs.thumbnailDownloadsRoot + "/$mangaId"
-}
+fun getThumbnailDownloadPath(mangaId: Int): String = applicationDirs.thumbnailDownloadsRoot + "/$mangaId"
 
-fun getMangaDownloadDir(mangaId: Int): String {
-    return applicationDirs.mangaDownloadsRoot + "/" + getMangaDir(mangaId)
-}
+fun getMangaDownloadDir(mangaId: Int): String = applicationDirs.mangaDownloadsRoot + "/" + getMangaDir(mangaId)
 
 fun getChapterDownloadPath(
     mangaId: Int,
     chapterId: Int,
-): String {
-    return applicationDirs.mangaDownloadsRoot + "/" + getChapterDir(mangaId, chapterId)
-}
+): String = applicationDirs.mangaDownloadsRoot + "/" + getChapterDir(mangaId, chapterId)
 
 fun getChapterCbzPath(
     mangaId: Int,
     chapterId: Int,
-): String {
-    return getChapterDownloadPath(mangaId, chapterId) + ".cbz"
-}
+): String = getChapterDownloadPath(mangaId, chapterId) + ".cbz"
 
 fun getChapterCachePath(
     mangaId: Int,
     chapterId: Int,
-): String {
-    return applicationDirs.tempMangaCacheRoot + "/" + getChapterDir(mangaId, chapterId)
-}
+): String = applicationDirs.tempMangaCacheRoot + "/" + getChapterDir(mangaId, chapterId)
 
 /** return value says if rename/move was successful */
 fun updateMangaDownloadDir(
@@ -103,6 +93,4 @@ fun updateMangaDownloadDir(
     }
 }
 
-private fun getMangaEntry(mangaId: Int): ResultRow {
-    return transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
-}
+private fun getMangaEntry(mangaId: Int): ResultRow = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }

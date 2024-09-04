@@ -30,7 +30,9 @@ import java.net.CookieManager
 import java.net.CookiePolicy
 import java.util.concurrent.TimeUnit
 
-class NetworkHelper(context: Context) {
+class NetworkHelper(
+    context: Context,
+) {
     //    private val preferences: PreferencesHelper by injectLazy()
 
 //    private val cacheDir = File(context.cacheDir, "network_cache")
@@ -53,9 +55,7 @@ class NetworkHelper(context: Context) {
                 "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         )
 
-    fun defaultUserAgentProvider(): String {
-        return userAgent.value
-    }
+    fun defaultUserAgentProvider(): String = userAgent.value
 
     init {
         @OptIn(DelicateCoroutinesApi::class)
@@ -63,14 +63,14 @@ class NetworkHelper(context: Context) {
             .drop(1)
             .onEach {
                 GetCatalogueSource.unregisterAllCatalogueSources() // need to reset the headers
-            }
-            .launchIn(GlobalScope)
+            }.launchIn(GlobalScope)
     }
 
     private val baseClientBuilder: OkHttpClient.Builder
         get() {
             val builder =
-                OkHttpClient.Builder()
+                OkHttpClient
+                    .Builder()
                     .cookieJar(PersistentCookieJar(cookieStore))
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
@@ -80,8 +80,7 @@ class NetworkHelper(context: Context) {
                             directory = File.createTempFile("tachidesk_network_cache", null),
                             maxSize = 5L * 1024 * 1024, // 5 MiB
                         ),
-                    )
-                    .addInterceptor(UncaughtExceptionInterceptor())
+                    ).addInterceptor(UncaughtExceptionInterceptor())
                     .addInterceptor(UserAgentInterceptor(::defaultUserAgentProvider))
                     .addNetworkInterceptor(IgnoreGzipInterceptor())
                     .addNetworkInterceptor(BrotliInterceptor)

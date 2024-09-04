@@ -37,9 +37,10 @@ fun List<TrackSearch>.insertAll(): List<ResultRow> {
         val remoteIds = map { it.media_id }.toSet()
         val existing =
             transaction {
-                TrackSearchTable.select {
-                    TrackSearchTable.trackerId inList trackerIds and (TrackSearchTable.remoteId inList remoteIds)
-                }.toList()
+                TrackSearchTable
+                    .select {
+                        TrackSearchTable.trackerId inList trackerIds and (TrackSearchTable.remoteId inList remoteIds)
+                    }.toList()
             }
 
         val grouped = mutableMapOf<Boolean, MutableList<Pair<Int?, TrackSearch>>>()
@@ -49,7 +50,8 @@ fun List<TrackSearch>.insertAll(): List<ResultRow> {
                     it[TrackSearchTable.trackerId] == trackSearch.sync_id &&
                         it[TrackSearchTable.remoteId] == trackSearch.media_id
                 }
-            grouped.getOrPut(existingRow != null) { mutableListOf() }
+            grouped
+                .getOrPut(existingRow != null) { mutableListOf() }
                 .add(existingRow?.get(TrackSearchTable.id)?.value to trackSearch)
         }
         val toUpdate = grouped[true]
@@ -90,9 +92,11 @@ fun List<TrackSearch>.insertAll(): List<ResultRow> {
             }
 
         val updatedRows =
-            toUpdate?.mapNotNull { it.first }?.let { ids ->
-                transaction { TrackSearchTable.select { TrackSearchTable.id inList ids }.toList() }
-            }.orEmpty()
+            toUpdate
+                ?.mapNotNull { it.first }
+                ?.let { ids ->
+                    transaction { TrackSearchTable.select { TrackSearchTable.id inList ids }.toList() }
+                }.orEmpty()
 
         (insertedRows + updatedRows)
             .sortedBy { row ->

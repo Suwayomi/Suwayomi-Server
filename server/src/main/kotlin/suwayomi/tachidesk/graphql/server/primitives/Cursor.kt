@@ -12,18 +12,21 @@ import graphql.schema.CoercingSerializeException
 import graphql.schema.GraphQLScalarType
 import java.util.Locale
 
-data class Cursor(val value: String)
+data class Cursor(
+    val value: String,
+)
 
 val GraphQLCursor: GraphQLScalarType =
-    GraphQLScalarType.newScalar()
+    GraphQLScalarType
+        .newScalar()
         .name(
             "Cursor",
-        ).description("A location in a connection that can be used for resuming pagination.").coercing(GraphqlCursorCoercing()).build()
+        ).description("A location in a connection that can be used for resuming pagination.")
+        .coercing(GraphqlCursorCoercing())
+        .build()
 
 private class GraphqlCursorCoercing : Coercing<Cursor, String> {
-    private fun toStringImpl(input: Any): String? {
-        return (input as? Cursor)?.value
-    }
+    private fun toStringImpl(input: Any): String? = (input as? Cursor)?.value
 
     private fun parseValueImpl(
         input: Any,
@@ -58,54 +61,44 @@ private class GraphqlCursorCoercing : Coercing<Cursor, String> {
         return Cursor(input.value)
     }
 
-    private fun valueToLiteralImpl(input: Any): StringValue {
-        return StringValue.newStringValue(input.toString()).build()
-    }
+    private fun valueToLiteralImpl(input: Any): StringValue = StringValue.newStringValue(input.toString()).build()
 
     @Deprecated("")
-    override fun serialize(dataFetcherResult: Any): String {
-        return toStringImpl(dataFetcherResult) ?: throw CoercingSerializeException(
+    override fun serialize(dataFetcherResult: Any): String =
+        toStringImpl(dataFetcherResult) ?: throw CoercingSerializeException(
             CoercingUtil.i18nMsg(
                 Locale.getDefault(),
                 "String.unexpectedRawValueType",
                 CoercingUtil.typeName(dataFetcherResult),
             ),
         )
-    }
 
     @Throws(CoercingSerializeException::class)
     override fun serialize(
         dataFetcherResult: Any,
         graphQLContext: GraphQLContext,
         locale: Locale,
-    ): String {
-        return toStringImpl(dataFetcherResult) ?: throw CoercingSerializeException(
+    ): String =
+        toStringImpl(dataFetcherResult) ?: throw CoercingSerializeException(
             CoercingUtil.i18nMsg(
                 locale,
                 "String.unexpectedRawValueType",
                 CoercingUtil.typeName(dataFetcherResult),
             ),
         )
-    }
 
     @Deprecated("")
-    override fun parseValue(input: Any): Cursor {
-        return parseValueImpl(input, Locale.getDefault())
-    }
+    override fun parseValue(input: Any): Cursor = parseValueImpl(input, Locale.getDefault())
 
     @Throws(CoercingParseValueException::class)
     override fun parseValue(
         input: Any,
         graphQLContext: GraphQLContext,
         locale: Locale,
-    ): Cursor {
-        return parseValueImpl(input, locale)
-    }
+    ): Cursor = parseValueImpl(input, locale)
 
     @Deprecated("")
-    override fun parseLiteral(input: Any): Cursor {
-        return parseLiteralImpl(input, Locale.getDefault())
-    }
+    override fun parseLiteral(input: Any): Cursor = parseLiteralImpl(input, Locale.getDefault())
 
     @Throws(CoercingParseLiteralException::class)
     override fun parseLiteral(
@@ -113,20 +106,14 @@ private class GraphqlCursorCoercing : Coercing<Cursor, String> {
         variables: CoercedVariables,
         graphQLContext: GraphQLContext,
         locale: Locale,
-    ): Cursor {
-        return parseLiteralImpl(input, locale)
-    }
+    ): Cursor = parseLiteralImpl(input, locale)
 
     @Deprecated("")
-    override fun valueToLiteral(input: Any): Value<*> {
-        return valueToLiteralImpl(input)
-    }
+    override fun valueToLiteral(input: Any): Value<*> = valueToLiteralImpl(input)
 
     override fun valueToLiteral(
         input: Any,
         graphQLContext: GraphQLContext,
         locale: Locale,
-    ): Value<*> {
-        return valueToLiteralImpl(input)
-    }
+    ): Value<*> = valueToLiteralImpl(input)
 }

@@ -59,8 +59,8 @@ class InfoMutation {
         }
     }
 
-    fun resetWebUIUpdateStatus(): CompletableFuture<DataFetcherResult<WebUIUpdateStatus?>> {
-        return future {
+    fun resetWebUIUpdateStatus(): CompletableFuture<DataFetcherResult<WebUIUpdateStatus?>> =
+        future {
             asDataFetcherResult {
                 withTimeout(30.seconds) {
                     val isUpdateFinished = WebInterfaceManager.status.value.state != DOWNLOADING
@@ -74,5 +74,4 @@ class InfoMutation {
                 }
             }
         }
-    }
 }

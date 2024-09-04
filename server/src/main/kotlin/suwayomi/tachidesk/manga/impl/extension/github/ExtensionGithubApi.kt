@@ -58,29 +58,27 @@ object ExtensionGithubApi {
     fun getApkUrl(
         repo: String,
         apkName: String,
-    ): String {
-        return "${repo}apk/$apkName"
-    }
+    ): String = "${repo}apk/$apkName"
 
     private val client by lazy {
         val network: NetworkHelper by injectLazy()
-        network.client.newBuilder()
+        network.client
+            .newBuilder()
             .addNetworkInterceptor { chain ->
                 val originalResponse = chain.proceed(chain.request())
-                originalResponse.newBuilder()
+                originalResponse
+                    .newBuilder()
                     .header("Content-Type", "application/json")
                     .build()
-            }
-            .build()
+            }.build()
     }
 
-    private fun List<ExtensionJsonObject>.toExtensions(repo: String): List<OnlineExtension> {
-        return this
+    private fun List<ExtensionJsonObject>.toExtensions(repo: String): List<OnlineExtension> =
+        this
             .filter {
                 val libVersion = it.version.substringBeforeLast('.').toDouble()
                 libVersion in LIB_VERSION_MIN..LIB_VERSION_MAX
-            }
-            .map {
+            }.map {
                 OnlineExtension(
                     repo = repo,
                     name = it.name.substringAfter("Tachiyomi: "),
@@ -96,10 +94,9 @@ object ExtensionGithubApi {
                     iconUrl = "${repo}icon/${it.pkg}.png",
                 )
             }
-    }
 
-    private fun List<ExtensionSourceJsonObject>.toExtensionSources(): List<OnlineExtensionSource> {
-        return this.map {
+    private fun List<ExtensionSourceJsonObject>.toExtensionSources(): List<OnlineExtensionSource> =
+        this.map {
             OnlineExtensionSource(
                 name = it.name,
                 lang = it.lang,
@@ -107,5 +104,4 @@ object ExtensionGithubApi {
                 baseUrl = it.baseUrl,
             )
         }
-    }
 }

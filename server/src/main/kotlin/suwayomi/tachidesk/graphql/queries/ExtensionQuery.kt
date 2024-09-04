@@ -46,31 +46,29 @@ class ExtensionQuery {
     fun extension(
         dataFetchingEnvironment: DataFetchingEnvironment,
         pkgName: String,
-    ): CompletableFuture<ExtensionType> {
-        return dataFetchingEnvironment.getValueFromDataLoader("ExtensionDataLoader", pkgName)
-    }
+    ): CompletableFuture<ExtensionType> = dataFetchingEnvironment.getValueFromDataLoader("ExtensionDataLoader", pkgName)
 
-    enum class ExtensionOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<ExtensionType> {
+    enum class ExtensionOrderBy(
+        override val column: Column<out Comparable<*>>,
+    ) : OrderBy<ExtensionType> {
         PKG_NAME(ExtensionTable.pkgName),
         NAME(ExtensionTable.name),
         APK_NAME(ExtensionTable.apkName),
         ;
 
-        override fun greater(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun greater(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 PKG_NAME -> ExtensionTable.pkgName greater cursor.value
                 NAME -> greaterNotUnique(ExtensionTable.name, ExtensionTable.pkgName, cursor, String::toString)
                 APK_NAME -> greaterNotUnique(ExtensionTable.apkName, ExtensionTable.pkgName, cursor, String::toString)
             }
-        }
 
-        override fun less(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun less(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 PKG_NAME -> ExtensionTable.pkgName less cursor.value
                 NAME -> lessNotUnique(ExtensionTable.name, ExtensionTable.pkgName, cursor, String::toString)
                 APK_NAME -> lessNotUnique(ExtensionTable.apkName, ExtensionTable.pkgName, cursor, String::toString)
             }
-        }
 
         override fun asCursor(type: ExtensionType): Cursor {
             val value =
@@ -137,8 +135,8 @@ class ExtensionQuery {
         override val or: List<ExtensionFilter>? = null,
         override val not: ExtensionFilter? = null,
     ) : Filter<ExtensionFilter> {
-        override fun getOpList(): List<Op<Boolean>> {
-            return listOfNotNull(
+        override fun getOpList(): List<Op<Boolean>> =
+            listOfNotNull(
                 andFilterWithCompareString(ExtensionTable.repo, repo),
                 andFilterWithCompareString(ExtensionTable.apkName, apkName),
                 andFilterWithCompareString(ExtensionTable.iconUrl, iconUrl),
@@ -152,7 +150,6 @@ class ExtensionQuery {
                 andFilterWithCompare(ExtensionTable.hasUpdate, hasUpdate),
                 andFilterWithCompare(ExtensionTable.isObsolete, isObsolete),
             )
-        }
     }
 
     fun extensions(

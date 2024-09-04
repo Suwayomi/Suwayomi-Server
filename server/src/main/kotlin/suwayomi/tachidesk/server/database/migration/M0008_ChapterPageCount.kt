@@ -10,9 +10,10 @@ package suwayomi.tachidesk.server.database.migration
 import de.neonew.exposed.migrations.helpers.AddColumnMigration
 
 @Suppress("ClassName", "unused")
-class M0008_ChapterPageCount : AddColumnMigration(
-    "Chapter",
-    "page_count",
-    "INT",
-    "-1",
-)
+class M0008_ChapterPageCount :
+    AddColumnMigration(
+        "Chapter",
+        "page_count",
+        "INT",
+        "-1",
+    )

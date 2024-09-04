@@ -45,31 +45,29 @@ class CategoryQuery {
     fun category(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Int,
-    ): CompletableFuture<CategoryType> {
-        return dataFetchingEnvironment.getValueFromDataLoader("CategoryDataLoader", id)
-    }
+    ): CompletableFuture<CategoryType> = dataFetchingEnvironment.getValueFromDataLoader("CategoryDataLoader", id)
 
-    enum class CategoryOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<CategoryType> {
+    enum class CategoryOrderBy(
+        override val column: Column<out Comparable<*>>,
+    ) : OrderBy<CategoryType> {
         ID(CategoryTable.id),
         NAME(CategoryTable.name),
         ORDER(CategoryTable.order),
         ;
 
-        override fun greater(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun greater(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 ID -> CategoryTable.id greater cursor.value.toInt()
                 NAME -> greaterNotUnique(CategoryTable.name, CategoryTable.id, cursor, String::toString)
                 ORDER -> greaterNotUnique(CategoryTable.order, CategoryTable.id, cursor, String::toInt)
             }
-        }
 
-        override fun less(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun less(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 ID -> CategoryTable.id less cursor.value.toInt()
                 NAME -> lessNotUnique(CategoryTable.name, CategoryTable.id, cursor, String::toString)
                 ORDER -> lessNotUnique(CategoryTable.order, CategoryTable.id, cursor, String::toInt)
             }
-        }
 
         override fun asCursor(type: CategoryType): Cursor {
             val value =
@@ -113,14 +111,13 @@ class CategoryQuery {
         override val or: List<CategoryFilter>? = null,
         override val not: CategoryFilter? = null,
     ) : Filter<CategoryFilter> {
-        override fun getOpList(): List<Op<Boolean>> {
-            return listOfNotNull(
+        override fun getOpList(): List<Op<Boolean>> =
+            listOfNotNull(
                 andFilterWithCompareEntity(CategoryTable.id, id),
                 andFilterWithCompare(CategoryTable.order, order),
                 andFilterWithCompareString(CategoryTable.name, name),
                 andFilterWithCompare(CategoryTable.isDefault, default),
             )
-        }
     }
 
     fun categories(

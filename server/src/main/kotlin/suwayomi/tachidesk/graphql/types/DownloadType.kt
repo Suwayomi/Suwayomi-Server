@@ -100,8 +100,8 @@ data class DownloadNodeList(
     ) : Edge()
 
     companion object {
-        fun List<DownloadType>.toNodeList(): DownloadNodeList {
-            return DownloadNodeList(
+        fun List<DownloadType>.toNodeList(): DownloadNodeList =
+            DownloadNodeList(
                 nodes = this,
                 edges = getEdges(),
                 pageInfo =
@@ -113,7 +113,6 @@ data class DownloadNodeList(
                     ),
                 totalCount = size,
             )
-        }
 
         private fun List<DownloadType>.getEdges(): List<DownloadEdge> {
             if (isEmpty()) return emptyList()

@@ -23,12 +23,16 @@ import java.io.File
 import java.io.InputStream
 
 sealed class FileType {
-    data class RegularFile(val file: File) : FileType()
+    data class RegularFile(
+        val file: File,
+    ) : FileType()
 
-    data class ZipFile(val entry: ZipArchiveEntry) : FileType()
+    data class ZipFile(
+        val entry: ZipArchiveEntry,
+    ) : FileType()
 
-    fun getName(): String {
-        return when (this) {
+    fun getName(): String =
+        when (this) {
             is FileType.RegularFile -> {
                 this.file.name
             }
@@ -36,10 +40,9 @@ sealed class FileType {
                 this.entry.name
             }
         }
-    }
 
-    fun getExtension(): String {
-        return when (this) {
+    fun getExtension(): String =
+        when (this) {
             is FileType.RegularFile -> {
                 this.file.extension
             }
@@ -47,13 +50,15 @@ sealed class FileType {
                 this.entry.name.substringAfterLast(".")
             }
         }
-    }
 }
 
 /*
 * Base class for downloaded chapter files provider, example: Folder, Archive
 */
-abstract class ChaptersFilesProvider<Type : FileType>(val mangaId: Int, val chapterId: Int) : DownloadedFilesProvider {
+abstract class ChaptersFilesProvider<Type : FileType>(
+    val mangaId: Int,
+    val chapterId: Int,
+) : DownloadedFilesProvider {
     protected abstract fun getImageFiles(): List<Type>
 
     protected abstract fun getImageInputStream(image: Type): InputStream
@@ -71,9 +76,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(val mangaId: Int, val chap
         return Pair(getImageInputStream(image).buffered(), "image/$imageFileType")
     }
 
-    override fun getImage(): RetrieveFile1Args<Int> {
-        return RetrieveFile1Args(::getImageImpl)
-    }
+    override fun getImage(): RetrieveFile1Args<Int> = RetrieveFile1Args(::getImageImpl)
 
     /**
      * Extract the existing download to the base download folder (see [getChapterDownloadPath])
@@ -110,21 +113,22 @@ abstract class ChaptersFilesProvider<Type : FileType>(val mangaId: Int, val chap
             }
 
             try {
-                Page.getPageImage(
-                    mangaId = download.mangaId,
-                    chapterIndex = download.chapterIndex,
-                    index = pageNum,
-                ) { flow ->
-                    pageProgressJob =
-                        flow
-                            .sample(100)
-                            .distinctUntilChanged()
-                            .onEach {
-                                download.progress = (pageNum.toFloat() + (it.toFloat() * 0.01f)) / pageCount
-                                step(null, false) // don't throw on canceled download here since we can't do anything
-                            }
-                            .launchIn(scope)
-                }.first.close()
+                Page
+                    .getPageImage(
+                        mangaId = download.mangaId,
+                        chapterIndex = download.chapterIndex,
+                        index = pageNum,
+                    ) { flow ->
+                        pageProgressJob =
+                            flow
+                                .sample(100)
+                                .distinctUntilChanged()
+                                .onEach {
+                                    download.progress = (pageNum.toFloat() + (it.toFloat() * 0.01f)) / pageCount
+                                    step(null, false) // don't throw on canceled download here since we can't do anything
+                                }.launchIn(scope)
+                    }.first
+                    .close()
             } finally {
                 // always cancel the page progress job even if it throws an exception to avoid memory leaks
                 pageProgressJob?.cancel()
@@ -151,9 +155,8 @@ abstract class ChaptersFilesProvider<Type : FileType>(val mangaId: Int, val chap
         return true
     }
 
-    override fun download(): FileDownload3Args<DownloadChapter, CoroutineScope, suspend (DownloadChapter?, Boolean) -> Unit> {
-        return FileDownload3Args(::downloadImpl)
-    }
+    override fun download(): FileDownload3Args<DownloadChapter, CoroutineScope, suspend (DownloadChapter?, Boolean) -> Unit> =
+        FileDownload3Args(::downloadImpl)
 
     abstract override fun delete(): Boolean
 }

@@ -27,8 +27,8 @@ interface Order<By : OrderBy<*>> {
     val byType: SortOrder?
 }
 
-fun SortOrder?.maybeSwap(value: Any?): SortOrder {
-    return if (value != null) {
+fun SortOrder?.maybeSwap(value: Any?): SortOrder =
+    if (value != null) {
         when (this) {
             SortOrder.ASC -> SortOrder.DESC
             SortOrder.DESC -> SortOrder.ASC
@@ -41,7 +41,6 @@ fun SortOrder?.maybeSwap(value: Any?): SortOrder {
     } else {
         this ?: SortOrder.ASC
     }
-}
 
 fun <T> Query.applyBeforeAfter(
     before: Cursor?,
@@ -72,9 +71,7 @@ fun <T : Comparable<T>> greaterNotUnique(
     idColumn: Column<EntityID<Int>>,
     cursor: Cursor,
     toValue: (String) -> T,
-): Op<Boolean> {
-    return greaterNotUniqueImpl(column, idColumn, cursor, String::toInt, toValue)
-}
+): Op<Boolean> = greaterNotUniqueImpl(column, idColumn, cursor, String::toInt, toValue)
 
 @JvmName("greaterNotUniqueLongKey")
 fun <T : Comparable<T>> greaterNotUnique(
@@ -82,18 +79,14 @@ fun <T : Comparable<T>> greaterNotUnique(
     idColumn: Column<EntityID<Long>>,
     cursor: Cursor,
     toValue: (String) -> T,
-): Op<Boolean> {
-    return greaterNotUniqueImpl(column, idColumn, cursor, String::toLong, toValue)
-}
+): Op<Boolean> = greaterNotUniqueImpl(column, idColumn, cursor, String::toLong, toValue)
 
 @JvmName("greaterNotUniqueIntKeyIntValue")
 fun greaterNotUnique(
     column: Column<EntityID<Int>>,
     idColumn: Column<EntityID<Int>>,
     cursor: Cursor,
-): Op<Boolean> {
-    return greaterNotUniqueImpl(column, idColumn, cursor, String::toInt, String::toInt)
-}
+): Op<Boolean> = greaterNotUniqueImpl(column, idColumn, cursor, String::toInt, String::toInt)
 
 private fun <K : Comparable<K>, V : Comparable<V>> greaterNotUniqueImpl(
     column: Column<V>,
@@ -138,9 +131,7 @@ fun <T : Comparable<T>> lessNotUnique(
     idColumn: Column<EntityID<Int>>,
     cursor: Cursor,
     toValue: (String) -> T,
-): Op<Boolean> {
-    return lessNotUniqueImpl(column, idColumn, cursor, String::toInt, toValue)
-}
+): Op<Boolean> = lessNotUniqueImpl(column, idColumn, cursor, String::toInt, toValue)
 
 @JvmName("lessNotUniqueLongKey")
 fun <T : Comparable<T>> lessNotUnique(
@@ -148,18 +139,14 @@ fun <T : Comparable<T>> lessNotUnique(
     idColumn: Column<EntityID<Long>>,
     cursor: Cursor,
     toValue: (String) -> T,
-): Op<Boolean> {
-    return lessNotUniqueImpl(column, idColumn, cursor, String::toLong, toValue)
-}
+): Op<Boolean> = lessNotUniqueImpl(column, idColumn, cursor, String::toLong, toValue)
 
 @JvmName("lessNotUniqueIntKeyIntValue")
 fun lessNotUnique(
     column: Column<EntityID<Int>>,
     idColumn: Column<EntityID<Int>>,
     cursor: Cursor,
-): Op<Boolean> {
-    return lessNotUniqueImpl(column, idColumn, cursor, String::toInt, String::toInt)
-}
+): Op<Boolean> = lessNotUniqueImpl(column, idColumn, cursor, String::toInt, String::toInt)
 
 private fun <K : Comparable<K>, V : Comparable<V>> lessNotUniqueImpl(
     column: Column<V>,

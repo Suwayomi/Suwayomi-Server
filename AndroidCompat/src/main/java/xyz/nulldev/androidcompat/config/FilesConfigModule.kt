@@ -8,7 +8,9 @@ import xyz.nulldev.ts.config.ConfigModule
  * Files configuration modules. Specifies where to store the Android files.
  */
 
-class FilesConfigModule(getConfig: () -> Config) : ConfigModule(getConfig) {
+class FilesConfigModule(
+    getConfig: () -> Config,
+) : ConfigModule(getConfig) {
     val dataDir: String by getConfig()
     val filesDir: String by getConfig()
     val noBackupFilesDir: String by getConfig()

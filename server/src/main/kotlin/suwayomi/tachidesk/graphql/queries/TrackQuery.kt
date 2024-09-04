@@ -46,9 +46,7 @@ class TrackQuery {
     fun tracker(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Int,
-    ): CompletableFuture<TrackerType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, TrackerType>("TrackerDataLoader", id)
-    }
+    ): CompletableFuture<TrackerType> = dataFetchingEnvironment.getValueFromDataLoader<Int, TrackerType>("TrackerDataLoader", id)
 
     enum class TrackerOrderBy {
         ID,
@@ -59,8 +57,8 @@ class TrackQuery {
         fun greater(
             tracker: TrackerType,
             cursor: Cursor,
-        ): Boolean {
-            return when (this) {
+        ): Boolean =
+            when (this) {
                 ID -> tracker.id > cursor.value.toInt()
                 NAME -> tracker.name > cursor.value
                 IS_LOGGED_IN -> {
@@ -68,13 +66,12 @@ class TrackQuery {
                     !value || tracker.isLoggedIn
                 }
             }
-        }
 
         fun less(
             tracker: TrackerType,
             cursor: Cursor,
-        ): Boolean {
-            return when (this) {
+        ): Boolean =
+            when (this) {
                 ID -> tracker.id < cursor.value.toInt()
                 NAME -> tracker.name < cursor.value
                 IS_LOGGED_IN -> {
@@ -82,7 +79,6 @@ class TrackQuery {
                     value || !tracker.isLoggedIn
                 }
             }
-        }
 
         fun asCursor(type: TrackerType): Cursor {
             val value =
@@ -244,11 +240,12 @@ class TrackQuery {
     fun trackRecord(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Int,
-    ): CompletableFuture<TrackRecordType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, TrackRecordType>("TrackRecordDataLoader", id)
-    }
+    ): CompletableFuture<TrackRecordType> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, TrackRecordType>("TrackRecordDataLoader", id)
 
-    enum class TrackRecordOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<TrackRecordType> {
+    enum class TrackRecordOrderBy(
+        override val column: Column<out Comparable<*>>,
+    ) : OrderBy<TrackRecordType> {
         ID(TrackRecordTable.id),
         MANGA_ID(TrackRecordTable.mangaId),
         TRACKER_ID(TrackRecordTable.trackerId),
@@ -261,8 +258,8 @@ class TrackQuery {
         FINISH_DATE(TrackRecordTable.finishDate),
         ;
 
-        override fun greater(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun greater(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 ID -> TrackRecordTable.id greater cursor.value.toInt()
                 MANGA_ID -> greaterNotUnique(TrackRecordTable.mangaId, TrackRecordTable.id, cursor)
                 TRACKER_ID -> greaterNotUnique(TrackRecordTable.trackerId, TrackRecordTable.id, cursor, String::toInt)
@@ -274,10 +271,9 @@ class TrackQuery {
                 START_DATE -> greaterNotUnique(TrackRecordTable.startDate, TrackRecordTable.id, cursor, String::toLong)
                 FINISH_DATE -> greaterNotUnique(TrackRecordTable.finishDate, TrackRecordTable.id, cursor, String::toLong)
             }
-        }
 
-        override fun less(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun less(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 ID -> TrackRecordTable.id less cursor.value.toInt()
                 MANGA_ID -> lessNotUnique(TrackRecordTable.mangaId, TrackRecordTable.id, cursor)
                 TRACKER_ID -> lessNotUnique(TrackRecordTable.trackerId, TrackRecordTable.id, cursor, String::toInt)
@@ -289,7 +285,6 @@ class TrackQuery {
                 START_DATE -> lessNotUnique(TrackRecordTable.startDate, TrackRecordTable.id, cursor, String::toLong)
                 FINISH_DATE -> lessNotUnique(TrackRecordTable.finishDate, TrackRecordTable.id, cursor, String::toLong)
             }
-        }
 
         override fun asCursor(type: TrackRecordType): Cursor {
             val value =
@@ -367,8 +362,8 @@ class TrackQuery {
         override val or: List<TrackRecordFilter>? = null,
         override val not: TrackRecordFilter? = null,
     ) : Filter<TrackRecordFilter> {
-        override fun getOpList(): List<Op<Boolean>> {
-            return listOfNotNull(
+        override fun getOpList(): List<Op<Boolean>> =
+            listOfNotNull(
                 andFilterWithCompareEntity(TrackRecordTable.id, id),
                 andFilterWithCompareEntity(TrackRecordTable.mangaId, mangaId),
                 andFilterWithCompare(TrackRecordTable.trackerId, trackerId),
@@ -383,7 +378,6 @@ class TrackQuery {
                 andFilterWithCompare(TrackRecordTable.startDate, startDate),
                 andFilterWithCompare(TrackRecordTable.finishDate, finishDate),
             )
-        }
     }
 
     fun trackRecords(
@@ -484,10 +478,12 @@ class TrackQuery {
         val query: String,
     )
 
-    data class SearchTrackerPayload(val trackSearches: List<TrackSearchType>)
+    data class SearchTrackerPayload(
+        val trackSearches: List<TrackSearchType>,
+    )
 
-    fun searchTracker(input: SearchTrackerInput): CompletableFuture<SearchTrackerPayload> {
-        return future {
+    fun searchTracker(input: SearchTrackerInput): CompletableFuture<SearchTrackerPayload> =
+        future {
             val tracker =
                 requireNotNull(TrackerManager.getTracker(input.trackerId)) {
                     "Tracker not found"
@@ -501,5 +497,4 @@ class TrackQuery {
                 },
             )
         }
-    }
 }

@@ -76,7 +76,8 @@ class MangaMutation {
                     // try to initialize uninitialized in library manga to ensure that the expected data is available (chapter list, metadata, ...)
                     val mangas =
                         transaction {
-                            MangaTable.select { (MangaTable.id inList ids) and (MangaTable.initialized eq false) }
+                            MangaTable
+                                .select { (MangaTable.id inList ids) and (MangaTable.initialized eq false) }
                                 .map { MangaTable.toDataClass(it) }
                         }
 
@@ -198,7 +199,8 @@ class MangaMutation {
             val (meta, manga) =
                 transaction {
                     val meta =
-                        MangaMetaTable.select { (MangaMetaTable.ref eq mangaId) and (MangaMetaTable.key eq key) }
+                        MangaMetaTable
+                            .select { (MangaMetaTable.ref eq mangaId) and (MangaMetaTable.key eq key) }
                             .firstOrNull()
 
                     MangaMetaTable.deleteWhere { (MangaMetaTable.ref eq mangaId) and (MangaMetaTable.key eq key) }

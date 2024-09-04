@@ -75,11 +75,14 @@ fun createComicInfoFile(
     val chapterUrl = chapter[ChapterTable.realUrl].orEmpty()
     val categories =
         transaction {
-            CategoryMangaTable.innerJoin(CategoryTable).select {
-                CategoryMangaTable.manga eq manga[MangaTable.id]
-            }.orderBy(CategoryTable.order to SortOrder.ASC).map {
-                it[CategoryTable.name]
-            }
+            CategoryMangaTable
+                .innerJoin(CategoryTable)
+                .select {
+                    CategoryMangaTable.manga eq manga[MangaTable.id]
+                }.orderBy(CategoryTable.order to SortOrder.ASC)
+                .map {
+                    it[CategoryTable.name]
+                }
         }.takeUnless { it.isEmpty() }
     val comicInfo = getComicInfo(manga, chapter, chapterUrl, categories)
     // Remove the old file

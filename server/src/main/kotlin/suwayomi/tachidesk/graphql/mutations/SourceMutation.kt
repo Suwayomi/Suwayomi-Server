@@ -68,14 +68,17 @@ class SourceMutation {
             val (meta, source) =
                 transaction {
                     val meta =
-                        SourceMetaTable.select { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
+                        SourceMetaTable
+                            .select { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
                             .firstOrNull()
 
                     SourceMetaTable.deleteWhere { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
 
                     val source =
                         transaction {
-                            SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
+                            SourceTable
+                                .select { SourceTable.id eq sourceId }
+                                .firstOrNull()
                                 ?.let { SourceType(it) }
                         }
 
@@ -139,7 +142,8 @@ class SourceMutation {
 
                 val mangas =
                     transaction {
-                        MangaTable.select { MangaTable.id inList mangaIds }
+                        MangaTable
+                            .select { MangaTable.id inList mangaIds }
                             .map { MangaType(it) }
                     }.sortedBy {
                         mangaIds.indexOf(it.id)

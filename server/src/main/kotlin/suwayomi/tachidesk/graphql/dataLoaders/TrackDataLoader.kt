@@ -89,7 +89,8 @@ class TrackRecordsForMangaIdDataLoader : KotlinDataLoader<Int, TrackRecordNodeLi
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val trackRecordsByMangaId =
-                        TrackRecordTable.select { TrackRecordTable.mangaId inList ids }
+                        TrackRecordTable
+                            .select { TrackRecordTable.mangaId inList ids }
                             .map { TrackRecordType(it) }
                             .groupBy { it.mangaId }
                     ids.map { (trackRecordsByMangaId[it] ?: emptyList()).toNodeList() }
@@ -107,7 +108,8 @@ class DisplayScoreForTrackRecordDataLoader : KotlinDataLoader<Int, String> {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val trackRecords =
-                        TrackRecordTable.select { TrackRecordTable.id inList ids }
+                        TrackRecordTable
+                            .select { TrackRecordTable.id inList ids }
                             .toList()
                             .map { it.toTrack() }
                             .associateBy { it.id!! }
@@ -128,7 +130,8 @@ class TrackRecordsForTrackerIdDataLoader : KotlinDataLoader<Int, TrackRecordNode
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val trackRecordsBySyncId =
-                        TrackRecordTable.select { TrackRecordTable.trackerId inList ids }
+                        TrackRecordTable
+                            .select { TrackRecordTable.trackerId inList ids }
                             .map { TrackRecordType(it) }
                             .groupBy { it.mangaId }
                     ids.map { (trackRecordsBySyncId[it] ?: emptyList()).toNodeList() }
@@ -146,7 +149,8 @@ class TrackRecordDataLoader : KotlinDataLoader<Int, TrackRecordType> {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val trackRecordsId =
-                        TrackRecordTable.select { TrackRecordTable.id inList ids }
+                        TrackRecordTable
+                            .select { TrackRecordTable.id inList ids }
                             .map { TrackRecordType(it) }
                             .associateBy { it.id }
                     ids.map { trackRecordsId[it] }

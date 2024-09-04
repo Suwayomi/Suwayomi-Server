@@ -50,9 +50,7 @@ fun Call.asObservable(): Observable<Response> {
                     // call.cancel()
                 }
 
-                override fun isUnsubscribed(): Boolean {
-                    return call.isCanceled()
-                }
+                override fun isUnsubscribed(): Boolean = call.isCanceled()
             }
 
         subscriber.add(requestArbiter)
@@ -60,15 +58,14 @@ fun Call.asObservable(): Observable<Response> {
     }
 }
 
-fun Call.asObservableSuccess(): Observable<Response> {
-    return asObservable()
+fun Call.asObservableSuccess(): Observable<Response> =
+    asObservable()
         .doOnNext { response ->
             if (!response.isSuccessful) {
                 response.close()
                 throw HttpException(response.code)
             }
         }
-}
 
 // Based on https://github.com/gildor/kotlin-coroutines-okhttp
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -135,29 +132,28 @@ fun OkHttpClient.newCachelessCallWithProgress(
             .cache(null)
             .addNetworkInterceptor { chain ->
                 val originalResponse = chain.proceed(chain.request())
-                originalResponse.newBuilder()
+                originalResponse
+                    .newBuilder()
                     .body(ProgressResponseBody(originalResponse.body, listener))
                     .build()
-            }
-            .build()
+            }.build()
 
     return progressClient.newCall(request)
 }
 
 context(Json)
-inline fun <reified T> Response.parseAs(): T {
-    return decodeFromJsonResponse(serializer(), this)
-}
+inline fun <reified T> Response.parseAs(): T = decodeFromJsonResponse(serializer(), this)
 
 context(Json)
 @OptIn(ExperimentalSerializationApi::class)
 fun <T> decodeFromJsonResponse(
     deserializer: DeserializationStrategy<T>,
     response: Response,
-): T {
-    return response.body.source().use {
+): T =
+    response.body.source().use {
         decodeFromBufferedSource(deserializer, it)
     }
-}
 
-class HttpException(val code: Int) : IllegalStateException("HTTP error $code")
+class HttpException(
+    val code: Int,
+) : IllegalStateException("HTTP error $code")

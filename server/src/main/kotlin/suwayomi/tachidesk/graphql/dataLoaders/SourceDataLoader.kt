@@ -30,7 +30,8 @@ class SourceDataLoader : KotlinDataLoader<Long, SourceType?> {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val source =
-                        SourceTable.select { SourceTable.id inList ids }
+                        SourceTable
+                            .select { SourceTable.id inList ids }
                             .mapNotNull { SourceType(it) }
                             .associateBy { it.id }
                     ids.map { source[it] }
@@ -49,7 +50,8 @@ class SourcesForExtensionDataLoader : KotlinDataLoader<String, SourceNodeList> {
                     addLogger(Slf4jSqlDebugLogger)
 
                     val sourcesByExtensionPkg =
-                        SourceTable.innerJoin(ExtensionTable)
+                        SourceTable
+                            .innerJoin(ExtensionTable)
                             .select { ExtensionTable.pkgName inList ids }
                             .map { Pair(it[ExtensionTable.pkgName], SourceType(it)) }
                             .groupBy { it.first }

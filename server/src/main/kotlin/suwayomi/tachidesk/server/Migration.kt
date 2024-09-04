@@ -29,13 +29,15 @@ private fun migratePreferences(
                 subNode[it, null]?.ifBlank { null }
             }
 
-        preferences.edit().apply {
-            items.forEach { (key, value) ->
-                if (value != null) {
-                    putString(key, value)
+        preferences
+            .edit()
+            .apply {
+                items.forEach { (key, value) ->
+                    if (value != null) {
+                        putString(key, value)
+                    }
                 }
-            }
-        }.apply()
+            }.apply()
 
         migratePreferences(key, subNode) // Recursively migrate sub-level nodes
     }
@@ -45,7 +47,8 @@ const val MIGRATION_VERSION = 1
 
 fun runMigrations(applicationDirs: ApplicationDirs) {
     val migrationPreferences =
-        Injekt.get<Application>()
+        Injekt
+            .get<Application>()
             .getSharedPreferences(
                 "migrations",
                 Context.MODE_PRIVATE,

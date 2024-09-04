@@ -39,8 +39,8 @@ data class BackupManga(
     @ProtoNumber(104) var history: List<BackupHistory> = emptyList(),
     @ProtoNumber(105) var updateStrategy: UpdateStrategy = UpdateStrategy.ALWAYS_UPDATE,
 ) {
-    fun getMangaImpl(): MangaImpl {
-        return MangaImpl().apply {
+    fun getMangaImpl(): MangaImpl =
+        MangaImpl().apply {
             url = this@BackupManga.url
             title = this@BackupManga.title
             artist = this@BackupManga.artist
@@ -56,23 +56,20 @@ data class BackupManga(
             chapter_flags = this@BackupManga.chapterFlags
             update_strategy = this@BackupManga.updateStrategy
         }
-    }
 
-    fun getChaptersImpl(): List<ChapterImpl> {
-        return chapters.map {
+    fun getChaptersImpl(): List<ChapterImpl> =
+        chapters.map {
             it.toChapterImpl()
         }
-    }
 
-    fun getTrackingImpl(): List<TrackImpl> {
-        return tracking.map {
+    fun getTrackingImpl(): List<TrackImpl> =
+        tracking.map {
             it.getTrackingImpl()
         }
-    }
 
     companion object {
-        fun copyFrom(manga: Manga): BackupManga {
-            return BackupManga(
+        fun copyFrom(manga: Manga): BackupManga =
+            BackupManga(
                 url = manga.url,
                 title = manga.title,
                 artist = manga.artist,
@@ -88,6 +85,5 @@ data class BackupManga(
                 viewer_flags = manga.viewer_flags,
                 chapterFlags = manga.chapter_flags,
             )
-        }
     }
 }

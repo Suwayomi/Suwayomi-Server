@@ -21,9 +21,7 @@ import suwayomi.tachidesk.manga.model.table.toDataClass
 import java.time.Instant
 
 object MangaList {
-    fun proxyThumbnailUrl(mangaId: Int): String {
-        return "/api/v1/manga/$mangaId/thumbnail"
-    }
+    fun proxyThumbnailUrl(mangaId: Int): String = "/api/v1/manga/$mangaId/thumbnail"
 
     suspend fun getMangaList(
         sourceId: Long,
@@ -47,41 +45,44 @@ object MangaList {
         return mangasPage.processEntries(sourceId)
     }
 
-    fun MangasPage.insertOrUpdate(sourceId: Long): List<Int> {
-        return transaction {
+    fun MangasPage.insertOrUpdate(sourceId: Long): List<Int> =
+        transaction {
             val existingMangaUrlsToId =
-                MangaTable.select {
-                    (MangaTable.sourceReference eq sourceId) and (MangaTable.url inList mangas.map { it.url })
-                }.associateBy { it[MangaTable.url] }
+                MangaTable
+                    .select {
+                        (MangaTable.sourceReference eq sourceId) and (MangaTable.url inList mangas.map { it.url })
+                    }.associateBy { it[MangaTable.url] }
             val existingMangaUrls = existingMangaUrlsToId.map { it.key }
 
             val mangasToInsert = mangas.filter { !existingMangaUrls.contains(it.url) }
 
             val insertedMangaUrlsToId =
-                MangaTable.batchInsert(mangasToInsert) {
-                    this[MangaTable.url] = it.url
-                    this[MangaTable.title] = it.title
+                MangaTable
+                    .batchInsert(mangasToInsert) {
+                        this[MangaTable.url] = it.url
+                        this[MangaTable.title] = it.title
 
-                    this[MangaTable.artist] = it.artist
-                    this[MangaTable.author] = it.author
-                    this[MangaTable.description] = it.description
-                    this[MangaTable.genre] = it.genre
-                    this[MangaTable.status] = it.status
-                    this[MangaTable.thumbnail_url] = it.thumbnail_url
-                    this[MangaTable.updateStrategy] = it.update_strategy.name
+                        this[MangaTable.artist] = it.artist
+                        this[MangaTable.author] = it.author
+                        this[MangaTable.description] = it.description
+                        this[MangaTable.genre] = it.genre
+                        this[MangaTable.status] = it.status
+                        this[MangaTable.thumbnail_url] = it.thumbnail_url
+                        this[MangaTable.updateStrategy] = it.update_strategy.name
 
-                    this[MangaTable.sourceReference] = sourceId
-                }.associate { Pair(it[MangaTable.url], it[MangaTable.id].value) }
+                        this[MangaTable.sourceReference] = sourceId
+                    }.associate { Pair(it[MangaTable.url], it[MangaTable.id].value) }
 
             // delete thumbnail in case cached data still exists
             insertedMangaUrlsToId.forEach { (_, id) -> Manga.clearThumbnail(id) }
 
             val mangaToUpdate =
-                mangas.mapNotNull { sManga ->
-                    existingMangaUrlsToId[sManga.url]?.let { sManga to it }
-                }.filterNot { (_, resultRow) ->
-                    resultRow[MangaTable.inLibrary]
-                }
+                mangas
+                    .mapNotNull { sManga ->
+                        existingMangaUrlsToId[sManga.url]?.let { sManga to it }
+                    }.filterNot { (_, resultRow) ->
+                        resultRow[MangaTable.inLibrary]
+                    }
 
             if (mangaToUpdate.isNotEmpty()) {
                 BatchUpdateStatement(MangaTable).apply {
@@ -116,7 +117,6 @@ object MangaList {
                     ?: throw Exception("MangaList::insertOrGet($sourceId): Something went wrong inserting browsed source mangas")
             }
         }
-    }
 
     fun MangasPage.processEntries(sourceId: Long): PagedMangaListDataClass {
         val mangasPage = this

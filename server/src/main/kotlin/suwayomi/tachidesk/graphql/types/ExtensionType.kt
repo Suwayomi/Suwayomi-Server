@@ -48,9 +48,8 @@ class ExtensionType(
         isObsolete = row[ExtensionTable.isObsolete],
     )
 
-    fun source(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<SourceNodeList> {
-        return dataFetchingEnvironment.getValueFromDataLoader<String, SourceNodeList>("SourcesForExtensionDataLoader", pkgName)
-    }
+    fun source(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<SourceNodeList> =
+        dataFetchingEnvironment.getValueFromDataLoader<String, SourceNodeList>("SourcesForExtensionDataLoader", pkgName)
 }
 
 data class ExtensionNodeList(
@@ -65,8 +64,8 @@ data class ExtensionNodeList(
     ) : Edge()
 
     companion object {
-        fun List<ExtensionType>.toNodeList(): ExtensionNodeList {
-            return ExtensionNodeList(
+        fun List<ExtensionType>.toNodeList(): ExtensionNodeList =
+            ExtensionNodeList(
                 nodes = this,
                 edges = getEdges(),
                 pageInfo =
@@ -78,7 +77,6 @@ data class ExtensionNodeList(
                     ),
                 totalCount = size,
             )
-        }
 
         private fun List<ExtensionType>.getEdges(): List<ExtensionEdge> {
             if (isEmpty()) return emptyList()

@@ -10,7 +10,9 @@ import suwayomi.tachidesk.manga.impl.track.tracker.TokenRefreshFailed
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 
-class MyAnimeListInterceptor(private val myanimelist: MyAnimeList) : Interceptor {
+class MyAnimeListInterceptor(
+    private val myanimelist: MyAnimeList,
+) : Interceptor {
     private val json: Json by injectLazy()
 
     private var oauth: OAuth? = myanimelist.loadOAuth()
@@ -31,7 +33,8 @@ class MyAnimeListInterceptor(private val myanimelist: MyAnimeList) : Interceptor
 
         // Add the authorization header to the original request
         val authRequest =
-            originalRequest.newBuilder()
+            originalRequest
+                .newBuilder()
                 .addHeader("Authorization", "Bearer ${oauth!!.access_token}")
                 .header("User-Agent", "Suwayomi v${AppInfo.getVersionName()}")
                 .build()
@@ -72,8 +75,7 @@ class MyAnimeListInterceptor(private val myanimelist: MyAnimeList) : Interceptor
                     response.close()
                     null
                 }
-            }
-                .getOrNull()
+            }.getOrNull()
                 ?.also(::setAuth)
                 ?: throw TokenRefreshFailed()
         }

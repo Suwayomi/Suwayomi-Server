@@ -51,17 +51,20 @@ object Page {
         val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
         val chapterEntry =
             transaction {
-                ChapterTable.select {
-                    (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId)
-                }.first()
+                ChapterTable
+                    .select {
+                        (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId)
+                    }.first()
             }
         val chapterId = chapterEntry[ChapterTable.id].value
 
         val pageEntry =
             transaction {
-                PageTable.select { (PageTable.chapter eq chapterId) }
+                PageTable
+                    .select { (PageTable.chapter eq chapterId) }
                     .orderBy(PageTable.index to SortOrder.ASC)
-                    .limit(1, index.toLong()).first()
+                    .limit(1, index.toLong())
+                    .first()
             }
         val tachiyomiPage =
             Page(
@@ -114,7 +117,5 @@ object Page {
     }
 
     /** converts 0 to "001" */
-    fun getPageName(index: Int): String {
-        return String.format("%03d", index + 1)
-    }
+    fun getPageName(index: Int): String = String.format("%03d", index + 1)
 }

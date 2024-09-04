@@ -38,9 +38,10 @@ object CategoryManga {
         if (categoryId == DEFAULT_CATEGORY_ID) return
 
         fun notAlreadyInCategory() =
-            CategoryMangaTable.select {
-                (CategoryMangaTable.category eq categoryId) and (CategoryMangaTable.manga eq mangaId)
-            }.isEmpty()
+            CategoryMangaTable
+                .select {
+                    (CategoryMangaTable.category eq categoryId) and (CategoryMangaTable.manga eq mangaId)
+                }.isEmpty()
 
         transaction {
             if (notAlreadyInCategory()) {
@@ -69,15 +70,17 @@ object CategoryManga {
         // Select the required columns from the MangaTable and add the aggregate functions to compute unread, download, and chapter counts
         val unreadCount =
             wrapAsExpression<Long>(
-                ChapterTable.slice(
-                    ChapterTable.id.count(),
-                ).select((ChapterTable.isRead eq false) and (ChapterTable.manga eq MangaTable.id)),
+                ChapterTable
+                    .slice(
+                        ChapterTable.id.count(),
+                    ).select((ChapterTable.isRead eq false) and (ChapterTable.manga eq MangaTable.id)),
             )
         val downloadedCount =
             wrapAsExpression<Long>(
-                ChapterTable.slice(
-                    ChapterTable.id.count(),
-                ).select((ChapterTable.isDownloaded eq true) and (ChapterTable.manga eq MangaTable.id)),
+                ChapterTable
+                    .slice(
+                        ChapterTable.id.count(),
+                    ).select((ChapterTable.isDownloaded eq true) and (ChapterTable.manga eq MangaTable.id)),
             )
 
         val chapterCount = ChapterTable.id.count().alias("chapter_count")
@@ -119,20 +122,23 @@ object CategoryManga {
     /**
      * list of categories that a manga belongs to
      */
-    fun getMangaCategories(mangaId: Int): List<CategoryDataClass> {
-        return transaction {
-            CategoryMangaTable.innerJoin(CategoryTable).select {
-                CategoryMangaTable.manga eq mangaId
-            }.orderBy(CategoryTable.order to SortOrder.ASC).map {
-                CategoryTable.toDataClass(it)
-            }
+    fun getMangaCategories(mangaId: Int): List<CategoryDataClass> =
+        transaction {
+            CategoryMangaTable
+                .innerJoin(CategoryTable)
+                .select {
+                    CategoryMangaTable.manga eq mangaId
+                }.orderBy(CategoryTable.order to SortOrder.ASC)
+                .map {
+                    CategoryTable.toDataClass(it)
+                }
         }
-    }
 
-    fun getMangasCategories(mangaIDs: List<Int>): Map<Int, List<CategoryDataClass>> {
-        return buildMap {
+    fun getMangasCategories(mangaIDs: List<Int>): Map<Int, List<CategoryDataClass>> =
+        buildMap {
             transaction {
-                CategoryMangaTable.innerJoin(CategoryTable)
+                CategoryMangaTable
+                    .innerJoin(CategoryTable)
                     .select { CategoryMangaTable.manga inList mangaIDs }
                     .groupBy { it[CategoryMangaTable.manga] }
                     .forEach {
@@ -143,5 +149,4 @@ object CategoryManga {
                     }
             }
         }
-    }
 }

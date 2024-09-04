@@ -69,16 +69,17 @@ class Downloader(
     fun start() {
         if (!isActive) {
             job =
-                scope.launch {
-                    run()
-                }.also { job ->
-                    job.invokeOnCompletion {
-                        if (it !is CancellationException) {
-                            logger.debug { "completed" }
-                            onComplete()
+                scope
+                    .launch {
+                        run()
+                    }.also { job ->
+                        job.invokeOnCompletion {
+                            if (it !is CancellationException) {
+                                logger.debug { "completed" }
+                                onComplete()
+                            }
                         }
                     }
-                }
             logger.debug { "started" }
             notifier(false)
         }

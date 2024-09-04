@@ -12,7 +12,10 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 
-class Anilist(id: Int) : Tracker(id, "AniList"), DeletableTrackService {
+class Anilist(
+    id: Int,
+) : Tracker(id, "AniList"),
+    DeletableTrackService {
     companion object {
         const val READING = 1
         const val COMPLETED = 2
@@ -40,13 +43,9 @@ class Anilist(id: Int) : Tracker(id, "AniList"), DeletableTrackService {
 
     private val logger = KotlinLogging.logger {}
 
-    override fun getLogo(): String {
-        return "/static/tracker/anilist.png"
-    }
+    override fun getLogo(): String = "/static/tracker/anilist.png"
 
-    override fun getStatusList(): List<Int> {
-        return listOf(READING, COMPLETED, ON_HOLD, DROPPED, PLAN_TO_READ, REREADING)
-    }
+    override fun getStatusList(): List<Int> = listOf(READING, COMPLETED, ON_HOLD, DROPPED, PLAN_TO_READ, REREADING)
 
     @StringRes
     override fun getStatus(status: Int): String? =
@@ -66,8 +65,8 @@ class Anilist(id: Int) : Tracker(id, "AniList"), DeletableTrackService {
 
     override fun getCompletionStatus(): Int = COMPLETED
 
-    override fun getScoreList(): List<String> {
-        return when (trackPreferences.getScoreType(this)) {
+    override fun getScoreList(): List<String> =
+        when (trackPreferences.getScoreType(this)) {
             // 10 point
             POINT_10 -> IntRange(0, 10).map(Int::toString)
             // 100 point
@@ -80,10 +79,9 @@ class Anilist(id: Int) : Tracker(id, "AniList"), DeletableTrackService {
             POINT_10_DECIMAL -> IntRange(0, 100).map { (it / 10f).toString() }
             else -> throw Exception("Unknown score type")
         }
-    }
 
-    override fun indexToScore(index: Int): Float {
-        return when (trackPreferences.getScoreType(this)) {
+    override fun indexToScore(index: Int): Float =
+        when (trackPreferences.getScoreType(this)) {
             // 10 point
             POINT_10 -> index * 10f
             // 100 point
@@ -104,7 +102,6 @@ class Anilist(id: Int) : Tracker(id, "AniList"), DeletableTrackService {
             POINT_10_DECIMAL -> index.toFloat()
             else -> throw Exception("Unknown score type")
         }
-    }
 
     override fun displayScore(track: Track): String {
         val score = track.score
@@ -125,9 +122,7 @@ class Anilist(id: Int) : Tracker(id, "AniList"), DeletableTrackService {
         }
     }
 
-    private suspend fun add(track: Track): Track {
-        return api.addLibManga(track)
-    }
+    private suspend fun add(track: Track): Track = api.addLibManga(track)
 
     override suspend fun update(
         track: Track,
@@ -190,9 +185,7 @@ class Anilist(id: Int) : Tracker(id, "AniList"), DeletableTrackService {
         }
     }
 
-    override suspend fun search(query: String): List<TrackSearch> {
-        return api.search(query)
-    }
+    override suspend fun search(query: String): List<TrackSearch> = api.search(query)
 
     override suspend fun refresh(track: Track): Track {
         val remoteTrack = api.getLibManga(track, getUsername().toInt())
@@ -202,9 +195,7 @@ class Anilist(id: Int) : Tracker(id, "AniList"), DeletableTrackService {
         return track
     }
 
-    override fun authUrl(): String {
-        return AnilistApi.authUrl().toString()
-    }
+    override fun authUrl(): String = AnilistApi.authUrl().toString()
 
     override suspend fun authCallback(url: String) {
         val token = url.extractToken("access_token") ?: throw IOException("cannot find token")
@@ -241,12 +232,11 @@ class Anilist(id: Int) : Tracker(id, "AniList"), DeletableTrackService {
         trackPreferences.setTrackToken(this, json.encodeToString(oAuth))
     }
 
-    fun loadOAuth(): OAuth? {
-        return try {
+    fun loadOAuth(): OAuth? =
+        try {
             json.decodeFromString<OAuth>(trackPreferences.getTrackToken(this)!!)
         } catch (e: Exception) {
             logger.error(e) { "loadOAuth err" }
             null
         }
-    }
 }

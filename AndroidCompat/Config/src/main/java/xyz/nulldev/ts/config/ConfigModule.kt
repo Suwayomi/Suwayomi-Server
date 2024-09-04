@@ -17,17 +17,25 @@ import kotlin.reflect.KProperty
  * Abstract config module.
  */
 @Suppress("UNUSED_PARAMETER")
-abstract class ConfigModule(getConfig: () -> Config)
+abstract class ConfigModule(
+    getConfig: () -> Config,
+)
 
 /**
  * Abstract jvm-commandline-argument-overridable config module.
  */
-abstract class SystemPropertyOverridableConfigModule(getConfig: () -> Config, moduleName: String) : ConfigModule(getConfig) {
+abstract class SystemPropertyOverridableConfigModule(
+    getConfig: () -> Config,
+    moduleName: String,
+) : ConfigModule(getConfig) {
     val overridableConfig = SystemPropertyOverrideDelegate(getConfig, moduleName)
 }
 
 /** Defines a config property that is overridable with jvm `-D` commandline arguments prefixed with [CONFIG_PREFIX] */
-class SystemPropertyOverrideDelegate(val getConfig: () -> Config, val moduleName: String) {
+class SystemPropertyOverrideDelegate(
+    val getConfig: () -> Config,
+    val moduleName: String,
+) {
     inline operator fun <R, reified T> getValue(
         thisRef: R,
         property: KProperty<*>,

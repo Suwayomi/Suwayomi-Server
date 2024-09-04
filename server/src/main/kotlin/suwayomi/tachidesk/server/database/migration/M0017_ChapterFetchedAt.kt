@@ -10,9 +10,10 @@ package suwayomi.tachidesk.server.database.migration
 import de.neonew.exposed.migrations.helpers.AddColumnMigration
 
 @Suppress("ClassName", "unused")
-class M0017_ChapterFetchedAt : AddColumnMigration(
-    "Chapter",
-    "fetched_at",
-    "BIGINT",
-    "0",
-)
+class M0017_ChapterFetchedAt :
+    AddColumnMigration(
+        "Chapter",
+        "fetched_at",
+        "BIGINT",
+        "0",
+    )

@@ -57,13 +57,15 @@ class PackageController {
         }
     }
 
-    fun listInstalled(): List<InstalledPackage> {
-        return androidFiles.packagesDir.listFiles().orEmpty().filter {
-            it.isDirectory
-        }.map {
-            InstalledPackage(it)
-        }
-    }
+    fun listInstalled(): List<InstalledPackage> =
+        androidFiles.packagesDir
+            .listFiles()
+            .orEmpty()
+            .filter {
+                it.isDirectory
+            }.map {
+                InstalledPackage(it)
+            }
 
     fun deletePackage(pack: InstalledPackage) {
         if (!pack.root.exists()) error("Package was never installed!")

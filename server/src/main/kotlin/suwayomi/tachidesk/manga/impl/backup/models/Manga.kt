@@ -41,13 +41,9 @@ interface Manga : SManga {
         setChapterFlags(order, CHAPTER_SORT_MASK)
     }
 
-    fun sortDescending(): Boolean {
-        return chapter_flags and CHAPTER_SORT_MASK == CHAPTER_SORT_DESC
-    }
+    fun sortDescending(): Boolean = chapter_flags and CHAPTER_SORT_MASK == CHAPTER_SORT_DESC
 
-    fun getGenres(): List<String>? {
-        return genre?.split(", ")?.map { it.trim() }
-    }
+    fun getGenres(): List<String>? = genre?.split(", ")?.map { it.trim() }
 
     private fun setChapterFlags(
         flag: Int,

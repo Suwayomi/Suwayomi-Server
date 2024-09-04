@@ -38,15 +38,14 @@ class CategoryMutation {
         val meta: CategoryMetaType,
     )
 
-    fun setCategoryMeta(input: SetCategoryMetaInput): DataFetcherResult<SetCategoryMetaPayload?> {
-        return asDataFetcherResult {
+    fun setCategoryMeta(input: SetCategoryMetaInput): DataFetcherResult<SetCategoryMetaPayload?> =
+        asDataFetcherResult {
             val (clientMutationId, meta) = input
 
             Category.modifyMeta(meta.categoryId, meta.key, meta.value)
 
             SetCategoryMetaPayload(clientMutationId, meta)
         }
-    }
 
     data class DeleteCategoryMetaInput(
         val clientMutationId: String? = null,
@@ -60,14 +59,15 @@ class CategoryMutation {
         val category: CategoryType,
     )
 
-    fun deleteCategoryMeta(input: DeleteCategoryMetaInput): DataFetcherResult<DeleteCategoryMetaPayload?> {
-        return asDataFetcherResult {
+    fun deleteCategoryMeta(input: DeleteCategoryMetaInput): DataFetcherResult<DeleteCategoryMetaPayload?> =
+        asDataFetcherResult {
             val (clientMutationId, categoryId, key) = input
 
             val (meta, category) =
                 transaction {
                     val meta =
-                        CategoryMetaTable.select { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
+                        CategoryMetaTable
+                            .select { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
                             .firstOrNull()
 
                     CategoryMetaTable.deleteWhere { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
@@ -86,7 +86,6 @@ class CategoryMutation {
 
             DeleteCategoryMetaPayload(clientMutationId, meta, category)
         }
-    }
 
     data class UpdateCategoryPatch(
         val name: String? = null,
@@ -153,8 +152,8 @@ class CategoryMutation {
         }
     }
 
-    fun updateCategory(input: UpdateCategoryInput): DataFetcherResult<UpdateCategoryPayload?> {
-        return asDataFetcherResult {
+    fun updateCategory(input: UpdateCategoryInput): DataFetcherResult<UpdateCategoryPayload?> =
+        asDataFetcherResult {
             val (clientMutationId, id, patch) = input
 
             updateCategories(listOf(id), patch)
@@ -169,10 +168,9 @@ class CategoryMutation {
                 category = category,
             )
         }
-    }
 
-    fun updateCategories(input: UpdateCategoriesInput): DataFetcherResult<UpdateCategoriesPayload?> {
-        return asDataFetcherResult {
+    fun updateCategories(input: UpdateCategoriesInput): DataFetcherResult<UpdateCategoriesPayload?> =
+        asDataFetcherResult {
             val (clientMutationId, ids, patch) = input
 
             updateCategories(ids, patch)
@@ -187,7 +185,6 @@ class CategoryMutation {
                 categories = categories,
             )
         }
-    }
 
     data class UpdateCategoryOrderPayload(
         val clientMutationId: String?,
@@ -200,8 +197,8 @@ class CategoryMutation {
         val position: Int,
     )
 
-    fun updateCategoryOrder(input: UpdateCategoryOrderInput): DataFetcherResult<UpdateCategoryOrderPayload?> {
-        return asDataFetcherResult {
+    fun updateCategoryOrder(input: UpdateCategoryOrderInput): DataFetcherResult<UpdateCategoryOrderPayload?> =
+        asDataFetcherResult {
             val (clientMutationId, categoryId, position) = input
             require(position > 0) {
                 "'order' must not be <= 0"
@@ -242,7 +239,6 @@ class CategoryMutation {
                 categories = categories,
             )
         }
-    }
 
     data class CreateCategoryInput(
         val clientMutationId: String? = null,
@@ -258,8 +254,8 @@ class CategoryMutation {
         val category: CategoryType,
     )
 
-    fun createCategory(input: CreateCategoryInput): DataFetcherResult<CreateCategoryPayload?> {
-        return asDataFetcherResult {
+    fun createCategory(input: CreateCategoryInput): DataFetcherResult<CreateCategoryPayload?> =
+        asDataFetcherResult {
             val (clientMutationId, name, order, default, includeInUpdate, includeInDownload) = input
             transaction {
                 require(CategoryTable.select { CategoryTable.name eq input.name }.isEmpty()) {
@@ -305,7 +301,6 @@ class CategoryMutation {
 
             CreateCategoryPayload(clientMutationId, category)
         }
-    }
 
     data class DeleteCategoryInput(
         val clientMutationId: String? = null,
@@ -332,12 +327,14 @@ class CategoryMutation {
             val (category, mangas) =
                 transaction {
                     val category =
-                        CategoryTable.select { CategoryTable.id eq categoryId }
+                        CategoryTable
+                            .select { CategoryTable.id eq categoryId }
                             .firstOrNull()
 
                     val mangas =
                         transaction {
-                            MangaTable.innerJoin(CategoryMangaTable)
+                            MangaTable
+                                .innerJoin(CategoryMangaTable)
                                 .select { CategoryMangaTable.category eq categoryId }
                                 .map { MangaType(it) }
                         }
@@ -403,9 +400,10 @@ class CategoryMutation {
                         ids.filter { it != DEFAULT_CATEGORY_ID }.forEach { mangaId ->
                             patch.addToCategories.forEach { categoryId ->
                                 val existingMapping =
-                                    CategoryMangaTable.select {
-                                        (CategoryMangaTable.manga eq mangaId) and (CategoryMangaTable.category eq categoryId)
-                                    }.isNotEmpty()
+                                    CategoryMangaTable
+                                        .select {
+                                            (CategoryMangaTable.manga eq mangaId) and (CategoryMangaTable.category eq categoryId)
+                                        }.isNotEmpty()
 
                                 if (!existingMapping) {
                                     add(mangaId to categoryId)
@@ -422,8 +420,8 @@ class CategoryMutation {
         }
     }
 
-    fun updateMangaCategories(input: UpdateMangaCategoriesInput): DataFetcherResult<UpdateMangaCategoriesPayload?> {
-        return asDataFetcherResult {
+    fun updateMangaCategories(input: UpdateMangaCategoriesInput): DataFetcherResult<UpdateMangaCategoriesPayload?> =
+        asDataFetcherResult {
             val (clientMutationId, id, patch) = input
 
             updateMangas(listOf(id), patch)
@@ -438,10 +436,9 @@ class CategoryMutation {
                 manga = manga,
             )
         }
-    }
 
-    fun updateMangasCategories(input: UpdateMangasCategoriesInput): DataFetcherResult<UpdateMangasCategoriesPayload?> {
-        return asDataFetcherResult {
+    fun updateMangasCategories(input: UpdateMangasCategoriesInput): DataFetcherResult<UpdateMangasCategoriesPayload?> =
+        asDataFetcherResult {
             val (clientMutationId, ids, patch) = input
 
             updateMangas(ids, patch)
@@ -456,5 +453,4 @@ class CategoryMutation {
                 mangas = mangas,
             )
         }
-    }
 }

@@ -34,7 +34,11 @@ class RequestParserTest {
             every { ctx.formParam("map") } returns """{ "0": ["variables.file"] }"""
             every { ctx.uploadedFile("0") } returns
                 UploadedFile(
-                    ByteArrayInputStream(byteArrayOf()), "", "", "", 0,
+                    ByteArrayInputStream(byteArrayOf()),
+                    "",
+                    "",
+                    "",
+                    0,
                 )
             val test = requestParser.parseRequest(ctx)
             assertIs<GraphQLRequest>(test)
@@ -57,7 +61,11 @@ class RequestParserTest {
             every { ctx.formParam("map") } returns """{ "test": ["variables.file"] }"""
             every { ctx.uploadedFile("test") } returns
                 UploadedFile(
-                    ByteArrayInputStream(byteArrayOf()), "", "", "", 0,
+                    ByteArrayInputStream(byteArrayOf()),
+                    "",
+                    "",
+                    "",
+                    0,
                 )
             val test = requestParser.parseRequest(ctx)
             assertIs<GraphQLRequest>(test)
@@ -83,11 +91,19 @@ class RequestParserTest {
                 """.trimIndent()
             every { ctx.uploadedFile("test") } returns
                 UploadedFile(
-                    ByteArrayInputStream(byteArrayOf()), "", "", "", 0,
+                    ByteArrayInputStream(byteArrayOf()),
+                    "",
+                    "",
+                    "",
+                    0,
                 )
             every { ctx.uploadedFile("test2") } returns
                 UploadedFile(
-                    ByteArrayInputStream(byteArrayOf()), "", "", "", 0,
+                    ByteArrayInputStream(byteArrayOf()),
+                    "",
+                    "",
+                    "",
+                    0,
                 )
             val test = requestParser.parseRequest(ctx)
             assertIs<GraphQLRequest>(test)

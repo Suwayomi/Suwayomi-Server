@@ -10,14 +10,13 @@ import io.swagger.v3.oas.models.Operation
 fun <T> getSimpleParamItem(
     ctx: Context,
     param: Param<T>,
-): String? {
-    return when (param) {
+): String? =
+    when (param) {
         is Param.FormParam -> ctx.formParam(param.key)
         is Param.PathParam -> ctx.pathParam(param.key)
         is Param.QueryParam -> ctx.queryParam(param.key)
         else -> throw IllegalStateException("Invalid param")
     }
-}
 
 @Suppress("UNCHECKED_CAST")
 fun <T> getParam(
@@ -83,8 +82,8 @@ inline fun getDocumentation(
     documentWith: OpenApiDocumentation.() -> Unit,
     noinline withResults: ResultsBuilder.() -> Unit,
     vararg params: Param<*>,
-): OpenApiDocumentation {
-    return OpenApiDocumentation().apply(documentWith).apply {
+): OpenApiDocumentation =
+    OpenApiDocumentation().apply(documentWith).apply {
         applyResults(withResults)
         params.forEach {
             when (it) {
@@ -95,7 +94,6 @@ inline fun getDocumentation(
             }
         }
     }
-}
 
 fun OpenApiDocumentation.applyResults(withResults: ResultsBuilder.() -> Unit) {
     ResultsBuilder().apply(withResults).results.forEach {
@@ -110,27 +108,19 @@ fun OpenApiDocumentation.withOperation(block: Operation.() -> Unit) {
 inline fun <reified T> formParam(
     key: String,
     defaultValue: T? = null,
-): Param.FormParam<T> {
-    return Param.FormParam(key, T::class.java, defaultValue, null is T)
-}
+): Param.FormParam<T> = Param.FormParam(key, T::class.java, defaultValue, null is T)
 
 inline fun <reified T> queryParam(
     key: String,
     defaultValue: T? = null,
-): Param.QueryParam<T> {
-    return Param.QueryParam(key, T::class.java, defaultValue, null is T)
-}
+): Param.QueryParam<T> = Param.QueryParam(key, T::class.java, defaultValue, null is T)
 
 inline fun <reified T> queryParams(
     key: String,
     defaultValue: List<T> = emptyList(),
-): Param.QueryParams<T, List<T>> {
-    return Param.QueryParams(key, T::class.java, defaultValue, null is T)
-}
+): Param.QueryParams<T, List<T>> = Param.QueryParams(key, T::class.java, defaultValue, null is T)
 
-inline fun <reified T> pathParam(key: String): Param.PathParam<T> {
-    return Param.PathParam(key, T::class.java, null, false)
-}
+inline fun <reified T> pathParam(key: String): Param.PathParam<T> = Param.PathParam(key, T::class.java, null, false)
 
 sealed class Param<T> {
     abstract val key: String
@@ -201,13 +191,19 @@ class ResultsBuilder {
 sealed class ResultType {
     abstract fun applyTo(documentation: OpenApiDocumentation)
 
-    data class MimeType(val code: HttpCode, val mime: String, private val clazz: Class<*>) : ResultType() {
+    data class MimeType(
+        val code: HttpCode,
+        val mime: String,
+        private val clazz: Class<*>,
+    ) : ResultType() {
         override fun applyTo(documentation: OpenApiDocumentation) {
             documentation.result(code.status.toString(), clazz, mime)
         }
     }
 
-    data class StatusCode(val code: HttpCode) : ResultType() {
+    data class StatusCode(
+        val code: HttpCode,
+    ) : ResultType() {
         override fun applyTo(documentation: OpenApiDocumentation) {
             documentation.result<Unit>(code.status.toString())
         }
@@ -218,20 +214,19 @@ inline fun handler(
     documentWith: OpenApiDocumentation.() -> Unit = {},
     noinline behaviorOf: (ctx: Context) -> Unit,
     noinline withResults: ResultsBuilder.() -> Unit,
-): DocumentedHandler {
-    return documented(
+): DocumentedHandler =
+    documented(
         documentation = getDocumentation(documentWith, withResults),
         handle = behaviorOf,
     )
-}
 
 inline fun <reified P1> handler(
     param1: Param<P1>,
     documentWith: OpenApiDocumentation.() -> Unit,
     noinline behaviorOf: (ctx: Context, P1) -> Unit,
     noinline withResults: ResultsBuilder.() -> Unit,
-): DocumentedHandler {
-    return documented(
+): DocumentedHandler =
+    documented(
         documentation = getDocumentation(documentWith, withResults, param1),
         handle = {
             behaviorOf(
@@ -240,7 +235,6 @@ inline fun <reified P1> handler(
             )
         },
     )
-}
 
 inline fun <reified P1, reified P2> handler(
     param1: Param<P1>,
@@ -248,8 +242,8 @@ inline fun <reified P1, reified P2> handler(
     documentWith: OpenApiDocumentation.() -> Unit = {},
     crossinline behaviorOf: (ctx: Context, P1, P2) -> Unit,
     noinline withResults: ResultsBuilder.() -> Unit,
-): DocumentedHandler {
-    return documented(
+): DocumentedHandler =
+    documented(
         documentation = getDocumentation(documentWith, withResults, param1, param2),
         handle = {
             behaviorOf(
@@ -259,7 +253,6 @@ inline fun <reified P1, reified P2> handler(
             )
         },
     )
-}
 
 inline fun <reified P1, reified P2, reified P3> handler(
     param1: Param<P1>,
@@ -268,8 +261,8 @@ inline fun <reified P1, reified P2, reified P3> handler(
     documentWith: OpenApiDocumentation.() -> Unit = {},
     crossinline behaviorOf: (ctx: Context, P1, P2, P3) -> Unit,
     noinline withResults: ResultsBuilder.() -> Unit,
-): DocumentedHandler {
-    return documented(
+): DocumentedHandler =
+    documented(
         documentation = getDocumentation(documentWith, withResults, param1, param2, param3),
         handle = {
             behaviorOf(
@@ -280,7 +273,6 @@ inline fun <reified P1, reified P2, reified P3> handler(
             )
         },
     )
-}
 
 inline fun <reified P1, reified P2, reified P3, reified P4> handler(
     param1: Param<P1>,
@@ -290,8 +282,8 @@ inline fun <reified P1, reified P2, reified P3, reified P4> handler(
     documentWith: OpenApiDocumentation.() -> Unit = {},
     crossinline behaviorOf: (ctx: Context, P1, P2, P3, P4) -> Unit,
     noinline withResults: ResultsBuilder.() -> Unit,
-): DocumentedHandler {
-    return documented(
+): DocumentedHandler =
+    documented(
         documentation = getDocumentation(documentWith, withResults, param1, param2, param3, param4),
         handle = {
             behaviorOf(
@@ -303,7 +295,6 @@ inline fun <reified P1, reified P2, reified P3, reified P4> handler(
             )
         },
     )
-}
 
 inline fun <reified P1, reified P2, reified P3, reified P4, reified P5> handler(
     param1: Param<P1>,
@@ -314,8 +305,8 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5> handler(
     documentWith: OpenApiDocumentation.() -> Unit = {},
     crossinline behaviorOf: (ctx: Context, P1, P2, P3, P4, P5) -> Unit,
     noinline withResults: ResultsBuilder.() -> Unit,
-): DocumentedHandler {
-    return documented(
+): DocumentedHandler =
+    documented(
         documentation =
             getDocumentation(
                 documentWith,
@@ -337,7 +328,6 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5> handler(
             )
         },
     )
-}
 
 inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified P6> handler(
     param1: Param<P1>,
@@ -349,8 +339,8 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified 
     documentWith: OpenApiDocumentation.() -> Unit = {},
     crossinline behaviorOf: (ctx: Context, P1, P2, P3, P4, P5, P6) -> Unit,
     noinline withResults: ResultsBuilder.() -> Unit,
-): DocumentedHandler {
-    return documented(
+): DocumentedHandler =
+    documented(
         documentation =
             getDocumentation(
                 documentWith,
@@ -374,7 +364,6 @@ inline fun <reified P1, reified P2, reified P3, reified P4, reified P5, reified 
             )
         },
     )
-}
 
 inline fun <
     reified P1,
@@ -384,7 +373,7 @@ inline fun <
     reified P5,
     reified P6,
     reified P7,
-    > handler(
+> handler(
     param1: Param<P1>,
     param2: Param<P2>,
     param3: Param<P3>,
@@ -395,8 +384,8 @@ inline fun <
     documentWith: OpenApiDocumentation.() -> Unit = {},
     crossinline behaviorOf: (ctx: Context, P1, P2, P3, P4, P5, P6, P7) -> Unit,
     noinline withResults: ResultsBuilder.() -> Unit,
-): DocumentedHandler {
-    return documented(
+): DocumentedHandler =
+    documented(
         documentation =
             getDocumentation(
                 documentWith,
@@ -422,7 +411,6 @@ inline fun <
             )
         },
     )
-}
 
 inline fun <
     reified P1,
@@ -433,7 +421,7 @@ inline fun <
     reified P6,
     reified P7,
     reified P8,
-    > handler(
+> handler(
     param1: Param<P1>,
     param2: Param<P2>,
     param3: Param<P3>,
@@ -445,8 +433,8 @@ inline fun <
     documentWith: OpenApiDocumentation.() -> Unit = {},
     crossinline behaviorOf: (ctx: Context, P1, P2, P3, P4, P5, P6, P7, P8) -> Unit,
     noinline withResults: ResultsBuilder.() -> Unit,
-): DocumentedHandler {
-    return documented(
+): DocumentedHandler =
+    documented(
         documentation =
             getDocumentation(
                 documentWith,
@@ -474,7 +462,6 @@ inline fun <
             )
         },
     )
-}
 
 inline fun <
     reified P1,
@@ -486,7 +473,7 @@ inline fun <
     reified P7,
     reified P8,
     reified P9,
-    > handler(
+> handler(
     param1: Param<P1>,
     param2: Param<P2>,
     param3: Param<P3>,
@@ -499,8 +486,8 @@ inline fun <
     documentWith: OpenApiDocumentation.() -> Unit = {},
     crossinline behaviorOf: (ctx: Context, P1, P2, P3, P4, P5, P6, P7, P8, P9) -> Unit,
     noinline withResults: ResultsBuilder.() -> Unit,
-): DocumentedHandler {
-    return documented(
+): DocumentedHandler =
+    documented(
         documentation =
             getDocumentation(
                 documentWith,
@@ -530,7 +517,6 @@ inline fun <
             )
         },
     )
-}
 
 inline fun <
     reified P1,
@@ -543,7 +529,7 @@ inline fun <
     reified P8,
     reified P9,
     reified P10,
-    > handler(
+> handler(
     param1: Param<P1>,
     param2: Param<P2>,
     param3: Param<P3>,
@@ -557,8 +543,8 @@ inline fun <
     documentWith: OpenApiDocumentation.() -> Unit = {},
     crossinline behaviorOf: (ctx: Context, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10) -> Unit,
     noinline withResults: ResultsBuilder.() -> Unit,
-): DocumentedHandler {
-    return documented(
+): DocumentedHandler =
+    documented(
         documentation =
             getDocumentation(
                 documentWith,
@@ -590,4 +576,3 @@ inline fun <
             )
         },
     )
-}

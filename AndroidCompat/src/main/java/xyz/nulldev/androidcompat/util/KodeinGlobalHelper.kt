@@ -29,8 +29,8 @@ object KodeinGlobalHelper {
     fun <T : Any> instance(
         type: Class<T>,
         kodein: DI? = null,
-    ): T {
-        return when (type) {
+    ): T =
+        when (type) {
             AndroidFiles::class.java -> {
                 val instance: AndroidFiles by (kodein ?: kodein()).instance()
                 instance as T
@@ -61,10 +61,7 @@ object KodeinGlobalHelper {
             }
             else -> throw IllegalArgumentException("Kodein instance not found")
         }
-    }
 
     @JvmStatic
-    fun <T : Any> instance(type: Class<T>): T {
-        return instance(type, null)
-    }
+    fun <T : Any> instance(type: Class<T>): T = instance(type, null)
 }

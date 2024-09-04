@@ -17,11 +17,16 @@ import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.stringParam
 import org.jetbrains.exposed.sql.upperCase
 
-class ILikeEscapeOp(expr1: Expression<*>, expr2: Expression<*>, like: Boolean, val escapeChar: Char?) : ComparisonOp(
-    expr1,
-    expr2,
-    if (like) "ILIKE" else "NOT ILIKE",
-) {
+class ILikeEscapeOp(
+    expr1: Expression<*>,
+    expr2: Expression<*>,
+    like: Boolean,
+    val escapeChar: Char?,
+) : ComparisonOp(
+        expr1,
+        expr2,
+        if (like) "ILIKE" else "NOT ILIKE",
+    ) {
     override fun toQueryBuilder(queryBuilder: QueryBuilder) {
         super.toQueryBuilder(queryBuilder)
         if (escapeChar != null) {
@@ -67,11 +72,15 @@ class ILikeEscapeOp(expr1: Expression<*>, expr2: Expression<*>, like: Boolean, v
     }
 }
 
-class DistinctFromOp(expr1: Expression<*>, expr2: Expression<*>, not: Boolean) : ComparisonOp(
-    expr1,
-    expr2,
-    if (not) "IS NOT DISTINCT FROM" else "IS DISTINCT FROM",
-) {
+class DistinctFromOp(
+    expr1: Expression<*>,
+    expr2: Expression<*>,
+    not: Boolean,
+) : ComparisonOp(
+        expr1,
+        expr2,
+        if (not) "IS NOT DISTINCT FROM" else "IS DISTINCT FROM",
+    ) {
     companion object {
         fun <T> distinctFrom(
             expression: ExpressionWithColumnType<T>,
@@ -472,7 +481,9 @@ fun <T : String, S : T?> andFilterWithCompareString(
     return opAnd.op
 }
 
-class OpAnd(var op: Op<Boolean>? = null) {
+class OpAnd(
+    var op: Op<Boolean>? = null,
+) {
     fun <T> andWhere(
         value: T?,
         andPart: SqlExpressionBuilder.(T & Any) -> Op<Boolean>,

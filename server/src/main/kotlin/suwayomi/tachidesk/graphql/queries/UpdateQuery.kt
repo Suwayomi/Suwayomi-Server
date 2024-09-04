@@ -12,13 +12,11 @@ import java.util.concurrent.CompletableFuture
 class UpdateQuery {
     private val updater by DI.global.instance<IUpdater>()
 
-    fun updateStatus(): CompletableFuture<UpdateStatus> {
-        return future { UpdateStatus(updater.status.first()) }
-    }
+    fun updateStatus(): CompletableFuture<UpdateStatus> = future { UpdateStatus(updater.status.first()) }
 
-    data class LastUpdateTimestampPayload(val timestamp: Long)
+    data class LastUpdateTimestampPayload(
+        val timestamp: Long,
+    )
 
-    fun lastUpdateTimestamp(): LastUpdateTimestampPayload {
-        return LastUpdateTimestampPayload(updater.getLastUpdateTimestamp())
-    }
+    fun lastUpdateTimestamp(): LastUpdateTimestampPayload = LastUpdateTimestampPayload(updater.getLastUpdateTimestamp())
 }

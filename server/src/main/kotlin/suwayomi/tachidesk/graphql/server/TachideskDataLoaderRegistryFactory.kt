@@ -46,8 +46,8 @@ import suwayomi.tachidesk.graphql.dataLoaders.UnreadChapterCountForMangaDataLoad
 
 class TachideskDataLoaderRegistryFactory {
     companion object {
-        fun create(): KotlinDataLoaderRegistryFactory {
-            return KotlinDataLoaderRegistryFactory(
+        fun create(): KotlinDataLoaderRegistryFactory =
+            KotlinDataLoaderRegistryFactory(
                 MangaDataLoader(),
                 ChapterDataLoader(),
                 ChaptersForMangaDataLoader(),
@@ -84,6 +84,5 @@ class TachideskDataLoaderRegistryFactory {
                 TrackRecordsForTrackerIdDataLoader(),
                 TrackRecordDataLoader(),
             )
-        }
     }
 }

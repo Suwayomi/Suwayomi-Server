@@ -30,7 +30,8 @@ class CategoryDataLoader : KotlinDataLoader<Int, CategoryType> {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val categories =
-                        CategoryTable.select { CategoryTable.id inList ids }
+                        CategoryTable
+                            .select { CategoryTable.id inList ids }
                             .map { CategoryType(it) }
                             .associateBy { it.id }
                     ids.map { categories[it] }
@@ -66,7 +67,8 @@ class CategoriesForMangaDataLoader : KotlinDataLoader<Int, CategoryNodeList> {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val itemsByRef =
-                        CategoryMangaTable.innerJoin(CategoryTable)
+                        CategoryMangaTable
+                            .innerJoin(CategoryTable)
                             .select { CategoryMangaTable.manga inList ids }
                             .map { Pair(it[CategoryMangaTable.manga].value, CategoryType(it)) }
                             .groupBy { it.first }

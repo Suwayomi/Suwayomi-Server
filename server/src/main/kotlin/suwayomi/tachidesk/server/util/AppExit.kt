@@ -12,7 +12,9 @@ import kotlin.system.exitProcess
 
 private val logger = KotlinLogging.logger {}
 
-enum class ExitCode(val code: Int) {
+enum class ExitCode(
+    val code: Int,
+) {
     Success(0),
     MutexCheckFailedTachideskRunning(1),
     MutexCheckFailedAnotherAppRunning(2),

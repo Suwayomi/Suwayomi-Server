@@ -5,25 +5,17 @@ interface ConfigAdapter<T> {
 }
 
 object StringConfigAdapter : ConfigAdapter<String> {
-    override fun toType(configValue: String): String {
-        return configValue
-    }
+    override fun toType(configValue: String): String = configValue
 }
 
 object IntConfigAdapter : ConfigAdapter<Int> {
-    override fun toType(configValue: String): Int {
-        return configValue.toInt()
-    }
+    override fun toType(configValue: String): Int = configValue.toInt()
 }
 
 object BooleanConfigAdapter : ConfigAdapter<Boolean> {
-    override fun toType(configValue: String): Boolean {
-        return configValue.toBoolean()
-    }
+    override fun toType(configValue: String): Boolean = configValue.toBoolean()
 }
 
 object DoubleConfigAdapter : ConfigAdapter<Double> {
-    override fun toType(configValue: String): Double {
-        return configValue.toDouble()
-    }
+    override fun toType(configValue: String): Double = configValue.toDouble()
 }

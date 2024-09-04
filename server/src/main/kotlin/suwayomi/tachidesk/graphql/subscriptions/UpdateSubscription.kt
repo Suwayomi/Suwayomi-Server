@@ -18,9 +18,8 @@ import suwayomi.tachidesk.manga.impl.update.IUpdater
 class UpdateSubscription {
     private val updater by DI.global.instance<IUpdater>()
 
-    fun updateStatusChanged(): Flow<UpdateStatus> {
-        return updater.status.map { updateStatus ->
+    fun updateStatusChanged(): Flow<UpdateStatus> =
+        updater.status.map { updateStatus ->
             UpdateStatus(updateStatus)
         }
-    }
 }

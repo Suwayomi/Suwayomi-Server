@@ -97,11 +97,10 @@ object Source {
     /**
      *  Gets a source's PreferenceScreen, puts the result into [preferenceScreenMap]
      */
-    fun getSourcePreferences(sourceId: Long): List<PreferenceObject> {
-        return getSourcePreferencesRaw(sourceId).map {
+    fun getSourcePreferences(sourceId: Long): List<PreferenceObject> =
+        getSourcePreferencesRaw(sourceId).map {
             PreferenceObject(it::class.java.simpleName, it)
         }
-    }
 
     fun getSourcePreferencesRaw(sourceId: Long): List<Preference> {
         val source = getCatalogueSourceOrStub(sourceId)

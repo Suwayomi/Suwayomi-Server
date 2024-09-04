@@ -15,7 +15,9 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 // from TachiWeb-Server
-class PersistentCookieStore(context: Context) : CookieStore {
+class PersistentCookieStore(
+    context: Context,
+) : CookieStore {
     private val cookieMap = ConcurrentHashMap<String, List<Cookie>>()
     private val prefs = context.getSharedPreferences("cookie_store", Context.MODE_PRIVATE)
 
@@ -23,7 +25,8 @@ class PersistentCookieStore(context: Context) : CookieStore {
 
     init {
         val domains =
-            prefs.all.keys.map { it.substringBeforeLast(".") }
+            prefs.all.keys
+                .map { it.substringBeforeLast(".") }
                 .toSet()
         domains.forEach { domain ->
             val cookies = prefs.getStringSet(domain, emptySet())
@@ -31,7 +34,8 @@ class PersistentCookieStore(context: Context) : CookieStore {
                 try {
                     val url = "http://$domain".toHttpUrlOrNull() ?: return@forEach
                     val nonExpiredCookies =
-                        cookies.mapNotNull { Cookie.parse(url, it) }
+                        cookies
+                            .mapNotNull { Cookie.parse(url, it) }
                             .filter { !it.hasExpired() }
                     cookieMap[domain] = nonExpiredCookies
                 } catch (e: Exception) {
@@ -63,14 +67,13 @@ class PersistentCookieStore(context: Context) : CookieStore {
         }
     }
 
-    override fun removeAll(): Boolean {
-        return lock.withLock {
+    override fun removeAll(): Boolean =
+        lock.withLock {
             val wasNotEmpty = cookieMap.isEmpty()
             prefs.edit().clear().apply()
             cookieMap.clear()
             wasNotEmpty
         }
-    }
 
     fun remove(uri: URI) {
         val url = uri.toURL()
@@ -87,9 +90,7 @@ class PersistentCookieStore(context: Context) : CookieStore {
         }
     }
 
-    fun get(url: HttpUrl): List<Cookie> {
-        return get(url.host)
-    }
+    fun get(url: HttpUrl): List<Cookie> = get(url.host)
 
     override fun add(
         uri: URI?,
@@ -105,19 +106,17 @@ class PersistentCookieStore(context: Context) : CookieStore {
         }
     }
 
-    override fun getCookies(): List<HttpCookie> {
-        return cookieMap.values.flatMap {
+    override fun getCookies(): List<HttpCookie> =
+        cookieMap.values.flatMap {
             it.map {
                 it.toHttpCookie()
             }
         }
-    }
 
-    override fun getURIs(): List<URI> {
-        return cookieMap.keys().toList().map {
+    override fun getURIs(): List<URI> =
+        cookieMap.keys().toList().map {
             URI("http://$it")
         }
-    }
 
     override fun remove(
         uri: URI?,
@@ -145,9 +144,7 @@ class PersistentCookieStore(context: Context) : CookieStore {
         }
     }
 
-    private fun get(url: String): List<Cookie> {
-        return cookieMap[url].orEmpty().filter { !it.hasExpired() }
-    }
+    private fun get(url: String): List<Cookie> = cookieMap[url].orEmpty().filter { !it.hasExpired() }
 
     private fun saveToDisk(url: URL) {
         // Get cookies to be stored in disk
@@ -165,7 +162,8 @@ class PersistentCookieStore(context: Context) : CookieStore {
     private fun Cookie.hasExpired() = System.currentTimeMillis() >= expiresAt
 
     private fun HttpCookie.toCookie(uri: URI) =
-        Cookie.Builder()
+        Cookie
+            .Builder()
             .name(name)
             .value(value)
             .domain(uri.toURL().host)
@@ -176,22 +174,19 @@ class PersistentCookieStore(context: Context) : CookieStore {
                 } else {
                     it.expiresAt(Long.MAX_VALUE)
                 }
-            }
-            .let {
+            }.let {
                 if (secure) {
                     it.secure()
                 } else {
                     it
                 }
-            }
-            .let {
+            }.let {
                 if (isHttpOnly) {
                     it.httpOnly()
                 } else {
                     it
                 }
-            }
-            .build()
+            }.build()
 
     private fun Cookie.toHttpCookie(): HttpCookie {
         val it = this

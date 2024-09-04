@@ -4,7 +4,9 @@ import com.typesafe.config.Config
 import io.github.config4k.getValue
 import xyz.nulldev.ts.config.ConfigModule
 
-class SystemConfigModule(val getConfig: () -> Config) : ConfigModule(getConfig) {
+class SystemConfigModule(
+    val getConfig: () -> Config,
+) : ConfigModule(getConfig) {
     val isDebuggable: Boolean by getConfig()
 
     val propertyPrefix = "properties."

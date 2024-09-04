@@ -10,7 +10,8 @@ package suwayomi.tachidesk.server.database.migration
 import de.neonew.exposed.migrations.helpers.DropColumnMigration
 
 @Suppress("ClassName", "unused")
-class M0011_SourceDropPartOfFactorySource : DropColumnMigration(
-    "Source",
-    "part_of_factory_source",
-)
+class M0011_SourceDropPartOfFactorySource :
+    DropColumnMigration(
+        "Source",
+        "part_of_factory_source",
+    )

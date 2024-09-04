@@ -39,7 +39,8 @@ class MangaUpdatesApi(
     private val contentType = "application/vnd.api+json".toMediaType()
 
     private val authClient by lazy {
-        client.newBuilder()
+        client
+            .newBuilder()
             .addInterceptor(interceptor)
             .build()
     }
@@ -47,7 +48,8 @@ class MangaUpdatesApi(
     suspend fun getSeriesListItem(track: Track): Pair<ListItem, Rating?> {
         val listItem =
             with(json) {
-                authClient.newCall(GET("$baseUrl/v1/lists/series/${track.media_id}"))
+                authClient
+                    .newCall(GET("$baseUrl/v1/lists/series/${track.media_id}"))
                     .awaitSuccess()
                     .parseAs<ListItem>()
             }
@@ -71,13 +73,13 @@ class MangaUpdatesApi(
                     put("list_id", status)
                 }
             }
-        authClient.newCall(
-            POST(
-                url = "$baseUrl/v1/lists/series",
-                body = body.toString().toRequestBody(contentType),
-            ),
-        )
-            .awaitSuccess()
+        authClient
+            .newCall(
+                POST(
+                    url = "$baseUrl/v1/lists/series",
+                    body = body.toString().toRequestBody(contentType),
+                ),
+            ).awaitSuccess()
             .let {
                 if (it.code == 200) {
                     track.status = status
@@ -99,13 +101,13 @@ class MangaUpdatesApi(
                     }
                 }
             }
-        authClient.newCall(
-            POST(
-                url = "$baseUrl/v1/lists/series/update",
-                body = body.toString().toRequestBody(contentType),
-            ),
-        )
-            .awaitSuccess()
+        authClient
+            .newCall(
+                POST(
+                    url = "$baseUrl/v1/lists/series/update",
+                    body = body.toString().toRequestBody(contentType),
+                ),
+            ).awaitSuccess()
 
         updateSeriesRating(track)
     }
@@ -115,26 +117,26 @@ class MangaUpdatesApi(
             buildJsonArray {
                 add(track.media_id)
             }
-        authClient.newCall(
-            POST(
-                url = "$baseUrl/v1/lists/series/delete",
-                body = body.toString().toRequestBody(contentType),
-            ),
-        )
-            .awaitSuccess()
+        authClient
+            .newCall(
+                POST(
+                    url = "$baseUrl/v1/lists/series/delete",
+                    body = body.toString().toRequestBody(contentType),
+                ),
+            ).awaitSuccess()
     }
 
-    private suspend fun getSeriesRating(track: Track): Rating? {
-        return try {
+    private suspend fun getSeriesRating(track: Track): Rating? =
+        try {
             with(json) {
-                authClient.newCall(GET("$baseUrl/v1/series/${track.media_id}/rating"))
+                authClient
+                    .newCall(GET("$baseUrl/v1/series/${track.media_id}/rating"))
                     .awaitSuccess()
                     .parseAs<Rating>()
             }
         } catch (e: Exception) {
             null
         }
-    }
 
     private suspend fun updateSeriesRating(track: Track) {
         if (track.score != 0f) {
@@ -142,20 +144,20 @@ class MangaUpdatesApi(
                 buildJsonObject {
                     put("rating", track.score)
                 }
-            authClient.newCall(
-                PUT(
-                    url = "$baseUrl/v1/series/${track.media_id}/rating",
-                    body = body.toString().toRequestBody(contentType),
-                ),
-            )
-                .awaitSuccess()
+            authClient
+                .newCall(
+                    PUT(
+                        url = "$baseUrl/v1/series/${track.media_id}/rating",
+                        body = body.toString().toRequestBody(contentType),
+                    ),
+                ).awaitSuccess()
         } else {
-            authClient.newCall(
-                DELETE(
-                    url = "$baseUrl/v1/series/${track.media_id}/rating",
-                ),
-            )
-                .awaitSuccess()
+            authClient
+                .newCall(
+                    DELETE(
+                        url = "$baseUrl/v1/series/${track.media_id}/rating",
+                    ),
+                ).awaitSuccess()
         }
     }
 
@@ -172,20 +174,19 @@ class MangaUpdatesApi(
                 )
             }
         return with(json) {
-            client.newCall(
-                POST(
-                    url = "$baseUrl/v1/series/search",
-                    body = body.toString().toRequestBody(contentType),
-                ),
-            )
-                .awaitSuccess()
+            client
+                .newCall(
+                    POST(
+                        url = "$baseUrl/v1/series/search",
+                        body = body.toString().toRequestBody(contentType),
+                    ),
+                ).awaitSuccess()
                 .parseAs<JsonObject>()
                 .let { obj ->
                     obj["results"]?.jsonArray?.map { element ->
                         json.decodeFromJsonElement<Record>(element.jsonObject["record"]!!)
                     }
-                }
-                .orEmpty()
+                }.orEmpty()
         }
     }
 
@@ -199,13 +200,13 @@ class MangaUpdatesApi(
                 put("password", password)
             }
         return with(json) {
-            client.newCall(
-                PUT(
-                    url = "$baseUrl/v1/account/login",
-                    body = body.toString().toRequestBody(contentType),
-                ),
-            )
-                .awaitSuccess()
+            client
+                .newCall(
+                    PUT(
+                        url = "$baseUrl/v1/account/login",
+                        body = body.toString().toRequestBody(contentType),
+                    ),
+                ).awaitSuccess()
                 .parseAs<JsonObject>()
                 .let { obj ->
                     try {

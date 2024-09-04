@@ -93,10 +93,15 @@ object ProtoBackupExport : ProtoBackupBase() {
             }
         }
 
-        val (hour, minute) = serverConfig.backupTime.value.split(":").map { it.toInt() }
+        val (hour, minute) =
+            serverConfig.backupTime.value
+                .split(":")
+                .map { it.toInt() }
         val backupHour = hour.coerceAtLeast(0).coerceAtMost(23)
         val backupMinute = minute.coerceAtLeast(0).coerceAtMost(59)
-        val backupInterval = serverConfig.backupInterval.value.days.coerceAtLeast(1.days)
+        val backupInterval =
+            serverConfig.backupInterval.value.days
+                .coerceAtLeast(1.days)
 
         // trigger last backup in case the server wasn't running on the scheduled time
         val lastAutomatedBackup = preferences.getLong(LAST_AUTOMATED_BACKUP_KEY, 0)
@@ -161,7 +166,10 @@ object ProtoBackupExport : ProtoBackupBase() {
 
         val lastAccessTime = file.lastModified()
         val isTTLReached =
-            System.currentTimeMillis() - lastAccessTime >= serverConfig.backupTTL.value.days.coerceAtLeast(1.days).inWholeMilliseconds
+            System.currentTimeMillis() - lastAccessTime >=
+                serverConfig.backupTTL.value.days
+                    .coerceAtLeast(1.days)
+                    .inWholeMilliseconds
         if (isTTLReached) {
             file.delete()
         }
@@ -185,7 +193,11 @@ object ProtoBackupExport : ProtoBackupBase() {
         val byteArray = parser.encodeToByteArray(BackupSerializer, backup)
 
         val byteStream = ByteArrayOutputStream()
-        byteStream.sink().gzip().buffer().use { it.write(byteArray) }
+        byteStream
+            .sink()
+            .gzip()
+            .buffer()
+            .use { it.write(byteArray) }
 
         return byteStream.toByteArray().inputStream()
     }
@@ -193,8 +205,8 @@ object ProtoBackupExport : ProtoBackupBase() {
     private fun backupManga(
         databaseManga: Query,
         flags: BackupFlags,
-    ): List<BackupManga> {
-        return databaseManga.map { mangaRow ->
+    ): List<BackupManga> =
+        databaseManga.map { mangaRow ->
             val backupManga =
                 BackupManga(
                     source = mangaRow[MangaTable.sourceReference],
@@ -216,7 +228,8 @@ object ProtoBackupExport : ProtoBackupBase() {
             if (flags.includeChapters) {
                 val chapters =
                     transaction {
-                        ChapterTable.select { ChapterTable.manga eq mangaId }
+                        ChapterTable
+                            .select { ChapterTable.manga eq mangaId }
                             .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
                             .map {
                                 ChapterTable.toDataClass(it)
@@ -277,22 +290,23 @@ object ProtoBackupExport : ProtoBackupBase() {
 
             backupManga
         }
-    }
 
-    private fun backupCategories(): List<BackupCategory> {
-        return CategoryTable.selectAll().orderBy(CategoryTable.order to SortOrder.ASC).map {
-            CategoryTable.toDataClass(it)
-        }.map {
-            BackupCategory(
-                it.name,
-                it.order,
-                0, // not supported in Tachidesk
-            )
-        }
-    }
+    private fun backupCategories(): List<BackupCategory> =
+        CategoryTable
+            .selectAll()
+            .orderBy(CategoryTable.order to SortOrder.ASC)
+            .map {
+                CategoryTable.toDataClass(it)
+            }.map {
+                BackupCategory(
+                    it.name,
+                    it.order,
+                    0, // not supported in Tachidesk
+                )
+            }
 
-    private fun backupExtensionInfo(mangas: Query): List<BackupSource> {
-        return mangas
+    private fun backupExtensionInfo(mangas: Query): List<BackupSource> =
+        mangas
             .asSequence()
             .map { it[MangaTable.sourceReference] }
             .distinct()
@@ -302,7 +316,5 @@ object ProtoBackupExport : ProtoBackupBase() {
                     sourceRow?.get(SourceTable.name) ?: "",
                     it,
                 )
-            }
-            .toList()
-    }
+            }.toList()
 }

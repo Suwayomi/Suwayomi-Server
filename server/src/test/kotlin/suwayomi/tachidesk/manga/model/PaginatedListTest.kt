@@ -102,7 +102,5 @@ class PaginatedListTest : ApplicationTest() {
     private fun listIndicesOf(
         first: Int,
         last: Int,
-    ): List<Int> {
-        return (first until last).toList()
-    }
+    ): List<Int> = (first until last).toList()
 }

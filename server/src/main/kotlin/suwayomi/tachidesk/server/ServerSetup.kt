@@ -130,7 +130,9 @@ fun applicationSetup() {
 
     logger.debug {
         "Loaded config:\n" +
-            GlobalConfigManager.config.root().render(ConfigRenderOptions.concise().setFormatted(true))
+            GlobalConfigManager.config
+                .root()
+                .render(ConfigRenderOptions.concise().setFormatted(true))
                 .replace(Regex("(\"basicAuth(?:Username|Password)\"\\s:\\s)(?!\"\")\".*\""), "$1\"******\"")
     }
 

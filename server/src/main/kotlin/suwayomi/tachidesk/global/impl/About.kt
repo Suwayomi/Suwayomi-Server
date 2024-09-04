@@ -20,8 +20,8 @@ data class AboutDataClass(
 )
 
 object About {
-    fun getAbout(): AboutDataClass {
-        return AboutDataClass(
+    fun getAbout(): AboutDataClass =
+        AboutDataClass(
             BuildConfig.NAME,
             BuildConfig.VERSION,
             BuildConfig.REVISION,
@@ -30,5 +30,4 @@ object About {
             BuildConfig.GITHUB,
             BuildConfig.DISCORD,
         )
-    }
 }

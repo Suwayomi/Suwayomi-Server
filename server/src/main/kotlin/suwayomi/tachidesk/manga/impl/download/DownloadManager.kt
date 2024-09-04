@@ -63,12 +63,17 @@ object DownloadManager {
     private val sharedPreferences =
         Injekt.get<Application>().getSharedPreferences(DownloadManager::class.jvmName, Context.MODE_PRIVATE)
 
-    private fun loadDownloadQueue(): List<Int> {
-        return sharedPreferences.getStringSet(DOWNLOAD_QUEUE_KEY, emptySet())?.mapNotNull { it.toInt() }.orEmpty()
-    }
+    private fun loadDownloadQueue(): List<Int> =
+        sharedPreferences
+            .getStringSet(DOWNLOAD_QUEUE_KEY, emptySet())
+            ?.mapNotNull {
+                it.toInt()
+            }.orEmpty()
 
     private fun saveDownloadQueue() {
-        sharedPreferences.edit().putStringSet(DOWNLOAD_QUEUE_KEY, downloadQueue.map { it.chapter.id.toString() }.toSet())
+        sharedPreferences
+            .edit()
+            .putStringSet(DOWNLOAD_QUEUE_KEY, downloadQueue.map { it.chapter.id.toString() }.toSet())
             .apply()
     }
 
@@ -159,8 +164,8 @@ object DownloadManager {
         }
     }
 
-    private fun getStatus(): DownloadStatus {
-        return DownloadStatus(
+    private fun getStatus(): DownloadStatus =
+        DownloadStatus(
             if (downloadQueue.none { it.state == Downloading }) {
                 Status.Stopped
             } else {
@@ -168,7 +173,6 @@ object DownloadManager {
             },
             downloadQueue.toList(),
         )
-    }
 
     private val downloaderWatch = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
@@ -201,13 +205,13 @@ object DownloadManager {
                 }
 
                 if (runningDownloaders.size < serverConfig.maxSourcesInParallel.value) {
-                    availableDownloads.asSequence()
+                    availableDownloads
+                        .asSequence()
                         .map { it.manga.sourceId }
                         .distinct()
                         .minus(
                             runningDownloaders.map { it.sourceId }.toSet(),
-                        )
-                        .take(serverConfig.maxSourcesInParallel.value - runningDownloaders.size)
+                        ).take(serverConfig.maxSourcesInParallel.value - runningDownloaders.size)
                         .map { getDownloader(it) }
                         .forEach {
                             it.start()
@@ -271,7 +275,8 @@ object DownloadManager {
 
         val mangas =
             transaction {
-                chapters.distinctBy { chapter -> chapter[MangaTable.id] }
+                chapters
+                    .distinctBy { chapter -> chapter[MangaTable.id] }
                     .map { MangaTable.toDataClass(it) }
                     .associateBy { it.id }
             }
@@ -420,11 +425,12 @@ object DownloadManager {
         logger.debug { "stop" }
 
         coroutineScope {
-            downloaders.map { (_, downloader) ->
-                async {
-                    downloader.stop()
-                }
-            }.awaitAll()
+            downloaders
+                .map { (_, downloader) ->
+                    async {
+                        downloader.stop()
+                    }
+                }.awaitAll()
         }
         notifyAllClients()
     }
@@ -439,7 +445,9 @@ object DownloadManager {
     }
 }
 
-enum class DownloaderState(val state: Int) {
+enum class DownloaderState(
+    val state: Int,
+) {
     Stopped(0),
     Running(1),
     Paused(2),

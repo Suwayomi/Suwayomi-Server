@@ -37,16 +37,12 @@ suspend fun getChapterDownloadReady(
     return chapter.asDownloadReady()
 }
 
-suspend fun getChapterDownloadReadyById(chapterId: Int): ChapterDataClass {
-    return getChapterDownloadReady(chapterId = chapterId)
-}
+suspend fun getChapterDownloadReadyById(chapterId: Int): ChapterDataClass = getChapterDownloadReady(chapterId = chapterId)
 
 suspend fun getChapterDownloadReadyByIndex(
     chapterIndex: Int,
     mangaId: Int,
-): ChapterDataClass {
-    return getChapterDownloadReady(chapterIndex = chapterIndex, mangaId = mangaId)
-}
+): ChapterDataClass = getChapterDownloadReady(chapterIndex = chapterIndex, mangaId = mangaId)
 
 private class ChapterForDownload(
     optChapterId: Int? = null,
@@ -101,15 +97,16 @@ private class ChapterForDownload(
         optChapterIndex: Int? = null,
         optMangaId: Int? = null,
     ) = transaction {
-        ChapterTable.select {
-            if (optChapterId != null) {
-                ChapterTable.id eq optChapterId
-            } else if (optChapterIndex != null && optMangaId != null) {
-                (ChapterTable.sourceOrder eq optChapterIndex) and (ChapterTable.manga eq optMangaId)
-            } else {
-                throw Exception("'optChapterId' or 'optChapterIndex' and 'optMangaId' have to be passed")
-            }
-        }.first()
+        ChapterTable
+            .select {
+                if (optChapterId != null) {
+                    ChapterTable.id eq optChapterId
+                } else if (optChapterIndex != null && optMangaId != null) {
+                    (ChapterTable.sourceOrder eq optChapterIndex) and (ChapterTable.manga eq optMangaId)
+                } else {
+                    throw Exception("'optChapterId' or 'optChapterIndex' and 'optMangaId' have to be passed")
+                }
+            }.first()
     }
 
     private suspend fun fetchPageList(): List<Page> {
@@ -166,12 +163,11 @@ private class ChapterForDownload(
         }
     }
 
-    private fun firstPageExists(): Boolean {
-        return try {
+    private fun firstPageExists(): Boolean =
+        try {
             ChapterDownloadHelper.getImage(mangaId, chapterId, 0).first.close()
             true
         } catch (e: Exception) {
             false
         }
-    }
 }

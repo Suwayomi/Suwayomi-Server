@@ -7,9 +7,8 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
 
 class DownloadQuery {
-    fun downloadStatus(): CompletableFuture<DownloadStatus> {
-        return future {
+    fun downloadStatus(): CompletableFuture<DownloadStatus> =
+        future {
             DownloadStatus(DownloadManager.status.first())
         }
-    }
 }

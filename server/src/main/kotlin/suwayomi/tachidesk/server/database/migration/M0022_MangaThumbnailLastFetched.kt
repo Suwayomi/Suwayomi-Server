@@ -10,9 +10,10 @@ package suwayomi.tachidesk.server.database.migration
 import de.neonew.exposed.migrations.helpers.AddColumnMigration
 
 @Suppress("ClassName", "unused")
-class M0022_MangaThumbnailLastFetched : AddColumnMigration(
-    "Manga",
-    "thumbnail_url_last_fetched",
-    "BIGINT",
-    "0",
-)
+class M0022_MangaThumbnailLastFetched :
+    AddColumnMigration(
+        "Manga",
+        "thumbnail_url_last_fetched",
+        "BIGINT",
+        "0",
+    )

@@ -99,14 +99,13 @@ class ApolloSubscriptionProtocolHandler(
         onDisconnect(context)
     }
 
-    private fun convertToMessageOrNull(payload: String): SubscriptionOperationMessage? {
-        return try {
+    private fun convertToMessageOrNull(payload: String): SubscriptionOperationMessage? =
+        try {
             objectMapper.readValue(payload)
         } catch (exception: Exception) {
             logger.error("Error parsing the subscription message", exception)
             null
         }
-    }
 
     private fun startSubscription(
         operationMessage: SubscriptionOperationMessage,
@@ -133,15 +132,15 @@ class ApolloSubscriptionProtocolHandler(
 
         try {
             val request = objectMapper.convertValue<GraphQLRequest>(payload)
-            return subscriptionHandler.executeSubscription(request, graphQLContext)
+            return subscriptionHandler
+                .executeSubscription(request, graphQLContext)
                 .map {
                     if (it.errors?.isNotEmpty() == true) {
                         SubscriptionOperationMessage(type = GQL_ERROR.type, id = operationMessage.id, payload = it.errors)
                     } else {
                         SubscriptionOperationMessage(type = GQL_NEXT.type, id = operationMessage.id, payload = it)
                     }
-                }
-                .onCompletion { if (it == null) emitAll(onComplete(operationMessage)) }
+                }.onCompletion { if (it == null) emitAll(onComplete(operationMessage)) }
                 .onStart { sessionState.saveOperation(context, operationMessage, currentCoroutineContext().job) }
         } catch (exception: Exception) {
             logger.error("Error running graphql subscription", exception)
@@ -169,13 +168,10 @@ class ApolloSubscriptionProtocolHandler(
     /**
      * Called with the publisher has completed on its own.
      */
-    private fun onComplete(operationMessage: SubscriptionOperationMessage): Flow<SubscriptionOperationMessage> {
-        return sessionState.completeOperation(operationMessage)
-    }
+    private fun onComplete(operationMessage: SubscriptionOperationMessage): Flow<SubscriptionOperationMessage> =
+        sessionState.completeOperation(operationMessage)
 
-    private fun onPing(): Flow<SubscriptionOperationMessage> {
-        return flowOf(pongMessage)
-    }
+    private fun onPing(): Flow<SubscriptionOperationMessage> = flowOf(pongMessage)
 
     private fun onDisconnect(context: WsContext): Flow<SubscriptionOperationMessage> {
         logger.debug("Session \"${context.sessionId}\" disconnected")

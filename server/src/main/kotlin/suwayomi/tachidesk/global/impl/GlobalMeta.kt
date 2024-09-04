@@ -38,10 +38,10 @@ object GlobalMeta {
         }
     }
 
-    fun getMetaMap(): Map<String, String> {
-        return transaction {
-            GlobalMetaTable.selectAll()
+    fun getMetaMap(): Map<String, String> =
+        transaction {
+            GlobalMetaTable
+                .selectAll()
                 .associate { it[GlobalMetaTable.key] to it[GlobalMetaTable.value] }
         }
-    }
 }

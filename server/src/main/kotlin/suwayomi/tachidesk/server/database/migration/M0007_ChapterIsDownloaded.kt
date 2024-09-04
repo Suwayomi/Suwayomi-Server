@@ -10,9 +10,10 @@ package suwayomi.tachidesk.server.database.migration
 import de.neonew.exposed.migrations.helpers.AddColumnMigration
 
 @Suppress("ClassName", "unused")
-class M0007_ChapterIsDownloaded : AddColumnMigration(
-    "Chapter",
-    "is_downloaded",
-    "BOOLEAN",
-    "FALSE",
-)
+class M0007_ChapterIsDownloaded :
+    AddColumnMigration(
+        "Chapter",
+        "is_downloaded",
+        "BOOLEAN",
+        "FALSE",
+    )

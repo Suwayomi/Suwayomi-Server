@@ -78,8 +78,8 @@ object Extension {
     suspend fun installExternalExtension(
         inputStream: InputStream,
         apkName: String,
-    ): Int {
-        return installAPK(true) {
+    ): Int =
+        installAPK(true) {
             val savePath = "${applicationDirs.extensionsRoot}/$apkName"
             logger.debug { "Saving apk at $apkName" }
             // download apk file
@@ -92,7 +92,6 @@ object Extension {
             }
             savePath
         }
-    }
 
     suspend fun installAPK(
         forceReinstall: Boolean = false,
@@ -174,7 +173,10 @@ object Extension {
                     else -> "all"
                 }
 
-            val extensionName = packageInfo.applicationInfo.nonLocalizedLabel.toString().substringAfter("Tachiyomi: ")
+            val extensionName =
+                packageInfo.applicationInfo.nonLocalizedLabel
+                    .toString()
+                    .substringAfter("Tachiyomi: ")
 
             // update extension info
             transaction {
@@ -277,9 +279,10 @@ object Extension {
         savePath: String,
     ) {
         val response =
-            network.client.newCall(
-                GET(url, cache = CacheControl.FORCE_NETWORK),
-            ).await()
+            network.client
+                .newCall(
+                    GET(url, cache = CacheControl.FORCE_NETWORK),
+                ).await()
 
         val downloadedFile = File(savePath)
         downloadedFile.sink().buffer().use { sink ->
@@ -355,13 +358,12 @@ object Extension {
         val cacheSaveDir = "${applicationDirs.extensionsRoot}/icon"
 
         return getImageResponse(cacheSaveDir, apkName) {
-            network.client.newCall(
-                GET(iconUrl, cache = CacheControl.FORCE_NETWORK),
-            ).await()
+            network.client
+                .newCall(
+                    GET(iconUrl, cache = CacheControl.FORCE_NETWORK),
+                ).await()
         }
     }
 
-    fun getExtensionIconUrl(apkName: String): String {
-        return "/api/v1/extension/icon/$apkName"
-    }
+    fun getExtensionIconUrl(apkName: String): String = "/api/v1/extension/icon/$apkName"
 }

@@ -247,7 +247,8 @@ object SourceController {
                     description("All source search")
                 }
             },
-            behaviorOf = { ctx, searchTerm -> // TODO
+            behaviorOf = { ctx, searchTerm ->
+                // TODO
                 ctx.json(Search.sourceGlobalSearch(searchTerm))
             },
             withResults = {

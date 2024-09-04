@@ -23,12 +23,10 @@ data class Record(
     val latestChapter: Int? = null,
 )
 
-private fun String.htmlDecode(): String {
-    return Jsoup.parse(this).wholeText()
-}
+private fun String.htmlDecode(): String = Jsoup.parse(this).wholeText()
 
-fun Record.toTrackSearch(id: Int): TrackSearch {
-    return TrackSearch.create(id).apply {
+fun Record.toTrackSearch(id: Int): TrackSearch =
+    TrackSearch.create(id).apply {
         media_id = this@toTrackSearch.seriesId ?: 0L
         title = this@toTrackSearch.title?.htmlDecode() ?: ""
         total_chapters = 0
@@ -39,4 +37,3 @@ fun Record.toTrackSearch(id: Int): TrackSearch {
         publishing_type = this@toTrackSearch.type.toString()
         start_date = this@toTrackSearch.year.toString()
     }
-}

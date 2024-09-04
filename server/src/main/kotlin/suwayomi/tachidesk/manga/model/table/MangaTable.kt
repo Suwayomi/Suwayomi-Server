@@ -69,7 +69,9 @@ fun MangaTable.toDataClass(mangaEntry: ResultRow) =
         updateStrategy = UpdateStrategy.valueOf(mangaEntry[updateStrategy]),
     )
 
-enum class MangaStatus(val value: Int) {
+enum class MangaStatus(
+    val value: Int,
+) {
     UNKNOWN(0),
     ONGOING(1),
     COMPLETED(2),

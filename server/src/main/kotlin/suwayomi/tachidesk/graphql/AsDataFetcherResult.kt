@@ -14,12 +14,14 @@ inline fun <T> asDataFetcherResult(block: () -> T): DataFetcherResult<T?> {
 
     if (result.isFailure) {
         logger.error(result.exceptionOrNull()) { "asDataFetcherResult: failed due to" }
-        return DataFetcherResult.newResult<T?>()
+        return DataFetcherResult
+            .newResult<T?>()
             .error(result.exceptionOrNull()?.toGraphQLError())
             .build()
     }
 
-    return DataFetcherResult.newResult<T?>()
+    return DataFetcherResult
+        .newResult<T?>()
         .data(result.getOrNull())
         .build()
 }

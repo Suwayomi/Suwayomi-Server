@@ -104,7 +104,9 @@ object PackageTools {
                 Bundle().apply {
                     val appTag = doc.getElementsByTagName("application").item(0)
 
-                    appTag?.childNodes?.toList()
+                    appTag
+                        ?.childNodes
+                        ?.toList()
                         .orEmpty()
                         .asSequence()
                         .filter {
@@ -126,7 +128,8 @@ object PackageTools {
                     parsed.apkSingers.flatMap { it.certificateMetas }
                     // + parsed.apkV2Singers.flatMap { it.certificateMetas }
                 ) // Blocked by: https://github.com/hsiafan/apk-parser/issues/72
-                    .map { Signature(it.data) }.toTypedArray()
+                    .map { Signature(it.data) }
+                    .toTypedArray()
         }
     }
 

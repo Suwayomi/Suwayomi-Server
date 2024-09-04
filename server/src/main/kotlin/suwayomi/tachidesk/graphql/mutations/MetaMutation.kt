@@ -48,7 +48,8 @@ class MetaMutation {
             val meta =
                 transaction {
                     val meta =
-                        GlobalMetaTable.select { GlobalMetaTable.key eq key }
+                        GlobalMetaTable
+                            .select { GlobalMetaTable.key eq key }
                             .firstOrNull()
 
                     GlobalMetaTable.deleteWhere { GlobalMetaTable.key eq key }

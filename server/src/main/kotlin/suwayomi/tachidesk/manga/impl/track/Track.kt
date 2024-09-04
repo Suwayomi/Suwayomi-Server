@@ -63,9 +63,7 @@ object Track {
         tracker.logout()
     }
 
-    fun proxyThumbnailUrl(trackerId: Int): String {
-        return "/api/v1/track/$trackerId/thumbnail"
-    }
+    fun proxyThumbnailUrl(trackerId: Int): String = "/api/v1/track/$trackerId/thumbnail"
 
     fun getTrackerThumbnail(trackerId: Int): Pair<InputStream, String> {
         val tracker = TrackerManager.getTracker(trackerId)!!
@@ -76,7 +74,8 @@ object Track {
     fun getTrackRecordsByMangaId(mangaId: Int): List<MangaTrackerDataClass> {
         val recordMap =
             transaction {
-                TrackRecordTable.select { TrackRecordTable.mangaId eq mangaId }
+                TrackRecordTable
+                    .select { TrackRecordTable.mangaId eq mangaId }
                     .map { it.toTrackRecordDataClass() }
             }.associateBy { it.trackerId }
 
@@ -138,10 +137,12 @@ object Track {
     ) {
         val track =
             transaction {
-                TrackSearchTable.select {
-                    TrackSearchTable.trackerId eq trackerId and
-                        (TrackSearchTable.remoteId eq remoteId)
-                }.first().toTrack(mangaId)
+                TrackSearchTable
+                    .select {
+                        TrackSearchTable.trackerId eq trackerId and
+                            (TrackSearchTable.remoteId eq remoteId)
+                    }.first()
+                    .toTrack(mangaId)
             }
         val tracker = TrackerManager.getTracker(trackerId)!!
 
@@ -160,10 +161,10 @@ object Track {
         if (track.started_reading_date <= 0) {
             val oldestChapter =
                 transaction {
-                    ChapterTable.select {
-                        (ChapterTable.manga eq mangaId) and (ChapterTable.isRead eq true)
-                    }
-                        .orderBy(ChapterTable.lastReadAt to SortOrder.ASC)
+                    ChapterTable
+                        .select {
+                            (ChapterTable.manga eq mangaId) and (ChapterTable.isRead eq true)
+                        }.orderBy(ChapterTable.lastReadAt to SortOrder.ASC)
                         .limit(1)
                         .firstOrNull()
                 }
@@ -290,14 +291,14 @@ object Track {
         }
     }
 
-    private fun queryMaxReadChapter(mangaId: Int): ResultRow? {
-        return transaction {
-            ChapterTable.select { (ChapterTable.manga eq mangaId) and (ChapterTable.isRead eq true) }
+    private fun queryMaxReadChapter(mangaId: Int): ResultRow? =
+        transaction {
+            ChapterTable
+                .select { (ChapterTable.manga eq mangaId) and (ChapterTable.isRead eq true) }
                 .orderBy(ChapterTable.chapter_number to SortOrder.DESC)
                 .limit(1)
                 .firstOrNull()
         }
-    }
 
     private suspend fun trackChapter(
         mangaId: Int,
@@ -305,7 +306,8 @@ object Track {
     ) {
         val records =
             transaction {
-                TrackRecordTable.select { TrackRecordTable.mangaId eq mangaId }
+                TrackRecordTable
+                    .select { TrackRecordTable.mangaId eq mangaId }
                     .toList()
             }
 
@@ -313,7 +315,8 @@ object Track {
             try {
                 trackChapterForTracker(it, chapterNumber)
             } catch (e: Exception) {
-                KotlinLogging.logger("${logger.name}::trackChapter(mangaId= $mangaId, chapterNumber= $chapterNumber)")
+                KotlinLogging
+                    .logger("${logger.name}::trackChapter(mangaId= $mangaId, chapterNumber= $chapterNumber)")
                     .error(e) { "failed due to" }
             }
         }
@@ -358,14 +361,14 @@ object Track {
         }
     }
 
-    fun upsertTrackRecord(track: Track): Int {
-        return transaction {
+    fun upsertTrackRecord(track: Track): Int =
+        transaction {
             val existingRecord =
-                TrackRecordTable.select {
-                    (TrackRecordTable.mangaId eq track.manga_id) and
-                        (TrackRecordTable.trackerId eq track.sync_id)
-                }
-                    .singleOrNull()
+                TrackRecordTable
+                    .select {
+                        (TrackRecordTable.mangaId eq track.manga_id) and
+                            (TrackRecordTable.trackerId eq track.sync_id)
+                    }.singleOrNull()
 
             if (existingRecord != null) {
                 updateTrackRecord(track)
@@ -374,7 +377,6 @@ object Track {
                 insertTrackRecord(track)
             }
         }
-    }
 
     fun updateTrackRecord(track: Track): Int =
         transaction {
@@ -399,20 +401,21 @@ object Track {
 
     fun insertTrackRecord(track: Track): Int =
         transaction {
-            TrackRecordTable.insertAndGetId {
-                it[mangaId] = track.manga_id
-                it[trackerId] = track.sync_id
-                it[remoteId] = track.media_id
-                it[libraryId] = track.library_id
-                it[title] = track.title
-                it[lastChapterRead] = track.last_chapter_read.toDouble()
-                it[totalChapters] = track.total_chapters
-                it[status] = track.status
-                it[score] = track.score.toDouble()
-                it[remoteUrl] = track.tracking_url
-                it[startDate] = track.started_reading_date
-                it[finishDate] = track.finished_reading_date
-            }.value
+            TrackRecordTable
+                .insertAndGetId {
+                    it[mangaId] = track.manga_id
+                    it[trackerId] = track.sync_id
+                    it[remoteId] = track.media_id
+                    it[libraryId] = track.library_id
+                    it[title] = track.title
+                    it[lastChapterRead] = track.last_chapter_read.toDouble()
+                    it[totalChapters] = track.total_chapters
+                    it[status] = track.status
+                    it[score] = track.score.toDouble()
+                    it[remoteUrl] = track.tracking_url
+                    it[startDate] = track.started_reading_date
+                    it[finishDate] = track.finished_reading_date
+                }.value
         }
 
     @Serializable

@@ -21,8 +21,8 @@ data class BackupChapter(
     @ProtoNumber(9) var chapterNumber: Float = 0F,
     @ProtoNumber(10) var sourceOrder: Int = 0,
 ) {
-    fun toChapterImpl(): ChapterImpl {
-        return ChapterImpl().apply {
+    fun toChapterImpl(): ChapterImpl =
+        ChapterImpl().apply {
             url = this@BackupChapter.url
             name = this@BackupChapter.name
             chapter_number = this@BackupChapter.chapterNumber
@@ -34,5 +34,4 @@ data class BackupChapter(
             date_upload = this@BackupChapter.dateUpload
             source_order = this@BackupChapter.sourceOrder
         }
-    }
 }

@@ -24,7 +24,8 @@ data class UpdateStatus(
     ) : this(
         categories,
         mangaStatusMap =
-            jobs.groupBy { it.status }
+            jobs
+                .groupBy { it.status }
                 .mapValues { entry ->
                     entry.value.map { it.manga }
                 }.plus(Pair(JobStatus.SKIPPED, skippedMangas)),

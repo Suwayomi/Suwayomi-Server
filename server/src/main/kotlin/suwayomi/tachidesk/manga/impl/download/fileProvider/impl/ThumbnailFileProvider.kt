@@ -18,7 +18,9 @@ class MissingThumbnailException : Exception("No thumbnail found")
 
 private val applicationDirs by DI.global.instance<ApplicationDirs>()
 
-class ThumbnailFileProvider(val mangaId: Int) : DownloadedFilesProvider {
+class ThumbnailFileProvider(
+    val mangaId: Int,
+) : DownloadedFilesProvider {
     private fun getFilePath(): String? {
         val thumbnailDir = applicationDirs.thumbnailDownloadsRoot
         val fileName = mangaId.toString()
@@ -36,9 +38,7 @@ class ThumbnailFileProvider(val mangaId: Int) : DownloadedFilesProvider {
         return getCachedImageResponse(filePath, filePathWithoutExt)
     }
 
-    override fun getImage(): RetrieveFile0Args {
-        return RetrieveFile0Args(::getImageImpl)
-    }
+    override fun getImage(): RetrieveFile0Args = RetrieveFile0Args(::getImageImpl)
 
     private suspend fun downloadImpl(): Boolean {
         val isExistingFile = getFilePath() != null
@@ -55,9 +55,7 @@ class ThumbnailFileProvider(val mangaId: Int) : DownloadedFilesProvider {
         return true
     }
 
-    override fun download(): FileDownload0Args {
-        return FileDownload0Args(::downloadImpl)
-    }
+    override fun download(): FileDownload0Args = FileDownload0Args(::downloadImpl)
 
     override fun delete(): Boolean {
         val filePath = getFilePath()

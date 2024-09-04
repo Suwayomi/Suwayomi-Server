@@ -48,7 +48,8 @@ class ExtensionMutation {
     ) {
         val extensions =
             transaction {
-                ExtensionTable.select { ExtensionTable.pkgName inList ids }
+                ExtensionTable
+                    .select { ExtensionTable.pkgName inList ids }
                     .map { ExtensionType(it) }
             }
 
@@ -80,7 +81,9 @@ class ExtensionMutation {
 
                 val extension =
                     transaction {
-                        ExtensionTable.select { ExtensionTable.pkgName eq id }.firstOrNull()
+                        ExtensionTable
+                            .select { ExtensionTable.pkgName eq id }
+                            .firstOrNull()
                             ?.let { ExtensionType(it) }
                     }
 
@@ -101,7 +104,8 @@ class ExtensionMutation {
 
                 val extensions =
                     transaction {
-                        ExtensionTable.select { ExtensionTable.pkgName inList ids }
+                        ExtensionTable
+                            .select { ExtensionTable.pkgName inList ids }
                             .map { ExtensionType(it) }
                     }
 
@@ -131,7 +135,8 @@ class ExtensionMutation {
 
                 val extensions =
                     transaction {
-                        ExtensionTable.select { ExtensionTable.name neq LocalSource.EXTENSION_NAME }
+                        ExtensionTable
+                            .select { ExtensionTable.name neq LocalSource.EXTENSION_NAME }
                             .map { ExtensionType(it) }
                     }
 
