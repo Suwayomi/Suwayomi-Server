@@ -232,11 +232,12 @@ object CFClearance {
                             .name(cookie.name)
                             .value(cookie.value)
                             .domain(cookie.domain.removePrefix("."))
-                            .expiresAt(cookie.expires?.takeUnless { it < 0.0 }?.toLong() ?: Long.MAX_VALUE)
                             .also {
                                 if (cookie.httpOnly != null && cookie.httpOnly) it.httpOnly()
                                 if (cookie.secure != null && cookie.secure) it.secure()
                                 if (!cookie.path.isNullOrEmpty()) it.path(cookie.path)
+                                // We need to convert the expires time to milliseconds for the persistent cookie store
+                                if (cookie.expires != null && cookie.expires > 0) it.expiresAt((cookie.expires * 1000).toLong())
                             }.build()
                     }.groupBy { it.domain }
                     .flatMap { (domain, cookies) ->
