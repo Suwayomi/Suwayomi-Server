@@ -200,8 +200,8 @@ object DownloadManager {
             downloadQueue.toList(),
         )
 
-    private fun getDownloadUpdates(addInitial: Boolean = false): DownloadUpdates {
-        return DownloadUpdates(
+    private fun getDownloadUpdates(addInitial: Boolean = false): DownloadUpdates =
+        DownloadUpdates(
             if (downloadQueue.none { it.state == Downloading }) {
                 Status.Stopped
             } else {
@@ -210,7 +210,6 @@ object DownloadManager {
             downloadUpdates.toList(),
             if (addInitial) downloadQueue.toList() else null,
         )
-    }
 
     private val downloaderWatch = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 

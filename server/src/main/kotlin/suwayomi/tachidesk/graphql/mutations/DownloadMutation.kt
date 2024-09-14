@@ -96,9 +96,10 @@ class DownloadMutation {
                     downloadStatus =
                         withTimeout(30.seconds) {
                             DownloadStatus(
-                                DownloadManager.updates.first {
-                                    DownloadManager.getStatus().queue.any { it.chapter.id in chapters }
-                                }.let { DownloadManager.getStatus() },
+                                DownloadManager.updates
+                                    .first {
+                                        DownloadManager.getStatus().queue.any { it.chapter.id in chapters }
+                                    }.let { DownloadManager.getStatus() },
                             )
                         },
                 )
@@ -128,7 +129,8 @@ class DownloadMutation {
                     downloadStatus =
                         withTimeout(30.seconds) {
                             DownloadStatus(
-                                DownloadManager.updates.first { it.updates.any { it.downloadChapter.chapter.id == chapter } }
+                                DownloadManager.updates
+                                    .first { it.updates.any { it.downloadChapter.chapter.id == chapter } }
                                     .let { DownloadManager.getStatus() },
                             )
                         },
@@ -161,12 +163,12 @@ class DownloadMutation {
                     downloadStatus =
                         withTimeout(30.seconds) {
                             DownloadStatus(
-                                DownloadManager.updates.first {
-                                    it.updates.none {
-                                        it.downloadChapter.chapter.id in chapters && it.type != DEQUEUED
-                                    }
-                                }
-                                    .let { DownloadManager.getStatus() },
+                                DownloadManager.updates
+                                    .first {
+                                        it.updates.none {
+                                            it.downloadChapter.chapter.id in chapters && it.type != DEQUEUED
+                                        }
+                                    }.let { DownloadManager.getStatus() },
                             )
                         },
                 )
@@ -196,12 +198,12 @@ class DownloadMutation {
                     downloadStatus =
                         withTimeout(30.seconds) {
                             DownloadStatus(
-                                DownloadManager.updates.first {
-                                    it.updates.none {
-                                        it.downloadChapter.chapter.id == chapter && it.type != DEQUEUED
-                                    }
-                                }
-                                    .let { DownloadManager.getStatus() },
+                                DownloadManager.updates
+                                    .first {
+                                        it.updates.none {
+                                            it.downloadChapter.chapter.id == chapter && it.type != DEQUEUED
+                                        }
+                                    }.let { DownloadManager.getStatus() },
                             )
                         },
                 )
@@ -228,7 +230,8 @@ class DownloadMutation {
                     downloadStatus =
                         withTimeout(30.seconds) {
                             DownloadStatus(
-                                DownloadManager.updates.first { it.status == Status.Started }
+                                DownloadManager.updates
+                                    .first { it.status == Status.Started }
                                     .let { DownloadManager.getStatus() },
                             )
                         },
@@ -255,7 +258,8 @@ class DownloadMutation {
                     downloadStatus =
                         withTimeout(30.seconds) {
                             DownloadStatus(
-                                DownloadManager.updates.first { it.status == Status.Stopped }
+                                DownloadManager.updates
+                                    .first { it.status == Status.Stopped }
                                     .let { DownloadManager.getStatus() },
                             )
                         },
@@ -282,7 +286,8 @@ class DownloadMutation {
                     downloadStatus =
                         withTimeout(30.seconds) {
                             DownloadStatus(
-                                DownloadManager.updates.first { it.status == Status.Stopped }
+                                DownloadManager.updates
+                                    .first { it.status == Status.Stopped }
                                     .let { DownloadManager.getStatus() },
                             )
                         },
@@ -313,7 +318,8 @@ class DownloadMutation {
                     downloadStatus =
                         withTimeout(30.seconds) {
                             DownloadStatus(
-                                DownloadManager.updates.first { it.updates.indexOfFirst { it.downloadChapter.chapter.id == chapter } <= to }
+                                DownloadManager.updates
+                                    .first { it.updates.indexOfFirst { it.downloadChapter.chapter.id == chapter } <= to }
                                     .let { DownloadManager.getStatus() },
                             )
                         },
