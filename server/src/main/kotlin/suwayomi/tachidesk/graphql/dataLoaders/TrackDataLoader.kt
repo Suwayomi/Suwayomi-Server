@@ -133,7 +133,7 @@ class TrackRecordsForTrackerIdDataLoader : KotlinDataLoader<Int, TrackRecordNode
                         TrackRecordTable
                             .select { TrackRecordTable.trackerId inList ids }
                             .map { TrackRecordType(it) }
-                            .groupBy { it.mangaId }
+                            .groupBy { it.trackerId }
                     ids.map { (trackRecordsBySyncId[it] ?: emptyList()).toNodeList() }
                 }
             }
