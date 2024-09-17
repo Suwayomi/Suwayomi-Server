@@ -18,5 +18,5 @@ for /f "tokens=2" %%i in ('curl -s https://api.github.com/repos/Suwayomi/Suwayom
 )
 
 :launch
-start "" jre\bin\javaw %* -jar bin\Suwayomi-Server.jar
+start "" jre\bin\javaw %* -jar Suwayomi-Launcher.jar --launch
 popd
