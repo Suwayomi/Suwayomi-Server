@@ -36,10 +36,10 @@ import suwayomi.tachidesk.manga.impl.backup.models.Chapter
 import suwayomi.tachidesk.manga.impl.backup.models.Manga
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.ValidationResult
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.validate
+import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupHistory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSerializer
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupTracking
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrack
@@ -166,7 +166,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                 .gzip()
                 .buffer()
                 .use { it.readByteArray() }
-        val backup = parser.decodeFromByteArray(BackupSerializer, backupString)
+        val backup = parser.decodeFromByteArray(Backup.serializer(), backupString)
 
         val validationResult = validate(backup)
 

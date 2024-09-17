@@ -16,9 +16,10 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import mu.KotlinLogging
+import okio.Buffer
+import okio.Sink
 import okio.buffer
 import okio.gzip
-import okio.sink
 import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.select
@@ -33,7 +34,6 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSerializer
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSource
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupTracking
 import suwayomi.tachidesk.manga.impl.track.Track
@@ -48,7 +48,6 @@ import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.HAScheduler
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
 import java.util.concurrent.TimeUnit
@@ -189,16 +188,15 @@ object ProtoBackupExport : ProtoBackupBase() {
                 )
             }
 
-        val byteArray = parser.encodeToByteArray(BackupSerializer, backup)
+        val byteArray = parser.encodeToByteArray(Backup.serializer(), backup)
 
-        val byteStream = ByteArrayOutputStream()
-        byteStream
-            .sink()
+        val byteStream = Buffer()
+        (byteStream as Sink)
             .gzip()
             .buffer()
             .use { it.write(byteArray) }
 
-        return byteStream.toByteArray().inputStream()
+        return byteStream.inputStream()
     }
 
     private fun backupManga(
