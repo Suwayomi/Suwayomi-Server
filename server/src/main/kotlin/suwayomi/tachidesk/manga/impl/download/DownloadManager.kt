@@ -21,7 +21,6 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.sample
@@ -36,6 +35,9 @@ import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Error
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Queued
 import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
+import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdate
+import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType
+import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdates
 import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
@@ -47,6 +49,7 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CopyOnWriteArraySet
 import kotlin.reflect.jvm.jvmName
 import kotlin.time.Duration.Companion.seconds
 
@@ -57,6 +60,7 @@ object DownloadManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val clients = ConcurrentHashMap<String, WsContext>()
     private val downloadQueue = CopyOnWriteArrayList<DownloadChapter>()
+    private val downloadUpdates = CopyOnWriteArraySet<DownloadUpdate>()
     private val downloaders = ConcurrentHashMap<String, Downloader>()
 
     private const val DOWNLOAD_QUEUE_KEY = "downloadQueueKey"
@@ -79,6 +83,13 @@ object DownloadManager {
 
     private fun triggerSaveDownloadQueue() {
         scope.launch { saveQueueFlow.emit(Unit) }
+    }
+
+    private fun handleDownloadUpdate(
+        immediate: Boolean,
+        download: DownloadUpdate? = null,
+    ) {
+        notifyAllClients(immediate, listOfNotNull(download))
     }
 
     fun restoreAndResumeDownloads() {
@@ -124,8 +135,14 @@ object DownloadManager {
 
     private val notifyFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
+    @Deprecated("Replaced with updatesFlow", replaceWith = ReplaceWith("updatesFlow"))
     private val statusFlow = MutableSharedFlow<DownloadStatus>()
+
+    @Deprecated("Replaced with updates", replaceWith = ReplaceWith("updates"))
     val status = statusFlow.onStart { emit(getStatus()) }
+
+    private val updatesFlow = MutableSharedFlow<DownloadUpdates>()
+    val updates = updatesFlow.onStart { emit(getDownloadUpdates(addInitial = true)) }
 
     init {
         scope.launch {
@@ -147,12 +164,21 @@ object DownloadManager {
         }
     }
 
-    private fun notifyAllClients(immediate: Boolean = false) {
+    private fun notifyAllClients(
+        immediate: Boolean = false,
+        downloads: List<DownloadUpdate> = emptyList(),
+    ) {
+        downloadUpdates.addAll(downloads)
+
         if (immediate) {
             val status = getStatus()
+            val updates = getDownloadUpdates()
+
+            downloadUpdates.clear()
 
             scope.launch {
                 statusFlow.emit(status)
+                updatesFlow.emit(updates)
                 sendStatusToAllClients(status)
             }
 
@@ -164,7 +190,7 @@ object DownloadManager {
         }
     }
 
-    private fun getStatus(): DownloadStatus =
+    fun getStatus(): DownloadStatus =
         DownloadStatus(
             if (downloadQueue.none { it.state == Downloading }) {
                 Status.Stopped
@@ -172,6 +198,17 @@ object DownloadManager {
                 Status.Started
             },
             downloadQueue.toList(),
+        )
+
+    private fun getDownloadUpdates(addInitial: Boolean = false): DownloadUpdates =
+        DownloadUpdates(
+            if (downloadQueue.none { it.state == Downloading }) {
+                Status.Stopped
+            } else {
+                Status.Started
+            },
+            downloadUpdates.toList(),
+            if (addInitial) downloadQueue.toList() else null,
         )
 
     private val downloaderWatch = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
@@ -234,7 +271,7 @@ object DownloadManager {
                 scope = scope,
                 sourceId = sourceId,
                 downloadQueue = downloadQueue,
-                notifier = ::notifyAllClients,
+                notifier = ::handleDownloadUpdate,
                 onComplete = ::refreshDownloaders,
                 onDownloadFinished = ::triggerSaveDownloadQueue,
             )
@@ -303,7 +340,7 @@ object DownloadManager {
         val addedChapters = inputs.mapNotNull { addToQueue(it.first, it.second) }
         if (addedChapters.isNotEmpty()) {
             start()
-            notifyAllClients(true)
+            notifyAllClients(false, addedChapters.map { DownloadUpdate(DownloadUpdateType.QUEUED, it) })
         }
         scope.launch {
             downloaderWatch.emit(Unit)
@@ -328,6 +365,7 @@ object DownloadManager {
                     manga.id,
                     chapter,
                     manga,
+                    downloadQueue.size,
                 )
             downloadQueue.add(newDownloadChapter)
             triggerSaveDownloadQueue()
@@ -374,7 +412,7 @@ object DownloadManager {
         downloadQueue.removeAll(chapterDownloads)
         triggerSaveDownloadQueue()
 
-        notifyAllClients()
+        notifyAllClients(false, chapterDownloads.toList().map { DownloadUpdate(DownloadUpdateType.DEQUEUED, it) })
     }
 
     fun reorder(
@@ -410,6 +448,8 @@ object DownloadManager {
 
         downloadQueue -= download
         downloadQueue.add(to, download)
+        download.position = to
+        notifyAllClients(false, listOf(DownloadUpdate(DownloadUpdateType.POSITION, download)))
         triggerSaveDownloadQueue()
     }
 
@@ -439,9 +479,10 @@ object DownloadManager {
         logger.debug { "clear" }
 
         stop()
+        val removedDownloads = downloadQueue.toList().map { DownloadUpdate(DownloadUpdateType.DEQUEUED, it) }
         downloadQueue.clear()
         triggerSaveDownloadQueue()
-        notifyAllClients()
+        notifyAllClients(false, removedDownloads)
     }
 }
 
