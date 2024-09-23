@@ -224,7 +224,7 @@ object ExtensionsList {
             this
         }
 
-    private val repoMatchRegex =
+    val repoMatchRegex =
         (
             "https:\\/\\/(?>www\\.|raw\\.)?(github|githubusercontent)\\.com" +
                 "\\/([^\\/]+)\\/([^\\/]+)(?>(?>\\/tree|\\/blob)?\\/([^\\/\\n]*))?(?>\\/([^\\/\\n]*\\.json)?)?"
