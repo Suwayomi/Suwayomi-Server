@@ -228,7 +228,7 @@ object WebInterfaceManager {
     private fun getServedWebUIFlavor(): WebUIFlavor =
         WebUIFlavor.from(preferences.getString(SERVED_WEBUI_FLAVOR_KEY, WebUIFlavor.default.uiName)!!)
 
-    private fun isAutoUpdateEnabled(): Boolean = serverConfig.webUIUpdateCheckInterval.value.toInt() != 0
+    private fun isAutoUpdateEnabled(): Boolean = serverConfig.webUIUpdateCheckInterval.value.toInt() > 0
 
     @OptIn(DelicateCoroutinesApi::class)
     private fun scheduleWebUIUpdateCheck() {
