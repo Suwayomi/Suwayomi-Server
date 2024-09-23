@@ -211,7 +211,7 @@ object DownloadManager {
                         .distinct()
                         .minus(
                             runningDownloaders.map { it.sourceId }.toSet(),
-                        ).take(serverConfig.maxSourcesInParallel.value - runningDownloaders.size)
+                        ).take((serverConfig.maxSourcesInParallel.value - runningDownloaders.size).coerceAtLeast(0))
                         .map { getDownloader(it) }
                         .forEach {
                             it.start()
