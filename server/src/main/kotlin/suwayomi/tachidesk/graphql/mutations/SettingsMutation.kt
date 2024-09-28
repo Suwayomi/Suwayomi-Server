@@ -4,27 +4,45 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import suwayomi.tachidesk.graphql.types.PartialSettingsType
 import suwayomi.tachidesk.graphql.types.Settings
 import suwayomi.tachidesk.graphql.types.SettingsType
+import suwayomi.tachidesk.manga.impl.extension.ExtensionsList.repoMatchRegex
 import suwayomi.tachidesk.server.SERVER_CONFIG_MODULE_NAME
 import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
 import xyz.nulldev.ts.config.GlobalConfigManager
+import java.io.File
 
-private fun validateString(
-    value: String?,
-    pattern: Regex,
-    name: String,
-) {
-    validateString(value, pattern, Exception("Invalid format for \"$name\" [$value]"))
-}
-
-private fun validateString(
-    value: String?,
-    pattern: Regex,
+private fun validateValue(
     exception: Exception,
+    validate: () -> Boolean,
 ) {
-    if (value != null && !value.matches(pattern)) {
+    if (!validate()) {
         throw exception
     }
+}
+
+private fun <T> validateValue(
+    value: T?,
+    exception: Exception,
+    validate: (value: T) -> Boolean,
+) {
+    if (value != null) {
+        validateValue(exception) { validate(value) }
+    }
+}
+
+private fun <T> validateValue(
+    value: T?,
+    name: String,
+    validate: (value: T) -> Boolean,
+) {
+    validateValue(value, Exception("Invalid value for \"$name\" [$value]"), validate)
+}
+
+private fun validateFilePath(
+    value: String?,
+    name: String,
+) {
+    validateValue(value, name) { File(it).exists() }
 }
 
 class SettingsMutation {
@@ -39,10 +57,43 @@ class SettingsMutation {
     )
 
     private fun validateSettings(settings: Settings) {
+        validateValue(settings.ip, "ip") { it.matches("^((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4}$".toRegex()) }
+
+        // proxy
+        validateValue(settings.socksProxyVersion, "socksProxyVersion") { it == 4 || it == 5 }
+
+        // webUI
+        validateFilePath(settings.electronPath, "electronPath")
+        validateValue(settings.webUIUpdateCheckInterval, "webUIUpdateCheckInterval") { it == 0.0 || it in 1.0..23.0 }
+
+        // downloader
+        validateFilePath(settings.downloadsPath, "downloadsPath")
+        validateValue(settings.autoDownloadNewChaptersLimit, "autoDownloadNewChaptersLimit") { it >= 0 }
+
+        // extensions
+        validateValue(settings.extensionRepos, "extensionRepos") { it.all { repoUrl -> repoUrl.matches(repoMatchRegex) } }
+
+        // requests
+        validateValue(settings.maxSourcesInParallel, "maxSourcesInParallel") { it in 1..20 }
+
+        // updater
+        validateValue(settings.globalUpdateInterval, "globalUpdateInterval") { it == 0.0 || it >= 6 }
+
         // misc
-        val logbackSizePattern = "^[0-9]+(|kb|KB|mb|MB|gb|GB)\$".toRegex()
-        validateString(settings.maxLogFileSize, logbackSizePattern, "maxLogFileSize")
-        validateString(settings.maxLogFolderSize, logbackSizePattern, "maxLogFolderSize")
+        validateValue(settings.maxLogFiles, "maxLogFiles") { it >= 0 }
+
+        val logbackSizePattern = "^[0-9]+(|kb|KB|mb|MB|gb|GB)$".toRegex()
+        validateValue(settings.maxLogFileSize, "maxLogFolderSize") { it.matches(logbackSizePattern) }
+        validateValue(settings.maxLogFolderSize, "maxLogFolderSize") { it.matches(logbackSizePattern) }
+
+        // backup
+        validateFilePath(settings.backupPath, "backupPath")
+        validateValue(settings.backupTime, "backupTime") { it.matches("^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$".toRegex()) }
+        validateValue(settings.backupInterval, "backupInterval") { it == 0 || it >= 1 }
+        validateValue(settings.backupTTL, "backupTTL") { it == 0 || it >= 1 }
+
+        // local source
+        validateFilePath(settings.localSourcePath, "localSourcePath")
     }
 
     private fun <SettingType : Any> updateSetting(

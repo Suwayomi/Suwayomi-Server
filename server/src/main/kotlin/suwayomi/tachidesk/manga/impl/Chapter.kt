@@ -400,7 +400,7 @@ object Chapter {
             if (serverConfig.autoDownloadNewChaptersLimit.value == 0) {
                 chaptersToConsiderForDownloadLimit.size
             } else {
-                serverConfig.autoDownloadNewChaptersLimit.value.coerceAtMost(chaptersToConsiderForDownloadLimit.size)
+                serverConfig.autoDownloadNewChaptersLimit.value.coerceIn(0, chaptersToConsiderForDownloadLimit.size)
             }
         val limitedChaptersToDownload = chaptersToConsiderForDownloadLimit.subList(0, latestChapterToDownloadIndex)
         val limitedChaptersToDownloadWithDuplicates =
