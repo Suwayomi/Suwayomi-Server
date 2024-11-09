@@ -24,19 +24,12 @@ import nl.adaptivity.xmlutil.serialization.XML
 import org.kodein.di.DI
 import org.kodein.di.conf.global
 import org.kodein.di.instance
-import rx.Observable
-import rx.schedulers.Schedulers
-import uy.kohesive.injekt.api.InjektModule
-import uy.kohesive.injekt.api.InjektRegistrar
-import uy.kohesive.injekt.api.addSingleton
-import uy.kohesive.injekt.api.addSingletonFactory
-import uy.kohesive.injekt.api.get
+import org.koin.core.module.Module
+import org.koin.dsl.module
 
-class AppModule(
-    val app: Application,
-) : InjektModule {
-    override fun InjektRegistrar.registerInjectables() {
-        addSingleton(app)
+fun createAppModule(app: Application): Module {
+    return module {
+        single { app }
 
 //        addSingletonFactory { PreferencesHelper(app) }
 //
@@ -46,9 +39,9 @@ class AppModule(
 //
 //        addSingletonFactory { CoverCache(app) }
 
-        addSingletonFactory { NetworkHelper(app) }
+        single { NetworkHelper(app) }
 
-        addSingletonFactory { JavaScriptEngine(app) }
+        single { JavaScriptEngine(app) }
 
 //        addSingletonFactory { SourceManager(app).also { get<ExtensionManager>().init(it) } }
 //
@@ -60,36 +53,30 @@ class AppModule(
 //
 //        addSingletonFactory { LibrarySyncManager(app) }
 
-        addSingletonFactory {
+        single {
             val json by DI.global.instance<Json>()
             json
         }
 
-        addSingletonFactory {
+        single {
             val xml by DI.global.instance<XML>()
             xml
         }
 
-        addSingletonFactory {
+        single {
             val protobuf by DI.global.instance<ProtoBuf>()
             protobuf
         }
+    }
 
-        // Asynchronously init expensive components for a faster cold start
+    // Asynchronously init expensive components for a faster cold start
 
 //        rxAsync { get<PreferencesHelper>() }
 
-        rxAsync { get<NetworkHelper>() }
-
-        rxAsync {
+//        rxAsync {
 //            get<SourceManager>()
 //            get<DownloadManager>()
-        }
+//        }
 
 //        rxAsync { get<DatabaseHelper>() }
-    }
-
-    private fun rxAsync(block: () -> Unit) {
-        Observable.fromCallable { block() }.subscribeOn(Schedulers.computation()).subscribe()
-    }
 }

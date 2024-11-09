@@ -9,16 +9,15 @@ package eu.kanade.tachiyomi
 
 import android.app.Application
 import android.content.Context
-import uy.kohesive.injekt.Injekt
-import uy.kohesive.injekt.api.InjektScope
-import uy.kohesive.injekt.registry.default.DefaultRegistrar
+import org.koin.core.context.startKoin
 
 open class App : Application() {
     override fun onCreate() {
         super.onCreate()
-        Injekt = InjektScope(DefaultRegistrar())
-        Injekt.importModule(AppModule(this))
 
+        startKoin {
+            modules(createAppModule(this@App))
+        }
 //        if (BuildConfig.DEBUG) Timber.plant(Timber.DebugTree())
     }
 

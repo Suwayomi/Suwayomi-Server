@@ -13,6 +13,7 @@ twelvemonkeys = "3.11.0"
 graphqlkotlin = "6.8.5"
 xmlserialization = "0.86.2"
 ktlint = "1.3.1"
+koin-bom = "4.0.0"
 
 [libraries]
 # Kotlin
@@ -69,13 +70,16 @@ exposed-migrations = "com.github.Suwayomi:exposed-migrations:3.2.0"
 # Dependency Injection
 kodein = "org.kodein.di:kodein-di-conf-jvm:7.20.2"
 
+koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin-bom" }
+koin-core = { module = "io.insert-koin:koin-core" }
+
 # tray icon
 systemtray-core = "com.dorkbox:SystemTray:4.4"
 systemtray-utils = "com.dorkbox:Utilities:1.46" # version locked by SystemTray
 systemtray-desktop = "com.dorkbox:Desktop:1.1" # version locked by SystemTray
 
 # dependencies of Tachiyomi extensions
-injekt = "com.github.inorichi.injekt:injekt-core:65b0440"
+injekt = "com.github.null2264:injekt-koin:ee267b2e27"
 rxjava = "io.reactivex:rxjava:1.3.8"
 jsoup = "org.jsoup:jsoup:1.18.1"
 
