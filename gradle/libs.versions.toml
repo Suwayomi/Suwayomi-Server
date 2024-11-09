@@ -55,7 +55,7 @@ jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations
 # GraphQL
 graphql-kotlin-server = { module = "com.expediagroup:graphql-kotlin-server", version.ref = "graphqlkotlin" }
 graphql-kotlin-scheme = { module = "com.expediagroup:graphql-kotlin-schema-generator", version.ref = "graphqlkotlin" }
-graphql-scalars = "com.graphql-java:graphql-java-extended-scalars:20.2"
+graphql-scalars = "com.graphql-java:graphql-java-extended-scalars:2023-01-24T02-11-56-babda5f"
 
 # Exposed ORM
 exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
