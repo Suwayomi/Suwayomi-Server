@@ -9,20 +9,17 @@ package suwayomi.tachidesk.manga.controller
 
 import io.javalin.http.HttpCode
 import io.javalin.websocket.WsConfig
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.withOperation
+import uy.kohesive.injekt.injectLazy
 
 object DownloadController {
-    private val json by DI.global.instance<Json>()
+    private val json: Json by injectLazy()
 
     /** Download queue stats */
     fun downloadsWS(ws: WsConfig) {

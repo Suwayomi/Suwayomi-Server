@@ -24,14 +24,12 @@ import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
 import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.server.ServerConnector
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
 import suwayomi.tachidesk.manga.MangaAPI
 import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
+import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 import java.lang.IllegalArgumentException
 import java.util.concurrent.CompletableFuture
@@ -41,7 +39,7 @@ import kotlin.concurrent.thread
 object JavalinSetup {
     private val logger = KotlinLogging.logger {}
 
-    private val applicationDirs by DI.global.instance<ApplicationDirs>()
+    private val applicationDirs: ApplicationDirs by injectLazy()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 

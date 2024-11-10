@@ -9,14 +9,12 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import mu.KotlinLogging
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
+import uy.kohesive.injekt.injectLazy
 
 object UpdaterSocket : Websocket<UpdateStatus>() {
     private val logger = KotlinLogging.logger {}
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val updater by DI.global.instance<IUpdater>()
+    private val updater: IUpdater by injectLazy()
     private var job: Job? = null
 
     override fun notifyClient(

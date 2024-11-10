@@ -17,12 +17,10 @@ import eu.kanade.tachiyomi.util.lang.Hash
 import mu.KotlinLogging
 import net.dongliu.apk.parser.ApkFile
 import net.dongliu.apk.parser.ApkParsers
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 import suwayomi.tachidesk.server.ApplicationDirs
+import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.pm.InstalledPackage.Companion.toList
 import xyz.nulldev.androidcompat.pm.toPackageInfo
 import java.io.File
@@ -34,7 +32,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 object PackageTools {
     private val logger = KotlinLogging.logger {}
-    private val applicationDirs by DI.global.instance<ApplicationDirs>()
+    private val applicationDirs: ApplicationDirs by injectLazy()
 
     const val EXTENSION_FEATURE = "tachiyomi.extension"
     const val METADATA_SOURCE_CLASS = "tachiyomi.extension.class"

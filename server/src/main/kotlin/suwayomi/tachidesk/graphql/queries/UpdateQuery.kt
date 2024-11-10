@@ -1,16 +1,14 @@
 package suwayomi.tachidesk.graphql.queries
 
 import kotlinx.coroutines.flow.first
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.graphql.types.UpdateStatus
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.server.JavalinSetup.future
+import uy.kohesive.injekt.injectLazy
 import java.util.concurrent.CompletableFuture
 
 class UpdateQuery {
-    private val updater by DI.global.instance<IUpdater>()
+    private val updater: IUpdater by injectLazy()
 
     fun updateStatus(): CompletableFuture<UpdateStatus> = future { UpdateStatus(updater.status.first()) }
 

@@ -1,7 +1,7 @@
 package xyz.nulldev.androidcompat.res;
 
 import xyz.nulldev.androidcompat.info.ApplicationInfoImpl;
-import xyz.nulldev.androidcompat.util.KodeinGlobalHelper;
+import xyz.nulldev.androidcompat.util.KoinGlobalHelper;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -10,7 +10,7 @@ import java.util.Calendar;
  * BuildConfig compat class.
  */
 public class BuildConfigCompat {
-    private static ApplicationInfoImpl applicationInfo = KodeinGlobalHelper.instance(ApplicationInfoImpl.class);
+    private static ApplicationInfoImpl applicationInfo = KoinGlobalHelper.instance(ApplicationInfoImpl.class);
 
     public static final boolean DEBUG = applicationInfo.getDebug();
 

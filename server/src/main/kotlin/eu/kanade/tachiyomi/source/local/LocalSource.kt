@@ -40,9 +40,6 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.registerCatalogueSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
@@ -441,7 +438,7 @@ class LocalSource(
 
         private val logger = KotlinLogging.logger {}
 
-        private val applicationDirs by DI.global.instance<ApplicationDirs>()
+        private val applicationDirs: ApplicationDirs by injectLazy()
 
         val pageCache: MutableMap<String, List<() -> InputStream>> = mutableMapOf()
 

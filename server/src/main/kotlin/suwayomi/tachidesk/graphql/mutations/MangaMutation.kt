@@ -7,9 +7,6 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.types.MangaMetaType
 import suwayomi.tachidesk.graphql.types.MangaType
@@ -20,6 +17,7 @@ import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
+import uy.kohesive.injekt.injectLazy
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
 
@@ -29,7 +27,7 @@ import java.util.concurrent.CompletableFuture
  * - Delete read/all downloaded chapters
  */
 class MangaMutation {
-    private val updater by DI.global.instance<IUpdater>()
+    private val updater: IUpdater by injectLazy()
 
     data class UpdateMangaPatch(
         val inLibrary: Boolean? = null,

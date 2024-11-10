@@ -14,20 +14,18 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
+import uy.kohesive.injekt.injectLazy
 import java.util.concurrent.ConcurrentHashMap
 
 object GetCatalogueSource {
     private val logger = KotlinLogging.logger { }
 
     private val sourceCache = ConcurrentHashMap<Long, CatalogueSource>()
-    private val applicationDirs by DI.global.instance<ApplicationDirs>()
+    private val applicationDirs: ApplicationDirs by injectLazy()
 
     private fun getCatalogueSource(sourceId: Long): CatalogueSource? {
         val cachedResult: CatalogueSource? = sourceCache[sourceId]

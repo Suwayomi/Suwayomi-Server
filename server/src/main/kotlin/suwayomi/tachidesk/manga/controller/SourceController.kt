@@ -8,11 +8,7 @@ package suwayomi.tachidesk.manga.controller
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.javalin.http.HttpCode
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.MangaList
 import suwayomi.tachidesk.manga.impl.Search
 import suwayomi.tachidesk.manga.impl.Search.FilterChange
@@ -26,6 +22,7 @@ import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.queryParam
 import suwayomi.tachidesk.server.util.withOperation
+import uy.kohesive.injekt.injectLazy
 
 object SourceController {
     /** list of sources */
@@ -167,7 +164,7 @@ object SourceController {
             },
         )
 
-    private val json by DI.global.instance<Json>()
+    private val json: Json by injectLazy()
 
     /** change filters of source with id `sourceId` */
     val setFilters =

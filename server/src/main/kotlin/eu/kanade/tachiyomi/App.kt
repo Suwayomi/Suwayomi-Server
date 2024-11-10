@@ -9,15 +9,10 @@ package eu.kanade.tachiyomi
 
 import android.app.Application
 import android.content.Context
-import org.koin.core.context.startKoin
 
 open class App : Application() {
     override fun onCreate() {
         super.onCreate()
-
-        startKoin {
-            modules(createAppModule(this@App))
-        }
 //        if (BuildConfig.DEBUG) Timber.plant(Timber.DebugTree())
     }
 

@@ -206,6 +206,10 @@ class FilterListTest : ApplicationTest() {
         JavalinJackson().toJsonString(filterList)
     }
 
+    fun setFilter(sourceId: Long, filterChange: FilterChange) {
+        setFilter(sourceId, listOf(filterChange))
+    }
+
     @Test
     fun `Header and Separator should not change`() {
         val source = registerSource(FilterListSource::class)
@@ -347,6 +351,7 @@ class FilterListTest : ApplicationTest() {
             }
 
         @AfterAll
+        @JvmStatic
         fun teardown() {
             (0 until sourceCount).forEach { unregisterCatalogueSource(it) }
         }

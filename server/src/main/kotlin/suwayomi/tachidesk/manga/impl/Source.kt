@@ -19,9 +19,6 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.extension.Extension.getExtensionIconUrl
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
@@ -31,6 +28,7 @@ import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import uy.kohesive.injekt.api.get
+import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.androidimpl.CustomContext
 
 object Source {
@@ -77,7 +75,7 @@ object Source {
         }
     }
 
-    private val context by DI.global.instance<CustomContext>()
+    private val context: CustomContext by injectLazy()
 
     /**
      * (2021-11) Clients should support these types for extensions to work properly
@@ -125,7 +123,7 @@ object Source {
         val value: String,
     )
 
-    private val jsonMapper by DI.global.instance<JsonMapper>()
+    private val jsonMapper: JsonMapper by injectLazy()
 
     fun setSourcePreference(
         sourceId: Long,
