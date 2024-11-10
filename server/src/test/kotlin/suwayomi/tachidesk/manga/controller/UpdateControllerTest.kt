@@ -1,5 +1,7 @@
 package suwayomi.tachidesk.manga.controller
 
+import suwayomi.tachidesk.test.ApplicationTest
+
 // import io.javalin.http.Context
 // import io.javalin.http.HttpCode
 // import io.mockk.every
@@ -22,7 +24,7 @@ package suwayomi.tachidesk.manga.controller
 // import uy.kohesive.injekt.Injekt
 // import uy.kohesive.injekt.api.get
 //
-// internal class UpdateControllerTest : ApplicationTest() {
+internal class UpdateControllerTest : ApplicationTest() {
 //     private val ctx = mockk<Context>(relaxed = true)
 //
 //     @Test
@@ -83,4 +85,4 @@ package suwayomi.tachidesk.manga.controller
 //         val updater = Injekt.get<IUpdater>()
 //         runBlocking { updater.reset() }
 //     }
-// }
+}

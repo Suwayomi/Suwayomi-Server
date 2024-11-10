@@ -206,7 +206,10 @@ class FilterListTest : ApplicationTest() {
         JavalinJackson().toJsonString(filterList)
     }
 
-    fun setFilter(sourceId: Long, filterChange: FilterChange) {
+    fun setFilter(
+        sourceId: Long,
+        filterChange: FilterChange,
+    ) {
         setFilter(sourceId, listOf(filterChange))
     }
 
