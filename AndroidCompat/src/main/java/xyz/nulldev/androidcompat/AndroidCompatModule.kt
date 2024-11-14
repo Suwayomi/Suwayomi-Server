@@ -1,11 +1,8 @@
 package xyz.nulldev.androidcompat
 
 import android.content.Context
-import org.kodein.di.DI
-import org.kodein.di.bind
-import org.kodein.di.conf.global
-import org.kodein.di.instance
-import org.kodein.di.singleton
+import org.koin.core.module.Module
+import org.koin.dsl.module
 import xyz.nulldev.androidcompat.androidimpl.CustomContext
 import xyz.nulldev.androidcompat.androidimpl.FakePackageManager
 import xyz.nulldev.androidcompat.info.ApplicationInfoImpl
@@ -17,25 +14,19 @@ import xyz.nulldev.androidcompat.service.ServiceSupport
  * AndroidCompatModule
  */
 
-class AndroidCompatModule {
-    fun create() =
-        DI.Module("AndroidCompat") {
-            bind<AndroidFiles>() with singleton { AndroidFiles() }
+fun androidCompatModule(): Module =
+    module {
+        single { AndroidFiles() }
 
-            bind<ApplicationInfoImpl>() with singleton { ApplicationInfoImpl() }
+        single { ApplicationInfoImpl(get()) }
 
-            bind<ServiceSupport>() with singleton { ServiceSupport() }
+        single { ServiceSupport() }
 
-            bind<FakePackageManager>() with singleton { FakePackageManager() }
+        single { FakePackageManager() }
 
-            bind<PackageController>() with singleton { PackageController() }
+        single { PackageController() }
 
-            // Context
-            bind<CustomContext>() with singleton { CustomContext() }
-            bind<Context>() with
-                singleton {
-                    val context: Context by DI.global.instance<CustomContext>()
-                    context
-                }
-        }
-}
+        single { CustomContext() }
+
+        single<Context> { get<CustomContext>() }
+    }

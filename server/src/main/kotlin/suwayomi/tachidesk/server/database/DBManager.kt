@@ -12,15 +12,14 @@ import de.neonew.exposed.migrations.runMigrations
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.DatabaseConfig
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.ServerConfig
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 object DBManager {
     val db by lazy {
-        val applicationDirs by DI.global.instance<ApplicationDirs>()
+        val applicationDirs = Injekt.get<ApplicationDirs>()
         Database.connect(
             "jdbc:h2:${applicationDirs.dataRoot}/database",
             "org.h2.Driver",

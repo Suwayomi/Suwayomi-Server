@@ -12,12 +12,10 @@ import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import io.javalin.plugin.json.JsonMapper
 import kotlinx.serialization.Serializable
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.MangaList.processEntries
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
+import uy.kohesive.injekt.injectLazy
 
 object Search {
     suspend fun sourceSearch(
@@ -157,7 +155,7 @@ object Search {
         return updateFilterList(filterList, changes)
     }
 
-    private val jsonMapper by DI.global.instance<JsonMapper>()
+    private val jsonMapper: JsonMapper by injectLazy()
 
     @Serializable
     data class FilterChange(

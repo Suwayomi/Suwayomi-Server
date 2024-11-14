@@ -1,13 +1,11 @@
 package xyz.nulldev.androidcompat
 
 import android.app.Application
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
+import org.koin.mp.KoinPlatformTools
 import xyz.nulldev.androidcompat.androidimpl.CustomContext
 
 class AndroidCompat {
-    val context: CustomContext by DI.global.instance()
+    val context: CustomContext by KoinPlatformTools.defaultContext().get().inject()
 
     fun startApp(application: Application) {
         application.attach(context)

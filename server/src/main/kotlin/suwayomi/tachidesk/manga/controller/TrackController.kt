@@ -10,9 +10,6 @@ package suwayomi.tachidesk.manga.controller
 import io.javalin.http.HttpCode
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.track.Track
 import suwayomi.tachidesk.manga.model.dataclass.TrackerDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -20,10 +17,11 @@ import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.queryParam
 import suwayomi.tachidesk.server.util.withOperation
+import uy.kohesive.injekt.injectLazy
 import kotlin.time.Duration.Companion.days
 
 object TrackController {
-    private val json by DI.global.instance<Json>()
+    private val json: Json by injectLazy()
     private val logger = KotlinLogging.logger {}
 
     val list =

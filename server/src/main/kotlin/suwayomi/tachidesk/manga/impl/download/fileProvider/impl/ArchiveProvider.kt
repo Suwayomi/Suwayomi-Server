@@ -6,9 +6,6 @@ import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream
 import org.apache.commons.compress.archivers.zip.ZipFile
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.FileType
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
@@ -16,10 +13,11 @@ import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getMangaDownloadDir
 import suwayomi.tachidesk.manga.impl.util.storage.FileDeletionHelper
 import suwayomi.tachidesk.server.ApplicationDirs
+import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.InputStream
 
-private val applicationDirs by DI.global.instance<ApplicationDirs>()
+private val applicationDirs: ApplicationDirs by injectLazy()
 
 class ArchiveProvider(
     mangaId: Int,

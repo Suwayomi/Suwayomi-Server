@@ -1,8 +1,5 @@
 package suwayomi.tachidesk.manga.impl.download.fileProvider.impl
 
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.download.fileProvider.DownloadedFilesProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.FileDownload0Args
@@ -11,12 +8,13 @@ import suwayomi.tachidesk.manga.impl.util.getThumbnailDownloadPath
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getCachedImageResponse
 import suwayomi.tachidesk.server.ApplicationDirs
+import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.InputStream
 
 class MissingThumbnailException : Exception("No thumbnail found")
 
-private val applicationDirs by DI.global.instance<ApplicationDirs>()
+private val applicationDirs: ApplicationDirs by injectLazy()
 
 class ThumbnailFileProvider(
     val mangaId: Int,

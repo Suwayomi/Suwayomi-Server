@@ -10,24 +10,19 @@ package suwayomi.tachidesk.server
 import ch.qos.logback.classic.Level
 import com.typesafe.config.ConfigRenderOptions
 import eu.kanade.tachiyomi.App
+import eu.kanade.tachiyomi.createAppModule
+import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.local.LocalSource
 import io.javalin.plugin.json.JavalinJackson
 import io.javalin.plugin.json.JsonMapper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.protobuf.ProtoBuf
 import mu.KotlinLogging
-import nl.adaptivity.xmlutil.XmlDeclMode
-import nl.adaptivity.xmlutil.core.XmlVersion
-import nl.adaptivity.xmlutil.serialization.XML
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.kodein.di.DI
-import org.kodein.di.bind
-import org.kodein.di.conf.global
-import org.kodein.di.instance
-import org.kodein.di.singleton
+import org.koin.core.context.startKoin
+import org.koin.core.module.Module
+import org.koin.dsl.module
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.update.IUpdater
@@ -37,12 +32,15 @@ import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
 import suwayomi.tachidesk.server.util.SystemTray
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
+import xyz.nulldev.androidcompat.androidCompatModule
 import xyz.nulldev.ts.config.ApplicationRootDir
 import xyz.nulldev.ts.config.BASE_LOGGER_NAME
-import xyz.nulldev.ts.config.ConfigKodeinModule
 import xyz.nulldev.ts.config.GlobalConfigManager
+import xyz.nulldev.ts.config.configManagerModule
 import xyz.nulldev.ts.config.initLoggerConfig
 import xyz.nulldev.ts.config.setLogLevelFor
 import xyz.nulldev.ts.config.updateFileAppender
@@ -84,6 +82,13 @@ fun setupLogLevelUpdating(
         loggerNames.forEach { loggerName -> setLogLevelFor(loggerName, if (debugLogsEnabled) Level.DEBUG else defaultLevel) }
     }, ignoreInitialValue = false)
 }
+
+fun serverModule(applicationDirs: ApplicationDirs): Module =
+    module {
+        single { applicationDirs }
+        single<IUpdater> { Updater() }
+        single<JsonMapper> { JavalinJackson() }
+    }
 
 fun applicationSetup() {
     Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
@@ -136,37 +141,6 @@ fun applicationSetup() {
                 .replace(Regex("(\"basicAuth(?:Username|Password)\"\\s:\\s)(?!\"\")\".*\""), "$1\"******\"")
     }
 
-    DI.global.addImport(
-        DI.Module("Server") {
-            bind<ApplicationDirs>() with singleton { applicationDirs }
-            bind<IUpdater>() with singleton { Updater() }
-            bind<JsonMapper>() with singleton { JavalinJackson() }
-            bind<Json>() with
-                singleton {
-                    Json {
-                        ignoreUnknownKeys = true
-                        explicitNulls = false
-                    }
-                }
-            bind<XML>() with
-                singleton {
-                    XML {
-                        defaultPolicy {
-                            ignoreUnknownChildren()
-                        }
-                        autoPolymorphic = true
-                        xmlDeclMode = XmlDeclMode.Charset
-                        indent = 2
-                        xmlVersion = XmlVersion.XML10
-                    }
-                }
-            bind<ProtoBuf>() with
-                singleton {
-                    ProtoBuf
-                }
-        },
-    )
-
     logger.debug("Data Root directory is set to: ${applicationDirs.dataRoot}")
 
     // Migrate Directories from old versions
@@ -186,15 +160,27 @@ fun applicationSetup() {
         File(it).mkdirs()
     }
 
+    // initialize Koin modules
+    val app = App()
+    startKoin {
+        modules(
+            createAppModule(app),
+            androidCompatModule(),
+            configManagerModule(),
+            serverModule(applicationDirs),
+        )
+    }
+
     // Make sure only one instance of the app is running
     handleAppMutex()
 
-    // Load config API
-    DI.global.addImport(ConfigKodeinModule().create())
     // Load Android compatibility dependencies
     AndroidCompatInitializer().init()
     // start app
-    androidCompat.startApp(App())
+    androidCompat.startApp(app)
+
+    // Initialize NetworkHelper early
+    Injekt.get<NetworkHelper>()
 
     // create or update conf file if doesn't exist
     try {
@@ -317,7 +303,7 @@ fun applicationSetup() {
     Security.addProvider(BouncyCastleProvider())
 
     // start automated global updates
-    val updater by DI.global.instance<IUpdater>()
+    val updater = Injekt.get<IUpdater>()
     (updater as Updater).scheduleUpdateTask()
 
     // start automated backups

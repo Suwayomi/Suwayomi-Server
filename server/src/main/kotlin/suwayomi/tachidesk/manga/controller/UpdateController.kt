@@ -3,9 +3,6 @@ package suwayomi.tachidesk.manga.controller
 import io.javalin.http.HttpCode
 import io.javalin.websocket.WsConfig
 import mu.KotlinLogging
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.update.IUpdater
@@ -18,6 +15,8 @@ import suwayomi.tachidesk.server.util.formParam
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.withOperation
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -67,7 +66,7 @@ object UpdateController {
                 }
             },
             behaviorOf = { ctx, categoryId ->
-                val updater by DI.global.instance<IUpdater>()
+                val updater = Injekt.get<IUpdater>()
                 if (categoryId == null) {
                     logger.info { "Adding Library to Update Queue" }
                     updater.addCategoriesToUpdateQueue(
@@ -116,7 +115,7 @@ object UpdateController {
                 }
             },
             behaviorOf = { ctx ->
-                val updater by DI.global.instance<IUpdater>()
+                val updater = Injekt.get<IUpdater>()
                 ctx.json(updater.statusDeprecated.value)
             },
             withResults = {
@@ -133,7 +132,7 @@ object UpdateController {
                 }
             },
             behaviorOf = { ctx ->
-                val updater by DI.global.instance<IUpdater>()
+                val updater = Injekt.get<IUpdater>()
                 logger.info { "Resetting Updater" }
                 ctx.future(
                     future {

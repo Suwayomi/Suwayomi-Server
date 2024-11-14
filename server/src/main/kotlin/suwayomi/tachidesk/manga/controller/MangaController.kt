@@ -9,9 +9,6 @@ package suwayomi.tachidesk.manga.controller
 
 import io.javalin.http.HttpCode
 import kotlinx.serialization.json.Json
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Library
@@ -27,10 +24,11 @@ import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.queryParam
 import suwayomi.tachidesk.server.util.withOperation
+import uy.kohesive.injekt.injectLazy
 import kotlin.time.Duration.Companion.days
 
 object MangaController {
-    private val json by DI.global.instance<Json>()
+    private val json: Json by injectLazy()
 
     val retrieve =
         handler(

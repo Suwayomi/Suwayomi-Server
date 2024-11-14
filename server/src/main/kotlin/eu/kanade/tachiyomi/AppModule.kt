@@ -20,10 +20,9 @@ import eu.kanade.tachiyomi.network.JavaScriptEngine
 import eu.kanade.tachiyomi.network.NetworkHelper
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
+import nl.adaptivity.xmlutil.XmlDeclMode
+import nl.adaptivity.xmlutil.core.XmlVersion
 import nl.adaptivity.xmlutil.serialization.XML
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
@@ -54,18 +53,26 @@ fun createAppModule(app: Application): Module {
 //        addSingletonFactory { LibrarySyncManager(app) }
 
         single {
-            val json by DI.global.instance<Json>()
-            json
+            Json {
+                ignoreUnknownKeys = true
+                explicitNulls = false
+            }
         }
 
         single {
-            val xml by DI.global.instance<XML>()
-            xml
+            XML {
+                defaultPolicy {
+                    ignoreUnknownChildren()
+                }
+                autoPolymorphic = true
+                xmlDeclMode = XmlDeclMode.Charset
+                indent = 2
+                xmlVersion = XmlVersion.XML10
+            }
         }
 
         single {
-            val protobuf by DI.global.instance<ProtoBuf>()
-            protobuf
+            ProtoBuf
         }
     }
 
