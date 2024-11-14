@@ -11,7 +11,7 @@ rhino = "1.7.15"
 settings = "1.2.0"
 twelvemonkeys = "3.11.0"
 graphqlkotlin = "6.8.5"
-xmlserialization = "0.86.2"
+xmlserialization = "0.90.3"
 ktlint = "1.3.1"
 koin-bom = "4.0.0"
 
@@ -30,7 +30,7 @@ coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", ve
 serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 serialization-json-okio = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json-okio", version.ref = "serialization" }
 serialization-protobuf = { module = "org.jetbrains.kotlinx:kotlinx-serialization-protobuf", version.ref = "serialization" }
-serialization-xml-core = { module = "io.github.pdvrieze.xmlutil:core-jvm", version.ref = "xmlserialization" }
+serialization-xml-core = { module = "io.github.pdvrieze.xmlutil:core", version.ref = "xmlserialization" }
 serialization-xml = { module = "io.github.pdvrieze.xmlutil:serialization-jvm", version.ref = "xmlserialization" }
 
 # Logging
