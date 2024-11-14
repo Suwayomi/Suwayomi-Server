@@ -117,21 +117,32 @@ object Manga {
         val source =
             getCatalogueSourceOrNull(mangaEntry[MangaTable.sourceReference])
                 ?: return null
-        val sManga =
+        val sManga = source.getMangaDetails(
             SManga.create().apply {
                 url = mangaEntry[MangaTable.url]
                 title = mangaEntry[MangaTable.title]
+                thumbnail_url = mangaEntry[MangaTable.thumbnail_url]
+                artist = mangaEntry[MangaTable.artist]
+                author = mangaEntry[MangaTable.author]
+                description = mangaEntry[MangaTable.description]
+                genre = mangaEntry[MangaTable.genre]
+                status = mangaEntry[MangaTable.status]
+                update_strategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy])
             }
-        val networkManga = source.getMangaDetails(sManga)
-        sManga.copyFrom(networkManga)
+        )
 
         transaction {
             MangaTable.update({ MangaTable.id eq mangaId }) {
-                if (sManga.title != mangaEntry[MangaTable.title]) {
-                    val canUpdateTitle = updateMangaDownloadDir(mangaId, sManga.title)
+                val remoteTitle = try {
+                    sManga.title
+                } catch (_: UninitializedPropertyAccessException) {
+                    ""
+                }
+                if (remoteTitle.isNotEmpty() && remoteTitle != mangaEntry[MangaTable.title]) {
+                    val canUpdateTitle = updateMangaDownloadDir(mangaId, remoteTitle)
 
                     if (canUpdateTitle) {
-                        it[MangaTable.title] = sManga.title
+                        it[MangaTable.title] = remoteTitle
                     }
                 }
                 it[MangaTable.initialized] = true

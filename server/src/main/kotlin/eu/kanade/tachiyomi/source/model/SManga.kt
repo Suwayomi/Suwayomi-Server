@@ -25,34 +25,6 @@ interface SManga : Serializable {
 
     var initialized: Boolean
 
-    fun copyFrom(other: SManga) {
-        if (other.author != null) {
-            author = other.author
-        }
-
-        if (other.artist != null) {
-            artist = other.artist
-        }
-
-        if (other.description != null) {
-            description = other.description
-        }
-
-        if (other.genre != null) {
-            genre = other.genre
-        }
-
-        if (other.thumbnail_url != null) {
-            thumbnail_url = other.thumbnail_url
-        }
-
-        status = other.status
-
-        if (!initialized) {
-            initialized = other.initialized
-        }
-    }
-
     companion object {
         const val UNKNOWN = 0
         const val ONGOING = 1
