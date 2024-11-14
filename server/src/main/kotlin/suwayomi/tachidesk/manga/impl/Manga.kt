@@ -115,28 +115,42 @@ object Manga {
             getCatalogueSourceOrNull(mangaEntry[MangaTable.sourceReference])
                 ?: return null
         val sManga =
-            SManga.create().apply {
-                url = mangaEntry[MangaTable.url]
-                title = mangaEntry[MangaTable.title]
-            }
-        val networkManga = source.getMangaDetails(sManga)
-        sManga.copyFrom(networkManga)
+            source.getMangaDetails(
+                SManga.create().apply {
+                    url = mangaEntry[MangaTable.url]
+                    title = mangaEntry[MangaTable.title]
+                    thumbnail_url = mangaEntry[MangaTable.thumbnail_url]
+                    artist = mangaEntry[MangaTable.artist]
+                    author = mangaEntry[MangaTable.author]
+                    description = mangaEntry[MangaTable.description]
+                    genre = mangaEntry[MangaTable.genre]
+                    status = mangaEntry[MangaTable.status]
+                    update_strategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy])
+                },
+            )
 
         transaction {
             MangaTable.update({ MangaTable.id eq mangaId }) {
-                if (sManga.title != mangaEntry[MangaTable.title]) {
-                    val canUpdateTitle = updateMangaDownloadDir(mangaId, sManga.title)
+                val remoteTitle =
+                    try {
+                        sManga.title
+                    } catch (_: UninitializedPropertyAccessException) {
+                        ""
+                    }
+                if (remoteTitle.isNotEmpty() && remoteTitle != mangaEntry[MangaTable.title]) {
+                    val canUpdateTitle = updateMangaDownloadDir(mangaId, remoteTitle)
 
                     if (canUpdateTitle) {
-                        it[MangaTable.title] = sManga.title
+                        it[MangaTable.title] = remoteTitle
                     }
                 }
                 it[MangaTable.initialized] = true
 
-                it[MangaTable.artist] = sManga.artist
-                it[MangaTable.author] = sManga.author
-                it[MangaTable.description] = truncate(sManga.description, 4096)
-                it[MangaTable.genre] = sManga.genre
+                it[MangaTable.artist] = sManga.artist ?: mangaEntry[MangaTable.artist]
+                it[MangaTable.author] = sManga.author ?: mangaEntry[MangaTable.author]
+                it[MangaTable.description] = sManga.description?.let { truncate(it, 4096) }
+                    ?: mangaEntry[MangaTable.description]
+                it[MangaTable.genre] = sManga.genre ?: mangaEntry[MangaTable.genre]
                 it[MangaTable.status] = sManga.status
                 if (!sManga.thumbnail_url.isNullOrEmpty() && sManga.thumbnail_url != mangaEntry[MangaTable.thumbnail_url]) {
                     it[MangaTable.thumbnail_url] = sManga.thumbnail_url
