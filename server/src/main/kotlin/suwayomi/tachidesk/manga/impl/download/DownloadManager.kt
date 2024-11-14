@@ -241,14 +241,14 @@ object DownloadManager {
                         "Failed: ${downloadQueue.size - availableDownloads.size}"
                 }
 
-                if (runningDownloaders.size < serverConfig.maxSourcesInParallel.value) {
+                if (runningDownloaders.size < serverConfig.maxSourcesInParallel.value.coerceAtLeast(1)) {
                     availableDownloads
                         .asSequence()
                         .map { it.manga.sourceId }
                         .distinct()
                         .minus(
                             runningDownloaders.map { it.sourceId }.toSet(),
-                        ).take(serverConfig.maxSourcesInParallel.value - runningDownloaders.size)
+                        ).take((serverConfig.maxSourcesInParallel.value - runningDownloaders.size).coerceAtLeast(0))
                         .map { getDownloader(it) }
                         .forEach {
                             it.start()
