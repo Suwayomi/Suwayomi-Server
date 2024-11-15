@@ -101,8 +101,8 @@ class Downloader(
         logger: KLogger,
         download: DownloadChapter,
     ) {
-        downloadQueue -= download
         notifier(true, DownloadUpdate(FINISHED, download))
+        downloadQueue -= download
         onDownloadFinished()
         logger.debug { "finished" }
     }
