@@ -112,7 +112,7 @@ junrar = "com.github.junrar:junrar:7.5.5"
 bouncycastle = "org.bouncycastle:bcprov-jdk18on:1.78.1"
 
 # AndroidX annotations
-android-annotations = "androidx.annotation:annotation:1.8.2"
+android-annotations = "androidx.annotation:annotation:1.9.1"
 
 # Substitute for duktape-android
 rhino-runtime = { module = "org.mozilla:rhino-runtime", version.ref = "rhino" }  # slimmer version of 'org.mozilla:rhino'
