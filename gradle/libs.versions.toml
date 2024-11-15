@@ -62,7 +62,7 @@ exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "e
 exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposed" }
 exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
 exposed-javatime = { module = "org.jetbrains.exposed:exposed-java-time", version.ref = "exposed" }
-h2 = "com.h2database:h2:1.4.200" # current database driver, can't update to h2 v2 without sql migration
+h2 = "com.h2database:h2:2.3.232" # current database driver, can't update to h2 v2 without sql migration
 
 # Exposed Migrations
 exposed-migrations = "com.github.Suwayomi:exposed-migrations:3.2.0"
