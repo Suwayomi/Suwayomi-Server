@@ -3,11 +3,12 @@
   "extends": [
     "config:recommended"
   ],
+  "semanticCommits": "disabled",
   "customManagers": [
     {
       "customType": "regex",
       "fileMatch": [
-        "/scripts/bundler.sh"
+        "scripts/bundler.sh"
       ],
       "matchStrings": [
         "JRE_RELEASE=[\"'](?<currentValue>.+?)[\"']\\s+"
