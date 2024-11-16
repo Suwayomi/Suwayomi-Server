@@ -32,10 +32,10 @@ jobs:
           path: master
           fetch-depth: 0
 
-      - name: Set up JDK 1.8
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          java-version: 8
+          java-version: 21
           distribution: 'temurin'
 
       - name: Setup Gradle

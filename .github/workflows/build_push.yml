@@ -32,10 +32,10 @@ jobs:
           path: master
           fetch-depth: 0
 
-      - name: Set up JDK 1.8
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          java-version: 8
+          java-version: 21
           distribution: 'temurin'
 
       - name: Setup Gradle
@@ -88,7 +88,6 @@ jobs:
           - macOS-x64
           - macOS-arm64
           - windows-x64
-          - windows-x86
 
     name: Make ${{ matrix.os }} release
     needs: build
@@ -155,10 +154,6 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: windows-x64
-          path: release
-      - uses: actions/download-artifact@v4
-        with:
-          name: windows-x86
           path: release
 
       - name: Checkout Preview branch
