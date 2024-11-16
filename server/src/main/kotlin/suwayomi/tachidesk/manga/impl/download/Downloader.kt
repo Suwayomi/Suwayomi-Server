@@ -30,7 +30,9 @@ import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Queued
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdate
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.ERROR
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.FINISHED
+import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.PAUSED
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.PROGRESS
+import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.STOPPED
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -99,8 +101,8 @@ class Downloader(
         logger: KLogger,
         download: DownloadChapter,
     ) {
-        downloadQueue -= download
         notifier(true, DownloadUpdate(FINISHED, download))
+        downloadQueue -= download
         onDownloadFinished()
         logger.debug { "finished" }
     }
@@ -146,14 +148,15 @@ class Downloader(
             } catch (e: CancellationException) {
                 logger.debug("Downloader was stopped")
                 availableSourceDownloads.filter { it.state == Downloading }.forEach { it.state = Queued }
+                notifier(false, DownloadUpdate(STOPPED, download))
             } catch (e: PauseDownloadException) {
                 downloadLogger.debug { "paused" }
                 download.state = Queued
+                notifier(false, DownloadUpdate(PAUSED, download))
             } catch (e: Exception) {
                 downloadLogger.warn("failed due to", e)
                 download.tries++
                 download.state = Error
-            } finally {
                 notifier(false, DownloadUpdate(ERROR, download))
             }
         }
