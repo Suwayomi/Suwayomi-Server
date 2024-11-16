@@ -2,5 +2,15 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "regexManagers": [
+    {
+      "fileMatch": ["/scripts/bundler.sh"],
+      "matchStrings": [
+        "JRE_RELEASE=[\"'](?<currentValue>.+?)[\"']\\s+"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "adoptium/temurin8-binaries"
+    }
   ]
 }
