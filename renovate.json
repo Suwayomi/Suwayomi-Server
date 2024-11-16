@@ -14,7 +14,8 @@
         "JRE_RELEASE=[\"'](?<currentValue>.+?)[\"']\\s+"
       ],
       "datasourceTemplate": "github-releases",
-      "depNameTemplate": "adoptium/temurin8-binaries"
+      "depNameTemplate": "adoptium/temurin8-binaries",
+      "versioningTemplate": "regex:^jdk-?(?<major>\\d+).(?<minor>\\d+).+?(?<patch>[\\d+]+)$"
     }
   ]
 }
