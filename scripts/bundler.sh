@@ -52,7 +52,7 @@ main() {
       ;;
     linux-x64)
       # https://github.com/adoptium/temurin8-binaries/releases/
-      JRE_RELEASE="jdk8u392-b08"
+      JRE_RELEASE="jdk8u432-b06"
       JRE="OpenJDK8U-jre_x64_linux_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g').tar.gz"
       JRE_DIR="$JRE_RELEASE-jre"
       JRE_URL="https://github.com/adoptium/temurin8-binaries/releases/download/$JRE_RELEASE/$JRE"
@@ -66,7 +66,7 @@ main() {
       ;;
     macOS-x64)
       # https://github.com/adoptium/temurin8-binaries/releases/
-      JRE_RELEASE="jdk8u392-b08"
+      JRE_RELEASE="jdk8u432-b06"
       JRE="OpenJDK8U-jre_x64_mac_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g').tar.gz"
       JRE_DIR="$JRE_RELEASE-jre"
       JRE_URL="https://github.com/adoptium/temurin8-binaries/releases/download/$JRE_RELEASE/$JRE"
@@ -94,7 +94,7 @@ main() {
       ;;
     windows-x86)
       # https://github.com/adoptium/temurin8-binaries/releases/
-      JRE_RELEASE="jdk8u392-b08"
+      JRE_RELEASE="jdk8u432-b06"
       JRE="OpenJDK8U-jre_x86-32_windows_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g').zip"
       JRE_DIR="$JRE_RELEASE-jre"
       JRE_URL="https://github.com/adoptium/temurin8-binaries/releases/download/$JRE_RELEASE/$JRE"
@@ -112,7 +112,7 @@ main() {
       ;;
     windows-x64)
       # https://github.com/adoptium/temurin8-binaries/releases/
-      JRE_RELEASE="jdk8u392-b08"
+      JRE_RELEASE="jdk8u432-b06"
       JRE="OpenJDK8U-jre_x64_windows_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g').zip"
       JRE_DIR="$JRE_RELEASE-jre"
       JRE_URL="https://github.com/adoptium/temurin8-binaries/releases/download/$JRE_RELEASE/$JRE"
