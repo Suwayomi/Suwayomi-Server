@@ -79,7 +79,7 @@ To facilitate the use of Suwayomi we provide bundle releases that include The Ja
 If a bundle for your operating system or cpu architecture is not provided then refer to [Advanced Methods](#advanced-methods)
 
 ### Windows
-Download the latest `win32`(Windows 32-bit) or `win64`(Windows 64-bit) release from [the releases section](https://github.com/Suwayomi/Suwayomi-Server/releases) or a preview one from [the preview repository](https://github.com/Suwayomi/Suwayomi-Server-preview/releases).
+Download the latest `win64`(Windows 64-bit) release from [the releases section](https://github.com/Suwayomi/Suwayomi-Server/releases) or a preview one from [the preview repository](https://github.com/Suwayomi/Suwayomi-Server-preview/releases).
 
 Unzip the downloaded file and double-click on one of the launcher scripts.
 
@@ -137,7 +137,7 @@ You can also directly use the package from [nixpkgs](https://search.nixos.org/pa
 ### Running the jar release directly
 In order to run the app you need the following:
 - The jar release of Suwayomi-Server
-- The Java Runtime Environment(JRE) 8 or newer
+- The Java Runtime Environment(JRE) 21 or newer
 - A Browser like Google Chrome, Firefox, Edge, etc.
 - ElectronJS (optional)
 
