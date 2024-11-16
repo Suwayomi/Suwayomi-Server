@@ -3,9 +3,12 @@
   "extends": [
     "config:recommended"
   ],
-  "regexManagers": [
+  "customManagers": [
     {
-      "fileMatch": ["/scripts/bundler.sh"],
+      "customType": "regex",
+      "fileMatch": [
+        "/scripts/bundler.sh"
+      ],
       "matchStrings": [
         "JRE_RELEASE=[\"'](?<currentValue>.+?)[\"']\\s+"
       ],
