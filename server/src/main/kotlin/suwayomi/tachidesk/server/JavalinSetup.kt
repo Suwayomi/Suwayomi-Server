@@ -46,31 +46,11 @@ object JavalinSetup {
     fun <T> future(block: suspend CoroutineScope.() -> T): CompletableFuture<T> = scope.future(block = block)
 
     fun javalinSetup() {
-        val server = Server()
-        val connector =
-            ServerConnector(server).apply {
-                host = serverConfig.ip.value
-                port = serverConfig.port.value
-            }
-        server.addConnector(connector)
-
-        serverConfig.subscribeTo(combine(serverConfig.ip, serverConfig.port) { ip, port -> Pair(ip, port) }, { (newIp, newPort) ->
-            val oldIp = connector.host
-            val oldPort = connector.port
-
-            connector.host = newIp
-            connector.port = newPort
-            connector.stop()
-            connector.start()
-
-            logger.info { "Server ip and/or port changed from $oldIp:$oldPort to $newIp:$newPort " }
-        })
-
         val app =
             Javalin.create { config ->
                 if (serverConfig.webUIEnabled.value) {
                     val serveWebUI = {
-                        config.addSinglePageRoot("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
+                        config.spaRoot.addHandler("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
                     }
                     WebInterfaceManager.setServeWebUI(serveWebUI)
 
@@ -85,7 +65,26 @@ object JavalinSetup {
                     config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
                 }
 
-                config.server { server }
+                config.jetty.modifyServer {  server ->
+                    val connector =
+                        ServerConnector(server).apply {
+                            host = serverConfig.ip.value
+                            port = serverConfig.port.value
+                        }
+                    server.addConnector(connector)
+
+                    serverConfig.subscribeTo(combine(serverConfig.ip, serverConfig.port) { ip, port -> Pair(ip, port) }, { (newIp, newPort) ->
+                        val oldIp = connector.host
+                        val oldPort = connector.port
+
+                        connector.host = newIp
+                        connector.port = newPort
+                        connector.stop()
+                        connector.start()
+
+                        logger.info { "Server ip and/or port changed from $oldIp:$oldPort to $newIp:$newPort " }
+                    })
+                }
 
                 config.enableCorsForAllOrigins()
 
@@ -100,6 +99,16 @@ object JavalinSetup {
                         ctx.status(401).json("Unauthorized")
                     } else {
                         handler.handle(ctx)
+                    }
+                }
+
+                config.router.apiBuilder {
+                    path("api/") {
+                        path("v1/") {
+                            GlobalAPI.defineEndpoints()
+                            MangaAPI.defineEndpoints()
+                        }
+                        GraphQL.defineEndpoints()
                     }
                 }
             }
@@ -137,16 +146,6 @@ object JavalinSetup {
             logger.error("IllegalArgumentException while handling the request", e)
             ctx.status(400)
             ctx.result(e.message ?: "Bad Request")
-        }
-
-        app.routes {
-            path("api/") {
-                path("v1/") {
-                    GlobalAPI.defineEndpoints()
-                    MangaAPI.defineEndpoints()
-                }
-                GraphQL.defineEndpoints()
-            }
         }
 
         app.start()
