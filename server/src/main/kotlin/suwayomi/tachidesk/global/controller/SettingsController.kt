@@ -47,6 +47,7 @@ object SettingsController {
             behaviorOf = { ctx ->
                 ctx.future {
                     future { AppUpdate.checkUpdate() }
+                        .thenApply { ctx.json(it) }
                 }
             },
             withResults = {

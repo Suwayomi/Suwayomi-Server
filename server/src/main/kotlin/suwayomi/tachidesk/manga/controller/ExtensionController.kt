@@ -34,6 +34,8 @@ object ExtensionController {
                 ctx.future {
                     future {
                         ExtensionsList.getExtensionList()
+                    }.thenApply {
+                        ctx.json(it)
                     }
                 }
             },
@@ -56,6 +58,8 @@ object ExtensionController {
                 ctx.future {
                     future {
                         Extension.installExtension(pkgName)
+                    }.thenApply {
+                        ctx.status(it)
                     }
                 }
             },
@@ -89,6 +93,8 @@ object ExtensionController {
                             uploadedFile.content(),
                             uploadedFile.filename(),
                         )
+                    }.thenApply {
+                        ctx.status(it)
                     }
                 }
             },
@@ -113,6 +119,8 @@ object ExtensionController {
                 ctx.future {
                     future {
                         Extension.updateExtension(pkgName)
+                    }.thenApply {
+                        ctx.status(it)
                     }
                 }
             },
@@ -163,7 +171,7 @@ object ExtensionController {
                             ctx.header("content-type", it.second)
                             val httpCacheSeconds = 365.days.inWholeSeconds
                             ctx.header("cache-control", "max-age=$httpCacheSeconds, immutable")
-                            it.first
+                            ctx.result(it.first)
                         }
                 }
             },

@@ -42,7 +42,7 @@ object UpdateController {
                 ctx.future {
                     future {
                         Chapter.getRecentChapters(pageNum)
-                    }
+                    }.thenApply { ctx.json(it) }
                 }
             },
             withResults = {

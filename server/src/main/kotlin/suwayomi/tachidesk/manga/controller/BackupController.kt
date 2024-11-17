@@ -31,6 +31,8 @@ object BackupController {
                 ctx.future {
                     future {
                         ProtoBackupImport.restoreLegacy(ctx.bodyInputStream())
+                    }.thenApply {
+                        ctx.json(it)
                     }
                 }
             },
@@ -57,6 +59,8 @@ object BackupController {
                 ctx.future {
                     future {
                         ProtoBackupImport.restoreLegacy(ctx.uploadedFile("backup.proto.gz")!!.content())
+                    }.thenApply {
+                        ctx.json(it)
                     }
                 }
             },
@@ -88,7 +92,7 @@ object BackupController {
                                 includeHistory = true,
                             ),
                         )
-                    }
+                    }.thenApply { ctx.result(it) }
                 }
             },
             withResults = {
@@ -120,7 +124,7 @@ object BackupController {
                                 includeHistory = true,
                             ),
                         )
-                    }
+                    }.thenApply { ctx.result(it) }
                 }
             },
             withResults = {
@@ -141,6 +145,8 @@ object BackupController {
                 ctx.future {
                     future {
                         ProtoBackupValidator.validate(ctx.bodyInputStream())
+                    }.thenApply {
+                        ctx.json(it)
                     }
                 }
             },
@@ -170,6 +176,8 @@ object BackupController {
                 ctx.future {
                     future {
                         ProtoBackupValidator.validate(ctx.uploadedFile("backup.proto.gz")!!.content())
+                    }.thenApply {
+                        ctx.json(it)
                     }
                 }
             },

@@ -44,7 +44,7 @@ object MangaController {
                 ctx.future {
                     future {
                         Manga.getManga(mangaId, onlineFetch)
-                    }
+                    }.thenApply { ctx.json(it) }
                 }
             },
             withResults = {
@@ -68,7 +68,7 @@ object MangaController {
                 ctx.future {
                     future {
                         Manga.getMangaFull(mangaId, onlineFetch)
-                    }
+                    }.thenApply { ctx.json(it) }
                 }
             },
             withResults = {
@@ -94,7 +94,7 @@ object MangaController {
                             ctx.header("content-type", it.second)
                             val httpCacheSeconds = 1.days.inWholeSeconds
                             ctx.header("cache-control", "max-age=$httpCacheSeconds")
-                            it.first
+                            ctx.result(it.first)
                         }
                 }
             },
@@ -117,6 +117,7 @@ object MangaController {
             behaviorOf = { ctx, mangaId ->
                 ctx.future {
                     future { Library.addMangaToLibrary(mangaId) }
+                        .thenApply { ctx.status(HttpStatus.OK) }
                 }
             },
             withResults = {
@@ -138,6 +139,7 @@ object MangaController {
             behaviorOf = { ctx, mangaId ->
                 ctx.future {
                     future { Library.removeMangaFromLibrary(mangaId) }
+                        .thenApply { ctx.status(HttpStatus.OK) }
                 }
             },
             withResults = {
@@ -242,7 +244,10 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, onlineFetch ->
-                ctx.future { future { Chapter.getChapterList(mangaId, onlineFetch) } }
+                ctx.future {
+                    future { Chapter.getChapterList(mangaId, onlineFetch) }
+                        .thenApply { ctx.json(it) }
+                }
             },
             withResults = {
                 json<Array<ChapterDataClass>>(HttpStatus.OK)
@@ -307,7 +312,10 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, chapterIndex ->
-                ctx.future { future { getChapterDownloadReadyByIndex(chapterIndex, mangaId) } }
+                ctx.future {
+                    future { getChapterDownloadReadyByIndex(chapterIndex, mangaId) }
+                        .thenApply { ctx.json(it) }
+                }
             },
             withResults = {
                 json<ChapterDataClass>(HttpStatus.OK)
@@ -407,7 +415,7 @@ object MangaController {
                             ctx.header("content-type", it.second)
                             val httpCacheSeconds = 1.days.inWholeSeconds
                             ctx.header("cache-control", "max-age=$httpCacheSeconds")
-                            it.first
+                            ctx.result(it.first)
                         }
                 }
             },

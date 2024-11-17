@@ -76,7 +76,7 @@ object SourceController {
                 ctx.future {
                     future {
                         MangaList.getMangaList(sourceId, pageNum, popular = true)
-                    }
+                    }.thenApply { ctx.json(it) }
                 }
             },
             withResults = {
@@ -99,7 +99,7 @@ object SourceController {
                 ctx.future {
                     future {
                         MangaList.getMangaList(sourceId, pageNum, popular = false)
-                    }
+                    }.thenApply { ctx.json(it) }
                 }
             },
             withResults = {
@@ -206,7 +206,10 @@ object SourceController {
                 }
             },
             behaviorOf = { ctx, sourceId, searchTerm, pageNum ->
-                ctx.future { future { Search.sourceSearch(sourceId, searchTerm, pageNum) } }
+                ctx.future {
+                    future { Search.sourceSearch(sourceId, searchTerm, pageNum) }
+                        .thenApply { ctx.json(it) }
+                }
             },
             withResults = {
                 json<PagedMangaListDataClass>(HttpStatus.OK)
@@ -227,7 +230,10 @@ object SourceController {
             },
             behaviorOf = { ctx, sourceId, pageNum ->
                 val filter = json.decodeFromString<FilterData>(ctx.body())
-                ctx.future { future { Search.sourceFilter(sourceId, pageNum, filter) } }
+                ctx.future {
+                    future { Search.sourceFilter(sourceId, pageNum, filter) }
+                        .thenApply { ctx.json(it) }
+                }
             },
             withResults = {
                 json<PagedMangaListDataClass>(HttpStatus.OK)

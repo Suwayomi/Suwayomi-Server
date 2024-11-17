@@ -64,6 +64,7 @@ object DownloadController {
             behaviorOf = { ctx ->
                 ctx.future {
                     future { DownloadManager.stop() }
+                        .thenApply { ctx.status(HttpStatus.OK) }
                 }
             },
             withResults = {
@@ -83,6 +84,7 @@ object DownloadController {
             behaviorOf = { ctx ->
                 ctx.future {
                     future { DownloadManager.clear() }
+                        .thenApply { ctx.status(HttpStatus.OK) }
                 }
             },
             withResults = {
@@ -105,7 +107,7 @@ object DownloadController {
                 ctx.future {
                     future {
                         DownloadManager.enqueueWithChapterIndex(mangaId, chapterIndex)
-                    }
+                    }.thenApply { ctx.status(HttpStatus.OK) }
                 }
             },
             withResults = {
@@ -128,7 +130,7 @@ object DownloadController {
                 ctx.future {
                     future {
                         DownloadManager.enqueue(inputs)
-                    }
+                    }.thenApply { ctx.status(HttpStatus.OK) }
                 }
             },
             withResults = {
@@ -151,7 +153,7 @@ object DownloadController {
                 ctx.future {
                     future {
                         DownloadManager.dequeue(input)
-                    }
+                    }.thenApply { ctx.status(HttpStatus.OK) }
                 }
             },
             withResults = {
