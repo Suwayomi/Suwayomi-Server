@@ -72,6 +72,7 @@ dependencies {
     implementation(libs.asm)
 
     // Disk & File
+    implementation(libs.cache4k)
     implementation(libs.zip4j)
     implementation(libs.commonscompress)
     implementation(libs.junrar)
