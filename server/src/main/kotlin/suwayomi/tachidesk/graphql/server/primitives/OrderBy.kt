@@ -13,7 +13,7 @@ import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.or
 
 interface OrderBy<T> {
-    val column: Column<out Comparable<*>>
+    val column: Column<*>
 
     fun asCursor(type: T): Cursor
 

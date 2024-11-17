@@ -244,7 +244,7 @@ class TrackQuery {
         dataFetchingEnvironment.getValueFromDataLoader<Int, TrackRecordType>("TrackRecordDataLoader", id)
 
     enum class TrackRecordOrderBy(
-        override val column: Column<out Comparable<*>>,
+        override val column: Column<*>,
     ) : OrderBy<TrackRecordType> {
         ID(TrackRecordTable.id),
         MANGA_ID(TrackRecordTable.mangaId),

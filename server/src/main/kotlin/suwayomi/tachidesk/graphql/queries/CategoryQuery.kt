@@ -48,7 +48,7 @@ class CategoryQuery {
     ): CompletableFuture<CategoryType> = dataFetchingEnvironment.getValueFromDataLoader("CategoryDataLoader", id)
 
     enum class CategoryOrderBy(
-        override val column: Column<out Comparable<*>>,
+        override val column: Column<*>,
     ) : OrderBy<CategoryType> {
         ID(CategoryTable.id),
         NAME(CategoryTable.name),

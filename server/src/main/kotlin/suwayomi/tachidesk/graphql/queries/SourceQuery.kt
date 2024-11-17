@@ -48,7 +48,7 @@ class SourceQuery {
     ): CompletableFuture<SourceType> = dataFetchingEnvironment.getValueFromDataLoader("SourceDataLoader", id)
 
     enum class SourceOrderBy(
-        override val column: Column<out Comparable<*>>,
+        override val column: Column<*>,
     ) : OrderBy<SourceType> {
         ID(SourceTable.id),
         NAME(SourceTable.name),

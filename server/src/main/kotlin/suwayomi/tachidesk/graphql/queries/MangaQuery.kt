@@ -28,7 +28,6 @@ import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompare
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
-import suwayomi.tachidesk.graphql.queries.util.distinctOn
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
@@ -52,7 +51,7 @@ class MangaQuery {
     ): CompletableFuture<MangaType> = dataFetchingEnvironment.getValueFromDataLoader("MangaDataLoader", id)
 
     enum class MangaOrderBy(
-        override val column: Column<out Comparable<*>>,
+        override val column: Column<*>,
     ) : OrderBy<MangaType> {
         ID(MangaTable.id),
         TITLE(MangaTable.title),
@@ -241,11 +240,8 @@ class MangaQuery {
                 val res =
                     MangaTable
                         .leftJoin(CategoryMangaTable)
-                        .select(
-                            distinctOn(MangaTable.id),
-                            *(MangaTable.columns).toTypedArray(),
-                            *(CategoryMangaTable.columns).toTypedArray(),
-                        )
+                        .select(MangaTable.columns)
+                        .withDistinctOn(MangaTable.id)
 
                 res.applyOps(condition, filter)
 

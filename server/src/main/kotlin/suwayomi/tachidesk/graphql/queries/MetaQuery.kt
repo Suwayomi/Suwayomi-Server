@@ -44,7 +44,7 @@ class MetaQuery {
     ): CompletableFuture<GlobalMetaType> = dataFetchingEnvironment.getValueFromDataLoader("GlobalMetaDataLoader", key)
 
     enum class MetaOrderBy(
-        override val column: Column<out Comparable<*>>,
+        override val column: Column<*>,
     ) : OrderBy<GlobalMetaType> {
         KEY(GlobalMetaTable.key),
         VALUE(GlobalMetaTable.value),
