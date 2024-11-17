@@ -39,11 +39,11 @@ object UpdateController {
                 }
             },
             behaviorOf = { ctx, pageNum ->
-                ctx.future(
+                ctx.future {
                     future {
                         Chapter.getRecentChapters(pageNum)
-                    },
-                )
+                    }
+                }
             },
             withResults = {
                 json<PagedMangaChapterListDataClass>(HttpCode.OK)
@@ -134,13 +134,13 @@ object UpdateController {
             behaviorOf = { ctx ->
                 val updater = Injekt.get<IUpdater>()
                 logger.info { "Resetting Updater" }
-                ctx.future(
+                ctx.future {
                     future {
                         updater.reset()
                     }.thenApply {
                         ctx.status(HttpCode.OK)
-                    },
-                )
+                    }
+                }
             },
             withResults = {
                 httpCode(HttpCode.OK)

@@ -73,11 +73,11 @@ object SourceController {
                 }
             },
             behaviorOf = { ctx, sourceId, pageNum ->
-                ctx.future(
+                ctx.future {
                     future {
                         MangaList.getMangaList(sourceId, pageNum, popular = true)
-                    },
-                )
+                    }
+                }
             },
             withResults = {
                 json<PagedMangaListDataClass>(HttpCode.OK)
@@ -96,11 +96,11 @@ object SourceController {
                 }
             },
             behaviorOf = { ctx, sourceId, pageNum ->
-                ctx.future(
+                ctx.future {
                     future {
                         MangaList.getMangaList(sourceId, pageNum, popular = false)
-                    },
-                )
+                    }
+                }
             },
             withResults = {
                 json<PagedMangaListDataClass>(HttpCode.OK)
@@ -206,7 +206,7 @@ object SourceController {
                 }
             },
             behaviorOf = { ctx, sourceId, searchTerm, pageNum ->
-                ctx.future(future { Search.sourceSearch(sourceId, searchTerm, pageNum) })
+                ctx.future { future { Search.sourceSearch(sourceId, searchTerm, pageNum) } }
             },
             withResults = {
                 json<PagedMangaListDataClass>(HttpCode.OK)
@@ -227,7 +227,7 @@ object SourceController {
             },
             behaviorOf = { ctx, sourceId, pageNum ->
                 val filter = json.decodeFromString<FilterData>(ctx.body())
-                ctx.future(future { Search.sourceFilter(sourceId, pageNum, filter) })
+                ctx.future { future { Search.sourceFilter(sourceId, pageNum, filter) } }
             },
             withResults = {
                 json<PagedMangaListDataClass>(HttpCode.OK)

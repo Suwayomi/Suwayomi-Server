@@ -69,7 +69,7 @@ class ApolloSubscriptionProtocolHandler(
 
         if (operationMessage.type != GQL_PING.type) {
             logger.debug {
-                "GraphQL subscription client message, sessionId=${context.sessionId} type=${operationMessage.type} operationName=${
+                "GraphQL subscription client message, sessionId=${context.sessionId()} type=${operationMessage.type} operationName=${
                     getOperationName(operationMessage.payload)
                 } ${
                     if (serverConfig.gqlDebugLogsEnabled.value) {
@@ -118,7 +118,7 @@ class ApolloSubscriptionProtocolHandler(
 
         if (sessionState.doesOperationExist(operationMessage)) {
             sessionState.terminateSession(context, CloseStatus(4409, "Subscriber for ${operationMessage.id} already exists"))
-            logger.info("Already subscribed to operation ${operationMessage.id} for session ${context.sessionId}")
+            logger.info("Already subscribed to operation ${operationMessage.id} for session ${context.sessionId()}")
             return emptyFlow()
         }
 
@@ -174,7 +174,7 @@ class ApolloSubscriptionProtocolHandler(
     private fun onPing(): Flow<SubscriptionOperationMessage> = flowOf(pongMessage)
 
     private fun onDisconnect(context: WsContext): Flow<SubscriptionOperationMessage> {
-        logger.debug("Session \"${context.sessionId}\" disconnected")
+        logger.debug("Session \"${context.sessionId()}\" disconnected")
         sessionState.terminateSession(context, CloseStatus(1000, "Normal Closure"))
         return emptyFlow()
     }

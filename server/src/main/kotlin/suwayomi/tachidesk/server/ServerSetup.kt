@@ -13,8 +13,8 @@ import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.createAppModule
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.local.LocalSource
-import io.javalin.plugin.json.JavalinJackson
-import io.javalin.plugin.json.JsonMapper
+import io.javalin.json.JavalinJackson
+import io.javalin.json.JsonMapper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged

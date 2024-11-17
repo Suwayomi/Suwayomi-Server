@@ -10,7 +10,8 @@ package suwayomi.tachidesk.manga.impl
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
-import io.javalin.plugin.json.JsonMapper
+import io.javalin.json.JsonMapper
+import io.javalin.json.fromJsonString
 import kotlinx.serialization.Serializable
 import suwayomi.tachidesk.manga.impl.MangaList.processEntries
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
@@ -129,7 +130,7 @@ object Search {
                 is Filter.CheckBox -> filter.state = change.state.toBooleanStrict()
                 is Filter.TriState -> filter.state = change.state.toInt()
                 is Filter.Group<*> -> {
-                    val groupChange = jsonMapper.fromJsonString(change.state, FilterChange::class.java)
+                    val groupChange = jsonMapper.fromJsonString<FilterChange>(change.state)
 
                     when (val groupFilter = filter.state[groupChange.position]) {
                         is Filter.CheckBox -> groupFilter.state = groupChange.state.toBooleanStrict()

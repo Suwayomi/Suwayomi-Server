@@ -41,11 +41,11 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, onlineFetch ->
-                ctx.future(
+                ctx.future {
                     future {
                         Manga.getManga(mangaId, onlineFetch)
-                    },
-                )
+                    }
+                }
             },
             withResults = {
                 json<MangaDataClass>(HttpCode.OK)
@@ -65,11 +65,11 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, onlineFetch ->
-                ctx.future(
+                ctx.future {
                     future {
                         Manga.getMangaFull(mangaId, onlineFetch)
-                    },
-                )
+                    }
+                }
             },
             withResults = {
                 json<MangaDataClass>(HttpCode.OK)
@@ -88,15 +88,15 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId ->
-                ctx.future(
+                ctx.future {
                     future { Manga.getMangaThumbnail(mangaId) }
                         .thenApply {
                             ctx.header("content-type", it.second)
                             val httpCacheSeconds = 1.days.inWholeSeconds
                             ctx.header("cache-control", "max-age=$httpCacheSeconds")
                             it.first
-                        },
-                )
+                        }
+                }
             },
             withResults = {
                 image(HttpCode.OK)
@@ -115,9 +115,9 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId ->
-                ctx.future(
-                    future { Library.addMangaToLibrary(mangaId) },
-                )
+                ctx.future {
+                    future { Library.addMangaToLibrary(mangaId) }
+                }
             },
             withResults = {
                 httpCode(HttpCode.OK)
@@ -136,9 +136,9 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId ->
-                ctx.future(
-                    future { Library.removeMangaFromLibrary(mangaId) },
-                )
+                ctx.future {
+                    future { Library.removeMangaFromLibrary(mangaId) }
+                }
             },
             withResults = {
                 httpCode(HttpCode.OK)
@@ -242,7 +242,7 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, onlineFetch ->
-                ctx.future(future { Chapter.getChapterList(mangaId, onlineFetch) })
+                ctx.future { future { Chapter.getChapterList(mangaId, onlineFetch) } }
             },
             withResults = {
                 json<Array<ChapterDataClass>>(HttpCode.OK)
@@ -307,7 +307,7 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, chapterIndex ->
-                ctx.future(future { getChapterDownloadReadyByIndex(chapterIndex, mangaId) })
+                ctx.future { future { getChapterDownloadReadyByIndex(chapterIndex, mangaId) } }
             },
             withResults = {
                 json<ChapterDataClass>(HttpCode.OK)
@@ -401,15 +401,15 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, chapterIndex, index ->
-                ctx.future(
+                ctx.future {
                     future { Page.getPageImage(mangaId, chapterIndex, index) }
                         .thenApply {
                             ctx.header("content-type", it.second)
                             val httpCacheSeconds = 1.days.inWholeSeconds
                             ctx.header("cache-control", "max-age=$httpCacheSeconds")
                             it.first
-                        },
-                )
+                        }
+                }
             },
             withResults = {
                 image(HttpCode.OK)

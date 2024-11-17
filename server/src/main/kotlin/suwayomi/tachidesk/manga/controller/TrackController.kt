@@ -52,7 +52,7 @@ object TrackController {
             behaviorOf = { ctx ->
                 val input = json.decodeFromString<Track.LoginInput>(ctx.body())
                 logger.debug { "tracker login $input" }
-                ctx.future(future { Track.login(input) })
+                ctx.future { future { Track.login(input) } }
             },
             withResults = {
                 httpCode(HttpCode.OK)
@@ -72,7 +72,7 @@ object TrackController {
             behaviorOf = { ctx ->
                 val input = json.decodeFromString<Track.LogoutInput>(ctx.body())
                 logger.debug { "tracker logout $input" }
-                ctx.future(future { Track.logout(input) })
+                ctx.future { future { Track.logout(input) } }
             },
             withResults = {
                 httpCode(HttpCode.OK)
@@ -92,7 +92,7 @@ object TrackController {
             behaviorOf = { ctx ->
                 val input = json.decodeFromString<Track.SearchInput>(ctx.body())
                 logger.debug { "tracker search $input" }
-                ctx.future(future { Track.search(input) })
+                ctx.future { future { Track.search(input) } }
             },
             withResults = {
                 httpCode(HttpCode.OK)
@@ -112,7 +112,7 @@ object TrackController {
                 }
             },
             behaviorOf = { ctx, mangaId, trackerId, remoteId ->
-                ctx.future(future { Track.bind(mangaId, trackerId, remoteId.toLong()) })
+                ctx.future { future { Track.bind(mangaId, trackerId, remoteId.toLong()) } }
             },
             withResults = {
                 httpCode(HttpCode.OK)
@@ -131,7 +131,7 @@ object TrackController {
             behaviorOf = { ctx ->
                 val input = json.decodeFromString<Track.UpdateInput>(ctx.body())
                 logger.debug { "tracker update $input" }
-                ctx.future(future { Track.update(input) })
+                ctx.future { future { Track.update(input) } }
             },
             withResults = {
                 httpCode(HttpCode.OK)
@@ -148,15 +148,15 @@ object TrackController {
                 }
             },
             behaviorOf = { ctx, trackerId ->
-                ctx.future(
+                ctx.future {
                     future { Track.getTrackerThumbnail(trackerId) }
                         .thenApply {
                             ctx.header("content-type", it.second)
                             val httpCacheSeconds = 1.days.inWholeSeconds
                             ctx.header("cache-control", "max-age=$httpCacheSeconds")
                             it.first
-                        },
-                )
+                        }
+                }
             },
             withResults = {
                 image(HttpCode.OK)

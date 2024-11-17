@@ -11,7 +11,8 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.sourcePreferences
-import io.javalin.plugin.json.JsonMapper
+import io.javalin.json.JsonMapper
+import io.javalin.json.fromJsonString
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
@@ -131,11 +132,10 @@ object Source {
         value: String,
         getValue: (Preference) -> Any = { pref ->
             println(jsonMapper::class.java.name)
-            @Suppress("UNCHECKED_CAST")
             when (pref.defaultValueType) {
                 "String" -> value
                 "Boolean" -> value.toBoolean()
-                "Set<String>" -> jsonMapper.fromJsonString(value, List::class.java as Class<List<String>>).toSet()
+                "Set<String>" -> jsonMapper.fromJsonString<List<String>>(value).toSet()
                 else -> throw RuntimeException("Unsupported type conversion")
             }
         },

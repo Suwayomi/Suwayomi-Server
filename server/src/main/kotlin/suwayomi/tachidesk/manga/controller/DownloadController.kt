@@ -62,9 +62,9 @@ object DownloadController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.future(
-                    future { DownloadManager.stop() },
-                )
+                ctx.future {
+                    future { DownloadManager.stop() }
+                }
             },
             withResults = {
                 httpCode(HttpCode.OK)
@@ -81,9 +81,9 @@ object DownloadController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.future(
-                    future { DownloadManager.clear() },
-                )
+                ctx.future {
+                    future { DownloadManager.clear() }
+                }
             },
             withResults = {
                 httpCode(HttpCode.OK)
@@ -102,11 +102,11 @@ object DownloadController {
                 }
             },
             behaviorOf = { ctx, chapterIndex, mangaId ->
-                ctx.future(
+                ctx.future {
                     future {
                         DownloadManager.enqueueWithChapterIndex(mangaId, chapterIndex)
-                    },
-                )
+                    }
+                }
             },
             withResults = {
                 httpCode(HttpCode.OK)
@@ -125,11 +125,11 @@ object DownloadController {
             },
             behaviorOf = { ctx ->
                 val inputs = json.decodeFromString<EnqueueInput>(ctx.body())
-                ctx.future(
+                ctx.future {
                     future {
                         DownloadManager.enqueue(inputs)
-                    },
-                )
+                    }
+                }
             },
             withResults = {
                 httpCode(HttpCode.OK)
@@ -148,11 +148,11 @@ object DownloadController {
             },
             behaviorOf = { ctx ->
                 val input = json.decodeFromString<EnqueueInput>(ctx.body())
-                ctx.future(
+                ctx.future {
                     future {
                         DownloadManager.dequeue(input)
-                    },
-                )
+                    }
+                }
             },
             withResults = {
                 httpCode(HttpCode.OK)

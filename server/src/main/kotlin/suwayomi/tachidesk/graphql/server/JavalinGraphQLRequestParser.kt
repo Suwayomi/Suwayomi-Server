@@ -13,7 +13,7 @@ import com.expediagroup.graphql.server.types.GraphQLRequest
 import com.expediagroup.graphql.server.types.GraphQLServerRequest
 import io.javalin.http.Context
 import io.javalin.http.UploadedFile
-import io.javalin.plugin.json.jsonMapper
+import io.javalin.json.fromJsonString
 import java.io.IOException
 
 class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
@@ -33,20 +33,13 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
                 }
 
             val request =
-                context.jsonMapper().fromJsonString(
-                    formParam,
-                    GraphQLServerRequest::class.java,
-                )
+                context.jsonMapper().fromJsonString<GraphQLServerRequest>(formParam)
 
-            @Suppress("UNCHECKED_CAST")
             val map =
                 context
                     .formParam("map")
                     ?.let {
-                        context.jsonMapper().fromJsonString(
-                            it,
-                            Map::class.java as Class<Map<String, List<String>>>,
-                        )
+                        context.jsonMapper().fromJsonString<Map<String, List<String>>>(it)
                     }.orEmpty()
 
             val mapItems =

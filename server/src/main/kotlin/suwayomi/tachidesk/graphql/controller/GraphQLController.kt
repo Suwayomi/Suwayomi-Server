@@ -20,11 +20,11 @@ object GraphQLController {
 
     /** execute graphql query */
     fun execute(ctx: Context) {
-        ctx.future(
+        ctx.future {
             future {
                 server.execute(ctx)
-            },
-        )
+            }
+        }
     }
 
     fun playground(ctx: Context) {

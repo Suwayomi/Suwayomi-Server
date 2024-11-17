@@ -28,11 +28,11 @@ object BackupController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.future(
+                ctx.future {
                     future {
-                        ProtoBackupImport.restoreLegacy(ctx.bodyAsInputStream())
-                    },
-                )
+                        ProtoBackupImport.restoreLegacy(ctx.bodyInputStream())
+                    }
+                }
             },
             withResults = {
                 httpCode(HttpCode.OK)
@@ -54,11 +54,11 @@ object BackupController {
             },
             behaviorOf = { ctx ->
                 // TODO: rewrite this with ctx.uploadedFiles(), don't call the multipart field "backup.proto.gz"
-                ctx.future(
+                ctx.future {
                     future {
-                        ProtoBackupImport.restoreLegacy(ctx.uploadedFile("backup.proto.gz")!!.content)
-                    },
-                )
+                        ProtoBackupImport.restoreLegacy(ctx.uploadedFile("backup.proto.gz")!!.content())
+                    }
+                }
             },
             withResults = {
                 httpCode(HttpCode.OK)
@@ -77,7 +77,7 @@ object BackupController {
             },
             behaviorOf = { ctx ->
                 ctx.contentType("application/octet-stream")
-                ctx.future(
+                ctx.future {
                     future {
                         ProtoBackupExport.createBackup(
                             BackupFlags(
@@ -88,8 +88,8 @@ object BackupController {
                                 includeHistory = true,
                             ),
                         )
-                    },
-                )
+                    }
+                }
             },
             withResults = {
                 stream(HttpCode.OK)
@@ -109,7 +109,7 @@ object BackupController {
                 ctx.contentType("application/octet-stream")
 
                 ctx.header("Content-Disposition", """attachment; filename="${Backup.getFilename()}"""")
-                ctx.future(
+                ctx.future {
                     future {
                         ProtoBackupExport.createBackup(
                             BackupFlags(
@@ -120,8 +120,8 @@ object BackupController {
                                 includeHistory = true,
                             ),
                         )
-                    },
-                )
+                    }
+                }
             },
             withResults = {
                 stream(HttpCode.OK)
@@ -138,11 +138,11 @@ object BackupController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.future(
+                ctx.future {
                     future {
-                        ProtoBackupValidator.validate(ctx.bodyAsInputStream())
-                    },
-                )
+                        ProtoBackupValidator.validate(ctx.bodyInputStream())
+                    }
+                }
             },
             withResults = {
                 json<ProtoBackupValidator.ValidationResult>(HttpCode.OK)
@@ -167,11 +167,11 @@ object BackupController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.future(
+                ctx.future {
                     future {
-                        ProtoBackupValidator.validate(ctx.uploadedFile("backup.proto.gz")!!.content)
-                    },
-                )
+                        ProtoBackupValidator.validate(ctx.uploadedFile("backup.proto.gz")!!.content())
+                    }
+                }
             },
             withResults = {
                 json<ProtoBackupValidator.ValidationResult>(HttpCode.OK)

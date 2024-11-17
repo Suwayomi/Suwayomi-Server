@@ -31,11 +31,11 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.future(
+                ctx.future {
                     future {
                         ExtensionsList.getExtensionList()
-                    },
-                )
+                    }
+                }
             },
             withResults = {
                 json<Array<ExtensionDataClass>>(HttpCode.OK)
@@ -53,11 +53,11 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx, pkgName ->
-                ctx.future(
+                ctx.future {
                     future {
                         Extension.installExtension(pkgName)
-                    },
-                )
+                    }
+                }
             },
             withResults = {
                 httpCode(HttpCode.CREATED)
@@ -81,13 +81,16 @@ object ExtensionController {
             },
             behaviorOf = { ctx ->
                 val uploadedFile = ctx.uploadedFile("file")!!
-                logger.debug { "Uploaded extension file name: " + uploadedFile.filename }
+                logger.debug { "Uploaded extension file name: " + uploadedFile.filename() }
 
-                ctx.future(
+                ctx.future {
                     future {
-                        Extension.installExternalExtension(uploadedFile.content, uploadedFile.filename)
-                    },
-                )
+                        Extension.installExternalExtension(
+                            uploadedFile.content(),
+                            uploadedFile.filename(),
+                        )
+                    }
+                }
             },
             withResults = {
                 httpCode(HttpCode.CREATED)
@@ -107,11 +110,11 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx, pkgName ->
-                ctx.future(
+                ctx.future {
                     future {
                         Extension.updateExtension(pkgName)
-                    },
-                )
+                    }
+                }
             },
             withResults = {
                 httpCode(HttpCode.CREATED)
@@ -154,15 +157,15 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx, apkName ->
-                ctx.future(
+                ctx.future {
                     future { Extension.getExtensionIcon(apkName) }
                         .thenApply {
                             ctx.header("content-type", it.second)
                             val httpCacheSeconds = 365.days.inWholeSeconds
                             ctx.header("cache-control", "max-age=$httpCacheSeconds, immutable")
                             it.first
-                        },
-                )
+                        }
+                }
             },
             withResults = {
                 image(HttpCode.OK)

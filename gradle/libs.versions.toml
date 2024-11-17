@@ -200,7 +200,7 @@ okhttp = [
 ]
 javalin = [
     "javalin-core",
-    "javalin-openapi",
+    #"javalin-openapi",
 ]
 jackson = [
     "jackson-databind",
