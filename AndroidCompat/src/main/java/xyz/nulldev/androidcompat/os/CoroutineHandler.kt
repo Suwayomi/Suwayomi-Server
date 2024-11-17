@@ -1,4 +1,4 @@
-package xyz.nulldev.androidcompat
+package xyz.nulldev.androidcompat.os
 
 import android.os.Looper
 import kotlinx.coroutines.GlobalScope

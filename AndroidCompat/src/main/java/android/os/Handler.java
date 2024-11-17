@@ -1,9 +1,7 @@
 package android.os;
 
 import android.annotation.NonNull;
-import android.annotation.Nullable;
-import android.util.Printer;
-import xyz.nulldev.androidcompat.CoroutineHandler;
+import xyz.nulldev.androidcompat.os.CoroutineHandler;
 
 public class Handler {
     Looper looper;
