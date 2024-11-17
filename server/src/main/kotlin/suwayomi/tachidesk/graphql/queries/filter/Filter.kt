@@ -466,12 +466,12 @@ fun <T : String, S : T?> andFilterWithCompareString(
     }
 
     opAnd.andWhere(filter.distinctFromInsensitive, filter.distinctFromInsensitiveAll, filter.distinctFromInsensitiveAny) {
-        DistinctFromOp.distinctFrom(column.upperCase(), it.uppercase() as S)
+        DistinctFromOp.distinctFrom(column.upperCase(), it.uppercase())
     }
-    opAnd.andWhere(filter.notDistinctFromInsensitive) { DistinctFromOp.notDistinctFrom(column.upperCase(), it.uppercase() as S) }
+    opAnd.andWhere(filter.notDistinctFromInsensitive) { DistinctFromOp.notDistinctFrom(column.upperCase(), it.uppercase()) }
 
-    opAnd.andWhere(filter.inInsensitive) { column.upperCase() inList (it.map { it.uppercase() } as List<S>) }
-    opAnd.andWhere(filter.notInInsensitive) { column.upperCase() notInList (it.map { it.uppercase() } as List<S>) }
+    opAnd.andWhere(filter.inInsensitive) { column.upperCase() inList (it.map { it.uppercase() }) }
+    opAnd.andWhere(filter.notInInsensitive) { column.upperCase() notInList (it.map { it.uppercase() }) }
 
     opAnd.andWhere(filter.lessThanInsensitive) { column.upperCase() less it.uppercase() }
     opAnd.andWhere(filter.lessThanOrEqualToInsensitive) { column.upperCase() lessEq it.uppercase() }
