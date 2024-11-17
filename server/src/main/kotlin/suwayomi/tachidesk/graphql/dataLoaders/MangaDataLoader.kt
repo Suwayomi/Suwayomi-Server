@@ -8,6 +8,7 @@
 package suwayomi.tachidesk.graphql.dataLoaders
 
 import com.expediagroup.graphql.dataloader.KotlinDataLoader
+import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.dataloader.DataLoaderOptions
@@ -27,7 +28,7 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 class MangaDataLoader : KotlinDataLoader<Int, MangaType?> {
     override val dataLoaderName = "MangaDataLoader"
 
-    override fun getDataLoader(): DataLoader<Int, MangaType?> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, MangaType?> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
@@ -46,7 +47,7 @@ class MangaDataLoader : KotlinDataLoader<Int, MangaType?> {
 class MangaForCategoryDataLoader : KotlinDataLoader<Int, MangaNodeList> {
     override val dataLoaderName = "MangaForCategoryDataLoader"
 
-    override fun getDataLoader(): DataLoader<Int, MangaNodeList> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, MangaNodeList> =
         DataLoaderFactory.newDataLoader<Int, MangaNodeList> { ids ->
             future {
                 transaction {
@@ -80,7 +81,7 @@ class MangaForCategoryDataLoader : KotlinDataLoader<Int, MangaNodeList> {
 class MangaForSourceDataLoader : KotlinDataLoader<Long, MangaNodeList> {
     override val dataLoaderName = "MangaForSourceDataLoader"
 
-    override fun getDataLoader(): DataLoader<Long, MangaNodeList> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Long, MangaNodeList> =
         DataLoaderFactory.newDataLoader<Long, MangaNodeList> { ids ->
             future {
                 transaction {
@@ -99,7 +100,7 @@ class MangaForSourceDataLoader : KotlinDataLoader<Long, MangaNodeList> {
 class MangaForIdsDataLoader : KotlinDataLoader<List<Int>, MangaNodeList> {
     override val dataLoaderName = "MangaForIdsDataLoader"
 
-    override fun getDataLoader(): DataLoader<List<Int>, MangaNodeList> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<List<Int>, MangaNodeList> =
         DataLoaderFactory.newDataLoader(
             { mangaIds ->
                 future {

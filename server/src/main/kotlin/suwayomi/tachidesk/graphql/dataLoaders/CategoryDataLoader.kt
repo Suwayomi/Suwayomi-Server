@@ -8,6 +8,7 @@
 package suwayomi.tachidesk.graphql.dataLoaders
 
 import com.expediagroup.graphql.dataloader.KotlinDataLoader
+import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
@@ -24,7 +25,7 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 class CategoryDataLoader : KotlinDataLoader<Int, CategoryType> {
     override val dataLoaderName = "CategoryDataLoader"
 
-    override fun getDataLoader(): DataLoader<Int, CategoryType> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, CategoryType> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
@@ -43,7 +44,7 @@ class CategoryDataLoader : KotlinDataLoader<Int, CategoryType> {
 class CategoryForIdsDataLoader : KotlinDataLoader<List<Int>, CategoryNodeList> {
     override val dataLoaderName = "CategoryForIdsDataLoader"
 
-    override fun getDataLoader(): DataLoader<List<Int>, CategoryNodeList> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<List<Int>, CategoryNodeList> =
         DataLoaderFactory.newDataLoader { categoryIds ->
             future {
                 transaction {
@@ -61,7 +62,7 @@ class CategoryForIdsDataLoader : KotlinDataLoader<List<Int>, CategoryNodeList> {
 class CategoriesForMangaDataLoader : KotlinDataLoader<Int, CategoryNodeList> {
     override val dataLoaderName = "CategoriesForMangaDataLoader"
 
-    override fun getDataLoader(): DataLoader<Int, CategoryNodeList> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, CategoryNodeList> =
         DataLoaderFactory.newDataLoader<Int, CategoryNodeList> { ids ->
             future {
                 transaction {
