@@ -7,7 +7,7 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import io.javalin.http.HttpCode
+import io.javalin.http.HttpStatus
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import suwayomi.tachidesk.manga.impl.track.Track
@@ -36,7 +36,7 @@ object TrackController {
                 ctx.json(Track.getTrackerList())
             },
             withResults = {
-                json<Array<TrackerDataClass>>(HttpCode.OK)
+                json<Array<TrackerDataClass>>(HttpStatus.OK)
             },
         )
 
@@ -55,8 +55,8 @@ object TrackController {
                 ctx.future { future { Track.login(input) } }
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -75,8 +75,8 @@ object TrackController {
                 ctx.future { future { Track.logout(input) } }
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -95,8 +95,8 @@ object TrackController {
                 ctx.future { future { Track.search(input) } }
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -115,7 +115,7 @@ object TrackController {
                 ctx.future { future { Track.bind(mangaId, trackerId, remoteId.toLong()) } }
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -134,7 +134,7 @@ object TrackController {
                 ctx.future { future { Track.update(input) } }
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -159,8 +159,8 @@ object TrackController {
                 }
             },
             withResults = {
-                image(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                image(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 }

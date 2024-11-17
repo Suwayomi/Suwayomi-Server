@@ -15,7 +15,7 @@ import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import eu.kanade.tachiyomi.source.online.HttpSource
-import io.javalin.http.HttpCode
+import io.javalin.http.HttpStatus
 import mu.KLogger
 import mu.KotlinLogging
 import okhttp3.CacheControl
@@ -305,9 +305,9 @@ object Manga {
             val tryToRefreshUrl =
                 !refreshUrl &&
                     listOf(
-                        HttpCode.GONE.status,
-                        HttpCode.MOVED_PERMANENTLY.status,
-                        HttpCode.NOT_FOUND.status,
+                        HttpStatus.GONE.code,
+                        HttpStatus.MOVED_PERMANENTLY.code,
+                        HttpStatus.NOT_FOUND.code,
                         523, // (Cloudflare) Origin Is Unreachable
                         522, // (Cloudflare) Connection timed out
                     ).contains(e.code)

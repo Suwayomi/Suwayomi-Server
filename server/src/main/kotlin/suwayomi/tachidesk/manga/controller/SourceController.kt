@@ -7,7 +7,7 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import io.javalin.http.HttpCode
+import io.javalin.http.HttpStatus
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.MangaList
 import suwayomi.tachidesk.manga.impl.Search
@@ -38,7 +38,7 @@ object SourceController {
                 ctx.json(Source.getSourceList())
             },
             withResults = {
-                json<Array<SourceDataClass>>(HttpCode.OK)
+                json<Array<SourceDataClass>>(HttpStatus.OK)
             },
         )
 
@@ -56,8 +56,8 @@ object SourceController {
                 ctx.json(Source.getSource(sourceId)!!)
             },
             withResults = {
-                json<SourceDataClass>(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                json<SourceDataClass>(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -80,7 +80,7 @@ object SourceController {
                 }
             },
             withResults = {
-                json<PagedMangaListDataClass>(HttpCode.OK)
+                json<PagedMangaListDataClass>(HttpStatus.OK)
             },
         )
 
@@ -103,7 +103,7 @@ object SourceController {
                 }
             },
             withResults = {
-                json<PagedMangaListDataClass>(HttpCode.OK)
+                json<PagedMangaListDataClass>(HttpStatus.OK)
             },
         )
 
@@ -121,7 +121,7 @@ object SourceController {
                 ctx.json(Source.getSourcePreferences(sourceId))
             },
             withResults = {
-                json<Array<Source.PreferenceObject>>(HttpCode.OK)
+                json<Array<Source.PreferenceObject>>(HttpStatus.OK)
             },
         )
 
@@ -141,7 +141,7 @@ object SourceController {
                 ctx.json(Source.setSourcePreference(sourceId, preferenceChange.position, preferenceChange.value))
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -160,7 +160,7 @@ object SourceController {
                 ctx.json(Search.getFilterList(sourceId, reset))
             },
             withResults = {
-                json<Array<Search.FilterObject>>(HttpCode.OK)
+                json<Array<Search.FilterObject>>(HttpStatus.OK)
             },
         )
 
@@ -189,7 +189,7 @@ object SourceController {
                 ctx.json(Search.setFilter(sourceId, filterChange))
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -209,7 +209,7 @@ object SourceController {
                 ctx.future { future { Search.sourceSearch(sourceId, searchTerm, pageNum) } }
             },
             withResults = {
-                json<PagedMangaListDataClass>(HttpCode.OK)
+                json<PagedMangaListDataClass>(HttpStatus.OK)
             },
         )
 
@@ -230,7 +230,7 @@ object SourceController {
                 ctx.future { future { Search.sourceFilter(sourceId, pageNum, filter) } }
             },
             withResults = {
-                json<PagedMangaListDataClass>(HttpCode.OK)
+                json<PagedMangaListDataClass>(HttpStatus.OK)
             },
         )
 
@@ -249,7 +249,7 @@ object SourceController {
                 ctx.json(Search.sourceGlobalSearch(searchTerm))
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 }

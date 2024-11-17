@@ -7,7 +7,7 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import io.javalin.http.HttpCode
+import io.javalin.http.HttpStatus
 import mu.KotlinLogging
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList
@@ -38,7 +38,7 @@ object ExtensionController {
                 }
             },
             withResults = {
-                json<Array<ExtensionDataClass>>(HttpCode.OK)
+                json<Array<ExtensionDataClass>>(HttpStatus.OK)
             },
         )
 
@@ -60,9 +60,9 @@ object ExtensionController {
                 }
             },
             withResults = {
-                httpCode(HttpCode.CREATED)
-                httpCode(HttpCode.FOUND)
-                httpCode(HttpCode.INTERNAL_SERVER_ERROR)
+                httpCode(HttpStatus.CREATED)
+                httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.INTERNAL_SERVER_ERROR)
             },
         )
 
@@ -93,9 +93,9 @@ object ExtensionController {
                 }
             },
             withResults = {
-                httpCode(HttpCode.CREATED)
-                httpCode(HttpCode.FOUND)
-                httpCode(HttpCode.INTERNAL_SERVER_ERROR)
+                httpCode(HttpStatus.CREATED)
+                httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.INTERNAL_SERVER_ERROR)
             },
         )
 
@@ -117,10 +117,10 @@ object ExtensionController {
                 }
             },
             withResults = {
-                httpCode(HttpCode.CREATED)
-                httpCode(HttpCode.FOUND)
-                httpCode(HttpCode.NOT_FOUND)
-                httpCode(HttpCode.INTERNAL_SERVER_ERROR)
+                httpCode(HttpStatus.CREATED)
+                httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.NOT_FOUND)
+                httpCode(HttpStatus.INTERNAL_SERVER_ERROR)
             },
         )
 
@@ -139,10 +139,10 @@ object ExtensionController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.CREATED)
-                httpCode(HttpCode.FOUND)
-                httpCode(HttpCode.NOT_FOUND)
-                httpCode(HttpCode.INTERNAL_SERVER_ERROR)
+                httpCode(HttpStatus.CREATED)
+                httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.NOT_FOUND)
+                httpCode(HttpStatus.INTERNAL_SERVER_ERROR)
             },
         )
 
@@ -168,8 +168,8 @@ object ExtensionController {
                 }
             },
             withResults = {
-                image(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                image(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 }

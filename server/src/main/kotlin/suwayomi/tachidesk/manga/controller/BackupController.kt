@@ -1,6 +1,6 @@
 package suwayomi.tachidesk.manga.controller
 
-import io.javalin.http.HttpCode
+import io.javalin.http.HttpStatus
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
@@ -35,7 +35,7 @@ object BackupController {
                 }
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -61,8 +61,8 @@ object BackupController {
                 }
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -92,7 +92,7 @@ object BackupController {
                 }
             },
             withResults = {
-                stream(HttpCode.OK)
+                stream(HttpStatus.OK)
             },
         )
 
@@ -124,7 +124,7 @@ object BackupController {
                 }
             },
             withResults = {
-                stream(HttpCode.OK)
+                stream(HttpStatus.OK)
             },
         )
 
@@ -145,7 +145,7 @@ object BackupController {
                 }
             },
             withResults = {
-                json<ProtoBackupValidator.ValidationResult>(HttpCode.OK)
+                json<ProtoBackupValidator.ValidationResult>(HttpStatus.OK)
             },
         )
 
@@ -174,7 +174,7 @@ object BackupController {
                 }
             },
             withResults = {
-                json<ProtoBackupValidator.ValidationResult>(HttpCode.OK)
+                json<ProtoBackupValidator.ValidationResult>(HttpStatus.OK)
             },
         )
 }

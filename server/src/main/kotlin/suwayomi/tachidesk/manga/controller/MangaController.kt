@@ -7,7 +7,7 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import io.javalin.http.HttpCode
+import io.javalin.http.HttpStatus
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
@@ -48,8 +48,8 @@ object MangaController {
                 }
             },
             withResults = {
-                json<MangaDataClass>(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                json<MangaDataClass>(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -72,8 +72,8 @@ object MangaController {
                 }
             },
             withResults = {
-                json<MangaDataClass>(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                json<MangaDataClass>(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -99,8 +99,8 @@ object MangaController {
                 }
             },
             withResults = {
-                image(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                image(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -120,8 +120,8 @@ object MangaController {
                 }
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -141,8 +141,8 @@ object MangaController {
                 }
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -160,7 +160,7 @@ object MangaController {
                 ctx.json(CategoryManga.getMangaCategories(mangaId))
             },
             withResults = {
-                json<Array<CategoryDataClass>>(HttpCode.OK)
+                json<Array<CategoryDataClass>>(HttpStatus.OK)
             },
         )
 
@@ -180,7 +180,7 @@ object MangaController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -200,7 +200,7 @@ object MangaController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -221,8 +221,8 @@ object MangaController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -245,8 +245,8 @@ object MangaController {
                 ctx.future { future { Chapter.getChapterList(mangaId, onlineFetch) } }
             },
             withResults = {
-                json<Array<ChapterDataClass>>(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                json<Array<ChapterDataClass>>(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -266,7 +266,7 @@ object MangaController {
                 Chapter.modifyChapters(input, mangaId)
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -291,7 +291,7 @@ object MangaController {
                 )
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -310,8 +310,8 @@ object MangaController {
                 ctx.future { future { getChapterDownloadReadyByIndex(chapterIndex, mangaId) } }
             },
             withResults = {
-                json<ChapterDataClass>(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                json<ChapterDataClass>(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -336,7 +336,7 @@ object MangaController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -357,8 +357,8 @@ object MangaController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -381,8 +381,8 @@ object MangaController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -412,8 +412,8 @@ object MangaController {
                 }
             },
             withResults = {
-                image(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                image(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 }

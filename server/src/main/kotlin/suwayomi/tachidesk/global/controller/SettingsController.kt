@@ -7,7 +7,7 @@ package suwayomi.tachidesk.global.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import io.javalin.http.HttpCode
+import io.javalin.http.HttpStatus
 import suwayomi.tachidesk.global.impl.About
 import suwayomi.tachidesk.global.impl.AboutDataClass
 import suwayomi.tachidesk.global.impl.AppUpdate
@@ -31,7 +31,7 @@ object SettingsController {
                 ctx.json(About.getAbout())
             },
             withResults = {
-                json<AboutDataClass>(HttpCode.OK)
+                json<AboutDataClass>(HttpStatus.OK)
             },
         )
 
@@ -50,7 +50,7 @@ object SettingsController {
                 }
             },
             withResults = {
-                json<Array<UpdateDataClass>>(HttpCode.OK)
+                json<Array<UpdateDataClass>>(HttpStatus.OK)
             },
         )
 }

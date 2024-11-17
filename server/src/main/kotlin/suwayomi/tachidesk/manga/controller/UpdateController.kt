@@ -1,6 +1,6 @@
 package suwayomi.tachidesk.manga.controller
 
-import io.javalin.http.HttpCode
+import io.javalin.http.HttpStatus
 import io.javalin.websocket.WsConfig
 import mu.KotlinLogging
 import suwayomi.tachidesk.manga.impl.Category
@@ -46,7 +46,7 @@ object UpdateController {
                 }
             },
             withResults = {
-                json<PagedMangaChapterListDataClass>(HttpCode.OK)
+                json<PagedMangaChapterListDataClass>(HttpStatus.OK)
             },
         )
 
@@ -84,13 +84,13 @@ object UpdateController {
                         )
                     } else {
                         logger.info { "No Category found" }
-                        ctx.status(HttpCode.BAD_REQUEST)
+                        ctx.status(HttpStatus.BAD_REQUEST)
                     }
                 }
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.BAD_REQUEST)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.BAD_REQUEST)
             },
         )
 
@@ -119,7 +119,7 @@ object UpdateController {
                 ctx.json(updater.statusDeprecated.value)
             },
             withResults = {
-                json<UpdateStatus>(HttpCode.OK)
+                json<UpdateStatus>(HttpStatus.OK)
             },
         )
 
@@ -138,12 +138,12 @@ object UpdateController {
                     future {
                         updater.reset()
                     }.thenApply {
-                        ctx.status(HttpCode.OK)
+                        ctx.status(HttpStatus.OK)
                     }
                 }
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 }

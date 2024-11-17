@@ -3,7 +3,7 @@ package suwayomi.tachidesk.manga.controller
 import suwayomi.tachidesk.test.ApplicationTest
 
 // import io.javalin.http.Context
-// import io.javalin.http.HttpCode
+// import io.javalin.http.HttpStatus
 // import io.mockk.every
 // import io.mockk.mockk
 // import io.mockk.verify
@@ -31,7 +31,7 @@ internal class UpdateControllerTest : ApplicationTest() {
 //     fun `POST non existent Category Id should give error`() {
 //         every { ctx.formParam("category") } returns "1"
 //         UpdateController.categoryUpdate(ctx)
-//         verify { ctx.status(HttpCode.BAD_REQUEST) }
+//         verify { ctx.status(HttpStatus.BAD_REQUEST) }
 //         val updater by DI.global.instance<IUpdater>()
 //         assertEquals(0, updater.status.value.numberOfJobs)
 //     }
@@ -43,7 +43,7 @@ internal class UpdateControllerTest : ApplicationTest() {
 //         CategoryManga.addMangaToCategory(1, 1)
 //         every { ctx.formParam("category") } returns "1"
 //         UpdateController.categoryUpdate(ctx)
-//         verify { ctx.status(HttpCode.OK) }
+//         verify { ctx.status(HttpStatus.OK) }
 //         val updater by DI.global.instance<IUpdater>()
 //         assertEquals(1, updater.status.value.numberOfJobs)
 //     }
@@ -59,7 +59,7 @@ internal class UpdateControllerTest : ApplicationTest() {
 //         createLibraryManga("mangaInDefault")
 //         every { ctx.formParam("category") } returns null
 //         UpdateController.categoryUpdate(ctx)
-//         verify { ctx.status(HttpCode.OK) }
+//         verify { ctx.status(HttpStatus.OK) }
 //         val updater by DI.global.instance<IUpdater>()
 //         assertEquals(3, updater.status.value.numberOfJobs)
 //     }
