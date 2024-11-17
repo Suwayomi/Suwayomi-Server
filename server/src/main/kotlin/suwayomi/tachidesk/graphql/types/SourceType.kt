@@ -13,7 +13,7 @@ import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.model.FilterList
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
@@ -92,7 +92,8 @@ fun SourceType(row: ResultRow): SourceType? {
             row
         } else {
             ExtensionTable
-                .select { ExtensionTable.id eq row[SourceTable.extension] }
+                .selectAll()
+                .where { ExtensionTable.id eq row[SourceTable.extension] }
                 .first()
         }
 

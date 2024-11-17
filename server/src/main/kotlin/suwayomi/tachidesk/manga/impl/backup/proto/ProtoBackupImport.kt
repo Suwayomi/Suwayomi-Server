@@ -25,7 +25,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.toStatus
@@ -183,7 +183,8 @@ object ProtoBackupImport : ProtoBackupBase() {
                 backup.backupCategories.associate {
                     val dbCategory =
                         CategoryTable
-                            .select { CategoryTable.name eq it.name }
+                            .selectAll()
+                            .where { CategoryTable.name eq it.name }
                             .firstOrNull()
                     val categoryId =
                         dbCategory?.let { categoryResultRow ->
@@ -275,7 +276,8 @@ object ProtoBackupImport : ProtoBackupBase() {
         val dbManga =
             transaction {
                 MangaTable
-                    .select { (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq manga.source) }
+                    .selectAll()
+                    .where { (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq manga.source) }
                     .firstOrNull()
             }
 
@@ -362,7 +364,7 @@ object ProtoBackupImport : ProtoBackupBase() {
 
                     // merge chapter data
                     val chaptersLength = chapters.size
-                    val dbChapters = ChapterTable.select { ChapterTable.manga eq mangaId }
+                    val dbChapters = ChapterTable.selectAll().where { ChapterTable.manga eq mangaId }
 
                     chapters.forEach { chapter ->
                         val dbChapter = dbChapters.find { it[ChapterTable.url] == chapter.url }

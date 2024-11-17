@@ -11,7 +11,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import okio.buffer
 import okio.gzip
 import okio.source
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
@@ -36,7 +36,7 @@ object ProtoBackupValidator {
 
         val missingSources =
             transaction {
-                sources.filter { SourceTable.select { SourceTable.id eq it.key }.firstOrNull() == null }
+                sources.filter { SourceTable.selectAll().where { SourceTable.id eq it.key }.firstOrNull() == null }
             }
 
         val trackers =

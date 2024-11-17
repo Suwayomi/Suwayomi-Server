@@ -4,7 +4,7 @@ import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import graphql.execution.DataFetcherResult
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.types.TrackRecordType
@@ -127,7 +127,8 @@ class TrackMutation {
             val trackRecord =
                 transaction {
                     TrackRecordTable
-                        .select {
+                        .selectAll()
+                        .where {
                             TrackRecordTable.mangaId eq mangaId and (TrackRecordTable.trackerId eq trackerId)
                         }.first()
                 }
@@ -156,7 +157,8 @@ class TrackMutation {
             val trackRecord =
                 transaction {
                     TrackRecordTable
-                        .select {
+                        .selectAll()
+                        .where {
                             TrackRecordTable.id eq recordId
                         }.first()
                 }
@@ -187,7 +189,8 @@ class TrackMutation {
             val trackRecord =
                 transaction {
                     TrackRecordTable
-                        .select {
+                        .selectAll()
+                        .where {
                             TrackRecordTable.id eq recordId
                         }.firstOrNull()
                 }
@@ -217,7 +220,8 @@ class TrackMutation {
                 val trackRecords =
                     transaction {
                         TrackRecordTable
-                            .select { TrackRecordTable.mangaId eq mangaId }
+                            .selectAll()
+                            .where { TrackRecordTable.mangaId eq mangaId }
                             .toList()
                     }
                 TrackProgressPayload(
@@ -262,7 +266,8 @@ class TrackMutation {
             val trackRecord =
                 transaction {
                     TrackRecordTable
-                        .select {
+                        .selectAll()
+                        .where {
                             TrackRecordTable.id eq input.recordId
                         }.firstOrNull()
                 }

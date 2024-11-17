@@ -13,7 +13,7 @@ import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.types.TrackRecordNodeList
 import suwayomi.tachidesk.graphql.types.TrackRecordNodeList.Companion.toNodeList
@@ -91,7 +91,8 @@ class TrackRecordsForMangaIdDataLoader : KotlinDataLoader<Int, TrackRecordNodeLi
                     addLogger(Slf4jSqlDebugLogger)
                     val trackRecordsByMangaId =
                         TrackRecordTable
-                            .select { TrackRecordTable.mangaId inList ids }
+                            .selectAll()
+                            .where { TrackRecordTable.mangaId inList ids }
                             .map { TrackRecordType(it) }
                             .groupBy { it.mangaId }
                     ids.map { (trackRecordsByMangaId[it] ?: emptyList()).toNodeList() }
@@ -110,7 +111,8 @@ class DisplayScoreForTrackRecordDataLoader : KotlinDataLoader<Int, String> {
                     addLogger(Slf4jSqlDebugLogger)
                     val trackRecords =
                         TrackRecordTable
-                            .select { TrackRecordTable.id inList ids }
+                            .selectAll()
+                            .where { TrackRecordTable.id inList ids }
                             .toList()
                             .map { it.toTrack() }
                             .associateBy { it.id!! }
@@ -132,7 +134,8 @@ class TrackRecordsForTrackerIdDataLoader : KotlinDataLoader<Int, TrackRecordNode
                     addLogger(Slf4jSqlDebugLogger)
                     val trackRecordsBySyncId =
                         TrackRecordTable
-                            .select { TrackRecordTable.trackerId inList ids }
+                            .selectAll()
+                            .where { TrackRecordTable.trackerId inList ids }
                             .map { TrackRecordType(it) }
                             .groupBy { it.trackerId }
                     ids.map { (trackRecordsBySyncId[it] ?: emptyList()).toNodeList() }
@@ -151,7 +154,8 @@ class TrackRecordDataLoader : KotlinDataLoader<Int, TrackRecordType> {
                     addLogger(Slf4jSqlDebugLogger)
                     val trackRecordsId =
                         TrackRecordTable
-                            .select { TrackRecordTable.id inList ids }
+                            .selectAll()
+                            .where { TrackRecordTable.id inList ids }
                             .map { TrackRecordType(it) }
                             .associateBy { it.id }
                     ids.map { trackRecordsId[it] }

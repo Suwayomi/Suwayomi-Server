@@ -3,7 +3,7 @@ package suwayomi.tachidesk.graphql.mutations
 import graphql.execution.DataFetcherResult
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.types.UpdateStatus
@@ -61,7 +61,7 @@ class UpdateMutation {
     fun updateCategoryManga(input: UpdateCategoryMangaInput): CompletableFuture<DataFetcherResult<UpdateCategoryMangaPayload?>> {
         val categories =
             transaction {
-                CategoryTable.select { CategoryTable.id inList input.categories }.map {
+                CategoryTable.selectAll().where { CategoryTable.id inList input.categories }.map {
                     CategoryTable.toDataClass(it)
                 }
             }

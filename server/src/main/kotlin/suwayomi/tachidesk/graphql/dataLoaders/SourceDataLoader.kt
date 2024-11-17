@@ -13,7 +13,7 @@ import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.types.SourceNodeList
 import suwayomi.tachidesk.graphql.types.SourceNodeList.Companion.toNodeList
@@ -32,7 +32,8 @@ class SourceDataLoader : KotlinDataLoader<Long, SourceType?> {
                     addLogger(Slf4jSqlDebugLogger)
                     val source =
                         SourceTable
-                            .select { SourceTable.id inList ids }
+                            .selectAll()
+                            .where { SourceTable.id inList ids }
                             .mapNotNull { SourceType(it) }
                             .associateBy { it.id }
                     ids.map { source[it] }
@@ -53,7 +54,8 @@ class SourcesForExtensionDataLoader : KotlinDataLoader<String, SourceNodeList> {
                     val sourcesByExtensionPkg =
                         SourceTable
                             .innerJoin(ExtensionTable)
-                            .select { ExtensionTable.pkgName inList ids }
+                            .selectAll()
+                            .where { ExtensionTable.pkgName inList ids }
                             .map { Pair(it[ExtensionTable.pkgName], SourceType(it)) }
                             .groupBy { it.first }
                             .mapValues { it.value.mapNotNull { pair -> pair.second } }

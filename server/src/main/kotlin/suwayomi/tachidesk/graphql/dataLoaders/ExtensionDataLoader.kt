@@ -13,7 +13,7 @@ import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.types.ExtensionType
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
@@ -30,7 +30,8 @@ class ExtensionDataLoader : KotlinDataLoader<String, ExtensionType?> {
                     addLogger(Slf4jSqlDebugLogger)
                     val extensions =
                         ExtensionTable
-                            .select { ExtensionTable.pkgName inList ids }
+                            .selectAll()
+                            .where { ExtensionTable.pkgName inList ids }
                             .map { ExtensionType(it) }
                             .associateBy { it.pkgName }
                     ids.map { extensions[it] }
@@ -50,7 +51,8 @@ class ExtensionForSourceDataLoader : KotlinDataLoader<Long, ExtensionType?> {
                     val extensions =
                         ExtensionTable
                             .innerJoin(SourceTable)
-                            .select { SourceTable.id inList ids }
+                            .selectAll()
+                            .where { SourceTable.id inList ids }
                             .toList()
                             .map { Triple(it[SourceTable.id].value, it[ExtensionTable.pkgName], it) }
                             .let { triples ->

@@ -9,7 +9,7 @@ import graphql.execution.DataFetcherResult
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.types.FilterChange
@@ -69,7 +69,8 @@ class SourceMutation {
                 transaction {
                     val meta =
                         SourceMetaTable
-                            .select { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
+                            .selectAll()
+                            .where { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
                             .firstOrNull()
 
                     SourceMetaTable.deleteWhere { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
@@ -77,7 +78,8 @@ class SourceMutation {
                     val source =
                         transaction {
                             SourceTable
-                                .select { SourceTable.id eq sourceId }
+                                .selectAll()
+                                .where { SourceTable.id eq sourceId }
                                 .firstOrNull()
                                 ?.let { SourceType(it) }
                         }
@@ -143,7 +145,8 @@ class SourceMutation {
                 val mangas =
                     transaction {
                         MangaTable
-                            .select { MangaTable.id inList mangaIds }
+                            .selectAll()
+                            .where { MangaTable.id inList mangaIds }
                             .map { MangaType(it) }
                     }.sortedBy {
                         mangaIds.indexOf(it.id)
@@ -199,7 +202,7 @@ class SourceMutation {
                 preferences = Source.getSourcePreferencesRaw(sourceId).map { preferenceOf(it) },
                 source =
                     transaction {
-                        SourceType(SourceTable.select { SourceTable.id eq sourceId }.first())!!
+                        SourceType(SourceTable.selectAll().where { SourceTable.id eq sourceId }.first())!!
                     },
             )
         }

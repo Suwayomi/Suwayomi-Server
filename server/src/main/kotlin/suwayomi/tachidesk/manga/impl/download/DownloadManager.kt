@@ -28,7 +28,7 @@ import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
@@ -284,8 +284,8 @@ object DownloadManager {
         val chapter =
             transaction {
                 ChapterTable
-                    .slice(ChapterTable.id)
-                    .select { ChapterTable.manga.eq(mangaId) and ChapterTable.sourceOrder.eq(chapterIndex) }
+                    .select(ChapterTable.id)
+                    .where { ChapterTable.manga.eq(mangaId) and ChapterTable.sourceOrder.eq(chapterIndex) }
                     .first()
             }
         enqueue(EnqueueInput(chapterIds = listOf(chapter[ChapterTable.id].value)))
@@ -304,7 +304,8 @@ object DownloadManager {
         val chapters =
             transaction {
                 (ChapterTable innerJoin MangaTable)
-                    .select { ChapterTable.id inList input.chapterIds }
+                    .selectAll()
+                    .where { ChapterTable.id inList input.chapterIds }
                     .orderBy(ChapterTable.manga)
                     .orderBy(ChapterTable.sourceOrder)
                     .toList()

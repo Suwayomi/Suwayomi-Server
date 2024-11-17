@@ -15,7 +15,6 @@ import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
-import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
 import suwayomi.tachidesk.graphql.queries.filter.ComparableScalarFilter
@@ -242,11 +241,11 @@ class MangaQuery {
                 val res =
                     MangaTable
                         .leftJoin(CategoryMangaTable)
-                        .slice(
+                        .select(
                             distinctOn(MangaTable.id),
                             *(MangaTable.columns).toTypedArray(),
                             *(CategoryMangaTable.columns).toTypedArray(),
-                        ).selectAll()
+                        )
 
                 res.applyOps(condition, filter)
 

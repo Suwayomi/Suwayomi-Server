@@ -16,7 +16,6 @@ import io.javalin.json.JsonMapper
 import io.javalin.json.fromJsonString
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -39,7 +38,7 @@ object Source {
         return transaction {
             SourceTable.selectAll().mapNotNull {
                 val catalogueSource = getCatalogueSourceOrNull(it[SourceTable.id].value) ?: return@mapNotNull null
-                val sourceExtension = ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }.first()
+                val sourceExtension = ExtensionTable.selectAll().where { ExtensionTable.id eq it[SourceTable.extension] }.first()
 
                 SourceDataClass(
                     it[SourceTable.id].value.toString(),
@@ -57,9 +56,9 @@ object Source {
 
     fun getSource(sourceId: Long): SourceDataClass? { // all the data extracted fresh form the source instance
         return transaction {
-            val source = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull() ?: return@transaction null
+            val source = SourceTable.selectAll().where { SourceTable.id eq sourceId }.firstOrNull() ?: return@transaction null
             val catalogueSource = getCatalogueSourceOrNull(sourceId) ?: return@transaction null
-            val extension = ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()
+            val extension = ExtensionTable.selectAll().where { ExtensionTable.id eq source[SourceTable.extension] }.first()
 
             SourceDataClass(
                 sourceId.toString(),
@@ -160,7 +159,7 @@ object Source {
         transaction {
             val meta =
                 transaction {
-                    SourceMetaTable.select { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
+                    SourceMetaTable.selectAll().where { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
                 }.firstOrNull()
 
             if (meta == null) {

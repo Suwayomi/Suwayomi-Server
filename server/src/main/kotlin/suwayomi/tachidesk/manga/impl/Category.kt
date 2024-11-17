@@ -14,7 +14,6 @@ import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -34,7 +33,7 @@ object Category {
         if (name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)) return -1
 
         return transaction {
-            if (CategoryTable.select { CategoryTable.name eq name }.firstOrNull() == null) {
+            if (CategoryTable.selectAll().where { CategoryTable.name eq name }.firstOrNull() == null) {
                 val newCategoryId =
                     CategoryTable
                         .insertAndGetId {
@@ -85,7 +84,8 @@ object Category {
         transaction {
             val categories =
                 CategoryTable
-                    .select {
+                    .selectAll()
+                    .where {
                         CategoryTable.id neq DEFAULT_CATEGORY_ID
                     }.orderBy(CategoryTable.order to SortOrder.ASC)
                     .toMutableList()
@@ -126,7 +126,8 @@ object Category {
         transaction {
             MangaTable
                 .leftJoin(CategoryMangaTable)
-                .select { MangaTable.inLibrary eq true }
+                .selectAll()
+                .where { MangaTable.inLibrary eq true }
                 .andWhere { CategoryMangaTable.manga.isNull() }
                 .empty()
                 .not()
@@ -153,7 +154,7 @@ object Category {
 
     fun getCategoryById(categoryId: Int): CategoryDataClass? =
         transaction {
-            CategoryTable.select { CategoryTable.id eq categoryId }.firstOrNull()?.let {
+            CategoryTable.selectAll().where { CategoryTable.id eq categoryId }.firstOrNull()?.let {
                 CategoryTable.toDataClass(it)
             }
         }
@@ -163,12 +164,14 @@ object Category {
             if (categoryId == DEFAULT_CATEGORY_ID) {
                 MangaTable
                     .leftJoin(CategoryMangaTable)
-                    .select { MangaTable.inLibrary eq true }
+                    .selectAll()
+                    .where { MangaTable.inLibrary eq true }
                     .andWhere { CategoryMangaTable.manga.isNull() }
             } else {
                 CategoryMangaTable
                     .leftJoin(MangaTable)
-                    .select { CategoryMangaTable.category eq categoryId }
+                    .selectAll()
+                    .where { CategoryMangaTable.category eq categoryId }
                     .andWhere { MangaTable.inLibrary eq true }
             }.count().toInt()
         }
@@ -176,7 +179,8 @@ object Category {
     fun getCategoryMetaMap(categoryId: Int): Map<String, String> =
         transaction {
             CategoryMetaTable
-                .select { CategoryMetaTable.ref eq categoryId }
+                .selectAll()
+                .where { CategoryMetaTable.ref eq categoryId }
                 .associate { it[CategoryMetaTable.key] to it[CategoryMetaTable.value] }
         }
 
@@ -188,7 +192,7 @@ object Category {
         transaction {
             val meta =
                 transaction {
-                    CategoryMetaTable.select { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
+                    CategoryMetaTable.selectAll().where { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
                 }.firstOrNull()
 
             if (meta == null) {

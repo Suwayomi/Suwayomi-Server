@@ -3,7 +3,7 @@ package suwayomi.tachidesk.graphql.mutations
 import graphql.execution.DataFetcherResult
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.types.ChapterType
@@ -39,7 +39,8 @@ class DownloadMutation {
                 chapters =
                     transaction {
                         ChapterTable
-                            .select { ChapterTable.id inList chapters }
+                            .selectAll()
+                            .where { ChapterTable.id inList chapters }
                             .map { ChapterType(it) }
                     },
             )
@@ -66,7 +67,7 @@ class DownloadMutation {
                 clientMutationId = clientMutationId,
                 chapters =
                     transaction {
-                        ChapterType(ChapterTable.select { ChapterTable.id eq chapter }.first())
+                        ChapterType(ChapterTable.selectAll().where { ChapterTable.id eq chapter }.first())
                     },
             )
         }

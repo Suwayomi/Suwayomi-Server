@@ -8,7 +8,7 @@ package suwayomi.tachidesk.manga.impl.util
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -33,7 +33,7 @@ private fun getChapterDir(
     mangaId: Int,
     chapterId: Int,
 ): String {
-    val chapterEntry = transaction { ChapterTable.select { ChapterTable.id eq chapterId }.first() }
+    val chapterEntry = transaction { ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first() }
 
     val chapterDir =
         SafePath.buildValidFilename(
@@ -91,4 +91,4 @@ fun updateMangaDownloadDir(
     }
 }
 
-private fun getMangaEntry(mangaId: Int): ResultRow = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
+private fun getMangaEntry(mangaId: Int): ResultRow = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }

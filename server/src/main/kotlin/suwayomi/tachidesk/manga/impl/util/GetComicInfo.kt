@@ -6,7 +6,7 @@ import eu.kanade.tachiyomi.source.local.metadata.ComicInfoPublishingStatus
 import nl.adaptivity.xmlutil.serialization.XML
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
@@ -77,7 +77,8 @@ fun createComicInfoFile(
         transaction {
             CategoryMangaTable
                 .innerJoin(CategoryTable)
-                .select {
+                .selectAll()
+                .where {
                     CategoryMangaTable.manga eq manga[MangaTable.id]
                 }.orderBy(CategoryTable.order to SortOrder.ASC)
                 .map {

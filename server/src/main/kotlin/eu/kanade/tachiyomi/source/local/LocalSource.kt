@@ -38,7 +38,7 @@ import nl.adaptivity.xmlutil.serialization.XML
 import org.apache.commons.compress.archivers.zip.ZipFile
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.registerCatalogueSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
@@ -444,7 +444,7 @@ class LocalSource(
 
         fun register() {
             transaction {
-                val sourceRecord = SourceTable.select { SourceTable.id eq ID }.firstOrNull()
+                val sourceRecord = SourceTable.selectAll().where { SourceTable.id eq ID }.firstOrNull()
 
                 if (sourceRecord == null) {
                     // must do this to avoid database integrity errors

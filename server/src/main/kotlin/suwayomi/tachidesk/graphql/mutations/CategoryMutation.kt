@@ -9,7 +9,6 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -67,14 +66,15 @@ class CategoryMutation {
                 transaction {
                     val meta =
                         CategoryMetaTable
-                            .select { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
+                            .selectAll()
+                            .where { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
                             .firstOrNull()
 
                     CategoryMetaTable.deleteWhere { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
 
                     val category =
                         transaction {
-                            CategoryType(CategoryTable.select { CategoryTable.id eq categoryId }.first())
+                            CategoryType(CategoryTable.selectAll().where { CategoryTable.id eq categoryId }.first())
                         }
 
                     if (meta != null) {
@@ -160,7 +160,7 @@ class CategoryMutation {
 
             val category =
                 transaction {
-                    CategoryType(CategoryTable.select { CategoryTable.id eq id }.first())
+                    CategoryType(CategoryTable.selectAll().where { CategoryTable.id eq id }.first())
                 }
 
             UpdateCategoryPayload(
@@ -177,7 +177,7 @@ class CategoryMutation {
 
             val categories =
                 transaction {
-                    CategoryTable.select { CategoryTable.id inList ids }.map { CategoryType(it) }
+                    CategoryTable.selectAll().where { CategoryTable.id inList ids }.map { CategoryType(it) }
                 }
 
             UpdateCategoriesPayload(
@@ -207,7 +207,8 @@ class CategoryMutation {
             transaction {
                 val currentOrder =
                     CategoryTable
-                        .select { CategoryTable.id eq categoryId }
+                        .selectAll()
+                        .where { CategoryTable.id eq categoryId }
                         .first()[CategoryTable.order]
 
                 if (currentOrder != position) {
@@ -258,7 +259,7 @@ class CategoryMutation {
         asDataFetcherResult {
             val (clientMutationId, name, order, default, includeInUpdate, includeInDownload) = input
             transaction {
-                require(CategoryTable.select { CategoryTable.name eq input.name }.isEmpty()) {
+                require(CategoryTable.selectAll().where { CategoryTable.name eq input.name }.isEmpty()) {
                     "'name' must be unique"
                 }
             }
@@ -296,7 +297,7 @@ class CategoryMutation {
 
                     Category.normalizeCategories()
 
-                    CategoryType(CategoryTable.select { CategoryTable.id eq id }.first())
+                    CategoryType(CategoryTable.selectAll().where { CategoryTable.id eq id }.first())
                 }
 
             CreateCategoryPayload(clientMutationId, category)
@@ -328,14 +329,16 @@ class CategoryMutation {
                 transaction {
                     val category =
                         CategoryTable
-                            .select { CategoryTable.id eq categoryId }
+                            .selectAll()
+                            .where { CategoryTable.id eq categoryId }
                             .firstOrNull()
 
                     val mangas =
                         transaction {
                             MangaTable
                                 .innerJoin(CategoryMangaTable)
-                                .select { CategoryMangaTable.category eq categoryId }
+                                .selectAll()
+                                .where { CategoryMangaTable.category eq categoryId }
                                 .map { MangaType(it) }
                         }
 
@@ -401,7 +404,8 @@ class CategoryMutation {
                             patch.addToCategories.forEach { categoryId ->
                                 val existingMapping =
                                     CategoryMangaTable
-                                        .select {
+                                        .selectAll()
+                                        .where {
                                             (CategoryMangaTable.manga eq mangaId) and (CategoryMangaTable.category eq categoryId)
                                         }.isNotEmpty()
 
@@ -428,7 +432,7 @@ class CategoryMutation {
 
             val manga =
                 transaction {
-                    MangaType(MangaTable.select { MangaTable.id eq id }.first())
+                    MangaType(MangaTable.selectAll().where { MangaTable.id eq id }.first())
                 }
 
             UpdateMangaCategoriesPayload(
@@ -445,7 +449,7 @@ class CategoryMutation {
 
             val mangas =
                 transaction {
-                    MangaTable.select { MangaTable.id inList ids }.map { MangaType(it) }
+                    MangaTable.selectAll().where { MangaTable.id inList ids }.map { MangaType(it) }
                 }
 
             UpdateMangasCategoriesPayload(

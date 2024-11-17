@@ -13,7 +13,7 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.coroutines.flow.StateFlow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
@@ -47,13 +47,15 @@ object Page {
         index: Int,
         progressFlow: ((StateFlow<Int>) -> Unit)? = null,
     ): Pair<InputStream, String> {
-        val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
+        val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
         val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
         val chapterEntry =
             transaction {
                 ChapterTable
-                    .select {
-                        (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId)
+                    .selectAll()
+                    .where {
+                        (ChapterTable.sourceOrder eq chapterIndex) and
+                            (ChapterTable.manga eq mangaId)
                     }.first()
             }
         val chapterId = chapterEntry[ChapterTable.id].value
@@ -61,7 +63,8 @@ object Page {
         val pageEntry =
             transaction {
                 PageTable
-                    .select { (PageTable.chapter eq chapterId) }
+                    .selectAll()
+                    .where { (PageTable.chapter eq chapterId) }
                     .orderBy(PageTable.index to SortOrder.ASC)
                     .limit(1, index.toLong())
                     .first()

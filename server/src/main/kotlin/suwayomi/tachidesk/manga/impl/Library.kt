@@ -13,7 +13,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Manga.getManga
@@ -31,10 +31,12 @@ object Library {
             transaction {
                 val defaultCategories =
                     CategoryTable
-                        .select {
-                            (CategoryTable.isDefault eq true) and (CategoryTable.id neq Category.DEFAULT_CATEGORY_ID)
+                        .selectAll()
+                        .where {
+                            (CategoryTable.isDefault eq true) and
+                                (CategoryTable.id neq Category.DEFAULT_CATEGORY_ID)
                         }.toList()
-                val existingCategories = CategoryMangaTable.select { CategoryMangaTable.manga eq mangaId }.toList()
+                val existingCategories = CategoryMangaTable.selectAll().where { CategoryMangaTable.manga eq mangaId }.toList()
 
                 MangaTable.update({ MangaTable.id eq manga.id }) {
                     it[inLibrary] = true
