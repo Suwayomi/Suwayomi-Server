@@ -8,6 +8,7 @@
 package suwayomi.tachidesk.graphql.dataLoaders
 
 import com.expediagroup.graphql.dataloader.KotlinDataLoader
+import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
@@ -27,7 +28,7 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 class TrackerDataLoader : KotlinDataLoader<Int, TrackerType> {
     override val dataLoaderName = "TrackerDataLoader"
 
-    override fun getDataLoader(): DataLoader<Int, TrackerType> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, TrackerType> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 ids.map { id ->
@@ -40,7 +41,7 @@ class TrackerDataLoader : KotlinDataLoader<Int, TrackerType> {
 class TrackerStatusesDataLoader : KotlinDataLoader<Int, List<TrackStatusType>> {
     override val dataLoaderName = "TrackerStatusesDataLoader"
 
-    override fun getDataLoader(): DataLoader<Int, List<TrackStatusType>> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, List<TrackStatusType>> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 ids.map { id ->
@@ -57,7 +58,7 @@ class TrackerStatusesDataLoader : KotlinDataLoader<Int, List<TrackStatusType>> {
 class TrackerScoresDataLoader : KotlinDataLoader<Int, List<String>> {
     override val dataLoaderName = "TrackerScoresDataLoader"
 
-    override fun getDataLoader(): DataLoader<Int, List<String>> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, List<String>> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 ids.map { id ->
@@ -70,7 +71,7 @@ class TrackerScoresDataLoader : KotlinDataLoader<Int, List<String>> {
 class TrackerTokenExpiredDataLoader : KotlinDataLoader<Int, Boolean> {
     override val dataLoaderName = "TrackerTokenExpiredDataLoader"
 
-    override fun getDataLoader(): DataLoader<Int, Boolean> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, Boolean> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 ids.map { id ->
@@ -83,7 +84,7 @@ class TrackerTokenExpiredDataLoader : KotlinDataLoader<Int, Boolean> {
 class TrackRecordsForMangaIdDataLoader : KotlinDataLoader<Int, TrackRecordNodeList> {
     override val dataLoaderName = "TrackRecordsForMangaIdDataLoader"
 
-    override fun getDataLoader(): DataLoader<Int, TrackRecordNodeList> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, TrackRecordNodeList> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
@@ -102,7 +103,7 @@ class TrackRecordsForMangaIdDataLoader : KotlinDataLoader<Int, TrackRecordNodeLi
 class DisplayScoreForTrackRecordDataLoader : KotlinDataLoader<Int, String> {
     override val dataLoaderName = "DisplayScoreForTrackRecordDataLoader"
 
-    override fun getDataLoader(): DataLoader<Int, String> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, String> =
         DataLoaderFactory.newDataLoader<Int, String> { ids ->
             future {
                 transaction {
@@ -124,7 +125,7 @@ class DisplayScoreForTrackRecordDataLoader : KotlinDataLoader<Int, String> {
 class TrackRecordsForTrackerIdDataLoader : KotlinDataLoader<Int, TrackRecordNodeList> {
     override val dataLoaderName = "TrackRecordsForTrackerIdDataLoader"
 
-    override fun getDataLoader(): DataLoader<Int, TrackRecordNodeList> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, TrackRecordNodeList> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
@@ -143,7 +144,7 @@ class TrackRecordsForTrackerIdDataLoader : KotlinDataLoader<Int, TrackRecordNode
 class TrackRecordDataLoader : KotlinDataLoader<Int, TrackRecordType> {
     override val dataLoaderName = "TrackRecordDataLoader"
 
-    override fun getDataLoader(): DataLoader<Int, TrackRecordType> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, TrackRecordType> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {

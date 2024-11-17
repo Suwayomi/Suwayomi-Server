@@ -57,31 +57,31 @@ class MangaType(
             mangaId: Int,
             dataFetchingEnvironment: DataFetchingEnvironment,
         ) {
-            dataFetchingEnvironment.getDataLoader<Int, MangaType>("MangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, MangaType>("MangaDataLoader")?.clear(mangaId)
 
             val mangaForIdsDataLoader =
                 dataFetchingEnvironment.getDataLoader<List<Int>, MangaNodeList>("MangaForIdsDataLoader")
             @Suppress("UNCHECKED_CAST")
-            (mangaForIdsDataLoader.cacheMap as CustomCacheMap<List<Int>, MangaNodeList>)
-                .getKeys()
-                .filter { it.contains(mangaId) }
-                .forEach { mangaForIdsDataLoader.clear(it) }
+            (mangaForIdsDataLoader?.cacheMap as? CustomCacheMap<List<Int>, MangaNodeList>?)
+                ?.getKeys()
+                ?.filter { it.contains(mangaId) }
+                ?.forEach { mangaForIdsDataLoader.clear(it) }
 
-            dataFetchingEnvironment.getDataLoader<Int, Int>("DownloadedChapterCountForMangaDataLoader").clear(mangaId)
-            dataFetchingEnvironment.getDataLoader<Int, Int>("UnreadChapterCountForMangaDataLoader").clear(mangaId)
-            dataFetchingEnvironment.getDataLoader<Int, Int>("BookmarkedChapterCountForMangaDataLoader").clear(mangaId)
-            dataFetchingEnvironment.getDataLoader<Int, Int>("HasDuplicateChaptersForMangaDataLoader").clear(mangaId)
-            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LastReadChapterForMangaDataLoader").clear(mangaId)
-            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestReadChapterForMangaDataLoader").clear(mangaId)
-            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestFetchedChapterForMangaDataLoader").clear(mangaId)
-            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestUploadedChapterForMangaDataLoader").clear(mangaId)
-            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("FirstUnreadChapterForMangaDataLoader").clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, Int>("DownloadedChapterCountForMangaDataLoader")?.clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, Int>("UnreadChapterCountForMangaDataLoader")?.clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, Int>("BookmarkedChapterCountForMangaDataLoader")?.clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, Int>("HasDuplicateChaptersForMangaDataLoader")?.clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LastReadChapterForMangaDataLoader")?.clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestReadChapterForMangaDataLoader")?.clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestFetchedChapterForMangaDataLoader")?.clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestUploadedChapterForMangaDataLoader")?.clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("FirstUnreadChapterForMangaDataLoader")?.clear(mangaId)
             dataFetchingEnvironment
                 .getDataLoader<Int, ChapterNodeList>(
                     "ChaptersForMangaDataLoader",
-                ).clear(mangaId)
-            dataFetchingEnvironment.getDataLoader<Int, List<MangaMetaType>>("MangaMetaDataLoader").clear(mangaId)
-            dataFetchingEnvironment.getDataLoader<Int, CategoryNodeList>("CategoriesForMangaDataLoader").clear(mangaId)
+                )?.clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, List<MangaMetaType>>("MangaMetaDataLoader")?.clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, CategoryNodeList>("CategoriesForMangaDataLoader")?.clear(mangaId)
         }
     }
 
