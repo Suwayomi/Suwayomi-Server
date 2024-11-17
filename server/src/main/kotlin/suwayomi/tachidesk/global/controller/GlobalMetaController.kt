@@ -7,7 +7,7 @@ package suwayomi.tachidesk.global.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import io.javalin.http.HttpCode
+import io.javalin.http.HttpStatus
 import suwayomi.tachidesk.global.impl.GlobalMeta
 import suwayomi.tachidesk.server.util.formParam
 import suwayomi.tachidesk.server.util.handler
@@ -28,7 +28,7 @@ object GlobalMetaController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -48,8 +48,8 @@ object GlobalMetaController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 }

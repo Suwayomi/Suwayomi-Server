@@ -7,13 +7,12 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import com.google.common.cache.Cache
-import com.google.common.cache.CacheBuilder
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
 import eu.kanade.tachiyomi.util.chapter.ChapterSanitizer.sanitize
+import io.github.reactivecircus.cache4k.Cache
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
@@ -47,8 +46,8 @@ import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.serverConfig
 import java.time.Instant
 import java.util.TreeSet
-import java.util.concurrent.TimeUnit
 import kotlin.math.max
+import kotlin.time.Duration.Companion.minutes
 
 private fun List<ChapterDataClass>.removeDuplicates(currentChapter: ChapterDataClass): List<ChapterDataClass> =
     groupBy { it.chapterNumber }
@@ -124,9 +123,9 @@ object Chapter {
     }
 
     val map: Cache<Int, Mutex> =
-        CacheBuilder
-            .newBuilder()
-            .expireAfterAccess(10, TimeUnit.MINUTES)
+        Cache
+            .Builder<Int, Mutex>()
+            .expireAfterAccess(10.minutes)
             .build()
 
     suspend fun fetchChapterList(mangaId: Int): List<SChapter> {

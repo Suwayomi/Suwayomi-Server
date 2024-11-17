@@ -165,9 +165,9 @@ class ExtensionMutation {
 
         return future {
             asDataFetcherResult {
-                Extension.installExternalExtension(extensionFile.content, extensionFile.filename)
+                Extension.installExternalExtension(extensionFile.content(), extensionFile.filename())
 
-                val dbExtension = transaction { ExtensionTable.select { ExtensionTable.apkName eq extensionFile.filename }.first() }
+                val dbExtension = transaction { ExtensionTable.select { ExtensionTable.apkName eq extensionFile.filename() }.first() }
 
                 InstallExternalExtensionPayload(
                     clientMutationId,

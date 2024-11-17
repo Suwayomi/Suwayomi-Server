@@ -9,12 +9,8 @@ package suwayomi.tachidesk.server
 
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.path
-import io.javalin.core.security.RouteRole
+import io.javalin.http.UnauthorizedResponse
 import io.javalin.http.staticfiles.Location
-import io.javalin.plugin.openapi.OpenApiOptions
-import io.javalin.plugin.openapi.OpenApiPlugin
-import io.javalin.plugin.openapi.ui.SwaggerOptions
-import io.swagger.v3.oas.models.info.Info
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -22,7 +18,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.future.future
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
-import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.server.ServerConnector
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
@@ -31,9 +26,7 @@ import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
-import java.lang.IllegalArgumentException
 import java.util.concurrent.CompletableFuture
-import kotlin.NoSuchElementException
 import kotlin.concurrent.thread
 
 object JavalinSetup {
@@ -46,31 +39,11 @@ object JavalinSetup {
     fun <T> future(block: suspend CoroutineScope.() -> T): CompletableFuture<T> = scope.future(block = block)
 
     fun javalinSetup() {
-        val server = Server()
-        val connector =
-            ServerConnector(server).apply {
-                host = serverConfig.ip.value
-                port = serverConfig.port.value
-            }
-        server.addConnector(connector)
-
-        serverConfig.subscribeTo(combine(serverConfig.ip, serverConfig.port) { ip, port -> Pair(ip, port) }, { (newIp, newPort) ->
-            val oldIp = connector.host
-            val oldPort = connector.port
-
-            connector.host = newIp
-            connector.port = newPort
-            connector.stop()
-            connector.start()
-
-            logger.info { "Server ip and/or port changed from $oldIp:$oldPort to $newIp:$newPort " }
-        })
-
         val app =
             Javalin.create { config ->
                 if (serverConfig.webUIEnabled.value) {
                     val serveWebUI = {
-                        config.addSinglePageRoot("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
+                        config.spaRoot.addFile("/root", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
                     }
                     WebInterfaceManager.setServeWebUI(serveWebUI)
 
@@ -79,30 +52,73 @@ object JavalinSetup {
                     }
 
                     logger.info { "Serving web static files for ${serverConfig.webUIFlavor.value}" }
-                    config.addStaticFiles(applicationDirs.webUIRoot, Location.EXTERNAL)
+                    config.staticFiles.add(applicationDirs.webUIRoot, Location.EXTERNAL)
                     serveWebUI()
 
-                    config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
+                    // config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
                 }
 
-                config.server { server }
+                var connectorAdded = false
+                config.jetty.modifyServer { server ->
+                    if (!connectorAdded) {
+                        val connector =
+                            ServerConnector(server).apply {
+                                host = serverConfig.ip.value
+                                port = serverConfig.port.value
+                            }
+                        server.addConnector(connector)
 
-                config.enableCorsForAllOrigins()
+                        serverConfig.subscribeTo(
+                            combine(
+                                serverConfig.ip,
+                                serverConfig.port,
+                            ) { ip, port -> Pair(ip, port) },
+                            { (newIp, newPort) ->
+                                val oldIp = connector.host
+                                val oldPort = connector.port
 
-                config.accessManager { handler, ctx, _ ->
-                    fun credentialsValid(): Boolean {
-                        val (username, password) = ctx.basicAuthCredentials()
-                        return username == serverConfig.basicAuthUsername.value && password == serverConfig.basicAuthPassword.value
+                                connector.host = newIp
+                                connector.port = newPort
+                                connector.stop()
+                                connector.start()
+
+                                logger.info { "Server ip and/or port changed from $oldIp:$oldPort to $newIp:$newPort " }
+                            },
+                        )
+                        connectorAdded = true
                     }
+                }
 
-                    if (serverConfig.basicAuthEnabled.value && !(ctx.basicAuthCredentialsExist() && credentialsValid())) {
-                        ctx.header("WWW-Authenticate", "Basic")
-                        ctx.status(401).json("Unauthorized")
-                    } else {
-                        handler.handle(ctx)
+                config.bundledPlugins.enableCors { cors ->
+                    cors.addRule {
+                        it.anyHost()
+                    }
+                }
+
+                config.router.apiBuilder {
+                    path("api/") {
+                        path("v1/") {
+                            GlobalAPI.defineEndpoints()
+                            MangaAPI.defineEndpoints()
+                        }
+                        GraphQL.defineEndpoints()
                     }
                 }
             }
+
+        app.beforeMatched { ctx ->
+            fun credentialsValid(): Boolean {
+                val basicAuthCredentials = ctx.basicAuthCredentials() ?: return true
+                val (username, password) = basicAuthCredentials
+                return username == serverConfig.basicAuthUsername.value &&
+                    password == serverConfig.basicAuthPassword.value
+            }
+
+            if (serverConfig.basicAuthEnabled.value && !credentialsValid()) {
+                ctx.header("WWW-Authenticate", "Basic")
+                throw UnauthorizedResponse()
+            }
+        }
 
         app.events { event ->
             event.serverStarted {
@@ -139,36 +155,22 @@ object JavalinSetup {
             ctx.result(e.message ?: "Bad Request")
         }
 
-        app.routes {
-            path("api/") {
-                path("v1/") {
-                    GlobalAPI.defineEndpoints()
-                    MangaAPI.defineEndpoints()
-                }
-                GraphQL.defineEndpoints()
-            }
-        }
-
         app.start()
     }
 
-    private fun getOpenApiOptions(): OpenApiOptions {
-        val applicationInfo =
-            Info().apply {
-                version("1.0")
-                description("Suwayomi-Server Api")
-            }
-        return OpenApiOptions(applicationInfo).apply {
-            path("/api/openapi.json")
-            swagger(
-                SwaggerOptions("/api/swagger-ui").apply {
-                    title("Suwayomi-Server Swagger Documentation")
-                },
-            )
-        }
-    }
-
-    object Auth {
-        enum class Role : RouteRole { ANYONE, USER_READ, USER_WRITE }
-    }
+    // private fun getOpenApiOptions(): OpenApiOptions {
+    //     val applicationInfo =
+    //         Info().apply {
+    //             version("1.0")
+    //             description("Suwayomi-Server Api")
+    //         }
+    //     return OpenApiOptions(applicationInfo).apply {
+    //         path("/api/openapi.json")
+    //         swagger(
+    //             SwaggerOptions("/api/swagger-ui").apply {
+    //                 title("Suwayomi-Server Swagger Documentation")
+    //             },
+    //         )
+    //     }
+    // }
 }

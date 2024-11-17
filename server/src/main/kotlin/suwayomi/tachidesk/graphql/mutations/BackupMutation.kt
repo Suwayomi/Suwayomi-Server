@@ -30,7 +30,7 @@ class BackupMutation {
         val (clientMutationId, backup) = input
 
         return future {
-            val restoreId = ProtoBackupImport.restore(backup.content)
+            val restoreId = ProtoBackupImport.restore(backup.content())
 
             withTimeout(10.seconds) {
                 ProtoBackupImport.notifyFlow.first {

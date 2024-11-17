@@ -36,14 +36,14 @@ internal class ApolloSubscriptionSessionState {
         context: WsContext,
         graphQLContext: GraphQLContext,
     ) {
-        cachedGraphQLContext[context.sessionId] = graphQLContext
+        cachedGraphQLContext[context.sessionId()] = graphQLContext
     }
 
     /**
      * Return the graphQL context for this session.
      */
     fun getGraphQLContext(context: WsContext): GraphQLContext =
-        cachedGraphQLContext[context.sessionId] ?: emptyMap<Any, Any>().toGraphQLContext()
+        cachedGraphQLContext[context.sessionId()] ?: emptyMap<Any, Any>().toGraphQLContext()
 
     /**
      * Save the operation that is sending data to the client.
@@ -58,7 +58,7 @@ internal class ApolloSubscriptionSessionState {
         val id = operationMessage.id
         if (id != null) {
             activeOperations[id] = subscription
-            sessionToOperationId.getOrPut(context.sessionId) { CopyOnWriteArrayList() } += id
+            sessionToOperationId.getOrPut(context.sessionId()) { CopyOnWriteArrayList() } += id
         }
     }
 
@@ -87,10 +87,10 @@ internal class ApolloSubscriptionSessionState {
         context: WsContext,
         code: CloseStatus,
     ) {
-        sessionToOperationId.remove(context.sessionId)?.forEach {
+        sessionToOperationId.remove(context.sessionId())?.forEach {
             removeActiveOperation(it)
         }
-        cachedGraphQLContext.remove(context.sessionId)
+        cachedGraphQLContext.remove(context.sessionId())
         context.closeSession(code)
     }
 

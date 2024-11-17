@@ -104,11 +104,11 @@ object DownloadManager {
     }
 
     fun addClient(ctx: WsContext) {
-        clients[ctx.sessionId] = ctx
+        clients[ctx.sessionId()] = ctx
     }
 
     fun removeClient(ctx: WsContext) {
-        clients.remove(ctx.sessionId)
+        clients.remove(ctx.sessionId())
     }
 
     fun notifyClient(ctx: WsContext) {

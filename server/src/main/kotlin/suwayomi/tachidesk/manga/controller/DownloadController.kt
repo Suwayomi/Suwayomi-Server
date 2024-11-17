@@ -7,7 +7,7 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import io.javalin.http.HttpCode
+import io.javalin.http.HttpStatus
 import io.javalin.websocket.WsConfig
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
@@ -48,7 +48,7 @@ object DownloadController {
                 DownloadManager.start()
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -62,12 +62,13 @@ object DownloadController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.future(
-                    future { DownloadManager.stop() },
-                )
+                ctx.future {
+                    future { DownloadManager.stop() }
+                        .thenApply { ctx.status(HttpStatus.OK) }
+                }
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -81,12 +82,13 @@ object DownloadController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.future(
-                    future { DownloadManager.clear() },
-                )
+                ctx.future {
+                    future { DownloadManager.clear() }
+                        .thenApply { ctx.status(HttpStatus.OK) }
+                }
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -102,15 +104,15 @@ object DownloadController {
                 }
             },
             behaviorOf = { ctx, chapterIndex, mangaId ->
-                ctx.future(
+                ctx.future {
                     future {
                         DownloadManager.enqueueWithChapterIndex(mangaId, chapterIndex)
-                    },
-                )
+                    }.thenApply { ctx.status(HttpStatus.OK) }
+                }
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -125,14 +127,14 @@ object DownloadController {
             },
             behaviorOf = { ctx ->
                 val inputs = json.decodeFromString<EnqueueInput>(ctx.body())
-                ctx.future(
+                ctx.future {
                     future {
                         DownloadManager.enqueue(inputs)
-                    },
-                )
+                    }.thenApply { ctx.status(HttpStatus.OK) }
+                }
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -148,14 +150,14 @@ object DownloadController {
             },
             behaviorOf = { ctx ->
                 val input = json.decodeFromString<EnqueueInput>(ctx.body())
-                ctx.future(
+                ctx.future {
                     future {
                         DownloadManager.dequeue(input)
-                    },
-                )
+                    }.thenApply { ctx.status(HttpStatus.OK) }
+                }
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -176,7 +178,7 @@ object DownloadController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -196,7 +198,7 @@ object DownloadController {
                 DownloadManager.reorder(chapterIndex, mangaId, to)
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 }

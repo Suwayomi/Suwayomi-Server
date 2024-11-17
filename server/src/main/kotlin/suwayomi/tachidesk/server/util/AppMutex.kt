@@ -7,7 +7,8 @@ package suwayomi.tachidesk.server.util
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import io.javalin.plugin.json.JsonMapper
+import io.javalin.json.JsonMapper
+import io.javalin.json.fromJsonString
 import mu.KotlinLogging
 import okhttp3.OkHttpClient
 import okhttp3.Request.Builder
@@ -59,7 +60,7 @@ object AppMutex {
             }
 
         return try {
-            jsonMapper.fromJsonString(response, AboutDataClass::class.java)
+            jsonMapper.fromJsonString<AboutDataClass>(response)
             AppMutexState.TachideskInstanceRunning
         } catch (e: IOException) {
             AppMutexState.OtherApplicationRunning

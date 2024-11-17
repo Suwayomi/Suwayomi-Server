@@ -7,7 +7,7 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import io.javalin.http.HttpCode
+import io.javalin.http.HttpStatus
 import mu.KotlinLogging
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList
@@ -31,14 +31,16 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.future(
+                ctx.future {
                     future {
                         ExtensionsList.getExtensionList()
-                    },
-                )
+                    }.thenApply {
+                        ctx.json(it)
+                    }
+                }
             },
             withResults = {
-                json<Array<ExtensionDataClass>>(HttpCode.OK)
+                json<Array<ExtensionDataClass>>(HttpStatus.OK)
             },
         )
 
@@ -53,16 +55,18 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx, pkgName ->
-                ctx.future(
+                ctx.future {
                     future {
                         Extension.installExtension(pkgName)
-                    },
-                )
+                    }.thenApply {
+                        ctx.status(it)
+                    }
+                }
             },
             withResults = {
-                httpCode(HttpCode.CREATED)
-                httpCode(HttpCode.FOUND)
-                httpCode(HttpCode.INTERNAL_SERVER_ERROR)
+                httpCode(HttpStatus.CREATED)
+                httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.INTERNAL_SERVER_ERROR)
             },
         )
 
@@ -81,18 +85,23 @@ object ExtensionController {
             },
             behaviorOf = { ctx ->
                 val uploadedFile = ctx.uploadedFile("file")!!
-                logger.debug { "Uploaded extension file name: " + uploadedFile.filename }
+                logger.debug { "Uploaded extension file name: " + uploadedFile.filename() }
 
-                ctx.future(
+                ctx.future {
                     future {
-                        Extension.installExternalExtension(uploadedFile.content, uploadedFile.filename)
-                    },
-                )
+                        Extension.installExternalExtension(
+                            uploadedFile.content(),
+                            uploadedFile.filename(),
+                        )
+                    }.thenApply {
+                        ctx.status(it)
+                    }
+                }
             },
             withResults = {
-                httpCode(HttpCode.CREATED)
-                httpCode(HttpCode.FOUND)
-                httpCode(HttpCode.INTERNAL_SERVER_ERROR)
+                httpCode(HttpStatus.CREATED)
+                httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.INTERNAL_SERVER_ERROR)
             },
         )
 
@@ -107,17 +116,19 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx, pkgName ->
-                ctx.future(
+                ctx.future {
                     future {
                         Extension.updateExtension(pkgName)
-                    },
-                )
+                    }.thenApply {
+                        ctx.status(it)
+                    }
+                }
             },
             withResults = {
-                httpCode(HttpCode.CREATED)
-                httpCode(HttpCode.FOUND)
-                httpCode(HttpCode.NOT_FOUND)
-                httpCode(HttpCode.INTERNAL_SERVER_ERROR)
+                httpCode(HttpStatus.CREATED)
+                httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.NOT_FOUND)
+                httpCode(HttpStatus.INTERNAL_SERVER_ERROR)
             },
         )
 
@@ -136,10 +147,10 @@ object ExtensionController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.CREATED)
-                httpCode(HttpCode.FOUND)
-                httpCode(HttpCode.NOT_FOUND)
-                httpCode(HttpCode.INTERNAL_SERVER_ERROR)
+                httpCode(HttpStatus.CREATED)
+                httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.NOT_FOUND)
+                httpCode(HttpStatus.INTERNAL_SERVER_ERROR)
             },
         )
 
@@ -154,19 +165,19 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx, apkName ->
-                ctx.future(
+                ctx.future {
                     future { Extension.getExtensionIcon(apkName) }
                         .thenApply {
                             ctx.header("content-type", it.second)
                             val httpCacheSeconds = 365.days.inWholeSeconds
                             ctx.header("cache-control", "max-age=$httpCacheSeconds, immutable")
-                            it.first
-                        },
-                )
+                            ctx.result(it.first)
+                        }
+                }
             },
             withResults = {
-                image(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                image(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 }

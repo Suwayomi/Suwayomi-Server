@@ -41,7 +41,7 @@ object UpdaterSocket : Websocket<UpdateStatus>() {
     }
 
     override fun addClient(ctx: WsContext) {
-        logger.info { ctx.sessionId }
+        logger.info { ctx.sessionId() }
         super.addClient(ctx)
         if (job?.isActive != true) {
             job = start()

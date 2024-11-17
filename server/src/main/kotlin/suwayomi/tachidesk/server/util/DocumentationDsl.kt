@@ -1,11 +1,8 @@
 package suwayomi.tachidesk.server.util
 
 import io.javalin.http.Context
-import io.javalin.http.HttpCode
-import io.javalin.plugin.openapi.dsl.DocumentedHandler
-import io.javalin.plugin.openapi.dsl.OpenApiDocumentation
-import io.javalin.plugin.openapi.dsl.documented
-import io.swagger.v3.oas.models.Operation
+import io.javalin.http.Handler
+import io.javalin.http.HttpStatus
 
 fun <T> getSimpleParamItem(
     ctx: Context,
@@ -160,30 +157,30 @@ sealed class Param<T> {
 class ResultsBuilder {
     val results = mutableListOf<ResultType>()
 
-    inline fun <reified T> json(code: HttpCode) {
+    inline fun <reified T> json(code: HttpStatus) {
         results += ResultType.MimeType(code, "application/json", T::class.java)
     }
 
-    fun plainText(code: HttpCode) {
+    fun plainText(code: HttpStatus) {
         results += ResultType.MimeType(code, "text/plain", String::class.java)
     }
 
-    fun image(code: HttpCode) {
+    fun image(code: HttpStatus) {
         results += ResultType.MimeType(code, "image/*", ByteArray::class.java)
     }
 
-    fun stream(code: HttpCode) {
+    fun stream(code: HttpStatus) {
         results += ResultType.MimeType(code, "application/octet-stream", ByteArray::class.java)
     }
 
     inline fun <reified T> mime(
-        code: HttpCode,
+        code: HttpStatus,
         mime: String,
     ) {
         results += ResultType.MimeType(code, mime, T::class.java)
     }
 
-    fun httpCode(code: HttpCode) {
+    fun httpCode(code: HttpStatus) {
         results += ResultType.StatusCode(code)
     }
 }
@@ -192,20 +189,20 @@ sealed class ResultType {
     abstract fun applyTo(documentation: OpenApiDocumentation)
 
     data class MimeType(
-        val code: HttpCode,
+        val code: HttpStatus,
         val mime: String,
         private val clazz: Class<*>,
     ) : ResultType() {
         override fun applyTo(documentation: OpenApiDocumentation) {
-            documentation.result(code.status.toString(), clazz, mime)
+            documentation.result(code.code.toString(), clazz, mime)
         }
     }
 
     data class StatusCode(
-        val code: HttpCode,
+        val code: HttpStatus,
     ) : ResultType() {
         override fun applyTo(documentation: OpenApiDocumentation) {
-            documentation.result<Unit>(code.status.toString())
+            documentation.result<Unit>(code.code.toString())
         }
     }
 }
@@ -576,3 +573,67 @@ inline fun <
             )
         },
     )
+
+@Suppress("UNUSED")
+class OpenApiDocumentation {
+    fun operation(block: Operation.() -> Unit) {}
+
+    fun result(
+        toString: Any,
+        clazz: Class<*>,
+        mime: String,
+    ) {
+    }
+
+    fun <T> result(toString: Any) {
+    }
+
+    fun <T> formParam(
+        key: String,
+        defaultValue: T? = null,
+        isRequired: Boolean = false,
+    ) {}
+
+    fun <T> queryParam(
+        key: String,
+        defaultValue: T? = null,
+        isRepeatable: Boolean = false,
+    ) {}
+
+    fun <T> pathParam(
+        key: String,
+        defaultValue: T? = null,
+    ) {}
+
+    fun <T> body() {}
+
+    fun uploadedFile(
+        name: String,
+        block: (DocumentationFile) -> Unit,
+    ) {}
+}
+
+class DocumentationFile {
+    fun description(string: String) {}
+
+    fun required(boolean: Boolean) {}
+}
+
+class DocumentedHandler(
+    private val handler: (ctx: Context) -> Unit,
+) : Handler {
+    override fun handle(ctx: Context) {
+        handler(ctx)
+    }
+}
+
+fun documented(
+    documentation: OpenApiDocumentation,
+    handle: (ctx: Context) -> Unit,
+): DocumentedHandler = DocumentedHandler(handle)
+
+class Operation {
+    fun summary(string: String) {}
+
+    fun description(string: String) {}
+}
