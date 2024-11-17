@@ -3,11 +3,11 @@ kotlin = "2.0.21"
 coroutines = "1.9.0"
 serialization = "1.7.3"
 okhttp = "5.0.0-alpha.14" # Major version is locked by Tachiyomi extensions
-javalin = "6.3.0" # Javalin 5.0.0+ requires Java 11
+javalin = "6.3.0"
 jackson = "2.18.1" # jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
 exposed = "0.40.1"
 dex2jar = "v64" # Stuck until https://github.com/ThexXTURBOXx/dex2jar/issues/27 is fixed
-rhino = "1.7.15"
+polyglot = "24.1.1"
 settings = "1.2.0"
 twelvemonkeys = "3.12.0"
 graphqlkotlin = "8.2.1"
@@ -116,8 +116,8 @@ bouncycastle = "org.bouncycastle:bcprov-jdk18on:1.79"
 android-annotations = "androidx.annotation:annotation:1.9.1"
 
 # Substitute for duktape-android
-rhino-runtime = { module = "org.mozilla:rhino-runtime", version.ref = "rhino" }  # slimmer version of 'org.mozilla:rhino'
-rhino-engine = { module = "org.mozilla:rhino-engine", version.ref = "rhino" } # provides the same interface as 'javax.script' a.k.a Nashorn
+polyglot-core = { module = "org.graalvm.polyglot:polyglot", version.ref = "polyglot" }
+polyglot-graaljs = { module = "org.graalvm.polyglot:js-community", version.ref = "polyglot" } # provides the same interface as 'javax.script' a.k.a Nashorn
 
 # Settings
 settings-core = { module = "com.russhwolf:multiplatform-settings-jvm", version.ref = "settings" }
@@ -219,9 +219,9 @@ systemtray = [
     "systemtray-utils",
     "systemtray-desktop"
 ]
-rhino = [
-    "rhino-runtime",
-    "rhino-engine",
+polyglot = [
+    "polyglot-core",
+    "polyglot-graaljs",
 ]
 settings = [
     "settings-core",
