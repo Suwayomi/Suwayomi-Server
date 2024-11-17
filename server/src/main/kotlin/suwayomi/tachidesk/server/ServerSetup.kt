@@ -237,9 +237,7 @@ fun applicationSetup() {
     runMigrations(applicationDirs)
 
     // Disable jetty's logging
-    System.setProperty("org.eclipse.jetty.util.log.announce", "false")
-    System.setProperty("org.eclipse.jetty.util.log.class", "org.eclipse.jetty.util.log.StdErrLog")
-    System.setProperty("org.eclipse.jetty.LEVEL", "OFF")
+    setLogLevelFor("org.eclipse.jetty", Level.OFF)
 
     // socks proxy settings
     serverConfig.subscribeTo(
