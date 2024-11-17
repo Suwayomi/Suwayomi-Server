@@ -37,6 +37,7 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
                     formParam,
                     GraphQLServerRequest::class.java,
                 )
+
             @Suppress("UNCHECKED_CAST")
             val map =
                 context

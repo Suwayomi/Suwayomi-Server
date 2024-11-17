@@ -5,20 +5,18 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-@file:Suppress("DEPRECATION")
-
 package suwayomi.tachidesk.graphql.server
 
-import com.expediagroup.graphql.generator.execution.GraphQLContext
 import com.expediagroup.graphql.server.execution.GraphQLContextFactory
+import graphql.GraphQLContext
 import io.javalin.http.Context
 import io.javalin.websocket.WsContext
 
 /**
  * Custom logic for how Suwayomi-Server should create its context given the [Context]
  */
-class TachideskGraphQLContextFactory : GraphQLContextFactory<GraphQLContext, Context> {
-    override suspend fun generateContextMap(request: Context): Map<*, Any> = emptyMap<Any, Any>()
+class TachideskGraphQLContextFactory : GraphQLContextFactory<Context> {
+    override suspend fun generateContext(request: Context): GraphQLContext = emptyMap<Any, Any>().toGraphQLContext()
 //        mutableMapOf<Any, Any>(
 //            "user" to User(
 //                email = "fake@site.com",
@@ -30,7 +28,7 @@ class TachideskGraphQLContextFactory : GraphQLContextFactory<GraphQLContext, Con
 //            request.headers["my-custom-header"]?.let { customHeader ->
 //                map["customHeader"] = customHeader
 //            }
-//        }
+//        }.toGraphQLContext()
 
     fun generateContextMap(
         @Suppress("UNUSED_PARAMETER") request: WsContext,
