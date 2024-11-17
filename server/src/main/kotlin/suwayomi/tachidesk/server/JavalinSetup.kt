@@ -9,13 +9,8 @@ package suwayomi.tachidesk.server
 
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.path
-import io.javalin.core.security.RouteRole
 import io.javalin.http.UnauthorizedResponse
 import io.javalin.http.staticfiles.Location
-import io.javalin.plugin.openapi.OpenApiOptions
-import io.javalin.plugin.openapi.OpenApiPlugin
-import io.javalin.plugin.openapi.ui.SwaggerOptions
-import io.swagger.v3.oas.models.info.Info
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -23,7 +18,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.future.future
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
-import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.server.ServerConnector
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
@@ -63,7 +57,7 @@ object JavalinSetup {
                     config.addStaticFiles(applicationDirs.webUIRoot, Location.EXTERNAL)
                     serveWebUI()
 
-                    config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
+                    // config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
                 }
 
                 config.jetty.modifyServer { server ->
@@ -75,17 +69,23 @@ object JavalinSetup {
                         }
                     server.addConnector(connector)
 
-                    serverConfig.subscribeTo(combine(serverConfig.ip, serverConfig.port) { ip, port -> Pair(ip, port) }, { (newIp, newPort) ->
-                        val oldIp = connector.host
-                        val oldPort = connector.port
+                    serverConfig.subscribeTo(
+                        combine(
+                            serverConfig.ip,
+                            serverConfig.port,
+                        ) { ip, port -> Pair(ip, port) },
+                        { (newIp, newPort) ->
+                            val oldIp = connector.host
+                            val oldPort = connector.port
 
-                        connector.host = newIp
-                        connector.port = newPort
-                        connector.stop()
-                        connector.start()
+                            connector.host = newIp
+                            connector.port = newPort
+                            connector.stop()
+                            connector.start()
 
-                        logger.info { "Server ip and/or port changed from $oldIp:$oldPort to $newIp:$newPort " }
-                    })
+                            logger.info { "Server ip and/or port changed from $oldIp:$oldPort to $newIp:$newPort " }
+                        },
+                    )
                 }
 
                 config.bundledPlugins.enableCors { cors ->
@@ -109,7 +109,8 @@ object JavalinSetup {
             fun credentialsValid(): Boolean {
                 val basicAuthCredentials = ctx.basicAuthCredentials() ?: return true
                 val (username, password) = basicAuthCredentials
-                return username == serverConfig.basicAuthUsername.value && password == serverConfig.basicAuthPassword.value
+                return username == serverConfig.basicAuthUsername.value &&
+                    password == serverConfig.basicAuthPassword.value
             }
 
             if (serverConfig.basicAuthEnabled.value && !credentialsValid()) {
@@ -156,19 +157,19 @@ object JavalinSetup {
         app.start()
     }
 
-    private fun getOpenApiOptions(): OpenApiOptions {
-        val applicationInfo =
-            Info().apply {
-                version("1.0")
-                description("Suwayomi-Server Api")
-            }
-        return OpenApiOptions(applicationInfo).apply {
-            path("/api/openapi.json")
-            swagger(
-                SwaggerOptions("/api/swagger-ui").apply {
-                    title("Suwayomi-Server Swagger Documentation")
-                },
-            )
-        }
-    }
+    // private fun getOpenApiOptions(): OpenApiOptions {
+    //     val applicationInfo =
+    //         Info().apply {
+    //             version("1.0")
+    //             description("Suwayomi-Server Api")
+    //         }
+    //     return OpenApiOptions(applicationInfo).apply {
+    //         path("/api/openapi.json")
+    //         swagger(
+    //             SwaggerOptions("/api/swagger-ui").apply {
+    //                 title("Suwayomi-Server Swagger Documentation")
+    //             },
+    //         )
+    //     }
+    // }
 }

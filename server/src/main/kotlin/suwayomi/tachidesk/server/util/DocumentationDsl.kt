@@ -1,11 +1,8 @@
 package suwayomi.tachidesk.server.util
 
 import io.javalin.http.Context
+import io.javalin.http.Handler
 import io.javalin.http.HttpStatus
-import io.javalin.plugin.openapi.dsl.DocumentedHandler
-import io.javalin.plugin.openapi.dsl.OpenApiDocumentation
-import io.javalin.plugin.openapi.dsl.documented
-import io.swagger.v3.oas.models.Operation
 
 fun <T> getSimpleParamItem(
     ctx: Context,
@@ -197,7 +194,7 @@ sealed class ResultType {
         private val clazz: Class<*>,
     ) : ResultType() {
         override fun applyTo(documentation: OpenApiDocumentation) {
-            documentation.result(code.status.toString(), clazz, mime)
+            documentation.result(code.code.toString(), clazz, mime)
         }
     }
 
@@ -205,7 +202,7 @@ sealed class ResultType {
         val code: HttpStatus,
     ) : ResultType() {
         override fun applyTo(documentation: OpenApiDocumentation) {
-            documentation.result<Unit>(code.status.toString())
+            documentation.result<Unit>(code.code.toString())
         }
     }
 }
@@ -576,3 +573,67 @@ inline fun <
             )
         },
     )
+
+@Suppress("UNUSED")
+class OpenApiDocumentation {
+    fun operation(block: Operation.() -> Unit) {}
+
+    fun result(
+        toString: Any,
+        clazz: Class<*>,
+        mime: String,
+    ) {
+    }
+
+    fun <T> result(toString: Any) {
+    }
+
+    fun <T> formParam(
+        key: String,
+        defaultValue: T? = null,
+        isRequired: Boolean = false,
+    ) {}
+
+    fun <T> queryParam(
+        key: String,
+        defaultValue: T? = null,
+        isRepeatable: Boolean = false,
+    ) {}
+
+    fun <T> pathParam(
+        key: String,
+        defaultValue: T? = null,
+    ) {}
+
+    fun <T> body() {}
+
+    fun uploadedFile(
+        name: String,
+        block: (DocumentationFile) -> Unit,
+    ) {}
+}
+
+class DocumentationFile {
+    fun description(string: String) {}
+
+    fun required(boolean: Boolean) {}
+}
+
+class DocumentedHandler(
+    private val handler: (ctx: Context) -> Unit,
+) : Handler {
+    override fun handle(ctx: Context) {
+        handler(ctx)
+    }
+}
+
+fun documented(
+    documentation: OpenApiDocumentation,
+    handle: (ctx: Context) -> Unit,
+): DocumentedHandler = DocumentedHandler(handle)
+
+class Operation {
+    fun summary(string: String) {}
+
+    fun description(string: String) {}
+}
