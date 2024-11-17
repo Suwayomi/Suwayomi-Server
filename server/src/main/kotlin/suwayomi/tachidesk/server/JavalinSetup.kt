@@ -65,7 +65,8 @@ object JavalinSetup {
                     config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
                 }
 
-                config.jetty.modifyServer {  server ->
+                config.jetty.modifyServer { server ->
+                    // todo this will be called multiple times, will be an issue
                     val connector =
                         ServerConnector(server).apply {
                             host = serverConfig.ip.value
@@ -86,7 +87,11 @@ object JavalinSetup {
                     })
                 }
 
-                config.enableCorsForAllOrigins()
+                config.bundledPlugins.enableCors { cors ->
+                    cors.addRule {
+                        it.anyHost()
+                    }
+                }
 
                 config.accessManager { handler, ctx, _ ->
                     fun credentialsValid(): Boolean {
