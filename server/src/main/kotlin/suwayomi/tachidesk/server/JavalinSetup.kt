@@ -10,6 +10,7 @@ package suwayomi.tachidesk.server
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.path
 import io.javalin.core.security.RouteRole
+import io.javalin.http.UnauthorizedResponse
 import io.javalin.http.staticfiles.Location
 import io.javalin.plugin.openapi.OpenApiOptions
 import io.javalin.plugin.openapi.OpenApiPlugin
@@ -93,20 +94,6 @@ object JavalinSetup {
                     }
                 }
 
-                config.accessManager { handler, ctx, _ ->
-                    fun credentialsValid(): Boolean {
-                        val (username, password) = ctx.basicAuthCredentials()
-                        return username == serverConfig.basicAuthUsername.value && password == serverConfig.basicAuthPassword.value
-                    }
-
-                    if (serverConfig.basicAuthEnabled.value && !(ctx.basicAuthCredentialsExist() && credentialsValid())) {
-                        ctx.header("WWW-Authenticate", "Basic")
-                        ctx.status(401).json("Unauthorized")
-                    } else {
-                        handler.handle(ctx)
-                    }
-                }
-
                 config.router.apiBuilder {
                     path("api/") {
                         path("v1/") {
@@ -117,6 +104,19 @@ object JavalinSetup {
                     }
                 }
             }
+
+        app.beforeMatched { ctx ->
+            fun credentialsValid(): Boolean {
+                val basicAuthCredentials = ctx.basicAuthCredentials() ?: return true
+                val (username, password) = basicAuthCredentials
+                return username == serverConfig.basicAuthUsername.value && password == serverConfig.basicAuthPassword.value
+            }
+
+            if (serverConfig.basicAuthEnabled.value && !credentialsValid()) {
+                ctx.header("WWW-Authenticate", "Basic")
+                throw UnauthorizedResponse()
+            }
+        }
 
         app.events { event ->
             event.serverStarted {
@@ -170,9 +170,5 @@ object JavalinSetup {
                 },
             )
         }
-    }
-
-    object Auth {
-        enum class Role : RouteRole { ANYONE, USER_READ, USER_WRITE }
     }
 }
