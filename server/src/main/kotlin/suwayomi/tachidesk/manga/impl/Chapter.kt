@@ -46,7 +46,6 @@ import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.serverConfig
 import java.time.Instant
 import java.util.TreeSet
-import java.util.concurrent.TimeUnit
 import kotlin.math.max
 import kotlin.time.Duration.Companion.minutes
 
@@ -124,7 +123,8 @@ object Chapter {
     }
 
     val map: Cache<Int, Mutex> =
-        Cache.Builder<Int, Mutex>()
+        Cache
+            .Builder<Int, Mutex>()
             .expireAfterAccess(10.minutes)
             .build()
 

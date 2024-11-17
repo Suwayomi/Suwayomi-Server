@@ -26,9 +26,7 @@ import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
-import java.lang.IllegalArgumentException
 import java.util.concurrent.CompletableFuture
-import kotlin.NoSuchElementException
 import kotlin.concurrent.thread
 
 object JavalinSetup {
@@ -45,7 +43,7 @@ object JavalinSetup {
             Javalin.create { config ->
                 if (serverConfig.webUIEnabled.value) {
                     val serveWebUI = {
-                        config.spaRoot.addHandler("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
+                        config.spaRoot.addFile("/root", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
                     }
                     WebInterfaceManager.setServeWebUI(serveWebUI)
 
@@ -54,38 +52,41 @@ object JavalinSetup {
                     }
 
                     logger.info { "Serving web static files for ${serverConfig.webUIFlavor.value}" }
-                    config.addStaticFiles(applicationDirs.webUIRoot, Location.EXTERNAL)
+                    config.staticFiles.add(applicationDirs.webUIRoot, Location.EXTERNAL)
                     serveWebUI()
 
                     // config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
                 }
 
+                var connectorAdded = false
                 config.jetty.modifyServer { server ->
-                    // todo this will be called multiple times, will be an issue
-                    val connector =
-                        ServerConnector(server).apply {
-                            host = serverConfig.ip.value
-                            port = serverConfig.port.value
-                        }
-                    server.addConnector(connector)
+                    if (!connectorAdded) {
+                        val connector =
+                            ServerConnector(server).apply {
+                                host = serverConfig.ip.value
+                                port = serverConfig.port.value
+                            }
+                        server.addConnector(connector)
 
-                    serverConfig.subscribeTo(
-                        combine(
-                            serverConfig.ip,
-                            serverConfig.port,
-                        ) { ip, port -> Pair(ip, port) },
-                        { (newIp, newPort) ->
-                            val oldIp = connector.host
-                            val oldPort = connector.port
+                        serverConfig.subscribeTo(
+                            combine(
+                                serverConfig.ip,
+                                serverConfig.port,
+                            ) { ip, port -> Pair(ip, port) },
+                            { (newIp, newPort) ->
+                                val oldIp = connector.host
+                                val oldPort = connector.port
 
-                            connector.host = newIp
-                            connector.port = newPort
-                            connector.stop()
-                            connector.start()
+                                connector.host = newIp
+                                connector.port = newPort
+                                connector.stop()
+                                connector.start()
 
-                            logger.info { "Server ip and/or port changed from $oldIp:$oldPort to $newIp:$newPort " }
-                        },
-                    )
+                                logger.info { "Server ip and/or port changed from $oldIp:$oldPort to $newIp:$newPort " }
+                            },
+                        )
+                        connectorAdded = true
+                    }
                 }
 
                 config.bundledPlugins.enableCors { cors ->
