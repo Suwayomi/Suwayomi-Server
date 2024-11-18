@@ -1,9 +1,9 @@
 package masstest
 
 import eu.kanade.tachiyomi.source.online.HttpSource
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
-import mu.KotlinLogging
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance

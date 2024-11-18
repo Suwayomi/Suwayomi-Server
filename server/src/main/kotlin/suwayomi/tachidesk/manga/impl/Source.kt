@@ -11,9 +11,9 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.sourcePreferences
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.json.JsonMapper
 import io.javalin.json.fromJsonString
-import mu.KotlinLogging
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select

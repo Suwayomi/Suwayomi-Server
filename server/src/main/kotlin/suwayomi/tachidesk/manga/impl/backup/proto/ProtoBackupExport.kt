@@ -10,12 +10,12 @@ package suwayomi.tachidesk.manga.impl.backup.proto
 import android.app.Application
 import android.content.Context
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import mu.KotlinLogging
 import okio.Buffer
 import okio.Sink
 import okio.buffer

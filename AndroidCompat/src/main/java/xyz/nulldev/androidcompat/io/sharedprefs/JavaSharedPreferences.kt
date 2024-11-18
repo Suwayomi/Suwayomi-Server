@@ -14,11 +14,11 @@ import com.russhwolf.settings.Settings
 import com.russhwolf.settings.serialization.decodeValue
 import com.russhwolf.settings.serialization.decodeValueOrNull
 import com.russhwolf.settings.serialization.encodeValue
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.SetSerializer
 import kotlinx.serialization.builtins.serializer
-import mu.KotlinLogging
 import xyz.nulldev.androidcompat.util.SafePath
 import xyz.nulldev.ts.config.ApplicationRootDir
 import java.util.Properties

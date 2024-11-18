@@ -2,7 +2,7 @@ package suwayomi.tachidesk.server
 
 import android.app.Application
 import android.content.Context
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File

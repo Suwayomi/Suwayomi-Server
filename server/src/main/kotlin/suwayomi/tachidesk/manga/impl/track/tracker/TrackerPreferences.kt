@@ -2,7 +2,7 @@ package suwayomi.tachidesk.manga.impl.track.tracker
 
 import android.app.Application
 import android.content.Context
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import suwayomi.tachidesk.manga.impl.track.tracker.anilist.Anilist
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get

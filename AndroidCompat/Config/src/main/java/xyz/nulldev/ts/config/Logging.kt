@@ -15,7 +15,8 @@ import ch.qos.logback.core.rolling.RollingFileAppender
 import ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy
 import ch.qos.logback.core.util.FileSize
 import com.typesafe.config.Config
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.DelegatingKLogger
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -73,7 +74,7 @@ private fun createRollingFileAppender(
 }
 
 private fun getBaseLogger(): ch.qos.logback.classic.Logger =
-    (KotlinLogging.logger(Logger.ROOT_LOGGER_NAME).underlyingLogger as ch.qos.logback.classic.Logger)
+    ((KotlinLogging.logger(Logger.ROOT_LOGGER_NAME) as DelegatingKLogger<*>).underlyingLogger as ch.qos.logback.classic.Logger)
 
 private fun getLogger(name: String): ch.qos.logback.classic.Logger {
     val context = LoggerFactory.getILoggerFactory() as LoggerContext

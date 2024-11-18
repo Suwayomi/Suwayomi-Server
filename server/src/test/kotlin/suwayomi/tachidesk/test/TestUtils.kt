@@ -9,7 +9,7 @@ package suwayomi.tachidesk.test
 
 import ch.qos.logback.classic.Level
 import eu.kanade.tachiyomi.source.model.SManga
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteAll

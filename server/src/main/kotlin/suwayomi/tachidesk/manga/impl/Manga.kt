@@ -15,9 +15,9 @@ import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import eu.kanade.tachiyomi.source.online.HttpSource
+import io.github.oshai.kotlinlogging.KLogger
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.http.HttpStatus
-import mu.KLogger
-import mu.KotlinLogging
 import okhttp3.CacheControl
 import okhttp3.Response
 import org.jetbrains.exposed.sql.ResultRow
