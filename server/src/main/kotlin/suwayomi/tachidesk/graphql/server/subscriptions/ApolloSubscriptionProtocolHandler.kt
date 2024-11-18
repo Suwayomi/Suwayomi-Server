@@ -35,7 +35,6 @@ import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMess
 import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ServerMessages.GQL_ERROR
 import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ServerMessages.GQL_NEXT
 import suwayomi.tachidesk.graphql.server.toGraphQLContext
-import suwayomi.tachidesk.server.serverConfig
 
 /**
  * Implementation of the `graphql-transport-ws` protocol defined by Denis Badurina
@@ -71,12 +70,6 @@ class ApolloSubscriptionProtocolHandler(
             logger.debug {
                 "GraphQL subscription client message, sessionId=${context.sessionId()} type=${operationMessage.type} operationName=${
                     getOperationName(operationMessage.payload)
-                } ${
-                    if (serverConfig.gqlDebugLogsEnabled.value) {
-                        "operationMessage=$operationMessage"
-                    } else {
-                        ""
-                    }
                 }"
             }
         }

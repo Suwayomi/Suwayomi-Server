@@ -71,6 +71,8 @@ interface Settings : Node {
 
     // misc
     val debugLogsEnabled: Boolean?
+
+    @GraphQLDeprecated("Removed - does not do anything")
     val gqlDebugLogsEnabled: Boolean?
     val systemTrayEnabled: Boolean?
     val maxLogFiles: Int?
@@ -140,6 +142,7 @@ data class PartialSettingsType(
     override val basicAuthPassword: String?,
     // misc
     override val debugLogsEnabled: Boolean?,
+    @GraphQLDeprecated("Removed - does not do anything")
     override val gqlDebugLogsEnabled: Boolean?,
     override val systemTrayEnabled: Boolean?,
     override val maxLogFiles: Int?,
@@ -206,6 +209,7 @@ class SettingsType(
     override val basicAuthPassword: String,
     // misc
     override val debugLogsEnabled: Boolean,
+    @GraphQLDeprecated("Removed - does not do anything")
     override val gqlDebugLogsEnabled: Boolean,
     override val systemTrayEnabled: Boolean,
     override val maxLogFiles: Int,
@@ -267,7 +271,7 @@ class SettingsType(
         config.basicAuthPassword.value,
         // misc
         config.debugLogsEnabled.value,
-        config.gqlDebugLogsEnabled.value,
+        false,
         config.systemTrayEnabled.value,
         config.maxLogFiles.value,
         config.maxLogFileSize.value,
