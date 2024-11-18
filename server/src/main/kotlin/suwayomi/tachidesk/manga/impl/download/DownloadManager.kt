@@ -9,6 +9,7 @@ package suwayomi.tachidesk.manga.impl.download
 
 import android.app.Application
 import android.content.Context
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.websocket.WsContext
 import io.javalin.websocket.WsMessageContext
 import kotlinx.coroutines.CoroutineScope
@@ -26,7 +27,6 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import mu.KotlinLogging
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction

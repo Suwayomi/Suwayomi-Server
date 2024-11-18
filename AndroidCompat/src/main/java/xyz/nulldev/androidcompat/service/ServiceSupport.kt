@@ -3,7 +3,7 @@ package xyz.nulldev.androidcompat.service
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 

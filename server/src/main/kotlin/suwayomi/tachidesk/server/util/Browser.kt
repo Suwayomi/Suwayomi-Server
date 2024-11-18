@@ -8,7 +8,7 @@ package suwayomi.tachidesk.server.util
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import dorkbox.desktop.Desktop
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import suwayomi.tachidesk.server.serverConfig
 
 object Browser {

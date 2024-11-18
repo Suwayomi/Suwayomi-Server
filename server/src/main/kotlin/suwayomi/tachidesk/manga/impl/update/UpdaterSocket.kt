@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.manga.impl.update
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.websocket.WsContext
 import io.javalin.websocket.WsMessageContext
 import kotlinx.coroutines.CoroutineScope
@@ -8,7 +9,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import mu.KotlinLogging
 import uy.kohesive.injekt.injectLazy
 
 object UpdaterSocket : Websocket<UpdateStatus>() {
