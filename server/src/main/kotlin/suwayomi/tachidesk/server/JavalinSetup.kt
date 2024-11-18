@@ -43,7 +43,7 @@ object JavalinSetup {
             Javalin.create { config ->
                 if (serverConfig.webUIEnabled.value) {
                     val serveWebUI = {
-                        config.spaRoot.addFile("/root", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
+                        config.spaRoot.addFile("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
                     }
                     WebInterfaceManager.setServeWebUI(serveWebUI)
 
