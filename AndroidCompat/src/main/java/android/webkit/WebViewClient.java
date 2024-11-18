@@ -46,7 +46,7 @@ public class WebViewClient {
     }
 
     public void onLoadResource(WebView view, String url) {
-        throw new RuntimeException("Stub!");
+        // throw new RuntimeException("Stub!");
     }
 
     public void onPageCommitVisible(WebView view, String url) {

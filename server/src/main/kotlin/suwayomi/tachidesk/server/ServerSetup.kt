@@ -8,16 +8,20 @@ package suwayomi.tachidesk.server
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
 import com.typesafe.config.ConfigRenderOptions
+import dev.datlag.kcef.KCEF
 import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.createAppModule
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.local.LocalSource
 import io.javalin.json.JavalinJackson
 import io.javalin.json.JsonMapper
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 import mu.KotlinLogging
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.koin.core.context.startKoin
@@ -309,4 +313,18 @@ fun applicationSetup() {
 
     // start DownloadManager and restore + resume downloads
     DownloadManager.restoreAndResumeDownloads()
+
+    GlobalScope.launch {
+        val logger = KotlinLogging.logger("KCEF")
+        KCEF.init(
+            builder = {
+                progress {
+                    onDownloading {
+                        logger.info { "KCEF download progress: $it%" }
+                    }
+                }
+                download { github() }
+            }
+        )
+    }
 }

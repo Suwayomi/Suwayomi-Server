@@ -34,6 +34,8 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.textclassifier.TextClassifier;
 import android.widget.AbsoluteLayout;
+import xyz.nulldev.androidcompat.webkit.WebViewImpl;
+
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
@@ -46,7 +48,11 @@ public class WebView {
     public static final String SCHEME_MAILTO = "mailto:";
     public static final String SCHEME_TEL = "tel:";
 
+    WebViewImpl impl;
+
     public WebView(@NonNull Context context) {
+        impl = new WebViewImpl();
+        impl.setWebView(this);
     }
 
     @Nullable
@@ -55,7 +61,7 @@ public class WebView {
     }
 
     public void destroy() {
-        throw new RuntimeException("Stub!");
+        impl.destroy();
     }
 
     public void setNetworkAvailable(boolean networkUp) {
@@ -73,27 +79,27 @@ public class WebView {
     }
 
     public void loadUrl(@NonNull String url, @NonNull Map<String, String> additionalHttpHeaders) {
-        throw new RuntimeException("Stub!");
+        impl.loadUrl(url, additionalHttpHeaders);
     }
 
     public void loadUrl(@NonNull String url) {
-        throw new RuntimeException("Stub!");
+        impl.loadUrl(url);
     }
 
     public void postUrl(@NonNull String url, @NonNull byte[] postData) {
-        throw new RuntimeException("Stub!");
+        impl.postUrl(url, postData);
     }
 
     public void loadData(@NonNull String data, @Nullable String mimeType, @Nullable String encoding) {
-        throw new RuntimeException("Stub!");
+        impl.loadData(data, mimeType, encoding);
     }
 
     public void loadDataWithBaseURL(@Nullable String baseUrl, @NonNull String data, @Nullable String mimeType, @Nullable String encoding, @Nullable String historyUrl) {
-        throw new RuntimeException("Stub!");
+        impl.loadDataWithBaseURL(baseUrl, data, mimeType, encoding, historyUrl);
     }
 
     public void evaluateJavascript(@NonNull String script, @Nullable ValueCallback<String> resultCallback) {
-        throw new RuntimeException("Stub!");
+        impl.evaluateJavascript(script, resultCallback);
     }
 
     public void saveWebArchive(@NonNull String filename) {
@@ -330,12 +336,12 @@ public class WebView {
     }
 
     public void setWebViewClient(@NonNull WebViewClient client) {
-        throw new RuntimeException("Stub!");
+        impl.setupWebViewClient(client);
     }
 
     @NonNull
     public WebViewClient getWebViewClient() {
-        throw new RuntimeException("Stub!");
+        return impl.getWebViewClient();
     }
 
     @Nullable
@@ -361,12 +367,12 @@ public class WebView {
     }
 
     public void setWebChromeClient(@Nullable WebChromeClient client) {
-        throw new RuntimeException("Stub!");
+        impl.setupChromeClient(client);
     }
 
     @Nullable
     public WebChromeClient getWebChromeClient() {
-        throw new RuntimeException("Stub!");
+        return impl.getWebChromeClient();
     }
 
     /** @deprecated */
@@ -394,7 +400,7 @@ public class WebView {
 
     @NonNull
     public WebSettings getSettings() {
-        throw new RuntimeException("Stub!");
+        return impl.getSettings();
     }
 
     public static void setWebContentsDebuggingEnabled(boolean enabled) {
@@ -663,7 +669,7 @@ public class WebView {
     }
 
     public void setLayerType(int layerType, Paint paint) {
-        throw new RuntimeException("Stub!");
+        // throw new RuntimeException("Stub!");
     }
 
     protected void dispatchDraw(Canvas canvas) {
