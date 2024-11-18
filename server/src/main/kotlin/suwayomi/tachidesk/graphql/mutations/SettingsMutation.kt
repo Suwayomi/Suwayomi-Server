@@ -156,7 +156,6 @@ class SettingsMutation {
 
         // misc
         updateSetting(settings.debugLogsEnabled, serverConfig.debugLogsEnabled)
-        updateSetting(settings.gqlDebugLogsEnabled, serverConfig.gqlDebugLogsEnabled)
         updateSetting(settings.systemTrayEnabled, serverConfig.systemTrayEnabled)
         updateSetting(settings.maxLogFiles, serverConfig.maxLogFiles)
         updateSetting(settings.maxLogFileSize, serverConfig.maxLogFileSize)

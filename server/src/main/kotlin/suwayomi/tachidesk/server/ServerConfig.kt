@@ -133,7 +133,6 @@ class ServerConfig(
 
     // misc
     val debugLogsEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val gqlDebugLogsEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val systemTrayEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val maxLogFiles: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
     val maxLogFileSize: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
