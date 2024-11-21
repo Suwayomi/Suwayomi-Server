@@ -6,7 +6,9 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 
-class CoroutineHandler(looper: Looper) {
+class CoroutineHandler(
+    looper: Looper,
+) {
     private val dispatcher = looper.excecutor.asCoroutineDispatcher()
 
     @OptIn(DelicateCoroutinesApi::class)

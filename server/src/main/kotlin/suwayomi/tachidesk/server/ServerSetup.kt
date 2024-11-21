@@ -8,7 +8,6 @@ package suwayomi.tachidesk.server
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.Logger
 import com.typesafe.config.ConfigRenderOptions
 import dev.datlag.kcef.KCEF
 import eu.kanade.tachiyomi.App
@@ -324,7 +323,7 @@ fun applicationSetup() {
                     }
                 }
                 download { github() }
-            }
+            },
         )
     }
 }

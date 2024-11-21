@@ -21,29 +21,43 @@ class WebViewImpl {
     var webChromeClient: WebChromeClient? = null
     var webView: WebView? = null
 
-    fun loadUrl(url: String, additionalHttpHeaders: Map<String?, String?>) {
-        browser = kcefClient.createBrowser(
-            url,
-            CefRendering.OFFSCREEN,
-            context = createContext(additionalHttpHeaders = additionalHttpHeaders)
-                ?: CefRequestContext.getGlobalContext()
-        )
+    fun loadUrl(
+        url: String,
+        additionalHttpHeaders: Map<String?, String?>,
+    ) {
+        browser =
+            kcefClient.createBrowser(
+                url,
+                CefRendering.OFFSCREEN,
+                context =
+                    createContext(additionalHttpHeaders = additionalHttpHeaders)
+                        ?: CefRequestContext.getGlobalContext(),
+            )
     }
 
     fun loadUrl(url: String) {
         browser = kcefClient.createBrowser(url, CefRendering.OFFSCREEN)
     }
 
-    fun postUrl(url: String, postData: ByteArray) {
-        browser = kcefClient.createBrowser(
-            url,
-            CefRendering.OFFSCREEN,
-            context = createContext(postData = postData)
-                ?: CefRequestContext.getGlobalContext()
-        )
+    fun postUrl(
+        url: String,
+        postData: ByteArray,
+    ) {
+        browser =
+            kcefClient.createBrowser(
+                url,
+                CefRendering.OFFSCREEN,
+                context =
+                    createContext(postData = postData)
+                        ?: CefRequestContext.getGlobalContext(),
+            )
     }
 
-    fun loadData(data: String, mimeType: String?, encoding: String?) {
+    fun loadData(
+        data: String,
+        mimeType: String?,
+        encoding: String?,
+    ) {
         browser = kcefClient.createBrowserWithHtml(data, rendering = CefRendering.OFFSCREEN)
     }
 
@@ -57,12 +71,15 @@ class WebViewImpl {
         browser = kcefClient.createBrowserWithHtml(data, baseUrl ?: BLANK_URI, CefRendering.OFFSCREEN)
     }
 
-    fun evaluateJavascript(script: String, resultCallback: ValueCallback<String?>?) {
+    fun evaluateJavascript(
+        script: String,
+        resultCallback: ValueCallback<String?>?,
+    ) {
         browser?.evaluateJavaScript(
             script,
             callback = {
                 resultCallback?.onReceiveValue(it)
-            }
+            },
         )
     }
 
@@ -81,8 +98,8 @@ class WebViewImpl {
     private fun createContext(
         additionalHttpHeaders: Map<String?, String?>? = null,
         postData: ByteArray? = null,
-    ): CefRequestContext? {
-        return CefRequestContext.createContext { browser, frame, request, isNavigation, isDownload, requestInitiator, disableDefaultHandling ->
+    ): CefRequestContext? =
+        CefRequestContext.createContext { browser, frame, request, isNavigation, isDownload, requestInitiator, disableDefaultHandling ->
             KCEFResourceRequestHandler.globalHandler(
                 browser,
                 frame,
@@ -94,13 +111,14 @@ class WebViewImpl {
                     }
 
                     if (postData != null) {
-                        this.postData = CefPostData.create().apply {
-                            addElement(
-                                CefPostDataElement.create().apply {
-                                    setToBytes(postData.size, postData)
-                                }
-                            )
-                        }
+                        this.postData =
+                            CefPostData.create().apply {
+                                addElement(
+                                    CefPostDataElement.create().apply {
+                                        setToBytes(postData.size, postData)
+                                    },
+                                )
+                            }
                     }
                 },
                 isNavigation,
@@ -109,5 +127,4 @@ class WebViewImpl {
                 disableDefaultHandling,
             )
         }
-    }
 }
