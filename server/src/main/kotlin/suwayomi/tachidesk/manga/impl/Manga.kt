@@ -160,7 +160,19 @@ object Manga {
 
                 it[MangaTable.realUrl] =
                     runCatching {
-                        (source as? HttpSource)?.getMangaUrl(sManga)
+                        (source as? HttpSource)?.getMangaUrl(
+                            SManga.create().apply {
+                                url = mangaEntry[MangaTable.url]
+                                title = remoteTitle.ifEmpty { mangaEntry[MangaTable.title] }
+                                thumbnail_url = mangaEntry[MangaTable.thumbnail_url]
+                                artist = sManga.artist ?: mangaEntry[MangaTable.artist]
+                                author = sManga.author ?: mangaEntry[MangaTable.author]
+                                description = sManga.description ?: mangaEntry[MangaTable.description]
+                                genre = sManga.genre ?: mangaEntry[MangaTable.genre]
+                                status = sManga.status
+                                update_strategy = sManga.update_strategy
+                            },
+                        )
                     }.getOrNull()
 
                 it[MangaTable.lastFetchedAt] = Instant.now().epochSecond
