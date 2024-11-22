@@ -108,7 +108,7 @@ object JavalinSetup {
 
         app.beforeMatched { ctx ->
             fun credentialsValid(): Boolean {
-                val basicAuthCredentials = ctx.basicAuthCredentials() ?: return true
+                val basicAuthCredentials = ctx.basicAuthCredentials() ?: return false
                 val (username, password) = basicAuthCredentials
                 return username == serverConfig.basicAuthUsername.value &&
                     password == serverConfig.basicAuthPassword.value
