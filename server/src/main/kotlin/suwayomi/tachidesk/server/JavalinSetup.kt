@@ -91,7 +91,8 @@ object JavalinSetup {
 
                 config.bundledPlugins.enableCors { cors ->
                     cors.addRule {
-                        it.anyHost()
+                        it.allowCredentials = true
+                        it.reflectClientOrigin = true
                     }
                 }
 
