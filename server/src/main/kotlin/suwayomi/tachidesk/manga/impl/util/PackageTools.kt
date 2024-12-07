@@ -29,6 +29,7 @@ import java.net.URLClassLoader
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.xml.parsers.DocumentBuilderFactory
+import kotlin.io.path.Path
 
 object PackageTools {
     private val logger = KotlinLogging.logger {}
@@ -152,7 +153,7 @@ object PackageTools {
     ): Any {
         try {
             logger.debug { "loading jar with path: $jarPath" }
-            val classLoader = jarLoaderMap[jarPath] ?: URLClassLoader(arrayOf<URL>(URL("file:$jarPath")))
+            val classLoader = jarLoaderMap[jarPath] ?: URLClassLoader(arrayOf<URL>(Path(jarPath).toUri().toURL()))
             val classToLoad = Class.forName(className, false, classLoader)
 
             jarLoaderMap[jarPath] = classLoader

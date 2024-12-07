@@ -88,11 +88,12 @@ public final class QuickJs implements Closeable {
         context.getBindings("js").putMember(name, object);
     }
 
-
     @Override
     public void close() {
-        this.context.leave();
-        this.context.close();
-        this.context = null;
+        if (this.context != null) {
+            this.context.leave();
+            this.context.close();
+            this.context = null;
+        }
     }
 }
