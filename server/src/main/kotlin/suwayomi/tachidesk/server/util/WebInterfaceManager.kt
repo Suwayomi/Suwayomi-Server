@@ -54,7 +54,7 @@ import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.InputStream
 import java.net.HttpURLConnection
-import java.net.URL
+import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Date
@@ -723,7 +723,7 @@ object WebInterfaceManager {
 
         zipFile.outputStream().use { webUIZipFileOut ->
 
-            val connection = URL(url).openConnection() as HttpURLConnection
+            val connection = URI.create(url).toURL().openConnection() as HttpURLConnection
             connection.connect()
             val contentLength = connection.contentLength
 

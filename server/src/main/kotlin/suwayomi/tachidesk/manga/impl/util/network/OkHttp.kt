@@ -7,7 +7,6 @@ package suwayomi.tachidesk.manga.impl.util.network
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
@@ -17,7 +16,6 @@ import java.io.IOException
 import kotlin.coroutines.resumeWithException
 
 // Based on https://github.com/gildor/kotlin-coroutines-okhttp
-@OptIn(ExperimentalCoroutinesApi::class)
 suspend fun Call.await(): Response {
     return suspendCancellableCoroutine { continuation ->
         enqueue(
@@ -31,8 +29,9 @@ suspend fun Call.await(): Response {
                         return
                     }
 
-                    continuation.resume(response) {
+                    continuation.resume(response) { _, resourceToClose, _ ->
                         response.body.closeQuietly()
+                        resourceToClose.closeQuietly()
                     }
                 }
 

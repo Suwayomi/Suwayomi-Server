@@ -1,6 +1,5 @@
 package eu.kanade.tachiyomi.network
 
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -68,7 +67,6 @@ fun Call.asObservableSuccess(): Observable<Response> =
         }
 
 // Based on https://github.com/gildor/kotlin-coroutines-okhttp
-@OptIn(ExperimentalCoroutinesApi::class)
 private suspend fun Call.await(callStack: Array<StackTraceElement>): Response {
     return suspendCancellableCoroutine { continuation ->
         val callback =
@@ -77,8 +75,9 @@ private suspend fun Call.await(callStack: Array<StackTraceElement>): Response {
                     call: Call,
                     response: Response,
                 ) {
-                    continuation.resume(response) {
+                    continuation.resume(response) { _, resourceToClose, _ ->
                         response.body.close()
+                        resourceToClose.close()
                     }
                 }
 
