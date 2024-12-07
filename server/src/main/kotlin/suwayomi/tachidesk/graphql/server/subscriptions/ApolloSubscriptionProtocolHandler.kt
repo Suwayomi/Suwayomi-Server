@@ -7,6 +7,7 @@
 
 package suwayomi.tachidesk.graphql.server.subscriptions
 
+import com.expediagroup.graphql.server.execution.GraphQLRequestHandler
 import com.expediagroup.graphql.server.types.GraphQLRequest
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.convertValue
@@ -43,7 +44,7 @@ import suwayomi.tachidesk.graphql.server.toGraphQLContext
  */
 class ApolloSubscriptionProtocolHandler(
     private val contextFactory: TachideskGraphQLContextFactory,
-    private val subscriptionHandler: GraphQLSubscriptionHandler,
+    private val subscriptionHandler: GraphQLRequestHandler,
     private val objectMapper: ObjectMapper,
 ) {
     companion object {
