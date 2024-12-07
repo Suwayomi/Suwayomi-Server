@@ -55,7 +55,8 @@ jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations
 # GraphQL
 graphql-kotlin-server = { module = "com.expediagroup:graphql-kotlin-server", version.ref = "graphqlkotlin" }
 graphql-kotlin-scheme = { module = "com.expediagroup:graphql-kotlin-schema-generator", version.ref = "graphqlkotlin" }
-graphql-scalars = "com.graphql-java:graphql-java-extended-scalars:20.2"
+graphql-java-core = "com.graphql-java:graphql-java:22.3" # Major version locked by graphql-kotlin
+graphql-java-scalars = "com.graphql-java:graphql-java-extended-scalars:22.0"
 
 # Exposed ORM
 exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
@@ -117,7 +118,7 @@ android-annotations = "androidx.annotation:annotation:1.9.1"
 
 # Substitute for duktape-android
 polyglot-core = { module = "org.graalvm.polyglot:polyglot", version.ref = "polyglot" }
-polyglot-graaljs = { module = "org.graalvm.polyglot:js-community", version.ref = "polyglot" } # provides the same interface as 'javax.script' a.k.a Nashorn
+polyglot-graaljs = { module = "org.graalvm.polyglot:js-community", version.ref = "polyglot" }
 
 # Settings
 settings-core = { module = "com.russhwolf:multiplatform-settings-jvm", version.ref = "settings" }

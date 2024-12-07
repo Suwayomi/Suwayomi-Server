@@ -21,16 +21,14 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import suwayomi.tachidesk.graphql.server.subscriptions.ApolloSubscriptionProtocolHandler
-import suwayomi.tachidesk.graphql.server.subscriptions.GraphQLSubscriptionHandler
 
 class TachideskGraphQLServer(
     requestParser: JavalinGraphQLRequestParser,
     contextFactory: TachideskGraphQLContextFactory,
     requestHandler: GraphQLRequestHandler,
-    subscriptionHandler: GraphQLSubscriptionHandler,
 ) : GraphQLServer<Context>(requestParser, contextFactory, requestHandler) {
     private val objectMapper = jacksonObjectMapper()
-    private val subscriptionProtocolHandler = ApolloSubscriptionProtocolHandler(contextFactory, subscriptionHandler, objectMapper)
+    private val subscriptionProtocolHandler = ApolloSubscriptionProtocolHandler(contextFactory, requestHandler, objectMapper)
 
     @OptIn(DelicateCoroutinesApi::class)
     fun handleSubscriptionMessage(context: WsMessageContext) {
@@ -59,9 +57,8 @@ class TachideskGraphQLServer(
             val requestParser = JavalinGraphQLRequestParser()
             val contextFactory = TachideskGraphQLContextFactory()
             val requestHandler = GraphQLRequestHandler(graphQL, TachideskDataLoaderRegistryFactory.create())
-            val subscriptionHandler = GraphQLSubscriptionHandler(graphQL, TachideskDataLoaderRegistryFactory.create())
 
-            return TachideskGraphQLServer(requestParser, contextFactory, requestHandler, subscriptionHandler)
+            return TachideskGraphQLServer(requestParser, contextFactory, requestHandler)
         }
     }
 }
