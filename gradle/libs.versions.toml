@@ -55,7 +55,7 @@ jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations
 # GraphQL
 graphql-kotlin-server = { module = "com.expediagroup:graphql-kotlin-server", version.ref = "graphqlkotlin" }
 graphql-kotlin-scheme = { module = "com.expediagroup:graphql-kotlin-schema-generator", version.ref = "graphqlkotlin" }
-graphql-java-core = "com.graphql-java:graphql-java:22.3" # Major version locked by graphql-kotlin
+graphql-java-core = "com.graphql-java:graphql-java:230521-nf-execution" # Major version locked by graphql-kotlin
 graphql-java-scalars = "com.graphql-java:graphql-java-extended-scalars:22.0"
 
 # Exposed ORM
