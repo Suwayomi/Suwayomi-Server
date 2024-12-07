@@ -69,6 +69,15 @@ class ApplicationDirs(
     val mangaDownloadsRoot get() = "$downloadsRoot/mangas"
 }
 
+data class ProxySettings(
+    val proxyEnabled: Boolean,
+    val socksProxyVersion: Int,
+    val proxyHost: String,
+    val proxyPort: String,
+    val proxyUsername: String,
+    val proxyPassword: String,
+)
+
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
 val androidCompat by lazy { AndroidCompat() }
@@ -238,7 +247,7 @@ fun applicationSetup() {
 
     // socks proxy settings
     serverConfig.subscribeTo(
-        combine(
+        combine<Any, ProxySettings>(
             serverConfig.socksProxyEnabled,
             serverConfig.socksProxyVersion,
             serverConfig.socksProxyHost,
@@ -246,14 +255,6 @@ fun applicationSetup() {
             serverConfig.socksProxyUsername,
             serverConfig.socksProxyPassword,
         ) { vargs ->
-            data class ProxySettings(
-                val proxyEnabled: Boolean,
-                val socksProxyVersion: Int,
-                val proxyHost: String,
-                val proxyPort: String,
-                val proxyUsername: String,
-                val proxyPassword: String,
-            )
             ProxySettings(
                 vargs[0] as Boolean,
                 vargs[1] as Int,
