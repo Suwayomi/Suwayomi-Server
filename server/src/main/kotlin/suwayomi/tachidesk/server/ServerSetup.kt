@@ -137,7 +137,7 @@ fun applicationSetup() {
 
     setupLogLevelUpdating(serverConfig.debugLogsEnabled, listOf(BASE_LOGGER_NAME))
 
-    logger.info("Running Suwayomi-Server ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")
+    logger.info { "Running Suwayomi-Server ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}" }
 
     logger.debug {
         "Loaded config:\n" +
@@ -202,7 +202,7 @@ fun applicationSetup() {
             GlobalConfigManager.updateUserConfig()
         }
     } catch (e: Exception) {
-        logger.error("Exception while creating initial server.conf", e)
+        logger.error(e) { "Exception while creating initial server.conf" }
     }
 
     // copy local source icon
@@ -216,7 +216,7 @@ fun applicationSetup() {
             }
         }
     } catch (e: Exception) {
-        logger.error("Exception while copying Local source's icon", e)
+        logger.error(e) { "Exception while copying Local source's icon" }
     }
 
     // fixes #119 , ref: https://github.com/Suwayomi/Suwayomi-Server/issues/119#issuecomment-894681292 , source Id calculation depends on String.lowercase()
@@ -265,9 +265,9 @@ fun applicationSetup() {
             )
         }.distinctUntilChanged(),
         { (proxyEnabled, proxyVersion, proxyHost, proxyPort, proxyUsername, proxyPassword) ->
-            logger.info(
-                "Socks Proxy changed - enabled=$proxyEnabled address=$proxyHost:$proxyPort , username=$proxyUsername, password=[REDACTED]",
-            )
+            logger.info {
+                "Socks Proxy changed - enabled=$proxyEnabled address=$proxyHost:$proxyPort , username=$proxyUsername, password=[REDACTED]"
+            }
             if (proxyEnabled) {
                 System.setProperty("socksProxyHost", proxyHost)
                 System.setProperty("socksProxyPort", proxyPort)

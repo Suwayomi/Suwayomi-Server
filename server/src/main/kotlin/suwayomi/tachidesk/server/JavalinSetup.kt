@@ -137,21 +137,21 @@ object JavalinSetup {
         )
 
         app.exception(NullPointerException::class.java) { e, ctx ->
-            logger.error("NullPointerException while handling the request", e)
+            logger.error(e) { "NullPointerException while handling the request" }
             ctx.status(404)
         }
         app.exception(NoSuchElementException::class.java) { e, ctx ->
-            logger.error("NoSuchElementException while handling the request", e)
+            logger.error(e) { "NoSuchElementException while handling the request" }
             ctx.status(404)
         }
         app.exception(IOException::class.java) { e, ctx ->
-            logger.error("IOException while handling the request", e)
+            logger.error(e) { "IOException while handling the request" }
             ctx.status(500)
             ctx.result(e.message ?: "Internal Server Error")
         }
 
         app.exception(IllegalArgumentException::class.java) { e, ctx ->
-            logger.error("IllegalArgumentException while handling the request", e)
+            logger.error(e) { "IllegalArgumentException while handling the request" }
             ctx.status(400)
             ctx.result(e.message ?: "Bad Request")
         }

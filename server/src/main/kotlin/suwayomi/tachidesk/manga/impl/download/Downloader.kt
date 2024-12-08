@@ -146,7 +146,7 @@ class Downloader(
                 }
                 finishDownload(downloadLogger, download)
             } catch (e: CancellationException) {
-                logger.debug("Downloader was stopped")
+                logger.debug { "Downloader was stopped" }
                 availableSourceDownloads.filter { it.state == Downloading }.forEach { it.state = Queued }
                 notifier(false, DownloadUpdate(STOPPED, download))
             } catch (e: PauseDownloadException) {
@@ -154,7 +154,7 @@ class Downloader(
                 download.state = Queued
                 notifier(false, DownloadUpdate(PAUSED, download))
             } catch (e: Exception) {
-                downloadLogger.warn("failed due to", e)
+                downloadLogger.warn(e) { "failed due to" }
                 download.tries++
                 download.state = Error
                 notifier(false, DownloadUpdate(ERROR, download))
