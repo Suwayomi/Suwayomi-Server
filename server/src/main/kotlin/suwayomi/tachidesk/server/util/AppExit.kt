@@ -22,7 +22,7 @@ enum class ExitCode(
 }
 
 fun shutdownApp(exitCode: ExitCode) {
-    logger.info("Shutting Down Suwayomi-Server. Goodbye!")
+    logger.info { "Shutting Down Suwayomi-Server. Goodbye!" }
 
     exitProcess(exitCode.code)
 }

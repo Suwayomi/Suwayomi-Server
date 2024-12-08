@@ -70,20 +70,20 @@ object AppMutex {
     fun handleAppMutex() {
         when (checkAppMutex()) {
             AppMutexState.Clear -> {
-                logger.info("Mutex status is clear, Resuming startup.")
+                logger.info { "Mutex status is clear, Resuming startup." }
             }
             AppMutexState.TachideskInstanceRunning -> {
-                logger.info("Another instance of Suwayomi-Server is running on $appIP:${serverConfig.port.value}")
+                logger.info { "Another instance of Suwayomi-Server is running on $appIP:${serverConfig.port.value}" }
 
-                logger.info("Probably user thought Suwayomi-Server is closed so, opening webUI in browser again.")
+                logger.info { "Probably user thought Suwayomi-Server is closed so, opening webUI in browser again." }
                 openInBrowser()
 
-                logger.info("Aborting startup.")
+                logger.info { "Aborting startup." }
 
                 shutdownApp(MutexCheckFailedTachideskRunning)
             }
             AppMutexState.OtherApplicationRunning -> {
-                logger.error("A non Suwayomi-Server application is running on $appIP:${serverConfig.port.value}, aborting startup.")
+                logger.error { "A non Suwayomi-Server application is running on $appIP:${serverConfig.port.value}, aborting startup." }
                 shutdownApp(MutexCheckFailedAnotherAppRunning)
             }
         }

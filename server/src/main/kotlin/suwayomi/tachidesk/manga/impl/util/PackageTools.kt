@@ -69,7 +69,7 @@ object PackageTools {
             .to(jarFilePath)
         if (handler.hasException()) {
             val errorFile: Path = File(applicationDirs.extensionsRoot).toPath().resolve("$fileNameWithoutType-error.txt")
-            logger.error(
+            logger.error {
                 """
                 Detail Error Information in File $errorFile
                 Please report this file to one of following link if possible (any one).
@@ -77,8 +77,8 @@ object PackageTools {
                 https://bitbucket.org/pxb1988/dex2jar/issues
                 https://github.com/pxb1988/dex2jar/issues
                 dex2jar@googlegroups.com
-                """.trimIndent(),
-            )
+                """.trimIndent()
+            }
             handler.dump(errorFile, emptyArray<String>())
         } else {
             BytecodeEditor.fixAndroidClasses(jarFilePath)
@@ -97,7 +97,7 @@ object PackageTools {
                     dBuilder.parse(it)
                 }
 
-            logger.trace(parsed.manifestXml)
+            logger.trace { parsed.manifestXml }
 
             applicationInfo.metaData =
                 Bundle().apply {

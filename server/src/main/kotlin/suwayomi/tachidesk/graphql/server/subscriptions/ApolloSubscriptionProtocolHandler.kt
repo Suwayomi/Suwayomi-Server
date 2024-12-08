@@ -97,7 +97,7 @@ class ApolloSubscriptionProtocolHandler(
         try {
             objectMapper.readValue(payload)
         } catch (exception: Exception) {
-            logger.error("Error parsing the subscription message", exception)
+            logger.error(exception) { "${"Error parsing the subscription message"}" }
             null
         }
 
@@ -106,13 +106,13 @@ class ApolloSubscriptionProtocolHandler(
         context: WsContext,
     ): Flow<SubscriptionOperationMessage> {
         if (operationMessage.id == null) {
-            logger.error("GraphQL subscription operation id is required")
+            logger.error { "GraphQL subscription operation id is required" }
             return flowOf(basicConnectionErrorMessage)
         }
 
         if (sessionState.doesOperationExist(operationMessage)) {
             sessionState.terminateSession(context, CloseStatus(4409, "Subscriber for ${operationMessage.id} already exists"))
-            logger.info("Already subscribed to operation ${operationMessage.id} for session ${context.sessionId()}")
+            logger.info { "Already subscribed to operation ${operationMessage.id} for session ${context.sessionId()}" }
             return emptyFlow()
         }
 
@@ -120,7 +120,7 @@ class ApolloSubscriptionProtocolHandler(
         val payload = operationMessage.payload
 
         if (payload == null) {
-            logger.error("GraphQL subscription payload was null instead of a GraphQLRequest object")
+            logger.error { "GraphQL subscription payload was null instead of a GraphQLRequest object" }
             return flowOf(SubscriptionOperationMessage(type = GQL_ERROR.type, id = operationMessage.id))
         }
 
@@ -137,7 +137,7 @@ class ApolloSubscriptionProtocolHandler(
                 }.onCompletion { if (it == null) emitAll(onComplete(operationMessage)) }
                 .onStart { sessionState.saveOperation(context, operationMessage, currentCoroutineContext().job) }
         } catch (exception: Exception) {
-            logger.error("Error running graphql subscription", exception)
+            logger.error(exception) { "${"Error running graphql subscription"}" }
             // Do not terminate the session, just stop the operation messages
             sessionState.completeOperation(operationMessage)
             return flowOf(SubscriptionOperationMessage(type = GQL_ERROR.type, id = operationMessage.id))
@@ -168,19 +168,19 @@ class ApolloSubscriptionProtocolHandler(
     private fun onPing(): Flow<SubscriptionOperationMessage> = flowOf(pongMessage)
 
     private fun onDisconnect(context: WsContext): Flow<SubscriptionOperationMessage> {
-        logger.debug("Session \"${context.sessionId()}\" disconnected")
+        logger.debug { "Session \"${context.sessionId()}\" disconnected" }
         sessionState.terminateSession(context, CloseStatus(1000, "Normal Closure"))
         return emptyFlow()
     }
 
     private fun onUnknownOperation(operationMessage: SubscriptionOperationMessage): Flow<SubscriptionOperationMessage> {
-        logger.error("Unknown subscription operation $operationMessage")
+        logger.error { "Unknown subscription operation $operationMessage" }
         sessionState.completeOperation(operationMessage)
         return emptyFlow()
     }
 
     private fun onException(exception: Exception): Flow<SubscriptionOperationMessage> {
-        logger.error("Error parsing the subscription message", exception)
+        logger.error(exception) { "${"Error parsing the subscription message"}" }
         return flowOf(basicConnectionErrorMessage)
     }
 }

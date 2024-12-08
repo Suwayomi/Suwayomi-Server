@@ -66,7 +66,8 @@ object Page {
                     .selectAll()
                     .where { (PageTable.chapter eq chapterId) }
                     .orderBy(PageTable.index to SortOrder.ASC)
-                    .limit(1, index.toLong())
+                    .limit(1)
+                    .offset(index.toLong())
                     .first()
             }
         val tachiyomiPage =

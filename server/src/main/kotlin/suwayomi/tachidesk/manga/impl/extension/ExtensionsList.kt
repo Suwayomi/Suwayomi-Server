@@ -55,12 +55,12 @@ object ExtensionsList {
     suspend fun fetchExtensionsCached() {
         // update if 60 seconds has passed or requested offline and database is empty
         if (lastUpdateCheck + 60.seconds.inWholeMilliseconds < System.currentTimeMillis()) {
-            logger.debug("Getting extensions list from the internet")
+            logger.debug { "Getting extensions list from the internet" }
             lastUpdateCheck = System.currentTimeMillis()
 
             fetchExtensions()
         } else {
-            logger.debug("used cached extension list")
+            logger.debug { "used cached extension list" }
         }
     }
 

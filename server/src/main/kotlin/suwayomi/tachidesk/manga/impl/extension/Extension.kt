@@ -54,7 +54,7 @@ object Extension {
     private val applicationDirs: ApplicationDirs by injectLazy()
 
     suspend fun installExtension(pkgName: String): Int {
-        logger.debug("Installing $pkgName")
+        logger.debug { "Installing $pkgName" }
         val extensionRecord = extensionTableAsDataClass().first { it.pkgName == pkgName }
 
         return installAPK {
@@ -144,7 +144,7 @@ object Extension {
             val className =
                 packageInfo.packageName + packageInfo.applicationInfo.metaData.getString(METADATA_SOURCE_CLASS)
 
-            logger.debug("Main class for extension is $className")
+            logger.debug { "Main class for extension is $className" }
 
             dex2jar(apkFilePath, jarFilePath, fileNameWithoutType)
             extractAssetsFromApk(apkFilePath, jarFilePath)
@@ -295,7 +295,7 @@ object Extension {
     }
 
     fun uninstallExtension(pkgName: String) {
-        logger.debug("Uninstalling $pkgName")
+        logger.debug { "Uninstalling $pkgName" }
 
         val extensionRecord = transaction { ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.first() }
         val fileNameWithoutType = extensionRecord[ExtensionTable.apkName].substringBefore(".apk")
