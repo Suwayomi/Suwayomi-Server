@@ -265,7 +265,9 @@ fun applicationSetup() {
             )
         }.distinctUntilChanged(),
         { (proxyEnabled, proxyVersion, proxyHost, proxyPort, proxyUsername, proxyPassword) ->
-            logger.info { "Socks Proxy changed - enabled=$proxyEnabled address=$proxyHost:$proxyPort , username=$proxyUsername, password=[REDACTED]" }
+            logger.info {
+                "Socks Proxy changed - enabled=$proxyEnabled address=$proxyHost:$proxyPort , username=$proxyUsername, password=[REDACTED]"
+            }
             if (proxyEnabled) {
                 System.setProperty("socksProxyHost", proxyHost)
                 System.setProperty("socksProxyPort", proxyPort)
