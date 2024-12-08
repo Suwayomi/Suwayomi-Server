@@ -5,7 +5,7 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.asDataFetcherResult
@@ -65,8 +65,8 @@ class ChapterMutation {
             val chapterIdToPageCount =
                 if (patch.lastPageRead != null) {
                     ChapterTable
-                        .slice(ChapterTable.id, ChapterTable.pageCount)
-                        .select { ChapterTable.id inList ids }
+                        .select(ChapterTable.id, ChapterTable.pageCount)
+                        .where { ChapterTable.id inList ids }
                         .groupBy { it[ChapterTable.id].value }
                         .mapValues { it.value.firstOrNull()?.let { it[ChapterTable.pageCount] } }
                 } else {
@@ -103,7 +103,7 @@ class ChapterMutation {
 
             val chapter =
                 transaction {
-                    ChapterType(ChapterTable.select { ChapterTable.id eq id }.first())
+                    ChapterType(ChapterTable.selectAll().where { ChapterTable.id eq id }.first())
                 }
 
             UpdateChapterPayload(
@@ -120,7 +120,7 @@ class ChapterMutation {
 
             val chapters =
                 transaction {
-                    ChapterTable.select { ChapterTable.id inList ids }.map { ChapterType(it) }
+                    ChapterTable.selectAll().where { ChapterTable.id inList ids }.map { ChapterType(it) }
                 }
 
             UpdateChaptersPayload(
@@ -149,7 +149,8 @@ class ChapterMutation {
                 val chapters =
                     transaction {
                         ChapterTable
-                            .select { ChapterTable.manga eq mangaId }
+                            .selectAll()
+                            .where { ChapterTable.manga eq mangaId }
                             .orderBy(ChapterTable.sourceOrder)
                             .map { ChapterType(it) }
                     }
@@ -201,14 +202,15 @@ class ChapterMutation {
                 transaction {
                     val meta =
                         ChapterMetaTable
-                            .select { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
+                            .selectAll()
+                            .where { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
                             .firstOrNull()
 
                     ChapterMetaTable.deleteWhere { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
 
                     val chapter =
                         transaction {
-                            ChapterType(ChapterTable.select { ChapterTable.id eq chapterId }.first())
+                            ChapterType(ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first())
                         }
 
                     if (meta != null) {

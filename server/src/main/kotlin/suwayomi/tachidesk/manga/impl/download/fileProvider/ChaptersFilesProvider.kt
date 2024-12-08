@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
@@ -141,10 +141,10 @@ abstract class ChaptersFilesProvider<Type : FileType>(
         createComicInfoFile(
             downloadCacheFolder.toPath(),
             transaction {
-                MangaTable.select { MangaTable.id eq mangaId }.first()
+                MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
             },
             transaction {
-                ChapterTable.select { ChapterTable.id eq chapterId }.first()
+                ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first()
             },
         )
 

@@ -466,12 +466,12 @@ fun <T : String, S : T?> andFilterWithCompareString(
     }
 
     opAnd.andWhere(filter.distinctFromInsensitive, filter.distinctFromInsensitiveAll, filter.distinctFromInsensitiveAny) {
-        DistinctFromOp.distinctFrom(column.upperCase(), it.uppercase() as S)
+        DistinctFromOp.distinctFrom(column.upperCase(), it.uppercase())
     }
-    opAnd.andWhere(filter.notDistinctFromInsensitive) { DistinctFromOp.notDistinctFrom(column.upperCase(), it.uppercase() as S) }
+    opAnd.andWhere(filter.notDistinctFromInsensitive) { DistinctFromOp.notDistinctFrom(column.upperCase(), it.uppercase()) }
 
-    opAnd.andWhere(filter.inInsensitive) { column.upperCase() inList (it.map { it.uppercase() } as List<S>) }
-    opAnd.andWhere(filter.notInInsensitive) { column.upperCase() notInList (it.map { it.uppercase() } as List<S>) }
+    opAnd.andWhere(filter.inInsensitive) { column.upperCase() inList (it.map { it.uppercase() }) }
+    opAnd.andWhere(filter.notInInsensitive) { column.upperCase() notInList (it.map { it.uppercase() }) }
 
     opAnd.andWhere(filter.lessThanInsensitive) { column.upperCase() less it.uppercase() }
     opAnd.andWhere(filter.lessThanOrEqualToInsensitive) { column.upperCase() lessEq it.uppercase() }
@@ -539,38 +539,21 @@ class OpAnd(
     ) = andWhere(value) { column eq it }
 }
 
+@Suppress("UNCHECKED_CAST")
 fun <T : Comparable<T>, S : T?> andFilterWithCompare(
     column: Column<S>,
     filter: ComparableScalarFilter<T>?,
 ): Op<Boolean>? {
     filter ?: return null
-    val opAnd = OpAnd(andFilter(column, filter))
+    val opAnd = OpAnd()
 
     opAnd.andWhere(filter.lessThan) { column less it }
     opAnd.andWhere(filter.lessThanOrEqualTo) { column lessEq it }
     opAnd.andWhere(filter.greaterThan) { column greater it }
     opAnd.andWhere(filter.greaterThanOrEqualTo) { column greaterEq it }
 
-    return opAnd.op
-}
-
-fun <T : Comparable<T>> andFilterWithCompareEntity(
-    column: Column<EntityID<T>>,
-    filter: ComparableScalarFilter<T>?,
-): Op<Boolean>? {
-    @Suppress("UNCHECKED_CAST")
-    return andFilterWithCompare(column as Column<T>, filter)
-}
-
-@Suppress("UNCHECKED_CAST")
-fun <T : Comparable<T>, S : T?> andFilter(
-    column: Column<S>,
-    filter: ScalarFilter<T>?,
-): Op<Boolean>? {
-    filter ?: return null
-    val opAnd = OpAnd()
-
     opAnd.andWhere(filter.isNull) { if (it) column.isNull() else column.isNotNull() }
+
     opAnd.andWhere(filter.equalTo) { column eq it as S }
     opAnd.andWhere(filter.notEqualTo, filter.notEqualToAll, filter.notEqualToAny) { column neq it as S }
     opAnd.andWhere(filter.distinctFrom, filter.distinctFromAll, filter.distinctFromAny) { DistinctFromOp.distinctFrom(column, it as S) }
@@ -581,5 +564,34 @@ fun <T : Comparable<T>, S : T?> andFilter(
     if (!filter.notIn.isNullOrEmpty()) {
         opAnd.andWhere(filter.notIn) { column notInList it as List<S> }
     }
+
+    return opAnd.op
+}
+
+fun <T : Comparable<T>> andFilterWithCompareEntity(
+    column: Column<EntityID<T>>,
+    filter: ComparableScalarFilter<T>?,
+): Op<Boolean>? {
+    filter ?: return null
+    val opAnd = OpAnd()
+
+    opAnd.andWhere(filter.lessThan) { column less it }
+    opAnd.andWhere(filter.lessThanOrEqualTo) { column lessEq it }
+    opAnd.andWhere(filter.greaterThan) { column greater it }
+    opAnd.andWhere(filter.greaterThanOrEqualTo) { column greaterEq it }
+
+    opAnd.andWhere(filter.isNull) { if (it) column.isNull() else column.isNotNull() }
+
+    opAnd.andWhere(filter.equalTo) { column eq it }
+    opAnd.andWhere(filter.notEqualTo, filter.notEqualToAll, filter.notEqualToAny) { column neq it }
+    opAnd.andWhere(filter.distinctFrom, filter.distinctFromAll, filter.distinctFromAny) { DistinctFromOp.distinctFrom(column, it) }
+    opAnd.andWhere(filter.notDistinctFrom) { DistinctFromOp.notDistinctFrom(column, it) }
+    if (!filter.`in`.isNullOrEmpty()) {
+        opAnd.andWhere(filter.`in`) { column inList it }
+    }
+    if (!filter.notIn.isNullOrEmpty()) {
+        opAnd.andWhere(filter.notIn) { column notInList it }
+    }
+
     return opAnd.op
 }

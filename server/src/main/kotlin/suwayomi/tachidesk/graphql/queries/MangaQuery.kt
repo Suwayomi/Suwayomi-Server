@@ -15,7 +15,6 @@ import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
-import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
 import suwayomi.tachidesk.graphql.queries.filter.ComparableScalarFilter
@@ -29,7 +28,6 @@ import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompare
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
-import suwayomi.tachidesk.graphql.queries.util.distinctOn
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
@@ -53,7 +51,7 @@ class MangaQuery {
     ): CompletableFuture<MangaType> = dataFetchingEnvironment.getValueFromDataLoader("MangaDataLoader", id)
 
     enum class MangaOrderBy(
-        override val column: Column<out Comparable<*>>,
+        override val column: Column<*>,
     ) : OrderBy<MangaType> {
         ID(MangaTable.id),
         TITLE(MangaTable.title),
@@ -242,11 +240,8 @@ class MangaQuery {
                 val res =
                     MangaTable
                         .leftJoin(CategoryMangaTable)
-                        .slice(
-                            distinctOn(MangaTable.id),
-                            *(MangaTable.columns).toTypedArray(),
-                            *(CategoryMangaTable.columns).toTypedArray(),
-                        ).selectAll()
+                        .select(MangaTable.columns)
+                        .withDistinctOn(MangaTable.id)
 
                 res.applyOps(condition, filter)
 
@@ -274,7 +269,7 @@ class MangaQuery {
                 )
 
                 if (first != null) {
-                    res.limit(first, offset?.toLong() ?: 0)
+                    res.limit(first).offset(offset?.toLong() ?: 0)
                 } else if (last != null) {
                     res.limit(last)
                 }

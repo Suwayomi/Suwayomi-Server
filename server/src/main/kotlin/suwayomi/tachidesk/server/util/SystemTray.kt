@@ -10,7 +10,7 @@ package suwayomi.tachidesk.server.util
 import dorkbox.systemTray.MenuItem
 import dorkbox.systemTray.SystemTray
 import dorkbox.util.CacheUtil
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.serverConfig

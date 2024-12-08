@@ -13,7 +13,7 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import okhttp3.CacheControl
 import okio.buffer
 import okio.sink
@@ -21,7 +21,7 @@ import okio.source
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList.extensionTableAsDataClass
@@ -101,7 +101,7 @@ object Extension {
         // if it's installed and we want to update, it first has to be uninstalled
         val isInstalled =
             transaction {
-                ExtensionTable.select { ExtensionTable.apkName eq apkName }.firstOrNull()
+                ExtensionTable.selectAll().where { ExtensionTable.apkName eq apkName }.firstOrNull()
             }?.get(ExtensionTable.isInstalled) ?: false
 
         val fileNameWithoutType = apkName.substringBefore(".apk")
@@ -177,7 +177,7 @@ object Extension {
 
             // update extension info
             transaction {
-                if (ExtensionTable.select { ExtensionTable.pkgName eq pkgName }.firstOrNull() == null) {
+                if (ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.firstOrNull() == null) {
                     ExtensionTable.insert {
                         it[this.apkName] = apkName
                         it[name] = extensionName
@@ -198,7 +198,11 @@ object Extension {
                 }
 
                 val extensionId =
-                    ExtensionTable.select { ExtensionTable.pkgName eq pkgName }.first()[ExtensionTable.id].value
+                    ExtensionTable
+                        .selectAll()
+                        .where { ExtensionTable.pkgName eq pkgName }
+                        .first()[ExtensionTable.id]
+                        .value
 
                 sources.forEach { httpSource ->
                     SourceTable.insert {
@@ -293,14 +297,14 @@ object Extension {
     fun uninstallExtension(pkgName: String) {
         logger.debug("Uninstalling $pkgName")
 
-        val extensionRecord = transaction { ExtensionTable.select { ExtensionTable.pkgName eq pkgName }.first() }
+        val extensionRecord = transaction { ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.first() }
         val fileNameWithoutType = extensionRecord[ExtensionTable.apkName].substringBefore(".apk")
         val jarPath = "${applicationDirs.extensionsRoot}/$fileNameWithoutType.jar"
         val sources =
             transaction {
                 val extensionId = extensionRecord[ExtensionTable.id].value
 
-                val sources = SourceTable.select { SourceTable.extension eq extensionId }.map { it[SourceTable.id].value }
+                val sources = SourceTable.selectAll().where { SourceTable.extension eq extensionId }.map { it[SourceTable.id].value }
 
                 SourceTable.deleteWhere { SourceTable.extension eq extensionId }
 
@@ -349,7 +353,7 @@ object Extension {
             if (apkName == "localSource") {
                 ""
             } else {
-                transaction { ExtensionTable.select { ExtensionTable.apkName eq apkName }.first() }[ExtensionTable.iconUrl]
+                transaction { ExtensionTable.selectAll().where { ExtensionTable.apkName eq apkName }.first() }[ExtensionTable.iconUrl]
             }
 
         val cacheSaveDir = "${applicationDirs.extensionsRoot}/icon"

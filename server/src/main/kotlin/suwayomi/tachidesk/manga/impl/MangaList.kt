@@ -11,7 +11,7 @@ import eu.kanade.tachiyomi.source.model.MangasPage
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
@@ -49,8 +49,10 @@ object MangaList {
         transaction {
             val existingMangaUrlsToId =
                 MangaTable
-                    .select {
-                        (MangaTable.sourceReference eq sourceId) and (MangaTable.url inList mangas.map { it.url })
+                    .selectAll()
+                    .where {
+                        (MangaTable.sourceReference eq sourceId) and
+                            (MangaTable.url inList mangas.map { it.url })
                     }.associateBy { it[MangaTable.url] }
             val existingMangaUrls = existingMangaUrlsToId.map { it.key }
 
@@ -123,7 +125,7 @@ object MangaList {
         val mangaList =
             transaction {
                 val mangaIds = insertOrUpdate(sourceId)
-                return@transaction MangaTable.select { MangaTable.id inList mangaIds }.map { MangaTable.toDataClass(it) }
+                return@transaction MangaTable.selectAll().where { MangaTable.id inList mangaIds }.map { MangaTable.toDataClass(it) }
             }
         return PagedMangaListDataClass(
             mangaList,

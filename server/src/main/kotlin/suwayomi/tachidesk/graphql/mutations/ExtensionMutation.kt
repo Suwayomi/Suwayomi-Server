@@ -3,7 +3,7 @@ package suwayomi.tachidesk.graphql.mutations
 import eu.kanade.tachiyomi.source.local.LocalSource
 import graphql.execution.DataFetcherResult
 import io.javalin.http.UploadedFile
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.types.ExtensionType
@@ -49,7 +49,8 @@ class ExtensionMutation {
         val extensions =
             transaction {
                 ExtensionTable
-                    .select { ExtensionTable.pkgName inList ids }
+                    .selectAll()
+                    .where { ExtensionTable.pkgName inList ids }
                     .map { ExtensionType(it) }
             }
 
@@ -82,7 +83,8 @@ class ExtensionMutation {
                 val extension =
                     transaction {
                         ExtensionTable
-                            .select { ExtensionTable.pkgName eq id }
+                            .selectAll()
+                            .where { ExtensionTable.pkgName eq id }
                             .firstOrNull()
                             ?.let { ExtensionType(it) }
                     }
@@ -105,7 +107,8 @@ class ExtensionMutation {
                 val extensions =
                     transaction {
                         ExtensionTable
-                            .select { ExtensionTable.pkgName inList ids }
+                            .selectAll()
+                            .where { ExtensionTable.pkgName inList ids }
                             .map { ExtensionType(it) }
                     }
 
@@ -136,7 +139,8 @@ class ExtensionMutation {
                 val extensions =
                     transaction {
                         ExtensionTable
-                            .select { ExtensionTable.name neq LocalSource.EXTENSION_NAME }
+                            .selectAll()
+                            .where { ExtensionTable.name neq LocalSource.EXTENSION_NAME }
                             .map { ExtensionType(it) }
                     }
 
@@ -167,7 +171,8 @@ class ExtensionMutation {
             asDataFetcherResult {
                 Extension.installExternalExtension(extensionFile.content(), extensionFile.filename())
 
-                val dbExtension = transaction { ExtensionTable.select { ExtensionTable.apkName eq extensionFile.filename() }.first() }
+                val dbExtension =
+                    transaction { ExtensionTable.selectAll().where { ExtensionTable.apkName eq extensionFile.filename() }.first() }
 
                 InstallExternalExtensionPayload(
                     clientMutationId,

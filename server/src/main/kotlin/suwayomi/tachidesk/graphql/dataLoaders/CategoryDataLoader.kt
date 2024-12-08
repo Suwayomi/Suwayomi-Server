@@ -13,7 +13,7 @@ import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.types.CategoryNodeList
 import suwayomi.tachidesk.graphql.types.CategoryNodeList.Companion.toNodeList
@@ -32,7 +32,8 @@ class CategoryDataLoader : KotlinDataLoader<Int, CategoryType> {
                     addLogger(Slf4jSqlDebugLogger)
                     val categories =
                         CategoryTable
-                            .select { CategoryTable.id inList ids }
+                            .selectAll()
+                            .where { CategoryTable.id inList ids }
                             .map { CategoryType(it) }
                             .associateBy { it.id }
                     ids.map { categories[it] }
@@ -50,7 +51,7 @@ class CategoryForIdsDataLoader : KotlinDataLoader<List<Int>, CategoryNodeList> {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val ids = categoryIds.flatten().distinct()
-                    val categories = CategoryTable.select { CategoryTable.id inList ids }.map { CategoryType(it) }
+                    val categories = CategoryTable.selectAll().where { CategoryTable.id inList ids }.map { CategoryType(it) }
                     categoryIds.map { categoryIds ->
                         categories.filter { it.id in categoryIds }.toNodeList()
                     }
@@ -70,7 +71,8 @@ class CategoriesForMangaDataLoader : KotlinDataLoader<Int, CategoryNodeList> {
                     val itemsByRef =
                         CategoryMangaTable
                             .innerJoin(CategoryTable)
-                            .select { CategoryMangaTable.manga inList ids }
+                            .selectAll()
+                            .where { CategoryMangaTable.manga inList ids }
                             .map { Pair(it[CategoryMangaTable.manga].value, CategoryType(it)) }
                             .groupBy { it.first }
                             .mapValues { it.value.map { pair -> pair.second } }

@@ -9,14 +9,14 @@ package suwayomi.tachidesk.manga.impl.chapter
 
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
-import mu.KLogger
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KLogger
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
@@ -98,7 +98,8 @@ private class ChapterForDownload(
         optMangaId: Int? = null,
     ) = transaction {
         ChapterTable
-            .select {
+            .selectAll()
+            .where {
                 if (optChapterId != null) {
                     ChapterTable.id eq optChapterId
                 } else if (optChapterIndex != null && optMangaId != null) {
@@ -110,7 +111,7 @@ private class ChapterForDownload(
     }
 
     private suspend fun fetchPageList(): List<Page> {
-        val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
+        val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
         val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
         return source.getPageList(

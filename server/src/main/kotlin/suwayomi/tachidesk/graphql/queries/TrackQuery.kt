@@ -244,7 +244,7 @@ class TrackQuery {
         dataFetchingEnvironment.getValueFromDataLoader<Int, TrackRecordType>("TrackRecordDataLoader", id)
 
     enum class TrackRecordOrderBy(
-        override val column: Column<out Comparable<*>>,
+        override val column: Column<*>,
     ) : OrderBy<TrackRecordType> {
         ID(TrackRecordTable.id),
         MANGA_ID(TrackRecordTable.mangaId),
@@ -430,7 +430,7 @@ class TrackQuery {
                 )
 
                 if (first != null) {
-                    res.limit(first, offset?.toLong() ?: 0)
+                    res.limit(first).offset(offset?.toLong() ?: 0)
                 } else if (last != null) {
                     res.limit(last)
                 }

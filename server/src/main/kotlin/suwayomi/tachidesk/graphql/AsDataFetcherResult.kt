@@ -2,7 +2,7 @@ package suwayomi.tachidesk.graphql
 
 import com.expediagroup.graphql.server.extensions.toGraphQLError
 import graphql.execution.DataFetcherResult
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 
 val logger = KotlinLogging.logger { }
 

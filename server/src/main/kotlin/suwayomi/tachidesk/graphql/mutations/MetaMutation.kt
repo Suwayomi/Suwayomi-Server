@@ -3,7 +3,7 @@ package suwayomi.tachidesk.graphql.mutations
 import graphql.execution.DataFetcherResult
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.global.impl.GlobalMeta
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
@@ -49,7 +49,8 @@ class MetaMutation {
                 transaction {
                     val meta =
                         GlobalMetaTable
-                            .select { GlobalMetaTable.key eq key }
+                            .selectAll()
+                            .where { GlobalMetaTable.key eq key }
                             .firstOrNull()
 
                     GlobalMetaTable.deleteWhere { GlobalMetaTable.key eq key }

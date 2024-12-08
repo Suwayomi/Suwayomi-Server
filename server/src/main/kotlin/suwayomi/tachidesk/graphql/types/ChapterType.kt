@@ -68,7 +68,7 @@ class ChapterType(
         row[ChapterTable.fetchedAt],
         row[ChapterTable.isDownloaded],
         row[ChapterTable.pageCount],
-//        transaction { ChapterTable.select { manga eq chapterEntry[manga].value }.count().toInt() },
+//        transaction { ChapterTable.selectAll().where { Manga eq chapterEntry[manga].value }.count().toInt() },
     )
 
     constructor(dataClass: ChapterDataClass) : this(

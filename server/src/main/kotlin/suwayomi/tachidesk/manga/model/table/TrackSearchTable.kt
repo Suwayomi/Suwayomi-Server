@@ -12,7 +12,7 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
@@ -38,8 +38,10 @@ fun List<TrackSearch>.insertAll(): List<ResultRow> {
         val existing =
             transaction {
                 TrackSearchTable
-                    .select {
-                        TrackSearchTable.trackerId inList trackerIds and (TrackSearchTable.remoteId inList remoteIds)
+                    .selectAll()
+                    .where {
+                        TrackSearchTable.trackerId inList trackerIds and
+                            (TrackSearchTable.remoteId inList remoteIds)
                     }.toList()
             }
 
@@ -95,7 +97,7 @@ fun List<TrackSearch>.insertAll(): List<ResultRow> {
             toUpdate
                 ?.mapNotNull { it.first }
                 ?.let { ids ->
-                    transaction { TrackSearchTable.select { TrackSearchTable.id inList ids }.toList() }
+                    transaction { TrackSearchTable.selectAll().where { TrackSearchTable.id inList ids }.toList() }
                 }.orEmpty()
 
         (insertedRows + updatedRows)

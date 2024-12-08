@@ -5,10 +5,10 @@ import com.cronutils.model.CronType.CRON4J
 import com.cronutils.model.definition.CronDefinitionBuilder
 import com.cronutils.model.time.ExecutionTime
 import com.cronutils.parser.CronParser
+import io.github.oshai.kotlinlogging.KotlinLogging
 import it.sauronsoftware.cron4j.Scheduler
 import it.sauronsoftware.cron4j.Task
 import it.sauronsoftware.cron4j.TaskExecutionContext
-import mu.KotlinLogging
 import java.time.ZonedDateTime
 import java.util.Date
 import java.util.PriorityQueue

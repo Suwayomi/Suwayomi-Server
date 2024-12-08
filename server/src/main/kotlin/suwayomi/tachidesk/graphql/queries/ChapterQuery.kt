@@ -57,7 +57,7 @@ class ChapterQuery {
     ): CompletableFuture<ChapterType> = dataFetchingEnvironment.getValueFromDataLoader("ChapterDataLoader", id)
 
     enum class ChapterOrderBy(
-        override val column: Column<out Comparable<*>>,
+        override val column: Column<*>,
     ) : OrderBy<ChapterType> {
         ID(ChapterTable.id),
         SOURCE_ORDER(ChapterTable.sourceOrder),
@@ -254,7 +254,7 @@ class ChapterQuery {
                 )
 
                 if (first != null) {
-                    res.limit(first, offset?.toLong() ?: 0)
+                    res.limit(first).offset(offset?.toLong() ?: 0)
                 } else if (last != null) {
                     res.limit(last)
                 }

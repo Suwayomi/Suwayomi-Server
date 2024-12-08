@@ -10,19 +10,18 @@ package suwayomi.tachidesk.manga.impl.backup.proto
 import android.app.Application
 import android.content.Context
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import mu.KotlinLogging
 import okio.Buffer
 import okio.Sink
 import okio.buffer
 import okio.gzip
 import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.CategoryManga
@@ -175,7 +174,7 @@ object ProtoBackupExport : ProtoBackupBase() {
     fun createBackup(flags: BackupFlags): InputStream {
         // Create root object
 
-        val databaseManga = transaction { MangaTable.select { MangaTable.inLibrary eq true } }
+        val databaseManga = transaction { MangaTable.selectAll().where { MangaTable.inLibrary eq true } }
 
         val backup: Backup =
             transaction {
@@ -224,7 +223,8 @@ object ProtoBackupExport : ProtoBackupBase() {
                 val chapters =
                     transaction {
                         ChapterTable
-                            .select { ChapterTable.manga eq mangaId }
+                            .selectAll()
+                            .where { ChapterTable.manga eq mangaId }
                             .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
                             .map {
                                 ChapterTable.toDataClass(it)
@@ -306,7 +306,7 @@ object ProtoBackupExport : ProtoBackupBase() {
             .map { it[MangaTable.sourceReference] }
             .distinct()
             .map {
-                val sourceRow = SourceTable.select { SourceTable.id eq it }.firstOrNull()
+                val sourceRow = SourceTable.selectAll().where { SourceTable.id eq it }.firstOrNull()
                 BackupSource(
                     sourceRow?.get(SourceTable.name) ?: "",
                     it,

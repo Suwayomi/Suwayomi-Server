@@ -26,19 +26,19 @@ import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
 import eu.kanade.tachiyomi.util.lang.compareToCaseInsensitiveNaturalOrder
 import eu.kanade.tachiyomi.util.storage.EpubFile
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
-import mu.KotlinLogging
 import nl.adaptivity.xmlutil.ExperimentalXmlUtilApi
 import nl.adaptivity.xmlutil.core.KtXmlReader
 import nl.adaptivity.xmlutil.serialization.XML
 import org.apache.commons.compress.archivers.zip.ZipFile
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.registerCatalogueSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
@@ -444,7 +444,7 @@ class LocalSource(
 
         fun register() {
             transaction {
-                val sourceRecord = SourceTable.select { SourceTable.id eq ID }.firstOrNull()
+                val sourceRecord = SourceTable.selectAll().where { SourceTable.id eq ID }.firstOrNull()
 
                 if (sourceRecord == null) {
                     // must do this to avoid database integrity errors

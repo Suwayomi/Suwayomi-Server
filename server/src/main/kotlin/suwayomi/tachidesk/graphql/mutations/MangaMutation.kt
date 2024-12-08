@@ -4,7 +4,7 @@ import graphql.execution.DataFetcherResult
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.asDataFetcherResult
@@ -75,7 +75,8 @@ class MangaMutation {
                     val mangas =
                         transaction {
                             MangaTable
-                                .select { (MangaTable.id inList ids) and (MangaTable.initialized eq false) }
+                                .selectAll()
+                                .where { (MangaTable.id inList ids) and (MangaTable.initialized eq false) }
                                 .map { MangaTable.toDataClass(it) }
                         }
 
@@ -98,7 +99,7 @@ class MangaMutation {
 
                 val manga =
                     transaction {
-                        MangaType(MangaTable.select { MangaTable.id eq id }.first())
+                        MangaType(MangaTable.selectAll().where { MangaTable.id eq id }.first())
                     }
 
                 UpdateMangaPayload(
@@ -118,7 +119,7 @@ class MangaMutation {
 
                 val mangas =
                     transaction {
-                        MangaTable.select { MangaTable.id inList ids }.map { MangaType(it) }
+                        MangaTable.selectAll().where { MangaTable.id inList ids }.map { MangaType(it) }
                     }
 
                 UpdateMangasPayload(
@@ -148,7 +149,7 @@ class MangaMutation {
 
                 val manga =
                     transaction {
-                        MangaTable.select { MangaTable.id eq id }.first()
+                        MangaTable.selectAll().where { MangaTable.id eq id }.first()
                     }
                 FetchMangaPayload(
                     clientMutationId = clientMutationId,
@@ -198,14 +199,15 @@ class MangaMutation {
                 transaction {
                     val meta =
                         MangaMetaTable
-                            .select { (MangaMetaTable.ref eq mangaId) and (MangaMetaTable.key eq key) }
+                            .selectAll()
+                            .where { (MangaMetaTable.ref eq mangaId) and (MangaMetaTable.key eq key) }
                             .firstOrNull()
 
                     MangaMetaTable.deleteWhere { (MangaMetaTable.ref eq mangaId) and (MangaMetaTable.key eq key) }
 
                     val manga =
                         transaction {
-                            MangaType(MangaTable.select { MangaTable.id eq mangaId }.first())
+                            MangaType(MangaTable.selectAll().where { MangaTable.id eq mangaId }.first())
                         }
 
                     if (meta != null) {

@@ -1,7 +1,6 @@
 package suwayomi.tachidesk.global.impl
 
 import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -22,7 +21,7 @@ object GlobalMeta {
         transaction {
             val meta =
                 transaction {
-                    GlobalMetaTable.select { GlobalMetaTable.key eq key }
+                    GlobalMetaTable.selectAll().where { GlobalMetaTable.key eq key }
                 }.firstOrNull()
 
             if (meta == null) {

@@ -48,7 +48,7 @@ class CategoryQuery {
     ): CompletableFuture<CategoryType> = dataFetchingEnvironment.getValueFromDataLoader("CategoryDataLoader", id)
 
     enum class CategoryOrderBy(
-        override val column: Column<out Comparable<*>>,
+        override val column: Column<*>,
     ) : OrderBy<CategoryType> {
         ID(CategoryTable.id),
         NAME(CategoryTable.name),
@@ -170,7 +170,7 @@ class CategoryQuery {
                 )
 
                 if (first != null) {
-                    res.limit(first, offset?.toLong() ?: 0)
+                    res.limit(first).offset(offset?.toLong() ?: 0)
                 } else if (last != null) {
                     res.limit(last)
                 }

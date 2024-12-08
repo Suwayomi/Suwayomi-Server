@@ -14,9 +14,9 @@ import com.typesafe.config.ConfigValue
 import com.typesafe.config.ConfigValueFactory
 import com.typesafe.config.parser.ConfigDocument
 import com.typesafe.config.parser.ConfigDocumentFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import mu.KotlinLogging
 import java.io.File
 
 /**

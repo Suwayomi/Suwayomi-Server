@@ -1,18 +1,18 @@
 package suwayomi.tachidesk.manga.impl.track
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import mu.KotlinLogging
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTrackService
@@ -75,7 +75,8 @@ object Track {
         val recordMap =
             transaction {
                 TrackRecordTable
-                    .select { TrackRecordTable.mangaId eq mangaId }
+                    .selectAll()
+                    .where { TrackRecordTable.mangaId eq mangaId }
                     .map { it.toTrackRecordDataClass() }
             }.associateBy { it.trackerId }
 
@@ -138,7 +139,8 @@ object Track {
         val track =
             transaction {
                 TrackSearchTable
-                    .select {
+                    .selectAll()
+                    .where {
                         TrackSearchTable.trackerId eq trackerId and
                             (TrackSearchTable.remoteId eq remoteId)
                     }.first()
@@ -162,7 +164,8 @@ object Track {
             val oldestChapter =
                 transaction {
                     ChapterTable
-                        .select {
+                        .selectAll()
+                        .where {
                             (ChapterTable.manga eq mangaId) and (ChapterTable.isRead eq true)
                         }.orderBy(ChapterTable.lastReadAt to SortOrder.ASC)
                         .limit(1)
@@ -186,7 +189,7 @@ object Track {
     suspend fun refresh(recordId: Int) {
         val recordDb =
             transaction {
-                TrackRecordTable.select { TrackRecordTable.id eq recordId }.first()
+                TrackRecordTable.selectAll().where { TrackRecordTable.id eq recordId }.first()
             }
 
         val tracker = TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])!!
@@ -202,7 +205,7 @@ object Track {
     ) {
         val recordDb =
             transaction {
-                TrackRecordTable.select { TrackRecordTable.id eq recordId }.first()
+                TrackRecordTable.selectAll().where { TrackRecordTable.id eq recordId }.first()
             }
 
         val tracker = TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])
@@ -223,7 +226,7 @@ object Track {
         }
         val recordDb =
             transaction {
-                TrackRecordTable.select { TrackRecordTable.id eq input.recordId }.first()
+                TrackRecordTable.selectAll().where { TrackRecordTable.id eq input.recordId }.first()
             }
 
         val tracker = TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])!!
@@ -294,7 +297,8 @@ object Track {
     private fun queryMaxReadChapter(mangaId: Int): ResultRow? =
         transaction {
             ChapterTable
-                .select { (ChapterTable.manga eq mangaId) and (ChapterTable.isRead eq true) }
+                .selectAll()
+                .where { (ChapterTable.manga eq mangaId) and (ChapterTable.isRead eq true) }
                 .orderBy(ChapterTable.chapter_number to SortOrder.DESC)
                 .limit(1)
                 .firstOrNull()
@@ -307,7 +311,8 @@ object Track {
         val records =
             transaction {
                 TrackRecordTable
-                    .select { TrackRecordTable.mangaId eq mangaId }
+                    .selectAll()
+                    .where { TrackRecordTable.mangaId eq mangaId }
                     .toList()
             }
 
@@ -365,7 +370,8 @@ object Track {
         transaction {
             val existingRecord =
                 TrackRecordTable
-                    .select {
+                    .selectAll()
+                    .where {
                         (TrackRecordTable.mangaId eq track.manga_id) and
                             (TrackRecordTable.trackerId eq track.sync_id)
                     }.singleOrNull()

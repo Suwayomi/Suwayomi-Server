@@ -12,11 +12,11 @@ import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
 import eu.kanade.tachiyomi.util.chapter.ChapterSanitizer.sanitize
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.reactivecircus.cache4k.Cache
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
-import mu.KotlinLogging
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
@@ -25,7 +25,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -70,7 +70,8 @@ object Chapter {
         } else {
             transaction {
                 ChapterTable
-                    .select { ChapterTable.manga eq mangaId }
+                    .selectAll()
+                    .where { ChapterTable.manga eq mangaId }
                     .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
                     .map {
                         ChapterTable.toDataClass(it)
@@ -80,7 +81,14 @@ object Chapter {
             }
         }
 
-    fun getCountOfMangaChapters(mangaId: Int): Int = transaction { ChapterTable.select { ChapterTable.manga eq mangaId }.count().toInt() }
+    fun getCountOfMangaChapters(mangaId: Int): Int =
+        transaction {
+            ChapterTable
+                .selectAll()
+                .where { ChapterTable.manga eq mangaId }
+                .count()
+                .toInt()
+        }
 
     private suspend fun getSourceChapters(mangaId: Int): List<ChapterDataClass> {
         val chapterList = fetchChapterList(mangaId)
@@ -88,7 +96,8 @@ object Chapter {
         val dbChapterMap =
             transaction {
                 ChapterTable
-                    .select { ChapterTable.manga eq mangaId }
+                    .selectAll()
+                    .where { ChapterTable.manga eq mangaId }
                     .associateBy({ it[ChapterTable.url] }, { it })
             }
 
@@ -173,7 +182,8 @@ object Chapter {
                 val chaptersInDb =
                     transaction {
                         ChapterTable
-                            .select { ChapterTable.manga eq mangaId }
+                            .selectAll()
+                            .where { ChapterTable.manga eq mangaId }
                             .map { ChapterTable.toDataClass(it) }
                             .toList()
                     }
@@ -533,7 +543,8 @@ object Chapter {
             val mangaIds =
                 transaction {
                     ChapterTable
-                        .select { condition }
+                        .selectAll()
+                        .where(condition)
                         .map { it[ChapterTable.manga].value }
                         .toSet()
                 }
@@ -544,7 +555,8 @@ object Chapter {
     fun getChaptersMetaMaps(chapterIds: List<EntityID<Int>>): Map<EntityID<Int>, Map<String, String>> =
         transaction {
             ChapterMetaTable
-                .select { ChapterMetaTable.ref inList chapterIds }
+                .selectAll()
+                .where { ChapterMetaTable.ref inList chapterIds }
                 .groupBy { it[ChapterMetaTable.ref] }
                 .mapValues { it.value.associate { it[ChapterMetaTable.key] to it[ChapterMetaTable.value] } }
                 .withDefault { emptyMap<String, String>() }
@@ -553,7 +565,8 @@ object Chapter {
     fun getChapterMetaMap(chapter: EntityID<Int>): Map<String, String> =
         transaction {
             ChapterMetaTable
-                .select { ChapterMetaTable.ref eq chapter }
+                .selectAll()
+                .where { ChapterMetaTable.ref eq chapter }
                 .associate { it[ChapterMetaTable.key] to it[ChapterMetaTable.value] }
         }
 
@@ -566,7 +579,8 @@ object Chapter {
         transaction {
             val chapterId =
                 ChapterTable
-                    .select { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }
+                    .selectAll()
+                    .where { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }
                     .first()[ChapterTable.id]
                     .value
             modifyChapterMeta(chapterId, key, value)
@@ -581,7 +595,8 @@ object Chapter {
         transaction {
             val meta =
                 ChapterMetaTable
-                    .select { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
+                    .selectAll()
+                    .where { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
                     .firstOrNull()
 
             if (meta == null) {
@@ -605,7 +620,8 @@ object Chapter {
         transaction {
             val chapterId =
                 ChapterTable
-                    .select { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }
+                    .selectAll()
+                    .where { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }
                     .first()[ChapterTable.id]
                     .value
 
@@ -627,9 +643,11 @@ object Chapter {
             transaction {
                 val chapterIds =
                     ChapterTable
-                        .slice(ChapterTable.manga, ChapterTable.id)
-                        .select { (ChapterTable.sourceOrder inList input.chapterIndexes) and (ChapterTable.manga eq mangaId) }
-                        .map { row ->
+                        .select(ChapterTable.manga, ChapterTable.id)
+                        .where {
+                            (ChapterTable.sourceOrder inList input.chapterIndexes) and
+                                (ChapterTable.manga eq mangaId)
+                        }.map { row ->
                             val chapterId = row[ChapterTable.id].value
                             ChapterDownloadHelper.delete(mangaId, chapterId)
 
@@ -646,8 +664,8 @@ object Chapter {
     fun deleteChapters(chapterIds: List<Int>) {
         transaction {
             ChapterTable
-                .slice(ChapterTable.manga, ChapterTable.id)
-                .select { ChapterTable.id inList chapterIds }
+                .select(ChapterTable.manga, ChapterTable.id)
+                .where { ChapterTable.id inList chapterIds }
                 .forEach { row ->
                     val chapterMangaId = row[ChapterTable.manga].value
                     val chapterId = row[ChapterTable.id].value
@@ -664,7 +682,8 @@ object Chapter {
         paginatedFrom(pageNum) {
             transaction {
                 (ChapterTable innerJoin MangaTable)
-                    .select { (MangaTable.inLibrary eq true) and (ChapterTable.fetchedAt greater MangaTable.inLibraryAt) }
+                    .selectAll()
+                    .where { (MangaTable.inLibrary eq true) and (ChapterTable.fetchedAt greater MangaTable.inLibraryAt) }
                     .orderBy(ChapterTable.fetchedAt to SortOrder.DESC)
                     .map {
                         MangaChapterDataClass(

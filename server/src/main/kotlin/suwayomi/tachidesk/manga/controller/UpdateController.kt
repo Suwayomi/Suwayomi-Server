@@ -1,8 +1,8 @@
 package suwayomi.tachidesk.manga.controller
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.http.HttpStatus
 import io.javalin.websocket.WsConfig
-import mu.KotlinLogging
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.update.IUpdater

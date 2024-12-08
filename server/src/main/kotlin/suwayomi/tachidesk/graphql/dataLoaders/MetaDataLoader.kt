@@ -6,7 +6,7 @@ import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
 import suwayomi.tachidesk.graphql.types.CategoryMetaType
@@ -30,7 +30,8 @@ class GlobalMetaDataLoader : KotlinDataLoader<String, GlobalMetaType?> {
                     addLogger(Slf4jSqlDebugLogger)
                     val metasByRefId =
                         GlobalMetaTable
-                            .select { GlobalMetaTable.key inList ids }
+                            .selectAll()
+                            .where { GlobalMetaTable.key inList ids }
                             .map { GlobalMetaType(it) }
                             .associateBy { it.key }
                     ids.map { metasByRefId[it] }
@@ -49,7 +50,8 @@ class ChapterMetaDataLoader : KotlinDataLoader<Int, List<ChapterMetaType>> {
                     addLogger(Slf4jSqlDebugLogger)
                     val metasByRefId =
                         ChapterMetaTable
-                            .select { ChapterMetaTable.ref inList ids }
+                            .selectAll()
+                            .where { ChapterMetaTable.ref inList ids }
                             .map { ChapterMetaType(it) }
                             .groupBy { it.chapterId }
                     ids.map { metasByRefId[it].orEmpty() }
@@ -68,7 +70,8 @@ class MangaMetaDataLoader : KotlinDataLoader<Int, List<MangaMetaType>> {
                     addLogger(Slf4jSqlDebugLogger)
                     val metasByRefId =
                         MangaMetaTable
-                            .select { MangaMetaTable.ref inList ids }
+                            .selectAll()
+                            .where { MangaMetaTable.ref inList ids }
                             .map { MangaMetaType(it) }
                             .groupBy { it.mangaId }
                     ids.map { metasByRefId[it].orEmpty() }
@@ -87,7 +90,8 @@ class CategoryMetaDataLoader : KotlinDataLoader<Int, List<CategoryMetaType>> {
                     addLogger(Slf4jSqlDebugLogger)
                     val metasByRefId =
                         CategoryMetaTable
-                            .select { CategoryMetaTable.ref inList ids }
+                            .selectAll()
+                            .where { CategoryMetaTable.ref inList ids }
                             .map { CategoryMetaType(it) }
                             .groupBy { it.categoryId }
                     ids.map { metasByRefId[it].orEmpty() }
@@ -106,7 +110,8 @@ class SourceMetaDataLoader : KotlinDataLoader<Long, List<SourceMetaType>> {
                     addLogger(Slf4jSqlDebugLogger)
                     val metasByRefId =
                         SourceMetaTable
-                            .select { SourceMetaTable.ref inList ids }
+                            .selectAll()
+                            .where { SourceMetaTable.ref inList ids }
                             .map { SourceMetaType(it) }
                             .groupBy { it.sourceId }
                     ids.map { metasByRefId[it].orEmpty() }

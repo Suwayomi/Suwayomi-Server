@@ -49,7 +49,7 @@ class ExtensionQuery {
     ): CompletableFuture<ExtensionType> = dataFetchingEnvironment.getValueFromDataLoader("ExtensionDataLoader", pkgName)
 
     enum class ExtensionOrderBy(
-        override val column: Column<out Comparable<*>>,
+        override val column: Column<*>,
     ) : OrderBy<ExtensionType> {
         PKG_NAME(ExtensionTable.pkgName),
         NAME(ExtensionTable.name),
@@ -204,7 +204,7 @@ class ExtensionQuery {
                 )
 
                 if (first != null) {
-                    res.limit(first, offset?.toLong() ?: 0)
+                    res.limit(first).offset(offset?.toLong() ?: 0)
                 } else if (last != null) {
                     res.limit(last)
                 }

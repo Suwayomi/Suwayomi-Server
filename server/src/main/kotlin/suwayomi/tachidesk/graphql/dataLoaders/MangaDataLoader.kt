@@ -15,7 +15,7 @@ import org.dataloader.DataLoaderOptions
 import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.cache.CustomCacheMap
 import suwayomi.tachidesk.graphql.types.MangaNodeList
@@ -35,7 +35,8 @@ class MangaDataLoader : KotlinDataLoader<Int, MangaType?> {
                     addLogger(Slf4jSqlDebugLogger)
                     val manga =
                         MangaTable
-                            .select { MangaTable.id inList ids }
+                            .selectAll()
+                            .where { MangaTable.id inList ids }
                             .map { MangaType(it) }
                             .associateBy { it.id }
                     ids.map { manga[it] }
@@ -56,7 +57,8 @@ class MangaForCategoryDataLoader : KotlinDataLoader<Int, MangaNodeList> {
                         if (ids.contains(0)) {
                             MangaTable
                                 .leftJoin(CategoryMangaTable)
-                                .select { MangaTable.inLibrary eq true }
+                                .selectAll()
+                                .where { MangaTable.inLibrary eq true }
                                 .andWhere { CategoryMangaTable.manga.isNull() }
                                 .map { MangaType(it) }
                                 .let {
@@ -67,7 +69,8 @@ class MangaForCategoryDataLoader : KotlinDataLoader<Int, MangaNodeList> {
                         } +
                             CategoryMangaTable
                                 .innerJoin(MangaTable)
-                                .select { CategoryMangaTable.category inList ids }
+                                .selectAll()
+                                .where { CategoryMangaTable.category inList ids }
                                 .map { Pair(it[CategoryMangaTable.category].value, MangaType(it)) }
                                 .groupBy { it.first }
                                 .mapValues { it.value.map { pair -> pair.second } }
@@ -88,7 +91,8 @@ class MangaForSourceDataLoader : KotlinDataLoader<Long, MangaNodeList> {
                     addLogger(Slf4jSqlDebugLogger)
                     val mangaBySourceId =
                         MangaTable
-                            .select { MangaTable.sourceReference inList ids }
+                            .selectAll()
+                            .where { MangaTable.sourceReference inList ids }
                             .map { MangaType(it) }
                             .groupBy { it.sourceId }
                     ids.map { (mangaBySourceId[it] ?: emptyList()).toNodeList() }
@@ -109,7 +113,8 @@ class MangaForIdsDataLoader : KotlinDataLoader<List<Int>, MangaNodeList> {
                         val ids = mangaIds.flatten().distinct()
                         val manga =
                             MangaTable
-                                .select { MangaTable.id inList ids }
+                                .selectAll()
+                                .where { MangaTable.id inList ids }
                                 .map { MangaType(it) }
                         mangaIds.map { mangaIds ->
                             manga.filter { it.id in mangaIds }.toNodeList()
