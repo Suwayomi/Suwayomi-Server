@@ -97,7 +97,7 @@ class ApolloSubscriptionProtocolHandler(
         try {
             objectMapper.readValue(payload)
         } catch (exception: Exception) {
-            logger.error(exception) { "${"Error parsing the subscription message"}" }
+            logger.error(exception) { "Error parsing the subscription message" }
             null
         }
 
@@ -137,7 +137,7 @@ class ApolloSubscriptionProtocolHandler(
                 }.onCompletion { if (it == null) emitAll(onComplete(operationMessage)) }
                 .onStart { sessionState.saveOperation(context, operationMessage, currentCoroutineContext().job) }
         } catch (exception: Exception) {
-            logger.error(exception) { "${"Error running graphql subscription"}" }
+            logger.error(exception) { "Error running graphql subscription" }
             // Do not terminate the session, just stop the operation messages
             sessionState.completeOperation(operationMessage)
             return flowOf(SubscriptionOperationMessage(type = GQL_ERROR.type, id = operationMessage.id))
@@ -180,7 +180,7 @@ class ApolloSubscriptionProtocolHandler(
     }
 
     private fun onException(exception: Exception): Flow<SubscriptionOperationMessage> {
-        logger.error(exception) { "${"Error parsing the subscription message"}" }
+        logger.error(exception) { "Error parsing the subscription message" }
         return flowOf(basicConnectionErrorMessage)
     }
 }
