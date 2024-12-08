@@ -151,7 +151,7 @@ object JavalinSetup {
         }
 
         app.exception(IllegalArgumentException::class.java) { e, ctx ->
-            logger.error("IllegalArgumentException while handling the request", e)
+            logger.error(e) { "IllegalArgumentException while handling the request" }
             ctx.status(400)
             ctx.result(e.message ?: "Bad Request")
         }
