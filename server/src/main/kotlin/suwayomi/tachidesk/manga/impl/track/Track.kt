@@ -122,7 +122,7 @@ object Track {
         }
     }
 
-    private fun ResultRow.toTrack(mangaId: Int): Track =
+    private fun ResultRow.toTrackFromSearch(mangaId: Int): Track =
         Track.create(this[TrackSearchTable.trackerId]).also {
             it.manga_id = mangaId
             it.media_id = this[TrackSearchTable.remoteId]
@@ -143,8 +143,18 @@ object Track {
                     .where {
                         TrackSearchTable.trackerId eq trackerId and
                             (TrackSearchTable.remoteId eq remoteId)
-                    }.first()
-                    .toTrack(mangaId)
+                    }.firstOrNull()
+                    ?.toTrackFromSearch(mangaId)
+                    ?: TrackRecordTable
+                        .selectAll()
+                        .where {
+                            (TrackRecordTable.trackerId eq trackerId) and
+                                (TrackRecordTable.remoteId eq remoteId)
+                        }.first()
+                        .toTrack()
+                        .apply {
+                            manga_id = mangaId
+                        }
             }
         val tracker = TrackerManager.getTracker(trackerId)!!
 
