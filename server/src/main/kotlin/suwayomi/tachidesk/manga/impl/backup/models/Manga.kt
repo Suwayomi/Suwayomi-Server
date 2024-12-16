@@ -41,13 +41,9 @@ interface Manga : SManga {
         setChapterFlags(order, CHAPTER_SORT_MASK)
     }
 
-    fun sortDescending(): Boolean {
-        return chapter_flags and CHAPTER_SORT_MASK == CHAPTER_SORT_DESC
-    }
+    fun sortDescending(): Boolean = chapter_flags and CHAPTER_SORT_MASK == CHAPTER_SORT_DESC
 
-    fun getGenres(): List<String>? {
-        return genre?.split(", ")?.map { it.trim() }
-    }
+    fun getGenres(): List<String>? = genre?.split(", ")?.map { it.trim() }
 
     private fun setChapterFlags(
         flag: Int,
@@ -120,22 +116,6 @@ interface Manga : SManga {
         const val CHAPTER_DISPLAY_NAME = 0x00000000
         const val CHAPTER_DISPLAY_NUMBER = 0x00100000
         const val CHAPTER_DISPLAY_MASK = 0x00100000
-
-        fun create(source: Long): Manga =
-            MangaImpl().apply {
-                this.source = source
-            }
-
-        fun create(
-            pathUrl: String,
-            title: String,
-            source: Long = 0,
-        ): Manga =
-            MangaImpl().apply {
-                url = pathUrl
-                this.title = title
-                this.source = source
-            }
     }
 }
 

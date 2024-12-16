@@ -11,23 +11,21 @@ import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
-import mu.KotlinLogging
-import org.jetbrains.exposed.sql.select
+import io.github.oshai.kotlinlogging.KotlinLogging
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
+import uy.kohesive.injekt.injectLazy
 import java.util.concurrent.ConcurrentHashMap
 
 object GetCatalogueSource {
     private val logger = KotlinLogging.logger { }
 
     private val sourceCache = ConcurrentHashMap<Long, CatalogueSource>()
-    private val applicationDirs by DI.global.instance<ApplicationDirs>()
+    private val applicationDirs: ApplicationDirs by injectLazy()
 
     private fun getCatalogueSource(sourceId: Long): CatalogueSource? {
         val cachedResult: CatalogueSource? = sourceCache[sourceId]
@@ -37,13 +35,13 @@ object GetCatalogueSource {
 
         val sourceRecord =
             transaction {
-                SourceTable.select { SourceTable.id eq sourceId }.firstOrNull()
+                SourceTable.selectAll().where { SourceTable.id eq sourceId }.firstOrNull()
             } ?: return null
 
         val extensionId = sourceRecord[SourceTable.extension]
         val extensionRecord =
             transaction {
-                ExtensionTable.select { ExtensionTable.id eq extensionId }.first()
+                ExtensionTable.selectAll().where { ExtensionTable.id eq extensionId }.first()
             }
 
         val apkName = extensionRecord[ExtensionTable.apkName]
@@ -61,18 +59,15 @@ object GetCatalogueSource {
         return sourceCache[sourceId]!!
     }
 
-    fun getCatalogueSourceOrNull(sourceId: Long): CatalogueSource? {
-        return try {
+    fun getCatalogueSourceOrNull(sourceId: Long): CatalogueSource? =
+        try {
             getCatalogueSource(sourceId)
         } catch (e: Exception) {
             logger.warn(e) { "getCatalogueSource($sourceId) failed" }
             null
         }
-    }
 
-    fun getCatalogueSourceOrStub(sourceId: Long): CatalogueSource {
-        return getCatalogueSourceOrNull(sourceId) ?: StubSource(sourceId)
-    }
+    fun getCatalogueSourceOrStub(sourceId: Long): CatalogueSource = getCatalogueSourceOrNull(sourceId) ?: StubSource(sourceId)
 
     fun registerCatalogueSource(sourcePair: Pair<Long, CatalogueSource>) {
         sourceCache += sourcePair
@@ -80,5 +75,11 @@ object GetCatalogueSource {
 
     fun unregisterCatalogueSource(sourceId: Long) {
         sourceCache.remove(sourceId)
+    }
+
+    fun unregisterAllCatalogueSources() {
+        (sourceCache - 0L).forEach { (id, _) ->
+            sourceCache.remove(id)
+        }
     }
 }

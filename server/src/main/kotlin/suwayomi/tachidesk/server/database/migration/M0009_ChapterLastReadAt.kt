@@ -10,9 +10,10 @@ package suwayomi.tachidesk.server.database.migration
 import de.neonew.exposed.migrations.helpers.AddColumnMigration
 
 @Suppress("ClassName", "unused")
-class M0009_ChapterLastReadAt : AddColumnMigration(
-    "Chapter",
-    "last_read_at",
-    "BIGINT", // BIGINT == Long
-    "0",
-)
+class M0009_ChapterLastReadAt :
+    AddColumnMigration(
+        "Chapter",
+        "last_read_at",
+        "BIGINT", // BIGINT == Long
+        "0",
+    )

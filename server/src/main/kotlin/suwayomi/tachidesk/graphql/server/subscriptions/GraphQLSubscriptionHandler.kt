@@ -29,8 +29,8 @@ open class GraphQLSubscriptionHandler(
         graphQLRequest: GraphQLRequest,
         graphQLContext: GraphQLContext = GraphQLContext.of(emptyMap<Any, Any>()),
     ): Flow<GraphQLResponse<*>> {
-        val dataLoaderRegistry = dataLoaderRegistryFactory?.generate()
-        val input = graphQLRequest.toExecutionInput(dataLoaderRegistry, graphQLContext)
+        val dataLoaderRegistry = dataLoaderRegistryFactory?.generate(graphQLContext)
+        val input = graphQLRequest.toExecutionInput(graphQLContext, dataLoaderRegistry)
 
         val res = graphQL.execute(input)
         val data = res.getData<Flow<ExecutionResult>>()

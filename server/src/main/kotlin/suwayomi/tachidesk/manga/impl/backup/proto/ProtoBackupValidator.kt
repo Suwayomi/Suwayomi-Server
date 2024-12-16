@@ -11,10 +11,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import okio.buffer
 import okio.gzip
 import okio.source
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSerializer
+import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import java.io.InputStream
 
@@ -27,7 +27,10 @@ object ProtoBackupValidator {
         val missingSourceIds: List<Pair<Long, String>>,
     )
 
-    fun validate(backup: Backup): ValidationResult {
+    fun validate(
+        userId: Int,
+        backup: Backup,
+    ): ValidationResult {
         if (backup.backupManga.isEmpty()) {
             throw Exception("Backup does not contain any manga.")
         }
@@ -36,20 +39,21 @@ object ProtoBackupValidator {
 
         val missingSources =
             transaction {
-                sources.filter { SourceTable.select { SourceTable.id eq it.key }.firstOrNull() == null }
+                sources.filter { SourceTable.selectAll().where { SourceTable.id eq it.key }.firstOrNull() == null }
             }
 
-//        val trackers = backup.backupManga
-//            .flatMap { it.tracking }
-//            .map { it.syncId }
-//            .distinct()
+        val trackers =
+            backup.backupManga
+                .flatMap { it.tracking }
+                .map { it.syncId }
+                .distinct()
 
-        val missingTrackers = listOf("")
-//        val missingTrackers = trackers
-//            .mapNotNull { trackManager.getService(it) }
-//            .filter { !it.isLogged }
-//            .map { context.getString(it.nameRes()) }
-//            .sorted()
+        val missingTrackers =
+            trackers
+                .mapNotNull { TrackerManager.getTracker(it) }
+                .filter { !it.isLoggedIn(userId) }
+                .map { it.name }
+                .sorted()
 
         return ValidationResult(
             missingSources
@@ -61,10 +65,18 @@ object ProtoBackupValidator {
         )
     }
 
-    fun validate(sourceStream: InputStream): ValidationResult {
-        val backupString = sourceStream.source().gzip().buffer().use { it.readByteArray() }
-        val backup = ProtoBackupImport.parser.decodeFromByteArray(BackupSerializer, backupString)
+    fun validate(
+        userId: Int,
+        sourceStream: InputStream,
+    ): ValidationResult {
+        val backupString =
+            sourceStream
+                .source()
+                .gzip()
+                .buffer()
+                .use { it.readByteArray() }
+        val backup = ProtoBackupImport.parser.decodeFromByteArray(Backup.serializer(), backupString)
 
-        return validate(backup)
+        return validate(userId, backup)
     }
 }

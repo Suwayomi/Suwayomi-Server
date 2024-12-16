@@ -14,9 +14,9 @@ import com.typesafe.config.ConfigValue
 import com.typesafe.config.ConfigValueFactory
 import com.typesafe.config.parser.ConfigDocument
 import com.typesafe.config.parser.ConfigDocumentFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import mu.KotlinLogging
 import java.io.File
 
 /**
@@ -47,11 +47,10 @@ open class ConfigManager {
     @Suppress("UNCHECKED_CAST")
     fun <T : ConfigModule> module(type: Class<T>): T = loadedModules[type] as T
 
-    private fun getUserConfig(): Config {
-        return userConfigFile.let {
+    private fun getUserConfig(): Config =
+        userConfigFile.let {
             ConfigFactory.parseFile(it)
         }
-    }
 
     /**
      * Load configs
@@ -72,7 +71,8 @@ open class ConfigManager {
         val userConfig = getUserConfig()
 
         val config =
-            ConfigFactory.empty()
+            ConfigFactory
+                .empty()
                 .withFallback(baseConfig)
                 .withFallback(userConfig)
                 .withFallback(compatConfig)
@@ -153,11 +153,13 @@ open class ConfigManager {
         }
 
         var newUserConfigDoc: ConfigDocument = resetUserConfig(false)
-        userConfig.entrySet().filter {
-            serverConfig.hasPath(
-                it.key,
-            )
-        }.forEach { newUserConfigDoc = newUserConfigDoc.withValue(it.key, it.value) }
+        userConfig
+            .entrySet()
+            .filter {
+                serverConfig.hasPath(
+                    it.key,
+                )
+            }.forEach { newUserConfigDoc = newUserConfigDoc.withValue(it.key, it.value) }
 
         userConfigFile.writeText(newUserConfigDoc.render())
     }

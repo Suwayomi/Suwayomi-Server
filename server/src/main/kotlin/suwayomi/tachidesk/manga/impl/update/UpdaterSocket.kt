@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.manga.impl.update
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.websocket.WsContext
 import io.javalin.websocket.WsMessageContext
 import kotlinx.coroutines.CoroutineScope
@@ -8,27 +9,24 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import mu.KotlinLogging
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
+import uy.kohesive.injekt.injectLazy
 
 object UpdaterSocket : Websocket<UpdateStatus>() {
     private val logger = KotlinLogging.logger {}
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val updater by DI.global.instance<IUpdater>()
+    private val updater: IUpdater by injectLazy()
     private var job: Job? = null
 
     override fun notifyClient(
         ctx: WsContext,
         value: UpdateStatus?,
     ) {
-        ctx.send(value ?: updater.status.value)
+        ctx.send(value ?: updater.statusDeprecated.value)
     }
 
     override fun handleRequest(ctx: WsMessageContext) {
         when (ctx.message()) {
-            "STATUS" -> notifyClient(ctx, updater.status.value)
+            "STATUS" -> notifyClient(ctx, updater.statusDeprecated.value)
             else ->
                 ctx.send(
                     """
@@ -43,7 +41,7 @@ object UpdaterSocket : Websocket<UpdateStatus>() {
     }
 
     override fun addClient(ctx: WsContext) {
-        logger.info { ctx.sessionId }
+        logger.info { ctx.sessionId() }
         super.addClient(ctx)
         if (job?.isActive != true) {
             job = start()
@@ -58,11 +56,9 @@ object UpdaterSocket : Websocket<UpdateStatus>() {
         }
     }
 
-    fun start(): Job {
-        return updater.status
+    fun start(): Job =
+        updater.status
             .onEach {
                 notifyAllClients(it)
-            }
-            .launchIn(scope)
-    }
+            }.launchIn(scope)
 }

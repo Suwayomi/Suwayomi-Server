@@ -7,7 +7,7 @@ package suwayomi.tachidesk.manga.impl.util
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.ClassWriter
@@ -31,7 +31,9 @@ object BytecodeEditor {
      */
     fun fixAndroidClasses(jarFile: Path) {
         FileSystems.newFileSystem(jarFile, null as ClassLoader?)?.use {
-            Files.walk(it.getPath("/")).asSequence()
+            Files
+                .walk(it.getPath("/"))
+                .asSequence()
                 .filterNotNull()
                 .filterNot(Files::isDirectory)
                 .mapNotNull(::getClassBytes)
@@ -99,7 +101,7 @@ object BytecodeEditor {
      */
     private fun String?.replaceDirectly() =
         when (this) {
-            null -> this
+            null -> null
             in classesToReplace -> "$REPLACEMENT_PATH/$this"
             else -> this
         }
@@ -108,15 +110,13 @@ object BytecodeEditor {
      * Replace references to the class, used in places that have
      * other text around the class references
      *
-     * @return [String] with  class references replaced,
-     *          or null if [String] was null
+     * @return [String] with class references replaced, or null if [String] was null
      */
     private fun String?.replaceIndirectly(): String? {
-        var classReference = this
-        if (classReference != null) {
-            classesToReplace.forEach {
-                classReference = classReference?.replace(it, "$REPLACEMENT_PATH/$it")
-            }
+        if (this == null) return null
+        var classReference: String = this
+        classesToReplace.forEach {
+            classReference = classReference.replace(it, "$REPLACEMENT_PATH/$it")
         }
         return classReference
     }
@@ -125,7 +125,7 @@ object BytecodeEditor {
      * Replace all references to certain classes inside the class file
      * with ones that behave more like Androids
      *
-     * @param classfileBuffer Class bytecode to load into ASM for ease of modification
+     * @param pair Class bytecode to load into ASM for ease of modification
      *
      * @return [ByteArray] with modified bytecode
      */

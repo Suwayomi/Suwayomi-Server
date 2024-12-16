@@ -68,15 +68,14 @@ object ChapterRecognition {
      * @param match result of regex
      * @return chapter number if found else null
      */
-    private fun getChapterNumberFromMatch(match: MatchResult): Double {
-        return match.let {
+    private fun getChapterNumberFromMatch(match: MatchResult): Double =
+        match.let {
             val initial = it.groups[1]?.value?.toDouble()!!
             val subChapterDecimal = it.groups[2]?.value
             val subChapterAlpha = it.groups[3]?.value
             val addition = checkForDecimal(subChapterDecimal, subChapterAlpha)
             initial.plus(addition)
         }
-    }
 
     /**
      * Check for decimal in received strings

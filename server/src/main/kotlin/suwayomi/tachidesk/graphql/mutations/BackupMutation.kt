@@ -3,18 +3,16 @@ package suwayomi.tachidesk.graphql.mutations
 import graphql.schema.DataFetchingEnvironment
 import io.javalin.http.UploadedFile
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import suwayomi.tachidesk.graphql.server.TemporaryFileStorage
 import suwayomi.tachidesk.graphql.server.getAttribute
-import suwayomi.tachidesk.graphql.types.BackupRestoreState
 import suwayomi.tachidesk.graphql.types.BackupRestoreStatus
 import suwayomi.tachidesk.graphql.types.toStatus
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
+import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.user.requireUser
@@ -29,7 +27,8 @@ class BackupMutation {
 
     data class RestoreBackupPayload(
         val clientMutationId: String?,
-        val status: BackupRestoreStatus,
+        val id: String,
+        val status: BackupRestoreStatus?,
     )
 
     @OptIn(DelicateCoroutinesApi::class)
@@ -41,18 +40,15 @@ class BackupMutation {
         val (clientMutationId, backup) = input
 
         return future {
-            GlobalScope.launch {
-                ProtoBackupImport.performRestore(userId, backup.content)
+            val restoreId = ProtoBackupImport.restore(userId, backup.content())
+
+            withTimeout(10.seconds) {
+                ProtoBackupImport.notifyFlow.first {
+                    ProtoBackupImport.getRestoreState(restoreId) != null
+                }
             }
 
-            val status =
-                withTimeout(10.seconds) {
-                    ProtoBackupImport.backupRestoreState.first {
-                        it != ProtoBackupImport.BackupRestoreState.Idle
-                    }.toStatus()
-                }
-
-            RestoreBackupPayload(clientMutationId, status)
+            RestoreBackupPayload(clientMutationId, restoreId, ProtoBackupImport.getRestoreState(restoreId)?.toStatus())
         }
     }
 
@@ -72,7 +68,7 @@ class BackupMutation {
         input: CreateBackupInput? = null,
     ): CreateBackupPayload {
         val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        val filename = ProtoBackupExport.getBackupFilename()
+        val filename = Backup.getFilename()
 
         val backup =
             ProtoBackupExport.createBackup(

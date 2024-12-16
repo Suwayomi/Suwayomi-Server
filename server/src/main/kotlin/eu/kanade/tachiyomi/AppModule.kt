@@ -19,17 +19,16 @@ import android.app.Application
 import eu.kanade.tachiyomi.network.JavaScriptEngine
 import eu.kanade.tachiyomi.network.NetworkHelper
 import kotlinx.serialization.json.Json
-import rx.Observable
-import rx.schedulers.Schedulers
-import uy.kohesive.injekt.api.InjektModule
-import uy.kohesive.injekt.api.InjektRegistrar
-import uy.kohesive.injekt.api.addSingleton
-import uy.kohesive.injekt.api.addSingletonFactory
-import uy.kohesive.injekt.api.get
+import kotlinx.serialization.protobuf.ProtoBuf
+import nl.adaptivity.xmlutil.XmlDeclMode
+import nl.adaptivity.xmlutil.core.XmlVersion
+import nl.adaptivity.xmlutil.serialization.XML
+import org.koin.core.module.Module
+import org.koin.dsl.module
 
-class AppModule(val app: Application) : InjektModule {
-    override fun InjektRegistrar.registerInjectables() {
-        addSingleton(app)
+fun createAppModule(app: Application): Module {
+    return module {
+        single { app }
 
 //        addSingletonFactory { PreferencesHelper(app) }
 //
@@ -39,9 +38,9 @@ class AppModule(val app: Application) : InjektModule {
 //
 //        addSingletonFactory { CoverCache(app) }
 
-        addSingletonFactory { NetworkHelper(app) }
+        single { NetworkHelper(app) }
 
-        addSingletonFactory { JavaScriptEngine(app) }
+        single { JavaScriptEngine(app) }
 
 //        addSingletonFactory { SourceManager(app).also { get<ExtensionManager>().init(it) } }
 //
@@ -53,23 +52,38 @@ class AppModule(val app: Application) : InjektModule {
 //
 //        addSingletonFactory { LibrarySyncManager(app) }
 
-        addSingletonFactory { Json { ignoreUnknownKeys = true } }
+        single {
+            Json {
+                ignoreUnknownKeys = true
+                explicitNulls = false
+            }
+        }
 
-        // Asynchronously init expensive components for a faster cold start
+        single {
+            XML {
+                defaultPolicy {
+                    ignoreUnknownChildren()
+                }
+                autoPolymorphic = true
+                xmlDeclMode = XmlDeclMode.Charset
+                indent = 2
+                xmlVersion = XmlVersion.XML10
+            }
+        }
+
+        single {
+            ProtoBuf
+        }
+    }
+
+    // Asynchronously init expensive components for a faster cold start
 
 //        rxAsync { get<PreferencesHelper>() }
 
-        rxAsync { get<NetworkHelper>() }
-
-        rxAsync {
+//        rxAsync {
 //            get<SourceManager>()
 //            get<DownloadManager>()
-        }
+//        }
 
 //        rxAsync { get<DatabaseHelper>() }
-    }
-
-    private fun rxAsync(block: () -> Unit) {
-        Observable.fromCallable { block() }.subscribeOn(Schedulers.computation()).subscribe()
-    }
 }

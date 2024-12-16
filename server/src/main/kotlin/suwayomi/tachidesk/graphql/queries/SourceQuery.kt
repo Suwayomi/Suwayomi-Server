@@ -7,20 +7,14 @@
 
 package suwayomi.tachidesk.graphql.queries
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SortOrder.ASC
-import org.jetbrains.exposed.sql.SortOrder.ASC_NULLS_FIRST
-import org.jetbrains.exposed.sql.SortOrder.ASC_NULLS_LAST
-import org.jetbrains.exposed.sql.SortOrder.DESC
-import org.jetbrains.exposed.sql.SortOrder.DESC_NULLS_FIRST
-import org.jetbrains.exposed.sql.SortOrder.DESC_NULLS_LAST
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
-import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
@@ -35,9 +29,11 @@ import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
+import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
+import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
@@ -58,27 +54,27 @@ class SourceQuery {
         return dataFetchingEnvironment.getValueFromDataLoader("SourceDataLoader", id)
     }
 
-    enum class SourceOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<SourceType> {
+    enum class SourceOrderBy(
+        override val column: Column<*>,
+    ) : OrderBy<SourceType> {
         ID(SourceTable.id),
         NAME(SourceTable.name),
         LANG(SourceTable.lang),
         ;
 
-        override fun greater(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun greater(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 ID -> SourceTable.id greater cursor.value.toLong()
                 NAME -> greaterNotUnique(SourceTable.name, SourceTable.id, cursor, String::toString)
                 LANG -> greaterNotUnique(SourceTable.lang, SourceTable.id, cursor, String::toString)
             }
-        }
 
-        override fun less(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun less(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 ID -> SourceTable.id less cursor.value.toLong()
                 NAME -> lessNotUnique(SourceTable.name, SourceTable.id, cursor, String::toString)
                 LANG -> lessNotUnique(SourceTable.lang, SourceTable.id, cursor, String::toString)
             }
-        }
 
         override fun asCursor(type: SourceType): Cursor {
             val value =
@@ -90,6 +86,11 @@ class SourceQuery {
             return Cursor(value)
         }
     }
+
+    data class SourceOrder(
+        override val by: SourceOrderBy,
+        override val byType: SortOrder? = null,
+    ) : Order<SourceOrderBy>
 
     data class SourceCondition(
         val id: Long? = null,
@@ -117,22 +118,30 @@ class SourceQuery {
         override val or: List<SourceFilter>? = null,
         override val not: SourceFilter? = null,
     ) : Filter<SourceFilter> {
-        override fun getOpList(): List<Op<Boolean>> {
-            return listOfNotNull(
+        override fun getOpList(): List<Op<Boolean>> =
+            listOfNotNull(
                 andFilterWithCompareEntity(SourceTable.id, id),
                 andFilterWithCompareString(SourceTable.name, name),
                 andFilterWithCompareString(SourceTable.lang, lang),
                 andFilterWithCompare(SourceTable.isNsfw, isNsfw),
             )
-        }
     }
 
     fun sources(
         dataFetchingEnvironment: DataFetchingEnvironment,
         condition: SourceCondition? = null,
         filter: SourceFilter? = null,
+        @GraphQLDeprecated(
+            "Replaced with order",
+            replaceWith = ReplaceWith("order"),
+        )
         orderBy: SourceOrderBy? = null,
+        @GraphQLDeprecated(
+            "Replaced with order",
+            replaceWith = ReplaceWith("order"),
+        )
         orderByType: SortOrder? = null,
+        order: List<SourceOrder>? = null,
         before: Cursor? = null,
         after: Cursor? = null,
         first: Int? = null,
@@ -146,17 +155,15 @@ class SourceQuery {
 
                 res.applyOps(condition, filter)
 
-                if (orderBy != null || (last != null || before != null)) {
-                    val orderByColumn = orderBy?.column ?: SourceTable.id
-                    val orderType = orderByType.maybeSwap(last ?: before)
+                if (order != null || orderBy != null || (last != null || before != null)) {
+                    val baseSort = listOf(SourceOrder(SourceOrderBy.ID, SortOrder.ASC))
+                    val deprecatedSort = listOfNotNull(orderBy?.let { SourceOrder(orderBy, orderByType) })
+                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                    actualSort.forEach { (orderBy, orderByType) ->
+                        val orderByColumn = orderBy.column
+                        val orderType = orderByType.maybeSwap(last ?: before)
 
-                    if (orderBy == SourceOrderBy.ID || orderBy == null) {
                         res.orderBy(orderByColumn to orderType)
-                    } else {
-                        res.orderBy(
-                            orderByColumn to orderType,
-                            SourceTable.id to SortOrder.ASC,
-                        )
                     }
                 }
 
@@ -164,24 +171,15 @@ class SourceQuery {
                 val firstResult = res.firstOrNull()?.get(SourceTable.id)?.value
                 val lastResult = res.lastOrNull()?.get(SourceTable.id)?.value
 
-                if (after != null) {
-                    res.andWhere {
-                        when (orderByType) {
-                            DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: SourceOrderBy.ID).less(after)
-                            null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: SourceOrderBy.ID).greater(after)
-                        }
-                    }
-                } else if (before != null) {
-                    res.andWhere {
-                        when (orderByType) {
-                            DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: SourceOrderBy.ID).greater(before)
-                            null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: SourceOrderBy.ID).less(before)
-                        }
-                    }
-                }
+                res.applyBeforeAfter(
+                    before = before,
+                    after = after,
+                    orderBy = order?.firstOrNull()?.by ?: SourceOrderBy.ID,
+                    orderByType = order?.firstOrNull()?.byType,
+                )
 
                 if (first != null) {
-                    res.limit(first, offset?.toLong() ?: 0)
+                    res.limit(first).offset(offset?.toLong() ?: 0)
                 } else if (last != null) {
                     res.limit(last)
                 }
@@ -191,7 +189,7 @@ class SourceQuery {
                 }
             }
 
-        val getAsCursor: (SourceType) -> Cursor = (orderBy ?: SourceOrderBy.ID)::asCursor
+        val getAsCursor: (SourceType) -> Cursor = (order?.firstOrNull()?.by ?: SourceOrderBy.ID)::asCursor
 
         return SourceNodeList(
             resultsAsType,

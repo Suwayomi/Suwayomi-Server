@@ -10,8 +10,9 @@ package suwayomi.tachidesk.server.database.migration
 import de.neonew.exposed.migrations.helpers.RenameFieldMigration
 
 @Suppress("ClassName", "unused")
-class M0002_ChapterTableIndexRename : RenameFieldMigration(
-    "Chapter",
-    "number_in_list",
-    "index",
-)
+class M0002_ChapterTableIndexRename :
+    RenameFieldMigration(
+        "Chapter",
+        "number_in_list",
+        "index",
+    )

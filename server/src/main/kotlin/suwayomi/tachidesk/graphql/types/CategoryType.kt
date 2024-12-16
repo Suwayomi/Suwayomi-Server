@@ -15,7 +15,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
-import suwayomi.tachidesk.manga.model.dataclass.IncludeInUpdate
+import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import java.util.concurrent.CompletableFuture
 
@@ -24,23 +24,23 @@ class CategoryType(
     val order: Int,
     val name: String,
     val default: Boolean,
-    val includeInUpdate: IncludeInUpdate,
+    val includeInUpdate: IncludeOrExclude,
+    val includeInDownload: IncludeOrExclude,
 ) : Node {
     constructor(row: ResultRow) : this(
         row[CategoryTable.id].value,
         row[CategoryTable.order],
         row[CategoryTable.name],
         row[CategoryTable.isDefault],
-        IncludeInUpdate.fromValue(row[CategoryTable.includeInUpdate]),
+        IncludeOrExclude.fromValue(row[CategoryTable.includeInUpdate]),
+        IncludeOrExclude.fromValue(row[CategoryTable.includeInDownload]),
     )
 
-    fun mangas(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, MangaNodeList>("MangaForCategoryDataLoader", id)
-    }
+    fun mangas(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, MangaNodeList>("MangaForCategoryDataLoader", id)
 
-    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<CategoryMetaType>> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, List<CategoryMetaType>>("CategoryMetaDataLoader", id)
-    }
+    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<CategoryMetaType>> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, List<CategoryMetaType>>("CategoryMetaDataLoader", id)
 }
 
 data class CategoryNodeList(
@@ -55,8 +55,8 @@ data class CategoryNodeList(
     ) : Edge()
 
     companion object {
-        fun List<CategoryType>.toNodeList(): CategoryNodeList {
-            return CategoryNodeList(
+        fun List<CategoryType>.toNodeList(): CategoryNodeList =
+            CategoryNodeList(
                 nodes = this,
                 edges = getEdges(),
                 pageInfo =
@@ -68,7 +68,6 @@ data class CategoryNodeList(
                     ),
                 totalCount = size,
             )
-        }
 
         private fun List<CategoryType>.getEdges(): List<CategoryEdge> {
             if (isEmpty()) return emptyList()

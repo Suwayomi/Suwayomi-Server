@@ -40,7 +40,9 @@ class M0001_Initial : AddTableMigration() {
         }
     }
 
-    private class SourceTable(extensionTable: ExtensionTable) : IdTable<Long>() {
+    private class SourceTable(
+        extensionTable: ExtensionTable,
+    ) : IdTable<Long>() {
         override val id = long("id").entityId()
 
         init {
@@ -74,7 +76,9 @@ class M0001_Initial : AddTableMigration() {
         }
     }
 
-    private class ChapterTable(mangaTable: MangaTable) : IntIdTable() {
+    private class ChapterTable(
+        mangaTable: MangaTable,
+    ) : IntIdTable() {
         init {
             varchar("url", 2048)
             varchar("name", 512)
@@ -91,7 +95,9 @@ class M0001_Initial : AddTableMigration() {
         }
     }
 
-    private class PageTable(chapterTable: ChapterTable) : IntIdTable() {
+    private class PageTable(
+        chapterTable: ChapterTable,
+    ) : IntIdTable() {
         init {
             integer("index")
             varchar("url", 2048)
@@ -108,7 +114,10 @@ class M0001_Initial : AddTableMigration() {
         }
     }
 
-    private class CategoryMangaTable(categoryTable: CategoryTable, mangaTable: MangaTable) : IntIdTable() {
+    private class CategoryMangaTable(
+        categoryTable: CategoryTable,
+        mangaTable: MangaTable,
+    ) : IntIdTable() {
         init {
             reference("category", categoryTable)
             reference("manga", mangaTable)

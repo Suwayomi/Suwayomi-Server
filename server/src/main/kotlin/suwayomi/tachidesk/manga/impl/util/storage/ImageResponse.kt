@@ -15,9 +15,7 @@ import java.io.IOException
 import java.io.InputStream
 
 object ImageResponse {
-    private fun pathToInputStream(path: String): InputStream {
-        return FileInputStream(path).buffered()
-    }
+    private fun pathToInputStream(path: String): InputStream = FileInputStream(path).buffered()
 
     /** find file with name when file extension is not known */
     fun findFileNameStartingWith(
@@ -114,4 +112,6 @@ object ImageResponse {
             File(it).delete()
         }
     }
+
+    fun clearImages(saveDir: String): Boolean = File(saveDir).deleteRecursively()
 }

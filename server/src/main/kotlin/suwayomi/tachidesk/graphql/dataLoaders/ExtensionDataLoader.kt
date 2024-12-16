@@ -8,11 +8,12 @@
 package suwayomi.tachidesk.graphql.dataLoaders
 
 import com.expediagroup.graphql.dataloader.KotlinDataLoader
+import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.types.ExtensionType
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
@@ -22,13 +23,15 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 class ExtensionDataLoader : KotlinDataLoader<String, ExtensionType?> {
     override val dataLoaderName = "ExtensionDataLoader"
 
-    override fun getDataLoader(): DataLoader<String, ExtensionType?> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, ExtensionType?> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val extensions =
-                        ExtensionTable.select { ExtensionTable.pkgName inList ids }
+                        ExtensionTable
+                            .selectAll()
+                            .where { ExtensionTable.pkgName inList ids }
                             .map { ExtensionType(it) }
                             .associateBy { it.pkgName }
                     ids.map { extensions[it] }
@@ -40,14 +43,16 @@ class ExtensionDataLoader : KotlinDataLoader<String, ExtensionType?> {
 class ExtensionForSourceDataLoader : KotlinDataLoader<Long, ExtensionType?> {
     override val dataLoaderName = "ExtensionForSourceDataLoader"
 
-    override fun getDataLoader(): DataLoader<Long, ExtensionType?> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Long, ExtensionType?> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val extensions =
-                        ExtensionTable.innerJoin(SourceTable)
-                            .select { SourceTable.id inList ids }
+                        ExtensionTable
+                            .innerJoin(SourceTable)
+                            .selectAll()
+                            .where { SourceTable.id inList ids }
                             .toList()
                             .map { Triple(it[SourceTable.id].value, it[ExtensionTable.pkgName], it) }
                             .let { triples ->

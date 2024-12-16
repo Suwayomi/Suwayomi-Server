@@ -17,7 +17,7 @@ package dalvik.system;
 
 import org.jetbrains.annotations.Nullable;
 import xyz.nulldev.androidcompat.pm.PackageController;
-import xyz.nulldev.androidcompat.util.KodeinGlobalHelper;
+import xyz.nulldev.androidcompat.util.KoinGlobalHelper;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,7 +33,7 @@ import java.util.Enumeration;
  * {@link ClassLoader} implementations.
  */
 public class BaseDexClassLoader extends ClassLoader {
-    private PackageController controller = KodeinGlobalHelper.instance(PackageController.class);
+    private PackageController controller = KoinGlobalHelper.instance(PackageController.class);
 
     private final URLClassLoader realClassloader;
 

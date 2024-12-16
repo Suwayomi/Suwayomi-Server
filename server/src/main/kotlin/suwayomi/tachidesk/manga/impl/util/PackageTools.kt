@@ -14,15 +14,13 @@ import com.googlecode.d2j.dex.Dex2jar
 import com.googlecode.d2j.reader.MultiDexFileReader
 import com.googlecode.dex2jar.tools.BaksmaliBaseDexExceptionHandler
 import eu.kanade.tachiyomi.util.lang.Hash
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import net.dongliu.apk.parser.ApkFile
 import net.dongliu.apk.parser.ApkParsers
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 import suwayomi.tachidesk.server.ApplicationDirs
+import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.pm.InstalledPackage.Companion.toList
 import xyz.nulldev.androidcompat.pm.toPackageInfo
 import java.io.File
@@ -31,10 +29,11 @@ import java.net.URLClassLoader
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.xml.parsers.DocumentBuilderFactory
+import kotlin.io.path.Path
 
 object PackageTools {
     private val logger = KotlinLogging.logger {}
-    private val applicationDirs by DI.global.instance<ApplicationDirs>()
+    private val applicationDirs: ApplicationDirs by injectLazy()
 
     const val EXTENSION_FEATURE = "tachiyomi.extension"
     const val METADATA_SOURCE_CLASS = "tachiyomi.extension.class"
@@ -42,10 +41,6 @@ object PackageTools {
     const val METADATA_NSFW = "tachiyomi.extension.nsfw"
     const val LIB_VERSION_MIN = 1.3
     const val LIB_VERSION_MAX = 1.5
-
-    private const val OFFICIAL_SIGNATURE = "7ce04da7773d41b489f4693a366c36bcd0a11fc39b547168553c285bd7348e23" // inorichi's key
-    private const val UNOFFICIAL_SIGNATURE = "64feb21075ba97ebc9cc981243645b331595c111cef1b0d084236a0403b00581" // ArMor's key
-    val trustedSignatures = setOf(OFFICIAL_SIGNATURE, UNOFFICIAL_SIGNATURE)
 
     /**
      * Convert dex to jar, a wrapper for the dex2jar library
@@ -74,7 +69,7 @@ object PackageTools {
             .to(jarFilePath)
         if (handler.hasException()) {
             val errorFile: Path = File(applicationDirs.extensionsRoot).toPath().resolve("$fileNameWithoutType-error.txt")
-            logger.error(
+            logger.error {
                 """
                 Detail Error Information in File $errorFile
                 Please report this file to one of following link if possible (any one).
@@ -82,8 +77,8 @@ object PackageTools {
                 https://bitbucket.org/pxb1988/dex2jar/issues
                 https://github.com/pxb1988/dex2jar/issues
                 dex2jar@googlegroups.com
-                """.trimIndent(),
-            )
+                """.trimIndent()
+            }
             handler.dump(errorFile, emptyArray<String>())
         } else {
             BytecodeEditor.fixAndroidClasses(jarFilePath)
@@ -102,13 +97,15 @@ object PackageTools {
                     dBuilder.parse(it)
                 }
 
-            logger.trace(parsed.manifestXml)
+            logger.trace { parsed.manifestXml }
 
             applicationInfo.metaData =
                 Bundle().apply {
                     val appTag = doc.getElementsByTagName("application").item(0)
 
-                    appTag?.childNodes?.toList()
+                    appTag
+                        ?.childNodes
+                        ?.toList()
                         .orEmpty()
                         .asSequence()
                         .filter {
@@ -130,7 +127,8 @@ object PackageTools {
                     parsed.apkSingers.flatMap { it.certificateMetas }
                     // + parsed.apkV2Singers.flatMap { it.certificateMetas }
                 ) // Blocked by: https://github.com/hsiafan/apk-parser/issues/72
-                    .map { Signature(it.data) }.toTypedArray()
+                    .map { Signature(it.data) }
+                    .toTypedArray()
         }
     }
 
@@ -155,7 +153,7 @@ object PackageTools {
     ): Any {
         try {
             logger.debug { "loading jar with path: $jarPath" }
-            val classLoader = jarLoaderMap[jarPath] ?: URLClassLoader(arrayOf<URL>(URL("file:$jarPath")))
+            val classLoader = jarLoaderMap[jarPath] ?: URLClassLoader(arrayOf<URL>(Path(jarPath).toUri().toURL()))
             val classToLoad = Class.forName(className, false, classLoader)
 
             jarLoaderMap[jarPath] = classLoader

@@ -9,18 +9,15 @@ package suwayomi.tachidesk.graphql.subscriptions
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.graphql.types.UpdateStatus
 import suwayomi.tachidesk.manga.impl.update.IUpdater
+import uy.kohesive.injekt.injectLazy
 
 class UpdateSubscription {
-    private val updater by DI.global.instance<IUpdater>()
+    private val updater: IUpdater by injectLazy()
 
-    fun updateStatusChanged(): Flow<UpdateStatus> {
-        return updater.status.map { updateStatus ->
+    fun updateStatusChanged(): Flow<UpdateStatus> =
+        updater.status.map { updateStatus ->
             UpdateStatus(updateStatus)
         }
-    }
 }

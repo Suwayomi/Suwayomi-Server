@@ -18,9 +18,7 @@ class CookieManagerImpl : CookieManager() {
         acceptCookie = accept
     }
 
-    override fun acceptCookie(): Boolean {
-        return acceptCookie
-    }
+    override fun acceptCookie(): Boolean = acceptCookie
 
     override fun setAcceptThirdPartyCookies(
         webview: WebView?,
@@ -29,9 +27,7 @@ class CookieManagerImpl : CookieManager() {
         acceptThirdPartyCookies = accept
     }
 
-    override fun acceptThirdPartyCookies(webview: WebView?): Boolean {
-        return acceptThirdPartyCookies
-    }
+    override fun acceptThirdPartyCookies(webview: WebView?): Boolean = acceptThirdPartyCookies
 
     override fun setCookie(
         url: String,
@@ -65,7 +61,8 @@ class CookieManagerImpl : CookieManager() {
             } else {
                 URI("http://$url")
             }
-        return cookieHandler.cookieStore.get(uri)
+        return cookieHandler.cookieStore
+            .get(uri)
             .joinToString("; ") { "${it.name}=${it.value}" }
     }
 
@@ -87,15 +84,11 @@ class CookieManagerImpl : CookieManager() {
         callback?.onReceiveValue(removedCookies)
     }
 
-    override fun hasCookies(): Boolean {
-        return cookieHandler.cookieStore.cookies.isNotEmpty()
-    }
+    override fun hasCookies(): Boolean = cookieHandler.cookieStore.cookies.isNotEmpty()
 
     override fun flush() {}
 
-    override fun allowFileSchemeCookiesImpl(): Boolean {
-        return allowFileSchemeCookies
-    }
+    override fun allowFileSchemeCookiesImpl(): Boolean = allowFileSchemeCookies
 
     override fun setAcceptFileSchemeCookiesImpl(accept: Boolean) {
         allowFileSchemeCookies = acceptCookie

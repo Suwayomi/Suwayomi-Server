@@ -7,17 +7,12 @@
 
 package suwayomi.tachidesk.graphql.queries
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SortOrder.ASC
-import org.jetbrains.exposed.sql.SortOrder.ASC_NULLS_FIRST
-import org.jetbrains.exposed.sql.SortOrder.ASC_NULLS_LAST
-import org.jetbrains.exposed.sql.SortOrder.DESC
-import org.jetbrains.exposed.sql.SortOrder.DESC_NULLS_FIRST
-import org.jetbrains.exposed.sql.SortOrder.DESC_NULLS_LAST
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
@@ -25,7 +20,6 @@ import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.graphql.queries.ChapterQuery.ChapterOrderBy.ID
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
 import suwayomi.tachidesk.graphql.queries.filter.FloatFilter
@@ -40,9 +34,11 @@ import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
+import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
+import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
@@ -71,7 +67,9 @@ class ChapterQuery {
         return dataFetchingEnvironment.getValueFromDataLoader("ChapterDataLoader", id)
     }
 
-    enum class ChapterOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<ChapterType> {
+    enum class ChapterOrderBy(
+        override val column: Column<*>,
+    ) : OrderBy<ChapterType> {
         ID(ChapterTable.id),
         SOURCE_ORDER(ChapterTable.sourceOrder),
         NAME(ChapterTable.name),
@@ -81,8 +79,8 @@ class ChapterQuery {
         FETCHED_AT(ChapterTable.fetchedAt),
         ;
 
-        override fun greater(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun greater(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 ID -> ChapterTable.id greater cursor.value.toInt()
                 SOURCE_ORDER -> greaterNotUnique(ChapterTable.sourceOrder, ChapterTable.id, cursor, String::toInt)
                 NAME -> greaterNotUnique(ChapterTable.name, ChapterTable.id, cursor, String::toString)
@@ -91,10 +89,9 @@ class ChapterQuery {
                 LAST_READ_AT -> greaterNotUnique(ChapterUserTable.lastReadAt, ChapterTable.id, cursor, String::toLong)
                 FETCHED_AT -> greaterNotUnique(ChapterTable.fetchedAt, ChapterTable.id, cursor, String::toLong)
             }
-        }
 
-        override fun less(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun less(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 ID -> ChapterTable.id less cursor.value.toInt()
                 SOURCE_ORDER -> lessNotUnique(ChapterTable.sourceOrder, ChapterTable.id, cursor, String::toInt)
                 NAME -> lessNotUnique(ChapterTable.name, ChapterTable.id, cursor, String::toString)
@@ -103,7 +100,6 @@ class ChapterQuery {
                 LAST_READ_AT -> lessNotUnique(ChapterUserTable.lastReadAt, ChapterTable.id, cursor, String::toLong)
                 FETCHED_AT -> lessNotUnique(ChapterTable.fetchedAt, ChapterTable.id, cursor, String::toLong)
             }
-        }
 
         override fun asCursor(type: ChapterType): Cursor {
             val value =
@@ -119,6 +115,11 @@ class ChapterQuery {
             return Cursor(value)
         }
     }
+
+    data class ChapterOrder(
+        override val by: ChapterOrderBy,
+        override val byType: SortOrder? = null,
+    ) : Order<ChapterOrderBy>
 
     data class ChapterCondition(
         val id: Int? = null,
@@ -183,8 +184,8 @@ class ChapterQuery {
         override val or: List<ChapterFilter>? = null,
         override val not: ChapterFilter? = null,
     ) : Filter<ChapterFilter> {
-        override fun getOpList(): List<Op<Boolean>> {
-            return listOfNotNull(
+        override fun getOpList(): List<Op<Boolean>> =
+            listOfNotNull(
                 andFilterWithCompareEntity(ChapterTable.id, id),
                 andFilterWithCompareString(ChapterTable.url, url),
                 andFilterWithCompareString(ChapterTable.name, name),
@@ -202,7 +203,6 @@ class ChapterQuery {
                 andFilterWithCompare(ChapterTable.isDownloaded, isDownloaded),
                 andFilterWithCompare(ChapterTable.pageCount, pageCount),
             )
-        }
 
         fun getLibraryOp() = andFilterWithCompare(MangaUserTable.inLibrary, inLibrary)
     }
@@ -211,8 +211,17 @@ class ChapterQuery {
         dataFetchingEnvironment: DataFetchingEnvironment,
         condition: ChapterCondition? = null,
         filter: ChapterFilter? = null,
+        @GraphQLDeprecated(
+            "Replaced with order",
+            replaceWith = ReplaceWith("order"),
+        )
         orderBy: ChapterOrderBy? = null,
+        @GraphQLDeprecated(
+            "Replaced with order",
+            replaceWith = ReplaceWith("order"),
+        )
         orderByType: SortOrder? = null,
+        order: List<ChapterOrder>? = null,
         before: Cursor? = null,
         after: Cursor? = null,
         first: Int? = null,
@@ -234,17 +243,15 @@ class ChapterQuery {
 
                 res.applyOps(condition, filter)
 
-                if (orderBy != null || (last != null || before != null)) {
-                    val orderByColumn = orderBy?.column ?: ChapterTable.id
-                    val orderType = orderByType.maybeSwap(last ?: before)
+                if (order != null || orderBy != null || (last != null || before != null)) {
+                    val baseSort = listOf(ChapterOrder(ChapterOrderBy.ID, SortOrder.ASC))
+                    val deprecatedSort = listOfNotNull(orderBy?.let { ChapterOrder(orderBy, orderByType) })
+                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                    actualSort.forEach { (orderBy, orderByType) ->
+                        val orderByColumn = orderBy.column
+                        val orderType = orderByType.maybeSwap(last ?: before)
 
-                    if (orderBy == ChapterOrderBy.ID || orderBy == null) {
                         res.orderBy(orderByColumn to orderType)
-                    } else {
-                        res.orderBy(
-                            orderByColumn to orderType,
-                            ChapterTable.id to SortOrder.ASC,
-                        )
                     }
                 }
 
@@ -252,24 +259,15 @@ class ChapterQuery {
                 val firstResult = res.firstOrNull()?.get(ChapterTable.id)?.value
                 val lastResult = res.lastOrNull()?.get(ChapterTable.id)?.value
 
-                if (after != null) {
-                    res.andWhere {
-                        when (orderByType) {
-                            DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: ID).less(after)
-                            null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: ID).greater(after)
-                        }
-                    }
-                } else if (before != null) {
-                    res.andWhere {
-                        when (orderByType) {
-                            DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: ID).greater(before)
-                            null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: ID).less(before)
-                        }
-                    }
-                }
+                res.applyBeforeAfter(
+                    before = before,
+                    after = after,
+                    orderBy = order?.firstOrNull()?.by ?: ChapterOrderBy.ID,
+                    orderByType = order?.firstOrNull()?.byType,
+                )
 
                 if (first != null) {
-                    res.limit(first, offset?.toLong() ?: 0)
+                    res.limit(first).offset(offset?.toLong() ?: 0)
                 } else if (last != null) {
                     res.limit(last)
                 }
@@ -277,7 +275,7 @@ class ChapterQuery {
                 QueryResults(total, firstResult, lastResult, res.toList())
             }
 
-        val getAsCursor: (ChapterType) -> Cursor = (orderBy ?: ChapterOrderBy.ID)::asCursor
+        val getAsCursor: (ChapterType) -> Cursor = (order?.firstOrNull()?.by ?: ChapterOrderBy.ID)::asCursor
 
         val resultsAsType = queryResults.results.map { ChapterType(it) }
 

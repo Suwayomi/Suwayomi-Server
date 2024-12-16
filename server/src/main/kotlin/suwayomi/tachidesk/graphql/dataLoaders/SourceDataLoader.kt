@@ -8,11 +8,12 @@
 package suwayomi.tachidesk.graphql.dataLoaders
 
 import com.expediagroup.graphql.dataloader.KotlinDataLoader
+import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.types.SourceNodeList
 import suwayomi.tachidesk.graphql.types.SourceNodeList.Companion.toNodeList
@@ -24,13 +25,15 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 class SourceDataLoader : KotlinDataLoader<Long, SourceType?> {
     override val dataLoaderName = "SourceDataLoader"
 
-    override fun getDataLoader(): DataLoader<Long, SourceType?> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Long, SourceType?> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val source =
-                        SourceTable.select { SourceTable.id inList ids }
+                        SourceTable
+                            .selectAll()
+                            .where { SourceTable.id inList ids }
                             .mapNotNull { SourceType(it) }
                             .associateBy { it.id }
                     ids.map { source[it] }
@@ -42,15 +45,17 @@ class SourceDataLoader : KotlinDataLoader<Long, SourceType?> {
 class SourcesForExtensionDataLoader : KotlinDataLoader<String, SourceNodeList> {
     override val dataLoaderName = "SourcesForExtensionDataLoader"
 
-    override fun getDataLoader(): DataLoader<String, SourceNodeList> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, SourceNodeList> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
 
                     val sourcesByExtensionPkg =
-                        SourceTable.innerJoin(ExtensionTable)
-                            .select { ExtensionTable.pkgName inList ids }
+                        SourceTable
+                            .innerJoin(ExtensionTable)
+                            .selectAll()
+                            .where { ExtensionTable.pkgName inList ids }
                             .map { Pair(it[ExtensionTable.pkgName], SourceType(it)) }
                             .groupBy { it.first }
                             .mapValues { it.value.mapNotNull { pair -> pair.second } }

@@ -49,7 +49,9 @@ class MemoryCookieJar : CookieJar {
     }
 }
 
-class WrappedCookie private constructor(val cookie: Cookie) {
+class WrappedCookie private constructor(
+    val cookie: Cookie,
+) {
     fun unwrap() = cookie
 
     fun isExpired() = cookie.expiresAt < System.currentTimeMillis()

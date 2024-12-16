@@ -43,7 +43,5 @@ object TemporaryFileStorage {
         }
     }
 
-    fun retrieveFile(name: String): Path {
-        return folder.resolve(name)
-    }
+    fun retrieveFile(name: String): Path = folder.resolve(name)
 }

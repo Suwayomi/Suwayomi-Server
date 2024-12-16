@@ -13,7 +13,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Manga.getManga
@@ -35,17 +35,21 @@ object Library {
         if (!manga.inLibrary) {
             transaction {
                 val defaultCategories =
-                    CategoryTable.select {
-                        MangaUserTable.user eq userId and
-                            (CategoryTable.isDefault eq true) and
-                            (CategoryTable.id neq Category.DEFAULT_CATEGORY_ID)
-                    }.toList()
+                    CategoryTable
+                        .selectAll()
+                        .where {
+                            MangaUserTable.user eq userId and
+                                (CategoryTable.isDefault eq true) and
+                                (CategoryTable.id neq Category.DEFAULT_CATEGORY_ID)
+                        }.toList()
                 val existingCategories =
-                    CategoryMangaTable.select {
-                        MangaUserTable.user eq userId and (CategoryMangaTable.manga eq mangaId)
-                    }.toList()
+                    CategoryMangaTable
+                        .selectAll()
+                        .where {
+                            MangaUserTable.user eq userId and (CategoryMangaTable.manga eq mangaId)
+                        }.toList()
 
-                if (MangaUserTable.select { MangaUserTable.user eq userId and (MangaUserTable.manga eq mangaId) }.isEmpty()) {
+                if (MangaUserTable.selectAll().where { MangaUserTable.user eq userId and (MangaUserTable.manga eq mangaId) }.isEmpty()) {
                     MangaUserTable.insert {
                         it[MangaUserTable.manga] = mangaId
                         it[MangaUserTable.user] = userId
@@ -94,9 +98,11 @@ object Library {
         scope.launch {
             val mangaInLibrary =
                 transaction {
-                    MangaUserTable.select {
-                        MangaUserTable.manga eq mangaId and (MangaUserTable.inLibrary eq true)
-                    }.isNotEmpty()
+                    MangaUserTable
+                        .selectAll()
+                        .where {
+                            MangaUserTable.manga eq mangaId and (MangaUserTable.inLibrary eq true)
+                        }.isNotEmpty()
                 }
             try {
                 if (mangaInLibrary) {

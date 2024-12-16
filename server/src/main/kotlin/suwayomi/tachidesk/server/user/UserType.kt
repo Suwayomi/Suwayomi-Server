@@ -1,7 +1,9 @@
 package suwayomi.tachidesk.server.user
 
 sealed class UserType {
-    class Admin(val id: Int) : UserType()
+    class Admin(
+        val id: Int,
+    ) : UserType()
 
     class User(
         val id: Int,
@@ -11,13 +13,12 @@ sealed class UserType {
     data object Visitor : UserType()
 }
 
-fun UserType.requireUser(): Int {
-    return when (this) {
+fun UserType.requireUser(): Int =
+    when (this) {
         is UserType.Admin -> id
         is UserType.User -> id
         UserType.Visitor -> throw UnauthorizedException()
     }
-}
 
 fun UserType.requirePermissions(vararg permissions: Permissions) {
     when (this) {

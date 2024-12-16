@@ -10,13 +10,13 @@ package masstest
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
-import mu.KotlinLogging
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -81,23 +81,25 @@ class TestExtensionCompatibility {
         runBlocking(Dispatchers.Default) {
             val semaphore = Semaphore(10)
             val popularCount = AtomicInteger(1)
-            sources.map { source ->
-                async {
-                    semaphore.withPermit {
-                        logger.info { "${popularCount.getAndIncrement()} - Now fetching popular manga from $source" }
-                        try {
-                            mangaToFetch += source to (
-                                repeat { source.getPopularManga(1) }
-                                    .mangas.firstOrNull()
-                                    ?: throw Exception("Source returned no manga")
-                            )
-                        } catch (e: Exception) {
-                            logger.warn { "Failed to fetch popular manga from $source: ${e.message}" }
-                            failedToFetch += source to e
+            sources
+                .map { source ->
+                    async {
+                        semaphore.withPermit {
+                            logger.info { "${popularCount.getAndIncrement()} - Now fetching popular manga from $source" }
+                            try {
+                                mangaToFetch += source to (
+                                    repeat { source.getPopularManga(1) }
+                                        .mangas
+                                        .firstOrNull()
+                                        ?: throw Exception("Source returned no manga")
+                                )
+                            } catch (e: Exception) {
+                                logger.warn { "Failed to fetch popular manga from $source: ${e.message}" }
+                                failedToFetch += source to e
+                            }
                         }
                     }
-                }
-            }.awaitAll()
+                }.awaitAll()
             File("$BASE_PATH/failedToFetch.txt").writeText(
                 failedToFetch.joinToString("\n") { (source, exception) ->
                     "${source.name} (${source.lang.uppercase()}, ${source.id}):" +
@@ -107,24 +109,25 @@ class TestExtensionCompatibility {
             logger.info { "Now fetching manga info from ${mangaToFetch.size} sources" }
 
             val mangaCount = AtomicInteger(1)
-            mangaToFetch.map { (source, manga) ->
-                async {
-                    semaphore.withPermit {
-                        logger.info { "${mangaCount.getAndIncrement()} - Now fetching manga from $source" }
-                        try {
-                            manga.copyFrom(repeat { source.getMangaDetails(manga) })
-                            manga.initialized = true
-                        } catch (e: Exception) {
-                            logger.warn {
-                                "Failed to fetch manga info from $source for ${manga.title} (${source.mangaDetailsRequest(
-                                    manga,
-                                ).url}): ${e.message}"
+            mangaToFetch
+                .map { (source, manga) ->
+                    async {
+                        semaphore.withPermit {
+                            logger.info { "${mangaCount.getAndIncrement()} - Now fetching manga from $source" }
+                            try {
+                                manga.copyFrom(repeat { source.getMangaDetails(manga) })
+                                manga.initialized = true
+                            } catch (e: Exception) {
+                                logger.warn {
+                                    "Failed to fetch manga info from $source for ${manga.title} (${source.mangaDetailsRequest(
+                                        manga,
+                                    ).url}): ${e.message}"
+                                }
+                                mangaFailedToFetch += Triple(source, manga, e)
                             }
-                            mangaFailedToFetch += Triple(source, manga, e)
                         }
                     }
-                }
-            }.awaitAll()
+                }.awaitAll()
             File("$BASE_PATH/MangaFailedToFetch.txt").writeText(
                 mangaFailedToFetch.joinToString("\n") { (source, manga, exception) ->
                     "${source.name} (${source.lang}, ${source.id}):" +
@@ -135,35 +138,40 @@ class TestExtensionCompatibility {
             logger.info { "Now fetching manga chapters from ${mangaToFetch.size} sources" }
 
             val chapterCount = AtomicInteger(1)
-            mangaToFetch.filter { it.second.initialized }.map { (source, manga) ->
-                async {
-                    semaphore.withPermit {
-                        logger.info { "${chapterCount.getAndIncrement()} - Now fetching manga chapters from $source" }
-                        try {
-                            chaptersToFetch +=
-                                Triple(
-                                    source,
-                                    manga,
-                                    repeat { source.getChapterList(manga) }.firstOrNull() ?: throw Exception("Source returned no chapters"),
-                                )
-                        } catch (e: Exception) {
-                            logger.warn {
-                                "Failed to fetch manga chapters from $source for ${manga.title} (${source.mangaDetailsRequest(
-                                    manga,
-                                ).url}): ${e.message}"
+            mangaToFetch
+                .filter { it.second.initialized }
+                .map { (source, manga) ->
+                    async {
+                        semaphore.withPermit {
+                            logger.info { "${chapterCount.getAndIncrement()} - Now fetching manga chapters from $source" }
+                            try {
+                                chaptersToFetch +=
+                                    Triple(
+                                        source,
+                                        manga,
+                                        repeat {
+                                            source.getChapterList(manga)
+                                        }.firstOrNull()
+                                            ?: throw Exception("Source returned no chapters"),
+                                    )
+                            } catch (e: Exception) {
+                                logger.warn {
+                                    "Failed to fetch manga chapters from $source for ${manga.title} (${source.mangaDetailsRequest(
+                                        manga,
+                                    ).url}): ${e.message}"
+                                }
+                                chaptersFailedToFetch += Triple(source, manga, e)
+                            } catch (e: NoClassDefFoundError) {
+                                logger.warn {
+                                    "Failed to fetch manga chapters from $source for ${manga.title} (${source.mangaDetailsRequest(
+                                        manga,
+                                    ).url}): ${e.message}"
+                                }
+                                chaptersFailedToFetch += Triple(source, manga, e)
                             }
-                            chaptersFailedToFetch += Triple(source, manga, e)
-                        } catch (e: NoClassDefFoundError) {
-                            logger.warn {
-                                "Failed to fetch manga chapters from $source for ${manga.title} (${source.mangaDetailsRequest(
-                                    manga,
-                                ).url}): ${e.message}"
-                            }
-                            chaptersFailedToFetch += Triple(source, manga, e)
                         }
                     }
-                }
-            }.awaitAll()
+                }.awaitAll()
 
             File("$BASE_PATH/ChaptersFailedToFetch.txt").writeText(
                 chaptersFailedToFetch.joinToString("\n") { (source, manga, exception) ->
@@ -174,23 +182,24 @@ class TestExtensionCompatibility {
             )
 
             val pageListCount = AtomicInteger(1)
-            chaptersToFetch.map { (source, manga, chapter) ->
-                async {
-                    semaphore.withPermit {
-                        logger.info { "${pageListCount.getAndIncrement()} - Now fetching page list from $source" }
-                        try {
-                            repeat { source.getPageList(chapter) }
-                        } catch (e: Exception) {
-                            logger.warn {
-                                "Failed to fetch manga info from $source for ${manga.title} (${source.mangaDetailsRequest(
-                                    manga,
-                                ).url}): ${e.message}"
+            chaptersToFetch
+                .map { (source, manga, chapter) ->
+                    async {
+                        semaphore.withPermit {
+                            logger.info { "${pageListCount.getAndIncrement()} - Now fetching page list from $source" }
+                            try {
+                                repeat { source.getPageList(chapter) }
+                            } catch (e: Exception) {
+                                logger.warn {
+                                    "Failed to fetch manga info from $source for ${manga.title} (${source.mangaDetailsRequest(
+                                        manga,
+                                    ).url}): ${e.message}"
+                                }
+                                chaptersPageListFailedToFetch += Triple(source, manga to chapter, e)
                             }
-                            chaptersPageListFailedToFetch += Triple(source, manga to chapter, e)
                         }
                     }
-                }
-            }.awaitAll()
+                }.awaitAll()
 
             File("$BASE_PATH/ChapterPageListFailedToFetch.txt").writeText(
                 chaptersPageListFailedToFetch.joinToString("\n") { (source, manga, exception) ->

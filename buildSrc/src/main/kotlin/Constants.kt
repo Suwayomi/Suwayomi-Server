@@ -10,22 +10,24 @@ import java.io.BufferedReader
 const val MainClass = "suwayomi.tachidesk.MainKt"
 
 // should be bumped with each stable release
-val tachideskVersion = System.getenv("ProductVersion") ?: "v0.7.0"
+val tachideskVersion = System.getenv("ProductVersion") ?: "v1.1.1"
 
-val webUIRevisionTag = System.getenv("WebUIRevision") ?: "r983"
+val webUIRevisionTag = System.getenv("WebUIRevision") ?: "r1689"
 
-// counts commits on the master branch
-val tachideskRevision = runCatching {
-    System.getenv("ProductRevision") ?: ProcessBuilder()
-        .command("git", "rev-list", "HEAD", "--count")
-        .start()
-        .let { process ->
-            process.waitFor()
-            val output = process.inputStream.use {
-                it.bufferedReader().use(BufferedReader::readText)
+// counts commits on the current checked out branch
+val getTachideskRevision = {
+    runCatching {
+        System.getenv("ProductRevision") ?: ProcessBuilder()
+            .command("git", "rev-list", "HEAD", "--count")
+            .start()
+            .let { process ->
+                process.waitFor()
+                val output = process.inputStream.use {
+                    it.bufferedReader().use(BufferedReader::readText)
+                }
+                process.destroy()
+                "r" + output.trim()
             }
-            process.destroy()
-            "r" + output.trim()
-        }
-}.getOrDefault("r0")
+    }.getOrDefault("r0")
+}
 

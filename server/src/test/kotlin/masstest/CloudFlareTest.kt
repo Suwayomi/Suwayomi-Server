@@ -1,9 +1,9 @@
 package masstest
 
 import eu.kanade.tachiyomi.source.online.HttpSource
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
-import mu.KotlinLogging
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -40,7 +40,8 @@ class CloudFlareTest {
             }
 
             nhentai =
-                Source.getSourceList()
+                Source
+                    .getSourceList()
                     .firstNotNullOf { it.id.toLong().takeIf { it == 3122156392225024195L } }
                     .let(GetCatalogueSource::getCatalogueSourceOrNull) as HttpSource
         }

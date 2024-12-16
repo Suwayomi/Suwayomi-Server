@@ -1,18 +1,20 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import graphql.execution.DataFetcherResult
 import graphql.schema.DataFetchingEnvironment
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
+import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
-import suwayomi.tachidesk.graphql.types.UpdateState.STOPPED
-import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
+import suwayomi.tachidesk.graphql.types.UpdateState.ERROR
+import suwayomi.tachidesk.graphql.types.UpdateState.IDLE
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
-import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
+import suwayomi.tachidesk.server.util.WebUIFlavor
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
 
@@ -29,42 +31,58 @@ class InfoMutation {
     fun updateWebUI(
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: WebUIUpdateInput,
-    ): CompletableFuture<WebUIUpdatePayload> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    ): CompletableFuture<DataFetcherResult<WebUIUpdatePayload?>> {
         return future {
-            withTimeout(30.seconds) {
-                if (WebInterfaceManager.status.value.state === DOWNLOADING) {
-                    return@withTimeout WebUIUpdatePayload(input.clientMutationId, WebInterfaceManager.status.value)
-                }
+            asDataFetcherResult {
+                dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+                withTimeout(30.seconds) {
+                    if (WebInterfaceManager.status.value.state === DOWNLOADING) {
+                        return@withTimeout WebUIUpdatePayload(input.clientMutationId, WebInterfaceManager.status.value)
+                    }
 
-                val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable()
+                    val flavor = WebUIFlavor.current
 
-                if (!updateAvailable) {
-                    return@withTimeout WebUIUpdatePayload(
+                    val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable(flavor)
+
+                    if (!updateAvailable) {
+                        val didUpdateCheckFail = version.isEmpty()
+
+                        return@withTimeout WebUIUpdatePayload(
+                            input.clientMutationId,
+                            WebInterfaceManager.getStatus(version, if (didUpdateCheckFail) ERROR else IDLE),
+                        )
+                    }
+                    try {
+                        WebInterfaceManager.startDownloadInScope(flavor, version)
+                    } catch (e: Exception) {
+                        // ignore since we use the status anyway
+                    }
+
+                    WebUIUpdatePayload(
                         input.clientMutationId,
-                        WebUIUpdateStatus(
-                            info =
-                                WebUIUpdateInfo(
-                                    channel = serverConfig.webUIChannel.value,
-                                    tag = version,
-                                    updateAvailable,
-                                ),
-                            state = STOPPED,
-                            progress = 0,
-                        ),
+                        updateStatus = WebInterfaceManager.status.first { it.state == DOWNLOADING },
                     )
                 }
-                try {
-                    WebInterfaceManager.startDownloadInScope(version)
-                } catch (e: Exception) {
-                    // ignore since we use the status anyway
-                }
-
-                WebUIUpdatePayload(
-                    input.clientMutationId,
-                    updateStatus = WebInterfaceManager.status.first { it.state == DOWNLOADING },
-                )
             }
         }
     }
+
+    fun resetWebUIUpdateStatus(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+    ): CompletableFuture<DataFetcherResult<WebUIUpdateStatus?>> =
+        future {
+            asDataFetcherResult {
+                dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+                withTimeout(30.seconds) {
+                    val isUpdateFinished = WebInterfaceManager.status.value.state != DOWNLOADING
+                    if (!isUpdateFinished) {
+                        throw Exception("Status reset is not allowed during status \"$DOWNLOADING\"")
+                    }
+
+                    WebInterfaceManager.resetStatus()
+
+                    WebInterfaceManager.status.first { it.state == IDLE }
+                }
+            }
+        }
 }

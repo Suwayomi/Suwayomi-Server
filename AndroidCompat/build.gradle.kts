@@ -1,7 +1,19 @@
 plugins {
-    id(libs.plugins.kotlin.jvm.get().pluginId)
-    id(libs.plugins.kotlin.serialization.get().pluginId)
-    id(libs.plugins.ktlint.get().pluginId)
+    id(
+        libs.plugins.kotlin.jvm
+            .get()
+            .pluginId,
+    )
+    id(
+        libs.plugins.kotlin.serialization
+            .get()
+            .pluginId,
+    )
+    id(
+        libs.plugins.ktlint
+            .get()
+            .pluginId,
+    )
 }
 
 dependencies {
@@ -24,8 +36,8 @@ dependencies {
     // AndroidX annotations
     compileOnly(libs.android.annotations)
 
-    // substitute for duktape-android
-    implementation(libs.bundles.rhino)
+    // substitute for duktape-android/quickjs
+    implementation(libs.bundles.polyglot)
 
     // Kotlin wrapper around Java Preferences, makes certain things easier
     implementation(libs.bundles.settings)

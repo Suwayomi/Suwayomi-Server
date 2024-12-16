@@ -20,23 +20,32 @@ class BackupQuery {
         val name: String,
     )
 
+    data class ValidateBackupTracker(
+        val name: String,
+    )
+
     data class ValidateBackupResult(
         val missingSources: List<ValidateBackupSource>,
+        val missingTrackers: List<ValidateBackupTracker>,
     )
 
     fun validateBackup(
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: ValidateBackupInput,
     ): ValidateBackupResult {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        val result = ProtoBackupValidator.validate(input.backup.content)
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val result = ProtoBackupValidator.validate(userId, input.backup.content())
         return ValidateBackupResult(
             result.missingSourceIds.map { ValidateBackupSource(it.first, it.second) },
+            result.missingTrackers.map { ValidateBackupTracker(it) },
         )
     }
 
-    fun restoreStatus(dataFetchingEnvironment: DataFetchingEnvironment): BackupRestoreStatus {
+    fun restoreStatus(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        id: String,
+    ): BackupRestoreStatus? {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        return ProtoBackupImport.backupRestoreState.value.toStatus()
+        return ProtoBackupImport.getRestoreState(id)?.toStatus()
     }
 }

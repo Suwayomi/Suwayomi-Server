@@ -11,15 +11,15 @@ private const val DEFAULT_COVER_NAME = "cover.jpg"
 class LocalCoverManager(
     private val fileSystem: LocalSourceFileSystem,
 ) {
-    fun find(mangaUrl: String): File? {
-        return fileSystem.getFilesInMangaDirectory(mangaUrl)
+    fun find(mangaUrl: String): File? =
+        fileSystem
+            .getFilesInMangaDirectory(mangaUrl)
             // Get all file whose names start with 'cover'
             .filter { it.isFile && it.nameWithoutExtension.equals("cover", ignoreCase = true) }
             // Get the first actual image
             .firstOrNull {
                 ImageUtil.isImage(it.name) { it.inputStream() }
             }
-    }
 
     fun update(
         manga: SManga,

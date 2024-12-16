@@ -39,6 +39,19 @@ class ChapterType(
     val pageCount: Int,
 //    val chapterCount: Int?,
 ) : Node {
+    companion object {
+        fun clearCacheFor(
+            chapterId: Int,
+            mangaId: Int,
+            dataFetchingEnvironment: DataFetchingEnvironment,
+        ) {
+            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("ChapterDataLoader")?.clear(chapterId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterNodeList>("ChaptersForMangaDataLoader")?.clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, Int>("DownloadedChapterCountForMangaDataLoader")?.clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LastReadChapterForMangaDataLoader")?.clear(mangaId)
+        }
+    }
+
     constructor(row: ResultRow) : this(
         row[ChapterTable.id].value,
         row[ChapterTable.url],
@@ -56,7 +69,7 @@ class ChapterType(
         row[ChapterTable.fetchedAt],
         row[ChapterTable.isDownloaded],
         row[ChapterTable.pageCount],
-//        transaction { ChapterTable.select { manga eq chapterEntry[manga].value }.count().toInt() },
+//        transaction { ChapterTable.selectAll().where { Manga eq chapterEntry[manga].value }.count().toInt() },
     )
 
     constructor(dataClass: ChapterDataClass) : this(
@@ -78,13 +91,11 @@ class ChapterType(
         dataClass.pageCount,
     )
 
-    fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, MangaType>("MangaDataLoader", mangaId)
-    }
+    fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, MangaType>("MangaDataLoader", mangaId)
 
-    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<ChapterMetaType>> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, List<ChapterMetaType>>("ChapterMetaDataLoader", id)
-    }
+    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<ChapterMetaType>> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, List<ChapterMetaType>>("ChapterMetaDataLoader", id)
 }
 
 data class ChapterNodeList(
@@ -99,8 +110,8 @@ data class ChapterNodeList(
     ) : Edge()
 
     companion object {
-        fun List<ChapterType>.toNodeList(): ChapterNodeList {
-            return ChapterNodeList(
+        fun List<ChapterType>.toNodeList(): ChapterNodeList =
+            ChapterNodeList(
                 nodes = this,
                 edges = getEdges(),
                 pageInfo =
@@ -112,7 +123,6 @@ data class ChapterNodeList(
                     ),
                 totalCount = size,
             )
-        }
 
         private fun List<ChapterType>.getEdges(): List<ChapterEdge> {
             if (isEmpty()) return emptyList()

@@ -11,11 +11,13 @@ import java.io.InputStream
 /**
  * Wrapper over ZipFile to load files in epub format.
  */
-class EpubFile(file: File) : Closeable {
+class EpubFile(
+    file: File,
+) : Closeable {
     /**
      * Zip file of this epub.
      */
-    private val zip = ZipFile(file)
+    private val zip = ZipFile.builder().setFile(file).get()
 
     /**
      * Path separator used by this epub.
@@ -32,16 +34,12 @@ class EpubFile(file: File) : Closeable {
     /**
      * Returns an input stream for reading the contents of the specified zip file entry.
      */
-    fun getInputStream(entry: ZipArchiveEntry): InputStream {
-        return zip.getInputStream(entry)
-    }
+    fun getInputStream(entry: ZipArchiveEntry): InputStream = zip.getInputStream(entry)
 
     /**
      * Returns the zip file entry for the specified name, or null if not found.
      */
-    fun getEntry(name: String): ZipArchiveEntry? {
-        return zip.getEntry(name)
-    }
+    fun getEntry(name: String): ZipArchiveEntry? = zip.getEntry(name)
 
     /**
      * Returns the path of all the images found in the epub file.
@@ -81,7 +79,8 @@ class EpubFile(file: File) : Closeable {
      */
     fun getPagesFromDocument(document: Document): List<String> {
         val pages =
-            document.select("manifest > item")
+            document
+                .select("manifest > item")
                 .filter { node -> "application/xhtml+xml" == node.attr("media-type") }
                 .associateBy { it.attr("id") }
 

@@ -6,18 +6,20 @@ import java.io.File
 /**
  * Loader used to load a chapter from a .epub file.
  */
-class EpubPageLoader(file: File) : PageLoader {
+class EpubPageLoader(
+    file: File,
+) : PageLoader {
     private val epub = EpubFile(file)
 
-    override suspend fun getPages(): List<ReaderPage> {
-        return epub.getImagesFromPages()
+    override suspend fun getPages(): List<ReaderPage> =
+        epub
+            .getImagesFromPages()
             .mapIndexed { i, path ->
                 val streamFn = { epub.getInputStream(epub.getEntry(path)!!) }
                 ReaderPage(i).apply {
                     stream = streamFn
                 }
             }
-    }
 
     override fun recycle() {
         epub.close()

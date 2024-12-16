@@ -12,26 +12,28 @@ import com.expediagroup.graphql.server.execution.GraphQLRequestHandler
 import com.expediagroup.graphql.server.execution.GraphQLServer
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import graphql.GraphQL
+import graphql.execution.AsyncExecutionStrategy
 import io.javalin.http.Context
 import io.javalin.websocket.WsCloseContext
 import io.javalin.websocket.WsMessageContext
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import suwayomi.tachidesk.graphql.server.subscriptions.ApolloSubscriptionProtocolHandler
-import suwayomi.tachidesk.graphql.server.subscriptions.GraphQLSubscriptionHandler
 
 class TachideskGraphQLServer(
     requestParser: JavalinGraphQLRequestParser,
     contextFactory: TachideskGraphQLContextFactory,
     requestHandler: GraphQLRequestHandler,
-    subscriptionHandler: GraphQLSubscriptionHandler,
 ) : GraphQLServer<Context>(requestParser, contextFactory, requestHandler) {
     private val objectMapper = jacksonObjectMapper()
-    private val subscriptionProtocolHandler = ApolloSubscriptionProtocolHandler(contextFactory, subscriptionHandler, objectMapper)
+    private val subscriptionProtocolHandler = ApolloSubscriptionProtocolHandler(contextFactory, requestHandler, objectMapper)
 
+    @OptIn(DelicateCoroutinesApi::class)
     fun handleSubscriptionMessage(context: WsMessageContext) {
-        subscriptionProtocolHandler.handleMessage(context)
+        subscriptionProtocolHandler
+            .handleMessage(context)
             .map { objectMapper.writeValueAsString(it) }
             .map { context.send(it) }
             .launchIn(GlobalScope)
@@ -43,8 +45,10 @@ class TachideskGraphQLServer(
 
     companion object {
         private fun getGraphQLObject(): GraphQL =
-            GraphQL.newGraphQL(schema)
+            GraphQL
+                .newGraphQL(schema)
                 .subscriptionExecutionStrategy(FlowSubscriptionExecutionStrategy())
+                .mutationExecutionStrategy(AsyncExecutionStrategy())
                 .defaultDataFetcherExceptionHandler(TachideskDataFetcherExceptionHandler())
                 .build()
 
@@ -54,9 +58,8 @@ class TachideskGraphQLServer(
             val requestParser = JavalinGraphQLRequestParser()
             val contextFactory = TachideskGraphQLContextFactory()
             val requestHandler = GraphQLRequestHandler(graphQL, TachideskDataLoaderRegistryFactory.create())
-            val subscriptionHandler = GraphQLSubscriptionHandler(graphQL, TachideskDataLoaderRegistryFactory.create())
 
-            return TachideskGraphQLServer(requestParser, contextFactory, requestHandler, subscriptionHandler)
+            return TachideskGraphQLServer(requestParser, contextFactory, requestHandler)
         }
     }
 }

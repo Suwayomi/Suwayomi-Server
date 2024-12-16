@@ -7,11 +7,8 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import io.javalin.http.HttpCode
+import io.javalin.http.HttpStatus
 import kotlinx.serialization.json.Json
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Library
@@ -30,10 +27,11 @@ import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.queryParam
 import suwayomi.tachidesk.server.util.withOperation
+import uy.kohesive.injekt.injectLazy
 import kotlin.time.Duration.Companion.days
 
 object MangaController {
-    private val json by DI.global.instance<Json>()
+    private val json: Json by injectLazy()
 
     val retrieve =
         handler(
@@ -47,15 +45,15 @@ object MangaController {
             },
             behaviorOf = { ctx, mangaId, onlineFetch ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.future(
+                ctx.future {
                     future {
                         Manga.getManga(userId, mangaId, onlineFetch)
-                    },
-                )
+                    }.thenApply { ctx.json(it) }
+                }
             },
             withResults = {
-                json<MangaDataClass>(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                json<MangaDataClass>(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -72,15 +70,15 @@ object MangaController {
             },
             behaviorOf = { ctx, mangaId, onlineFetch ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.future(
+                ctx.future {
                     future {
                         Manga.getMangaFull(userId, mangaId, onlineFetch)
-                    },
-                )
+                    }.thenApply { ctx.json(it) }
+                }
             },
             withResults = {
-                json<MangaDataClass>(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                json<MangaDataClass>(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -96,19 +94,19 @@ object MangaController {
             },
             behaviorOf = { ctx, mangaId ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.future(
+                ctx.future {
                     future { Manga.getMangaThumbnail(mangaId) }
                         .thenApply {
                             ctx.header("content-type", it.second)
                             val httpCacheSeconds = 1.days.inWholeSeconds
                             ctx.header("cache-control", "max-age=$httpCacheSeconds")
-                            it.first
-                        },
-                )
+                            ctx.result(it.first)
+                        }
+                }
             },
             withResults = {
-                image(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                image(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -124,13 +122,14 @@ object MangaController {
             },
             behaviorOf = { ctx, mangaId ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.future(
-                    future { Library.addMangaToLibrary(userId, mangaId) },
-                )
+                ctx.future {
+                    future { Library.addMangaToLibrary(userId, mangaId) }
+                        .thenApply { ctx.status(HttpStatus.OK) }
+                }
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -146,13 +145,14 @@ object MangaController {
             },
             behaviorOf = { ctx, mangaId ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.future(
-                    future { Library.removeMangaFromLibrary(userId, mangaId) },
-                )
+                ctx.future {
+                    future { Library.removeMangaFromLibrary(userId, mangaId) }
+                        .thenApply { ctx.status(HttpStatus.OK) }
+                }
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -171,7 +171,7 @@ object MangaController {
                 ctx.json(CategoryManga.getMangaCategories(userId, mangaId))
             },
             withResults = {
-                json<Array<CategoryDataClass>>(HttpCode.OK)
+                json<Array<CategoryDataClass>>(HttpStatus.OK)
             },
         )
 
@@ -192,7 +192,7 @@ object MangaController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -213,7 +213,7 @@ object MangaController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -235,8 +235,8 @@ object MangaController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -257,11 +257,14 @@ object MangaController {
             },
             behaviorOf = { ctx, mangaId, onlineFetch ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.future(future { Chapter.getChapterList(userId, mangaId, onlineFetch) })
+                ctx.future {
+                    future { Chapter.getChapterList(userId, mangaId, onlineFetch) }
+                        .thenApply { ctx.json(it) }
+                }
             },
             withResults = {
-                json<Array<ChapterDataClass>>(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                json<Array<ChapterDataClass>>(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -282,7 +285,7 @@ object MangaController {
                 Chapter.modifyChapters(userId, input, mangaId)
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -309,7 +312,7 @@ object MangaController {
                 )
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -326,11 +329,14 @@ object MangaController {
             },
             behaviorOf = { ctx, mangaId, chapterIndex ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.future(future { getChapterDownloadReadyByIndex(userId, chapterIndex, mangaId) })
+                ctx.future {
+                    future { getChapterDownloadReadyByIndex(userId, chapterIndex, mangaId) }
+                        .thenApply { ctx.json(it) }
+                }
             },
             withResults = {
-                json<ChapterDataClass>(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                json<ChapterDataClass>(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -356,7 +362,7 @@ object MangaController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -378,8 +384,8 @@ object MangaController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -403,8 +409,8 @@ object MangaController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -424,19 +430,19 @@ object MangaController {
             },
             behaviorOf = { ctx, mangaId, chapterIndex, index ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.future(
+                ctx.future {
                     future { Page.getPageImage(mangaId, chapterIndex, index) }
                         .thenApply {
                             ctx.header("content-type", it.second)
                             val httpCacheSeconds = 1.days.inWholeSeconds
                             ctx.header("cache-control", "max-age=$httpCacheSeconds")
-                            it.first
-                        },
-                )
+                            ctx.result(it.first)
+                        }
+                }
             },
             withResults = {
-                image(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                image(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 }

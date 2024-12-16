@@ -1,8 +1,5 @@
 package suwayomi.tachidesk.manga.impl.download.fileProvider.impl
 
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.download.fileProvider.DownloadedFilesProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.FileDownload0Args
@@ -11,14 +8,17 @@ import suwayomi.tachidesk.manga.impl.util.getThumbnailDownloadPath
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getCachedImageResponse
 import suwayomi.tachidesk.server.ApplicationDirs
+import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.InputStream
 
 class MissingThumbnailException : Exception("No thumbnail found")
 
-private val applicationDirs by DI.global.instance<ApplicationDirs>()
+private val applicationDirs: ApplicationDirs by injectLazy()
 
-class ThumbnailFileProvider(val mangaId: Int) : DownloadedFilesProvider {
+class ThumbnailFileProvider(
+    val mangaId: Int,
+) : DownloadedFilesProvider {
     private fun getFilePath(): String? {
         val thumbnailDir = applicationDirs.thumbnailDownloadsRoot
         val fileName = mangaId.toString()
@@ -36,9 +36,7 @@ class ThumbnailFileProvider(val mangaId: Int) : DownloadedFilesProvider {
         return getCachedImageResponse(filePath, filePathWithoutExt)
     }
 
-    override fun getImage(): RetrieveFile0Args {
-        return RetrieveFile0Args(::getImageImpl)
-    }
+    override fun getImage(): RetrieveFile0Args = RetrieveFile0Args(::getImageImpl)
 
     private suspend fun downloadImpl(): Boolean {
         val isExistingFile = getFilePath() != null
@@ -55,9 +53,7 @@ class ThumbnailFileProvider(val mangaId: Int) : DownloadedFilesProvider {
         return true
     }
 
-    override fun download(): FileDownload0Args {
-        return FileDownload0Args(::downloadImpl)
-    }
+    override fun download(): FileDownload0Args = FileDownload0Args(::downloadImpl)
 
     override fun delete(): Boolean {
         val filePath = getFilePath()

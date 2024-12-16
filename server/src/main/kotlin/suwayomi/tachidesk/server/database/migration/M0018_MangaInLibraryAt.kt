@@ -10,9 +10,10 @@ package suwayomi.tachidesk.server.database.migration
 import de.neonew.exposed.migrations.helpers.AddColumnMigration
 
 @Suppress("ClassName", "unused")
-class M0018_MangaInLibraryAt : AddColumnMigration(
-    "Manga",
-    "in_library_at",
-    "BIGINT",
-    "0",
-)
+class M0018_MangaInLibraryAt :
+    AddColumnMigration(
+        "Manga",
+        "in_library_at",
+        "BIGINT",
+        "0",
+    )

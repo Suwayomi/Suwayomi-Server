@@ -5,6 +5,7 @@ gradle.properties
 .fleet
 # But we need these
 !.idea/runConfigurations
+.kotlin
 
 # Ignore Gradle build output directory
 build

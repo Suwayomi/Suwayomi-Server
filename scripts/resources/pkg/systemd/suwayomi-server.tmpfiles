@@ -1,0 +1,2 @@
+#Type  Path                Mode  User              Group             Age  Argument
+d      /var/lib/suwayomi   0755  suwayomi-server   suwayomi-server

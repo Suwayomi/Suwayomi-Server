@@ -17,23 +17,20 @@ import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 
 /**
- * Custom logic for how Tachidesk should create its context given the [Context]
+ * Custom logic for how Suwayomi-Server should create its context given the [Context]
  */
-@Suppress("DEPRECATION")
-class TachideskGraphQLContextFactory : GraphQLContextFactory<com.expediagroup.graphql.generator.execution.GraphQLContext, Context> {
-    override suspend fun generateContextMap(request: Context): Map<Any, Any> {
-        return mapOf(
+class TachideskGraphQLContextFactory : GraphQLContextFactory<Context> {
+    override suspend fun generateContext(request: Context): GraphQLContext =
+        mapOf(
             Context::class to request,
             request.getPair(Attribute.TachideskUser),
-        )
-    }
+        ).toGraphQLContext()
 
-    fun generateContextMap(request: WsContext): Map<Any, Any> {
-        return mapOf(
+    fun generateContextMap(request: WsContext): Map<*, Any> =
+        mapOf(
             Context::class to request,
             request.getPair(Attribute.TachideskUser),
         )
-    }
 
     private fun <T : Any> Context.getPair(attribute: Attribute<T>) = attribute to getAttribute(attribute)
 
@@ -46,17 +43,11 @@ class TachideskGraphQLContextFactory : GraphQLContextFactory<com.expediagroup.gr
  */
 fun Map<*, Any?>.toGraphQLContext(): GraphQLContext = GraphQLContext.of(this)
 
-fun <T : Any> GraphQLContext.getAttribute(attribute: Attribute<T>): T {
-    return get(attribute)
-}
+fun <T : Any> GraphQLContext.getAttribute(attribute: Attribute<T>): T = get(attribute)
 
-fun <T : Any> DataFetchingEnvironment.getAttribute(attribute: Attribute<T>): T {
-    return graphQlContext.get(attribute)
-}
+fun <T : Any> DataFetchingEnvironment.getAttribute(attribute: Attribute<T>): T = graphQlContext.get(attribute)
 
 val BatchLoaderEnvironment.graphQlContext: GraphQLContext
     get() = keyContextsList.filterIsInstance<GraphQLContext>().first()
 
-fun <T : Any> BatchLoaderEnvironment.getAttribute(attribute: Attribute<T>): T {
-    return graphQlContext.getAttribute(attribute)
-}
+fun <T : Any> BatchLoaderEnvironment.getAttribute(attribute: Attribute<T>): T = graphQlContext.getAttribute(attribute)

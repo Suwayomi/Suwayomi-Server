@@ -7,7 +7,7 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import io.javalin.http.HttpCode
+import io.javalin.http.HttpStatus
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
@@ -35,7 +35,7 @@ object CategoryController {
                 ctx.json(Category.getCategoryList(userId))
             },
             withResults = {
-                json<Array<CategoryDataClass>>(HttpCode.OK)
+                json<Array<CategoryDataClass>>(HttpStatus.OK)
             },
         )
 
@@ -54,12 +54,12 @@ object CategoryController {
                 if (Category.createCategory(userId, name) != -1) {
                     ctx.status(200)
                 } else {
-                    ctx.status(HttpCode.BAD_REQUEST)
+                    ctx.status(HttpStatus.BAD_REQUEST)
                 }
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.BAD_REQUEST)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.BAD_REQUEST)
             },
         )
 
@@ -70,19 +70,20 @@ object CategoryController {
             formParam<String?>("name"),
             formParam<Boolean?>("default"),
             formParam<Int?>("includeInUpdate"),
+            formParam<Int?>("includeInDownload"),
             documentWith = {
                 withOperation {
                     summary("Category modify")
                     description("Modify a category")
                 }
             },
-            behaviorOf = { ctx, categoryId, name, isDefault, includeInUpdate ->
+            behaviorOf = { ctx, categoryId, name, isDefault, includeInUpdate, includeInDownload ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                Category.updateCategory(userId, categoryId, name, isDefault, includeInUpdate)
+                Category.updateCategory(userId, categoryId, name, isDefault, includeInUpdate, includeInDownload)
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -102,7 +103,7 @@ object CategoryController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -121,7 +122,7 @@ object CategoryController {
                 ctx.json(CategoryManga.getCategoryMangaList(userId, categoryId))
             },
             withResults = {
-                json<Array<MangaDataClass>>(HttpCode.OK)
+                json<Array<MangaDataClass>>(HttpStatus.OK)
             },
         )
 
@@ -142,7 +143,7 @@ object CategoryController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -164,8 +165,8 @@ object CategoryController {
                 ctx.status(200)
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 }

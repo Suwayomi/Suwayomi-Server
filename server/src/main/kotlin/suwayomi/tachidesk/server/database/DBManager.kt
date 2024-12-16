@@ -9,24 +9,26 @@ package suwayomi.tachidesk.server.database
 
 import de.neonew.exposed.migrations.loadMigrationsFrom
 import de.neonew.exposed.migrations.runMigrations
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.DatabaseConfig
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
+import org.jetbrains.exposed.sql.ExperimentalKeywordApi
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.ServerConfig
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 object DBManager {
     val db by lazy {
-        val applicationDirs by DI.global.instance<ApplicationDirs>()
+        val applicationDirs = Injekt.get<ApplicationDirs>()
         Database.connect(
             "jdbc:h2:${applicationDirs.dataRoot}/database",
             "org.h2.Driver",
             databaseConfig =
                 DatabaseConfig {
                     useNestedTransactions = true
+                    @OptIn(ExperimentalKeywordApi::class)
+                    preserveKeywordCasing = false
                 },
         )
     }

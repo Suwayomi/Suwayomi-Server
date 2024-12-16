@@ -15,13 +15,29 @@ import ch.qos.logback.core.rolling.RollingFileAppender
 import ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy
 import ch.qos.logback.core.util.FileSize
 import com.typesafe.config.Config
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.DelegatingKLogger
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+private fun fileSizeValueOfOrDefault(
+    fileSizeStr: String,
+    default: String,
+): FileSize =
+    try {
+        FileSize.valueOf(fileSizeStr)
+    } catch (e: IllegalArgumentException) {
+        FileSize.valueOf(default)
+    }
+
+private const val FILE_APPENDER_NAME = "SuwayomiDefaultAppender"
 
 private fun createRollingFileAppender(
     logContext: LoggerContext,
     logDirPath: String,
+    maxFiles: Int,
+    maxFileSize: String,
+    maxTotalSize: String,
 ): RollingFileAppender<ILoggingEvent> {
     val logFilename = "application"
 
@@ -34,7 +50,7 @@ private fun createRollingFileAppender(
 
     val appender =
         RollingFileAppender<ILoggingEvent>().apply {
-            name = "FILE"
+            name = FILE_APPENDER_NAME
             context = logContext
             encoder = logEncoder
             file = "$logDirPath/$logFilename.log"
@@ -45,9 +61,9 @@ private fun createRollingFileAppender(
             context = logContext
             setParent(appender)
             fileNamePattern = "$logDirPath/${logFilename}_%d{yyyy-MM-dd}_%i.log.gz"
-            setMaxFileSize(FileSize.valueOf("10mb"))
-            maxHistory = 14
-            setTotalSizeCap(FileSize.valueOf("1gb"))
+            maxHistory = maxFiles.coerceAtLeast(0)
+            setMaxFileSize(fileSizeValueOfOrDefault(maxFileSize, "10mb"))
+            setTotalSizeCap(fileSizeValueOfOrDefault(maxTotalSize, "100mb"))
             start()
         }
 
@@ -57,23 +73,50 @@ private fun createRollingFileAppender(
     return appender
 }
 
-private fun getBaseLogger(): ch.qos.logback.classic.Logger {
-    return (KotlinLogging.logger(Logger.ROOT_LOGGER_NAME).underlyingLogger as ch.qos.logback.classic.Logger)
-}
+private fun getBaseLogger(): ch.qos.logback.classic.Logger =
+    ((KotlinLogging.logger(Logger.ROOT_LOGGER_NAME) as DelegatingKLogger<*>).underlyingLogger as ch.qos.logback.classic.Logger)
 
 private fun getLogger(name: String): ch.qos.logback.classic.Logger {
     val context = LoggerFactory.getILoggerFactory() as LoggerContext
     return context.getLogger(name)
 }
 
-fun initLoggerConfig(appRootPath: String) {
+fun initLoggerConfig(
+    appRootPath: String,
+    maxFiles: Int,
+    maxFileSize: String,
+    maxTotalSize: String,
+) {
     val context = LoggerFactory.getILoggerFactory() as LoggerContext
     val logger = getBaseLogger()
+
     // logback logs to the console by default (at least when adding a console appender logs in the console are duplicated)
-    logger.addAppender(createRollingFileAppender(context, "$appRootPath/logs"))
+    logger.addAppender(createRollingFileAppender(context, "$appRootPath/logs", maxFiles, maxFileSize, maxTotalSize))
 
     // set "kotlin exposed" log level
     setLogLevelFor("Exposed", Level.ERROR)
+}
+
+fun updateFileAppender(
+    maxFiles: Int,
+    maxFileSize: String,
+    maxTotalSize: String,
+) {
+    val logger = getBaseLogger()
+
+    val appender = logger.getAppender(FILE_APPENDER_NAME) as RollingFileAppender<*>? ?: return
+    val rollingPolicy = appender.rollingPolicy as SizeAndTimeBasedRollingPolicy<*>
+    rollingPolicy.apply {
+        maxHistory = maxFiles
+        setMaxFileSize(FileSize.valueOf(maxFileSize))
+        setTotalSizeCap(FileSize.valueOf(maxTotalSize))
+
+        rollingPolicy.stop()
+        appender.stop()
+
+        rollingPolicy.start()
+        appender.start()
+    }
 }
 
 const val BASE_LOGGER_NAME = "_BaseLogger"

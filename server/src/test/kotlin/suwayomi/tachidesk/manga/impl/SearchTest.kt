@@ -35,7 +35,9 @@ import kotlin.test.assertEquals
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SearchTest : ApplicationTest() {
-    class FakeSearchableSource(id: Long) : StubSource(id) {
+    class FakeSearchableSource(
+        id: Long,
+    ) : StubSource(id) {
         var mangas: List<SManga> = emptyList()
 
         @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getSearchManga"))
@@ -43,9 +45,7 @@ class SearchTest : ApplicationTest() {
             page: Int,
             query: String,
             filters: FilterList,
-        ): Observable<MangasPage> {
-            return Observable.just(MangasPage(mangas, false))
-        }
+        ): Observable<MangasPage> = Observable.just(MangasPage(mangas, false))
     }
 
     private val sourceId = 1L
@@ -78,12 +78,12 @@ class SearchTest : ApplicationTest() {
 
 @Suppress("UNCHECKED_CAST")
 class FilterListTest : ApplicationTest() {
-    open class EmptyFilterListSource(id: Long) : StubSource(id) {
+    open class EmptyFilterListSource(
+        id: Long,
+    ) : StubSource(id) {
         open var mFilterList = FilterList()
 
-        override fun getFilterList(): FilterList {
-            return mFilterList
-        }
+        override fun getFilterList(): FilterList = mFilterList
     }
 
     @Test
@@ -99,18 +99,37 @@ class FilterListTest : ApplicationTest() {
         )
     }
 
-    class FilterListSource(id: Long) : EmptyFilterListSource(id) {
-        class SelectFilter(name: String, values: Array<String>) : Filter.Select<String>(name, values)
+    class FilterListSource(
+        id: Long,
+    ) : EmptyFilterListSource(id) {
+        class SelectFilter(
+            name: String,
+            values: Array<String>,
+        ) : Filter.Select<String>(name, values)
 
-        class TextFilter(name: String) : Filter.Text(name)
+        class TextFilter(
+            name: String,
+        ) : Filter.Text(name)
 
-        class TestCheckBox(name: String) : Filter.CheckBox(name, false)
+        class TestCheckBox(
+            name: String,
+        ) : Filter.CheckBox(name, false)
 
-        class TriState(name: String, state: Int) : Filter.TriState(name, state)
+        class TriState(
+            name: String,
+            state: Int,
+        ) : Filter.TriState(name, state)
 
-        class Group(name: String, state: List<TestCheckBox>) : Filter.Group<TestCheckBox>(name, state)
+        class Group(
+            name: String,
+            state: List<TestCheckBox>,
+        ) : Filter.Group<TestCheckBox>(name, state)
 
-        class Sort(name: String, values: Array<String>, state: Selection) : Filter.Sort(name, values, state)
+        class Sort(
+            name: String,
+            values: Array<String>,
+            state: Selection,
+        ) : Filter.Sort(name, values, state)
 
         override var mFilterList =
             FilterList(
@@ -186,6 +205,13 @@ class FilterListTest : ApplicationTest() {
 
         // make sure that we can convert this to json
         JavalinJackson().toJsonString(filterList)
+    }
+
+    fun setFilter(
+        sourceId: Long,
+        filterChange: FilterChange,
+    ) {
+        setFilter(sourceId, listOf(filterChange))
     }
 
     @Test
@@ -320,16 +346,16 @@ class FilterListTest : ApplicationTest() {
     companion object {
         private var sourceCount = 0L
 
-        private fun registerSource(sourceClass: KClass<*>): EmptyFilterListSource {
-            return synchronized(sourceCount) {
+        private fun registerSource(sourceClass: KClass<*>): EmptyFilterListSource =
+            synchronized(sourceCount) {
                 val source = sourceClass.primaryConstructor!!.call(sourceCount) as EmptyFilterListSource
                 registerCatalogueSource(sourceCount to source)
                 sourceCount++
                 source
             }
-        }
 
         @AfterAll
+        @JvmStatic
         fun teardown() {
             (0 until sourceCount).forEach { unregisterCatalogueSource(it) }
         }

@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 import org.jlleitschuh.gradle.ktlint.KtlintExtension
 import org.jlleitschuh.gradle.ktlint.KtlintPlugin
@@ -18,7 +19,7 @@ allprojects {
     repositories {
         mavenCentral()
         google()
-        maven("https://github.com/Suwayomi/Tachidesk-Server/raw/android-jar/")
+        maven("https://github.com/Suwayomi/Suwayomi-Server/raw/android-jar/")
         maven("https://jitpack.io")
     }
 }
@@ -26,8 +27,8 @@ allprojects {
 subprojects {
     plugins.withType<JavaPlugin> {
         extensions.configure<JavaPluginExtension> {
-            sourceCompatibility = JavaVersion.VERSION_1_8
-            targetCompatibility = JavaVersion.VERSION_1_8
+            sourceCompatibility = JavaVersion.VERSION_21
+            targetCompatibility = JavaVersion.VERSION_21
         }
     }
 
@@ -43,12 +44,9 @@ subprojects {
     tasks {
         withType<KotlinJvmCompile> {
             dependsOn("ktlintFormat")
-            kotlinOptions {
-                jvmTarget = JavaVersion.VERSION_1_8.toString()
-
-                freeCompilerArgs += listOf(
-                    "-Xcontext-receivers",
-                )
+            compilerOptions {
+                jvmTarget = JvmTarget.JVM_21
+                freeCompilerArgs.add("-Xcontext-receivers")
             }
         }
     }

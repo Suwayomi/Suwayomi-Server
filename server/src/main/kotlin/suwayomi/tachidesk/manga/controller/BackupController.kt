@@ -1,10 +1,11 @@
 package suwayomi.tachidesk.manga.controller
 
-import io.javalin.http.HttpCode
+import io.javalin.http.HttpStatus
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator
+import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
@@ -31,14 +32,16 @@ object BackupController {
             },
             behaviorOf = { ctx ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.future(
+                ctx.future {
                     future {
-                        ProtoBackupImport.performRestore(userId, ctx.bodyAsInputStream())
-                    },
-                )
+                        ProtoBackupImport.restoreLegacy(userId, ctx.bodyInputStream())
+                    }.thenApply {
+                        ctx.json(it)
+                    }
+                }
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -58,15 +61,17 @@ object BackupController {
             behaviorOf = { ctx ->
                 // TODO: rewrite this with ctx.uploadedFiles(), don't call the multipart field "backup.proto.gz"
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.future(
+                ctx.future {
                     future {
-                        ProtoBackupImport.performRestore(userId, ctx.uploadedFile("backup.proto.gz")!!.content)
-                    },
-                )
+                        ProtoBackupImport.restoreLegacy(userId, ctx.uploadedFile("backup.proto.gz")!!.content())
+                    }.thenApply {
+                        ctx.json(it)
+                    }
+                }
             },
             withResults = {
-                httpCode(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -82,7 +87,7 @@ object BackupController {
             behaviorOf = { ctx ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.contentType("application/octet-stream")
-                ctx.future(
+                ctx.future {
                     future {
                         ProtoBackupExport.createBackup(
                             userId,
@@ -94,11 +99,11 @@ object BackupController {
                                 includeHistory = true,
                             ),
                         )
-                    },
-                )
+                    }.thenApply { ctx.result(it) }
+                }
             },
             withResults = {
-                stream(HttpCode.OK)
+                stream(HttpStatus.OK)
             },
         )
 
@@ -115,8 +120,8 @@ object BackupController {
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.contentType("application/octet-stream")
 
-                ctx.header("Content-Disposition", """attachment; filename="${ProtoBackupExport.getBackupFilename()}"""")
-                ctx.future(
+                ctx.header("Content-Disposition", """attachment; filename="${Backup.getFilename()}"""")
+                ctx.future {
                     future {
                         ProtoBackupExport.createBackup(
                             userId,
@@ -128,11 +133,11 @@ object BackupController {
                                 includeHistory = true,
                             ),
                         )
-                    },
-                )
+                    }.thenApply { ctx.result(it) }
+                }
             },
             withResults = {
-                stream(HttpCode.OK)
+                stream(HttpStatus.OK)
             },
         )
 
@@ -146,15 +151,17 @@ object BackupController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.future(
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.future {
                     future {
-                        ProtoBackupValidator.validate(ctx.bodyAsInputStream())
-                    },
-                )
+                        ProtoBackupValidator.validate(userId, ctx.bodyInputStream())
+                    }.thenApply {
+                        ctx.json(it)
+                    }
+                }
             },
             withResults = {
-                json<ProtoBackupValidator.ValidationResult>(HttpCode.OK)
+                json<ProtoBackupValidator.ValidationResult>(HttpStatus.OK)
             },
         )
 
@@ -176,15 +183,17 @@ object BackupController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.future(
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.future {
                     future {
-                        ProtoBackupValidator.validate(ctx.uploadedFile("backup.proto.gz")!!.content)
-                    },
-                )
+                        ProtoBackupValidator.validate(userId, ctx.uploadedFile("backup.proto.gz")!!.content())
+                    }.thenApply {
+                        ctx.json(it)
+                    }
+                }
             },
             withResults = {
-                json<ProtoBackupValidator.ValidationResult>(HttpCode.OK)
+                json<ProtoBackupValidator.ValidationResult>(HttpStatus.OK)
             },
         )
 }

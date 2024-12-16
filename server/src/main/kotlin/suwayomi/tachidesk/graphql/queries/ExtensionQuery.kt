@@ -7,22 +7,16 @@
 
 package suwayomi.tachidesk.graphql.queries
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import eu.kanade.tachiyomi.source.local.LocalSource
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SortOrder.ASC
-import org.jetbrains.exposed.sql.SortOrder.ASC_NULLS_FIRST
-import org.jetbrains.exposed.sql.SortOrder.ASC_NULLS_LAST
-import org.jetbrains.exposed.sql.SortOrder.DESC
-import org.jetbrains.exposed.sql.SortOrder.DESC_NULLS_FIRST
-import org.jetbrains.exposed.sql.SortOrder.DESC_NULLS_LAST
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
-import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
@@ -36,9 +30,11 @@ import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
+import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
+import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
@@ -58,27 +54,27 @@ class ExtensionQuery {
         return dataFetchingEnvironment.getValueFromDataLoader("ExtensionDataLoader", pkgName)
     }
 
-    enum class ExtensionOrderBy(override val column: Column<out Comparable<*>>) : OrderBy<ExtensionType> {
+    enum class ExtensionOrderBy(
+        override val column: Column<*>,
+    ) : OrderBy<ExtensionType> {
         PKG_NAME(ExtensionTable.pkgName),
         NAME(ExtensionTable.name),
         APK_NAME(ExtensionTable.apkName),
         ;
 
-        override fun greater(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun greater(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 PKG_NAME -> ExtensionTable.pkgName greater cursor.value
                 NAME -> greaterNotUnique(ExtensionTable.name, ExtensionTable.pkgName, cursor, String::toString)
                 APK_NAME -> greaterNotUnique(ExtensionTable.apkName, ExtensionTable.pkgName, cursor, String::toString)
             }
-        }
 
-        override fun less(cursor: Cursor): Op<Boolean> {
-            return when (this) {
+        override fun less(cursor: Cursor): Op<Boolean> =
+            when (this) {
                 PKG_NAME -> ExtensionTable.pkgName less cursor.value
                 NAME -> lessNotUnique(ExtensionTable.name, ExtensionTable.pkgName, cursor, String::toString)
                 APK_NAME -> lessNotUnique(ExtensionTable.apkName, ExtensionTable.pkgName, cursor, String::toString)
             }
-        }
 
         override fun asCursor(type: ExtensionType): Cursor {
             val value =
@@ -91,7 +87,13 @@ class ExtensionQuery {
         }
     }
 
+    data class ExtensionOrder(
+        override val by: ExtensionOrderBy,
+        override val byType: SortOrder? = null,
+    ) : Order<ExtensionOrderBy>
+
     data class ExtensionCondition(
+        val repo: String? = null,
         val apkName: String? = null,
         val iconUrl: String? = null,
         val name: String? = null,
@@ -106,6 +108,7 @@ class ExtensionQuery {
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
+            opAnd.eq(repo, ExtensionTable.repo)
             opAnd.eq(apkName, ExtensionTable.apkName)
             opAnd.eq(iconUrl, ExtensionTable.iconUrl)
             opAnd.eq(name, ExtensionTable.name)
@@ -122,6 +125,7 @@ class ExtensionQuery {
     }
 
     data class ExtensionFilter(
+        val repo: StringFilter? = null,
         val apkName: StringFilter? = null,
         val iconUrl: StringFilter? = null,
         val name: StringFilter? = null,
@@ -137,8 +141,9 @@ class ExtensionQuery {
         override val or: List<ExtensionFilter>? = null,
         override val not: ExtensionFilter? = null,
     ) : Filter<ExtensionFilter> {
-        override fun getOpList(): List<Op<Boolean>> {
-            return listOfNotNull(
+        override fun getOpList(): List<Op<Boolean>> =
+            listOfNotNull(
+                andFilterWithCompareString(ExtensionTable.repo, repo),
                 andFilterWithCompareString(ExtensionTable.apkName, apkName),
                 andFilterWithCompareString(ExtensionTable.iconUrl, iconUrl),
                 andFilterWithCompareString(ExtensionTable.name, name),
@@ -151,15 +156,23 @@ class ExtensionQuery {
                 andFilterWithCompare(ExtensionTable.hasUpdate, hasUpdate),
                 andFilterWithCompare(ExtensionTable.isObsolete, isObsolete),
             )
-        }
     }
 
     fun extensions(
         dataFetchingEnvironment: DataFetchingEnvironment,
         condition: ExtensionCondition? = null,
         filter: ExtensionFilter? = null,
+        @GraphQLDeprecated(
+            "Replaced with order",
+            replaceWith = ReplaceWith("order"),
+        )
         orderBy: ExtensionOrderBy? = null,
+        @GraphQLDeprecated(
+            "Replaced with order",
+            replaceWith = ReplaceWith("order"),
+        )
         orderByType: SortOrder? = null,
+        order: List<ExtensionOrder>? = null,
         before: Cursor? = null,
         after: Cursor? = null,
         first: Int? = null,
@@ -175,17 +188,15 @@ class ExtensionQuery {
 
                 res.applyOps(condition, filter)
 
-                if (orderBy != null || (last != null || before != null)) {
-                    val orderByColumn = orderBy?.column ?: ExtensionTable.pkgName
-                    val orderType = orderByType.maybeSwap(last ?: before)
+                if (order != null || orderBy != null || (last != null || before != null)) {
+                    val baseSort = listOf(ExtensionOrder(ExtensionOrderBy.PKG_NAME, SortOrder.ASC))
+                    val deprecatedSort = listOfNotNull(orderBy?.let { ExtensionOrder(orderBy, orderByType) })
+                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                    actualSort.forEach { (orderBy, orderByType) ->
+                        val orderByColumn = orderBy.column
+                        val orderType = orderByType.maybeSwap(last ?: before)
 
-                    if (orderBy == ExtensionOrderBy.PKG_NAME || orderBy == null) {
                         res.orderBy(orderByColumn to orderType)
-                    } else {
-                        res.orderBy(
-                            orderByColumn to orderType,
-                            ExtensionTable.pkgName to SortOrder.ASC,
-                        )
                     }
                 }
 
@@ -193,24 +204,15 @@ class ExtensionQuery {
                 val firstResult = res.firstOrNull()?.get(ExtensionTable.pkgName)
                 val lastResult = res.lastOrNull()?.get(ExtensionTable.pkgName)
 
-                if (after != null) {
-                    res.andWhere {
-                        when (orderByType) {
-                            DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).less(after)
-                            null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).greater(after)
-                        }
-                    }
-                } else if (before != null) {
-                    res.andWhere {
-                        when (orderByType) {
-                            DESC, DESC_NULLS_FIRST, DESC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).greater(before)
-                            null, ASC, ASC_NULLS_FIRST, ASC_NULLS_LAST -> (orderBy ?: ExtensionOrderBy.PKG_NAME).less(before)
-                        }
-                    }
-                }
+                res.applyBeforeAfter(
+                    before = before,
+                    after = after,
+                    orderBy = order?.firstOrNull()?.by ?: ExtensionOrderBy.PKG_NAME,
+                    orderByType = order?.firstOrNull()?.byType,
+                )
 
                 if (first != null) {
-                    res.limit(first, offset?.toLong() ?: 0)
+                    res.limit(first).offset(offset?.toLong() ?: 0)
                 } else if (last != null) {
                     res.limit(last)
                 }
@@ -218,7 +220,7 @@ class ExtensionQuery {
                 QueryResults(total, firstResult, lastResult, res.toList())
             }
 
-        val getAsCursor: (ExtensionType) -> Cursor = (orderBy ?: ExtensionOrderBy.PKG_NAME)::asCursor
+        val getAsCursor: (ExtensionType) -> Cursor = (order?.firstOrNull()?.by ?: ExtensionOrderBy.PKG_NAME)::asCursor
 
         val resultsAsType = queryResults.results.map { ExtensionType(it) }
 

@@ -11,22 +11,24 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.sourcePreferences
-import io.javalin.plugin.json.JsonMapper
-import mu.KotlinLogging
-import org.jetbrains.exposed.sql.select
+import io.github.oshai.kotlinlogging.KotlinLogging
+import io.javalin.json.JsonMapper
+import io.javalin.json.fromJsonString
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
+import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.extension.Extension.getExtensionIconUrl
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.unregisterCatalogueSource
 import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
+import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import uy.kohesive.injekt.api.get
+import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.androidimpl.CustomContext
 
 object Source {
@@ -36,7 +38,7 @@ object Source {
         return transaction {
             SourceTable.selectAll().mapNotNull {
                 val catalogueSource = getCatalogueSourceOrNull(it[SourceTable.id].value) ?: return@mapNotNull null
-                val sourceExtension = ExtensionTable.select { ExtensionTable.id eq it[SourceTable.extension] }.first()
+                val sourceExtension = ExtensionTable.selectAll().where { ExtensionTable.id eq it[SourceTable.extension] }.first()
 
                 SourceDataClass(
                     it[SourceTable.id].value.toString(),
@@ -54,9 +56,9 @@ object Source {
 
     fun getSource(sourceId: Long): SourceDataClass? { // all the data extracted fresh form the source instance
         return transaction {
-            val source = SourceTable.select { SourceTable.id eq sourceId }.firstOrNull() ?: return@transaction null
+            val source = SourceTable.selectAll().where { SourceTable.id eq sourceId }.firstOrNull() ?: return@transaction null
             val catalogueSource = getCatalogueSourceOrNull(sourceId) ?: return@transaction null
-            val extension = ExtensionTable.select { ExtensionTable.id eq source[SourceTable.extension] }.first()
+            val extension = ExtensionTable.selectAll().where { ExtensionTable.id eq source[SourceTable.extension] }.first()
 
             SourceDataClass(
                 sourceId.toString(),
@@ -73,7 +75,7 @@ object Source {
         }
     }
 
-    private val context by DI.global.instance<CustomContext>()
+    private val context: CustomContext by injectLazy()
 
     /**
      * (2021-11) Clients should support these types for extensions to work properly
@@ -93,11 +95,10 @@ object Source {
     /**
      *  Gets a source's PreferenceScreen, puts the result into [preferenceScreenMap]
      */
-    fun getSourcePreferences(sourceId: Long): List<PreferenceObject> {
-        return getSourcePreferencesRaw(sourceId).map {
+    fun getSourcePreferences(sourceId: Long): List<PreferenceObject> =
+        getSourcePreferencesRaw(sourceId).map {
             PreferenceObject(it::class.java.simpleName, it)
         }
-    }
 
     fun getSourcePreferencesRaw(sourceId: Long): List<Preference> {
         val source = getCatalogueSourceOrStub(sourceId)
@@ -122,7 +123,7 @@ object Source {
         val value: String,
     )
 
-    private val jsonMapper by DI.global.instance<JsonMapper>()
+    private val jsonMapper: JsonMapper by injectLazy()
 
     fun setSourcePreference(
         sourceId: Long,
@@ -130,11 +131,10 @@ object Source {
         value: String,
         getValue: (Preference) -> Any = { pref ->
             println(jsonMapper::class.java.name)
-            @Suppress("UNCHECKED_CAST")
             when (pref.defaultValueType) {
                 "String" -> value
                 "Boolean" -> value.toBoolean()
-                "Set<String>" -> jsonMapper.fromJsonString(value, List::class.java as Class<List<String>>).toSet()
+                "Set<String>" -> jsonMapper.fromJsonString<List<String>>(value).toSet()
                 else -> throw RuntimeException("Unsupported type conversion")
             }
         },
@@ -149,5 +149,41 @@ object Source {
 
         // must reload the source because a preference was changed
         unregisterCatalogueSource(sourceId)
+    }
+
+    fun modifyMeta(
+        userId: Int,
+        sourceId: Long,
+        key: String,
+        value: String,
+    ) {
+        transaction {
+            val meta =
+                transaction {
+                    SourceMetaTable.selectAll().where {
+                        SourceMetaTable.user eq userId and (SourceMetaTable.ref eq sourceId) and
+                            (SourceMetaTable.key eq key)
+                    }
+                }.firstOrNull()
+
+            if (meta == null) {
+                SourceMetaTable.insert {
+                    it[SourceMetaTable.key] = key
+                    it[SourceMetaTable.value] = value
+                    it[SourceMetaTable.ref] = sourceId
+                    it[SourceMetaTable.user] = userId
+                }
+            } else {
+                SourceMetaTable.update(
+                    {
+                        (SourceMetaTable.user eq userId) and
+                            (SourceMetaTable.ref eq sourceId) and
+                            (SourceMetaTable.key eq key)
+                    },
+                ) {
+                    it[SourceMetaTable.value] = value
+                }
+            }
+        }
     }
 }

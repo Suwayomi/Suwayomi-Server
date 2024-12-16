@@ -15,7 +15,7 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.leftJoin
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
@@ -39,13 +39,14 @@ object Category {
         if (name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)) return -1
 
         return transaction {
-            if (CategoryTable.select { CategoryTable.name eq name and (CategoryTable.user eq userId) }.firstOrNull() == null) {
+            if (CategoryTable.selectAll().where { CategoryTable.name eq name and (CategoryTable.user eq userId) }.firstOrNull() == null) {
                 val newCategoryId =
-                    CategoryTable.insertAndGetId {
-                        it[CategoryTable.name] = name
-                        it[CategoryTable.order] = Int.MAX_VALUE
-                        it[CategoryTable.user] = userId
-                    }.value
+                    CategoryTable
+                        .insertAndGetId {
+                            it[CategoryTable.name] = name
+                            it[CategoryTable.order] = Int.MAX_VALUE
+                            it[CategoryTable.user] = userId
+                        }.value
 
                 normalizeCategories(userId)
 
@@ -62,17 +63,20 @@ object Category {
         name: String?,
         isDefault: Boolean?,
         includeInUpdate: Int?,
+        includeInDownload: Int?,
     ) {
         transaction {
             CategoryTable.update({ CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }) {
                 if (
-                    categoryId != DEFAULT_CATEGORY_ID && name != null &&
+                    categoryId != DEFAULT_CATEGORY_ID &&
+                    name != null &&
                     !name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)
                 ) {
                     it[CategoryTable.name] = name
                 }
                 if (categoryId != DEFAULT_CATEGORY_ID && isDefault != null) it[CategoryTable.isDefault] = isDefault
                 if (includeInUpdate != null) it[CategoryTable.includeInUpdate] = includeInUpdate
+                if (includeInDownload != null) it[CategoryTable.includeInDownload] = includeInDownload
             }
         }
     }
@@ -88,8 +92,11 @@ object Category {
         if (from == 0 || to == 0) return
         transaction {
             val categories =
-                CategoryTable.select { CategoryTable.id neq DEFAULT_CATEGORY_ID and (CategoryTable.user eq userId) }
-                    .orderBy(CategoryTable.order to SortOrder.ASC)
+                CategoryTable
+                    .selectAll()
+                    .where {
+                        CategoryTable.id neq DEFAULT_CATEGORY_ID and (CategoryTable.user eq userId)
+                    }.orderBy(CategoryTable.order to SortOrder.ASC)
                     .toMutableList()
             categories.add(to - 1, categories.removeAt(from - 1))
             categories.forEachIndexed { index, cat ->
@@ -115,7 +122,9 @@ object Category {
     /** make sure category order numbers starts from 1 and is consecutive */
     fun normalizeCategories(userId: Int) {
         transaction {
-            CategoryTable.select { CategoryTable.user eq userId }
+            CategoryTable
+                .selectAll()
+                .where { (CategoryTable.user eq userId) }
                 .orderBy(CategoryTable.order to SortOrder.ASC)
                 .sortedWith(compareBy({ it[CategoryTable.id].value != 0 }, { it[CategoryTable.order] }))
                 .forEachIndexed { index, cat ->
@@ -128,9 +137,11 @@ object Category {
 
     private fun needsDefaultCategory(userId: Int) =
         transaction {
-            MangaTable.getWithUserData(userId)
+            MangaTable
+                .getWithUserData(userId)
                 .leftJoin(CategoryMangaTable)
-                .select { MangaUserTable.inLibrary eq true and (CategoryMangaTable.user eq userId) }
+                .selectAll()
+                .where { MangaUserTable.inLibrary eq true and (CategoryMangaTable.user eq userId) }
                 .andWhere { CategoryMangaTable.manga.isNull() }
                 .empty()
                 .not()
@@ -139,9 +150,11 @@ object Category {
     const val DEFAULT_CATEGORY_ID = 0
     const val DEFAULT_CATEGORY_NAME = "Default"
 
-    fun getCategoryList(userId: Int): List<CategoryDataClass> {
-        return transaction {
-            CategoryTable.select { CategoryTable.user eq userId }
+    fun getCategoryList(userId: Int): List<CategoryDataClass> =
+        transaction {
+            CategoryTable
+                .selectAll()
+                .where { CategoryTable.user eq userId }
                 .orderBy(CategoryTable.order to SortOrder.ASC)
                 .let {
                     if (needsDefaultCategory(userId)) {
@@ -149,52 +162,52 @@ object Category {
                     } else {
                         it.andWhere { CategoryTable.id neq DEFAULT_CATEGORY_ID }
                     }
-                }
-                .map {
+                }.map {
                     CategoryTable.toDataClass(it)
                 }
         }
-    }
 
     fun getCategoryById(
         userId: Int,
         categoryId: Int,
-    ): CategoryDataClass? {
-        return transaction {
-            CategoryTable.select { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }.firstOrNull()?.let {
+    ): CategoryDataClass? =
+        transaction {
+            CategoryTable.selectAll().where { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }.firstOrNull()?.let {
                 CategoryTable.toDataClass(it)
             }
         }
-    }
 
     fun getCategorySize(
         userId: Int,
         categoryId: Int,
-    ): Int {
-        return transaction {
+    ): Int =
+        transaction {
             if (categoryId == DEFAULT_CATEGORY_ID) {
-                MangaTable.getWithUserData(userId)
+                MangaTable
+                    .getWithUserData(userId)
                     .leftJoin(CategoryMangaTable)
-                    .select { MangaUserTable.inLibrary eq true and (CategoryMangaTable.user eq userId) }
+                    .selectAll()
+                    .where { MangaUserTable.inLibrary eq true and (CategoryMangaTable.user eq userId) }
                     .andWhere { CategoryMangaTable.manga.isNull() }
             } else {
                 CategoryMangaTable
                     .leftJoin(MangaTable.getWithUserData(userId))
-                    .select { CategoryMangaTable.category eq categoryId and (CategoryMangaTable.user eq userId) }
+                    .selectAll()
+                    .where { CategoryMangaTable.category eq categoryId and (CategoryMangaTable.user eq userId) }
                     .andWhere { MangaUserTable.inLibrary eq true }
             }.count().toInt()
         }
-    }
 
     fun getCategoryMetaMap(
         userId: Int,
         categoryId: Int,
-    ): Map<String, String> {
-        return transaction {
-            CategoryMetaTable.select { CategoryMetaTable.ref eq categoryId and (CategoryMetaTable.user eq userId) }
+    ): Map<String, String> =
+        transaction {
+            CategoryMetaTable
+                .selectAll()
+                .where { CategoryMetaTable.ref eq categoryId and (CategoryMetaTable.user eq userId) }
                 .associate { it[CategoryMetaTable.key] to it[CategoryMetaTable.value] }
         }
-    }
 
     fun modifyMeta(
         userId: Int,
@@ -205,7 +218,7 @@ object Category {
         transaction {
             val meta =
                 transaction {
-                    CategoryMetaTable.select {
+                    CategoryMetaTable.selectAll().where {
                         (CategoryMetaTable.ref eq categoryId) and
                             (CategoryMetaTable.user eq userId) and
                             (CategoryMetaTable.key eq key)

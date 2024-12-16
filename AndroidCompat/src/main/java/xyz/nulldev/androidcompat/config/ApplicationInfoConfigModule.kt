@@ -8,7 +8,9 @@ import xyz.nulldev.ts.config.ConfigModule
  * Application info config.
  */
 
-class ApplicationInfoConfigModule(getConfig: () -> Config) : ConfigModule(getConfig) {
+class ApplicationInfoConfigModule(
+    getConfig: () -> Config,
+) : ConfigModule(getConfig) {
     val packageName: String by getConfig()
     val debug: Boolean by getConfig()
 

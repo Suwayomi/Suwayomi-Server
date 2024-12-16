@@ -26,13 +26,11 @@ main() {
   set -- "${POSITIONAL_ARGS[@]}"
 
   OS="$1"
-  PLAYWRIGHT_VERSION="$(cat gradle/libs.versions.toml | grep -oP "playwright = \"\K([0-9\.]*)(?=\")")"
-  PLAYWRIGHT_REVISION="$(curl --silent "https://raw.githubusercontent.com/microsoft/playwright/v$PLAYWRIGHT_VERSION/packages/playwright-core/browsers.json" 2>&1 | grep -ozP "\"name\": \"chromium\",\n *\"revision\": \"\K[0-9]*")"
   JAR="$(ls server/build/*.jar | tail -n1)"
   RELEASE_NAME="$(echo "${JAR%.*}" | xargs basename)-$OS"
   RELEASE_VERSION="$(tmp="${JAR%-*}"; echo "${tmp##*-}" | tr -d v)"
   #RELEASE_REVISION_NUMBER="$(tmp="${JAR%.*}" && echo "${tmp##*-}" | tr -d r)"
-  local electron_version="v14.0.0"
+  local electron_version="v28.1.3"
 
   # clean temporary directory on function return
   trap "rm -rf $RELEASE_NAME/" RETURN
@@ -53,84 +51,56 @@ main() {
       move_release_to_output_dir
       ;;
     linux-x64)
-      JRE="OpenJDK8U-jre_x64_linux_hotspot_8u302b08.tar.gz"
-      JRE_RELEASE="jdk8u302-b08"
+      # https://github.com/adoptium/temurin21-binaries/releases/
+      JRE_RELEASE="jdk-21.0.5+11"
+      JRE="OpenJDK21U-jre_x64_linux_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
       JRE_DIR="$JRE_RELEASE-jre"
-      JRE_URL="https://github.com/adoptium/temurin8-binaries/releases/download/$JRE_RELEASE/$JRE"
+      JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
       ELECTRON="electron-$electron_version-linux-x64.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_jre_and_electron
-
-      PLAYWRIGHT_PLATFORM="linux"
-      setup_playwright
 
       RELEASE="$RELEASE_NAME.tar.gz"
       make_linux_bundle
       move_release_to_output_dir
       ;;
     macOS-x64)
-      JRE="OpenJDK8U-jre_x64_mac_hotspot_8u302b08.tar.gz"
-      JRE_RELEASE="jdk8u302-b08"
+      # https://github.com/adoptium/temurin21-binaries/releases/
+      JRE_RELEASE="jdk-21.0.5+11"
+      JRE="OpenJDK21U-jre_x64_mac_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
       JRE_DIR="$JRE_RELEASE-jre"
-      JRE_URL="https://github.com/adoptium/temurin8-binaries/releases/download/$JRE_RELEASE/$JRE"
+      JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
       ELECTRON="electron-$electron_version-darwin-x64.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_jre_and_electron
-
-      PLAYWRIGHT_PLATFORM="mac"
-      setup_playwright
 
       RELEASE="$RELEASE_NAME.zip"
       make_macos_bundle
       move_release_to_output_dir
       ;;
     macOS-arm64)
-      JRE="zulu8.56.0.23-ca-jre8.0.302-macosx_aarch64.tar.gz"
-      JRE_RELEASE="zulu8.56.0.23-ca-jre8.0.302-macosx_aarch64"
-      JRE_DIR="$JRE_RELEASE/zulu-8.jre"
-      JRE_URL="https://cdn.azul.com/zulu/bin/$JRE"
+      # https://github.com/adoptium/temurin21-binaries/releases/
+      JRE_RELEASE="jdk-21.0.5+11"
+      JRE="OpenJDK21U-jre_aarch64_mac_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
+      JRE_DIR="$JRE_RELEASE-jre"
+      JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
       ELECTRON="electron-$electron_version-darwin-arm64.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_jre_and_electron
-
-      PLAYWRIGHT_PLATFORM="mac-arm64"
-      setup_playwright
 
       RELEASE="$RELEASE_NAME.zip"
       make_macos_bundle
       move_release_to_output_dir
       ;;
-    windows-x86)
-      JRE="OpenJDK8U-jre_x86-32_windows_hotspot_8u292b10.zip"
-      JRE_RELEASE="jdk8u292-b10"
-      JRE_DIR="$JRE_RELEASE-jre"
-      JRE_URL="https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/$JRE_RELEASE/$JRE"
-      ELECTRON="electron-$electron_version-win32-ia32.zip"
-      ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
-      download_jre_and_electron
-
-      PLAYWRIGHT_PLATFORM="win64"
-      setup_playwright
-
-      RELEASE="$RELEASE_NAME.zip"
-      make_windows_bundle
-      move_release_to_output_dir
-
-      RELEASE="$RELEASE_NAME.msi"
-      make_windows_package
-      move_release_to_output_dir
-      ;;
     windows-x64)
-      JRE="OpenJDK8U-jre_x64_windows_hotspot_8u302b08.zip"
-      JRE_RELEASE="jdk8u302-b08"
+      # https://github.com/adoptium/temurin21-binaries/releases/
+      JRE_RELEASE="jdk-21.0.5+11"
+      JRE="OpenJDK21U-jre_x64_windows_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').zip"
       JRE_DIR="$JRE_RELEASE-jre"
-      JRE_URL="https://github.com/adoptium/temurin8-binaries/releases/download/$JRE_RELEASE/$JRE"
+      JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
       ELECTRON="electron-$electron_version-win32-x64.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_jre_and_electron
-
-      PLAYWRIGHT_PLATFORM="win64"
-      setup_playwright
 
       RELEASE="$RELEASE_NAME.zip"
       make_windows_bundle
@@ -155,9 +125,9 @@ move_release_to_output_dir() {
 }
 
 download_launcher() {
-  LAUNCHER_URL=$(curl -s "https://api.github.com/repos/Suwayomi/Tachidesk-Launcher/releases/latest" | grep "browser_download_url" | grep ".jar" | head -n 1 | cut -d '"' -f 4)
-  curl -L "$LAUNCHER_URL" -o "Tachidesk-Launcher.jar"
-  mv "Tachidesk-Launcher.jar" "$RELEASE_NAME/Tachidesk-Launcher.jar"
+  LAUNCHER_URL=$(curl -s "https://api.github.com/repos/Suwayomi/Suwayomi-Launcher/releases/latest" | grep "browser_download_url" | grep ".jar" | head -n 1 | cut -d '"' -f 4)
+  curl -L "$LAUNCHER_URL" -o "Suwayomi-Launcher.jar"
+  mv "Suwayomi-Launcher.jar" "$RELEASE_NAME/Suwayomi-Launcher.jar"
 }
 
 download_jre_and_electron() {
@@ -176,6 +146,9 @@ download_jre_and_electron() {
   fi
   mv "$JRE_DIR" "$RELEASE_NAME/jre"
   unzip "$ELECTRON" -d "$RELEASE_NAME/electron/"
+
+  mkdir "$RELEASE_NAME/bin"
+
   tree
 }
 
@@ -183,26 +156,26 @@ copy_linux_package_assets_to() {
   local output_dir
   output_dir="$(readlink -e "$1" || exit 1)"
 
-  cp "scripts/resources/pkg/tachidesk-server.sh" "$output_dir/"
-  cp "scripts/resources/pkg/tachidesk-server.desktop" "$output_dir/"
-  cp "scripts/resources/pkg/tachidesk-launcher.sh" "$output_dir/"
-  cp "scripts/resources/pkg/tachidesk-launcher.desktop" "$output_dir/"
+  cp "scripts/resources/pkg/suwayomi-server.sh" "$output_dir/"
+  cp "scripts/resources/pkg/suwayomi-server.desktop" "$output_dir/"
+  cp "scripts/resources/pkg/suwayomi-launcher.sh" "$output_dir/"
+  cp "scripts/resources/pkg/suwayomi-launcher.desktop" "$output_dir/"
   cp "scripts/resources/pkg/systemd"/* "$output_dir/"
   cp "server/src/main/resources/icon/faviconlogo-128.png" \
-    "$output_dir/tachidesk-server.png"
+    "$output_dir/suwayomi-server.png"
 }
 
 make_linux_bundle() {
-  cp "$JAR" "$RELEASE_NAME/bin/Tachidesk-Server.jar"
-  cp "scripts/resources/tachidesk-launcher.sh" "$RELEASE_NAME/"
-  cp "scripts/resources/tachidesk-server.sh" "$RELEASE_NAME/"
+  cp "$JAR" "$RELEASE_NAME/bin/Suwayomi-Server.jar"
+  cp "scripts/resources/suwayomi-launcher.sh" "$RELEASE_NAME/"
+  cp "scripts/resources/suwayomi-server.sh" "$RELEASE_NAME/"
 
   tar -I "gzip -9" -cvf "$RELEASE" "$RELEASE_NAME/"
 }
 
 make_macos_bundle() {
-  cp "$JAR" "$RELEASE_NAME/bin/Tachidesk-Server.jar"
-  cp "scripts/resources/Tachidesk Launcher.command" "$RELEASE_NAME/"
+  cp "$JAR" "$RELEASE_NAME/bin/Suwayomi-Server.jar"
+  cp "scripts/resources/Suwayomi Launcher.command" "$RELEASE_NAME/"
 
   zip -9 -r "$RELEASE" "$RELEASE_NAME/"
 }
@@ -211,13 +184,13 @@ make_macos_bundle() {
 # https://www.debian.org/doc/manuals/packaging-tutorial/packaging-tutorial.pdf
 make_deb_package() {
   #behind $RELEASE_VERSION is hyphen "-"
-  local source_dir="tachidesk-server-$RELEASE_VERSION"
+  local source_dir="suwayomi-server-$RELEASE_VERSION"
   #behind $RELEASE_VERSION is underscore "_"
-  local upstream_source="tachidesk-server_$RELEASE_VERSION.orig.tar.gz"
+  local upstream_source="suwayomi-server_$RELEASE_VERSION.orig.tar.gz"
 
   mkdir "$RELEASE_NAME/$source_dir/"
-  mv "$RELEASE_NAME/Tachidesk-Launcher.jar" "$RELEASE_NAME/$source_dir/Tachidesk-Launcher.jar"
-  cp "$JAR" "$RELEASE_NAME/$source_dir/Tachidesk-Server.jar"
+  mv "$RELEASE_NAME/Suwayomi-Launcher.jar" "$RELEASE_NAME/$source_dir/Suwayomi-Launcher.jar"
+  cp "$JAR" "$RELEASE_NAME/$source_dir/Suwayomi-Server.jar"
   copy_linux_package_assets_to "$RELEASE_NAME/$source_dir/"
   tar -I "gzip" -C "$RELEASE_NAME/" -cvf "$upstream_source" "$source_dir"
 
@@ -225,12 +198,13 @@ make_deb_package() {
   sed -i "s/\$pkgver/$RELEASE_VERSION/" "$RELEASE_NAME/$source_dir/debian/changelog"
   sed -i "s/\$pkgrel/1/"                "$RELEASE_NAME/$source_dir/debian/changelog"
 
+  sudo apt update
   sudo apt install devscripts build-essential dh-exec
   cd "$RELEASE_NAME/$source_dir/"
   dpkg-buildpackage --no-sign --build=all
   cd -
 
-  local deb="tachidesk-server_$RELEASE_VERSION-1_all.deb"
+  local deb="suwayomi-server_$RELEASE_VERSION-1_all.deb"
   mv "$RELEASE_NAME/$deb" "$RELEASE"
 }
 
@@ -263,14 +237,15 @@ make_windows_bundle() {
   #WINEARCH=win32 wine "$rcedit" "$RELEASE_NAME/electron/electron.exe" \
   #    --set-icon "$icon"
 
-  cp "$JAR" "$RELEASE_NAME/bin/Tachidesk-Server.jar"
-  cp "scripts/resources/Tachidesk Launcher.bat" "$RELEASE_NAME"
+  cp "$JAR" "$RELEASE_NAME/bin/Suwayomi-Server.jar"
+  cp "scripts/resources/Suwayomi Launcher.bat" "$RELEASE_NAME"
 
   zip -9 -r "$RELEASE" "$RELEASE_NAME"
 }
 
 make_windows_package() {
   if [ "$CI" = true ]; then
+    sudo apt update
     sudo apt install -y wixl
   fi
 
@@ -289,13 +264,8 @@ make_windows_package() {
   local arch=${OS##*-}
 
   wixl -D ProductVersion="$RELEASE_VERSION" -D SourceDir="$RELEASE_NAME" \
-    -D Icon="$icon" --arch "$arch" "scripts/resources/msi/tachidesk-server-$arch.wxs" \
+    -D Icon="$icon" --arch "$arch" "scripts/resources/msi/suwayomi-server-$arch.wxs" \
     "$RELEASE_NAME/jre.wxs" "$RELEASE_NAME/electron.wxs" "$RELEASE_NAME/bin.wxs" -o "$RELEASE"
-}
-
-setup_playwright() {
-  mkdir "$RELEASE_NAME/bin"
-  curl -L "https://playwright.azureedge.net/builds/chromium/$PLAYWRIGHT_REVISION/chromium-$PLAYWRIGHT_PLATFORM.zip" -o "$RELEASE_NAME/bin/chromium.zip"
 }
 
 # Error handler

@@ -1,13 +1,15 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import graphql.execution.DataFetcherResult
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
@@ -62,9 +64,25 @@ class ChapterMutation {
         ids: List<Int>,
         patch: UpdateChapterPatch,
     ) {
+        if (ids.isEmpty()) {
+            return
+        }
+
         transaction {
+            val chapterIdToPageCount =
+                if (patch.lastPageRead != null) {
+                    ChapterTable
+                        .select(ChapterTable.id, ChapterTable.pageCount)
+                        .where { ChapterTable.id inList ids }
+                        .groupBy { it[ChapterTable.id].value }
+                        .mapValues { it.value.firstOrNull()?.let { it[ChapterTable.pageCount] } }
+                } else {
+                    emptyMap()
+                }
             val currentChapterUserItems =
-                ChapterUserTable.select { ChapterUserTable.chapter inList ids }
+                ChapterUserTable
+                    .select(ChapterUserTable.chapter)
+                    .where { ChapterUserTable.chapter inList ids }
                     .map { it[ChapterUserTable.chapter].value }
             if (currentChapterUserItems.size < ids.size) {
                 ChapterUserTable.batchInsert(ids - currentChapterUserItems.toSet()) {
@@ -82,7 +100,7 @@ class ChapterMutation {
                         update[isBookmarked] = it
                     }
                     patch.lastPageRead?.also {
-                        update[lastPageRead] = it
+                        update[lastPageRead] = it // todo user accounts it.coerceAtMost(chapterIdToPageCount[this.chapter] ?: 0).coerceAtLeast(0)
                         update[lastReadAt] = now
                     }
                 }
@@ -93,42 +111,54 @@ class ChapterMutation {
     fun updateChapter(
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: UpdateChapterInput,
-    ): UpdateChapterPayload {
-        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        val (clientMutationId, id, patch) = input
+    ): DataFetcherResult<UpdateChapterPayload?> =
+        asDataFetcherResult {
+            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+            val (clientMutationId, id, patch) = input
 
-        updateChapters(userId, listOf(id), patch)
+            updateChapters(userId, listOf(id), patch)
 
-        val chapter =
-            transaction {
-                ChapterType(ChapterTable.getWithUserData(userId).select { ChapterTable.id eq id }.first())
-            }
+            val chapter =
+                transaction {
+                    ChapterType(
+                        ChapterTable
+                            .getWithUserData(userId)
+                            .selectAll()
+                            .where { ChapterTable.id eq id }
+                            .first(),
+                    )
+                }
 
-        return UpdateChapterPayload(
-            clientMutationId = clientMutationId,
-            chapter = chapter,
-        )
-    }
+            UpdateChapterPayload(
+                clientMutationId = clientMutationId,
+                chapter = chapter,
+            )
+        }
 
     fun updateChapters(
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: UpdateChaptersInput,
-    ): UpdateChaptersPayload {
-        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        val (clientMutationId, ids, patch) = input
+    ): DataFetcherResult<UpdateChaptersPayload?> =
+        asDataFetcherResult {
+            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+            val (clientMutationId, ids, patch) = input
 
-        updateChapters(userId, ids, patch)
+            updateChapters(userId, ids, patch)
 
-        val chapters =
-            transaction {
-                ChapterTable.getWithUserData(userId).select { ChapterTable.id inList ids }.map { ChapterType(it) }
-            }
+            val chapters =
+                transaction {
+                    ChapterTable
+                        .getWithUserData(userId)
+                        .selectAll()
+                        .where { ChapterTable.id inList ids }
+                        .map { ChapterType(it) }
+                }
 
-        return UpdateChaptersPayload(
-            clientMutationId = clientMutationId,
-            chapters = chapters,
-        )
-    }
+            UpdateChaptersPayload(
+                clientMutationId = clientMutationId,
+                chapters = chapters,
+            )
+        }
 
     data class FetchChaptersInput(
         val clientMutationId: String? = null,
@@ -143,24 +173,29 @@ class ChapterMutation {
     fun fetchChapters(
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: FetchChaptersInput,
-    ): CompletableFuture<FetchChaptersPayload> {
-        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    ): CompletableFuture<DataFetcherResult<FetchChaptersPayload?>> {
         val (clientMutationId, mangaId) = input
 
         return future {
-            Chapter.fetchChapterList(userId, mangaId)
-        }.thenApply {
-            val chapters =
-                transaction {
-                    ChapterTable.getWithUserData(userId).select { ChapterTable.manga eq mangaId }
-                        .orderBy(ChapterTable.sourceOrder)
-                        .map { ChapterType(it) }
-                }
+            asDataFetcherResult {
+                val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+                Chapter.fetchChapterList(userId, mangaId)
 
-            FetchChaptersPayload(
-                clientMutationId = clientMutationId,
-                chapters = chapters,
-            )
+                val chapters =
+                    transaction {
+                        ChapterTable
+                            .getWithUserData(userId)
+                            .selectAll()
+                            .where { ChapterTable.manga eq mangaId }
+                            .orderBy(ChapterTable.sourceOrder)
+                            .map { ChapterType(it) }
+                    }
+
+                FetchChaptersPayload(
+                    clientMutationId = clientMutationId,
+                    chapters = chapters,
+                )
+            }
         }
     }
 
@@ -177,14 +212,15 @@ class ChapterMutation {
     fun setChapterMeta(
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: SetChapterMetaInput,
-    ): SetChapterMetaPayload {
-        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        val (clientMutationId, meta) = input
+    ): DataFetcherResult<SetChapterMetaPayload?> =
+        asDataFetcherResult {
+            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+            val (clientMutationId, meta) = input
 
-        Chapter.modifyChapterMeta(userId, meta.chapterId, meta.key, meta.value)
+            Chapter.modifyChapterMeta(userId, meta.chapterId, meta.key, meta.value)
 
-        return SetChapterMetaPayload(clientMutationId, meta)
-    }
+            SetChapterMetaPayload(clientMutationId, meta)
+        }
 
     data class DeleteChapterMetaInput(
         val clientMutationId: String? = null,
@@ -201,39 +237,48 @@ class ChapterMutation {
     fun deleteChapterMeta(
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: DeleteChapterMetaInput,
-    ): DeleteChapterMetaPayload {
-        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        val (clientMutationId, chapterId, key) = input
+    ): DataFetcherResult<DeleteChapterMetaPayload?> =
+        asDataFetcherResult {
+            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+            val (clientMutationId, chapterId, key) = input
 
-        val (meta, chapter) =
-            transaction {
-                val meta =
-                    ChapterMetaTable.select {
+            val (meta, chapter) =
+                transaction {
+                    val meta =
+                        ChapterMetaTable
+                            .selectAll()
+                            .where {
+                                ChapterMetaTable.user eq userId and
+                                    (ChapterMetaTable.ref eq chapterId) and
+                                    (ChapterMetaTable.key eq key)
+                            }.firstOrNull()
+
+                    ChapterMetaTable.deleteWhere {
                         ChapterMetaTable.user eq userId and
                             (ChapterMetaTable.ref eq chapterId) and
                             (ChapterMetaTable.key eq key)
-                    }.firstOrNull()
-
-                ChapterMetaTable.deleteWhere {
-                    ChapterMetaTable.user eq userId and
-                        (ChapterMetaTable.ref eq chapterId) and
-                        (ChapterMetaTable.key eq key)
-                }
-
-                val chapter =
-                    transaction {
-                        ChapterType(ChapterTable.getWithUserData(userId).select { ChapterTable.id eq chapterId }.first())
                     }
 
-                if (meta != null) {
-                    ChapterMetaType(meta)
-                } else {
-                    null
-                } to chapter
-            }
+                    val chapter =
+                        transaction {
+                            ChapterType(
+                                ChapterTable
+                                    .getWithUserData(userId)
+                                    .selectAll()
+                                    .where { ChapterTable.id eq chapterId }
+                                    .first(),
+                            )
+                        }
 
-        return DeleteChapterMetaPayload(clientMutationId, meta, chapter)
-    }
+                    if (meta != null) {
+                        ChapterMetaType(meta)
+                    } else {
+                        null
+                    } to chapter
+                }
+
+            DeleteChapterMetaPayload(clientMutationId, meta, chapter)
+        }
 
     data class FetchChapterPagesInput(
         val clientMutationId: String? = null,
@@ -249,21 +294,23 @@ class ChapterMutation {
     fun fetchChapterPages(
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: FetchChapterPagesInput,
-    ): CompletableFuture<FetchChapterPagesPayload> {
-        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    ): CompletableFuture<DataFetcherResult<FetchChapterPagesPayload?>> {
         val (clientMutationId, chapterId) = input
 
         return future {
-            getChapterDownloadReadyById(userId, chapterId)
-        }.thenApply { chapter ->
-            FetchChapterPagesPayload(
-                clientMutationId = clientMutationId,
-                pages =
-                    List(chapter.pageCount) { index ->
-                        "/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}/page/$index"
-                    },
-                chapter = ChapterType(chapter),
-            )
+            asDataFetcherResult {
+                val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+                val chapter = getChapterDownloadReadyById(userId, chapterId)
+
+                FetchChapterPagesPayload(
+                    clientMutationId = clientMutationId,
+                    pages =
+                        List(chapter.pageCount) { index ->
+                            "/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}/page/$index"
+                        },
+                    chapter = ChapterType(chapter),
+                )
+            }
         }
     }
 }

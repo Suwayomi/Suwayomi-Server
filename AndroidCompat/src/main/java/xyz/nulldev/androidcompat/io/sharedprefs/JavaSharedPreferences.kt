@@ -9,38 +9,82 @@ package xyz.nulldev.androidcompat.io.sharedprefs
 
 import android.content.SharedPreferences
 import com.russhwolf.settings.ExperimentalSettingsApi
-import com.russhwolf.settings.PreferencesSettings
+import com.russhwolf.settings.PropertiesSettings
+import com.russhwolf.settings.Settings
 import com.russhwolf.settings.serialization.decodeValue
 import com.russhwolf.settings.serialization.decodeValueOrNull
 import com.russhwolf.settings.serialization.encodeValue
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.SetSerializer
 import kotlinx.serialization.builtins.serializer
-import java.util.prefs.PreferenceChangeListener
-import java.util.prefs.Preferences
+import xyz.nulldev.androidcompat.util.SafePath
+import xyz.nulldev.ts.config.ApplicationRootDir
+import java.util.Properties
+import kotlin.io.path.Path
+import kotlin.io.path.createParentDirectories
+import kotlin.io.path.deleteIfExists
+import kotlin.io.path.exists
+import kotlin.io.path.inputStream
+import kotlin.io.path.outputStream
 
 @OptIn(ExperimentalSerializationApi::class, ExperimentalSettingsApi::class)
-class JavaSharedPreferences(key: String) : SharedPreferences {
-    private val javaPreferences = Preferences.userRoot().node("suwayomi/tachidesk/$key")
-    private val preferences = PreferencesSettings(javaPreferences)
-    private val listeners = mutableMapOf<SharedPreferences.OnSharedPreferenceChangeListener, PreferenceChangeListener>()
+class JavaSharedPreferences(
+    key: String,
+) : SharedPreferences {
+    companion object {
+        private val logger = KotlinLogging.logger {}
+    }
+
+    private val file =
+        Path(
+            ApplicationRootDir,
+            "settings",
+            "${SafePath.buildValidFilename(key)}.xml",
+        )
+    private val properties =
+        Properties().also { properties ->
+            try {
+                if (file.exists()) {
+                    file.inputStream().use { properties.loadFromXML(it) }
+                }
+            } catch (e: Exception) {
+                logger.error(e) { "Error loading settings from $key" }
+            }
+        }
+    private val preferences =
+        PropertiesSettings(
+            properties,
+            onModify = { properties ->
+                try {
+                    if (properties.isEmpty) {
+                        file.deleteIfExists()
+                    } else {
+                        file.createParentDirectories()
+                        file.outputStream().use {
+                            properties.storeToXML(it, null)
+                        }
+                    }
+                } catch (e: Exception) {
+                    logger.error(e) { "Error saving settings in $key" }
+                }
+            },
+        )
+    private val listeners = mutableMapOf<SharedPreferences.OnSharedPreferenceChangeListener, (String) -> Unit>()
 
     // TODO: 2021-05-29 Need to find a way to get this working with all pref types
-    override fun getAll(): MutableMap<String, *> {
-        return preferences.keys.associateWith { preferences.getStringOrNull(it) }.toMutableMap()
-    }
+    override fun getAll(): MutableMap<String, *> = preferences.keys.associateWith { preferences.getStringOrNull(it) }.toMutableMap()
 
     override fun getString(
         key: String,
         defValue: String?,
-    ): String? {
-        return if (defValue != null) {
+    ): String? =
+        if (defValue != null) {
             preferences.getString(key, defValue)
         } else {
             preferences.getStringOrNull(key)
         }
-    }
 
     override fun getStringSet(
         key: String,
@@ -60,47 +104,49 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
     override fun getInt(
         key: String,
         defValue: Int,
-    ): Int {
-        return preferences.getInt(key, defValue)
-    }
+    ): Int = preferences.getInt(key, defValue)
 
     override fun getLong(
         key: String,
         defValue: Long,
-    ): Long {
-        return preferences.getLong(key, defValue)
-    }
+    ): Long = preferences.getLong(key, defValue)
 
     override fun getFloat(
         key: String,
         defValue: Float,
-    ): Float {
-        return preferences.getFloat(key, defValue)
-    }
+    ): Float = preferences.getFloat(key, defValue)
 
     override fun getBoolean(
         key: String,
         defValue: Boolean,
-    ): Boolean {
-        return preferences.getBoolean(key, defValue)
-    }
+    ): Boolean = preferences.getBoolean(key, defValue)
 
-    override fun contains(key: String): Boolean {
-        return key in preferences.keys
-    }
+    override fun contains(key: String): Boolean = key in preferences.keys
 
-    override fun edit(): SharedPreferences.Editor {
-        return Editor(preferences)
-    }
+    override fun edit(): SharedPreferences.Editor =
+        Editor(preferences) { key ->
+            listeners.forEach { (_, listener) ->
+                listener(key)
+            }
+        }
 
-    class Editor(private val preferences: PreferencesSettings) : SharedPreferences.Editor {
+    class Editor(
+        private val preferences: Settings,
+        private val notify: (String) -> Unit,
+    ) : SharedPreferences.Editor {
         private val actions = mutableListOf<Action>()
 
         private sealed class Action {
-            data class Add(val key: String, val value: Any) : Action()
+            data class Add(
+                val key: String,
+                val value: Any,
+            ) : Action()
 
-            data class Remove(val key: String) : Action()
-            object Clear : Action()
+            data class Remove(
+                val key: String,
+            ) : Action()
+
+            data object Clear : Action()
         }
 
         override fun putString(
@@ -182,7 +228,7 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
             actions.forEach {
                 @Suppress("UNCHECKED_CAST")
                 when (it) {
-                    is Action.Add ->
+                    is Action.Add -> {
                         when (val value = it.value) {
                             is Set<*> -> preferences.encodeValue(SetSerializer(String.serializer()), it.key, value as Set<String>)
                             is String -> preferences.putString(it.key, value)
@@ -192,6 +238,8 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
                             is Double -> preferences.putDouble(it.key, value)
                             is Boolean -> preferences.putBoolean(it.key, value)
                         }
+                        notify(it.key)
+                    }
                     is Action.Remove -> {
                         preferences.remove(it.key)
                         /**
@@ -205,6 +253,8 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
                                 preferences.remove(key)
                             }
                         }
+
+                        notify(it.key)
                     }
                     Action.Clear -> preferences.clear()
                 }
@@ -213,23 +263,18 @@ class JavaSharedPreferences(key: String) : SharedPreferences {
     }
 
     override fun registerOnSharedPreferenceChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
-        val javaListener =
-            PreferenceChangeListener {
-                listener.onSharedPreferenceChanged(this, it.key)
-            }
+        val javaListener: (String) -> Unit = {
+            listener.onSharedPreferenceChanged(this, it)
+        }
         listeners[listener] = javaListener
-        javaPreferences.addPreferenceChangeListener(javaListener)
     }
 
     override fun unregisterOnSharedPreferenceChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
-        val registeredListener = listeners.remove(listener)
-        if (registeredListener != null) {
-            javaPreferences.removePreferenceChangeListener(registeredListener)
-        }
+        listeners.remove(listener)
     }
 
     fun deleteAll(): Boolean {
-        javaPreferences.removeNode()
+        preferences.clear()
         return true
     }
 }

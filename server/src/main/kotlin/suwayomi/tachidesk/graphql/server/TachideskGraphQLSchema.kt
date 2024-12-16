@@ -18,11 +18,13 @@ import suwayomi.tachidesk.graphql.mutations.CategoryMutation
 import suwayomi.tachidesk.graphql.mutations.ChapterMutation
 import suwayomi.tachidesk.graphql.mutations.DownloadMutation
 import suwayomi.tachidesk.graphql.mutations.ExtensionMutation
+import suwayomi.tachidesk.graphql.mutations.ImageMutation
 import suwayomi.tachidesk.graphql.mutations.InfoMutation
 import suwayomi.tachidesk.graphql.mutations.MangaMutation
 import suwayomi.tachidesk.graphql.mutations.MetaMutation
 import suwayomi.tachidesk.graphql.mutations.SettingsMutation
 import suwayomi.tachidesk.graphql.mutations.SourceMutation
+import suwayomi.tachidesk.graphql.mutations.TrackMutation
 import suwayomi.tachidesk.graphql.mutations.UpdateMutation
 import suwayomi.tachidesk.graphql.mutations.UserMutation
 import suwayomi.tachidesk.graphql.queries.BackupQuery
@@ -35,6 +37,7 @@ import suwayomi.tachidesk.graphql.queries.MangaQuery
 import suwayomi.tachidesk.graphql.queries.MetaQuery
 import suwayomi.tachidesk.graphql.queries.SettingsQuery
 import suwayomi.tachidesk.graphql.queries.SourceQuery
+import suwayomi.tachidesk.graphql.queries.TrackQuery
 import suwayomi.tachidesk.graphql.queries.UpdateQuery
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLCursor
@@ -76,6 +79,7 @@ val schema =
                 TopLevelObject(MetaQuery()),
                 TopLevelObject(SettingsQuery()),
                 TopLevelObject(SourceQuery()),
+                TopLevelObject(TrackQuery()),
                 TopLevelObject(UpdateQuery()),
             ),
         mutations =
@@ -85,11 +89,13 @@ val schema =
                 TopLevelObject(ChapterMutation()),
                 TopLevelObject(DownloadMutation()),
                 TopLevelObject(ExtensionMutation()),
+                TopLevelObject(ImageMutation()),
                 TopLevelObject(InfoMutation()),
                 TopLevelObject(MangaMutation()),
                 TopLevelObject(MetaMutation()),
                 TopLevelObject(SettingsMutation()),
                 TopLevelObject(SourceMutation()),
+                TopLevelObject(TrackMutation()),
                 TopLevelObject(UpdateMutation()),
                 TopLevelObject(UserMutation()),
             ),

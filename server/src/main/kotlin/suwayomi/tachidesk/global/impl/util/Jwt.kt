@@ -4,7 +4,7 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.exceptions.JWTVerificationException
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.global.model.table.UserPermissionsTable
 import suwayomi.tachidesk.global.model.table.UserRolesTable
@@ -91,7 +91,8 @@ object Jwt {
 
     private fun createAccessToken(userId: Int): String {
         val jwt =
-            JWT.create()
+            JWT
+                .create()
                 .withIssuer(ISSUER)
                 .withAudience(AUDIENCE)
                 .withSubject(userId.toString())
@@ -100,12 +101,18 @@ object Jwt {
 
         val roles =
             transaction {
-                UserRolesTable.select { UserRolesTable.user eq userId }.toList()
+                UserRolesTable
+                    .selectAll()
+                    .where { UserRolesTable.user eq userId }
+                    .toList()
                     .map { it[UserRolesTable.role] }
             }
         val permissions =
             transaction {
-                UserPermissionsTable.select { UserPermissionsTable.user eq userId }.toList()
+                UserPermissionsTable
+                    .selectAll()
+                    .where { UserPermissionsTable.user eq userId }
+                    .toList()
                     .map { it[UserPermissionsTable.permission] }
             }
 
@@ -116,13 +123,13 @@ object Jwt {
         return jwt.sign(algorithm)
     }
 
-    private fun createRefreshToken(userId: Int): String {
-        return JWT.create()
+    private fun createRefreshToken(userId: Int): String =
+        JWT
+            .create()
             .withIssuer(ISSUER)
             .withAudience(AUDIENCE)
             .withSubject(userId.toString())
             .withClaim("token_type", "refresh")
             .withExpiresAt(Instant.now().plusSeconds(refreshTokenExpiry.inWholeSeconds))
             .sign(algorithm)
-    }
 }

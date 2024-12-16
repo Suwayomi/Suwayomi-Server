@@ -1,0 +1,31 @@
+[Unit]
+Description=A free and open source manga reader server that runs extensions built for Tachiyomi.
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=suwayomi-server
+Group=suwayomi-server
+SyslogIdentifier=suwayomi-server
+
+EnvironmentFile=/etc/suwayomi/server.conf
+ExecStart=/usr/bin/java $JAVA_ARGS -Dsuwayomi.tachidesk.config.server.rootDir="${TACHIDESK_ROOT_DIR}" -jar /usr/share/java/suwayomi-server/bin/Suwayomi-Server.jar
+Restart=on-failure
+
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

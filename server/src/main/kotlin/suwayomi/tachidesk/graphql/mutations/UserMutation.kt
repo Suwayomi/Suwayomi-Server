@@ -3,7 +3,7 @@ package suwayomi.tachidesk.graphql.mutations
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.lowerCase
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.global.impl.util.Bcrypt
@@ -39,7 +39,10 @@ class UserMutation {
         }
         val user =
             transaction {
-                UserTable.select { UserTable.username.lowerCase() eq input.username.lowercase() }.firstOrNull()
+                UserTable
+                    .selectAll()
+                    .where { UserTable.username.lowerCase() eq input.username.lowercase() }
+                    .firstOrNull()
             }
         if (user != null && Bcrypt.verify(user[UserTable.password], input.password)) {
             val jwt = Jwt.generateJwt(user[UserTable.id].value)
@@ -92,7 +95,11 @@ class UserMutation {
 
         val (clientMutationId, username, password) = input
         transaction {
-            val userExists = UserTable.select { UserTable.username.lowerCase() eq username.lowercase() }.isNotEmpty()
+            val userExists =
+                UserTable
+                    .selectAll()
+                    .where { UserTable.username.lowerCase() eq username.lowercase() }
+                    .isNotEmpty()
             if (userExists) {
                 throw Exception("Username already exists")
             } else {

@@ -19,7 +19,9 @@ package xyz.nulldev.androidcompat.res
 /**
  * String resource.
  */
-class StringResource(val string: String) : Resource {
+class StringResource(
+    val string: String,
+) : Resource {
     override fun getValue() = string
 
     override fun getType() = StringResource::class.java

@@ -2,7 +2,7 @@ package suwayomi.tachidesk.global.impl
 
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
@@ -23,7 +23,7 @@ object GlobalMeta {
         transaction {
             val meta =
                 transaction {
-                    GlobalMetaTable.select { GlobalMetaTable.key eq key and (GlobalMetaTable.user eq userId) }
+                    GlobalMetaTable.selectAll().where { GlobalMetaTable.key eq key and (GlobalMetaTable.user eq userId) }
                 }.firstOrNull()
 
             if (meta == null) {
@@ -40,10 +40,11 @@ object GlobalMeta {
         }
     }
 
-    fun getMetaMap(userId: Int): Map<String, String> {
-        return transaction {
-            GlobalMetaTable.select { GlobalMetaTable.user eq userId }
+    fun getMetaMap(userId: Int): Map<String, String> =
+        transaction {
+            GlobalMetaTable
+                .selectAll()
+                .where { GlobalMetaTable.user eq userId }
                 .associate { it[GlobalMetaTable.key] to it[GlobalMetaTable.value] }
         }
-    }
 }

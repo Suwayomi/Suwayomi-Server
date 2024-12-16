@@ -10,7 +10,7 @@ package suwayomi.tachidesk.manga.model.table
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Chapter.getChapterMetaMap
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
@@ -57,6 +57,13 @@ fun ChapterTable.toDataClass(
     realUrl = chapterEntry[realUrl],
     downloaded = chapterEntry[isDownloaded],
     pageCount = chapterEntry[pageCount],
-    chapterCount = transaction { ChapterTable.select { manga eq chapterEntry[manga].value }.count().toInt() },
+    chapterCount =
+        transaction {
+            ChapterTable
+                .selectAll()
+                .where { manga eq chapterEntry[manga].value }
+                .count()
+                .toInt()
+        },
     meta = getChapterMetaMap(userId, chapterEntry[id]),
 )

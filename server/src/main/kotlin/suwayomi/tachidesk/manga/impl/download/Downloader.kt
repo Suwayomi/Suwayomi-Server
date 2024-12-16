@@ -7,6 +7,8 @@ package suwayomi.tachidesk.manga.impl.download
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import io.github.oshai.kotlinlogging.KLogger
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -15,8 +17,6 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import mu.KLogger
-import mu.KotlinLogging
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -27,6 +27,12 @@ import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Error
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Finished
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Queued
+import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdate
+import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.ERROR
+import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.FINISHED
+import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.PAUSED
+import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.PROGRESS
+import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.STOPPED
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -34,7 +40,7 @@ class Downloader(
     private val scope: CoroutineScope,
     val sourceId: String,
     private val downloadQueue: CopyOnWriteArrayList<DownloadChapter>,
-    private val notifier: (immediate: Boolean) -> Unit,
+    private val notifier: (immediate: Boolean, download: DownloadUpdate?) -> Unit,
     private val onComplete: () -> Unit,
     private val onDownloadFinished: () -> Unit,
 ) {
@@ -49,10 +55,11 @@ class Downloader(
     class PauseDownloadException : Exception("Pause download")
 
     private suspend fun step(
-        download: DownloadChapter?,
+        downloadUpdate: DownloadUpdate?,
         immediate: Boolean,
     ) {
-        notifier(immediate)
+        val download = downloadUpdate?.downloadChapter
+        notifier(immediate, downloadUpdate)
         currentCoroutineContext().ensureActive()
         if (download != null && download != availableSourceDownloads.firstOrNull { it.state != Error }) {
             if (download in downloadQueue) {
@@ -69,18 +76,19 @@ class Downloader(
     fun start() {
         if (!isActive) {
             job =
-                scope.launch {
-                    run()
-                }.also { job ->
-                    job.invokeOnCompletion {
-                        if (it !is CancellationException) {
-                            logger.debug { "completed" }
-                            onComplete()
+                scope
+                    .launch {
+                        run()
+                    }.also { job ->
+                        job.invokeOnCompletion {
+                            if (it !is CancellationException) {
+                                logger.debug { "completed" }
+                                onComplete()
+                            }
                         }
                     }
-                }
             logger.debug { "started" }
-            notifier(false)
+            notifier(false, null)
         }
     }
 
@@ -89,14 +97,14 @@ class Downloader(
         logger.debug { "stopped" }
     }
 
-    private suspend fun finishDownload(
+    private fun finishDownload(
         logger: KLogger,
         download: DownloadChapter,
     ) {
-        downloadQueue.removeIf { it.mangaId == download.mangaId && it.chapterIndex == download.chapterIndex }
-        step(null, false)
-        logger.debug { "finished" }
+        notifier(true, DownloadUpdate(FINISHED, download))
+        downloadQueue -= download
         onDownloadFinished()
+        logger.debug { "finished" }
     }
 
     private suspend fun run() {
@@ -121,12 +129,13 @@ class Downloader(
 
             try {
                 download.state = Downloading
-                step(download, true)
+                step(DownloadUpdate(PROGRESS, download), true)
 
-                download.chapter = getChapterDownloadReadyByIndex(0, download.chapterIndex, download.mangaId) // no need for user id here
-                step(download, false)
+                download.chapter = getChapterDownloadReadyByIndex(0, download.chapterIndex, download.mangaId)
 
-                ChapterDownloadHelper.download(download.mangaId, download.chapter.id, download, scope, this::step)
+                ChapterDownloadHelper.download(download.mangaId, download.chapter.id, download, scope) { downloadChapter, immediate ->
+                    step(downloadChapter?.let { DownloadUpdate(PROGRESS, downloadChapter) }, immediate)
+                }
                 download.state = Finished
                 transaction {
                     ChapterTable.update(
@@ -135,20 +144,20 @@ class Downloader(
                         it[isDownloaded] = true
                     }
                 }
-                step(download, true)
                 finishDownload(downloadLogger, download)
             } catch (e: CancellationException) {
-                logger.debug("Downloader was stopped")
+                logger.debug { "Downloader was stopped" }
                 availableSourceDownloads.filter { it.state == Downloading }.forEach { it.state = Queued }
+                notifier(false, DownloadUpdate(STOPPED, download))
             } catch (e: PauseDownloadException) {
                 downloadLogger.debug { "paused" }
                 download.state = Queued
+                notifier(false, DownloadUpdate(PAUSED, download))
             } catch (e: Exception) {
-                downloadLogger.warn("failed due to", e)
+                downloadLogger.warn(e) { "failed due to" }
                 download.tries++
                 download.state = Error
-            } finally {
-                notifier(false)
+                notifier(false, DownloadUpdate(ERROR, download))
             }
         }
     }

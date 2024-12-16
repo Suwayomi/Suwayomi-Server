@@ -1,5 +1,7 @@
 package suwayomi.tachidesk.manga.model.dataclass
 
+import eu.kanade.tachiyomi.source.model.SChapter
+
 /*
  * Copyright (C) Contributors to the Suwayomi project
  *
@@ -38,4 +40,32 @@ data class ChapterDataClass(
     val chapterCount: Int? = null,
     /** used to store client specific values */
     val meta: Map<String, String> = emptyMap(),
-)
+) {
+    companion object {
+        fun fromSChapter(
+            sChapter: SChapter,
+            id: Int,
+            index: Int,
+            fetchedAt: Long,
+            mangaId: Int,
+            realUrl: String?,
+        ): ChapterDataClass =
+            ChapterDataClass(
+                id = id,
+                url = sChapter.url,
+                name = sChapter.name,
+                uploadDate = sChapter.date_upload,
+                chapterNumber = sChapter.chapter_number,
+                scanlator = sChapter.scanlator,
+                index = index,
+                fetchedAt = fetchedAt,
+                realUrl = realUrl,
+                mangaId = mangaId,
+                read = false,
+                bookmarked = false,
+                lastPageRead = 0,
+                lastReadAt = 0,
+                downloaded = false,
+            )
+    }
+}

@@ -7,26 +7,32 @@ package eu.kanade.tachiyomi.network
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-// import android.content.Context
-// import eu.kanade.tachiyomi.BuildConfig
-// import eu.kanade.tachiyomi.data.preference.PreferencesHelper
-// import okhttp3.HttpUrl.Companion.toHttpUrl
-// import okhttp3.dnsoverhttps.DnsOverHttps
-// import okhttp3.logging.HttpLoggingInterceptor
-// import uy.kohesive.injekt.injectLazy
 import android.content.Context
 import eu.kanade.tachiyomi.network.interceptor.CloudflareInterceptor
+import eu.kanade.tachiyomi.network.interceptor.IgnoreGzipInterceptor
+import eu.kanade.tachiyomi.network.interceptor.UncaughtExceptionInterceptor
 import eu.kanade.tachiyomi.network.interceptor.UserAgentInterceptor
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import okhttp3.Cache
 import okhttp3.OkHttpClient
+import okhttp3.brotli.BrotliInterceptor
 import okhttp3.logging.HttpLoggingInterceptor
+import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
+import java.io.File
 import java.net.CookieHandler
 import java.net.CookieManager
 import java.net.CookiePolicy
 import java.util.concurrent.TimeUnit
 
-@Suppress("UNUSED_PARAMETER")
-class NetworkHelper(context: Context) {
+class NetworkHelper(
+    context: Context,
+) {
     //    private val preferences: PreferencesHelper by injectLazy()
 
 //    private val cacheDir = File(context.cacheDir, "network_cache")
@@ -43,16 +49,43 @@ class NetworkHelper(context: Context) {
     }
     // Tachidesk <--
 
+    private val userAgent =
+        MutableStateFlow(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        )
+
+    fun defaultUserAgentProvider(): String = userAgent.value
+
+    init {
+        @OptIn(DelicateCoroutinesApi::class)
+        userAgent
+            .drop(1)
+            .onEach {
+                GetCatalogueSource.unregisterAllCatalogueSources() // need to reset the headers
+            }.launchIn(GlobalScope)
+    }
+
     private val baseClientBuilder: OkHttpClient.Builder
         get() {
             val builder =
-                OkHttpClient.Builder()
+                OkHttpClient
+                    .Builder()
                     .cookieJar(PersistentCookieJar(cookieStore))
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
                     .callTimeout(2, TimeUnit.MINUTES)
-                    .addInterceptor(UserAgentInterceptor())
+                    .cache(
+                        Cache(
+                            directory = File.createTempFile("tachidesk_network_cache", null),
+                            maxSize = 5L * 1024 * 1024, // 5 MiB
+                        ),
+                    ).addInterceptor(UncaughtExceptionInterceptor())
+                    .addInterceptor(UserAgentInterceptor(::defaultUserAgentProvider))
+                    .addNetworkInterceptor(IgnoreGzipInterceptor())
+                    .addNetworkInterceptor(BrotliInterceptor)
 
+            // if (preferences.verboseLogging().get()) {
             val httpLoggingInterceptor =
                 HttpLoggingInterceptor(
                     object : HttpLoggingInterceptor.Logger {
@@ -65,12 +98,27 @@ class NetworkHelper(context: Context) {
                 ).apply {
                     level = HttpLoggingInterceptor.Level.BASIC
                 }
-            builder.addInterceptor(httpLoggingInterceptor)
+            builder.addNetworkInterceptor(httpLoggingInterceptor)
+            // }
 
-//            when (preferences.dohProvider()) {
-//                PREF_DOH_CLOUDFLARE -> builder.dohCloudflare()
-//                PREF_DOH_GOOGLE -> builder.dohGoogle()
-//            }
+            builder.addInterceptor(
+                CloudflareInterceptor(setUserAgent = { userAgent.value = it }),
+            )
+
+            // when (preferences.dohProvider().get()) {
+            //     PREF_DOH_CLOUDFLARE -> builder.dohCloudflare()
+            //     PREF_DOH_GOOGLE -> builder.dohGoogle()
+            //     PREF_DOH_ADGUARD -> builder.dohAdGuard()
+            //     PREF_DOH_QUAD9 -> builder.dohQuad9()
+            //     PREF_DOH_ALIDNS -> builder.dohAliDNS()
+            //     PREF_DOH_DNSPOD -> builder.dohDNSPod()
+            //     PREF_DOH_360 -> builder.doh360()
+            //     PREF_DOH_QUAD101 -> builder.dohQuad101()
+            //     PREF_DOH_MULLVAD -> builder.dohMullvad()
+            //     PREF_DOH_CONTROLD -> builder.dohControlD()
+            //     PREF_DOH_NJALLA -> builder.dohNajalla()
+            //     PREF_DOH_SHECAN -> builder.dohShecan()
+            // }
 
             return builder
         }
@@ -78,9 +126,5 @@ class NetworkHelper(context: Context) {
 //    val client by lazy { baseClientBuilder.cache(Cache(cacheDir, cacheSize)).build() }
     val client by lazy { baseClientBuilder.build() }
 
-    val cloudflareClient by lazy {
-        client.newBuilder()
-            .addInterceptor(CloudflareInterceptor())
-            .build()
-    }
+    val cloudflareClient by lazy { client }
 }

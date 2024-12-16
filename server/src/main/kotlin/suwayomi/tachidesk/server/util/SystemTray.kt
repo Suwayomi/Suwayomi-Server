@@ -10,6 +10,7 @@ package suwayomi.tachidesk.server.util
 import dorkbox.systemTray.MenuItem
 import dorkbox.systemTray.SystemTray
 import dorkbox.util.CacheUtil
+import io.github.oshai.kotlinlogging.KotlinLogging
 import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
@@ -17,6 +18,7 @@ import suwayomi.tachidesk.server.util.Browser.openInBrowser
 import suwayomi.tachidesk.server.util.ExitCode.Success
 
 object SystemTray {
+    private val logger = KotlinLogging.logger { }
     private var instance: SystemTray? = null
 
     fun create() {
@@ -40,7 +42,7 @@ object SystemTray {
 
                 mainMenu.add(
                     MenuItem(
-                        "Open Tachidesk",
+                        "Open Suwayomi",
                     ) {
                         openInBrowser()
                     },
@@ -60,7 +62,7 @@ object SystemTray {
 
                 systemTray
             } catch (e: Exception) {
-                e.printStackTrace()
+                logger.error(e) { "create: failed to create SystemTray due to" }
                 null
             }
     }

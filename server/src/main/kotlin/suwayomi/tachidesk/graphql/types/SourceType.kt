@@ -13,7 +13,7 @@ import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.model.FilterList
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
@@ -67,21 +67,18 @@ class SourceType(
         displayName = catalogueSource.toString(),
     )
 
-    fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Long, MangaNodeList>("MangaForSourceDataLoader", id)
-    }
+    fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> =
+        dataFetchingEnvironment.getValueFromDataLoader<Long, MangaNodeList>("MangaForSourceDataLoader", id)
 
-    fun extension(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ExtensionType> {
-        return dataFetchingEnvironment.getValueFromDataLoader<Long, ExtensionType>("ExtensionForSourceDataLoader", id)
-    }
+    fun extension(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ExtensionType> =
+        dataFetchingEnvironment.getValueFromDataLoader<Long, ExtensionType>("ExtensionForSourceDataLoader", id)
 
-    fun preferences(): List<Preference> {
-        return getSourcePreferencesRaw(id).map { preferenceOf(it) }
-    }
+    fun preferences(): List<Preference> = getSourcePreferencesRaw(id).map { preferenceOf(it) }
 
-    fun filters(): List<Filter> {
-        return getCatalogueSourceOrStub(id).getFilterList().map { filterOf(it) }
-    }
+    fun filters(): List<Filter> = getCatalogueSourceOrStub(id).getFilterList().map { filterOf(it) }
+
+    fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<SourceMetaType>> =
+        dataFetchingEnvironment.getValueFromDataLoader<Long, List<SourceMetaType>>("SourceMetaDataLoader", id)
 }
 
 @Suppress("ktlint:standard:function-naming")
@@ -95,7 +92,8 @@ fun SourceType(row: ResultRow): SourceType? {
             row
         } else {
             ExtensionTable
-                .select { ExtensionTable.id eq row[SourceTable.extension] }
+                .selectAll()
+                .where { ExtensionTable.id eq row[SourceTable.extension] }
                 .first()
         }
 
@@ -114,8 +112,8 @@ data class SourceNodeList(
     ) : Edge()
 
     companion object {
-        fun List<SourceType>.toNodeList(): SourceNodeList {
-            return SourceNodeList(
+        fun List<SourceType>.toNodeList(): SourceNodeList =
+            SourceNodeList(
                 nodes = this,
                 edges = getEdges(),
                 pageInfo =
@@ -127,7 +125,6 @@ data class SourceNodeList(
                     ),
                 totalCount = size,
             )
-        }
 
         private fun List<SourceType>.getEdges(): List<SourceEdge> {
             if (isEmpty()) return emptyList()
@@ -147,15 +144,29 @@ data class SourceNodeList(
 
 sealed interface Filter
 
-data class HeaderFilter(val name: String) : Filter
+data class HeaderFilter(
+    val name: String,
+) : Filter
 
-data class SeparatorFilter(val name: String) : Filter
+data class SeparatorFilter(
+    val name: String,
+) : Filter
 
-data class SelectFilter(val name: String, val values: List<String>, val default: Int) : Filter
+data class SelectFilter(
+    val name: String,
+    val values: List<String>,
+    val default: Int,
+) : Filter
 
-data class TextFilter(val name: String, val default: String) : Filter
+data class TextFilter(
+    val name: String,
+    val default: String,
+) : Filter
 
-data class CheckBoxFilter(val name: String, val default: Boolean) : Filter
+data class CheckBoxFilter(
+    val name: String,
+    val default: Boolean,
+) : Filter
 
 enum class TriState {
     IGNORE,
@@ -163,19 +174,32 @@ enum class TriState {
     EXCLUDE,
 }
 
-data class TriStateFilter(val name: String, val default: TriState) : Filter
+data class TriStateFilter(
+    val name: String,
+    val default: TriState,
+) : Filter
 
-data class SortFilter(val name: String, val values: List<String>, val default: SortSelection?) : Filter {
-    data class SortSelection(val index: Int, val ascending: Boolean) {
+data class SortFilter(
+    val name: String,
+    val values: List<String>,
+    val default: SortSelection?,
+) : Filter {
+    data class SortSelection(
+        val index: Int,
+        val ascending: Boolean,
+    ) {
         constructor(selection: SourceFilter.Sort.Selection) :
             this(selection.index, selection.ascending)
     }
 }
 
-data class GroupFilter(val name: String, val filters: List<Filter>) : Filter
+data class GroupFilter(
+    val name: String,
+    val filters: List<Filter>,
+) : Filter
 
-fun filterOf(filter: SourceFilter<*>): Filter {
-    return when (filter) {
+fun filterOf(filter: SourceFilter<*>): Filter =
+    when (filter) {
         is SourceFilter.Header -> HeaderFilter(filter.name)
         is SourceFilter.Separator -> SeparatorFilter(filter.name)
         is SourceFilter.Select<*> -> SelectFilter(filter.name, filter.displayValues, filter.state)
@@ -198,7 +222,6 @@ fun filterOf(filter: SourceFilter<*>): Filter {
         is SourceFilter.Sort -> SortFilter(filter.name, filter.values.asList(), filter.state?.let(SortFilter::SortSelection))
         else -> throw RuntimeException("sealed class cannot have more subtypes!")
     }
-}
 
 /*sealed interface FilterChange {
     val position: Int
@@ -368,8 +391,8 @@ data class MultiSelectListPreference(
     val entryValues: List<String>,
 ) : Preference
 
-fun preferenceOf(preference: SourcePreference): Preference {
-    return when (preference) {
+fun preferenceOf(preference: SourcePreference): Preference =
+    when (preference) {
         is SourceSwitchPreference ->
             SwitchPreference(
                 preference.key,
@@ -426,4 +449,3 @@ fun preferenceOf(preference: SourcePreference): Preference {
             )
         else -> throw RuntimeException("sealed class cannot have more subtypes!")
     }
-}

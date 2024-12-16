@@ -25,7 +25,7 @@ import android.os.IBinder;
 import android.util.Log;
 import kotlin.NotImplementedError;
 import xyz.nulldev.androidcompat.service.ServiceSupport;
-import xyz.nulldev.androidcompat.util.KodeinGlobalHelper;
+import xyz.nulldev.androidcompat.util.KoinGlobalHelper;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -299,7 +299,7 @@ import java.lang.annotation.RetentionPolicy;
  */
 public abstract class Service extends ContextWrapper implements ComponentCallbacks2 {
 
-    private static final ServiceSupport serviceSupport = KodeinGlobalHelper.instance(ServiceSupport.class);
+    private static final ServiceSupport serviceSupport = KoinGlobalHelper.instance(ServiceSupport.class);
 
     private static final String TAG = "Service";
     /**
@@ -328,7 +328,7 @@ public abstract class Service extends ContextWrapper implements ComponentCallbac
     public Service() {
         //==================[THIS LINE MODIFIED FROM ANDROID SOURCE!]==================
         //Service must be initialized with a base context!
-        super(KodeinGlobalHelper.instance(Context.class));
+        super(KoinGlobalHelper.instance(Context.class));
     }
     /** Return the application that owns this service. */
     public final Application getApplication() {

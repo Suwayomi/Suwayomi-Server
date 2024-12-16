@@ -9,19 +9,18 @@ package suwayomi.tachidesk.manga.impl.chapter
 
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
+import io.github.oshai.kotlinlogging.KLogger
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import suwayomi.tachidesk.manga.impl.Page.getPageName
-import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
-import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
+import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
-import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
@@ -29,7 +28,6 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
-import java.io.File
 
 suspend fun getChapterDownloadReady(
     userId: Int,
@@ -45,17 +43,13 @@ suspend fun getChapterDownloadReady(
 suspend fun getChapterDownloadReadyById(
     userId: Int,
     chapterId: Int,
-): ChapterDataClass {
-    return getChapterDownloadReady(userId = userId, chapterId = chapterId)
-}
+): ChapterDataClass = getChapterDownloadReady(userId = userId, chapterId = chapterId)
 
 suspend fun getChapterDownloadReadyByIndex(
     userId: Int,
     chapterIndex: Int,
     mangaId: Int,
-): ChapterDataClass {
-    return getChapterDownloadReady(userId = userId, chapterIndex = chapterIndex, mangaId = mangaId)
-}
+): ChapterDataClass = getChapterDownloadReady(userId = userId, chapterIndex = chapterIndex, mangaId = mangaId)
 
 private class ChapterForDownload(
     private val userId: Int,
@@ -63,8 +57,25 @@ private class ChapterForDownload(
     optChapterIndex: Int? = null,
     optMangaId: Int? = null,
 ) {
+    var chapterEntry: ResultRow
+    val chapterId: Int
+    val chapterIndex: Int
+    val mangaId: Int
+
+    val logger: KLogger
+
     suspend fun asDownloadReady(): ChapterDataClass {
-        if (isNotCompletelyDownloaded()) {
+        val log = KotlinLogging.logger("${logger.name}::asDownloadReady")
+
+        val isMarkedAsDownloaded = chapterEntry[ChapterTable.isDownloaded]
+        val doesFirstPageExist = firstPageExists()
+        val isDownloaded = isMarkedAsDownloaded && doesFirstPageExist
+
+        log.debug { "isDownloaded= $isDownloaded (isMarkedAsDownloaded= $isMarkedAsDownloaded, doesFirstPageExist= $doesFirstPageExist)" }
+
+        if (!isDownloaded) {
+            log.debug { "reset download status and fetch page list" }
+
             markAsNotDownloaded()
 
             val pageList = fetchPageList()
@@ -77,16 +88,16 @@ private class ChapterForDownload(
 
     private fun asDataClass() = ChapterTable.toDataClass(userId, chapterEntry) // no need for user id
 
-    var chapterEntry: ResultRow
-    val chapterId: Int
-    val chapterIndex: Int
-    val mangaId: Int
-
     init {
         chapterEntry = freshChapterEntry(optChapterId, optChapterIndex, optMangaId)
         chapterId = chapterEntry[ChapterTable.id].value
         chapterIndex = chapterEntry[ChapterTable.sourceOrder]
         mangaId = chapterEntry[ChapterTable.manga].value
+
+        logger =
+            KotlinLogging.logger(
+                "${ChapterForDownload::class.java.name}(mangaId= $mangaId, chapterId= $chapterId, chapterIndex= $chapterIndex)",
+            )
     }
 
     private fun freshChapterEntry(
@@ -94,25 +105,31 @@ private class ChapterForDownload(
         optChapterIndex: Int? = null,
         optMangaId: Int? = null,
     ) = transaction {
-        ChapterTable.getWithUserData(userId).select {
-            if (optChapterId != null) {
-                ChapterTable.id eq optChapterId
-            } else if (optChapterIndex != null && optMangaId != null) {
-                (ChapterTable.sourceOrder eq optChapterIndex) and (ChapterTable.manga eq optMangaId)
-            } else {
-                throw Exception("'optChapterId' or 'optChapterIndex' and 'optMangaId' have to be passed")
-            }
-        }.first()
+        ChapterTable
+            .getWithUserData(userId)
+            .selectAll()
+            .where {
+                if (optChapterId != null) {
+                    ChapterTable.id eq optChapterId
+                } else if (optChapterIndex != null && optMangaId != null) {
+                    (ChapterTable.sourceOrder eq optChapterIndex) and (ChapterTable.manga eq optMangaId)
+                } else {
+                    throw Exception("'optChapterId' or 'optChapterIndex' and 'optMangaId' have to be passed")
+                }
+            }.first()
     }
 
     private suspend fun fetchPageList(): List<Page> {
-        val mangaEntry = transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
+        val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
         val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
         return source.getPageList(
             SChapter.create().apply {
                 url = chapterEntry[ChapterTable.url]
                 name = chapterEntry[ChapterTable.name]
+                scanlator = chapterEntry[ChapterTable.scanlator]
+                chapter_number = chapterEntry[ChapterTable.chapter_number]
+                date_upload = chapterEntry[ChapterTable.date_upload]
             },
         )
     }
@@ -153,34 +170,23 @@ private class ChapterForDownload(
                 it[ChapterTable.pageCount] = pageCount
             }
             val pageCount = pageList.size
-            ChapterUserTable.select {
-                ChapterUserTable.chapter eq chapterId and (ChapterUserTable.lastPageRead greaterEq pageCount)
-            }.forEach { row ->
-                ChapterUserTable.update({ ChapterUserTable.id eq row[ChapterUserTable.id] }) {
-                    it[ChapterUserTable.lastPageRead] = pageCount - 1
+            ChapterUserTable
+                .selectAll()
+                .where {
+                    ChapterUserTable.chapter eq chapterId and (ChapterUserTable.lastPageRead greaterEq pageCount)
+                }.forEach { row ->
+                    ChapterUserTable.update({ ChapterUserTable.id eq row[ChapterUserTable.id] }) {
+                        it[ChapterUserTable.lastPageRead] = pageCount - 1
+                    }
                 }
-            }
         }
     }
 
-    private fun isNotCompletelyDownloaded(): Boolean {
-        return !(
-            chapterEntry[ChapterTable.isDownloaded] &&
-                (firstPageExists() || File(getChapterCbzPath(mangaId, chapterEntry[ChapterTable.id].value)).exists())
-        )
-    }
-
-    private fun firstPageExists(): Boolean {
-        val chapterId = chapterEntry[ChapterTable.id].value
-
-        val chapterDir = getChapterDownloadPath(mangaId, chapterId)
-
-        println(chapterDir)
-        println(getPageName(0))
-
-        return ImageResponse.findFileNameStartingWith(
-            chapterDir,
-            getPageName(0),
-        ) != null
-    }
+    private fun firstPageExists(): Boolean =
+        try {
+            ChapterDownloadHelper.getImage(mangaId, chapterId, 0).first.close()
+            true
+        } catch (e: Exception) {
+            false
+        }
 }

@@ -10,13 +10,12 @@ import kotlin.math.floor
 fun String.chop(
     count: Int,
     replacement: String = "…",
-): String {
-    return if (length > count) {
+): String =
+    if (length > count) {
         take(count - replacement.length) + replacement
     } else {
         this
     }
-}
 
 /**
  * Replaces the given string to have at most [count] characters using [replacement] near the center.
@@ -46,9 +45,7 @@ fun String.compareToCaseInsensitiveNaturalOrder(other: String): Int {
 /**
  * Returns the size of the string as the number of bytes.
  */
-fun String.byteSize(): Int {
-    return toByteArray(Charsets.UTF_8).size
-}
+fun String.byteSize(): Int = toByteArray(Charsets.UTF_8).size
 
 /**
  * Returns a string containing the first [n] bytes from this string, or the entire string if this

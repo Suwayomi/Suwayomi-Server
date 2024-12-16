@@ -9,6 +9,7 @@ package suwayomi.tachidesk.graphql.controller
 
 import io.javalin.http.ContentType
 import io.javalin.http.Context
+import io.javalin.http.HttpStatus
 import io.javalin.websocket.WsConfig
 import suwayomi.tachidesk.graphql.server.TachideskGraphQLServer
 import suwayomi.tachidesk.graphql.server.TemporaryFileStorage
@@ -20,11 +21,17 @@ object GraphQLController {
 
     /** execute graphql query */
     fun execute(ctx: Context) {
-        ctx.future(
+        ctx.future {
             future {
                 server.execute(ctx)
-            },
-        )
+            }.thenApply {
+                if (it != null) {
+                    ctx.json(it)
+                } else {
+                    ctx.status(HttpStatus.BAD_REQUEST)
+                }
+            }
+        }
     }
 
     fun playground(ctx: Context) {

@@ -8,19 +8,17 @@ package suwayomi.tachidesk.manga.impl.util
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
-import suwayomi.tachidesk.manga.impl.util.storage.SafePath
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.ApplicationDirs
+import uy.kohesive.injekt.injectLazy
+import xyz.nulldev.androidcompat.util.SafePath
 import java.io.File
 
-private val applicationDirs by DI.global.instance<ApplicationDirs>()
+private val applicationDirs: ApplicationDirs by injectLazy()
 
 private fun getMangaDir(mangaId: Int): String {
     val mangaEntry = getMangaEntry(mangaId)
@@ -35,7 +33,7 @@ private fun getChapterDir(
     mangaId: Int,
     chapterId: Int,
 ): String {
-    val chapterEntry = transaction { ChapterTable.select { ChapterTable.id eq chapterId }.first() }
+    val chapterEntry = transaction { ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first() }
 
     val chapterDir =
         SafePath.buildValidFilename(
@@ -48,34 +46,24 @@ private fun getChapterDir(
     return getMangaDir(mangaId) + "/$chapterDir"
 }
 
-fun getThumbnailDownloadPath(mangaId: Int): String {
-    return applicationDirs.thumbnailDownloadsRoot + "/$mangaId"
-}
+fun getThumbnailDownloadPath(mangaId: Int): String = applicationDirs.thumbnailDownloadsRoot + "/$mangaId"
 
-fun getMangaDownloadDir(mangaId: Int): String {
-    return applicationDirs.mangaDownloadsRoot + "/" + getMangaDir(mangaId)
-}
+fun getMangaDownloadDir(mangaId: Int): String = applicationDirs.mangaDownloadsRoot + "/" + getMangaDir(mangaId)
 
 fun getChapterDownloadPath(
     mangaId: Int,
     chapterId: Int,
-): String {
-    return applicationDirs.mangaDownloadsRoot + "/" + getChapterDir(mangaId, chapterId)
-}
+): String = applicationDirs.mangaDownloadsRoot + "/" + getChapterDir(mangaId, chapterId)
 
 fun getChapterCbzPath(
     mangaId: Int,
     chapterId: Int,
-): String {
-    return getChapterDownloadPath(mangaId, chapterId) + ".cbz"
-}
+): String = getChapterDownloadPath(mangaId, chapterId) + ".cbz"
 
 fun getChapterCachePath(
     mangaId: Int,
     chapterId: Int,
-): String {
-    return applicationDirs.tempMangaCacheRoot + "/" + getChapterDir(mangaId, chapterId)
-}
+): String = applicationDirs.tempMangaCacheRoot + "/" + getChapterDir(mangaId, chapterId)
 
 /** return value says if rename/move was successful */
 fun updateMangaDownloadDir(
@@ -103,6 +91,4 @@ fun updateMangaDownloadDir(
     }
 }
 
-private fun getMangaEntry(mangaId: Int): ResultRow {
-    return transaction { MangaTable.select { MangaTable.id eq mangaId }.first() }
-}
+private fun getMangaEntry(mangaId: Int): ResultRow = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }

@@ -32,9 +32,7 @@ object ImageUtil {
         return contentType?.startsWith("image/") ?: false
     }
 
-    fun findImageType(openStream: () -> InputStream): ImageType? {
-        return openStream().use { findImageType(it) }
-    }
+    fun findImageType(openStream: () -> InputStream): ImageType? = openStream().use { findImageType(it) }
 
     fun findImageType(stream: InputStream): ImageType? {
         try {
@@ -146,19 +144,19 @@ object ImageUtil {
         return false
     }
 
-    private fun ByteArray.compareWith(magic: ByteArray): Boolean {
-        return magic.indices.none { this[it] != magic[it] }
-    }
+    private fun ByteArray.compareWith(magic: ByteArray): Boolean = magic.indices.none { this[it] != magic[it] }
 
-    private fun charByteArrayOf(vararg bytes: Int): ByteArray {
-        return ByteArray(bytes.size).apply {
+    private fun charByteArrayOf(vararg bytes: Int): ByteArray =
+        ByteArray(bytes.size).apply {
             for (i in bytes.indices) {
                 set(i, bytes[i].toByte())
             }
         }
-    }
 
-    enum class ImageType(val mime: String, val extension: String) {
+    enum class ImageType(
+        val mime: String,
+        val extension: String,
+    ) {
         AVIF("image/avif", "avif"),
         GIF("image/gif", "gif"),
         HEIF("image/heif", "heif"),

@@ -35,7 +35,9 @@ class UnzippingInterceptor : Interceptor {
             val contentLength: Long = body.contentLength()
             val responseBody = GzipSource(body.source())
             val strippedHeaders: Headers = response.headers.newBuilder().build()
-            response.newBuilder().headers(strippedHeaders)
+            response
+                .newBuilder()
+                .headers(strippedHeaders)
                 .body(RealResponseBody(body.contentType().toString(), contentLength, responseBody.buffer()))
                 .build()
         } else {

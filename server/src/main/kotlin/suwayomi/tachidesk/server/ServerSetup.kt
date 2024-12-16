@@ -10,18 +10,19 @@ package suwayomi.tachidesk.server
 import ch.qos.logback.classic.Level
 import com.typesafe.config.ConfigRenderOptions
 import eu.kanade.tachiyomi.App
+import eu.kanade.tachiyomi.createAppModule
+import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.local.LocalSource
-import io.javalin.plugin.json.JavalinJackson
-import io.javalin.plugin.json.JsonMapper
+import io.github.oshai.kotlinlogging.KotlinLogging
+import io.javalin.json.JavalinJackson
+import io.javalin.json.JsonMapper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.serialization.json.Json
-import mu.KotlinLogging
+import kotlinx.coroutines.flow.distinctUntilChanged
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.kodein.di.DI
-import org.kodein.di.bind
-import org.kodein.di.conf.global
-import org.kodein.di.singleton
+import org.koin.core.context.startKoin
+import org.koin.core.module.Module
+import org.koin.dsl.module
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.update.IUpdater
@@ -31,15 +32,21 @@ import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
 import suwayomi.tachidesk.server.util.SystemTray
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
+import xyz.nulldev.androidcompat.androidCompatModule
 import xyz.nulldev.ts.config.ApplicationRootDir
 import xyz.nulldev.ts.config.BASE_LOGGER_NAME
-import xyz.nulldev.ts.config.ConfigKodeinModule
 import xyz.nulldev.ts.config.GlobalConfigManager
+import xyz.nulldev.ts.config.configManagerModule
 import xyz.nulldev.ts.config.initLoggerConfig
 import xyz.nulldev.ts.config.setLogLevelFor
+import xyz.nulldev.ts.config.updateFileAppender
 import java.io.File
+import java.net.Authenticator
+import java.net.PasswordAuthentication
 import java.security.Security
 import java.util.Locale
 
@@ -62,9 +69,35 @@ class ApplicationDirs(
     val mangaDownloadsRoot get() = "$downloadsRoot/mangas"
 }
 
+data class ProxySettings(
+    val proxyEnabled: Boolean,
+    val socksProxyVersion: Int,
+    val proxyHost: String,
+    val proxyPort: String,
+    val proxyUsername: String,
+    val proxyPassword: String,
+)
+
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
 val androidCompat by lazy { AndroidCompat() }
+
+fun setupLogLevelUpdating(
+    configFlow: MutableStateFlow<Boolean>,
+    loggerNames: List<String>,
+    defaultLevel: Level = Level.INFO,
+) {
+    serverConfig.subscribeTo(configFlow, { debugLogsEnabled ->
+        loggerNames.forEach { loggerName -> setLogLevelFor(loggerName, if (debugLogsEnabled) Level.DEBUG else defaultLevel) }
+    }, ignoreInitialValue = false)
+}
+
+fun serverModule(applicationDirs: ApplicationDirs): Module =
+    module {
+        single { applicationDirs }
+        single<IUpdater> { Updater() }
+        single<JsonMapper> { JavalinJackson() }
+    }
 
 fun applicationSetup() {
     Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
@@ -79,63 +112,47 @@ fun applicationSetup() {
     // Application dirs
     val applicationDirs = ApplicationDirs()
 
-    initLoggerConfig(applicationDirs.dataRoot)
+    initLoggerConfig(
+        applicationDirs.dataRoot,
+        serverConfig.maxLogFiles.value,
+        serverConfig.maxLogFileSize.value,
+        serverConfig.maxLogFolderSize.value,
+    )
 
-    val setupLogLevelUpdating = { configFlow: MutableStateFlow<Boolean>, loggerNames: List<String> ->
-        serverConfig.subscribeTo(configFlow, { debugLogsEnabled ->
-            if (debugLogsEnabled) {
-                loggerNames.forEach { loggerName -> setLogLevelFor(loggerName, Level.DEBUG) }
-            } else {
-                loggerNames.forEach { loggerName -> setLogLevelFor(loggerName, Level.ERROR) }
+    serverConfig.subscribeTo(
+        combine(
+            serverConfig.maxLogFiles,
+            serverConfig.maxLogFileSize,
+            serverConfig.maxLogFolderSize,
+        ) { maxLogFiles, maxLogFileSize, maxLogFolderSize ->
+            Triple(maxLogFiles, maxLogFileSize, maxLogFolderSize)
+        }.distinctUntilChanged(),
+        { (maxLogFiles, maxLogFileSize, maxLogFolderSize) ->
+            logger.debug {
+                "updateFileAppender: maxLogFiles= $maxLogFiles, maxLogFileSize= $maxLogFileSize, maxLogFolderSize= $maxLogFolderSize"
             }
-        }, ignoreInitialValue = false)
-    }
-
-    setupLogLevelUpdating(serverConfig.debugLogsEnabled, listOf(BASE_LOGGER_NAME))
-    // gql "ExecutionStrategy" spams logs with "... completing field ..."
-    // gql "notprivacysafe" logs every received request multiple times (received, parsing, validating, executing)
-    setupLogLevelUpdating(serverConfig.gqlDebugLogsEnabled, listOf("graphql", "notprivacysafe"))
-
-    logger.info("Running Tachidesk ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}")
-
-    logger.debug {
-        "Loaded config:\n" + GlobalConfigManager.config.root().render(ConfigRenderOptions.concise().setFormatted(true))
-    }
-
-    val updater = Updater()
-
-    DI.global.addImport(
-        DI.Module("Server") {
-            bind<ApplicationDirs>() with singleton { applicationDirs }
-            bind<IUpdater>() with singleton { updater }
-            bind<JsonMapper>() with singleton { JavalinJackson() }
-            bind<Json>() with singleton { Json { ignoreUnknownKeys = true } }
+            updateFileAppender(maxLogFiles, maxLogFileSize, maxLogFolderSize)
         },
     )
 
-    logger.debug("Data Root directory is set to: ${applicationDirs.dataRoot}")
+    setupLogLevelUpdating(serverConfig.debugLogsEnabled, listOf(BASE_LOGGER_NAME))
+
+    logger.info { "Running Suwayomi-Server ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}" }
+
+    logger.debug {
+        "Loaded config:\n" +
+            GlobalConfigManager.config
+                .root()
+                .render(ConfigRenderOptions.concise().setFormatted(true))
+                .replace(Regex("(\"basicAuth(?:Username|Password)\"\\s:\\s)(?!\"\")\".*\""), "$1\"******\"")
+    }
+
+    logger.debug { "Data Root directory is set to: ${applicationDirs.dataRoot}" }
 
     // Migrate Directories from old versions
     File("$ApplicationRootDir/manga-thumbnails").renameTo(applicationDirs.tempThumbnailCacheRoot)
     File("$ApplicationRootDir/manga-local").renameTo(applicationDirs.localMangaRoot)
     File("$ApplicationRootDir/anime-thumbnails").delete()
-
-    val oldMangaDownloadDir = File(applicationDirs.downloadsRoot)
-    val newMangaDownloadDir = File(applicationDirs.mangaDownloadsRoot)
-    val downloadDirs = oldMangaDownloadDir.listFiles().orEmpty()
-
-    val moveDownloadsToNewFolder = !newMangaDownloadDir.exists() && downloadDirs.isNotEmpty()
-    if (moveDownloadsToNewFolder) {
-        newMangaDownloadDir.mkdirs()
-
-        for (downloadDir in downloadDirs) {
-            if (downloadDir == File(applicationDirs.thumbnailDownloadsRoot)) {
-                continue
-            }
-
-            downloadDir.renameTo(File(newMangaDownloadDir, downloadDir.name))
-        }
-    }
 
     // make dirs we need
     listOf(
@@ -149,15 +166,27 @@ fun applicationSetup() {
         File(it).mkdirs()
     }
 
+    // initialize Koin modules
+    val app = App()
+    startKoin {
+        modules(
+            createAppModule(app),
+            androidCompatModule(),
+            configManagerModule(),
+            serverModule(applicationDirs),
+        )
+    }
+
     // Make sure only one instance of the app is running
     handleAppMutex()
 
-    // Load config API
-    DI.global.addImport(ConfigKodeinModule().create())
     // Load Android compatibility dependencies
     AndroidCompatInitializer().init()
     // start app
-    androidCompat.startApp(App())
+    androidCompat.startApp(app)
+
+    // Initialize NetworkHelper early
+    Injekt.get<NetworkHelper>()
 
     // create or update conf file if doesn't exist
     try {
@@ -173,7 +202,7 @@ fun applicationSetup() {
             GlobalConfigManager.updateUserConfig()
         }
     } catch (e: Exception) {
-        logger.error("Exception while creating initial server.conf", e)
+        logger.error(e) { "Exception while creating initial server.conf" }
     }
 
     // copy local source icon
@@ -187,10 +216,10 @@ fun applicationSetup() {
             }
         }
     } catch (e: Exception) {
-        logger.error("Exception while copying Local source's icon", e)
+        logger.error(e) { "Exception while copying Local source's icon" }
     }
 
-    // fixes #119 , ref: https://github.com/Suwayomi/Tachidesk-Server/issues/119#issuecomment-894681292 , source Id calculation depends on String.lowercase()
+    // fixes #119 , ref: https://github.com/Suwayomi/Suwayomi-Server/issues/119#issuecomment-894681292 , source Id calculation depends on String.lowercase()
     Locale.setDefault(Locale.ENGLISH)
 
     databaseUp()
@@ -207,32 +236,60 @@ fun applicationSetup() {
             }
         } catch (e: Throwable) {
             // cover both java.lang.Exception and java.lang.Error
-            e.printStackTrace()
+            logger.error(e) { "Failed to create/remove SystemTray due to" }
         }
     }, ignoreInitialValue = false)
 
+    runMigrations(applicationDirs)
+
     // Disable jetty's logging
-    System.setProperty("org.eclipse.jetty.util.log.announce", "false")
-    System.setProperty("org.eclipse.jetty.util.log.class", "org.eclipse.jetty.util.log.StdErrLog")
-    System.setProperty("org.eclipse.jetty.LEVEL", "OFF")
+    setLogLevelFor("org.eclipse.jetty", Level.OFF)
 
     // socks proxy settings
     serverConfig.subscribeTo(
-        combine(
+        combine<Any, ProxySettings>(
             serverConfig.socksProxyEnabled,
+            serverConfig.socksProxyVersion,
             serverConfig.socksProxyHost,
             serverConfig.socksProxyPort,
-        ) { proxyEnabled, proxyHost, proxyPort ->
-            Triple(proxyEnabled, proxyHost, proxyPort)
-        },
-        { (proxyEnabled, proxyHost, proxyPort) ->
-            logger.info("Socks Proxy changed - enabled= $proxyEnabled, proxy= $proxyHost:$proxyPort")
+            serverConfig.socksProxyUsername,
+            serverConfig.socksProxyPassword,
+        ) { vargs ->
+            ProxySettings(
+                vargs[0] as Boolean,
+                vargs[1] as Int,
+                vargs[2] as String,
+                vargs[3] as String,
+                vargs[4] as String,
+                vargs[5] as String,
+            )
+        }.distinctUntilChanged(),
+        { (proxyEnabled, proxyVersion, proxyHost, proxyPort, proxyUsername, proxyPassword) ->
+            logger.info {
+                "Socks Proxy changed - enabled=$proxyEnabled address=$proxyHost:$proxyPort , username=$proxyUsername, password=[REDACTED]"
+            }
             if (proxyEnabled) {
-                System.getProperties()["socksProxyHost"] = proxyHost
-                System.getProperties()["socksProxyPort"] = proxyPort
+                System.setProperty("socksProxyHost", proxyHost)
+                System.setProperty("socksProxyPort", proxyPort)
+                System.setProperty("socksProxyVersion", proxyVersion.toString())
+
+                Authenticator.setDefault(
+                    object : Authenticator() {
+                        override fun getPasswordAuthentication(): PasswordAuthentication? {
+                            if (requestingProtocol.startsWith("SOCKS", ignoreCase = true)) {
+                                return PasswordAuthentication(proxyUsername, proxyPassword.toCharArray())
+                            }
+
+                            return null
+                        }
+                    },
+                )
             } else {
-                System.getProperties()["socksProxyHost"] = ""
-                System.getProperties()["socksProxyPort"] = ""
+                System.clearProperty("socksProxyHost")
+                System.clearProperty("socksProxyPort")
+                System.clearProperty("socksProxyVersion")
+
+                Authenticator.setDefault(null)
             }
         },
         ignoreInitialValue = false,
@@ -242,7 +299,8 @@ fun applicationSetup() {
     Security.addProvider(BouncyCastleProvider())
 
     // start automated global updates
-    updater.scheduleUpdateTask()
+    val updater = Injekt.get<IUpdater>()
+    (updater as Updater).scheduleUpdateTask()
 
     // start automated backups
     ProtoBackupExport.scheduleAutomatedBackupTask()

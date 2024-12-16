@@ -1,6 +1,5 @@
 package eu.kanade.tachiyomi.network
 
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -9,6 +8,7 @@ import kotlinx.serialization.json.okio.decodeFromBufferedSource
 import kotlinx.serialization.serializer
 import okhttp3.Call
 import okhttp3.Callback
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -18,6 +18,8 @@ import rx.Subscription
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resumeWithException
+
+val jsonMime = "application/json; charset=utf-8".toMediaType()
 
 fun Call.asObservable(): Observable<Response> {
     return Observable.unsafeCreate { subscriber ->
@@ -47,9 +49,7 @@ fun Call.asObservable(): Observable<Response> {
                     // call.cancel()
                 }
 
-                override fun isUnsubscribed(): Boolean {
-                    return call.isCanceled()
-                }
+                override fun isUnsubscribed(): Boolean = call.isCanceled()
             }
 
         subscriber.add(requestArbiter)
@@ -57,18 +57,16 @@ fun Call.asObservable(): Observable<Response> {
     }
 }
 
-fun Call.asObservableSuccess(): Observable<Response> {
-    return asObservable()
+fun Call.asObservableSuccess(): Observable<Response> =
+    asObservable()
         .doOnNext { response ->
             if (!response.isSuccessful) {
                 response.close()
                 throw HttpException(response.code)
             }
         }
-}
 
 // Based on https://github.com/gildor/kotlin-coroutines-okhttp
-@OptIn(ExperimentalCoroutinesApi::class)
 private suspend fun Call.await(callStack: Array<StackTraceElement>): Response {
     return suspendCancellableCoroutine { continuation ->
         val callback =
@@ -77,8 +75,9 @@ private suspend fun Call.await(callStack: Array<StackTraceElement>): Response {
                     call: Call,
                     response: Response,
                 ) {
-                    continuation.resume(response) {
+                    continuation.resume(response) { _, resourceToClose, _ ->
                         response.body.close()
+                        resourceToClose.close()
                     }
                 }
 
@@ -132,29 +131,28 @@ fun OkHttpClient.newCachelessCallWithProgress(
             .cache(null)
             .addNetworkInterceptor { chain ->
                 val originalResponse = chain.proceed(chain.request())
-                originalResponse.newBuilder()
+                originalResponse
+                    .newBuilder()
                     .body(ProgressResponseBody(originalResponse.body, listener))
                     .build()
-            }
-            .build()
+            }.build()
 
     return progressClient.newCall(request)
 }
 
 context(Json)
-inline fun <reified T> Response.parseAs(): T {
-    return decodeFromJsonResponse(serializer(), this)
-}
+inline fun <reified T> Response.parseAs(): T = decodeFromJsonResponse(serializer(), this)
 
 context(Json)
 @OptIn(ExperimentalSerializationApi::class)
 fun <T> decodeFromJsonResponse(
     deserializer: DeserializationStrategy<T>,
     response: Response,
-): T {
-    return response.body.source().use {
+): T =
+    response.body.source().use {
         decodeFromBufferedSource(deserializer, it)
     }
-}
 
-class HttpException(val code: Int) : IllegalStateException("HTTP error $code")
+class HttpException(
+    val code: Int,
+) : IllegalStateException("HTTP error $code")

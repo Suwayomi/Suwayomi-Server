@@ -9,7 +9,7 @@ package suwayomi.tachidesk.test
 
 import ch.qos.logback.classic.Level
 import eu.kanade.tachiyomi.source.model.SManga
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteAll
@@ -36,14 +36,16 @@ fun setLoggingEnabled(enabled: Boolean = true) {
 
 const val BASE_PATH = "build/tmp/TestDesk"
 
-fun createLibraryManga(_title: String): Int {
-    return transaction {
+fun createLibraryManga(_title: String): Int =
+    transaction {
         val mangaId =
-            MangaTable.insertAndGetId {
-                it[title] = _title
-                it[url] = _title
-                it[sourceReference] = 1
-            }.value
+            MangaTable
+                .insertAndGetId {
+                    it[title] = _title
+                    it[url] = _title
+                    it[sourceReference] = 1
+                }.value
+
         MangaUserTable.insert {
             it[MangaUserTable.manga] = mangaId
             it[MangaUserTable.user] = 1
@@ -51,16 +53,14 @@ fun createLibraryManga(_title: String): Int {
         }
         mangaId
     }
-}
 
-fun createSMangas(count: Int): List<SManga> {
-    return (0 until count).map {
+fun createSMangas(count: Int): List<SManga> =
+    (0 until count).map {
         SManga.create().apply {
             title = "Manga $it"
             url = "https://$title"
         }
     }
-}
 
 fun createChapters(
     mangaId: Int,

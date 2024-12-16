@@ -7,12 +7,8 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import io.javalin.http.HttpCode
-import kotlinx.serialization.decodeFromString
+import io.javalin.http.HttpStatus
 import kotlinx.serialization.json.Json
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.manga.impl.MangaList
 import suwayomi.tachidesk.manga.impl.Search
 import suwayomi.tachidesk.manga.impl.Search.FilterChange
@@ -29,6 +25,7 @@ import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.queryParam
 import suwayomi.tachidesk.server.util.withOperation
+import uy.kohesive.injekt.injectLazy
 
 object SourceController {
     /** list of sources */
@@ -45,7 +42,7 @@ object SourceController {
                 ctx.json(Source.getSourceList())
             },
             withResults = {
-                json<Array<SourceDataClass>>(HttpCode.OK)
+                json<Array<SourceDataClass>>(HttpStatus.OK)
             },
         )
 
@@ -64,8 +61,8 @@ object SourceController {
                 ctx.json(Source.getSource(sourceId)!!)
             },
             withResults = {
-                json<SourceDataClass>(HttpCode.OK)
-                httpCode(HttpCode.NOT_FOUND)
+                json<SourceDataClass>(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
@@ -82,14 +79,14 @@ object SourceController {
             },
             behaviorOf = { ctx, sourceId, pageNum ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.future(
+                ctx.future {
                     future {
                         MangaList.getMangaList(userId, sourceId, pageNum, popular = true)
-                    },
-                )
+                    }.thenApply { ctx.json(it) }
+                }
             },
             withResults = {
-                json<PagedMangaListDataClass>(HttpCode.OK)
+                json<PagedMangaListDataClass>(HttpStatus.OK)
             },
         )
 
@@ -106,14 +103,14 @@ object SourceController {
             },
             behaviorOf = { ctx, sourceId, pageNum ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.future(
+                ctx.future {
                     future {
                         MangaList.getMangaList(userId, sourceId, pageNum, popular = false)
-                    },
-                )
+                    }.thenApply { ctx.json(it) }
+                }
             },
             withResults = {
-                json<PagedMangaListDataClass>(HttpCode.OK)
+                json<PagedMangaListDataClass>(HttpStatus.OK)
             },
         )
 
@@ -132,7 +129,7 @@ object SourceController {
                 ctx.json(Source.getSourcePreferences(sourceId))
             },
             withResults = {
-                json<Array<Source.PreferenceObject>>(HttpCode.OK)
+                json<Array<Source.PreferenceObject>>(HttpStatus.OK)
             },
         )
 
@@ -153,7 +150,7 @@ object SourceController {
                 ctx.json(Source.setSourcePreference(sourceId, preferenceChange.position, preferenceChange.value))
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -173,11 +170,11 @@ object SourceController {
                 ctx.json(Search.getFilterList(sourceId, reset))
             },
             withResults = {
-                json<Array<Search.FilterObject>>(HttpCode.OK)
+                json<Array<Search.FilterObject>>(HttpStatus.OK)
             },
         )
 
-    private val json by DI.global.instance<Json>()
+    private val json: Json by injectLazy()
 
     /** change filters of source with id `sourceId` */
     val setFilters =
@@ -203,7 +200,7 @@ object SourceController {
                 ctx.json(Search.setFilter(sourceId, filterChange))
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 
@@ -221,10 +218,13 @@ object SourceController {
             },
             behaviorOf = { ctx, sourceId, searchTerm, pageNum ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.future(future { Search.sourceSearch(userId, sourceId, searchTerm, pageNum) })
+                ctx.future {
+                    future { Search.sourceSearch(userId, sourceId, searchTerm, pageNum) }
+                        .thenApply { ctx.json(it) }
+                }
             },
             withResults = {
-                json<PagedMangaListDataClass>(HttpCode.OK)
+                json<PagedMangaListDataClass>(HttpStatus.OK)
             },
         )
 
@@ -243,10 +243,13 @@ object SourceController {
             behaviorOf = { ctx, sourceId, pageNum ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val filter = json.decodeFromString<FilterData>(ctx.body())
-                ctx.future(future { Search.sourceFilter(userId, sourceId, pageNum, filter) })
+                ctx.future {
+                    future { Search.sourceFilter(userId, sourceId, pageNum, filter) }
+                        .thenApply { ctx.json(it) }
+                }
             },
             withResults = {
-                json<PagedMangaListDataClass>(HttpCode.OK)
+                json<PagedMangaListDataClass>(HttpStatus.OK)
             },
         )
 
@@ -260,11 +263,12 @@ object SourceController {
                     description("All source search")
                 }
             },
-            behaviorOf = { ctx, searchTerm -> // TODO
+            behaviorOf = { ctx, searchTerm ->
+                // TODO
                 ctx.json(Search.sourceGlobalSearch(searchTerm))
             },
             withResults = {
-                httpCode(HttpCode.OK)
+                httpCode(HttpStatus.OK)
             },
         )
 }

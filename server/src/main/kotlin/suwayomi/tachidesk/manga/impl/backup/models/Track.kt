@@ -11,7 +11,7 @@ interface Track : Serializable {
 
     var sync_id: Int
 
-    var media_id: Int
+    var media_id: Long
 
     var library_id: Long?
 
@@ -30,19 +30,4 @@ interface Track : Serializable {
     var finished_reading_date: Long
 
     var tracking_url: String
-
-    fun copyPersonalFrom(other: Track) {
-        last_chapter_read = other.last_chapter_read
-        score = other.score
-        status = other.status
-        started_reading_date = other.started_reading_date
-        finished_reading_date = other.finished_reading_date
-    }
-
-    companion object {
-        fun create(serviceId: Int): Track =
-            TrackImpl().apply {
-                sync_id = serviceId
-            }
-    }
 }

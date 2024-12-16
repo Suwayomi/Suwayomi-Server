@@ -1,24 +1,27 @@
 package suwayomi.tachidesk.graphql.queries
 
 import graphql.schema.DataFetchingEnvironment
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
+import kotlinx.coroutines.flow.first
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.UpdateStatus
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.user.requireUser
+import uy.kohesive.injekt.injectLazy
+import java.util.concurrent.CompletableFuture
 
 class UpdateQuery {
-    private val updater by DI.global.instance<IUpdater>()
+    private val updater: IUpdater by injectLazy()
 
-    fun updateStatus(dataFetchingEnvironment: DataFetchingEnvironment): UpdateStatus {
+    fun updateStatus(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<UpdateStatus> {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        return UpdateStatus(updater.status.value)
+        return future { UpdateStatus(updater.status.first()) }
     }
 
-    data class LastUpdateTimestampPayload(val timestamp: Long)
+    data class LastUpdateTimestampPayload(
+        val timestamp: Long,
+    )
 
     fun lastUpdateTimestamp(dataFetchingEnvironment: DataFetchingEnvironment): LastUpdateTimestampPayload {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()

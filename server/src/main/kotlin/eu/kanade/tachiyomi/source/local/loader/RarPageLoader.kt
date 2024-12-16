@@ -12,20 +12,21 @@ import java.io.PipedOutputStream
 /**
  * Loader used to load a chapter from a .rar or .cbr file.
  */
-class RarPageLoader(file: File) : PageLoader {
+class RarPageLoader(
+    file: File,
+) : PageLoader {
     private val rar = Archive(file)
 
-    override suspend fun getPages(): List<ReaderPage> {
-        return rar.fileHeaders.asSequence()
+    override suspend fun getPages(): List<ReaderPage> =
+        rar.fileHeaders
+            .asSequence()
             .filter { !it.isDirectory && ImageUtil.isImage(it.fileName) { rar.getInputStream(it) } }
             .sortedWith { f1, f2 -> f1.fileName.compareToCaseInsensitiveNaturalOrder(f2.fileName) }
             .mapIndexed { i, header ->
                 ReaderPage(i).apply {
                     stream = { getStream(rar, header) }
                 }
-            }
-            .toList()
-    }
+            }.toList()
 
     override fun recycle() {
         rar.close()

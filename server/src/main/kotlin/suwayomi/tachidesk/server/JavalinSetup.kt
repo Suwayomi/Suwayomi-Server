@@ -7,30 +7,22 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.path
-import io.javalin.core.security.RouteRole
-import io.javalin.core.util.Header
 import io.javalin.http.Context
-import io.javalin.http.HttpCode
+import io.javalin.http.Header
+import io.javalin.http.HttpStatus
+import io.javalin.http.UnauthorizedResponse
 import io.javalin.http.staticfiles.Location
-import io.javalin.plugin.openapi.OpenApiOptions
-import io.javalin.plugin.openapi.OpenApiPlugin
-import io.javalin.plugin.openapi.ui.SwaggerOptions
 import io.javalin.websocket.WsContext
-import io.swagger.v3.oas.models.info.Info
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.future.future
 import kotlinx.coroutines.runBlocking
-import mu.KotlinLogging
-import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.server.ServerConnector
-import org.kodein.di.DI
-import org.kodein.di.conf.global
-import org.kodein.di.instance
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.global.impl.util.Jwt
 import suwayomi.tachidesk.graphql.GraphQL
@@ -41,97 +33,131 @@ import suwayomi.tachidesk.server.user.UnauthorizedException
 import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
+import uy.kohesive.injekt.injectLazy
 import java.io.IOException
-import java.lang.IllegalArgumentException
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
 
 object JavalinSetup {
     private val logger = KotlinLogging.logger {}
 
-    private val applicationDirs by DI.global.instance<ApplicationDirs>()
+    private val applicationDirs: ApplicationDirs by injectLazy()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    fun <T> future(block: suspend CoroutineScope.() -> T): CompletableFuture<T> {
-        return scope.future(block = block)
-    }
+    fun <T> future(block: suspend CoroutineScope.() -> T): CompletableFuture<T> = scope.future(block = block)
 
     fun javalinSetup() {
-        val server = Server()
-        val connector =
-            ServerConnector(server).apply {
-                host = serverConfig.ip.value
-                port = serverConfig.port.value
-            }
-        server.addConnector(connector)
-
-        serverConfig.subscribeTo(combine(serverConfig.ip, serverConfig.port) { ip, port -> Pair(ip, port) }, { (newIp, newPort) ->
-            val oldIp = connector.host
-            val oldPort = connector.port
-
-            connector.host = newIp
-            connector.port = newPort
-            connector.stop()
-            connector.start()
-
-            logger.info { "Server ip and/or port changed from $oldIp:$oldPort to $newIp:$newPort " }
-        })
-
         val app =
             Javalin.create { config ->
                 if (serverConfig.webUIEnabled.value) {
+                    val serveWebUI = {
+                        config.spaRoot.addFile(
+                            "/",
+                            applicationDirs.webUIRoot + "/index.html",
+                            Location.EXTERNAL,
+                        )
+                    }
+                    WebInterfaceManager.setServeWebUI(serveWebUI)
+
                     runBlocking {
                         WebInterfaceManager.setupWebUI()
                     }
 
                     logger.info { "Serving web static files for ${serverConfig.webUIFlavor.value}" }
-                    config.addStaticFiles(applicationDirs.webUIRoot, Location.EXTERNAL)
-                    config.addSinglePageRoot("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
-                    config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
+                    config.staticFiles.add(applicationDirs.webUIRoot, Location.EXTERNAL)
+                    serveWebUI()
+
+                    // config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
                 }
 
-                config.server { server }
-
-                config.enableCorsForAllOrigins()
-
-                config.accessManager { handler, ctx, _ ->
-                    fun credentialsValid(): Boolean {
-                        val (username, password) = ctx.basicAuthCredentials()
-                        return username == serverConfig.basicAuthUsername.value && password == serverConfig.basicAuthPassword.value
-                    }
-
-                    val user =
-                        if (serverConfig.multiUser.value) {
-                            val authentication = ctx.header(Header.AUTHORIZATION)
-                            if (authentication.isNullOrBlank()) {
-                                UserType.Visitor
-                            } else {
-                                Jwt.verifyJwt(authentication.substringAfter("Bearer "))
+                var connectorAdded = false
+                config.jetty.modifyServer { server ->
+                    if (!connectorAdded) {
+                        val connector =
+                            ServerConnector(server).apply {
+                                host = serverConfig.ip.value
+                                port = serverConfig.port.value
                             }
-                        } else {
-                            UserType.Admin(1)
-                        }
-                    ctx.setAttribute(Attribute.TachideskUser, user)
+                        server.addConnector(connector)
 
-                    if (
-                        !serverConfig.multiUser.value &&
-                        serverConfig.basicAuthEnabled.value &&
-                        !(ctx.basicAuthCredentialsExist() && credentialsValid())
-                    ) {
-                        ctx.header("WWW-Authenticate", "Basic")
-                        ctx.status(401).json("Unauthorized")
+                        serverConfig.subscribeTo(
+                            combine(
+                                serverConfig.ip,
+                                serverConfig.port,
+                            ) { ip, port -> Pair(ip, port) },
+                            { (newIp, newPort) ->
+                                val oldIp = connector.host
+                                val oldPort = connector.port
+
+                                connector.host = newIp
+                                connector.port = newPort
+                                connector.stop()
+                                connector.start()
+
+                                logger.info { "Server ip and/or port changed from $oldIp:$oldPort to $newIp:$newPort " }
+                            },
+                        )
+                        connectorAdded = true
+                    }
+                }
+
+                config.bundledPlugins.enableCors { cors ->
+                    cors.addRule {
+                        it.allowCredentials = true
+                        it.reflectClientOrigin = true
+                    }
+                }
+
+                config.router.apiBuilder {
+                    path("api/") {
+                        path("v1/") {
+                            GlobalAPI.defineEndpoints()
+                            MangaAPI.defineEndpoints()
+                        }
+                        GraphQL.defineEndpoints()
+                    }
+                }
+            }
+
+        app.beforeMatched { ctx ->
+            fun credentialsValid(): Boolean {
+                val basicAuthCredentials = ctx.basicAuthCredentials() ?: return false
+                val (username, password) = basicAuthCredentials
+                return username == serverConfig.basicAuthUsername.value &&
+                    password == serverConfig.basicAuthPassword.value
+            }
+
+            val user =
+                if (serverConfig.multiUser.value) {
+                    val authentication = ctx.header(Header.AUTHORIZATION)
+                    if (authentication.isNullOrBlank()) {
+                        UserType.Visitor
                     } else {
-                        handler.handle(ctx)
+                        Jwt.verifyJwt(authentication.substringAfter("Bearer "))
                     }
+                } else {
+                    UserType.Admin(1)
                 }
-            }.events { event ->
-                event.serverStarted {
-                    if (serverConfig.initialOpenInBrowserEnabled.value) {
-                        Browser.openInBrowser()
-                    }
+            ctx.setAttribute(Attribute.TachideskUser, user)
+
+            if (
+                !serverConfig.multiUser.value &&
+                serverConfig.basicAuthEnabled.value &&
+                !credentialsValid()
+            ) {
+                ctx.header("WWW-Authenticate", "Basic")
+                throw UnauthorizedResponse()
+            }
+        }
+
+        app.events { event ->
+            event.serverStarted {
+                if (serverConfig.initialOpenInBrowserEnabled.value) {
+                    Browser.openInBrowser()
                 }
-            }.start()
+            }
+        }
 
         app.wsBefore {
             it.onConnect { ctx ->
@@ -163,68 +189,59 @@ object JavalinSetup {
         )
 
         app.exception(NullPointerException::class.java) { e, ctx ->
-            logger.error("NullPointerException while handling the request", e)
+            logger.error(e) { "NullPointerException while handling the request" }
             ctx.status(404)
         }
         app.exception(NoSuchElementException::class.java) { e, ctx ->
-            logger.error("NoSuchElementException while handling the request", e)
+            logger.error(e) { "NoSuchElementException while handling the request" }
             ctx.status(404)
         }
         app.exception(IOException::class.java) { e, ctx ->
-            logger.error("IOException while handling the request", e)
+            logger.error(e) { "IOException while handling the request" }
             ctx.status(500)
             ctx.result(e.message ?: "Internal Server Error")
         }
 
         app.exception(IllegalArgumentException::class.java) { e, ctx ->
-            logger.error("IllegalArgumentException while handling the request", e)
+            logger.error(e) { "IllegalArgumentException while handling the request" }
             ctx.status(400)
             ctx.result(e.message ?: "Bad Request")
         }
 
         app.exception(UnauthorizedException::class.java) { e, ctx ->
-            logger.info("UnauthorizedException while handling the request", e)
-            ctx.status(HttpCode.UNAUTHORIZED)
+            logger.error(e) { "UnauthorizedException while handling the request" }
+            ctx.status(HttpStatus.UNAUTHORIZED)
             ctx.result(e.message ?: "Unauthorized")
         }
+
         app.exception(ForbiddenException::class.java) { e, ctx ->
-            logger.info("ForbiddenException while handling the request", e)
-            ctx.status(HttpCode.FORBIDDEN)
+            logger.error(e) { "ForbiddenException while handling the request" }
+            ctx.status(HttpStatus.FORBIDDEN)
             ctx.result(e.message ?: "Forbidden")
         }
 
-        app.routes {
-            path("api/") {
-                path("v1/") {
-                    GlobalAPI.defineEndpoints()
-                    MangaAPI.defineEndpoints()
-                }
-                GraphQL.defineEndpoints()
-            }
-        }
+        app.start()
     }
 
-    private fun getOpenApiOptions(): OpenApiOptions {
-        val applicationInfo =
-            Info().apply {
-                version("1.0")
-                description("Tachidesk Api")
-            }
-        return OpenApiOptions(applicationInfo).apply {
-            path("/api/openapi.json")
-            swagger(
-                SwaggerOptions("/api/swagger-ui").apply {
-                    title("Tachidesk Swagger Documentation")
-                },
-            )
-        }
-    }
+    // private fun getOpenApiOptions(): OpenApiOptions {
+    //     val applicationInfo =
+    //         Info().apply {
+    //             version("1.0")
+    //             description("Suwayomi-Server Api")
+    //         }
+    //     return OpenApiOptions(applicationInfo).apply {
+    //         path("/api/openapi.json")
+    //         swagger(
+    //             SwaggerOptions("/api/swagger-ui").apply {
+    //                 title("Suwayomi-Server Swagger Documentation")
+    //             },
+    //         )
+    //     }
+    // }
 
-    object Auth {
-        enum class Role : RouteRole { ANYONE, USER_READ, USER_WRITE }
-    }
-
-    sealed class Attribute<T : Any>(val name: String) {
+    sealed class Attribute<T : Any>(
+        val name: String,
+    ) {
         data object TachideskUser : Attribute<UserType>("user")
     }
 
@@ -242,11 +259,7 @@ object JavalinSetup {
         attribute(attribute.name, value)
     }
 
-    fun <T : Any> Context.getAttribute(attribute: Attribute<T>): T {
-        return attribute(attribute.name)!!
-    }
+    fun <T : Any> Context.getAttribute(attribute: Attribute<T>): T = attribute(attribute.name)!!
 
-    fun <T : Any> WsContext.getAttribute(attribute: Attribute<T>): T {
-        return attribute(attribute.name)!!
-    }
+    fun <T : Any> WsContext.getAttribute(attribute: Attribute<T>): T = attribute(attribute.name)!!
 }
