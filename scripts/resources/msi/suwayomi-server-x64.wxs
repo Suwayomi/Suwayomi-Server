@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <Product Id="*" UpgradeCode="*"
+  <Product Id="*" UpgradeCode="174c8f36-0bec-4585-9ddd-469c3d889dc1"
     Version="$(var.ProductVersion)" Language="1033" Name="Suwayomi Server" Manufacturer="Suwayomi">
     <Package InstallerVersion="300" Compressed="yes" />
     <Media Id="1" Cabinet="Suwayomi_Server.cab" EmbedCab="yes" />
@@ -8,6 +8,12 @@
     <Condition Message="This version of Windows does not support deploying 64-bit packages.">
       VersionNT64
     </Condition>
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <InstallExecuteSequence>
+      <RemoveExistingProducts After="InstallValidate" />
+    </InstallExecuteSequence>
 
     <!-- Directory -->
     <Directory Id="TARGETDIR" Name="SourceDir">
