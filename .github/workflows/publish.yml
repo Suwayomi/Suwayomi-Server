@@ -134,6 +134,7 @@ jobs:
 
       - name: Download JRE
         uses: actions/download-artifact@v4
+        if: matrix.os != 'linux-assets' && matrix.os != 'debian-all'
         with:
           name: ${{ matrix.os }}-jre
           path: jre
