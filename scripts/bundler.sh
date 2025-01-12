@@ -147,24 +147,21 @@ download_electron() {
 }
 
 setup_jre() {
-  pwd
-  ls
-  ls ./jre
-  if [ -d "./jre" ]; then
-    mv "./jre" "$RELEASE_NAME/jre"
-    return
-  fi
-  if [ ! -f "$JRE" ]; then
-    curl -L "$JRE_URL" -o "$JRE"
-  fi
-
-  local ext="${JRE##*.}"
-  if [ "$ext" = "zip" ]; then
-    unzip "$JRE"
+  if [ -d "jre" ]; then
+    mv "jre" "$RELEASE_NAME/jre"
   else
-    tar xvf "$JRE"
+    if [ ! -f "$JRE" ]; then
+        curl -L "$JRE_URL" -o "$JRE"
+      fi
+
+      local ext="${JRE##*.}"
+      if [ "$ext" = "zip" ]; then
+        unzip "$JRE"
+      else
+        tar xvf "$JRE"
+      fi
+      mv "$JRE_DIR" "$RELEASE_NAME/jre"
   fi
-  mv "$JRE_DIR" "$RELEASE_NAME/jre"
 }
 
 copy_linux_package_assets_to() {
