@@ -147,6 +147,9 @@ download_electron() {
 }
 
 setup_jre() {
+  pwd
+  ls
+  ls ./jre
   if [ -d "./jre" ]; then
     mv "./jre" "$RELEASE_NAME/jre"
     return
