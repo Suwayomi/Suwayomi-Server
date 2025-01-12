@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-  pull_request:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -162,76 +161,76 @@ jobs:
           path: upload/*
           if-no-files-found: error
 
-#  release:
-#    needs: bundle
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/download-artifact@v4
-#        with:
-#          name: jar
-#          path: release
-#      - uses: actions/download-artifact@v4
-#        with:
-#          name: debian-all
-#          path: release
-#      - uses: actions/download-artifact@v4
-#        with:
-#          name: linux-assets
-#          path: release
-#      - uses: actions/download-artifact@v4
-#        with:
-#          name: linux-x64
-#          path: release
-#      - uses: actions/download-artifact@v4
-#        with:
-#          name: macOS-x64
-#          path: release
-#      - uses: actions/download-artifact@v4
-#        with:
-#          name: macOS-arm64
-#          path: release
-#      - uses: actions/download-artifact@v4
-#        with:
-#          name: windows-x64
-#          path: release
-#
-#      - name: Checkout Preview branch
-#        uses: actions/checkout@v4
-#        with:
-#          repository: "Suwayomi/Suwayomi-Server-preview"
-#          ref: main
-#          path: preview
-#          token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
-#
-#      - name: Generate Tag Name
-#        id: GenTagName
-#        run: |
-#          cd release
-#          genTag=$(ls *.jar | sed -e's/Suwayomi-Server-\|.jar//g')
-#          echo "$genTag"
-#          echo "value=$genTag" >> $GITHUB_OUTPUT
-#
-#      - name: Create Tag
-#        run: |
-#          TAG="${{ steps.GenTagName.outputs.value }}"
-#          echo "tag: $TAG"
-#          cd preview
-#          echo "{ \"latest\": \"$TAG\" }" > index.json
-#          git add index.json
-#          git config --global user.email \
-#            "github-actions[bot]@users.noreply.github.com"
-#          git config --global user.name "github-actions[bot]"
-#          git commit -m "Updated to $TAG"
-#          git push origin main
-#
-#          git tag $TAG
-#          git push origin $TAG
-#
-#      - name: Upload Preview Release
-#        uses: softprops/action-gh-release@v2
-#        with:
-#          token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
-#          repository: "Suwayomi/Suwayomi-Server-preview"
-#          tag_name:  ${{ steps.GenTagName.outputs.value }}
-#          files: release/*
+  release:
+    needs: bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: jar
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: debian-all
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-assets
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-x64
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: macOS-x64
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: macOS-arm64
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-x64
+          path: release
+
+      - name: Checkout Preview branch
+        uses: actions/checkout@v4
+        with:
+          repository: "Suwayomi/Suwayomi-Server-preview"
+          ref: main
+          path: preview
+          token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
+
+      - name: Generate Tag Name
+        id: GenTagName
+        run: |
+          cd release
+          genTag=$(ls *.jar | sed -e's/Suwayomi-Server-\|.jar//g')
+          echo "$genTag"
+          echo "value=$genTag" >> $GITHUB_OUTPUT
+
+      - name: Create Tag
+        run: |
+          TAG="${{ steps.GenTagName.outputs.value }}"
+          echo "tag: $TAG"
+          cd preview
+          echo "{ \"latest\": \"$TAG\" }" > index.json
+          git add index.json
+          git config --global user.email \
+            "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git commit -m "Updated to $TAG"
+          git push origin main
+
+          git tag $TAG
+          git push origin $TAG
+
+      - name: Upload Preview Release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
+          repository: "Suwayomi/Suwayomi-Server-preview"
+          tag_name:  ${{ steps.GenTagName.outputs.value }}
+          files: release/*
 
