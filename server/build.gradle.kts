@@ -148,6 +148,7 @@ tasks {
         archiveVersion.set(tachideskVersion)
         archiveClassifier.set(getTachideskRevision())
         destinationDirectory.set(File("$rootDir/server/build"))
+        mergeServiceFiles()
     }
 
     test {
