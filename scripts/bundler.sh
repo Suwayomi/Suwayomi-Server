@@ -52,7 +52,7 @@ main() {
       ;;
     linux-x64)
       # https://github.com/adoptium/temurin21-binaries/releases/
-      JRE_RELEASE="jdk-21.0.5+11"
+      JRE_RELEASE="jdk-21.0.6+7"
       JRE="OpenJDK21U-jre_x64_linux_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
       JRE_DIR="$JRE_RELEASE-jre"
       JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
@@ -68,7 +68,7 @@ main() {
       ;;
     macOS-x64)
       # https://github.com/adoptium/temurin21-binaries/releases/
-      JRE_RELEASE="jdk-21.0.5+11"
+      JRE_RELEASE="jdk-21.0.6+7"
       JRE="OpenJDK21U-jre_x64_mac_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
       JRE_DIR="$JRE_RELEASE-jre"
       JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
@@ -84,7 +84,7 @@ main() {
       ;;
     macOS-arm64)
       # https://github.com/adoptium/temurin21-binaries/releases/
-      JRE_RELEASE="jdk-21.0.5+11"
+      JRE_RELEASE="jdk-21.0.6+7"
       JRE="OpenJDK21U-jre_aarch64_mac_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
       JRE_DIR="$JRE_RELEASE-jre"
       JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
@@ -100,7 +100,7 @@ main() {
       ;;
     windows-x64)
       # https://github.com/adoptium/temurin21-binaries/releases/
-      JRE_RELEASE="jdk-21.0.5+11"
+      JRE_RELEASE="jdk-21.0.6+7"
       JRE="OpenJDK21U-jre_x64_windows_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').zip"
       JRE_DIR="$JRE_RELEASE-jre"
       JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
