@@ -30,6 +30,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.io.path.Path
+import kotlin.io.path.relativeTo
 
 object PackageTools {
     private val logger = KotlinLogging.logger {}
@@ -68,10 +69,11 @@ object PackageTools {
             .skipExceptions(false)
             .to(jarFilePath)
         if (handler.hasException()) {
-            val errorFile: Path = File(applicationDirs.extensionsRoot).toPath().resolve("$fileNameWithoutType-error.txt")
+            val rootPath = Path(applicationDirs.extensionsRoot)
+            val errorFile: Path = rootPath.resolve("$fileNameWithoutType-error.txt")
             logger.error {
                 """
-                Detail Error Information in File $errorFile
+                Detail Error Information in File ${errorFile.relativeTo(rootPath)}
                 Please report this file to one of following link if possible (any one).
                 https://sourceforge.net/p/dex2jar/tickets/
                 https://bitbucket.org/pxb1988/dex2jar/issues

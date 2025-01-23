@@ -58,7 +58,7 @@ open class ApplicationTest {
             // Application dirs
             val applicationDirs = ApplicationDirs()
 
-            logger.debug("Data Root directory is set to: ${applicationDirs.dataRoot}")
+            logger.debug { "Data Root directory is set to: ${applicationDirs.dataRoot}" }
 
             // make dirs we need
             listOf(
@@ -110,7 +110,7 @@ open class ApplicationTest {
                     }
                 }
             } catch (e: Exception) {
-                logger.error("Exception while creating initial server.conf", e)
+                logger.error(e) { "Exception while creating initial server.conf" }
             }
 
             // copy local source icon
@@ -124,7 +124,7 @@ open class ApplicationTest {
                     }
                 }
             } catch (e: Exception) {
-                logger.error("Exception while copying Local source's icon", e)
+                logger.error(e) { "Exception while copying Local source's icon" }
             }
 
             // create system tray
@@ -146,7 +146,7 @@ open class ApplicationTest {
             if (serverConfig.socksProxyEnabled.value) {
                 System.getProperties()["socksProxyHost"] = serverConfig.socksProxyHost.value
                 System.getProperties()["socksProxyPort"] = serverConfig.socksProxyPort.value
-                logger.info("Socks Proxy is enabled to ${serverConfig.socksProxyHost.value}:${serverConfig.socksProxyPort.value}")
+                logger.info { "Socks Proxy is enabled to ${serverConfig.socksProxyHost.value}:${serverConfig.socksProxyPort.value}" }
             }
         }
 

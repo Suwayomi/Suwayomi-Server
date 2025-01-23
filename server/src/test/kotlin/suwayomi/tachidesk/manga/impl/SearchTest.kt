@@ -11,7 +11,8 @@ import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.SManga
-import io.javalin.plugin.json.JavalinJackson
+import io.javalin.json.JavalinJackson
+import io.javalin.json.toJsonString
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -346,7 +347,7 @@ class FilterListTest : ApplicationTest() {
         private var sourceCount = 0L
 
         private fun registerSource(sourceClass: KClass<*>): EmptyFilterListSource =
-            synchronized(sourceCount) {
+            synchronized(sourceClass) {
                 val source = sourceClass.primaryConstructor!!.call(sourceCount) as EmptyFilterListSource
                 registerCatalogueSource(sourceCount to source)
                 sourceCount++
