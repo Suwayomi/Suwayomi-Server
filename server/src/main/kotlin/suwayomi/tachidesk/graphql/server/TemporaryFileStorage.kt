@@ -11,6 +11,7 @@ import kotlin.concurrent.thread
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.deleteRecursively
+import kotlin.io.path.name
 import kotlin.io.path.outputStream
 import kotlin.time.Duration.Companion.days
 
@@ -43,5 +44,11 @@ object TemporaryFileStorage {
         }
     }
 
-    fun retrieveFile(name: String): Path = folder.resolve(name)
+    fun retrieveFile(name: String): Path {
+        val file = folder.resolve(name).normalize()
+        check(file.startsWith(folder)) {
+            "File $name is not in ${folder.name}"
+        }
+        return file
+    }
 }

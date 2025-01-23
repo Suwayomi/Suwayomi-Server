@@ -115,8 +115,7 @@ class TestExtensionCompatibility {
                         semaphore.withPermit {
                             logger.info { "${mangaCount.getAndIncrement()} - Now fetching manga from $source" }
                             try {
-                                manga.copyFrom(repeat { source.getMangaDetails(manga) })
-                                manga.initialized = true
+                                repeat { source.getMangaDetails(manga) }
                             } catch (e: Exception) {
                                 logger.warn {
                                     "Failed to fetch manga info from $source for ${manga.title} (${source.mangaDetailsRequest(

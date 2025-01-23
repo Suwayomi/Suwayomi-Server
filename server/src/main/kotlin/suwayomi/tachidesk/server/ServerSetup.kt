@@ -147,7 +147,7 @@ fun applicationSetup() {
                 .replace(Regex("(\"basicAuth(?:Username|Password)\"\\s:\\s)(?!\"\")\".*\""), "$1\"******\"")
     }
 
-    logger.debug("Data Root directory is set to: ${applicationDirs.dataRoot}")
+    logger.debug { "Data Root directory is set to: ${applicationDirs.dataRoot}" }
 
     // Migrate Directories from old versions
     File("$ApplicationRootDir/manga-thumbnails").renameTo(applicationDirs.tempThumbnailCacheRoot)
