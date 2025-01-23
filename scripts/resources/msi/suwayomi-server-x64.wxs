@@ -11,10 +11,6 @@
 
     <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
 
-    <InstallExecuteSequence>
-      <RemoveExistingProducts After="InstallValidate" />
-    </InstallExecuteSequence>
-
     <!-- Directory -->
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFiles64Folder">
@@ -52,7 +48,31 @@
             Description="A free and open source manga reader that runs extensions built for Tachiyomi." />
         </File>
       </Component>
+
+      <Component Id="UninstallPreviousVersionsScript" Guid="*" Win64="yes">
+        <File Id="UninstallPreviousVersions.ps1" Source="$(var.SourceDir)/UninstallPreviousVersions.ps1" KeyPath="yes" />
+      </Component>
     </DirectoryRef>
+
+    <!-- assign the string (ps command) to RegisterPowerShellProperty -->
+    <CustomAction Id="RegisterUninstallScript"
+        Property="RunUninstallScript"
+        Value="&quot;C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe&quot; -NoLogo -NonInteractive -InputFormat None -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLDIR]UninstallPreviousVersions.ps1&quot;"
+        Execute="immediate"
+        Impersonate="no" />
+    <CustomAction Id="RunUninstallScript"
+        BinaryKey="WixCA"
+        DllEntry="CAQuietExec64"
+        Execute="deferred"
+        Return="check"
+        Impersonate="no" />
+
+    <!-- Schedule the Custom Action -->
+    <InstallExecuteSequence>
+      <Custom Action="RegisterUninstallScript" After="CostFinalize">NOT Installed</Custom>
+      <Custom Action="RunUninstallScript" After="CostInitialize">NOT Installed</Custom>
+      <RemoveExistingProducts After="InstallValidate" />
+    </InstallExecuteSequence>
 
     <!-- Feature -->
     <Feature Id="Suwayomi_Server" Title="Suwayomi-Server" Level="1">
@@ -60,6 +80,7 @@
       <ComponentGroupRef Id="bin" />
       <ComponentRef Id="SuwayomiJAR" />
       <ComponentRef Id="SuwayomiLauncherBAT" />
+      <ComponentRef Id="UninstallPreviousVersionsScript" />
       <ComponentRef Id="ProgramMenuDir" />
       <ComponentGroupRef Id="electron" />
     </Feature>

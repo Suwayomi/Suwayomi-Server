@@ -3,7 +3,7 @@
 $productName = "Suwayomi Server"
 
 # Get the product code of the specified product
-$productInfo = Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -eq $productName }
+$productInfo = @(Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -eq $productName })
 
 $productCount = $productInfo.Count
 Write-Output "Found $productCount installations"
