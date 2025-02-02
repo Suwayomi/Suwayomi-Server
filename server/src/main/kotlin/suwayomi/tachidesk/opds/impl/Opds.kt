@@ -138,7 +138,7 @@ object Opds {
                             title = manga.title,
                             updated = opdsDateFormatter.format(Instant.now()),
                             authors = manga.author?.let { listOf(OpdsDataClass.Author(name = it)) } ?: emptyList(),
-                            category =
+                            categories =
                                 manga.genre.map { genre ->
                                     OpdsDataClass.Category(term = "", label = genre)
                                 },
@@ -242,7 +242,7 @@ object Opds {
             id = "chapter/${chapter.id}",
             title = chapter.name,
             updated = opdsDateFormatter.format(Instant.ofEpochMilli(chapter.uploadDate)),
-            content = OpdsDataClass.Content(value = "${chapter.scanlator} - application/vnd.comicbook+zip"),
+            content = OpdsDataClass.Content(value = "${chapter.scanlator}"),
             summary = manga.description?.let { OpdsDataClass.Summary(value = it) },
             extent =
                 cbzFile.takeIf { it.exists() }?.let {
@@ -259,7 +259,7 @@ object Opds {
                     if (isCbzAvailable) {
                         OpdsDataClass.Link(
                             rel = "http://opds-spec.org/acquisition/open-access",
-                            href = "/api/v1/manga/${manga.id}/chapter/${chapter.index}/download",
+                            href = "/api/v1/manga/${manga.id}/chapter/${chapter.id}/download",
                             type = "application/vnd.comicbook+zip",
                         )
                     } else {

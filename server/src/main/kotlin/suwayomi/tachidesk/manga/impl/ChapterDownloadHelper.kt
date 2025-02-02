@@ -52,13 +52,13 @@ object ChapterDownloadHelper {
 
     suspend fun getCbzDownload(
         mangaId: Int,
-        chapterIndex: Int,
+        chapterId: Int,
     ): Triple<InputStream, String, String> {
         val chapter =
             transaction {
                 ChapterTable
                     .selectAll()
-                    .where { (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId) }
+                    .where { (ChapterTable.id eq chapterId) and (ChapterTable.manga eq mangaId) }
                     .firstOrNull()
                     ?.let { ChapterTable.toDataClass(it) }
             } ?: throw Exception("Chapter not found")

@@ -17,7 +17,7 @@ object OpdsController {
             documentWith = {
                 withOperation {
                     summary("OPDS Root Feed")
-                    description("Feed OPDS de lista de fuentes disponibles de mangas")
+                    description("OPDS feed for the list of available manga sources")
                 }
             },
             behaviorOf = { ctx ->
@@ -41,7 +41,7 @@ object OpdsController {
             documentWith = {
                 withOperation {
                     summary("OPDS Source Feed")
-                    description("Feed OPDS de una fuente específica de mangas")
+                    description("OPDS feed for a specific manga source")
                 }
             },
             behaviorOf = { ctx, sourceId, pageNumber ->
@@ -66,7 +66,7 @@ object OpdsController {
             documentWith = {
                 withOperation {
                     summary("OPDS Manga Feed")
-                    description("Feed OPDS de capítulos de un manga específico")
+                    description("OPDS feed for chapters of a specific manga")
                 }
             },
             behaviorOf = { ctx, mangaId, pageNumber ->

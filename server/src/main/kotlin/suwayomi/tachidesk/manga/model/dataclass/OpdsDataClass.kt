@@ -82,10 +82,9 @@ data class OpdsDataClass(
         @XmlElement(true)
         val link: List<Link>,
         @XmlElement(true)
-        @XmlSerialName("author", "", "")
         val authors: List<Author>? = null,
         @XmlElement(true)
-        val category: List<Category>? = null,
+        val categories: List<Category>? = null,
         @XmlElement(true)
         @XmlSerialName("language", "http://purl.org/dc/terms/", "dc")
         val extent: String? = null,

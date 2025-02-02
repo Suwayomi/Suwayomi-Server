@@ -429,16 +429,16 @@ object MangaController {
     val downloadChapter =
         handler(
             pathParam<Int>("mangaId"),
-            pathParam<Int>("chapterIndex"),
+            pathParam<Int>("chapterId"),
             documentWith = {
                 withOperation {
-                    summary("Descargar capítulo como CBZ")
-                    description("Obtiene el archivo CBZ del capítulo especificado")
+                    summary("Download chapter as CBZ")
+                    description("Get the CBZ file of the specified chapter")
                 }
             },
-            behaviorOf = { ctx, mangaId, chapterIndex ->
+            behaviorOf = { ctx, mangaId, chapterId ->
                 ctx.future {
-                    future { ChapterDownloadHelper.getCbzDownload(mangaId, chapterIndex) }
+                    future { ChapterDownloadHelper.getCbzDownload(mangaId, chapterId) }
                         .thenApply { (inputStream, contentType, fileName) ->
                             ctx.header("Content-Type", contentType)
                             ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
