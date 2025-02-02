@@ -14,7 +14,6 @@ import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
-import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyByIndex
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
@@ -439,18 +438,12 @@ object MangaController {
             },
             behaviorOf = { ctx, mangaId, chapterIndex ->
                 ctx.future {
-                    future {
-                        val manga = getManga(mangaId, false)
-                        val chapter = Chapter.getChapterByIndex(mangaId, chapterIndex)
-                        val (inputStream, contentType) = ChapterDownloadHelper.getCbzInputStream(mangaId, chapter.id)
-
-                        ctx.header("Content-Type", contentType)
-                        ctx.header(
-                            "Content-Disposition",
-                            "attachment; filename=\"${manga.title} - [${chapter.scanlator}] ${chapter.name}.cbz\"",
-                        )
-                        ctx.result(inputStream)
-                    }
+                    future { ChapterDownloadHelper.getCbzDownload(mangaId, chapterIndex) }
+                        .thenApply { (inputStream, contentType, fileName) ->
+                            ctx.header("Content-Type", contentType)
+                            ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
+                            ctx.result(inputStream)
+                        }
                 }
             },
             withResults = {

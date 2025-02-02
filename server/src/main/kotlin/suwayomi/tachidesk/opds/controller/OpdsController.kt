@@ -1,7 +1,7 @@
-package suwayomi.tachidesk.manga.controller
+package suwayomi.tachidesk.opds.controller
 
 import io.javalin.http.HttpStatus
-import suwayomi.tachidesk.manga.impl.Opds
+import suwayomi.tachidesk.opds.impl.Opds
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
@@ -10,6 +10,7 @@ import suwayomi.tachidesk.server.util.withOperation
 
 object OpdsController {
     private const val OPDS_MIME = "application/xml;profile=opds-catalog;charset=UTF-8"
+    private const val BASE_URL = "/api/opds/v1.2"
 
     val rootFeed =
         handler(
@@ -22,8 +23,7 @@ object OpdsController {
             behaviorOf = { ctx ->
                 ctx.future {
                     future {
-                        val baseUrl = "/api/v1/opds/v1.2"
-                        Opds.getRootFeed(baseUrl)
+                        Opds.getRootFeed(BASE_URL)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -47,8 +47,7 @@ object OpdsController {
             behaviorOf = { ctx, sourceId, pageNumber ->
                 ctx.future {
                     future {
-                        val baseUrl = "/api/v1/opds/v1.2"
-                        Opds.getSourceFeed(sourceId, baseUrl, pageNumber ?: 1)
+                        Opds.getSourceFeed(sourceId, BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -73,8 +72,7 @@ object OpdsController {
             behaviorOf = { ctx, mangaId, pageNumber ->
                 ctx.future {
                     future {
-                        val baseUrl = "/api/v1/opds/v1.2"
-                        Opds.getMangaFeed(mangaId, baseUrl, pageNumber ?: 1)
+                        Opds.getMangaFeed(mangaId, BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }

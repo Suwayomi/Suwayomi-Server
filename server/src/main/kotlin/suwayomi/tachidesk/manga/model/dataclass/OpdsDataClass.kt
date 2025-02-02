@@ -30,8 +30,10 @@ data class OpdsDataClass(
     val xmlnsXsi: String = "http://www.w3.org/2001/XMLSchema-instance",
     @XmlSerialName("xmlns:opds", "", "")
     val xmlnsOpds: String = "http://opds-spec.org/2010/catalog",
-    @XmlSerialName("xmlns:dc", "", "")
+    @XmlSerialName("xmlns:dcterms", "", "")
     val xmlnsDublinCore: String = "http://purl.org/dc/terms/",
+    @XmlSerialName("xmlns:pse", "", "")
+    val xmlnsPse: String = "http://vaemendis.net/opds-pse/ns",
     @XmlElement(true)
     @XmlSerialName("totalResults", "http://a9.com/-/spec/opensearch/1.1/", "")
     val totalResults: Long? = null,
@@ -60,6 +62,8 @@ data class OpdsDataClass(
         val href: String,
         val type: String? = null,
         val title: String? = null,
+        @XmlSerialName("pse:count", "", "")
+        val pseCount: Int? = null,
     )
 
     @Serializable

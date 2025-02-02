@@ -693,17 +693,4 @@ object Chapter {
                     }
             }
         }
-
-    fun getChapterByIndex(
-        mangaId: Int,
-        chapterIndex: Int,
-    ): ChapterDataClass =
-        transaction {
-            ChapterTable
-                .selectAll()
-                .where { (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId) }
-                .firstOrNull()
-                ?.let { ChapterTable.toDataClass(it) }
-                ?: throw Exception("Chapter not found")
-        }
 }

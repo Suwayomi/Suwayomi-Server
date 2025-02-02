@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.manga.impl
+package suwayomi.tachidesk.opds.impl
 
 import nl.adaptivity.xmlutil.XmlDeclMode
 import nl.adaptivity.xmlutil.core.XmlVersion
@@ -9,6 +9,8 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Manga.getManga
+import suwayomi.tachidesk.manga.impl.Source
+import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.OpdsDataClass
@@ -16,6 +18,7 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import java.io.File
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -231,30 +234,42 @@ object Opds {
     private fun createChapterEntry(
         chapter: ChapterDataClass,
         manga: MangaDataClass,
-    ): OpdsDataClass.Entry =
-        OpdsDataClass.Entry(
+    ): OpdsDataClass.Entry {
+        val cbzFile = File(getChapterCbzPath(manga.id, chapter.id))
+        val isCbzAvailable = cbzFile.exists()
+
+        return OpdsDataClass.Entry(
             id = "chapter/${chapter.id}",
             title = chapter.name,
             updated = opdsDateFormatter.format(Instant.ofEpochMilli(chapter.uploadDate)),
             content = OpdsDataClass.Content(value = "${chapter.scanlator} - application/vnd.comicbook+zip"),
-            summary =
-                manga.description?.let {
-                    OpdsDataClass.Summary(value = it)
+            summary = manga.description?.let { OpdsDataClass.Summary(value = it) },
+            extent =
+                cbzFile.takeIf { it.exists() }?.let {
+                    formatFileSize(it.length())
                 },
-            extent = "${chapter.pageCount} pages",
-            format = "CBZ",
+            format = cbzFile.takeIf { it.exists() }?.let { "CBZ" },
             authors =
                 listOfNotNull(
                     manga.author?.let { OpdsDataClass.Author(name = it) },
                     manga.artist?.takeIf { it != manga.author }?.let { OpdsDataClass.Author(name = it) },
                 ),
             link =
-                listOf(
-                    OpdsDataClass.Link(
-                        rel = "http://opds-spec.org/acquisition/open-access",
-                        href = "/api/v1/manga/${manga.id}/chapter/${chapter.index}/download",
-                        type = "application/vnd.comicbook+zip",
-                    ),
+                listOfNotNull(
+                    if (isCbzAvailable) {
+                        OpdsDataClass.Link(
+                            rel = "http://opds-spec.org/acquisition/open-access",
+                            href = "/api/v1/manga/${manga.id}/chapter/${chapter.index}/download",
+                            type = "application/vnd.comicbook+zip",
+                        )
+                    } else {
+                        OpdsDataClass.Link(
+                            rel = "http://vaemendis.net/opds-pse/stream",
+                            href = "/api/v1/manga/${manga.id}/chapter/${chapter.index}/page/{pageNumber}",
+                            type = "image/jpeg",
+                            pseCount = chapter.pageCount,
+                        )
+                    },
                     OpdsDataClass.Link(
                         rel = "http://opds-spec.org/image",
                         href = "/api/v1/manga/${manga.id}/chapter/${chapter.index}/page/0",
@@ -262,6 +277,7 @@ object Opds {
                     ),
                 ),
         )
+    }
 
     private fun getPaginatedChapters(
         mangaId: Int,
@@ -293,6 +309,13 @@ object Opds {
         DateTimeFormatter
             .ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
             .withZone(ZoneOffset.UTC)
+
+    private fun formatFileSize(size: Long): String =
+        when {
+            size >= 1_000_000 -> "%.2f MB".format(size / 1_000_000.0)
+            size >= 1_000 -> "%.2f KB".format(size / 1_000.0)
+            else -> "$size bytes"
+        }
 
     private fun sourceHasMangasWithChapters(sourceId: Long): Boolean =
         transaction {

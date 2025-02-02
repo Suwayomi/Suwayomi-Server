@@ -1,12 +1,18 @@
 package suwayomi.tachidesk.manga.impl
 
 import kotlinx.coroutines.CoroutineScope
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.ArchiveProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.FolderProvider
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
+import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.serverConfig
 import java.io.File
 import java.io.IOException
@@ -44,14 +50,25 @@ object ChapterDownloadHelper {
         return FolderProvider(mangaId, chapterId)
     }
 
-    fun getCbzInputStream(
+    suspend fun getCbzDownload(
         mangaId: Int,
-        chapterId: Int,
-    ): Pair<InputStream, String> {
-        val provider = provider(mangaId, chapterId)
+        chapterIndex: Int,
+    ): Triple<InputStream, String, String> {
+        val chapter =
+            transaction {
+                ChapterTable
+                    .selectAll()
+                    .where { (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId) }
+                    .firstOrNull()
+                    ?.let { ChapterTable.toDataClass(it) }
+            } ?: throw Exception("Chapter not found")
+
+        val provider = provider(mangaId, chapter.id)
+
         return if (provider is ArchiveProvider) {
-            val cbzFile = File(getChapterCbzPath(mangaId, chapterId))
-            cbzFile.inputStream() to "application/vnd.comicbook+zip"
+            val cbzFile = File(getChapterCbzPath(mangaId, chapter.id))
+            val fileName = "${getManga(mangaId, false).title} - [${chapter.scanlator}] ${chapter.name}.cbz"
+            Triple(cbzFile.inputStream(), "application/vnd.comicbook+zip", fileName)
         } else {
             throw IOException("Chapter not available as CBZ")
         }
