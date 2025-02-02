@@ -79,6 +79,7 @@ object MangaAPI {
             patch("{mangaId}/chapter/{chapterIndex}/meta", MangaController.chapterMeta)
 
             get("{mangaId}/chapter/{chapterIndex}/page/{index}", MangaController.pageRetrieve)
+            get("{mangaId}/chapter/{chapterIndex}/download", MangaController.downloadChapter)
         }
 
         path("chapter") {
@@ -144,6 +145,11 @@ object MangaAPI {
             post("update", TrackController.update)
             get("{trackerId}/thumbnail", TrackController.thumbnail)
         }
-        OpdsController.defineEndpoints()
+
+        path("opds/v1.2") {
+            get(OpdsController.rootFeed)
+            get("source/{sourceId}", OpdsController.sourceFeed)
+            get("manga/{mangaId}", OpdsController.mangaFeed)
+        }
     }
 }

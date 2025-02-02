@@ -11,8 +11,10 @@ import io.javalin.http.HttpStatus
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
+import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
+import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyByIndex
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
@@ -421,6 +423,38 @@ object MangaController {
             },
             withResults = {
                 image(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
+            },
+        )
+
+    val downloadChapter =
+        handler(
+            pathParam<Int>("mangaId"),
+            pathParam<Int>("chapterIndex"),
+            documentWith = {
+                withOperation {
+                    summary("Descargar capítulo como CBZ")
+                    description("Obtiene el archivo CBZ del capítulo especificado")
+                }
+            },
+            behaviorOf = { ctx, mangaId, chapterIndex ->
+                ctx.future {
+                    future {
+                        val manga = getManga(mangaId, false)
+                        val chapter = Chapter.getChapterByIndex(mangaId, chapterIndex)
+                        val (inputStream, contentType) = ChapterDownloadHelper.getCbzInputStream(mangaId, chapter.id)
+
+                        ctx.header("Content-Type", contentType)
+                        ctx.header(
+                            "Content-Disposition",
+                            "attachment; filename=\"${manga.title} - [${chapter.scanlator}] ${chapter.name}.cbz\"",
+                        )
+                        ctx.result(inputStream)
+                    }
+                }
+            },
+            withResults = {
+                httpCode(HttpStatus.OK)
                 httpCode(HttpStatus.NOT_FOUND)
             },
         )

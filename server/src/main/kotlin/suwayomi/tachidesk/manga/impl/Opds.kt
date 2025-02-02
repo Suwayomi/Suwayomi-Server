@@ -1,0 +1,320 @@
+package suwayomi.tachidesk.manga.impl
+
+import nl.adaptivity.xmlutil.XmlDeclMode
+import nl.adaptivity.xmlutil.core.XmlVersion
+import nl.adaptivity.xmlutil.serialization.XML
+import org.jetbrains.exposed.sql.JoinType
+import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.manga.impl.Manga.getManga
+import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
+import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.manga.model.dataclass.OpdsDataClass
+import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.manga.model.table.toDataClass
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+
+object Opds {
+    private const val ITEMS_PER_PAGE = 20
+
+    fun getRootFeed(baseUrl: String): String {
+        val sources =
+            transaction {
+                SourceTable
+                    .selectAll()
+                    .orderBy(SourceTable.name to SortOrder.ASC)
+                    .mapNotNull { Source.getSource(it[SourceTable.id].value) }
+                    .filter { sourceHasMangasWithChapters(it.id.toLong()) }
+            }
+
+        return serialize(
+            OpdsDataClass(
+                id = "opds",
+                title = "Suwayomi OPDS Catalog",
+                icon = "/favicon",
+                updated = opdsDateFormatter.format(Instant.now()),
+                author = OpdsDataClass.Author("Suwayomi", "https://suwayomi.org/"),
+                links =
+                    listOf(
+                        OpdsDataClass.Link(
+                            rel = "self",
+                            href = baseUrl,
+                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
+                        ),
+                        OpdsDataClass.Link(
+                            rel = "start",
+                            href = baseUrl,
+                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
+                        ),
+                    ),
+                entries =
+                    sources.map { source ->
+                        OpdsDataClass.Entry(
+                            updated = opdsDateFormatter.format(Instant.now()),
+                            id = source.id,
+                            title = source.name,
+                            link =
+                                listOf(
+                                    OpdsDataClass.Link(
+                                        rel = "subsection",
+                                        href = "$baseUrl/source/${source.id}",
+                                        type = "application/atom+xml;profile=opds-catalog;kind=navigation",
+                                    ),
+                                ),
+                        )
+                    },
+            ),
+        )
+    }
+
+    fun getSourceFeed(
+        sourceId: Long,
+        baseUrl: String,
+        pageNum: Int = 1,
+    ): String {
+        val source = Source.getSource(sourceId)
+        val (mangas, totalCount) =
+            transaction {
+                val query =
+                    MangaTable
+                        .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
+                        .select(MangaTable.columns)
+                        .where {
+                            (MangaTable.sourceReference eq sourceId) and
+                                (ChapterTable.isDownloaded eq true)
+                        }.groupBy(MangaTable.id)
+                        .orderBy(MangaTable.title to SortOrder.ASC)
+
+                val totalCount = query.count()
+                val paginatedResults =
+                    query
+                        .limit(ITEMS_PER_PAGE)
+                        .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
+                        .map { MangaTable.toDataClass(it) }
+
+                Pair(paginatedResults, totalCount)
+            }
+
+        return serialize(
+            OpdsDataClass(
+                id = "source/$sourceId",
+                title = source?.name ?: sourceId.toString(),
+                updated = opdsDateFormatter.format(Instant.now()),
+                totalResults = totalCount,
+                itemsPerPage = ITEMS_PER_PAGE,
+                startIndex = (pageNum - 1) * ITEMS_PER_PAGE + 1,
+                icon = source?.iconUrl,
+                author =
+                    OpdsDataClass.Author(
+                        name = "Suwayomi",
+                        uri = "https://suwayomi.org/",
+                    ),
+                links =
+                    listOfNotNull(
+                        OpdsDataClass.Link(
+                            rel = "self",
+                            href = "$baseUrl/source/$sourceId?pageNumber=$pageNum",
+                            type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
+                        ),
+                        OpdsDataClass.Link(
+                            rel = "start",
+                            href = baseUrl,
+                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
+                        ),
+                    ),
+                entries =
+                    mangas.map { manga ->
+                        OpdsDataClass.Entry(
+                            id = "manga/${manga.id}",
+                            title = manga.title,
+                            updated = opdsDateFormatter.format(Instant.now()),
+                            authors = manga.author?.let { listOf(OpdsDataClass.Author(name = it)) } ?: emptyList(),
+                            category =
+                                manga.genre.map { genre ->
+                                    OpdsDataClass.Category(term = "", label = genre)
+                                },
+                            summary = manga.description?.let { OpdsDataClass.Summary(value = it) },
+                            link =
+                                listOfNotNull(
+                                    OpdsDataClass.Link(
+                                        rel = "subsection",
+                                        href = "$baseUrl/manga/${manga.id}",
+                                        type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
+                                    ),
+                                    manga.thumbnailUrl?.let {
+                                        OpdsDataClass.Link(
+                                            rel = "http://opds-spec.org/image",
+                                            href = it,
+                                            type = "image/jpeg",
+                                        )
+                                    },
+                                ),
+                            content =
+                                OpdsDataClass.Content(
+                                    type = "text",
+                                    value = manga.status,
+                                ),
+                        )
+                    },
+            ),
+        )
+    }
+
+    suspend fun getMangaFeed(
+        mangaId: Int,
+        baseUrl: String,
+        pageNum: Int = 1,
+    ): String {
+        val manga = getManga(mangaId, false)
+        val (chapters, totalCount) = getPaginatedChapters(mangaId, pageNum)
+
+        return serialize(
+            OpdsDataClass(
+                id = "manga/$mangaId",
+                title = manga.title,
+                updated = opdsDateFormatter.format(Instant.now()),
+                icon = manga.thumbnailUrl,
+                author =
+                    OpdsDataClass.Author(
+                        name = "Suwayomi",
+                        uri = "https://suwayomi.org/",
+                    ),
+                totalResults = totalCount,
+                itemsPerPage = ITEMS_PER_PAGE,
+                startIndex = (pageNum - 1) * ITEMS_PER_PAGE + 1,
+                links =
+                    listOfNotNull(
+                        OpdsDataClass.Link(
+                            rel = "self",
+                            href = "$baseUrl/manga/$mangaId?pageNumber=$pageNum",
+                            type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
+                        ),
+                        OpdsDataClass.Link(
+                            rel = "start",
+                            href = baseUrl,
+                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
+                        ),
+                        manga.thumbnailUrl?.let {
+                            OpdsDataClass.Link(
+                                rel = "http://opds-spec.org/image",
+                                href = it,
+                                type = "image/jpeg",
+                            )
+                        },
+                        manga.thumbnailUrl?.let {
+                            OpdsDataClass.Link(
+                                rel = "http://opds-spec.org/image/thumbnail",
+                                href = it,
+                                type = "image/jpeg",
+                            )
+                        },
+//                        OpdsDataClass.Link(
+//                            rel = "search",
+//                            type = "application/opensearchdescription+xml",
+//                            href = "$baseUrl/search"
+//                        )
+                    ),
+                entries =
+                    chapters.map { chapter ->
+                        createChapterEntry(chapter, manga)
+                    },
+            ),
+        )
+    }
+
+    private fun createChapterEntry(
+        chapter: ChapterDataClass,
+        manga: MangaDataClass,
+    ): OpdsDataClass.Entry =
+        OpdsDataClass.Entry(
+            id = "chapter/${chapter.id}",
+            title = chapter.name,
+            updated = opdsDateFormatter.format(Instant.ofEpochMilli(chapter.uploadDate)),
+            content = OpdsDataClass.Content(value = "${chapter.scanlator} - application/vnd.comicbook+zip"),
+            summary =
+                manga.description?.let {
+                    OpdsDataClass.Summary(value = it)
+                },
+            extent = "${chapter.pageCount} pages",
+            format = "CBZ",
+            authors =
+                listOfNotNull(
+                    manga.author?.let { OpdsDataClass.Author(name = it) },
+                    manga.artist?.takeIf { it != manga.author }?.let { OpdsDataClass.Author(name = it) },
+                ),
+            link =
+                listOf(
+                    OpdsDataClass.Link(
+                        rel = "http://opds-spec.org/acquisition/open-access",
+                        href = "/api/v1/manga/${manga.id}/chapter/${chapter.index}/download",
+                        type = "application/vnd.comicbook+zip",
+                    ),
+                    OpdsDataClass.Link(
+                        rel = "http://opds-spec.org/image",
+                        href = "/api/v1/manga/${manga.id}/chapter/${chapter.index}/page/0",
+                        type = "image/jpeg",
+                    ),
+                ),
+        )
+
+    private fun getPaginatedChapters(
+        mangaId: Int,
+        pageNum: Int,
+    ): Pair<List<ChapterDataClass>, Long> =
+        transaction {
+            val query =
+                ChapterTable
+                    .selectAll()
+                    .where {
+                        (ChapterTable.manga eq mangaId) and
+                            (ChapterTable.isDownloaded eq true) and
+                            (ChapterTable.pageCount greater 0)
+                    }.orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+
+            val totalCount = query.count()
+            val results =
+                query
+                    .limit(ITEMS_PER_PAGE)
+                    .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
+                    .map {
+                        ChapterTable.toDataClass(it)
+                    }
+
+            Pair(results, totalCount)
+        }
+
+    private val opdsDateFormatter =
+        DateTimeFormatter
+            .ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
+            .withZone(ZoneOffset.UTC)
+
+    private fun sourceHasMangasWithChapters(sourceId: Long): Boolean =
+        transaction {
+            MangaTable
+                .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
+                .select(MangaTable.id)
+                .where {
+                    (MangaTable.sourceReference eq sourceId) and
+                        (ChapterTable.isDownloaded eq true)
+                }.limit(1)
+                .any()
+        }
+
+    private val xmlFormat =
+        XML {
+            indent = 2
+            xmlVersion = XmlVersion.XML10
+            xmlDeclMode = XmlDeclMode.Charset
+            defaultPolicy {
+                autoPolymorphic = true
+            }
+        }
+
+    private fun serialize(feed: OpdsDataClass): String = xmlFormat.encodeToString(OpdsDataClass.serializer(), feed)
+}

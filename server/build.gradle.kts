@@ -94,7 +94,6 @@ dependencies {
     implementation(libs.cron4j)
 
     implementation(libs.cronUtils)
-    implementation("org.jdom:jdom2:2.0.6")
 }
 
 application {

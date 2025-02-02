@@ -9,6 +9,7 @@ import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.server.serverConfig
 import java.io.File
+import java.io.IOException
 import java.io.InputStream
 
 object ChapterDownloadHelper {
@@ -41,5 +42,18 @@ object ChapterDownloadHelper {
         if (cbzFile.exists()) return ArchiveProvider(mangaId, chapterId)
         if (!chapterFolder.exists() && serverConfig.downloadAsCbz.value) return ArchiveProvider(mangaId, chapterId)
         return FolderProvider(mangaId, chapterId)
+    }
+
+    fun getCbzInputStream(
+        mangaId: Int,
+        chapterId: Int,
+    ): Pair<InputStream, String> {
+        val provider = provider(mangaId, chapterId)
+        return if (provider is ArchiveProvider) {
+            val cbzFile = File(getChapterCbzPath(mangaId, chapterId))
+            cbzFile.inputStream() to "application/vnd.comicbook+zip"
+        } else {
+            throw IOException("Chapter not available as CBZ")
+        }
     }
 }
