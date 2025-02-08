@@ -12,6 +12,7 @@ import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.serverConfig
 import java.io.File
@@ -50,24 +51,22 @@ object ChapterDownloadHelper {
         return FolderProvider(mangaId, chapterId)
     }
 
-    suspend fun getCbzDownload(
-        mangaId: Int,
-        chapterId: Int,
-    ): Triple<InputStream, String, String> {
-        val chapter =
-            transaction {
-                ChapterTable
-                    .selectAll()
-                    .where { (ChapterTable.id eq chapterId) and (ChapterTable.manga eq mangaId) }
-                    .firstOrNull()
-                    ?.let { ChapterTable.toDataClass(it) }
-            } ?: throw Exception("Chapter not found")
+    suspend fun getCbzDownload(chapterId: Int): Triple<InputStream, String, String> {
+        val (chapterData, mangaTitle) = transaction {
+            val row = (ChapterTable innerJoin MangaTable)
+                .select(ChapterTable.columns + MangaTable.columns)
+                .where { ChapterTable.id eq chapterId }
+                .firstOrNull() ?: throw Exception("Chapter not found")
 
-        val provider = provider(mangaId, chapter.id)
+            val chapter = ChapterTable.toDataClass(row)
+            val title = row[MangaTable.title]
+            Pair(chapter, title)
+        }
 
+        val provider = provider(chapterData.mangaId, chapterData.id)
         return if (provider is ArchiveProvider) {
-            val cbzFile = File(getChapterCbzPath(mangaId, chapter.id))
-            val fileName = "${getManga(mangaId, false).title} - [${chapter.scanlator}] ${chapter.name}.cbz"
+            val cbzFile = File(getChapterCbzPath(chapterData.mangaId, chapterData.id))
+            val fileName = "$mangaTitle - [${chapterData.scanlator}] ${chapterData.name}.cbz"
             Triple(cbzFile.inputStream(), "application/vnd.comicbook+zip", fileName)
         } else {
             throw IOException("Chapter not available as CBZ")
