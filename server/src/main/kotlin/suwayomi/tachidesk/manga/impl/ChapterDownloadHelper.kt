@@ -1,10 +1,7 @@
 package suwayomi.tachidesk.manga.impl
 
 import kotlinx.coroutines.CoroutineScope
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.ArchiveProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.FolderProvider
