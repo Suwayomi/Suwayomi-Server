@@ -9,6 +9,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Manga.getManga
+import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
@@ -27,6 +28,7 @@ object Opds {
     private const val ITEMS_PER_PAGE = 20
 
     fun getRootFeed(baseUrl: String): String {
+        val formattedNow = opdsDateFormatter.format(Instant.now())
         val sources =
             transaction {
                 SourceTable
@@ -41,7 +43,7 @@ object Opds {
                 id = "opds",
                 title = "Suwayomi OPDS Catalog",
                 icon = "/favicon",
-                updated = opdsDateFormatter.format(Instant.now()),
+                updated = formattedNow,
                 author = OpdsDataClass.Author("Suwayomi", "https://suwayomi.org/"),
                 links =
                     listOf(
@@ -59,7 +61,7 @@ object Opds {
                 entries =
                     sources.map { source ->
                         OpdsDataClass.Entry(
-                            updated = opdsDateFormatter.format(Instant.now()),
+                            updated = formattedNow,
                             id = source.id,
                             title = source.name,
                             link =
@@ -81,6 +83,7 @@ object Opds {
         baseUrl: String,
         pageNum: Int = 1,
     ): String {
+        val formattedNow = opdsDateFormatter.format(Instant.now())
         val source = Source.getSource(sourceId)
         val (mangas, totalCount) =
             transaction {
@@ -108,7 +111,7 @@ object Opds {
             OpdsDataClass(
                 id = "source/$sourceId",
                 title = source?.name ?: sourceId.toString(),
-                updated = opdsDateFormatter.format(Instant.now()),
+                updated = formattedNow,
                 totalResults = totalCount,
                 itemsPerPage = ITEMS_PER_PAGE,
                 startIndex = (pageNum - 1) * ITEMS_PER_PAGE + 1,
@@ -136,7 +139,7 @@ object Opds {
                         OpdsDataClass.Entry(
                             id = "manga/${manga.id}",
                             title = manga.title,
-                            updated = opdsDateFormatter.format(Instant.now()),
+                            updated = formattedNow,
                             authors = manga.author?.let { listOf(OpdsDataClass.Author(name = it)) } ?: emptyList(),
                             categories =
                                 manga.genre.map { genre ->
@@ -150,13 +153,11 @@ object Opds {
                                         href = "$baseUrl/manga/${manga.id}",
                                         type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
                                     ),
-                                    manga.thumbnailUrl?.let {
-                                        OpdsDataClass.Link(
-                                            rel = "http://opds-spec.org/image",
-                                            href = it,
-                                            type = "image/jpeg",
-                                        )
-                                    },
+                                    OpdsDataClass.Link(
+                                        rel = "http://opds-spec.org/image",
+                                        href = proxyThumbnailUrl(manga.id),
+                                        type = "image/jpeg",
+                                    ),
                                 ),
                             content =
                                 OpdsDataClass.Content(
@@ -174,15 +175,17 @@ object Opds {
         baseUrl: String,
         pageNum: Int = 1,
     ): String {
+        val formattedNow = opdsDateFormatter.format(Instant.now())
         val manga = getManga(mangaId, false)
+        val thumbnailUrl = proxyThumbnailUrl(manga.id)
         val (chapters, totalCount) = getPaginatedChapters(mangaId, pageNum)
 
         return serialize(
             OpdsDataClass(
                 id = "manga/$mangaId",
                 title = manga.title,
-                updated = opdsDateFormatter.format(Instant.now()),
-                icon = manga.thumbnailUrl,
+                updated = formattedNow,
+                icon = thumbnailUrl,
                 author =
                     OpdsDataClass.Author(
                         name = "Suwayomi",
@@ -203,20 +206,16 @@ object Opds {
                             href = baseUrl,
                             type = "application/atom+xml;profile=opds-catalog;kind=navigation",
                         ),
-                        manga.thumbnailUrl?.let {
-                            OpdsDataClass.Link(
-                                rel = "http://opds-spec.org/image",
-                                href = it,
-                                type = "image/jpeg",
-                            )
-                        },
-                        manga.thumbnailUrl?.let {
-                            OpdsDataClass.Link(
-                                rel = "http://opds-spec.org/image/thumbnail",
-                                href = it,
-                                type = "image/jpeg",
-                            )
-                        },
+                        OpdsDataClass.Link(
+                            rel = "http://opds-spec.org/image",
+                            href = thumbnailUrl,
+                            type = "image/jpeg",
+                        ),
+                        OpdsDataClass.Link(
+                            rel = "http://opds-spec.org/image/thumbnail",
+                            href = thumbnailUrl,
+                            type = "image/jpeg",
+                        ),
 //                        OpdsDataClass.Link(
 //                            rel = "search",
 //                            type = "application/opensearchdescription+xml",
