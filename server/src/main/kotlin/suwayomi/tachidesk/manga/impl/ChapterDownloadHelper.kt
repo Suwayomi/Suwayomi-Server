@@ -49,15 +49,17 @@ object ChapterDownloadHelper {
     }
 
     suspend fun getCbzDownload(chapterId: Int): Triple<InputStream, String, String> {
-        val (chapterData, mangaTitle) = transaction {
-            val row = (ChapterTable innerJoin MangaTable)
-                .select(ChapterTable.columns + MangaTable.columns)
-                .where { ChapterTable.id eq chapterId }
-                .firstOrNull() ?: throw Exception("Chapter not found")
-            val chapter = ChapterTable.toDataClass(row)
-            val title = row[MangaTable.title]
-            Pair(chapter, title)
-        }
+        val (chapterData, mangaTitle) =
+            transaction {
+                val row =
+                    (ChapterTable innerJoin MangaTable)
+                        .select(ChapterTable.columns + MangaTable.columns)
+                        .where { ChapterTable.id eq chapterId }
+                        .firstOrNull() ?: throw Exception("Chapter not found")
+                val chapter = ChapterTable.toDataClass(row)
+                val title = row[MangaTable.title]
+                Pair(chapter, title)
+            }
 
         val provider = provider(chapterData.mangaId, chapterData.id)
         return if (provider is ArchiveProvider) {

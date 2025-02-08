@@ -30,31 +30,30 @@ object Opds {
 
     fun getRootFeed(baseUrl: String): String {
         val formattedNow = opdsDateFormatter.format(Instant.now())
-        val sources = transaction {
-            SourceTable
-                .join(MangaTable, JoinType.INNER) { 
-                    MangaTable.sourceReference eq SourceTable.id 
-                }
-                .join(ChapterTable, JoinType.INNER) { 
-                    ChapterTable.manga eq MangaTable.id 
-                }
-                .selectAll()
-                .where { ChapterTable.isDownloaded eq true }
-                .orderBy(SourceTable.name to SortOrder.ASC)
-                .distinct()
-                .map {
-                    SourceDataClass(
-                        id = it[SourceTable.id].value.toString(),
-                        name = it[SourceTable.name],
-                        lang = it[SourceTable.lang],
-                        iconUrl = "",
-                        supportsLatest = false,
-                        isConfigurable = false,
-                        isNsfw = it[SourceTable.isNsfw],
-                        displayName = "",
-                    )
-                }
-        }
+        val sources =
+            transaction {
+                SourceTable
+                    .join(MangaTable, JoinType.INNER) {
+                        MangaTable.sourceReference eq SourceTable.id
+                    }.join(ChapterTable, JoinType.INNER) {
+                        ChapterTable.manga eq MangaTable.id
+                    }.selectAll()
+                    .where { ChapterTable.isDownloaded eq true }
+                    .orderBy(SourceTable.name to SortOrder.ASC)
+                    .distinct()
+                    .map {
+                        SourceDataClass(
+                            id = it[SourceTable.id].value.toString(),
+                            name = it[SourceTable.name],
+                            lang = it[SourceTable.lang],
+                            iconUrl = "",
+                            supportsLatest = false,
+                            isConfigurable = false,
+                            isNsfw = it[SourceTable.isNsfw],
+                            displayName = "",
+                        )
+                    }
+            }
 
         return serialize(
             OpdsDataClass(
@@ -198,27 +197,30 @@ object Opds {
         pageNum: Int = 1,
     ): String {
         val formattedNow = opdsDateFormatter.format(Instant.now())
-        val (manga, chapters, totalCount) = transaction {
-            val mangaEntry = MangaTable
-                .selectAll()
-                .where { MangaTable.id eq mangaId }
-                .first()
-            val mangaData = MangaTable.toDataClass(mangaEntry)
-            val chaptersQuery = ChapterTable
-                .selectAll()
-                .where {
-                    (ChapterTable.manga eq mangaId) and
-                        (ChapterTable.isDownloaded eq true) and
-                        (ChapterTable.pageCount greater 0)
-                }
-                .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
-            val total = chaptersQuery.count()
-            val chaptersData = chaptersQuery
-                .limit(ITEMS_PER_PAGE)
-                .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
-                .map { ChapterTable.toDataClass(it) }
-            Triple(mangaData, chaptersData, total)
-        }
+        val (manga, chapters, totalCount) =
+            transaction {
+                val mangaEntry =
+                    MangaTable
+                        .selectAll()
+                        .where { MangaTable.id eq mangaId }
+                        .first()
+                val mangaData = MangaTable.toDataClass(mangaEntry)
+                val chaptersQuery =
+                    ChapterTable
+                        .selectAll()
+                        .where {
+                            (ChapterTable.manga eq mangaId) and
+                                (ChapterTable.isDownloaded eq true) and
+                                (ChapterTable.pageCount greater 0)
+                        }.orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+                val total = chaptersQuery.count()
+                val chaptersData =
+                    chaptersQuery
+                        .limit(ITEMS_PER_PAGE)
+                        .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
+                        .map { ChapterTable.toDataClass(it) }
+                Triple(mangaData, chaptersData, total)
+            }
 
         return serialize(
             OpdsDataClass(
@@ -226,47 +228,50 @@ object Opds {
                 title = manga.title,
                 updated = formattedNow,
                 icon = manga.thumbnailUrl,
-                author = OpdsDataClass.Author(
-                    name = "Suwayomi",
-                    uri = "https://suwayomi.org/",
-                ),
+                author =
+                    OpdsDataClass.Author(
+                        name = "Suwayomi",
+                        uri = "https://suwayomi.org/",
+                    ),
                 totalResults = totalCount,
                 itemsPerPage = ITEMS_PER_PAGE,
                 startIndex = (pageNum - 1) * ITEMS_PER_PAGE + 1,
-                links = listOfNotNull(
-                    OpdsDataClass.Link(
-                        rel = "self",
-                        href = "$baseUrl/manga/$mangaId?pageNumber=$pageNum",
-                        type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                    ),
-                    OpdsDataClass.Link(
-                        rel = "start",
-                        href = baseUrl,
-                        type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                    ),
-                    manga.thumbnailUrl?.let { url ->
+                links =
+                    listOfNotNull(
                         OpdsDataClass.Link(
-                            rel = "http://opds-spec.org/image",
-                            href = url,
-                            type = "image/jpeg",
-                        )
-                    },
-                    manga.thumbnailUrl?.let { url ->
+                            rel = "self",
+                            href = "$baseUrl/manga/$mangaId?pageNumber=$pageNum",
+                            type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
+                        ),
                         OpdsDataClass.Link(
-                            rel = "http://opds-spec.org/image/thumbnail",
-                            href = url,
-                            type = "image/jpeg",
-                        )
+                            rel = "start",
+                            href = baseUrl,
+                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
+                        ),
+                        manga.thumbnailUrl?.let { url ->
+                            OpdsDataClass.Link(
+                                rel = "http://opds-spec.org/image",
+                                href = url,
+                                type = "image/jpeg",
+                            )
+                        },
+                        manga.thumbnailUrl?.let { url ->
+                            OpdsDataClass.Link(
+                                rel = "http://opds-spec.org/image/thumbnail",
+                                href = url,
+                                type = "image/jpeg",
+                            )
+                        },
+                        // OpdsDataClass.Link(
+                        //     rel = "search",
+                        //     type = "application/opensearchdescription+xml",
+                        //     href = "$baseUrl/search"
+                        // ),
+                    ),
+                entries =
+                    chapters.map { chapter ->
+                        createChapterEntry(chapter, manga)
                     },
-                    // OpdsDataClass.Link(
-                    //     rel = "search",
-                    //     type = "application/opensearchdescription+xml",
-                    //     href = "$baseUrl/search"
-                    // ),
-                ),
-                entries = chapters.map { chapter ->
-                    createChapterEntry(chapter, manga)
-                },
             ),
         )
     }
