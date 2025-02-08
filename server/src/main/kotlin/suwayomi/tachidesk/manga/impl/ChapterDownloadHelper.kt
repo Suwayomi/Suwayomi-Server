@@ -54,7 +54,6 @@ object ChapterDownloadHelper {
                 .select(ChapterTable.columns + MangaTable.columns)
                 .where { ChapterTable.id eq chapterId }
                 .firstOrNull() ?: throw Exception("Chapter not found")
-
             val chapter = ChapterTable.toDataClass(row)
             val title = row[MangaTable.title]
             Pair(chapter, title)
