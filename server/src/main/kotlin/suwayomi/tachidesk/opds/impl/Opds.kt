@@ -8,13 +8,13 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.manga.impl.Manga.getMangaDataClass
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.impl.extension.Extension.getExtensionIconUrl
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.OpdsDataClass
+import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -35,15 +35,21 @@ object Opds {
                 SourceTable
                     .join(MangaTable, JoinType.INNER) { MangaTable.sourceReference eq SourceTable.id }
                     .join(ChapterTable, JoinType.INNER) { ChapterTable.manga eq MangaTable.id }
-                    .select(SourceTable.id, SourceTable.name)
+                    .selectAll()
                     .where { ChapterTable.isDownloaded eq true }
                     .orderBy(SourceTable.name to SortOrder.ASC)
                     .distinct()
                     .map {
-                        object {
-                            val id = it[SourceTable.id].value
-                            val name = it[SourceTable.name]
-                        }
+                        SourceDataClass(
+                            id = it[SourceTable.id].value.toString(),
+                            name = it[SourceTable.name],
+                            lang = it[SourceTable.lang],
+                            iconUrl = "",
+                            supportsLatest = false,
+                            isConfigurable = false,
+                            isNsfw = it[SourceTable.isNsfw],
+                            displayName = ""
+                        )
                     }
             }
 
@@ -71,7 +77,7 @@ object Opds {
                     sources.map {
                         OpdsDataClass.Entry(
                             updated = formattedNow,
-                            id = it.id.toString(),
+                            id = it.id,
                             title = it.name,
                             link =
                                 listOf(
@@ -195,7 +201,7 @@ object Opds {
                 .where { MangaTable.id eq mangaId }
                 .first()
 
-            val mangaData = getMangaDataClass(mangaId, mangaEntry)
+            val mangaData = MangaTable.toDataClass(mangaEntry)
 
             val chaptersQuery = ChapterTable
                 .selectAll()
@@ -214,14 +220,13 @@ object Opds {
 
             Triple(mangaData, chaptersData, total)
         }
-        val thumbnailUrl = proxyThumbnailUrl(manga.id)
 
         return serialize(
             OpdsDataClass(
                 id = "manga/$mangaId",
                 title = manga.title,
                 updated = formattedNow,
-                icon = thumbnailUrl,
+                icon = manga.thumbnailUrl,
                 author =
                     OpdsDataClass.Author(
                         name = "Suwayomi",
@@ -242,16 +247,20 @@ object Opds {
                             href = baseUrl,
                             type = "application/atom+xml;profile=opds-catalog;kind=navigation",
                         ),
-                        OpdsDataClass.Link(
-                            rel = "http://opds-spec.org/image",
-                            href = thumbnailUrl,
-                            type = "image/jpeg",
-                        ),
-                        OpdsDataClass.Link(
-                            rel = "http://opds-spec.org/image/thumbnail",
-                            href = thumbnailUrl,
-                            type = "image/jpeg",
-                        ),
+                        manga.thumbnailUrl?.let {
+                            OpdsDataClass.Link(
+                                rel = "http://opds-spec.org/image",
+                                href = it,
+                                type = "image/jpeg",
+                            )
+                        },
+                        manga.thumbnailUrl?.let {
+                            OpdsDataClass.Link(
+                                rel = "http://opds-spec.org/image/thumbnail",
+                                href = it,
+                                type = "image/jpeg",
+                            )
+                        },
 //                        OpdsDataClass.Link(
 //                            rel = "search",
 //                            type = "application/opensearchdescription+xml",

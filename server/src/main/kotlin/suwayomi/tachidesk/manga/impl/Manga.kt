@@ -225,7 +225,7 @@ object Manga {
         }
     }
 
-    fun getMangaDataClass(
+    private fun getMangaDataClass(
         mangaId: Int,
         mangaEntry: ResultRow,
     ) = MangaDataClass(
