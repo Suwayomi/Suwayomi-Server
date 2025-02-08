@@ -82,6 +82,7 @@ object MangaAPI {
 
         path("chapter") {
             post("batch", MangaController.anyChapterBatch)
+            get("{chapterId}/download", MangaController.downloadChapter)
         }
 
         path("category") {
