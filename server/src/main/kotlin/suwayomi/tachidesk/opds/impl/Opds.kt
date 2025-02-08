@@ -8,14 +8,15 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.manga.impl.Manga.getManga
+import suwayomi.tachidesk.manga.impl.Manga.getMangaDataClass
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
-import suwayomi.tachidesk.manga.impl.Source
+import suwayomi.tachidesk.manga.impl.extension.Extension.getExtensionIconUrl
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.OpdsDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
@@ -32,10 +33,18 @@ object Opds {
         val sources =
             transaction {
                 SourceTable
-                    .selectAll()
+                    .join(MangaTable, JoinType.INNER) { MangaTable.sourceReference eq SourceTable.id }
+                    .join(ChapterTable, JoinType.INNER) { ChapterTable.manga eq MangaTable.id }
+                    .select(SourceTable.id, SourceTable.name)
+                    .where { ChapterTable.isDownloaded eq true }
                     .orderBy(SourceTable.name to SortOrder.ASC)
-                    .mapNotNull { Source.getSource(it[SourceTable.id].value) }
-                    .filter { sourceHasMangasWithChapters(it.id.toLong()) }
+                    .distinct()
+                    .map {
+                        object {
+                            val id = it[SourceTable.id].value
+                            val name = it[SourceTable.name]
+                        }
+                    }
             }
 
         return serialize(
@@ -59,16 +68,16 @@ object Opds {
                         ),
                     ),
                 entries =
-                    sources.map { source ->
+                    sources.map {
                         OpdsDataClass.Entry(
                             updated = formattedNow,
-                            id = source.id,
-                            title = source.name,
+                            id = it.id.toString(),
+                            title = it.name,
                             link =
                                 listOf(
                                     OpdsDataClass.Link(
                                         rel = "subsection",
-                                        href = "$baseUrl/source/${source.id}",
+                                        href = "$baseUrl/source/${it.id}",
                                         type = "application/atom+xml;profile=opds-catalog;kind=navigation",
                                     ),
                                 ),
@@ -84,16 +93,21 @@ object Opds {
         pageNum: Int = 1,
     ): String {
         val formattedNow = opdsDateFormatter.format(Instant.now())
-        val source = Source.getSource(sourceId)
-        val (mangas, totalCount) =
+        val (mangas, totalCount, sourceRow) =
             transaction {
+                val sourceRow =
+                    SourceTable
+                        .join(ExtensionTable, JoinType.INNER, onColumn = SourceTable.extension, otherColumn = ExtensionTable.id)
+                        .select(SourceTable.name, ExtensionTable.apkName)
+                        .where { SourceTable.id eq sourceId }
+                        .firstOrNull()
+
                 val query =
                     MangaTable
                         .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
                         .select(MangaTable.columns)
                         .where {
-                            (MangaTable.sourceReference eq sourceId) and
-                                (ChapterTable.isDownloaded eq true)
+                            (MangaTable.sourceReference eq sourceId) and (ChapterTable.isDownloaded eq true)
                         }.groupBy(MangaTable.id)
                         .orderBy(MangaTable.title to SortOrder.ASC)
 
@@ -104,23 +118,22 @@ object Opds {
                         .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
                         .map { MangaTable.toDataClass(it) }
 
-                Pair(paginatedResults, totalCount)
+                Triple(paginatedResults, totalCount, sourceRow)
             }
+
+        val sourceName = sourceRow?.get(SourceTable.name) ?: sourceId.toString()
+        val iconUrl = sourceRow?.get(ExtensionTable.apkName)?.let { getExtensionIconUrl(it) }
 
         return serialize(
             OpdsDataClass(
                 id = "source/$sourceId",
-                title = source?.name ?: sourceId.toString(),
+                title = sourceName,
                 updated = formattedNow,
                 totalResults = totalCount,
                 itemsPerPage = ITEMS_PER_PAGE,
                 startIndex = (pageNum - 1) * ITEMS_PER_PAGE + 1,
-                icon = source?.iconUrl,
-                author =
-                    OpdsDataClass.Author(
-                        name = "Suwayomi",
-                        uri = "https://suwayomi.org/",
-                    ),
+                icon = iconUrl,
+                author = OpdsDataClass.Author("Suwayomi", "https://suwayomi.org/"),
                 links =
                     listOfNotNull(
                         OpdsDataClass.Link(
@@ -176,9 +189,32 @@ object Opds {
         pageNum: Int = 1,
     ): String {
         val formattedNow = opdsDateFormatter.format(Instant.now())
-        val manga = getManga(mangaId, false)
+        val (manga, chapters, totalCount) = transaction {
+            val mangaEntry = MangaTable
+                .selectAll()
+                .where { MangaTable.id eq mangaId }
+                .first()
+
+            val mangaData = getMangaDataClass(mangaId, mangaEntry)
+
+            val chaptersQuery = ChapterTable
+                .selectAll()
+                .where {
+                    (ChapterTable.manga eq mangaId) and
+                        (ChapterTable.isDownloaded eq true) and
+                        (ChapterTable.pageCount greater 0)
+                }
+                .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+
+            val total = chaptersQuery.count()
+            val chaptersData = chaptersQuery
+                .limit(ITEMS_PER_PAGE)
+                .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
+                .map { ChapterTable.toDataClass(it) }
+
+            Triple(mangaData, chaptersData, total)
+        }
         val thumbnailUrl = proxyThumbnailUrl(manga.id)
-        val (chapters, totalCount) = getPaginatedChapters(mangaId, pageNum)
 
         return serialize(
             OpdsDataClass(
@@ -258,7 +294,7 @@ object Opds {
                     if (isCbzAvailable) {
                         OpdsDataClass.Link(
                             rel = "http://opds-spec.org/acquisition/open-access",
-                            href = "/api/v1/manga/${manga.id}/chapter/${chapter.id}/download",
+                            href = "/api/v1/chapter/${chapter.id}/download",
                             type = "application/vnd.comicbook+zip",
                         )
                     } else {
@@ -278,32 +314,6 @@ object Opds {
         )
     }
 
-    private fun getPaginatedChapters(
-        mangaId: Int,
-        pageNum: Int,
-    ): Pair<List<ChapterDataClass>, Long> =
-        transaction {
-            val query =
-                ChapterTable
-                    .selectAll()
-                    .where {
-                        (ChapterTable.manga eq mangaId) and
-                            (ChapterTable.isDownloaded eq true) and
-                            (ChapterTable.pageCount greater 0)
-                    }.orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
-
-            val totalCount = query.count()
-            val results =
-                query
-                    .limit(ITEMS_PER_PAGE)
-                    .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
-                    .map {
-                        ChapterTable.toDataClass(it)
-                    }
-
-            Pair(results, totalCount)
-        }
-
     private val opdsDateFormatter =
         DateTimeFormatter
             .ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
@@ -314,18 +324,6 @@ object Opds {
             size >= 1_000_000 -> "%.2f MB".format(size / 1_000_000.0)
             size >= 1_000 -> "%.2f KB".format(size / 1_000.0)
             else -> "$size bytes"
-        }
-
-    private fun sourceHasMangasWithChapters(sourceId: Long): Boolean =
-        transaction {
-            MangaTable
-                .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
-                .select(MangaTable.id)
-                .where {
-                    (MangaTable.sourceReference eq sourceId) and
-                        (ChapterTable.isDownloaded eq true)
-                }.limit(1)
-                .any()
         }
 
     private val xmlFormat =
