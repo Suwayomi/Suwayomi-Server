@@ -243,7 +243,7 @@ object Opds {
         return serialize(
             OpdsXmlModels(
                 id = "sources",
-                title = "Sources", // sin recuento
+                title = "Sources",
                 updated = formattedNow,
                 totalResults = totalCount,
                 itemsPerPage = ITEMS_PER_PAGE,
@@ -332,7 +332,7 @@ object Opds {
                     paginatedCategories.map { (id, name) ->
                         OpdsXmlModels.Entry(
                             id = "category/$id",
-                            title = name, // sin recuento
+                            title = name,
                             updated = formattedNow,
                             link =
                                 listOf(
@@ -543,11 +543,11 @@ object Opds {
                                 type = "image/jpeg",
                             )
                         },
-                        // OpdsXmlModels.Link(
-                        //     rel = "search",
-                        //     type = "application/opensearchdescription+xml",
-                        //     href = "$baseUrl/search"
-                        // ),
+                        OpdsXmlModels.Link(
+                            rel = "search",
+                            type = "application/opensearchdescription+xml",
+                            href = "$baseUrl/search.xml",
+                        ),
                     ),
                 entries =
                     chapters.map { chapter ->
