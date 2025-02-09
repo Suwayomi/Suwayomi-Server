@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.manga.model.dataclass
+package suwayomi.tachidesk.opds.model
 
 import kotlinx.serialization.Serializable
 import nl.adaptivity.xmlutil.serialization.XmlElement
@@ -7,7 +7,7 @@ import nl.adaptivity.xmlutil.serialization.XmlValue
 
 @Serializable
 @XmlSerialName("feed", "", "")
-data class OpdsDataClass(
+data class OpdsXmlModels(
     @XmlElement(true)
     val id: String,
     @XmlElement(true)
@@ -64,6 +64,17 @@ data class OpdsDataClass(
         val title: String? = null,
         @XmlSerialName("pse:count", "", "")
         val pseCount: Int? = null,
+        @XmlSerialName("opds:facetGroup", "", "")
+        val facetGroup: String? = null,
+        @XmlSerialName("opds:activeFacet", "", "")
+        val activeFacet: Boolean? = null,
+        val indirectAcquisition: List<OpdsIndirectAcquisition>? = null,
+    )
+
+    @Serializable
+    @XmlSerialName("opds:indirectAcquisition", "", "")
+    data class OpdsIndirectAcquisition(
+        @XmlSerialName("type") val type: String,
     )
 
     @Serializable
@@ -86,11 +97,19 @@ data class OpdsDataClass(
         @XmlElement(true)
         val categories: List<Category>? = null,
         @XmlElement(true)
-        @XmlSerialName("language", "http://purl.org/dc/terms/", "dc")
+        @XmlSerialName("extent", "http://purl.org/dc/terms/", "")
         val extent: String? = null,
         @XmlElement(true)
-        @XmlSerialName("format", "http://purl.org/dc/terms/format", "dc")
+        @XmlSerialName("format", "http://purl.org/dc/terms/format", "")
         val format: String? = null,
+        @XmlSerialName("dc:language")
+        val language: String? = null,
+        @XmlSerialName("dc:publisher")
+        val publisher: String? = null,
+        @XmlSerialName("dc:issued")
+        val issued: String? = null,
+        @XmlSerialName("dc:identifier")
+        val identifier: String? = null,
     )
 
     @Serializable
