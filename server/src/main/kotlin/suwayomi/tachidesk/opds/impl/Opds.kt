@@ -32,7 +32,6 @@ import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import kotlin.math.ceil
 
 object Opds {
     private const val ITEMS_PER_PAGE = 20
@@ -68,111 +67,8 @@ object Opds {
         return serialize(builder.build())
     }
 
-    fun searchManga(
-        criteria: SearchCriteria,
-        baseUrl: String,
-        pageNum: Int,
-    ): String {
-        val formattedNow = opdsDateFormatter.format(Instant.now())
-        val (results, totalCount) =
-            transaction {
-                val query =
-                    MangaTable
-                        .selectAll()
-                        .where {
-                            val conditions = mutableListOf<Op<Boolean>>()
-
-                            criteria.query?.takeIf { it.isNotBlank() }?.let { q ->
-                                conditions += (
-                                    (MangaTable.title like "%$q%") or
-                                        (MangaTable.author like "%$q%") or
-                                        (MangaTable.genre like "%$q%")
-                                )
-                            }
-
-                            criteria.author?.takeIf { it.isNotBlank() }?.let { author ->
-                                conditions += (MangaTable.author like "%$author%")
-                            }
-
-                            criteria.title?.takeIf { it.isNotBlank() }?.let { title ->
-                                conditions += (MangaTable.title like "%$title%")
-                            }
-
-                            if (conditions.isEmpty()) {
-                                Op.TRUE
-                            } else {
-                                conditions.reduce { acc, op -> acc and op }
-                            }
-                        }.orderBy(MangaTable.title to SortOrder.ASC)
-
-                val total = query.count()
-                val paginated =
-                    query
-                        .limit(ITEMS_PER_PAGE)
-                        .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
-                        .map { MangaTable.toDataClass(it) }
-
-                Pair(paginated, total)
-            }
-
-        return serialize(
-            OpdsXmlModels(
-                id = "search",
-                title = "Search results: ${criteria.query}",
-                updated = formattedNow,
-                author = OpdsXmlModels.Author("Suwayomi", "https://suwayomi.org/"),
-                links =
-                    listOf(
-                        OpdsXmlModels.Link(
-                            rel = "self",
-                            href = "$baseUrl/search?q=${criteria.query}&page=$pageNum",
-                            type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                        ),
-                        OpdsXmlModels.Link(
-                            rel = "first",
-                            href = "$baseUrl/search?q=${criteria.query}&page=1",
-                            type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                        ),
-                        OpdsXmlModels.Link(
-                            rel = "last",
-                            href = "$baseUrl/search?q=${criteria.query}&page=${ceil(totalCount.toDouble() / ITEMS_PER_PAGE).toInt()}",
-                            type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                        ),
-                    ),
-                entries =
-                    results.map { manga ->
-                        OpdsXmlModels.Entry(
-                            id = "manga/${manga.id}",
-                            title = manga.title,
-                            updated = formattedNow,
-                            authors = manga.author?.let { listOf(OpdsXmlModels.Author(name = it)) } ?: emptyList(),
-                            categories = manga.genre.map { OpdsXmlModels.Category(label = it, term = "") },
-                            summary = manga.description?.let { OpdsXmlModels.Summary(value = it) },
-                            link =
-                                listOfNotNull(
-                                    OpdsXmlModels.Link(
-                                        rel = "subsection",
-                                        href = "$baseUrl/manga/${manga.id}",
-                                        type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                                    ),
-                                    manga.thumbnailUrl?.let {
-                                        OpdsXmlModels.Link(
-                                            rel = "http://opds-spec.org/image/thumbnail",
-                                            href = it,
-                                            type = "image/jpeg",
-                                        )
-                                    },
-                                ),
-                        )
-                    },
-                totalResults = totalCount,
-                itemsPerPage = ITEMS_PER_PAGE,
-                startIndex = (pageNum - 1) * ITEMS_PER_PAGE + 1,
-            ),
-        )
-    }
-
     fun getMangasFeed(
+        criteria: SearchCriteria?,
         baseUrl: String,
         pageNum: Int,
     ): String {
@@ -182,8 +78,28 @@ object Opds {
                     MangaTable
                         .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
                         .select(MangaTable.columns)
-                        .where { ChapterTable.isDownloaded eq true }
-                        .groupBy(MangaTable.id)
+                        .where {
+                            val baseCondition = ChapterTable.isDownloaded eq true
+                            if (criteria == null) {
+                                baseCondition
+                            } else {
+                                val conditions = mutableListOf<Op<Boolean>>()
+                                criteria.query?.takeIf { it.isNotBlank() }?.let { q ->
+                                    conditions += (
+                                        (MangaTable.title like "%$q%") or
+                                            (MangaTable.author like "%$q%") or
+                                            (MangaTable.genre like "%$q%")
+                                    )
+                                }
+                                criteria.author?.takeIf { it.isNotBlank() }?.let { author ->
+                                    conditions += (MangaTable.author like "%$author%")
+                                }
+                                criteria.title?.takeIf { it.isNotBlank() }?.let { title ->
+                                    conditions += (MangaTable.title like "%$title%")
+                                }
+                                baseCondition and (if (conditions.isEmpty()) Op.TRUE else conditions.reduce { acc, op -> acc and op })
+                            }
+                        }.groupBy(MangaTable.id)
                         .orderBy(MangaTable.title to SortOrder.ASC)
                 val totalCount = query.count()
                 val mangas =
@@ -194,7 +110,11 @@ object Opds {
                 Pair(mangas, totalCount)
             }
 
-        return FeedBuilder(baseUrl, pageNum, "mangas", "All Manga")
+        val feedId = if (criteria == null) "mangas" else "search"
+        val feedTitle = if (criteria == null) "All Manga" else "Search results"
+        val searchQuery = criteria?.query?.takeIf { it.isNotBlank() }
+
+        return FeedBuilder(baseUrl, pageNum, feedId, feedTitle, searchQuery)
             .apply {
                 totalResults = total
                 entries += mangas.map { mangaEntry(it, baseUrl, formattedNow) }
@@ -546,7 +466,7 @@ object Opds {
                         OpdsXmlModels.Link(
                             rel = "search",
                             type = "application/opensearchdescription+xml",
-                            href = "$baseUrl/search.xml",
+                            href = "$baseUrl/search",
                         ),
                     ),
                 entries =
@@ -843,6 +763,7 @@ object Opds {
         val pageNum: Int,
         val id: String,
         val title: String,
+        val searchQuery: String? = null,
     ) {
         val formattedNow = opdsDateFormatter.format(Instant.now())
         var totalResults: Long = 0
@@ -862,7 +783,14 @@ object Opds {
                         listOf(
                             OpdsXmlModels.Link(
                                 rel = "self",
-                                href = if (id == "opds") baseUrl else "$baseUrl/$id?pageNumber=$pageNum",
+                                href =
+                                    if (id == "opds") {
+                                        baseUrl
+                                    } else if (searchQuery != null) {
+                                        "$baseUrl/$id?query=$searchQuery"
+                                    } else {
+                                        "$baseUrl/$id?pageNumber=$pageNum"
+                                    },
                                 type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
                             ),
                             OpdsXmlModels.Link(
@@ -873,7 +801,7 @@ object Opds {
                             OpdsXmlModels.Link(
                                 rel = "search",
                                 type = "application/opensearchdescription+xml",
-                                href = "$baseUrl/search.xml",
+                                href = "$baseUrl/search",
                             ),
                         ),
                 entries = entries,

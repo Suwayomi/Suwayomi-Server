@@ -37,7 +37,7 @@ object OpdsV1Controller {
         )
 
     // Search Description
-    val searchDescription =
+    val searchFeed =
         handler(
             documentWith = {
                 withOperation {
@@ -55,38 +55,10 @@ object OpdsV1Controller {
                         <InputEncoding>UTF-8</InputEncoding>
                         <OutputEncoding>UTF-8</OutputEncoding>
                         <Url type="application/atom+xml;profile=opds-catalog" 
-                            template="$BASE_URL/search?q={searchTerms}&amp;author={atom:author?}&amp;title={atom:title?}&amp;page={startPage?}"/>
+                            template="$BASE_URL/mangas?query={searchTerms}&amp;author={atom:author?}&amp;title={atom:title?}"/>
                     </OpenSearchDescription>
                     """.trimIndent(),
                 )
-            },
-            withResults = {
-                httpCode(HttpStatus.OK)
-            },
-        )
-
-    // Search Feed
-    val searchFeed =
-        handler(
-            queryParam<String?>("q"),
-            queryParam<String?>("author"),
-            queryParam<String?>("title"),
-            queryParam<Int?>("page"),
-            documentWith = {
-                withOperation {
-                    summary("OPDS Search Results")
-                    description("OPDS feed containing search results")
-                }
-            },
-            behaviorOf = { ctx, query, author, title, page ->
-                val searchCriteria = SearchCriteria(query, author, title)
-                ctx.future {
-                    future {
-                        Opds.searchManga(searchCriteria, BASE_URL, page ?: 1)
-                    }.thenApply { xml ->
-                        ctx.contentType(OPDS_MIME).result(xml)
-                    }
-                }
             },
             withResults = {
                 httpCode(HttpStatus.OK)
@@ -122,21 +94,36 @@ object OpdsV1Controller {
 //    )
 
     // Main Manga Grouping
+    // Search Feed
     val mangasFeed =
         handler(
             queryParam<Int?>("pageNumber"),
+            queryParam<String?>("query"),
+            queryParam<String?>("author"),
+            queryParam<String?>("title"),
             documentWith = {
                 withOperation {
                     summary("OPDS Mangas Feed")
                     description("OPDS feed for primary grouping of manga entries")
                 }
             },
-            behaviorOf = { ctx, pageNumber ->
-                ctx.future {
-                    future {
-                        Opds.getMangasFeed(BASE_URL, pageNumber ?: 1)
-                    }.thenApply { xml ->
-                        ctx.contentType(OPDS_MIME).result(xml)
+            behaviorOf = { ctx, pageNumber, query, author, title ->
+                if (query != null || author != null || title != null) {
+                    val searchCriteria = SearchCriteria(query, author, title)
+                    ctx.future {
+                        future {
+                            Opds.getMangasFeed(searchCriteria, BASE_URL, 1)
+                        }.thenApply { xml ->
+                            ctx.contentType(OPDS_MIME).result(xml)
+                        }
+                    }
+                } else {
+                    ctx.future {
+                        future {
+                            Opds.getMangasFeed(null, BASE_URL, pageNumber ?: 1)
+                        }.thenApply { xml ->
+                            ctx.contentType(OPDS_MIME).result(xml)
+                        }
                     }
                 }
             },

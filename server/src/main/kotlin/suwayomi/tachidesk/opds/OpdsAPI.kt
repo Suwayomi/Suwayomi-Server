@@ -10,9 +10,8 @@ object OpdsAPI {
             // Root feed (Navigation Feed)
             get(OpdsV1Controller.rootFeed)
 
-            // Search
+            // Search Description
             get("search", OpdsV1Controller.searchFeed)
-            get("search.xml", OpdsV1Controller.searchDescription)
 
             // Complete feed for crawlers
             // get("complete", OpdsV1Controller.completeFeed)
