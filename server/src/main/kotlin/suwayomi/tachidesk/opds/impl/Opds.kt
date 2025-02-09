@@ -1,9 +1,11 @@
 package suwayomi.tachidesk.opds.impl
 
+import SearchCriteria
 import nl.adaptivity.xmlutil.XmlDeclMode
 import nl.adaptivity.xmlutil.core.XmlVersion
 import nl.adaptivity.xmlutil.serialization.XML
 import org.jetbrains.exposed.sql.JoinType
+import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.or
@@ -36,88 +38,76 @@ object Opds {
     private const val ITEMS_PER_PAGE = 20
 
     fun getRootFeed(baseUrl: String): String {
-        val formattedNow = opdsDateFormatter.format(Instant.now())
-        return serialize(
-            OpdsXmlModels(
-                id = "opds",
-                title = "Suwayomi OPDS Catalog",
-                icon = "/favicon",
-                updated = formattedNow,
-                author = OpdsXmlModels.Author("Suwayomi", "https://suwayomi.org/"),
-                links =
+        val builder =
+            FeedBuilder(baseUrl, 1, "opds", "Suwayomi OPDS Catalog").apply {
+                totalResults = 6
+                entries +=
                     listOf(
-                        OpdsXmlModels.Link(
-                            rel = "self",
-                            href = baseUrl,
-                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                        ),
-                        OpdsXmlModels.Link(
-                            rel = "start",
-                            href = baseUrl,
-                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                        ),
-                        OpdsXmlModels.Link(
-                            rel = "search",
-                            type = "application/opensearchdescription+xml",
-                            href = "$baseUrl/search.xml",
-                            title = "Search in catalog",
-                        ),
-                    ),
-                entries =
-                    listOf(
-                        createNavigationEntry("mangas", "All Manga", "$baseUrl/mangas"),
-                        createNavigationEntry("sources", "Sources", "$baseUrl/sources"),
-                        createNavigationEntry("categories", "Categories", "$baseUrl/categories"),
-                        createNavigationEntry("genres", "Genres", "$baseUrl/genres"),
-                        createNavigationEntry("status", "Status", "$baseUrl/status"),
-                        createNavigationEntry("languages", "Languages", "$baseUrl/languages"),
-//                    createNavigationEntry("complete", "Complete Feed", "$baseUrl/complete"),
-                    ).map { it(formattedNow) },
-            ),
-        )
+                        "mangas" to "All Manga",
+                        "sources" to "Sources",
+                        "categories" to "Categories",
+                        "genres" to "Genres",
+                        "status" to "Status",
+                        "languages" to "Languages",
+                    ).map { (id, title) ->
+                        OpdsXmlModels.Entry(
+                            id = id,
+                            title = title,
+                            updated = formattedNow,
+                            link =
+                                listOf(
+                                    OpdsXmlModels.Link(
+                                        rel = "subsection",
+                                        href = "$baseUrl/$id",
+                                        type = "application/atom+xml;profile=opds-catalog;kind=navigation",
+                                    ),
+                                ),
+                        )
+                    }
+            }
+        return serialize(builder.build())
     }
 
-    private fun createNavigationEntry(
-        id: String,
-        title: String,
-        href: String,
-    ): (String) -> OpdsXmlModels.Entry =
-        { formattedNow ->
-            OpdsXmlModels.Entry(
-                id = id,
-                title = title,
-                updated = formattedNow,
-                link =
-                    listOf(
-                        OpdsXmlModels.Link(
-                            rel = "subsection",
-                            href = href,
-                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                        ),
-                    ),
-            )
-        }
-
     fun searchManga(
-        query: String,
+        criteria: SearchCriteria,
         baseUrl: String,
-        pageNum: Int = 1,
+        pageNum: Int,
     ): String {
         val formattedNow = opdsDateFormatter.format(Instant.now())
         val (results, totalCount) =
             transaction {
-                val query1 =
+                val query =
                     MangaTable
                         .selectAll()
                         .where {
-                            (MangaTable.title like "%$query%") or
-                                (MangaTable.author like "%$query%") or
-                                (MangaTable.genre like "%$query%")
+                            val conditions = mutableListOf<Op<Boolean>>()
+
+                            criteria.query?.takeIf { it.isNotBlank() }?.let { q ->
+                                conditions += (
+                                    (MangaTable.title like "%$q%") or
+                                        (MangaTable.author like "%$q%") or
+                                        (MangaTable.genre like "%$q%")
+                                )
+                            }
+
+                            criteria.author?.takeIf { it.isNotBlank() }?.let { author ->
+                                conditions += (MangaTable.author like "%$author%")
+                            }
+
+                            criteria.title?.takeIf { it.isNotBlank() }?.let { title ->
+                                conditions += (MangaTable.title like "%$title%")
+                            }
+
+                            if (conditions.isEmpty()) {
+                                Op.TRUE
+                            } else {
+                                conditions.reduce { acc, op -> acc and op }
+                            }
                         }.orderBy(MangaTable.title to SortOrder.ASC)
 
-                val total = query1.count()
+                val total = query.count()
                 val paginated =
-                    query1
+                    query
                         .limit(ITEMS_PER_PAGE)
                         .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
                         .map { MangaTable.toDataClass(it) }
@@ -128,24 +118,24 @@ object Opds {
         return serialize(
             OpdsXmlModels(
                 id = "search",
-                title = "Search results: $query",
+                title = "Search results: ${criteria.query}",
                 updated = formattedNow,
                 author = OpdsXmlModels.Author("Suwayomi", "https://suwayomi.org/"),
                 links =
                     listOf(
                         OpdsXmlModels.Link(
                             rel = "self",
-                            href = "$baseUrl/search?q=$query&page=$pageNum",
+                            href = "$baseUrl/search?q=${criteria.query}&page=$pageNum",
                             type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
                         ),
                         OpdsXmlModels.Link(
                             rel = "first",
-                            href = "$baseUrl/search?q=$query&page=1",
+                            href = "$baseUrl/search?q=${criteria.query}&page=1",
                             type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
                         ),
                         OpdsXmlModels.Link(
                             rel = "last",
-                            href = "$baseUrl/search?q=$query&page=${ceil(totalCount.toDouble() / ITEMS_PER_PAGE).toInt()}",
+                            href = "$baseUrl/search?q=${criteria.query}&page=${ceil(totalCount.toDouble() / ITEMS_PER_PAGE).toInt()}",
                             type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
                         ),
                     ),
@@ -184,10 +174,9 @@ object Opds {
 
     fun getMangasFeed(
         baseUrl: String,
-        pageNum: Int = 1,
+        pageNum: Int,
     ): String {
-        val formattedNow = opdsDateFormatter.format(Instant.now())
-        val (mangas, totalCount) =
+        val (mangas, total) =
             transaction {
                 val query =
                     MangaTable
@@ -205,64 +194,17 @@ object Opds {
                 Pair(mangas, totalCount)
             }
 
-        return serialize(
-            OpdsXmlModels(
-                id = "mangas",
-                title = "Mangas",
-                updated = formattedNow,
-                author = OpdsXmlModels.Author("Suwayomi", "https://suwayomi.org/"),
-                totalResults = totalCount,
-                itemsPerPage = ITEMS_PER_PAGE,
-                startIndex = (pageNum - 1) * ITEMS_PER_PAGE + 1,
-                links =
-                    listOf(
-                        OpdsXmlModels.Link(
-                            rel = "self",
-                            href = "$baseUrl/mangas?pageNumber=$pageNum",
-                            type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                        ),
-                        OpdsXmlModels.Link(
-                            rel = "start",
-                            href = baseUrl,
-                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                        ),
-                    ),
-                entries =
-                    mangas.map { manga ->
-                        OpdsXmlModels.Entry(
-                            id = "manga/${manga.id}",
-                            title = manga.title,
-                            updated = formattedNow,
-                            authors = manga.author?.let { listOf(OpdsXmlModels.Author(name = it)) } ?: emptyList(),
-                            categories =
-                                manga.genre.map { genre ->
-                                    OpdsXmlModels.Category(label = genre, term = "")
-                                },
-                            summary = manga.description?.let { OpdsXmlModels.Summary(value = it) },
-                            link =
-                                listOfNotNull(
-                                    OpdsXmlModels.Link(
-                                        rel = "subsection",
-                                        href = "$baseUrl/manga/${manga.id}",
-                                        type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                                    ),
-                                    manga.thumbnailUrl?.let {
-                                        OpdsXmlModels.Link(
-                                            rel = "http://opds-spec.org/image",
-                                            href = proxyThumbnailUrl(manga.id),
-                                            type = "image/jpeg",
-                                        )
-                                    },
-                                ),
-                        )
-                    },
-            ),
-        )
+        return FeedBuilder(baseUrl, pageNum, "mangas", "All Manga")
+            .apply {
+                totalResults = total
+                entries += mangas.map { mangaEntry(it, baseUrl, formattedNow) }
+            }.build()
+            .let(::serialize)
     }
 
     fun getSourcesFeed(
         baseUrl: String,
-        pageNum: Int = 1,
+        pageNum: Int,
     ): String {
         val formattedNow = opdsDateFormatter.format(Instant.now())
         val (sourceList, totalCount) =
@@ -342,7 +284,7 @@ object Opds {
 
     fun getCategoriesFeed(
         baseUrl: String,
-        pageNum: Int = 1,
+        pageNum: Int,
     ): String {
         val formattedNow = opdsDateFormatter.format(Instant.now())
         val categoryList =
@@ -353,7 +295,7 @@ object Opds {
                     .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
                     .select(CategoryTable.id, CategoryTable.name)
                     .where { ChapterTable.isDownloaded eq true }
-                    .groupBy(CategoryTable.id, CategoryTable.name)
+                    .groupBy(CategoryTable.id)
                     .orderBy(CategoryTable.order to SortOrder.ASC)
                     .map { row ->
                         Pair(row[CategoryTable.id].value, row[CategoryTable.name])
@@ -408,7 +350,7 @@ object Opds {
 
     fun getGenresFeed(
         baseUrl: String,
-        pageNum: Int = 1,
+        pageNum: Int,
     ): String {
         val formattedNow = opdsDateFormatter.format(Instant.now())
         val genres =
@@ -474,7 +416,7 @@ object Opds {
 
     fun getStatusFeed(
         baseUrl: String,
-        pageNum: Int = 1,
+        pageNum: Int,
     ): String {
         val formattedNow = opdsDateFormatter.format(Instant.now())
 
@@ -533,7 +475,7 @@ object Opds {
     fun getMangaFeed(
         mangaId: Int,
         baseUrl: String,
-        pageNum: Int = 1,
+        pageNum: Int,
     ): String {
         val formattedNow = opdsDateFormatter.format(Instant.now())
         val (manga, chapters, totalCount) =
@@ -719,10 +661,10 @@ object Opds {
     fun getSourceFeed(
         sourceId: Long,
         baseUrl: String,
-        pageNum: Int = 1,
+        pageNum: Int,
     ): String {
         val formattedNow = opdsDateFormatter.format(Instant.now())
-        val (mangas, totalCount, sourceRow) =
+        val (mangas, total, sourceRow) =
             transaction {
                 val sourceRow =
                     SourceTable
@@ -750,75 +692,22 @@ object Opds {
                 Triple(paginatedResults, totalCount, sourceRow)
             }
 
-        val sourceName = sourceRow?.get(SourceTable.name) ?: sourceId.toString()
-        val iconUrl = sourceRow?.get(ExtensionTable.apkName)?.let { getExtensionIconUrl(it) }
-
-        return serialize(
-            OpdsXmlModels(
-                id = "source/$sourceId",
-                title = sourceName,
-                updated = formattedNow,
-                totalResults = totalCount,
-                itemsPerPage = ITEMS_PER_PAGE,
-                startIndex = (pageNum - 1) * ITEMS_PER_PAGE + 1,
-                icon = iconUrl,
-                author = OpdsXmlModels.Author("Suwayomi", "https://suwayomi.org/"),
-                links =
-                    listOfNotNull(
-                        OpdsXmlModels.Link(
-                            rel = "self",
-                            href = "$baseUrl/source/$sourceId?pageNumber=$pageNum",
-                            type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                        ),
-                        OpdsXmlModels.Link(
-                            rel = "start",
-                            href = baseUrl,
-                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                        ),
-                    ),
-                entries =
-                    mangas.map { manga ->
-                        OpdsXmlModels.Entry(
-                            id = "manga/${manga.id}",
-                            title = manga.title,
-                            updated = formattedNow,
-                            authors = manga.author?.let { listOf(OpdsXmlModels.Author(name = it)) } ?: emptyList(),
-                            categories =
-                                manga.genre.map { genre ->
-                                    OpdsXmlModels.Category(term = "", label = genre)
-                                },
-                            summary = manga.description?.let { OpdsXmlModels.Summary(value = it) },
-                            link =
-                                listOfNotNull(
-                                    OpdsXmlModels.Link(
-                                        rel = "subsection",
-                                        href = "$baseUrl/manga/${manga.id}",
-                                        type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                                    ),
-                                    OpdsXmlModels.Link(
-                                        rel = "http://opds-spec.org/image",
-                                        href = proxyThumbnailUrl(manga.id),
-                                        type = "image/jpeg",
-                                    ),
-                                ),
-                            content =
-                                OpdsXmlModels.Content(
-                                    type = "text",
-                                    value = manga.status,
-                                ),
-                        )
-                    },
-            ),
-        )
+        return FeedBuilder(baseUrl, pageNum, "source/$sourceId", sourceRow?.get(SourceTable.name) ?: "Source $sourceId")
+            .apply {
+                totalResults = total
+                icon = sourceRow?.get(ExtensionTable.apkName)?.let { getExtensionIconUrl(it) }
+                entries += mangas.map { mangaEntry(it, baseUrl, formattedNow) }
+            }.build()
+            .let(::serialize)
     }
 
     fun getCategoryFeed(
         categoryId: Int,
         baseUrl: String,
-        pageNum: Int = 1,
+        pageNum: Int,
     ): String {
         val formattedNow = opdsDateFormatter.format(Instant.now())
-        val (mangas, totalCount, categoryName) =
+        val (mangas, total, categoryName) =
             transaction {
                 val categoryRow = CategoryTable.selectAll().where { CategoryTable.id eq categoryId }.firstOrNull()
                 if (categoryRow == null) {
@@ -841,68 +730,21 @@ object Opds {
                         .map { MangaTable.toDataClass(it) }
                 Triple(mangas, totalCount, categoryName)
             }
-        return serialize(
-            OpdsXmlModels(
-                id = "category/$categoryId",
-                title = "Category: $categoryName",
-                updated = formattedNow,
-                author = OpdsXmlModels.Author("Suwayomi", "https://suwayomi.org/"),
-                totalResults = totalCount.toLong(),
-                itemsPerPage = ITEMS_PER_PAGE,
-                startIndex = (pageNum - 1) * ITEMS_PER_PAGE + 1,
-                links =
-                    listOf(
-                        OpdsXmlModels.Link(
-                            rel = "self",
-                            href = "$baseUrl/category/$categoryId?pageNumber=$pageNum",
-                            type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                        ),
-                        OpdsXmlModels.Link(
-                            rel = "start",
-                            href = baseUrl,
-                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                        ),
-                    ),
-                entries =
-                    mangas.map { manga ->
-                        OpdsXmlModels.Entry(
-                            id = "manga/${manga.id}",
-                            title = manga.title,
-                            updated = formattedNow,
-                            authors = manga.author?.let { listOf(OpdsXmlModels.Author(name = it)) } ?: emptyList(),
-                            categories =
-                                manga.genre.map { genre ->
-                                    OpdsXmlModels.Category(label = genre, term = "")
-                                },
-                            summary = manga.description?.let { OpdsXmlModels.Summary(value = it) },
-                            link =
-                                listOfNotNull(
-                                    OpdsXmlModels.Link(
-                                        rel = "subsection",
-                                        href = "$baseUrl/manga/${manga.id}",
-                                        type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                                    ),
-                                    manga.thumbnailUrl?.let {
-                                        OpdsXmlModels.Link(
-                                            rel = "http://opds-spec.org/image",
-                                            href = proxyThumbnailUrl(manga.id),
-                                            type = "image/jpeg",
-                                        )
-                                    },
-                                ),
-                        )
-                    },
-            ),
-        )
+        return FeedBuilder(baseUrl, pageNum, "category/$categoryId", "Category: $categoryName")
+            .apply {
+                totalResults = total.toLong()
+                entries += mangas.map { mangaEntry(it, baseUrl, formattedNow) }
+            }.build()
+            .let(::serialize)
     }
 
     fun getGenreFeed(
         genre: String,
         baseUrl: String,
-        pageNum: Int = 1,
+        pageNum: Int,
     ): String {
         val formattedNow = opdsDateFormatter.format(Instant.now())
-        val (mangas, totalCount) =
+        val (mangas, total) =
             transaction {
                 val query =
                     MangaTable
@@ -919,65 +761,18 @@ object Opds {
                         .map { MangaTable.toDataClass(it) }
                 Pair(mangas, totalCount)
             }
-        return serialize(
-            OpdsXmlModels(
-                id = "genre/${genre.encodeURL()}",
-                title = "Genre: $genre",
-                updated = formattedNow,
-                author = OpdsXmlModels.Author("Suwayomi", "https://suwayomi.org/"),
-                totalResults = totalCount,
-                itemsPerPage = ITEMS_PER_PAGE,
-                startIndex = (pageNum - 1) * ITEMS_PER_PAGE + 1,
-                links =
-                    listOf(
-                        OpdsXmlModels.Link(
-                            rel = "self",
-                            href = "$baseUrl/genre/${genre.encodeURL()}?pageNumber=$pageNum",
-                            type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                        ),
-                        OpdsXmlModels.Link(
-                            rel = "start",
-                            href = baseUrl,
-                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                        ),
-                    ),
-                entries =
-                    mangas.map { manga ->
-                        OpdsXmlModels.Entry(
-                            id = "manga/${manga.id}",
-                            title = manga.title,
-                            updated = formattedNow,
-                            authors = manga.author?.let { listOf(OpdsXmlModels.Author(name = it)) } ?: emptyList(),
-                            categories =
-                                manga.genre.map { g ->
-                                    OpdsXmlModels.Category(label = g, term = "")
-                                },
-                            summary = manga.description?.let { OpdsXmlModels.Summary(value = it) },
-                            link =
-                                listOfNotNull(
-                                    OpdsXmlModels.Link(
-                                        rel = "subsection",
-                                        href = "$baseUrl/manga/${manga.id}",
-                                        type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                                    ),
-                                    manga.thumbnailUrl?.let {
-                                        OpdsXmlModels.Link(
-                                            rel = "http://opds-spec.org/image",
-                                            href = proxyThumbnailUrl(manga.id),
-                                            type = "image/jpeg",
-                                        )
-                                    },
-                                ),
-                        )
-                    },
-            ),
-        )
+        return FeedBuilder(baseUrl, pageNum, "genre/${genre.encodeURL()}", "Genre: $genre")
+            .apply {
+                totalResults = total
+                entries += mangas.map { mangaEntry(it, baseUrl, formattedNow) }
+            }.build()
+            .let(::serialize)
     }
 
     fun getStatusMangaFeed(
         statusId: Long,
         baseUrl: String,
-        pageNum: Int = 1,
+        pageNum: Int,
     ): String {
         val formattedNow = opdsDateFormatter.format(Instant.now())
         val statusName =
@@ -986,7 +781,7 @@ object Opds {
                 .name
                 .lowercase()
                 .replaceFirstChar { it.uppercase() }
-        val (mangas, totalCount) =
+        val (mangas, total) =
             transaction {
                 val query =
                     MangaTable
@@ -1003,68 +798,21 @@ object Opds {
                         .map { MangaTable.toDataClass(it) }
                 Pair(mangas, totalCount)
             }
-        return serialize(
-            OpdsXmlModels(
-                id = "status/$statusId",
-                title = "Status: $statusName",
-                updated = formattedNow,
-                author = OpdsXmlModels.Author("Suwayomi", "https://suwayomi.org/"),
-                totalResults = totalCount,
-                itemsPerPage = ITEMS_PER_PAGE,
-                startIndex = (pageNum - 1) * ITEMS_PER_PAGE + 1,
-                links =
-                    listOf(
-                        OpdsXmlModels.Link(
-                            rel = "self",
-                            href = "$baseUrl/status/$statusId?pageNumber=$pageNum",
-                            type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                        ),
-                        OpdsXmlModels.Link(
-                            rel = "start",
-                            href = baseUrl,
-                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                        ),
-                    ),
-                entries =
-                    mangas.map { manga ->
-                        OpdsXmlModels.Entry(
-                            id = "manga/${manga.id}",
-                            title = manga.title,
-                            updated = formattedNow,
-                            authors = manga.author?.let { listOf(OpdsXmlModels.Author(name = it)) } ?: emptyList(),
-                            categories =
-                                manga.genre.map { g ->
-                                    OpdsXmlModels.Category(label = g, term = "")
-                                },
-                            summary = manga.description?.let { OpdsXmlModels.Summary(value = it) },
-                            link =
-                                listOfNotNull(
-                                    OpdsXmlModels.Link(
-                                        rel = "subsection",
-                                        href = "$baseUrl/manga/${manga.id}",
-                                        type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                                    ),
-                                    manga.thumbnailUrl?.let {
-                                        OpdsXmlModels.Link(
-                                            rel = "http://opds-spec.org/image",
-                                            href = proxyThumbnailUrl(manga.id),
-                                            type = "image/jpeg",
-                                        )
-                                    },
-                                ),
-                        )
-                    },
-            ),
-        )
+        return FeedBuilder(baseUrl, pageNum, "status/$statusId", "Status: $statusName")
+            .apply {
+                totalResults = total
+                entries += mangas.map { mangaEntry(it, baseUrl, formattedNow) }
+            }.build()
+            .let(::serialize)
     }
 
     fun getLanguageFeed(
         langCode: String,
         baseUrl: String,
-        pageNum: Int = 1,
+        pageNum: Int,
     ): String {
         val formattedNow = opdsDateFormatter.format(Instant.now())
-        val (mangas, totalCount) =
+        val (mangas, total) =
             transaction {
                 val query =
                     SourceTable
@@ -1082,58 +830,98 @@ object Opds {
                         .map { MangaTable.toDataClass(it) }
                 Pair(mangas, totalCount)
             }
-        return serialize(
+        return FeedBuilder(baseUrl, pageNum, "language/$langCode", "Language: $langCode")
+            .apply {
+                totalResults = total
+                entries += mangas.map { mangaEntry(it, baseUrl, formattedNow) }
+            }.build()
+            .let(::serialize)
+    }
+
+    private class FeedBuilder(
+        val baseUrl: String,
+        val pageNum: Int,
+        val id: String,
+        val title: String,
+    ) {
+        val formattedNow = opdsDateFormatter.format(Instant.now())
+        var totalResults: Long = 0
+        var icon: String? = null
+        val links = mutableListOf<OpdsXmlModels.Link>()
+        val entries = mutableListOf<OpdsXmlModels.Entry>()
+
+        fun build(): OpdsXmlModels =
             OpdsXmlModels(
-                id = "language/$langCode",
-                title = "Language: $langCode",
+                id = id,
+                title = title,
                 updated = formattedNow,
+                icon = icon,
                 author = OpdsXmlModels.Author("Suwayomi", "https://suwayomi.org/"),
-                totalResults = totalCount,
+                links =
+                    links +
+                        listOf(
+                            OpdsXmlModels.Link(
+                                rel = "self",
+                                href = if (id == "opds") baseUrl else "$baseUrl/$id?pageNumber=$pageNum",
+                                type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
+                            ),
+                            OpdsXmlModels.Link(
+                                rel = "start",
+                                href = baseUrl,
+                                type = "application/atom+xml;profile=opds-catalog;kind=navigation",
+                            ),
+                            OpdsXmlModels.Link(
+                                rel = "search",
+                                type = "application/opensearchdescription+xml",
+                                href = "$baseUrl/search.xml",
+                            ),
+                        ),
+                entries = entries,
+                totalResults = totalResults,
                 itemsPerPage = ITEMS_PER_PAGE,
                 startIndex = (pageNum - 1) * ITEMS_PER_PAGE + 1,
-                links =
-                    listOf(
-                        OpdsXmlModels.Link(
-                            rel = "self",
-                            href = "$baseUrl/language/$langCode?pageNumber=$pageNum",
-                            type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                        ),
-                        OpdsXmlModels.Link(
-                            rel = "start",
-                            href = baseUrl,
-                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                        ),
+            )
+    }
+
+    private fun mangaEntry(
+        manga: MangaDataClass,
+        baseUrl: String,
+        formattedNow: String,
+    ): OpdsXmlModels.Entry {
+        val proxyThumb = manga.thumbnailUrl?.let { proxyThumbnailUrl(manga.id) }
+
+        return OpdsXmlModels.Entry(
+            id = "manga/${manga.id}",
+            title = manga.title,
+            updated = formattedNow,
+            authors = manga.author?.let { listOf(OpdsXmlModels.Author(name = it)) },
+            categories =
+                manga.genre.map {
+                    OpdsXmlModels.Category(term = "", label = it)
+                },
+            summary = manga.description?.let { OpdsXmlModels.Summary(value = it) },
+            link =
+                listOfNotNull(
+                    OpdsXmlModels.Link(
+                        rel = "subsection",
+                        href = "$baseUrl/manga/${manga.id}",
+                        type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
                     ),
-                entries =
-                    mangas.map { manga ->
-                        OpdsXmlModels.Entry(
-                            id = "manga/${manga.id}",
-                            title = manga.title,
-                            updated = formattedNow,
-                            authors = manga.author?.let { listOf(OpdsXmlModels.Author(name = it)) } ?: emptyList(),
-                            categories =
-                                manga.genre.map { g ->
-                                    OpdsXmlModels.Category(label = g, term = "")
-                                },
-                            summary = manga.description?.let { OpdsXmlModels.Summary(value = it) },
-                            link =
-                                listOfNotNull(
-                                    OpdsXmlModels.Link(
-                                        rel = "subsection",
-                                        href = "$baseUrl/manga/${manga.id}",
-                                        type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                                    ),
-                                    manga.thumbnailUrl?.let {
-                                        OpdsXmlModels.Link(
-                                            rel = "http://opds-spec.org/image",
-                                            href = proxyThumbnailUrl(manga.id),
-                                            type = "image/jpeg",
-                                        )
-                                    },
-                                ),
+                    proxyThumb?.let {
+                        OpdsXmlModels.Link(
+                            rel = "http://opds-spec.org/image",
+                            href = it,
+                            type = "image/jpeg",
                         )
                     },
-            ),
+                    proxyThumb?.let {
+                        OpdsXmlModels.Link(
+                            rel = "http://opds-spec.org/image/thumbnail",
+                            href = it,
+                            type = "image/jpeg",
+                        )
+                    },
+                ),
         )
     }
 

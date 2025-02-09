@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.opds.controller
 
+import SearchCriteria
 import io.javalin.http.HttpStatus
 import suwayomi.tachidesk.opds.impl.Opds
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -47,13 +48,14 @@ object OpdsV1Controller {
             behaviorOf = { ctx ->
                 ctx.contentType("application/opensearchdescription+xml").result(
                     """
-                    <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+                    <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/"
+                        xmlns:atom="http://www.w3.org/2005/Atom">
                         <ShortName>Suwayomi OPDS Search</ShortName>
                         <Description>Search manga in the catalog</Description>
                         <InputEncoding>UTF-8</InputEncoding>
                         <OutputEncoding>UTF-8</OutputEncoding>
                         <Url type="application/atom+xml;profile=opds-catalog" 
-                             template="$BASE_URL/search?q={{searchTerms}}&amp;page={startPage?}"/>
+                            template="$BASE_URL/search?q={searchTerms}&amp;author={atom:author?}&amp;title={atom:title?}&amp;page={startPage?}"/>
                     </OpenSearchDescription>
                     """.trimIndent(),
                 )
@@ -66,7 +68,9 @@ object OpdsV1Controller {
     // Search Feed
     val searchFeed =
         handler(
-            queryParam<String>("q"),
+            queryParam<String?>("q"),
+            queryParam<String?>("author"),
+            queryParam<String?>("title"),
             queryParam<Int?>("page"),
             documentWith = {
                 withOperation {
@@ -74,10 +78,11 @@ object OpdsV1Controller {
                     description("OPDS feed containing search results")
                 }
             },
-            behaviorOf = { ctx, query, page ->
+            behaviorOf = { ctx, query, author, title, page ->
+                val searchCriteria = SearchCriteria(query, author, title)
                 ctx.future {
                     future {
-                        Opds.searchManga(query, BASE_URL, page ?: 1)
+                        Opds.searchManga(searchCriteria, BASE_URL, page ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -129,7 +134,7 @@ object OpdsV1Controller {
             behaviorOf = { ctx, pageNumber ->
                 ctx.future {
                     future {
-                        Opds.getMangasFeed(BASE_URL)
+                        Opds.getMangasFeed(BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -143,16 +148,17 @@ object OpdsV1Controller {
     // Main Sources Grouping
     val sourcesFeed =
         handler(
+            queryParam<Int?>("pageNumber"),
             documentWith = {
                 withOperation {
                     summary("OPDS Sources Feed")
                     description("OPDS feed for primary grouping of manga sources")
                 }
             },
-            behaviorOf = { ctx ->
+            behaviorOf = { ctx, pageNumber ->
                 ctx.future {
                     future {
-                        Opds.getSourcesFeed(BASE_URL)
+                        Opds.getSourcesFeed(BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -166,16 +172,17 @@ object OpdsV1Controller {
     // Main Categories Grouping
     val categoriesFeed =
         handler(
+            queryParam<Int?>("pageNumber"),
             documentWith = {
                 withOperation {
                     summary("OPDS Categories Feed")
                     description("OPDS feed for primary grouping of manga categories")
                 }
             },
-            behaviorOf = { ctx ->
+            behaviorOf = { ctx, pageNumber ->
                 ctx.future {
                     future {
-                        Opds.getCategoriesFeed(BASE_URL)
+                        Opds.getCategoriesFeed(BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -189,16 +196,17 @@ object OpdsV1Controller {
     // Main Genres Grouping
     val genresFeed =
         handler(
+            queryParam<Int?>("pageNumber"),
             documentWith = {
                 withOperation {
                     summary("OPDS Genres Feed")
                     description("OPDS feed for primary grouping of manga genres")
                 }
             },
-            behaviorOf = { ctx ->
+            behaviorOf = { ctx, pageNumber ->
                 ctx.future {
                     future {
-                        Opds.getGenresFeed(BASE_URL)
+                        Opds.getGenresFeed(BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -212,16 +220,17 @@ object OpdsV1Controller {
     // Main Status Grouping
     val statusFeed =
         handler(
+            queryParam<Int?>("pageNumber"),
             documentWith = {
                 withOperation {
                     summary("OPDS Status Feed")
                     description("OPDS feed for primary grouping of manga by status")
                 }
             },
-            behaviorOf = { ctx ->
+            behaviorOf = { ctx, pageNumber ->
                 ctx.future {
                     future {
-                        Opds.getStatusFeed(BASE_URL)
+                        Opds.getStatusFeed(BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -321,7 +330,7 @@ object OpdsV1Controller {
             behaviorOf = { ctx, categoryId, pageNumber ->
                 ctx.future {
                     future {
-                        Opds.getCategoryFeed(categoryId, BASE_URL)
+                        Opds.getCategoryFeed(categoryId, BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -347,7 +356,7 @@ object OpdsV1Controller {
             behaviorOf = { ctx, genre, pageNumber ->
                 ctx.future {
                     future {
-                        Opds.getGenreFeed(genre, BASE_URL)
+                        Opds.getGenreFeed(genre, BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -373,7 +382,7 @@ object OpdsV1Controller {
             behaviorOf = { ctx, statusId, pageNumber ->
                 ctx.future {
                     future {
-                        Opds.getStatusMangaFeed(statusId, BASE_URL)
+                        Opds.getStatusMangaFeed(statusId, BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -399,7 +408,7 @@ object OpdsV1Controller {
             behaviorOf = { ctx, langCode, pageNumber ->
                 ctx.future {
                     future {
-                        Opds.getLanguageFeed(langCode, BASE_URL)
+                        Opds.getLanguageFeed(langCode, BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
