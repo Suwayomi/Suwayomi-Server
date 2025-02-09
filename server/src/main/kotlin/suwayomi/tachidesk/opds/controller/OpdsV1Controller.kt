@@ -12,7 +12,7 @@ object OpdsV1Controller {
     private const val OPDS_MIME = "application/xml;profile=opds-catalog;charset=UTF-8"
     private const val BASE_URL = "/api/opds/v1.2"
 
-    // Feed raíz
+    // Root Feed
     val rootFeed =
         handler(
             documentWith = {
@@ -35,7 +35,7 @@ object OpdsV1Controller {
             },
         )
 
-    // Descripción de búsqueda
+    // Search Description
     val searchDescription =
         handler(
             documentWith = {
@@ -63,7 +63,7 @@ object OpdsV1Controller {
             },
         )
 
-    // Feed de búsqueda
+    // Search Feed
     val searchFeed =
         handler(
             queryParam<String>("q"),
@@ -88,7 +88,7 @@ object OpdsV1Controller {
             },
         )
 
-    // Feed completo para crawlers
+    // Complete Feed for Crawlers
 //    val completeFeed = handler(
 //        documentWith = {
 //            withOperation {
@@ -116,7 +116,7 @@ object OpdsV1Controller {
 //        },
 //    )
 
-    // Agrupación principal de mangas
+    // Main Manga Grouping
     val mangasFeed =
         handler(
             queryParam<Int?>("pageNumber"),
@@ -140,7 +140,7 @@ object OpdsV1Controller {
             },
         )
 
-    // Agrupación principal de fuentes
+    // Main Sources Grouping
     val sourcesFeed =
         handler(
             documentWith = {
@@ -163,7 +163,7 @@ object OpdsV1Controller {
             },
         )
 
-    // Agrupación principal de categorías
+    // Main Categories Grouping
     val categoriesFeed =
         handler(
             documentWith = {
@@ -186,7 +186,7 @@ object OpdsV1Controller {
             },
         )
 
-    // Agrupación principal de géneros
+    // Main Genres Grouping
     val genresFeed =
         handler(
             documentWith = {
@@ -209,7 +209,7 @@ object OpdsV1Controller {
             },
         )
 
-    // Agrupación principal por estado
+    // Main Status Grouping
     val statusFeed =
         handler(
             documentWith = {
@@ -232,7 +232,7 @@ object OpdsV1Controller {
             },
         )
 
-    // Agrupación principal por idiomas
+    // Main Languages Grouping
     val languagesFeed =
         handler(
             documentWith = {
@@ -255,7 +255,7 @@ object OpdsV1Controller {
             },
         )
 
-    // Feed de capítulos de un manga
+    // Manga Chapters Feed
     val mangaFeed =
         handler(
             pathParam<Int>("mangaId"),
@@ -281,7 +281,7 @@ object OpdsV1Controller {
             },
         )
 
-    // Feed de una fuente específica
+    // Specific Source Feed
     val sourceFeed =
         handler(
             pathParam<Long>("sourceId"),
@@ -307,7 +307,7 @@ object OpdsV1Controller {
             },
         )
 
-    // Feed por faceta: Categoría específica
+    // Facet Feed: Specific Category
     val categoryFeed =
         handler(
             pathParam<Int>("categoryId"),
@@ -333,7 +333,7 @@ object OpdsV1Controller {
             },
         )
 
-    // Feed por faceta: Género específico
+    // Facet Feed: Specific Genre
     val genreFeed =
         handler(
             pathParam<String>("genre"),
@@ -359,7 +359,7 @@ object OpdsV1Controller {
             },
         )
 
-    // Feed por faceta: Estado específico
+    // Facet Feed: Specific Status
     val statusMangaFeed =
         handler(
             pathParam<Long>("statusId"),
@@ -385,7 +385,7 @@ object OpdsV1Controller {
             },
         )
 
-    // Feed por faceta: Idioma específico
+    // Facet Feed: Specific Language
     val languageFeed =
         handler(
             pathParam<String>("langCode"),

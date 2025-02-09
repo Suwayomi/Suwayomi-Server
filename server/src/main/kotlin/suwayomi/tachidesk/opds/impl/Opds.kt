@@ -6,7 +6,6 @@ import nl.adaptivity.xmlutil.serialization.XML
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.count
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -981,7 +980,6 @@ object Opds {
         pageNum: Int = 1,
     ): String {
         val formattedNow = opdsDateFormatter.format(Instant.now())
-        // Se obtiene el nombre legible del estado (por ejemplo, "Ongoing" o "Completed")
         val statusName =
             MangaStatus
                 .valueOf(statusId.toInt())
