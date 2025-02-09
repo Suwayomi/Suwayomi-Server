@@ -54,8 +54,9 @@ object OpdsV1Controller {
                         <Description>Search manga in the catalog</Description>
                         <InputEncoding>UTF-8</InputEncoding>
                         <OutputEncoding>UTF-8</OutputEncoding>
-                        <Url type="application/atom+xml;profile=opds-catalog" 
-                            template="$BASE_URL/mangas?query={searchTerms}&amp;author={atom:author?}&amp;title={atom:title?}"/>
+                        <Url type="application/atom+xml;profile=opds-catalog;kind=acquisition" 
+                            rel="results" 
+                            template="$BASE_URL/mangas?query={searchTerms}"/>
                     </OpenSearchDescription>
                     """.trimIndent(),
                 )
