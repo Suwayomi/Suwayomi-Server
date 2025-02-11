@@ -160,29 +160,10 @@ object Opds {
                 Pair(sources, totalCount)
             }
 
-        return serialize(
-            OpdsXmlModels(
-                id = "sources",
-                title = "Sources",
-                updated = formattedNow,
-                totalResults = totalCount,
-                itemsPerPage = ITEMS_PER_PAGE,
-                startIndex = (pageNum - 1) * ITEMS_PER_PAGE + 1,
-                author = OpdsXmlModels.Author("Suwayomi", "https://suwayomi.org/"),
-                links =
-                    listOfNotNull(
-                        OpdsXmlModels.Link(
-                            rel = "self",
-                            href = "$baseUrl/sources?pageNumber=$pageNum",
-                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                        ),
-                        OpdsXmlModels.Link(
-                            rel = "start",
-                            href = baseUrl,
-                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                        ),
-                    ),
-                entries =
+        return FeedBuilder(baseUrl, pageNum, "sources", "Sources")
+            .apply {
+                totalResults = totalCount.toLong()
+                entries +=
                     sourceList.map {
                         OpdsXmlModels.Entry(
                             updated = formattedNow,
@@ -197,9 +178,9 @@ object Opds {
                                     ),
                                 ),
                         )
-                    },
-            ),
-        )
+                    }
+            }.build()
+            .let(::serialize)
     }
 
     fun getCategoriesFeed(
@@ -221,34 +202,16 @@ object Opds {
                         Pair(row[CategoryTable.id].value, row[CategoryTable.name])
                     }
             }
+
         val totalCount = categoryList.size
         val fromIndex = (pageNum - 1) * ITEMS_PER_PAGE
         val toIndex = minOf(fromIndex + ITEMS_PER_PAGE, totalCount)
         val paginatedCategories = if (fromIndex < totalCount) categoryList.subList(fromIndex, toIndex) else emptyList()
 
-        return serialize(
-            OpdsXmlModels(
-                id = "categories",
-                title = "Categories",
-                updated = formattedNow,
-                author = OpdsXmlModels.Author("Suwayomi", "https://suwayomi.org/"),
-                totalResults = totalCount.toLong(),
-                itemsPerPage = ITEMS_PER_PAGE,
-                startIndex = fromIndex + 1,
-                links =
-                    listOf(
-                        OpdsXmlModels.Link(
-                            rel = "self",
-                            href = "$baseUrl/categories?pageNumber=$pageNum",
-                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                        ),
-                        OpdsXmlModels.Link(
-                            rel = "start",
-                            href = baseUrl,
-                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                        ),
-                    ),
-                entries =
+        return FeedBuilder(baseUrl, pageNum, "categories", "Categories")
+            .apply {
+                totalResults = totalCount.toLong()
+                entries +=
                     paginatedCategories.map { (id, name) ->
                         OpdsXmlModels.Entry(
                             id = "category/$id",
@@ -263,9 +226,9 @@ object Opds {
                                     ),
                                 ),
                         )
-                    },
-            ),
-        )
+                    }
+            }.build()
+            .let(::serialize)
     }
 
     fun getGenresFeed(
@@ -346,29 +309,10 @@ object Opds {
         val toIndex = minOf(fromIndex + ITEMS_PER_PAGE, totalCount)
         val paginatedStatuses = if (fromIndex < totalCount) statuses.subList(fromIndex, toIndex) else emptyList()
 
-        return serialize(
-            OpdsXmlModels(
-                id = "status",
-                title = "Status",
-                updated = formattedNow,
-                author = OpdsXmlModels.Author("Suwayomi", "https://suwayomi.org/"),
-                totalResults = totalCount.toLong(),
-                itemsPerPage = ITEMS_PER_PAGE,
-                startIndex = fromIndex + 1,
-                links =
-                    listOf(
-                        OpdsXmlModels.Link(
-                            rel = "self",
-                            href = "$baseUrl/status?pageNumber=$pageNum",
-                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                        ),
-                        OpdsXmlModels.Link(
-                            rel = "start",
-                            href = baseUrl,
-                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                        ),
-                    ),
-                entries =
+        return FeedBuilder(baseUrl, pageNum, "status", "Status")
+            .apply {
+                totalResults = totalCount.toLong()
+                entries +=
                     paginatedStatuses.map { status ->
                         OpdsXmlModels.Entry(
                             id = "status/${status.value}",
@@ -387,9 +331,46 @@ object Opds {
                                     ),
                                 ),
                         )
-                    },
-            ),
-        )
+                    }
+            }.build()
+            .let(::serialize)
+    }
+
+    fun getLanguagesFeed(baseUrl: String): String {
+        val formattedNow = opdsDateFormatter.format(Instant.now())
+        val languages =
+            transaction {
+                SourceTable
+                    .join(MangaTable, JoinType.INNER, onColumn = SourceTable.id, otherColumn = MangaTable.sourceReference)
+                    .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
+                    .select(SourceTable.lang)
+                    .where { ChapterTable.isDownloaded eq true }
+                    .groupBy(SourceTable.lang)
+                    .orderBy(SourceTable.lang to SortOrder.ASC)
+                    .map { row -> row[SourceTable.lang] }
+            }
+
+        return FeedBuilder(baseUrl, 1, "languages", "Languages")
+            .apply {
+                totalResults = languages.size.toLong()
+                entries +=
+                    languages.map { lang ->
+                        OpdsXmlModels.Entry(
+                            id = "language/$lang",
+                            title = lang,
+                            updated = formattedNow,
+                            link =
+                                listOf(
+                                    OpdsXmlModels.Link(
+                                        rel = "subsection",
+                                        href = "$baseUrl/language/$lang",
+                                        type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
+                                    ),
+                                ),
+                        )
+                    }
+            }.build()
+            .let(::serialize)
     }
 
     fun getMangaFeed(
@@ -423,111 +404,27 @@ object Opds {
                 Triple(mangaData, chaptersData, total)
             }
 
-        return serialize(
-            OpdsXmlModels(
-                id = "manga/$mangaId",
-                title = manga.title,
-                updated = formattedNow,
-                icon = manga.thumbnailUrl,
-                author =
-                    OpdsXmlModels.Author(
-                        name = "Suwayomi",
-                        uri = "https://suwayomi.org/",
-                    ),
-                totalResults = totalCount,
-                itemsPerPage = ITEMS_PER_PAGE,
-                startIndex = (pageNum - 1) * ITEMS_PER_PAGE + 1,
-                links =
-                    listOfNotNull(
+        return FeedBuilder(baseUrl, pageNum, "manga/$mangaId", manga.title)
+            .apply {
+                totalResults = totalCount
+                icon = manga.thumbnailUrl
+                manga.thumbnailUrl?.let { url ->
+                    links +=
                         OpdsXmlModels.Link(
-                            rel = "self",
-                            href = "$baseUrl/manga/$mangaId?pageNumber=$pageNum",
-                            type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                        ),
-                        OpdsXmlModels.Link(
-                            rel = "start",
-                            href = baseUrl,
-                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                        ),
-                        manga.thumbnailUrl?.let { url ->
-                            OpdsXmlModels.Link(
-                                rel = "http://opds-spec.org/image",
-                                href = url,
-                                type = "image/jpeg",
-                            )
-                        },
-                        manga.thumbnailUrl?.let { url ->
-                            OpdsXmlModels.Link(
-                                rel = "http://opds-spec.org/image/thumbnail",
-                                href = url,
-                                type = "image/jpeg",
-                            )
-                        },
-                        OpdsXmlModels.Link(
-                            rel = "search",
-                            type = "application/opensearchdescription+xml",
-                            href = "$baseUrl/search",
-                        ),
-                    ),
-                entries =
-                    chapters.map { chapter ->
-                        createChapterEntry(chapter, manga)
-                    },
-            ),
-        )
-    }
-
-    fun getLanguagesFeed(baseUrl: String): String {
-        val formattedNow = opdsDateFormatter.format(Instant.now())
-        val languages =
-            transaction {
-                SourceTable
-                    .join(MangaTable, JoinType.INNER, onColumn = SourceTable.id, otherColumn = MangaTable.sourceReference)
-                    .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
-                    .select(SourceTable.lang)
-                    .where { ChapterTable.isDownloaded eq true }
-                    .groupBy(SourceTable.lang)
-                    .orderBy(SourceTable.lang to SortOrder.ASC)
-                    .map { row -> row[SourceTable.lang] }
-            }
-
-        return serialize(
-            OpdsXmlModels(
-                id = "languages",
-                title = "Languages",
-                updated = formattedNow,
-                author = OpdsXmlModels.Author("Suwayomi", "https://suwayomi.org/"),
-                links =
-                    listOf(
-                        OpdsXmlModels.Link(
-                            rel = "self",
-                            href = "$baseUrl/languages",
-                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                        ),
-                        OpdsXmlModels.Link(
-                            rel = "start",
-                            href = baseUrl,
-                            type = "application/atom+xml;profile=opds-catalog;kind=navigation",
-                        ),
-                    ),
-                entries =
-                    languages.map { lang ->
-                        OpdsXmlModels.Entry(
-                            id = "language/$lang",
-                            title = lang,
-                            updated = formattedNow,
-                            link =
-                                listOf(
-                                    OpdsXmlModels.Link(
-                                        rel = "subsection",
-                                        href = "$baseUrl/language/$lang",
-                                        type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                                    ),
-                                ),
+                            rel = "http://opds-spec.org/image",
+                            href = url,
+                            type = "image/jpeg",
                         )
-                    },
-            ),
-        )
+                    links +=
+                        OpdsXmlModels.Link(
+                            rel = "http://opds-spec.org/image/thumbnail",
+                            href = url,
+                            type = "image/jpeg",
+                        )
+                }
+                entries += chapters.map { createChapterEntry(it, manga) }
+            }.build()
+            .let(::serialize)
     }
 
     private fun createChapterEntry(
@@ -780,16 +677,14 @@ object Opds {
                 author = OpdsXmlModels.Author("Suwayomi", "https://suwayomi.org/"),
                 links =
                     links +
-                        listOf(
+                        listOfNotNull(
                             OpdsXmlModels.Link(
                                 rel = "self",
                                 href =
-                                    if (id == "opds") {
-                                        baseUrl
-                                    } else if (searchQuery != null) {
-                                        "$baseUrl/$id?query=$searchQuery"
-                                    } else {
-                                        "$baseUrl/$id?pageNumber=$pageNum"
+                                    when {
+                                        id == "opds" -> baseUrl
+                                        searchQuery != null -> "$baseUrl/$id?query=$searchQuery"
+                                        else -> "$baseUrl/$id?pageNumber=$pageNum"
                                     },
                                 type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
                             ),
@@ -803,6 +698,20 @@ object Opds {
                                 type = "application/opensearchdescription+xml",
                                 href = "$baseUrl/search",
                             ),
+                            pageNum.takeIf { it > 1 }?.let {
+                                OpdsXmlModels.Link(
+                                    rel = "prev",
+                                    href = "$baseUrl/$id?pageNumber=${it - 1}",
+                                    type = "application/atom+xml;profile=opds-catalog;kind=navigation",
+                                )
+                            },
+                            (totalResults > pageNum * ITEMS_PER_PAGE).takeIf { it }?.let {
+                                OpdsXmlModels.Link(
+                                    rel = "next",
+                                    href = "$baseUrl/$id?pageNumber=${pageNum + 1}",
+                                    type = "application/atom+xml;profile=opds-catalog;kind=navigation",
+                                )
+                            },
                         ),
                 entries = entries,
                 totalResults = totalResults,
