@@ -33,7 +33,6 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.toStatus
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
-import suwayomi.tachidesk.manga.impl.Manga.clearThumbnail
 import suwayomi.tachidesk.manga.impl.backup.models.Chapter
 import suwayomi.tachidesk.manga.impl.backup.models.Manga
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.ValidationResult
@@ -291,10 +290,10 @@ object ProtoBackupImport : ProtoBackupBase() {
         val restoreMode = if (dbManga != null) RestoreMode.EXISTING else RestoreMode.NEW
 
         val mangaId =
-            if (dbManga == null) { // Manga not in database
-                transaction {
-                    // insert manga to database
-                    val mangaId =
+            transaction {
+                val mangaId =
+                    if (dbManga == null) {
+                        // insert manga to database
                         MangaTable
                             .insertAndGetId {
                                 it[url] = manga.url
@@ -316,47 +315,36 @@ object ProtoBackupImport : ProtoBackupBase() {
 
                                 it[inLibraryAt] = TimeUnit.MILLISECONDS.toSeconds(manga.date_added)
                             }.value
+                    } else {
+                        val dbMangaId = dbManga[MangaTable.id].value
 
-                    // delete thumbnail in case cached data still exists
-                    clearThumbnail(mangaId)
+                        // Merge manga data
+                        MangaTable.update({ MangaTable.id eq dbMangaId }) {
+                            it[artist] = manga.artist ?: dbManga[artist]
+                            it[author] = manga.author ?: dbManga[author]
+                            it[description] = manga.description ?: dbManga[description]
+                            it[genre] = manga.genre ?: dbManga[genre]
+                            it[status] = manga.status
+                            it[thumbnail_url] = manga.thumbnail_url ?: dbManga[thumbnail_url]
+                            it[updateStrategy] = manga.update_strategy.name
 
-                    // insert chapter data
-                    restoreMangaChapterData(mangaId, RestoreMode.NEW, chapters)
+                            it[initialized] = dbManga[initialized] || manga.description != null
 
-                    // insert categories
-                    restoreMangaCategoryData(mangaId, categories, categoryMapping)
+                            it[inLibrary] = manga.favorite || dbManga[inLibrary]
 
-                    mangaId
-                }
-            } else { // Manga in database
-                transaction {
-                    val mangaId = dbManga[MangaTable.id].value
+                            it[inLibraryAt] = TimeUnit.MILLISECONDS.toSeconds(manga.date_added)
+                        }
 
-                    // Merge manga data
-                    MangaTable.update({ MangaTable.id eq mangaId }) {
-                        it[artist] = manga.artist ?: dbManga[artist]
-                        it[author] = manga.author ?: dbManga[author]
-                        it[description] = manga.description ?: dbManga[description]
-                        it[genre] = manga.genre ?: dbManga[genre]
-                        it[status] = manga.status
-                        it[thumbnail_url] = manga.thumbnail_url ?: dbManga[thumbnail_url]
-                        it[updateStrategy] = manga.update_strategy.name
-
-                        it[initialized] = dbManga[initialized] || manga.description != null
-
-                        it[inLibrary] = manga.favorite || dbManga[inLibrary]
-
-                        it[inLibraryAt] = TimeUnit.MILLISECONDS.toSeconds(manga.date_added)
+                        dbMangaId
                     }
 
-                    // merge chapter data
-                    restoreMangaChapterData(mangaId, restoreMode, chapters)
+                // merge chapter data
+                restoreMangaChapterData(mangaId, restoreMode, chapters)
 
-                    // merge categories
-                    restoreMangaCategoryData(mangaId, categories, categoryMapping)
+                // merge categories
+                restoreMangaCategoryData(mangaId, categories, categoryMapping)
 
-                    mangaId
-                }
+                mangaId
             }
 
         restoreMangaTrackerData(mangaId, tracks)
