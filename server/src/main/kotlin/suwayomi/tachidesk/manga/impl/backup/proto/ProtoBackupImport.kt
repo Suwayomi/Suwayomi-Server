@@ -21,11 +21,13 @@ import kotlinx.coroutines.sync.withLock
 import okio.buffer
 import okio.gzip
 import okio.source
+import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.toStatus
@@ -286,6 +288,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                     .where { (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq manga.source) }
                     .firstOrNull()
             }
+        val restoreMode = if (dbManga != null) RestoreMode.EXISTING else RestoreMode.NEW
 
         val mangaId =
             if (dbManga == null) { // Manga not in database
@@ -347,7 +350,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                     }
 
                     // merge chapter data
-                    restoreMangaChapterData(mangaId, RestoreMode.EXISTING, chapters)
+                    restoreMangaChapterData(mangaId, restoreMode, chapters)
 
                     // merge categories
                     restoreMangaCategoryData(mangaId, categories, categoryMapping)
@@ -361,68 +364,63 @@ object ProtoBackupImport : ProtoBackupBase() {
         // TODO: insert/merge history
     }
 
+    private fun getMangaChapterToRestoreInfo(
+        mangaId: Int,
+        restoreMode: RestoreMode,
+        chapters: List<Chapter>,
+    ): Pair<List<Chapter>, List<Pair<Chapter, ResultRow>>> {
+        val uniqueChapters = chapters.distinctBy { it.url }
+
+        if (restoreMode == RestoreMode.NEW) {
+            return Pair(uniqueChapters, emptyList())
+        }
+
+        val dbChaptersByUrl = ChapterTable.selectAll().where { ChapterTable.manga eq mangaId }.associateBy { it[ChapterTable.url] }
+
+        val (chaptersToUpdate, chaptersToInsert) = uniqueChapters.partition { dbChaptersByUrl.contains(it.url) }
+        val chaptersToUpdateToDbChapter = chaptersToUpdate.map { it to dbChaptersByUrl[it.url]!! }
+
+        return chaptersToInsert to chaptersToUpdateToDbChapter
+    }
+
     private fun restoreMangaChapterData(
         mangaId: Int,
         restoreMode: RestoreMode,
         chapters: List<Chapter>,
     ) = dbTransaction {
-        val uniqueChapters = chapters.distinctBy { it.url }
-        val chaptersLength = uniqueChapters.size
+        val (chaptersToInsert, chaptersToUpdateToDbChapter) = getMangaChapterToRestoreInfo(mangaId, restoreMode, chapters)
 
-        if (restoreMode == RestoreMode.NEW) {
-            ChapterTable.batchInsert(uniqueChapters) { chapter ->
-                this[ChapterTable.url] = chapter.url
-                this[ChapterTable.name] = chapter.name
-                if (chapter.date_upload == 0L) {
-                    this[ChapterTable.date_upload] = chapter.date_fetch
-                } else {
-                    this[ChapterTable.date_upload] = chapter.date_upload
-                }
-                this[ChapterTable.chapter_number] = chapter.chapter_number
-                this[ChapterTable.scanlator] = chapter.scanlator
-
-                this[ChapterTable.sourceOrder] = chaptersLength - chapter.source_order
-                this[ChapterTable.manga] = mangaId
-
-                this[ChapterTable.isRead] = chapter.read
-                this[ChapterTable.lastPageRead] = chapter.last_page_read.coerceAtLeast(0)
-                this[ChapterTable.isBookmarked] = chapter.bookmark
-
-                this[ChapterTable.fetchedAt] = TimeUnit.MILLISECONDS.toSeconds(chapter.date_fetch)
+        ChapterTable.batchInsert(chaptersToInsert) { chapter ->
+            this[ChapterTable.url] = chapter.url
+            this[ChapterTable.name] = chapter.name
+            if (chapter.date_upload == 0L) {
+                this[ChapterTable.date_upload] = chapter.date_fetch
+            } else {
+                this[ChapterTable.date_upload] = chapter.date_upload
             }
+            this[ChapterTable.chapter_number] = chapter.chapter_number
+            this[ChapterTable.scanlator] = chapter.scanlator
+
+            this[ChapterTable.sourceOrder] = chaptersToInsert.size - chapter.source_order
+            this[ChapterTable.manga] = mangaId
+
+            this[ChapterTable.isRead] = chapter.read
+            this[ChapterTable.lastPageRead] = chapter.last_page_read.coerceAtLeast(0)
+            this[ChapterTable.isBookmarked] = chapter.bookmark
+
+            this[ChapterTable.fetchedAt] = TimeUnit.MILLISECONDS.toSeconds(chapter.date_fetch)
         }
 
-        // merge chapter data
-        val dbChapters = ChapterTable.selectAll().where { ChapterTable.manga eq mangaId }
-
-        uniqueChapters.forEach { chapter ->
-            val dbChapter = dbChapters.find { it[ChapterTable.url] == chapter.url }
-
-            if (dbChapter == null) {
-                ChapterTable.insert {
-                    it[url] = chapter.url
-                    it[name] = chapter.name
-                    if (chapter.date_upload == 0L) {
-                        it[date_upload] = chapter.date_fetch
-                    } else {
-                        it[date_upload] = chapter.date_upload
-                    }
-                    it[chapter_number] = chapter.chapter_number
-                    it[scanlator] = chapter.scanlator
-
-                    it[sourceOrder] = chaptersLength - chapter.source_order
-                    it[ChapterTable.manga] = mangaId
-
-                    it[isRead] = chapter.read
-                    it[lastPageRead] = chapter.last_page_read.coerceAtLeast(0)
-                    it[isBookmarked] = chapter.bookmark
+        if (chaptersToUpdateToDbChapter.isNotEmpty()) {
+            BatchUpdateStatement(ChapterTable).apply {
+                chaptersToUpdateToDbChapter.forEach { (backupChapter, dbChapter) ->
+                    addBatch(EntityID(dbChapter[ChapterTable.id].value, ChapterTable))
+                    this[ChapterTable.isRead] = backupChapter.read || dbChapter[ChapterTable.isRead]
+                    this[ChapterTable.lastPageRead] =
+                        max(backupChapter.last_page_read, dbChapter[ChapterTable.lastPageRead]).coerceAtLeast(0)
+                    this[ChapterTable.isBookmarked] = backupChapter.bookmark || dbChapter[ChapterTable.isBookmarked]
                 }
-            } else {
-                ChapterTable.update({ (ChapterTable.url eq dbChapter[ChapterTable.url]) and (ChapterTable.manga eq mangaId) }) {
-                    it[isRead] = chapter.read || dbChapter[isRead]
-                    it[lastPageRead] = max(chapter.last_page_read, dbChapter[lastPageRead]).coerceAtLeast(0)
-                    it[isBookmarked] = chapter.bookmark || dbChapter[isBookmarked]
-                }
+                execute(this@dbTransaction)
             }
         }
     }
