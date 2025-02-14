@@ -356,40 +356,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                 }
             }
 
-        val dbTrackRecordsByTrackerId =
-            Tracker
-                .getTrackRecordsByMangaId(mangaId)
-                .mapNotNull { it.record?.toTrack() }
-                .associateBy { it.sync_id }
-
-        val (existingTracks, newTracks) =
-            tracks
-                .mapNotNull { backupTrack ->
-                    val track = backupTrack.toTrack(mangaId)
-
-                    val isUnsupportedTracker = TrackerManager.getTracker(track.sync_id) == null
-                    if (isUnsupportedTracker) {
-                        return@mapNotNull null
-                    }
-
-                    val dbTrack =
-                        dbTrackRecordsByTrackerId[backupTrack.syncId]
-                            ?: // new track
-                            return@mapNotNull track
-
-                    if (track.toTrackRecordDataClass().forComparison() == dbTrack.toTrackRecordDataClass().forComparison()) {
-                        return@mapNotNull null
-                    }
-
-                    dbTrack.also {
-                        it.media_id = track.media_id
-                        it.library_id = track.library_id
-                        it.last_chapter_read = max(dbTrack.last_chapter_read, track.last_chapter_read)
-                    }
-                }.partition { (it.id ?: -1) > 0 }
-
-        existingTracks.forEach(Tracker::updateTrackRecord)
-        newTracks.forEach(Tracker::insertTrackRecord)
+        restoreMangaTrackerData(mangaId, tracks)
 
         // TODO: insert/merge history
     }
@@ -467,6 +434,46 @@ object ProtoBackupImport : ProtoBackupBase() {
         categories.forEach { backupCategoryOrder ->
             CategoryManga.addMangaToCategory(mangaId, categoryMapping[backupCategoryOrder]!!)
         }
+    }
+
+    private fun restoreMangaTrackerData(
+        mangaId: Int,
+        tracks: List<BackupTracking>,
+    ) {
+        val dbTrackRecordsByTrackerId =
+            Tracker
+                .getTrackRecordsByMangaId(mangaId)
+                .mapNotNull { it.record?.toTrack() }
+                .associateBy { it.sync_id }
+
+        val (existingTracks, newTracks) =
+            tracks
+                .mapNotNull { backupTrack ->
+                    val track = backupTrack.toTrack(mangaId)
+
+                    val isUnsupportedTracker = TrackerManager.getTracker(track.sync_id) == null
+                    if (isUnsupportedTracker) {
+                        return@mapNotNull null
+                    }
+
+                    val dbTrack =
+                        dbTrackRecordsByTrackerId[backupTrack.syncId]
+                            ?: // new track
+                            return@mapNotNull track
+
+                    if (track.toTrackRecordDataClass().forComparison() == dbTrack.toTrackRecordDataClass().forComparison()) {
+                        return@mapNotNull null
+                    }
+
+                    dbTrack.also {
+                        it.media_id = track.media_id
+                        it.library_id = track.library_id
+                        it.last_chapter_read = max(dbTrack.last_chapter_read, track.last_chapter_read)
+                    }
+                }.partition { (it.id ?: -1) > 0 }
+
+        existingTracks.forEach(Tracker::updateTrackRecord)
+        newTracks.forEach(Tracker::insertTrackRecord)
     }
 
     private fun TrackRecordDataClass.forComparison() = this.copy(id = 0, mangaId = 0)
