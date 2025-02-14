@@ -321,9 +321,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                     restoreMangaChapterData(mangaId, RestoreMode.NEW, chapters)
 
                     // insert categories
-                    categories.forEach { backupCategoryOrder ->
-                        CategoryManga.addMangaToCategory(mangaId, categoryMapping[backupCategoryOrder]!!)
-                    }
+                    restoreMangaCategoryData(mangaId, categories, categoryMapping)
 
                     mangaId
                 }
@@ -352,9 +350,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                     restoreMangaChapterData(mangaId, RestoreMode.EXISTING, chapters)
 
                     // merge categories
-                    categories.forEach { backupCategoryOrder ->
-                        CategoryManga.addMangaToCategory(mangaId, categoryMapping[backupCategoryOrder]!!)
-                    }
+                    restoreMangaCategoryData(mangaId, categories, categoryMapping)
 
                     mangaId
                 }
@@ -460,6 +456,16 @@ object ProtoBackupImport : ProtoBackupBase() {
                     it[isBookmarked] = chapter.bookmark || dbChapter[isBookmarked]
                 }
             }
+        }
+    }
+
+    private fun restoreMangaCategoryData(
+        mangaId: Int,
+        categories: List<Int>,
+        categoryMapping: Map<Int, Int>,
+    ) {
+        categories.forEach { backupCategoryOrder ->
+            CategoryManga.addMangaToCategory(mangaId, categoryMapping[backupCategoryOrder]!!)
         }
     }
 
