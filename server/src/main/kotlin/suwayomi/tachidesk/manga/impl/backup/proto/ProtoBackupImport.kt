@@ -415,7 +415,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         mangaId: Int,
         categoryIds: List<Int>,
     ) {
-        categoryIds.forEach { CategoryManga.addMangaToCategory(mangaId, it) }
+        CategoryManga.addMangaToCategories(mangaId, categoryIds)
     }
 
     private fun restoreMangaTrackerData(
