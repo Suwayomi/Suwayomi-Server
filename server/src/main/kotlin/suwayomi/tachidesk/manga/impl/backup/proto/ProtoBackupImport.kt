@@ -46,7 +46,6 @@ import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrack
 import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrackRecordDataClass
 import suwayomi.tachidesk.manga.model.dataclass.TrackRecordDataClass
-import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.database.dbTransaction
@@ -180,26 +179,8 @@ object ProtoBackupImport : ProtoBackupBase() {
         restoreAmount = backup.backupManga.size + 1 // +1 for categories
 
         updateRestoreState(id, BackupRestoreState.RestoringCategories(backup.backupManga.size))
-        // Restore categories
-        if (backup.backupCategories.isNotEmpty()) {
-            restoreCategories(backup.backupCategories)
-        }
 
-        val categoryMapping =
-            transaction {
-                backup.backupCategories.associate {
-                    val dbCategory =
-                        CategoryTable
-                            .selectAll()
-                            .where { CategoryTable.name eq it.name }
-                            .firstOrNull()
-                    val categoryId =
-                        dbCategory?.let { categoryResultRow ->
-                            categoryResultRow[CategoryTable.id].value
-                        } ?: Category.DEFAULT_CATEGORY_ID
-                    it.order to categoryId
-                }
-            }
+        val categoryMapping = restoreCategories(backup.backupCategories)
 
         // Store source mapping for error messages
         sourceMapping = backup.getSourceMap()
@@ -240,14 +221,11 @@ object ProtoBackupImport : ProtoBackupBase() {
         return validationResult
     }
 
-    private fun restoreCategories(backupCategories: List<BackupCategory>) {
-        val dbCategories = Category.getCategoryList()
+    private fun restoreCategories(backupCategories: List<BackupCategory>): Map<Int, Int> {
+        val categoryIds = Category.createCategories(backupCategories.map { it.name })
 
-        // Iterate over them and create missing categories
-        backupCategories.forEach { category ->
-            if (dbCategories.none { it.name == category.name }) {
-                Category.createCategory(category.name)
-            }
+        return backupCategories.withIndex().associate { (index, backupCategory) ->
+            backupCategory.order to categoryIds[index]
         }
     }
 
