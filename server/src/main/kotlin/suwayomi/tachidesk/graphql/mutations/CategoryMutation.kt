@@ -6,7 +6,6 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.selectAll
@@ -17,9 +16,8 @@ import suwayomi.tachidesk.graphql.types.CategoryMetaType
 import suwayomi.tachidesk.graphql.types.CategoryType
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.impl.Category
-import suwayomi.tachidesk.manga.impl.Category.DEFAULT_CATEGORY_ID
+import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.util.lang.isEmpty
-import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
 import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
@@ -398,28 +396,7 @@ class CategoryMutation {
                 }
             }
             if (!patch.addToCategories.isNullOrEmpty()) {
-                val newCategories =
-                    buildList {
-                        ids.forEach { mangaId ->
-                            patch.addToCategories.filter { it != DEFAULT_CATEGORY_ID }.forEach { categoryId ->
-                                val existingMapping =
-                                    CategoryMangaTable
-                                        .selectAll()
-                                        .where {
-                                            (CategoryMangaTable.manga eq mangaId) and (CategoryMangaTable.category eq categoryId)
-                                        }.isNotEmpty()
-
-                                if (!existingMapping) {
-                                    add(mangaId to categoryId)
-                                }
-                            }
-                        }
-                    }
-
-                CategoryMangaTable.batchInsert(newCategories) { (manga, category) ->
-                    this[CategoryMangaTable.manga] = manga
-                    this[CategoryMangaTable.category] = category
-                }
+                CategoryManga.addMangasToCategories(ids, patch.addToCategories)
             }
         }
     }

@@ -12,16 +12,16 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.count
 import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.max
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.wrapAsExpression
 import suwayomi.tachidesk.manga.impl.Category.DEFAULT_CATEGORY_ID
-import suwayomi.tachidesk.manga.impl.util.lang.isEmpty
+import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
@@ -35,22 +35,34 @@ object CategoryManga {
         mangaId: Int,
         categoryId: Int,
     ) {
-        if (categoryId == DEFAULT_CATEGORY_ID) return
+        addMangasToCategories(listOf(mangaId), listOf(categoryId))
+    }
 
-        fun notAlreadyInCategory() =
-            CategoryMangaTable
-                .selectAll()
-                .where {
-                    (CategoryMangaTable.category eq categoryId) and (CategoryMangaTable.manga eq mangaId)
-                }.isEmpty()
+    fun addMangasToCategories(
+        mangaIds: List<Int>,
+        categoryIds: List<Int>,
+    ) {
+        val newCategories =
+            buildList {
+                mangaIds.forEach { mangaId ->
+                    categoryIds.filter { it != DEFAULT_CATEGORY_ID }.forEach { categoryId ->
+                        val existingMapping =
+                            CategoryMangaTable
+                                .selectAll()
+                                .where {
+                                    (CategoryMangaTable.manga eq mangaId) and (CategoryMangaTable.category eq categoryId)
+                                }.isNotEmpty()
 
-        transaction {
-            if (notAlreadyInCategory()) {
-                CategoryMangaTable.insert {
-                    it[CategoryMangaTable.category] = categoryId
-                    it[CategoryMangaTable.manga] = mangaId
+                        if (!existingMapping) {
+                            add(mangaId to categoryId)
+                        }
+                    }
                 }
             }
+
+        CategoryMangaTable.batchInsert(newCategories) { (manga, category) ->
+            this[CategoryMangaTable.manga] = manga
+            this[CategoryMangaTable.category] = category
         }
     }
 
