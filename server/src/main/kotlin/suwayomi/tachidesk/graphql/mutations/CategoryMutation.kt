@@ -400,8 +400,8 @@ class CategoryMutation {
             if (!patch.addToCategories.isNullOrEmpty()) {
                 val newCategories =
                     buildList {
-                        ids.filter { it != DEFAULT_CATEGORY_ID }.forEach { mangaId ->
-                            patch.addToCategories.forEach { categoryId ->
+                        ids.forEach { mangaId ->
+                            patch.addToCategories.filter { it != DEFAULT_CATEGORY_ID }.forEach { categoryId ->
                                 val existingMapping =
                                     CategoryMangaTable
                                         .selectAll()
