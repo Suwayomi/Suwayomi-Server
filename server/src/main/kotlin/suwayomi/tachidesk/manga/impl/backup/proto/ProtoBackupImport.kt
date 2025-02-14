@@ -366,10 +366,11 @@ object ProtoBackupImport : ProtoBackupBase() {
         restoreMode: RestoreMode,
         chapters: List<Chapter>,
     ) = dbTransaction {
-        val chaptersLength = chapters.size
+        val uniqueChapters = chapters.distinctBy { it.url }
+        val chaptersLength = uniqueChapters.size
 
         if (restoreMode == RestoreMode.NEW) {
-            ChapterTable.batchInsert(chapters) { chapter ->
+            ChapterTable.batchInsert(uniqueChapters) { chapter ->
                 this[ChapterTable.url] = chapter.url
                 this[ChapterTable.name] = chapter.name
                 if (chapter.date_upload == 0L) {
@@ -394,7 +395,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         // merge chapter data
         val dbChapters = ChapterTable.selectAll().where { ChapterTable.manga eq mangaId }
 
-        chapters.forEach { chapter ->
+        uniqueChapters.forEach { chapter ->
             val dbChapter = dbChapters.find { it[ChapterTable.url] == chapter.url }
 
             if (dbChapter == null) {
