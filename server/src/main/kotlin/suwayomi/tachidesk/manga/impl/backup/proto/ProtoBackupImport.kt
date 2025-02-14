@@ -459,8 +459,8 @@ object ProtoBackupImport : ProtoBackupBase() {
                     }
                 }.partition { (it.id ?: -1) > 0 }
 
-        existingTracks.forEach(Tracker::updateTrackRecord)
-        newTracks.forEach(Tracker::insertTrackRecord)
+        Tracker.updateTrackRecords(existingTracks)
+        Tracker.insertTrackRecords(newTracks)
     }
 
     private fun TrackRecordDataClass.forComparison() = this.copy(id = 0, mangaId = 0)
