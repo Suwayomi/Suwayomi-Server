@@ -85,7 +85,7 @@ class ChapterMutation {
                             this[ChapterTable.isBookmarked] = it
                         }
                         patch.lastPageRead?.also {
-                            this[ChapterTable.lastPageRead] = it.coerceAtMost(chapterIdToPageCount[chapterId] ?: 0).coerceAtLeast(0)
+                            this[ChapterTable.lastPageRead] = it.coerceIn(0, chapterIdToPageCount[chapterId])
                             this[ChapterTable.lastReadAt] = now
                         }
                     }
