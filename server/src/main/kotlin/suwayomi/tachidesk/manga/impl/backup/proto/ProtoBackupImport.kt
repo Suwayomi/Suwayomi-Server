@@ -48,6 +48,7 @@ import suwayomi.tachidesk.manga.model.dataclass.TrackRecordDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.server.database.dbTransaction
 import java.io.InputStream
 import java.util.Date
 import java.util.Timer
@@ -55,6 +56,11 @@ import java.util.TimerTask
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
 import suwayomi.tachidesk.manga.impl.track.Track as Tracker
+
+enum class RestoreMode {
+    NEW,
+    EXISTING,
+}
 
 object ProtoBackupImport : ProtoBackupBase() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -312,27 +318,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                     clearThumbnail(mangaId)
 
                     // insert chapter data
-                    val chaptersLength = chapters.size
-                    ChapterTable.batchInsert(chapters) { chapter ->
-                        this[ChapterTable.url] = chapter.url
-                        this[ChapterTable.name] = chapter.name
-                        if (chapter.date_upload == 0L) {
-                            this[ChapterTable.date_upload] = chapter.date_fetch
-                        } else {
-                            this[ChapterTable.date_upload] = chapter.date_upload
-                        }
-                        this[ChapterTable.chapter_number] = chapter.chapter_number
-                        this[ChapterTable.scanlator] = chapter.scanlator
-
-                        this[ChapterTable.sourceOrder] = chaptersLength - chapter.source_order
-                        this[ChapterTable.manga] = mangaId
-
-                        this[ChapterTable.isRead] = chapter.read
-                        this[ChapterTable.lastPageRead] = chapter.last_page_read
-                        this[ChapterTable.isBookmarked] = chapter.bookmark
-
-                        this[ChapterTable.fetchedAt] = TimeUnit.MILLISECONDS.toSeconds(chapter.date_fetch)
-                    }
+                    restoreMangaChapterData(mangaId, RestoreMode.NEW, chapters)
 
                     // insert categories
                     categories.forEach { backupCategoryOrder ->
@@ -363,39 +349,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                     }
 
                     // merge chapter data
-                    val chaptersLength = chapters.size
-                    val dbChapters = ChapterTable.selectAll().where { ChapterTable.manga eq mangaId }
-
-                    chapters.forEach { chapter ->
-                        val dbChapter = dbChapters.find { it[ChapterTable.url] == chapter.url }
-
-                        if (dbChapter == null) {
-                            ChapterTable.insert {
-                                it[url] = chapter.url
-                                it[name] = chapter.name
-                                if (chapter.date_upload == 0L) {
-                                    it[date_upload] = chapter.date_fetch
-                                } else {
-                                    it[date_upload] = chapter.date_upload
-                                }
-                                it[chapter_number] = chapter.chapter_number
-                                it[scanlator] = chapter.scanlator
-
-                                it[sourceOrder] = chaptersLength - chapter.source_order
-                                it[ChapterTable.manga] = mangaId
-
-                                it[isRead] = chapter.read
-                                it[lastPageRead] = chapter.last_page_read
-                                it[isBookmarked] = chapter.bookmark
-                            }
-                        } else {
-                            ChapterTable.update({ (ChapterTable.url eq dbChapter[ChapterTable.url]) and (ChapterTable.manga eq mangaId) }) {
-                                it[isRead] = chapter.read || dbChapter[isRead]
-                                it[lastPageRead] = max(chapter.last_page_read, dbChapter[lastPageRead])
-                                it[isBookmarked] = chapter.bookmark || dbChapter[isBookmarked]
-                            }
-                        }
-                    }
+                    restoreMangaChapterData(mangaId, RestoreMode.EXISTING, chapters)
 
                     // merge categories
                     categories.forEach { backupCategoryOrder ->
@@ -442,6 +396,71 @@ object ProtoBackupImport : ProtoBackupBase() {
         newTracks.forEach(Tracker::insertTrackRecord)
 
         // TODO: insert/merge history
+    }
+
+    private fun restoreMangaChapterData(
+        mangaId: Int,
+        restoreMode: RestoreMode,
+        chapters: List<Chapter>,
+    ) = dbTransaction {
+        val chaptersLength = chapters.size
+
+        if (restoreMode == RestoreMode.NEW) {
+            ChapterTable.batchInsert(chapters) { chapter ->
+                this[ChapterTable.url] = chapter.url
+                this[ChapterTable.name] = chapter.name
+                if (chapter.date_upload == 0L) {
+                    this[ChapterTable.date_upload] = chapter.date_fetch
+                } else {
+                    this[ChapterTable.date_upload] = chapter.date_upload
+                }
+                this[ChapterTable.chapter_number] = chapter.chapter_number
+                this[ChapterTable.scanlator] = chapter.scanlator
+
+                this[ChapterTable.sourceOrder] = chaptersLength - chapter.source_order
+                this[ChapterTable.manga] = mangaId
+
+                this[ChapterTable.isRead] = chapter.read
+                this[ChapterTable.lastPageRead] = chapter.last_page_read
+                this[ChapterTable.isBookmarked] = chapter.bookmark
+
+                this[ChapterTable.fetchedAt] = TimeUnit.MILLISECONDS.toSeconds(chapter.date_fetch)
+            }
+        }
+
+        // merge chapter data
+        val dbChapters = ChapterTable.selectAll().where { ChapterTable.manga eq mangaId }
+
+        chapters.forEach { chapter ->
+            val dbChapter = dbChapters.find { it[ChapterTable.url] == chapter.url }
+
+            if (dbChapter == null) {
+                ChapterTable.insert {
+                    it[url] = chapter.url
+                    it[name] = chapter.name
+                    if (chapter.date_upload == 0L) {
+                        it[date_upload] = chapter.date_fetch
+                    } else {
+                        it[date_upload] = chapter.date_upload
+                    }
+                    it[chapter_number] = chapter.chapter_number
+                    it[scanlator] = chapter.scanlator
+
+                    it[sourceOrder] = chaptersLength - chapter.source_order
+                    it[ChapterTable.manga] = mangaId
+
+                    it[isRead] = chapter.read
+                    it[lastPageRead] = chapter.last_page_read
+                    it[isBookmarked] = chapter.bookmark
+                }
+            } else {
+                ChapterTable.update({ (ChapterTable.url eq dbChapter[ChapterTable.url]) and (ChapterTable.manga eq mangaId) }) {
+                    it[isRead] = chapter.read || dbChapter[isRead]
+                    it[lastPageRead] = max(chapter.last_page_read, dbChapter[lastPageRead])
+                    it[isBookmarked] = chapter.bookmark || dbChapter[isBookmarked]
+                }
+            }
+        }
     }
 
     private fun TrackRecordDataClass.forComparison() = this.copy(id = 0, mangaId = 0)
