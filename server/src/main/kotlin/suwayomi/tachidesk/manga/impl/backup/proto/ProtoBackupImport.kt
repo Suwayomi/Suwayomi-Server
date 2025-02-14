@@ -217,7 +217,6 @@ object ProtoBackupImport : ProtoBackupBase() {
 
             restoreManga(
                 backupManga = manga,
-                backupCategories = backup.backupCategories,
                 categoryMapping = categoryMapping,
             )
         }
@@ -254,7 +253,6 @@ object ProtoBackupImport : ProtoBackupBase() {
 
     private fun restoreManga(
         backupManga: BackupManga,
-        backupCategories: List<BackupCategory>,
         categoryMapping: Map<Int, Int>,
     ) {
         val manga = backupManga.getMangaImpl()
@@ -262,8 +260,10 @@ object ProtoBackupImport : ProtoBackupBase() {
         val categories = backupManga.categories
         val history = backupManga.history
 
+        val dbCategoryIds = categories.map { categoryMapping[it]!! }
+
         try {
-            restoreMangaData(manga, chapters, categories, history, backupManga.tracking, backupCategories, categoryMapping)
+            restoreMangaData(manga, chapters, dbCategoryIds, history, backupManga.tracking)
         } catch (e: Exception) {
             val sourceName = sourceMapping[manga.source] ?: manga.source.toString()
             errors.add(Date() to "${manga.title} [$sourceName]: ${e.message}")
@@ -274,11 +274,9 @@ object ProtoBackupImport : ProtoBackupBase() {
     private fun restoreMangaData(
         manga: Manga,
         chapters: List<Chapter>,
-        categories: List<Int>,
+        categoryIds: List<Int>,
         history: List<BackupHistory>,
         tracks: List<BackupTracking>,
-        backupCategories: List<BackupCategory>,
-        categoryMapping: Map<Int, Int>,
     ) {
         val dbManga =
             transaction {
@@ -342,7 +340,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                 restoreMangaChapterData(mangaId, restoreMode, chapters)
 
                 // merge categories
-                restoreMangaCategoryData(mangaId, categories, categoryMapping)
+                restoreMangaCategoryData(mangaId, categoryIds)
 
                 mangaId
             }
@@ -415,12 +413,9 @@ object ProtoBackupImport : ProtoBackupBase() {
 
     private fun restoreMangaCategoryData(
         mangaId: Int,
-        categories: List<Int>,
-        categoryMapping: Map<Int, Int>,
+        categoryIds: List<Int>,
     ) {
-        categories.forEach { backupCategoryOrder ->
-            CategoryManga.addMangaToCategory(mangaId, categoryMapping[backupCategoryOrder]!!)
-        }
+        categoryIds.forEach { CategoryManga.addMangaToCategory(mangaId, it) }
     }
 
     private fun restoreMangaTrackerData(
