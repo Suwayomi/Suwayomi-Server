@@ -385,7 +385,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                 this[ChapterTable.manga] = mangaId
 
                 this[ChapterTable.isRead] = chapter.read
-                this[ChapterTable.lastPageRead] = chapter.last_page_read
+                this[ChapterTable.lastPageRead] = chapter.last_page_read.coerceAtLeast(0)
                 this[ChapterTable.isBookmarked] = chapter.bookmark
 
                 this[ChapterTable.fetchedAt] = TimeUnit.MILLISECONDS.toSeconds(chapter.date_fetch)
@@ -414,13 +414,13 @@ object ProtoBackupImport : ProtoBackupBase() {
                     it[ChapterTable.manga] = mangaId
 
                     it[isRead] = chapter.read
-                    it[lastPageRead] = chapter.last_page_read
+                    it[lastPageRead] = chapter.last_page_read.coerceAtLeast(0)
                     it[isBookmarked] = chapter.bookmark
                 }
             } else {
                 ChapterTable.update({ (ChapterTable.url eq dbChapter[ChapterTable.url]) and (ChapterTable.manga eq mangaId) }) {
                     it[isRead] = chapter.read || dbChapter[isRead]
-                    it[lastPageRead] = max(chapter.last_page_read, dbChapter[lastPageRead])
+                    it[lastPageRead] = max(chapter.last_page_read, dbChapter[lastPageRead]).coerceAtLeast(0)
                     it[isBookmarked] = chapter.bookmark || dbChapter[isBookmarked]
                 }
             }
