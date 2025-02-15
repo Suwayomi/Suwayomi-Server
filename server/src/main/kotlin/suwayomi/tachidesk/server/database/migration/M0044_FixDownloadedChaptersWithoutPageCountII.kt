@@ -10,7 +10,7 @@ package suwayomi.tachidesk.server.database.migration
 import de.neonew.exposed.migrations.helpers.SQLMigration
 
 @Suppress("ClassName", "unused")
-class M0041_FixDownloadedChaptersWithoutPageCount : SQLMigration() {
+class M0044_FixDownloadedChaptersWithoutPageCountII : SQLMigration() {
     override val sql: String =
         """
         UPDATE CHAPTER
