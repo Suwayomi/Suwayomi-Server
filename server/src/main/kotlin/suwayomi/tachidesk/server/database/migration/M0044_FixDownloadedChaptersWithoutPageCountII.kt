@@ -15,9 +15,6 @@ class M0044_FixDownloadedChaptersWithoutPageCountII : SQLMigration() {
         """
         UPDATE CHAPTER
         SET IS_DOWNLOADED = FALSE
-        WHERE ID IN (
-            SELECT ID FROM CHAPTER
-            WHERE IS_DOWNLOADED = TRUE AND PAGE_COUNT <= 0
-        );
+        WHERE IS_DOWNLOADED = TRUE AND PAGE_COUNT <= 0
         """.trimIndent()
 }
