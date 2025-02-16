@@ -12,16 +12,15 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.count
 import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.max
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.wrapAsExpression
 import suwayomi.tachidesk.manga.impl.Category.DEFAULT_CATEGORY_ID
-import suwayomi.tachidesk.manga.impl.util.lang.isEmpty
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
@@ -35,22 +34,38 @@ object CategoryManga {
         mangaId: Int,
         categoryId: Int,
     ) {
-        if (categoryId == DEFAULT_CATEGORY_ID) return
+        addMangaToCategories(mangaId, listOf(categoryId))
+    }
 
-        fun notAlreadyInCategory() =
-            CategoryMangaTable
-                .selectAll()
-                .where {
-                    (CategoryMangaTable.category eq categoryId) and (CategoryMangaTable.manga eq mangaId)
-                }.isEmpty()
+    fun addMangaToCategories(
+        mangaId: Int,
+        categoryIds: List<Int>,
+    ) {
+        addMangasToCategories(listOf(mangaId), categoryIds)
+    }
 
-        transaction {
-            if (notAlreadyInCategory()) {
-                CategoryMangaTable.insert {
-                    it[CategoryMangaTable.category] = categoryId
-                    it[CategoryMangaTable.manga] = mangaId
+    fun addMangasToCategories(
+        mangaIds: List<Int>,
+        categoryIds: List<Int>,
+    ) {
+        val filteredCategoryIds = categoryIds.filter { it != DEFAULT_CATEGORY_ID }
+
+        val mangaIdsToCategoryIds = getMangasCategories(mangaIds).mapValues { it.value.map { category -> category.id } }
+        val mangaIdsToNewCategoryIds =
+            mangaIds.associateWith { mangaId ->
+                filteredCategoryIds.filter { categoryId ->
+                    !(mangaIdsToCategoryIds[mangaId]?.contains(categoryId) ?: false)
                 }
             }
+
+        val newMangaCategoryMappings =
+            mangaIdsToNewCategoryIds.flatMap { (mangaId, newCategoryIds) ->
+                newCategoryIds.map { mangaId to it }
+            }
+
+        CategoryMangaTable.batchInsert(newMangaCategoryMappings) { (mangaId, categoryId) ->
+            this[CategoryMangaTable.manga] = mangaId
+            this[CategoryMangaTable.category] = categoryId
         }
     }
 

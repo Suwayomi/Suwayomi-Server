@@ -6,13 +6,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTrackService
@@ -25,6 +27,18 @@ import suwayomi.tachidesk.manga.model.dataclass.TrackSearchDataClass
 import suwayomi.tachidesk.manga.model.dataclass.TrackerDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
+import suwayomi.tachidesk.manga.model.table.TrackRecordTable.finishDate
+import suwayomi.tachidesk.manga.model.table.TrackRecordTable.lastChapterRead
+import suwayomi.tachidesk.manga.model.table.TrackRecordTable.libraryId
+import suwayomi.tachidesk.manga.model.table.TrackRecordTable.mangaId
+import suwayomi.tachidesk.manga.model.table.TrackRecordTable.remoteId
+import suwayomi.tachidesk.manga.model.table.TrackRecordTable.remoteUrl
+import suwayomi.tachidesk.manga.model.table.TrackRecordTable.score
+import suwayomi.tachidesk.manga.model.table.TrackRecordTable.startDate
+import suwayomi.tachidesk.manga.model.table.TrackRecordTable.status
+import suwayomi.tachidesk.manga.model.table.TrackRecordTable.title
+import suwayomi.tachidesk.manga.model.table.TrackRecordTable.totalChapters
+import suwayomi.tachidesk.manga.model.table.TrackRecordTable.trackerId
 import suwayomi.tachidesk.manga.model.table.TrackSearchTable
 import suwayomi.tachidesk.manga.model.table.insertAll
 import suwayomi.tachidesk.server.generated.BuildConfig
@@ -394,44 +408,49 @@ object Track {
             }
         }
 
-    fun updateTrackRecord(track: Track): Int =
+    fun updateTrackRecord(track: Track) = updateTrackRecords(listOf(track))
+
+    fun updateTrackRecords(tracks: List<Track>) =
         transaction {
-            TrackRecordTable.update(
-                {
-                    (TrackRecordTable.mangaId eq track.manga_id) and
-                        (TrackRecordTable.trackerId eq track.sync_id)
-                },
-            ) {
-                it[remoteId] = track.media_id
-                it[libraryId] = track.library_id
-                it[title] = track.title
-                it[lastChapterRead] = track.last_chapter_read.toDouble()
-                it[totalChapters] = track.total_chapters
-                it[status] = track.status
-                it[score] = track.score.toDouble()
-                it[remoteUrl] = track.tracking_url
-                it[startDate] = track.started_reading_date
-                it[finishDate] = track.finished_reading_date
+            if (tracks.isNotEmpty()) {
+                BatchUpdateStatement(TrackRecordTable).apply {
+                    tracks.forEach {
+                        addBatch(EntityID(it.id!!, TrackRecordTable))
+                        this[remoteId] = it.media_id
+                        this[libraryId] = it.library_id
+                        this[title] = it.title
+                        this[lastChapterRead] = it.last_chapter_read.toDouble()
+                        this[totalChapters] = it.total_chapters
+                        this[status] = it.status
+                        this[score] = it.score.toDouble()
+                        this[remoteUrl] = it.tracking_url
+                        this[startDate] = it.started_reading_date
+                        this[finishDate] = it.finished_reading_date
+                    }
+                    execute(this@transaction)
+                }
             }
         }
 
-    fun insertTrackRecord(track: Track): Int =
+    fun insertTrackRecord(track: Track): Int = insertTrackRecords(listOf(track)).first()
+
+    fun insertTrackRecords(tracks: List<Track>): List<Int> =
         transaction {
             TrackRecordTable
-                .insertAndGetId {
-                    it[mangaId] = track.manga_id
-                    it[trackerId] = track.sync_id
-                    it[remoteId] = track.media_id
-                    it[libraryId] = track.library_id
-                    it[title] = track.title
-                    it[lastChapterRead] = track.last_chapter_read.toDouble()
-                    it[totalChapters] = track.total_chapters
-                    it[status] = track.status
-                    it[score] = track.score.toDouble()
-                    it[remoteUrl] = track.tracking_url
-                    it[startDate] = track.started_reading_date
-                    it[finishDate] = track.finished_reading_date
-                }.value
+                .batchInsert(tracks) {
+                    this[mangaId] = it.manga_id
+                    this[trackerId] = it.sync_id
+                    this[remoteId] = it.media_id
+                    this[libraryId] = it.library_id
+                    this[title] = it.title
+                    this[lastChapterRead] = it.last_chapter_read.toDouble()
+                    this[totalChapters] = it.total_chapters
+                    this[status] = it.status
+                    this[score] = it.score.toDouble()
+                    this[remoteUrl] = it.tracking_url
+                    this[startDate] = it.started_reading_date
+                    this[finishDate] = it.finished_reading_date
+                }.map { it[TrackRecordTable.id].value }
         }
 
     @Serializable
