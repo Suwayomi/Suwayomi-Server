@@ -1,6 +1,8 @@
 package suwayomi.tachidesk.opds.impl
 
 import SearchCriteria
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import nl.adaptivity.xmlutil.XmlDeclMode
 import nl.adaptivity.xmlutil.core.XmlVersion
 import nl.adaptivity.xmlutil.serialization.XML
@@ -8,12 +10,14 @@ import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper.getCbzForDownloadHelper
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
+import suwayomi.tachidesk.manga.impl.chapter.getPageCountForChapter
 import suwayomi.tachidesk.manga.impl.extension.Extension.getExtensionIconUrl
-import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
@@ -26,7 +30,6 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.opds.model.OpdsXmlModels
-import java.io.File
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.Instant
@@ -79,26 +82,26 @@ object Opds {
                         .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
                         .select(MangaTable.columns)
                         .where {
-                            val baseCondition = ChapterTable.isDownloaded eq true
-                            if (criteria == null) {
-                                baseCondition
-                            } else {
-                                val conditions = mutableListOf<Op<Boolean>>()
-                                criteria.query?.takeIf { it.isNotBlank() }?.let { q ->
-                                    conditions += (
-                                        (MangaTable.title like "%$q%") or
-                                            (MangaTable.author like "%$q%") or
-                                            (MangaTable.genre like "%$q%")
-                                    )
-                                }
-                                criteria.author?.takeIf { it.isNotBlank() }?.let { author ->
-                                    conditions += (MangaTable.author like "%$author%")
-                                }
-                                criteria.title?.takeIf { it.isNotBlank() }?.let { title ->
-                                    conditions += (MangaTable.title like "%$title%")
-                                }
-                                baseCondition and (if (conditions.isEmpty()) Op.TRUE else conditions.reduce { acc, op -> acc and op })
+                            val conditions = mutableListOf<Op<Boolean>>()
+
+                            criteria?.query?.takeIf { it.isNotBlank() }?.let { q ->
+                                val lowerQ = q.lowercase()
+                                conditions += (
+                                    (MangaTable.title.lowerCase() like "%$lowerQ%") or
+                                        (MangaTable.author.lowerCase() like "%$lowerQ%") or
+                                        (MangaTable.genre.lowerCase() like "%$lowerQ%")
+                                )
                             }
+
+                            criteria?.author?.takeIf { it.isNotBlank() }?.let { author ->
+                                conditions += (MangaTable.author.lowerCase() like "%${author.lowercase()}%")
+                            }
+
+                            criteria?.title?.takeIf { it.isNotBlank() }?.let { title ->
+                                conditions += (MangaTable.title.lowerCase() like "%${title.lowercase()}%")
+                            }
+
+                            if (conditions.isEmpty()) Op.TRUE else conditions.reduce { acc, op -> acc and op }
                         }.groupBy(MangaTable.id)
                         .orderBy(MangaTable.title to SortOrder.ASC)
                 val totalCount = query.count()
@@ -136,7 +139,6 @@ object Opds {
                         }.join(ChapterTable, JoinType.INNER) {
                             ChapterTable.manga eq MangaTable.id
                         }.select(SourceTable.columns)
-                        .where { ChapterTable.isDownloaded eq true }
                         .groupBy(SourceTable.id)
                         .orderBy(SourceTable.name to SortOrder.ASC)
 
@@ -195,7 +197,6 @@ object Opds {
                     .join(MangaTable, JoinType.INNER, onColumn = CategoryMangaTable.manga, otherColumn = MangaTable.id)
                     .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
                     .select(CategoryTable.id, CategoryTable.name)
-                    .where { ChapterTable.isDownloaded eq true }
                     .groupBy(CategoryTable.id)
                     .orderBy(CategoryTable.order to SortOrder.ASC)
                     .map { row ->
@@ -241,7 +242,6 @@ object Opds {
                 MangaTable
                     .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
                     .select(MangaTable.genre)
-                    .where { ChapterTable.isDownloaded eq true }
                     .map { it[MangaTable.genre] }
                     .flatMap { it?.split(", ")?.filterNot { g -> g.isBlank() } ?: emptyList() }
                     .groupingBy { it }
@@ -344,7 +344,6 @@ object Opds {
                     .join(MangaTable, JoinType.INNER, onColumn = SourceTable.id, otherColumn = MangaTable.sourceReference)
                     .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
                     .select(SourceTable.lang)
-                    .where { ChapterTable.isDownloaded eq true }
                     .groupBy(SourceTable.lang)
                     .orderBy(SourceTable.lang to SortOrder.ASC)
                     .map { row -> row[SourceTable.lang] }
@@ -378,7 +377,6 @@ object Opds {
         baseUrl: String,
         pageNum: Int,
     ): String {
-        val formattedNow = opdsDateFormatter.format(Instant.now())
         val (manga, chapters, totalCount) =
             transaction {
                 val mangaEntry =
@@ -391,10 +389,9 @@ object Opds {
                     ChapterTable
                         .selectAll()
                         .where {
-                            (ChapterTable.manga eq mangaId) and
-                                (ChapterTable.isDownloaded eq true) and
-                                (ChapterTable.pageCount greater 0)
+                            (ChapterTable.manga eq mangaId)
                         }.orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+
                 val total = chaptersQuery.count()
                 val chaptersData =
                     chaptersQuery
@@ -422,56 +419,123 @@ object Opds {
                             type = "image/jpeg",
                         )
                 }
-                entries += chapters.map { createChapterEntry(it, manga) }
+                entries += chapters.map { createChapterEntry(it, manga, baseUrl) }
             }.build()
+            .let(::serialize)
+    }
+
+    suspend fun getChapterMetadataFeed(
+        mangaId: Int,
+        chapterIndex: Int,
+        baseUrl: String,
+    ): String {
+        val updatedChapter = getPageCountForChapter(chapterIndex = chapterIndex, mangaId = mangaId, forceRefresh = false)
+
+        val mangaData =
+            withContext(Dispatchers.IO) {
+                transaction {
+                    val mangaEntry =
+                        MangaTable
+                            .selectAll()
+                            .where { MangaTable.id eq mangaId }
+                            .first()
+                    MangaTable.toDataClass(mangaEntry)
+                }
+            }
+
+        val updatedEntry = createChapterEntry(updatedChapter, mangaData, baseUrl)
+
+        return FeedBuilder(
+            baseUrl = baseUrl,
+            pageNum = 1,
+            id = "manga/$mangaId/chapter/$chapterIndex",
+            title = "${mangaData.title} | ${updatedChapter.name} | Details",
+        ).apply {
+            totalResults = 1
+            icon = mangaData.thumbnailUrl
+            mangaData.thumbnailUrl?.let { url ->
+                links +=
+                    OpdsXmlModels.Link(
+                        rel = "http://opds-spec.org/image",
+                        href = url,
+                        type = "image/jpeg",
+                    )
+                links +=
+                    OpdsXmlModels.Link(
+                        rel = "http://opds-spec.org/image/thumbnail",
+                        href = url,
+                        type = "image/jpeg",
+                    )
+            }
+            entries += listOf(updatedEntry)
+        }.build()
             .let(::serialize)
     }
 
     private fun createChapterEntry(
         chapter: ChapterDataClass,
         manga: MangaDataClass,
+        baseUrl: String,
     ): OpdsXmlModels.Entry {
-        val cbzFile = File(getChapterCbzPath(manga.id, chapter.id))
-        val isCbzAvailable = cbzFile.exists()
+        val hasPageCount = chapter.pageCount != -1
+        val isDownloaded = chapter.downloaded
 
+        val cbzFile = if (isDownloaded) getCbzForDownloadHelper(manga.id, chapter.id) else null
+        val isCbzAvailable = cbzFile?.exists() == true
+
+        val chapterDetails = "${manga.title} | ${chapter.name} | By ${chapter.scanlator}"
         return OpdsXmlModels.Entry(
             id = "chapter/${chapter.id}",
             title = chapter.name,
             updated = opdsDateFormatter.format(Instant.ofEpochMilli(chapter.uploadDate)),
-            content = OpdsXmlModels.Content(value = "${chapter.scanlator}"),
-            summary = manga.description?.let { OpdsXmlModels.Summary(value = it) },
-            extent =
-                cbzFile.takeIf { it.exists() }?.let {
-                    formatFileSize(it.length())
-                },
-            format = cbzFile.takeIf { it.exists() }?.let { "CBZ" },
+            content = OpdsXmlModels.Content(value = chapterDetails),
+            summary = OpdsXmlModels.Summary(value = chapterDetails),
+            extent = cbzFile?.takeIf { it.exists() }?.let { formatFileSize(it.length()) },
+            format = cbzFile?.takeIf { it.exists() }?.let { "CBZ" },
             authors =
                 listOfNotNull(
                     manga.author?.let { OpdsXmlModels.Author(name = it) },
                     manga.artist?.takeIf { it != manga.author }?.let { OpdsXmlModels.Author(name = it) },
+                    chapter.scanlator?.let { OpdsXmlModels.Author(name = it) },
                 ),
             link =
-                listOfNotNull(
+                buildList {
                     if (isCbzAvailable) {
-                        OpdsXmlModels.Link(
-                            rel = "http://opds-spec.org/acquisition/open-access",
-                            href = "/api/v1/chapter/${chapter.id}/download",
-                            type = "application/vnd.comicbook+zip",
+                        add(
+                            OpdsXmlModels.Link(
+                                rel = "http://opds-spec.org/acquisition/open-access",
+                                href = "/api/v1/chapter/${chapter.id}/download",
+                                type = "application/vnd.comicbook+zip",
+                            ),
+                        )
+                    }
+
+                    if (hasPageCount) {
+                        add(
+                            OpdsXmlModels.Link(
+                                rel = "http://vaemendis.net/opds-pse/stream",
+                                href = "/api/v1/manga/${manga.id}/chapter/${chapter.index}/page/{pageNumber}",
+                                type = "image/jpeg",
+                                pseCount = chapter.pageCount,
+                            ),
+                        )
+                        add(
+                            OpdsXmlModels.Link(
+                                rel = "http://opds-spec.org/image",
+                                href = "/api/v1/manga/${manga.id}/chapter/${chapter.index}/page/0",
+                                type = "image/jpeg",
+                            ),
                         )
                     } else {
-                        OpdsXmlModels.Link(
-                            rel = "http://vaemendis.net/opds-pse/stream",
-                            href = "/api/v1/manga/${manga.id}/chapter/${chapter.index}/page/{pageNumber}",
-                            type = "image/jpeg",
-                            pseCount = chapter.pageCount,
+                        add(
+                            OpdsXmlModels.Link(
+                                rel = "subsection",
+                                href = "$baseUrl/manga/${manga.id}/chapter/${chapter.index}/fetch",
+                                type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
+                            ),
                         )
-                    },
-                    OpdsXmlModels.Link(
-                        rel = "http://opds-spec.org/image",
-                        href = "/api/v1/manga/${manga.id}/chapter/${chapter.index}/page/0",
-                        type = "image/jpeg",
-                    ),
-                ),
+                    }
+                },
         )
     }
 
