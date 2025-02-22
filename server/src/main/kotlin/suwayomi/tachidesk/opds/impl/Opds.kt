@@ -14,9 +14,9 @@ import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper.getCbzForDownloadHelper
+import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper.getArchiveStreamWithSize
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
-import suwayomi.tachidesk.manga.impl.chapter.getPageCountForChapter
+import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
 import suwayomi.tachidesk.manga.impl.extension.Extension.getExtensionIconUrl
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
@@ -419,7 +419,7 @@ object Opds {
                             type = "image/jpeg",
                         )
                 }
-                entries += chapters.map { createChapterEntry(it, manga, baseUrl) }
+                entries += chapters.map { createChapterEntry(it, manga, baseUrl, isMetaDataEntry = false) }
             }.build()
             .let(::serialize)
     }
@@ -429,8 +429,6 @@ object Opds {
         chapterIndex: Int,
         baseUrl: String,
     ): String {
-        val updatedChapter = getPageCountForChapter(chapterIndex = chapterIndex, mangaId = mangaId, forceRefresh = false)
-
         val mangaData =
             withContext(Dispatchers.IO) {
                 transaction {
@@ -443,13 +441,14 @@ object Opds {
                 }
             }
 
-        val updatedEntry = createChapterEntry(updatedChapter, mangaData, baseUrl)
+        val updatedChapterData = getChapterDownloadReady(chapterIndex = chapterIndex, mangaId = mangaId)
+        val updatedEntry = createChapterEntry(updatedChapterData, mangaData, baseUrl, isMetaDataEntry = true)
 
         return FeedBuilder(
             baseUrl = baseUrl,
             pageNum = 1,
             id = "manga/$mangaId/chapter/$chapterIndex",
-            title = "${mangaData.title} | ${updatedChapter.name} | Details",
+            title = "${mangaData.title} | ${updatedChapterData.name} | Details",
         ).apply {
             totalResults = 1
             icon = mangaData.thumbnailUrl
@@ -476,66 +475,80 @@ object Opds {
         chapter: ChapterDataClass,
         manga: MangaDataClass,
         baseUrl: String,
+        isMetaDataEntry: Boolean,
     ): OpdsXmlModels.Entry {
-        val hasPageCount = chapter.pageCount != -1
-        val isDownloaded = chapter.downloaded
+        val chapterDetails =
+            buildString {
+                append("${manga.title} | ${chapter.name} | By ${chapter.scanlator}")
+                if (isMetaDataEntry) {
+                    append(" | Progress (${chapter.lastPageRead} / ${chapter.pageCount})")
+                }
+            }
 
-        val cbzFile = if (isDownloaded) getCbzForDownloadHelper(manga.id, chapter.id) else null
-        val isCbzAvailable = cbzFile?.exists() == true
+        val cbzInputStreamPair =
+            runCatching {
+                if (isMetaDataEntry && chapter.downloaded) getArchiveStreamWithSize(manga.id, chapter.id) else null
+            }.getOrNull()
 
-        val chapterDetails = "${manga.title} | ${chapter.name} | By ${chapter.scanlator}"
+        val links =
+            mutableListOf<OpdsXmlModels.Link>().apply {
+                if (cbzInputStreamPair != null) {
+                    add(
+                        OpdsXmlModels.Link(
+                            rel = "http://opds-spec.org/acquisition/open-access",
+                            href = "/api/v1/chapter/${chapter.id}/download",
+                            type = "application/vnd.comicbook+zip",
+                        ),
+                    )
+                }
+                if (isMetaDataEntry) {
+                    add(
+                        OpdsXmlModels.Link(
+                            rel = "http://vaemendis.net/opds-pse/stream",
+                            href = "/api/v1/manga/${manga.id}/chapter/${chapter.index}/page/{pageNumber}?updateProgress=true",
+                            type = "image/jpeg",
+                            pseCount = chapter.pageCount,
+                            pseLastRead = chapter.lastPageRead.takeIf { it != 0 },
+                        ),
+                    )
+                    add(
+                        OpdsXmlModels.Link(
+                            rel = "http://opds-spec.org/image",
+                            href = "/api/v1/manga/${manga.id}/chapter/${chapter.index}/page/0",
+                            type = "image/jpeg",
+                        ),
+                    )
+                } else {
+                    add(
+                        OpdsXmlModels.Link(
+                            rel = "subsection",
+                            href = "$baseUrl/manga/${manga.id}/chapter/${chapter.index}/fetch",
+                            type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
+                        ),
+                    )
+                }
+            }
+
         return OpdsXmlModels.Entry(
             id = "chapter/${chapter.id}",
-            title = if (isCbzAvailable) "[D] ${chapter.name}" else chapter.name,
+            title =
+                when {
+                    chapter.read -> "✅ ${chapter.name}"
+                    chapter.lastPageRead > 0 -> "⌛ ${chapter.name}"
+                    else -> "⭕ ${chapter.name}"
+                },
             updated = opdsDateFormatter.format(Instant.ofEpochMilli(chapter.uploadDate)),
             content = OpdsXmlModels.Content(value = chapterDetails),
             summary = OpdsXmlModels.Summary(value = chapterDetails),
-            extent = cbzFile?.takeIf { it.exists() }?.let { formatFileSize(it.length()) },
-            format = cbzFile?.takeIf { it.exists() }?.let { "CBZ" },
+            extent = cbzInputStreamPair?.second?.let { formatFileSize(it) },
+            format = cbzInputStreamPair?.second?.let { "CBZ" },
             authors =
                 listOfNotNull(
                     manga.author?.let { OpdsXmlModels.Author(name = it) },
                     manga.artist?.takeIf { it != manga.author }?.let { OpdsXmlModels.Author(name = it) },
                     chapter.scanlator?.let { OpdsXmlModels.Author(name = it) },
                 ),
-            link =
-                buildList {
-                    if (isCbzAvailable) {
-                        add(
-                            OpdsXmlModels.Link(
-                                rel = "http://opds-spec.org/acquisition/open-access",
-                                href = "/api/v1/chapter/${chapter.id}/download",
-                                type = "application/vnd.comicbook+zip",
-                            ),
-                        )
-                    }
-
-                    if (hasPageCount) {
-                        add(
-                            OpdsXmlModels.Link(
-                                rel = "http://vaemendis.net/opds-pse/stream",
-                                href = "/api/v1/manga/${manga.id}/chapter/${chapter.index}/page/{pageNumber}",
-                                type = "image/jpeg",
-                                pseCount = chapter.pageCount,
-                            ),
-                        )
-                        add(
-                            OpdsXmlModels.Link(
-                                rel = "http://opds-spec.org/image",
-                                href = "/api/v1/manga/${manga.id}/chapter/${chapter.index}/page/0",
-                                type = "image/jpeg",
-                            ),
-                        )
-                    } else {
-                        add(
-                            OpdsXmlModels.Link(
-                                rel = "subsection",
-                                href = "$baseUrl/manga/${manga.id}/chapter/${chapter.index}/fetch",
-                                type = "application/atom+xml;profile=opds-catalog;kind=acquisition",
-                            ),
-                        )
-                    }
-                },
+            link = links,
         )
     }
 

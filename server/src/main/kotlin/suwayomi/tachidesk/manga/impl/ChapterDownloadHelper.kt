@@ -1,6 +1,5 @@
 package suwayomi.tachidesk.manga.impl
 
-import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
@@ -13,12 +12,8 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.serverConfig
-import java.io.BufferedOutputStream
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.io.InputStream
-import java.util.zip.ZipOutputStream
 
 object ChapterDownloadHelper {
     fun getImage(
@@ -52,7 +47,12 @@ object ChapterDownloadHelper {
         return FolderProvider(mangaId, chapterId)
     }
 
-    fun getCbzForDownload(chapterId: Int): Triple<InputStream, String, String> {
+    fun getArchiveStreamWithSize(
+        mangaId: Int,
+        chapterId: Int,
+    ): Pair<InputStream, Long> = provider(mangaId, chapterId).getAsArchiveStream()
+
+    fun getCbzForDownload(chapterId: Int): Triple<InputStream, String, Long> {
         val (chapterData, mangaTitle) =
             transaction {
                 val row =
@@ -67,60 +67,8 @@ object ChapterDownloadHelper {
 
         val fileName = "$mangaTitle - [${chapterData.scanlator}] ${chapterData.name}.cbz"
 
-        val cbzFile =
-            getCbzForDownloadHelper(chapterData.mangaId, chapterData.id)
-                ?: throw IllegalStateException("CBZ could not be created for chapter ${chapterData.id}")
+        val cbzFile = provider(chapterData.mangaId, chapterData.id).getAsArchiveStream()
 
-        return Triple(cbzFile.inputStream(), "application/vnd.comicbook+zip", fileName)
-    }
-
-    fun getCbzForDownloadHelper(
-        mangaId: Int,
-        chapterId: Int,
-    ): File? {
-        val provider = provider(mangaId, chapterId)
-        val cbzFile = File(getChapterCbzPath(mangaId, chapterId))
-        return when (provider) {
-            is ArchiveProvider -> cbzFile
-
-            is FolderProvider -> {
-                val folderPath = File(getChapterDownloadPath(mangaId, chapterId))
-                createCbzFromFolder(folderPath, cbzFile)
-                cbzFile
-            }
-            else -> null
-        }
-    }
-
-    private fun createCbzFromFolder(
-        imageFolder: File,
-        cbzFile: File,
-    ) {
-        val log = KotlinLogging.logger { "${this::class.simpleName}::createCbzFromFolder" }
-
-        if (!imageFolder.exists() || !imageFolder.isDirectory) {
-            throw IllegalArgumentException("Invalid Folder to create cbz")
-        }
-
-        log.debug { "cbz process: started (Files: ${imageFolder.listFiles()?.size ?: 0})" }
-
-        ZipOutputStream(BufferedOutputStream(FileOutputStream(cbzFile))).use { zipOutputStream ->
-            imageFolder
-                .listFiles()
-                ?.filter {
-                    it.isFile
-                }?.sortedBy { it.name }
-                ?.forEach { imageFile ->
-
-                    FileInputStream(imageFile).use { fileInputStream ->
-                        val zipEntry = java.util.zip.ZipEntry(imageFile.name)
-                        zipOutputStream.putNextEntry(zipEntry)
-                        fileInputStream.copyTo(zipOutputStream)
-                        zipOutputStream.closeEntry()
-                    }
-                }
-        }
-
-        log.debug { "cbz process: finished (${cbzFile.absolutePath})" }
+        return Triple(cbzFile.first, fileName, cbzFile.second)
     }
 }
