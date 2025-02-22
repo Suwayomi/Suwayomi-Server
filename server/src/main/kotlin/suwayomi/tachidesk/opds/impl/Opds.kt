@@ -486,7 +486,7 @@ object Opds {
         val chapterDetails = "${manga.title} | ${chapter.name} | By ${chapter.scanlator}"
         return OpdsXmlModels.Entry(
             id = "chapter/${chapter.id}",
-            title = chapter.name,
+            title = if (isCbzAvailable) "[D] ${chapter.name}" else chapter.name,
             updated = opdsDateFormatter.format(Instant.ofEpochMilli(chapter.uploadDate)),
             content = OpdsXmlModels.Content(value = chapterDetails),
             summary = OpdsXmlModels.Summary(value = chapterDetails),
