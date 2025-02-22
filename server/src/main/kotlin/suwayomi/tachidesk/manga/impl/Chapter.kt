@@ -29,6 +29,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import suwayomi.tachidesk.graphql.mutations.ChapterMutation
 import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
@@ -693,4 +694,31 @@ object Chapter {
                     }
             }
         }
+
+    fun updateChapterProgress(
+        mangaId: Int,
+        chapterIndex: Int,
+        pageNo: Int,
+    ) {
+        val chapterData =
+            transaction {
+                ChapterTable
+                    .selectAll()
+                    .where {
+                        (ChapterTable.sourceOrder eq chapterIndex) and
+                            (ChapterTable.manga eq mangaId)
+                    }.first()
+                    .let { ChapterTable.toDataClass(it) }
+            }
+
+        val isRead = chapterData.pageCount == pageNo + 1
+        val chapterMutation = ChapterMutation()
+        val input =
+            ChapterMutation.UpdateChapterInput(
+                id = chapterData.id,
+                patch = ChapterMutation.UpdateChapterPatch(lastPageRead = pageNo + 1, isRead = isRead),
+            )
+
+        chapterMutation.updateChapter(input)
+    }
 }

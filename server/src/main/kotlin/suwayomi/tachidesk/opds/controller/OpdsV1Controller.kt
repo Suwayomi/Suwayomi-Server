@@ -278,6 +278,31 @@ object OpdsV1Controller {
             },
         )
 
+    var chapterMetadataFeed =
+        handler(
+            pathParam<Int>("mangaId"),
+            pathParam<Int>("chapterId"),
+            documentWith = {
+                withOperation {
+                    summary("OPDS Chapter Details Feed")
+                    description("OPDS feed for a specific undownloaded chapter of a manga")
+                }
+            },
+            behaviorOf = { ctx, mangaId, chapterId ->
+                ctx.future {
+                    future {
+                        Opds.getChapterMetadataFeed(mangaId, chapterId, BASE_URL)
+                    }.thenApply { xml ->
+                        ctx.contentType(OPDS_MIME).result(xml)
+                    }
+                }
+            },
+            withResults = {
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
+            },
+        )
+
     // Specific Source Feed
     val sourceFeed =
         handler(

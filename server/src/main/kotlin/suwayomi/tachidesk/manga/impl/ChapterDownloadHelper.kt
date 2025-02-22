@@ -13,7 +13,6 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.serverConfig
 import java.io.File
-import java.io.IOException
 import java.io.InputStream
 
 object ChapterDownloadHelper {
@@ -48,7 +47,12 @@ object ChapterDownloadHelper {
         return FolderProvider(mangaId, chapterId)
     }
 
-    suspend fun getCbzDownload(chapterId: Int): Triple<InputStream, String, String> {
+    fun getArchiveStreamWithSize(
+        mangaId: Int,
+        chapterId: Int,
+    ): Pair<InputStream, Long> = provider(mangaId, chapterId).getAsArchiveStream()
+
+    fun getCbzForDownload(chapterId: Int): Triple<InputStream, String, Long> {
         val (chapterData, mangaTitle) =
             transaction {
                 val row =
@@ -61,13 +65,10 @@ object ChapterDownloadHelper {
                 Pair(chapter, title)
             }
 
-        val provider = provider(chapterData.mangaId, chapterData.id)
-        return if (provider is ArchiveProvider) {
-            val cbzFile = File(getChapterCbzPath(chapterData.mangaId, chapterData.id))
-            val fileName = "$mangaTitle - [${chapterData.scanlator}] ${chapterData.name}.cbz"
-            Triple(cbzFile.inputStream(), "application/vnd.comicbook+zip", fileName)
-        } else {
-            throw IOException("Chapter not available as CBZ")
-        }
+        val fileName = "$mangaTitle - [${chapterData.scanlator}] ${chapterData.name}.cbz"
+
+        val cbzFile = provider(chapterData.mangaId, chapterData.id).getAsArchiveStream()
+
+        return Triple(cbzFile.first, fileName, cbzFile.second)
     }
 }

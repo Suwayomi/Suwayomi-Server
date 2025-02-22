@@ -401,6 +401,7 @@ object MangaController {
             pathParam<Int>("mangaId"),
             pathParam<Int>("chapterIndex"),
             pathParam<Int>("index"),
+            queryParam<Boolean?>("updateProgress"),
             documentWith = {
                 withOperation {
                     summary("Get a chapter page")
@@ -409,14 +410,18 @@ object MangaController {
                     )
                 }
             },
-            behaviorOf = { ctx, mangaId, chapterIndex, index ->
+            behaviorOf = { ctx, mangaId, chapterIndex, index, updateProgress ->
                 ctx.future {
-                    future { Page.getPageImage(mangaId, chapterIndex, index) }
+                    future { Page.getPageImage(mangaId, chapterIndex, index, null) }
                         .thenApply {
                             ctx.header("content-type", it.second)
                             val httpCacheSeconds = 1.days.inWholeSeconds
                             ctx.header("cache-control", "max-age=$httpCacheSeconds")
                             ctx.result(it.first)
+
+                            if (updateProgress == true) {
+                                Chapter.updateChapterProgress(mangaId, chapterIndex, pageNo = index)
+                            }
                         }
                 }
             },
@@ -437,10 +442,11 @@ object MangaController {
             },
             behaviorOf = { ctx, chapterId ->
                 ctx.future {
-                    future { ChapterDownloadHelper.getCbzDownload(chapterId) }
-                        .thenApply { (inputStream, contentType, fileName) ->
-                            ctx.header("Content-Type", contentType)
+                    future { ChapterDownloadHelper.getCbzForDownload(chapterId) }
+                        .thenApply { (inputStream, fileName, fileSize) ->
+                            ctx.header("Content-Type", "application/vnd.comicbook+zip")
                             ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
+                            ctx.header("Content-Length", fileSize.toString())
                             ctx.result(inputStream)
                         }
                 }

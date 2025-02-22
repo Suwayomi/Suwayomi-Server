@@ -29,6 +29,10 @@ object OpdsAPI {
                 get(OpdsV1Controller.mangaFeed)
             }
 
+            path("manga/{mangaId}/chapter/{chapterId}/fetch") {
+                get(OpdsV1Controller.chapterMetadataFeed)
+            }
+
             path("source/{sourceId}") {
                 get(OpdsV1Controller.sourceFeed)
             }

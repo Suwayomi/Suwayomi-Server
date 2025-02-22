@@ -33,7 +33,6 @@ suspend fun getChapterDownloadReady(
     mangaId: Int? = null,
 ): ChapterDataClass {
     val chapter = ChapterForDownload(chapterId, chapterIndex, mangaId)
-
     return chapter.asDownloadReady()
 }
 
