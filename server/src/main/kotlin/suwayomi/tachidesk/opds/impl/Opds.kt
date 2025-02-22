@@ -535,6 +535,7 @@ object Opds {
                 when {
                     chapter.read -> "✅ ${chapter.name}"
                     chapter.lastPageRead > 0 -> "⌛ ${chapter.name}"
+                    chapter.pageCount == 0 -> "❌ ${chapter.name}"
                     else -> "⭕ ${chapter.name}"
                 },
             updated = opdsDateFormatter.format(Instant.ofEpochMilli(chapter.uploadDate)),
