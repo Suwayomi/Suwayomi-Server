@@ -559,7 +559,7 @@ object Opds {
                         .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
                         .select(MangaTable.columns)
                         .where {
-                            (MangaTable.sourceReference eq sourceId) and (ChapterTable.isDownloaded eq true)
+                            (MangaTable.sourceReference eq sourceId)
                         }.groupBy(MangaTable.id)
                         .orderBy(MangaTable.title to SortOrder.ASC)
 
@@ -600,7 +600,7 @@ object Opds {
                         .join(MangaTable, JoinType.INNER, onColumn = CategoryMangaTable.manga, otherColumn = MangaTable.id)
                         .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
                         .select(MangaTable.columns)
-                        .where { (CategoryMangaTable.category eq categoryId) and (ChapterTable.isDownloaded eq true) }
+                        .where { (CategoryMangaTable.category eq categoryId) }
                         .groupBy(MangaTable.id)
                         .orderBy(MangaTable.title to SortOrder.ASC)
                 val totalCount = query.count()
@@ -631,7 +631,7 @@ object Opds {
                     MangaTable
                         .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
                         .select(MangaTable.columns)
-                        .where { (MangaTable.genre like "%$genre%") and (ChapterTable.isDownloaded eq true) }
+                        .where { (MangaTable.genre like "%$genre%") }
                         .groupBy(MangaTable.id)
                         .orderBy(MangaTable.title to SortOrder.ASC)
                 val totalCount = query.count()
@@ -668,7 +668,7 @@ object Opds {
                     MangaTable
                         .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
                         .select(MangaTable.columns)
-                        .where { (MangaTable.status eq statusId.toInt()) and (ChapterTable.isDownloaded eq true) }
+                        .where { (MangaTable.status eq statusId.toInt()) }
                         .groupBy(MangaTable.id)
                         .orderBy(MangaTable.title to SortOrder.ASC)
                 val totalCount = query.count()
