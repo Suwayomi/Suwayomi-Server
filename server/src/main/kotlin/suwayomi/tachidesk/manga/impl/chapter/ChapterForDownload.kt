@@ -15,6 +15,7 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
+import org.jetbrains.exposed.sql.count
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -27,13 +28,22 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 
+suspend fun getPageCountForChapter(
+    chapterId: Int? = null,
+    chapterIndex: Int? = null,
+    mangaId: Int? = null,
+    forceRefresh: Boolean,
+): ChapterDataClass {
+    val chapter = ChapterForDownload(chapterId, chapterIndex, mangaId)
+    return chapter.refreshPageListForChapter(forceRefresh)
+}
+
 suspend fun getChapterDownloadReady(
     chapterId: Int? = null,
     chapterIndex: Int? = null,
     mangaId: Int? = null,
 ): ChapterDataClass {
     val chapter = ChapterForDownload(chapterId, chapterIndex, mangaId)
-
     return chapter.asDownloadReady()
 }
 
@@ -55,6 +65,22 @@ private class ChapterForDownload(
     val mangaId: Int
 
     val logger: KLogger
+
+    suspend fun refreshPageListForChapter(forceRefresh: Boolean): ChapterDataClass {
+        val log = KotlinLogging.logger("${logger.name}::updateChapterPageCount")
+
+        val pageEntityCount =
+            transaction { PageTable.select(PageTable.index.count()).where((PageTable.chapter eq chapterId)).count() }
+        val hasSamePageSizeAsCount = chapterEntry[ChapterTable.pageCount].toLong() == pageEntityCount
+
+        log.debug { "alwaysUpdate= $forceRefresh (pageTableCount= $pageEntityCount, hasSamePageSizeAsCount= $hasSamePageSizeAsCount)" }
+
+        if (hasSamePageSizeAsCount && !forceRefresh) {
+            return asDataClass()
+        }
+
+        return asDownloadReady()
+    }
 
     suspend fun asDownloadReady(): ChapterDataClass {
         val log = KotlinLogging.logger("${logger.name}::asDownloadReady")

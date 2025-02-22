@@ -437,7 +437,7 @@ object MangaController {
             },
             behaviorOf = { ctx, chapterId ->
                 ctx.future {
-                    future { ChapterDownloadHelper.getCbzDownload(chapterId) }
+                    future { ChapterDownloadHelper.getCbzForDownload(chapterId) }
                         .thenApply { (inputStream, contentType, fileName) ->
                             ctx.header("Content-Type", contentType)
                             ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
