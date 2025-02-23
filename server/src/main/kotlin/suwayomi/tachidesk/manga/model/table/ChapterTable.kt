@@ -41,31 +41,43 @@ object ChapterTable : IntIdTable() {
     val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
 }
 
-fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
-    ChapterDataClass(
-        id = chapterEntry[id].value,
-        url = chapterEntry[url],
-        name = chapterEntry[name],
-        uploadDate = chapterEntry[date_upload],
-        chapterNumber = chapterEntry[chapter_number],
-        scanlator = chapterEntry[scanlator],
-        mangaId = chapterEntry[manga].value,
-        read = chapterEntry[isRead],
-        bookmarked = chapterEntry[isBookmarked],
-        lastPageRead = chapterEntry[lastPageRead],
-        lastReadAt = chapterEntry[lastReadAt],
-        index = chapterEntry[sourceOrder],
-        fetchedAt = chapterEntry[fetchedAt],
-        realUrl = chapterEntry[realUrl],
-        downloaded = chapterEntry[isDownloaded],
-        pageCount = chapterEntry[pageCount],
-        chapterCount =
+fun ChapterTable.toDataClass(
+    chapterEntry: ResultRow,
+    fetchChapterCount: Boolean = true,
+    fetchChapterMeta: Boolean = true,
+) = ChapterDataClass(
+    id = chapterEntry[id].value,
+    url = chapterEntry[url],
+    name = chapterEntry[name],
+    uploadDate = chapterEntry[date_upload],
+    chapterNumber = chapterEntry[chapter_number],
+    scanlator = chapterEntry[scanlator],
+    mangaId = chapterEntry[manga].value,
+    read = chapterEntry[isRead],
+    bookmarked = chapterEntry[isBookmarked],
+    lastPageRead = chapterEntry[lastPageRead],
+    lastReadAt = chapterEntry[lastReadAt],
+    index = chapterEntry[sourceOrder],
+    fetchedAt = chapterEntry[fetchedAt],
+    realUrl = chapterEntry[realUrl],
+    downloaded = chapterEntry[isDownloaded],
+    pageCount = chapterEntry[pageCount],
+    chapterCount =
+        if (fetchChapterCount) {
             transaction {
                 ChapterTable
                     .selectAll()
                     .where { manga eq chapterEntry[manga].value }
                     .count()
                     .toInt()
-            },
-        meta = getChapterMetaMap(chapterEntry[id]),
-    )
+            }
+        } else {
+            null
+        },
+    meta =
+        if (fetchChapterMeta) {
+            getChapterMetaMap(chapterEntry[id])
+        } else {
+            emptyMap()
+        },
+)

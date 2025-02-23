@@ -432,4 +432,28 @@ object OpdsV1Controller {
                 httpCode(HttpStatus.NOT_FOUND)
             },
         )
+
+    // Main Library Updates Feed
+    val libraryUpdatesFeed =
+        handler(
+            queryParam<Int?>("pageNumber"),
+            documentWith = {
+                withOperation {
+                    summary("OPDS Library Updates Feed")
+                    description("OPDS feed listing recent manga chapter updates")
+                }
+            },
+            behaviorOf = { ctx, pageNumber ->
+                ctx.future {
+                    future {
+                        Opds.getLibraryUpdatesFeed(BASE_URL, pageNumber ?: 1)
+                    }.thenApply { xml ->
+                        ctx.contentType(OPDS_MIME).result(xml)
+                    }
+                }
+            },
+            withResults = {
+                httpCode(HttpStatus.OK)
+            },
+        )
 }

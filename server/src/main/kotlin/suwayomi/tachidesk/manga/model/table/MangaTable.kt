@@ -46,28 +46,35 @@ object MangaTable : IntIdTable() {
     val updateStrategy = varchar("update_strategy", 256).default(UpdateStrategy.ALWAYS_UPDATE.name)
 }
 
-fun MangaTable.toDataClass(mangaEntry: ResultRow) =
-    MangaDataClass(
-        id = mangaEntry[this.id].value,
-        sourceId = mangaEntry[sourceReference].toString(),
-        url = mangaEntry[url],
-        title = mangaEntry[title],
-        thumbnailUrl = proxyThumbnailUrl(mangaEntry[this.id].value),
-        thumbnailUrlLastFetched = mangaEntry[thumbnailUrlLastFetched],
-        initialized = mangaEntry[initialized],
-        artist = mangaEntry[artist],
-        author = mangaEntry[author],
-        description = mangaEntry[description],
-        genre = mangaEntry[genre].toGenreList(),
-        status = Companion.valueOf(mangaEntry[status]).name,
-        inLibrary = mangaEntry[inLibrary],
-        inLibraryAt = mangaEntry[inLibraryAt],
-        meta = getMangaMetaMap(mangaEntry[id].value),
-        realUrl = mangaEntry[realUrl],
-        lastFetchedAt = mangaEntry[lastFetchedAt],
-        chaptersLastFetchedAt = mangaEntry[chaptersLastFetchedAt],
-        updateStrategy = UpdateStrategy.valueOf(mangaEntry[updateStrategy]),
-    )
+fun MangaTable.toDataClass(
+    mangaEntry: ResultRow,
+    fetchMangaMeta: Boolean = true,
+) = MangaDataClass(
+    id = mangaEntry[this.id].value,
+    sourceId = mangaEntry[sourceReference].toString(),
+    url = mangaEntry[url],
+    title = mangaEntry[title],
+    thumbnailUrl = proxyThumbnailUrl(mangaEntry[this.id].value),
+    thumbnailUrlLastFetched = mangaEntry[thumbnailUrlLastFetched],
+    initialized = mangaEntry[initialized],
+    artist = mangaEntry[artist],
+    author = mangaEntry[author],
+    description = mangaEntry[description],
+    genre = mangaEntry[genre].toGenreList(),
+    status = Companion.valueOf(mangaEntry[status]).name,
+    inLibrary = mangaEntry[inLibrary],
+    inLibraryAt = mangaEntry[inLibraryAt],
+    meta =
+        if (fetchMangaMeta) {
+            getMangaMetaMap(mangaEntry[id].value)
+        } else {
+            emptyMap()
+        },
+    realUrl = mangaEntry[realUrl],
+    lastFetchedAt = mangaEntry[lastFetchedAt],
+    chaptersLastFetchedAt = mangaEntry[chaptersLastFetchedAt],
+    updateStrategy = UpdateStrategy.valueOf(mangaEntry[updateStrategy]),
+)
 
 enum class MangaStatus(
     val value: Int,
