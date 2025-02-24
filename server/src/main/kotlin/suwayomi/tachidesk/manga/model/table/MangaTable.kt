@@ -48,7 +48,7 @@ object MangaTable : IntIdTable() {
 
 fun MangaTable.toDataClass(
     mangaEntry: ResultRow,
-    fetchMangaMeta: Boolean = true,
+    includeMangaMeta: Boolean = true,
 ) = MangaDataClass(
     id = mangaEntry[this.id].value,
     sourceId = mangaEntry[sourceReference].toString(),
@@ -65,7 +65,7 @@ fun MangaTable.toDataClass(
     inLibrary = mangaEntry[inLibrary],
     inLibraryAt = mangaEntry[inLibraryAt],
     meta =
-        if (fetchMangaMeta) {
+        if (includeMangaMeta) {
             getMangaMetaMap(mangaEntry[id].value)
         } else {
             emptyMap()

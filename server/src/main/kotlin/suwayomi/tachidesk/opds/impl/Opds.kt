@@ -102,7 +102,7 @@ object Opds {
                                 conditions += (MangaTable.title.lowerCase() like "%${title.lowercase()}%")
                             }
 
-                            if (conditions.isEmpty()) Op.TRUE else conditions.reduce { acc, op -> acc and op }
+                            if (conditions.isEmpty()) (MangaTable.inLibrary eq true) else conditions.reduce { acc, op -> acc and op }
                         }.groupBy(MangaTable.id)
                         .orderBy(MangaTable.title to SortOrder.ASC)
                 val totalCount = query.count()
@@ -110,7 +110,7 @@ object Opds {
                     query
                         .limit(ITEMS_PER_PAGE)
                         .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
-                        .map { MangaTable.toDataClass(it, fetchMangaMeta = false) }
+                        .map { MangaTable.toDataClass(it, includeMangaMeta = false) }
                 Pair(mangas, totalCount)
             }
 
@@ -385,7 +385,7 @@ object Opds {
                         .selectAll()
                         .where { MangaTable.id eq mangaId }
                         .first()
-                val mangaData = MangaTable.toDataClass(mangaEntry, fetchMangaMeta = false)
+                val mangaData = MangaTable.toDataClass(mangaEntry, includeMangaMeta = false)
                 val chaptersQuery =
                     ChapterTable
                         .selectAll()
@@ -398,7 +398,7 @@ object Opds {
                     chaptersQuery
                         .limit(ITEMS_PER_PAGE)
                         .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
-                        .map { ChapterTable.toDataClass(it, fetchChapterCount = false, fetchChapterMeta = false) }
+                        .map { ChapterTable.toDataClass(it, includeChapterCount = false, includeChapterMeta = false) }
                 Triple(mangaData, chaptersData, total)
             }
 
@@ -438,7 +438,7 @@ object Opds {
                             .selectAll()
                             .where { MangaTable.id eq mangaId }
                             .first()
-                    MangaTable.toDataClass(mangaEntry, fetchMangaMeta = false)
+                    MangaTable.toDataClass(mangaEntry, includeMangaMeta = false)
                 }
             }
 
@@ -506,7 +506,7 @@ object Opds {
                     add(
                         OpdsXmlModels.Link(
                             rel = "http://opds-spec.org/acquisition/open-access",
-                            href = "/api/v1/chapter/${chapter.id}/download",
+                            href = "/api/v1/chapter/${chapter.id}/download?markAsRead=true",
                             type = "application/vnd.comicbook+zip",
                         ),
                     )
@@ -586,7 +586,7 @@ object Opds {
                     query
                         .limit(ITEMS_PER_PAGE)
                         .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
-                        .map { MangaTable.toDataClass(it, fetchMangaMeta = false) }
+                        .map { MangaTable.toDataClass(it, includeMangaMeta = false) }
 
                 Triple(paginatedResults, totalCount, sourceRow)
             }
@@ -626,7 +626,7 @@ object Opds {
                     query
                         .limit(ITEMS_PER_PAGE)
                         .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
-                        .map { MangaTable.toDataClass(it, fetchMangaMeta = false) }
+                        .map { MangaTable.toDataClass(it, includeMangaMeta = false) }
                 Triple(mangas, totalCount, categoryName)
             }
         return FeedBuilder(baseUrl, pageNum, "category/$categoryId", "Category: $categoryName")
@@ -657,7 +657,7 @@ object Opds {
                     query
                         .limit(ITEMS_PER_PAGE)
                         .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
-                        .map { MangaTable.toDataClass(it, fetchMangaMeta = false) }
+                        .map { MangaTable.toDataClass(it, includeMangaMeta = false) }
                 Pair(mangas, totalCount)
             }
         return FeedBuilder(baseUrl, pageNum, "genre/${genre.encodeURL()}", "Genre: $genre")
@@ -694,7 +694,7 @@ object Opds {
                     query
                         .limit(ITEMS_PER_PAGE)
                         .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
-                        .map { MangaTable.toDataClass(it, fetchMangaMeta = false) }
+                        .map { MangaTable.toDataClass(it, includeMangaMeta = false) }
                 Pair(mangas, totalCount)
             }
         return FeedBuilder(baseUrl, pageNum, "status/$statusId", "Status: $statusName")
@@ -718,7 +718,7 @@ object Opds {
                         .join(MangaTable, JoinType.INNER, onColumn = SourceTable.id, otherColumn = MangaTable.sourceReference)
                         .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
                         .select(MangaTable.columns)
-                        .where { (SourceTable.lang eq langCode) and (ChapterTable.isDownloaded eq true) }
+                        .where { (SourceTable.lang eq langCode) }
                         .groupBy(MangaTable.id)
                         .orderBy(MangaTable.title to SortOrder.ASC)
                 val totalCount = query.count()
@@ -726,7 +726,7 @@ object Opds {
                     query
                         .limit(ITEMS_PER_PAGE)
                         .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
-                        .map { MangaTable.toDataClass(it, fetchMangaMeta = false) }
+                        .map { MangaTable.toDataClass(it, includeMangaMeta = false) }
                 Pair(mangas, totalCount)
             }
         return FeedBuilder(baseUrl, pageNum, "language/$langCode", "Language: $langCode")
@@ -758,9 +758,9 @@ object Opds {
                         .map {
                             ChapterTable.toDataClass(
                                 it,
-                                fetchChapterCount = false,
-                                fetchChapterMeta = false,
-                            ) to MangaTable.toDataClass(it, fetchMangaMeta = false)
+                                includeChapterCount = false,
+                                includeChapterMeta = false,
+                            ) to MangaTable.toDataClass(it, includeMangaMeta = false)
                         }
 
                 Pair(chapters, totalCount)

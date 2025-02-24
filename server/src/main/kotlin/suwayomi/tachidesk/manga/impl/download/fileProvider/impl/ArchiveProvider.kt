@@ -92,7 +92,7 @@ class ArchiveProvider(
         val cbzFile =
             File(getChapterCbzPath(mangaId, chapterId))
                 .takeIf { it.exists() }
-                ?: throw Exception("CBZ file not found for chapter ID: $chapterId (Manga ID: $mangaId)")
+                ?: throw IllegalArgumentException("CBZ file not found for chapter ID: $chapterId (Manga ID: $mangaId)")
 
         return cbzFile.inputStream() to cbzFile.length()
     }

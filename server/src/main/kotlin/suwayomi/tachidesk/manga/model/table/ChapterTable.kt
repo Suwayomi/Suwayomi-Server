@@ -14,7 +14,6 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Chapter.getChapterMetaMap
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
-import suwayomi.tachidesk.manga.model.table.MangaTable.nullable
 
 object ChapterTable : IntIdTable() {
     val url = varchar("url", 2048)
@@ -43,8 +42,8 @@ object ChapterTable : IntIdTable() {
 
 fun ChapterTable.toDataClass(
     chapterEntry: ResultRow,
-    fetchChapterCount: Boolean = true,
-    fetchChapterMeta: Boolean = true,
+    includeChapterCount: Boolean = true,
+    includeChapterMeta: Boolean = true,
 ) = ChapterDataClass(
     id = chapterEntry[id].value,
     url = chapterEntry[url],
@@ -63,7 +62,7 @@ fun ChapterTable.toDataClass(
     downloaded = chapterEntry[isDownloaded],
     pageCount = chapterEntry[pageCount],
     chapterCount =
-        if (fetchChapterCount) {
+        if (includeChapterCount) {
             transaction {
                 ChapterTable
                     .selectAll()
@@ -75,7 +74,7 @@ fun ChapterTable.toDataClass(
             null
         },
     meta =
-        if (fetchChapterMeta) {
+        if (includeChapterMeta) {
             getChapterMetaMap(chapterEntry[id])
         } else {
             emptyMap()

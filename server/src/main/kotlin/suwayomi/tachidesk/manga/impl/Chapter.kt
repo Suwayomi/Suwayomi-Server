@@ -29,7 +29,6 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import suwayomi.tachidesk.graphql.mutations.ChapterMutation
 import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
@@ -263,8 +262,8 @@ object Chapter {
                 // we got some clean up due
                 if (chaptersIdsToDelete.isNotEmpty()) {
                     transaction {
-                        PageTable.deleteWhere { PageTable.chapter inList chaptersIdsToDelete }
-                        ChapterTable.deleteWhere { ChapterTable.id inList chaptersIdsToDelete }
+                        PageTable.deleteWhere { chapter inList chaptersIdsToDelete }
+                        ChapterTable.deleteWhere { id inList chaptersIdsToDelete }
                     }
                 }
 
@@ -322,7 +321,7 @@ object Chapter {
                     }
 
                     MangaTable.update({ MangaTable.id eq mangaId }) {
-                        it[MangaTable.chaptersLastFetchedAt] = Instant.now().epochSecond
+                        it[chaptersLastFetchedAt] = Instant.now().epochSecond
                     }
                 }
 
@@ -444,7 +443,7 @@ object Chapter {
                     }
                     lastPageRead?.also {
                         update[ChapterTable.lastPageRead] = it
-                        update[ChapterTable.lastReadAt] = Instant.now().epochSecond
+                        update[lastReadAt] = Instant.now().epochSecond
                     }
                 }
             }
@@ -535,7 +534,7 @@ object Chapter {
                 }
                 lastPageRead?.also {
                     update[ChapterTable.lastPageRead] = it
-                    update[ChapterTable.lastReadAt] = now
+                    update[lastReadAt] = now
                 }
             }
         }
@@ -604,7 +603,7 @@ object Chapter {
                 ChapterMetaTable.insert {
                     it[ChapterMetaTable.key] = key
                     it[ChapterMetaTable.value] = value
-                    it[ChapterMetaTable.ref] = chapterId
+                    it[ref] = chapterId
                 }
             } else {
                 ChapterMetaTable.update({ (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }) {
@@ -711,14 +710,16 @@ object Chapter {
                     .let { ChapterTable.toDataClass(it) }
             }
 
-        val isRead = chapterData.pageCount == pageNo + 1
-        val chapterMutation = ChapterMutation()
-        val input =
-            ChapterMutation.UpdateChapterInput(
-                id = chapterData.id,
-                patch = ChapterMutation.UpdateChapterPatch(lastPageRead = pageNo + 1, isRead = isRead),
-            )
+        val oneIndexedPageNo = pageNo.inc()
+        val isRead = chapterData.pageCount.takeIf { it == oneIndexedPageNo }?.let { true }
 
-        chapterMutation.updateChapter(input)
+        modifyChapter(
+            mangaId,
+            chapterIndex,
+            isRead = isRead,
+            lastPageRead = oneIndexedPageNo,
+            isBookmarked = null,
+            markPrevRead = null,
+        )
     }
 }

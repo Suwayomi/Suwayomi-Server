@@ -52,7 +52,10 @@ object ChapterDownloadHelper {
         chapterId: Int,
     ): Pair<InputStream, Long> = provider(mangaId, chapterId).getAsArchiveStream()
 
-    fun getCbzForDownload(chapterId: Int): Triple<InputStream, String, Long> {
+    fun getCbzForDownload(
+        chapterId: Int,
+        markAsRead: Boolean?,
+    ): Triple<InputStream, String, Long> {
         val (chapterData, mangaTitle) =
             transaction {
                 val row =
@@ -68,6 +71,17 @@ object ChapterDownloadHelper {
         val fileName = "$mangaTitle - [${chapterData.scanlator}] ${chapterData.name}.cbz"
 
         val cbzFile = provider(chapterData.mangaId, chapterData.id).getAsArchiveStream()
+
+        if (markAsRead == true) {
+            Chapter.modifyChapter(
+                chapterData.mangaId,
+                chapterData.index,
+                isRead = true,
+                isBookmarked = null,
+                markPrevRead = null,
+                lastPageRead = null,
+            )
+        }
 
         return Triple(cbzFile.first, fileName, cbzFile.second)
     }
