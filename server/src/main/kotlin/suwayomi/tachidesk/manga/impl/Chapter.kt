@@ -717,7 +717,7 @@ object Chapter {
             mangaId,
             chapterIndex,
             isRead = isRead,
-            lastPageRead = oneIndexedPageNo,
+            lastPageRead = pageNo,
             isBookmarked = null,
             markPrevRead = null,
         )
