@@ -41,7 +41,9 @@ class UpdateMutation {
                     input.clientMutationId,
                     updateStatus =
                         withTimeout(30.seconds) {
-                            UpdateStatus(updater.status.first())
+                            UpdateStatus(
+                                updater.updates.first().let { updater.getStatus() },
+                            )
                         },
                 )
             }
@@ -73,7 +75,9 @@ class UpdateMutation {
                     input.clientMutationId,
                     updateStatus =
                         withTimeout(30.seconds) {
-                            UpdateStatus(updater.status.first())
+                            UpdateStatus(
+                                updater.updates.first().let { updater.getStatus() },
+                            )
                         },
                 )
             }
