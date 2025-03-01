@@ -16,7 +16,7 @@ import suwayomi.tachidesk.graphql.types.DownloadUpdates
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 
 class DownloadSubscription {
-    @GraphQLDeprecated("Replaced width downloadStatusChanged", ReplaceWith("downloadStatusChanged(input)"))
+    @GraphQLDeprecated("Replaced with downloadStatusChanged", ReplaceWith("downloadStatusChanged(input)"))
     fun downloadChanged(): Flow<DownloadStatus> =
         DownloadManager.status.map { downloadStatus ->
             DownloadStatus(downloadStatus)

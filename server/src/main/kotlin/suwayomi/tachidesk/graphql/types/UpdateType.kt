@@ -1,11 +1,15 @@
 package suwayomi.tachidesk.graphql.types
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
+import suwayomi.tachidesk.manga.impl.update.CategoryUpdateJob
 import suwayomi.tachidesk.manga.impl.update.CategoryUpdateStatus
 import suwayomi.tachidesk.manga.impl.update.JobStatus
+import suwayomi.tachidesk.manga.impl.update.UpdateJob
 import suwayomi.tachidesk.manga.impl.update.UpdateStatus
+import suwayomi.tachidesk.manga.impl.update.UpdateUpdates
 import java.util.concurrent.CompletableFuture
 
 private val jobStatusToMangaIdsToCacheClearedStatus = mutableMapOf<JobStatus, MutableMap<Int, Boolean>>()
@@ -47,14 +51,6 @@ class UpdateStatus(
     )
 }
 
-class UpdateStatusCategoryType(
-    @get:GraphQLIgnore
-    val categoryIds: List<Int>,
-) {
-    fun categories(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<CategoryNodeList> =
-        dataFetchingEnvironment.getValueFromDataLoader("CategoryForIdsDataLoader", categoryIds)
-}
-
 class UpdateStatusType(
     @get:GraphQLIgnore
     val mangaIds: List<Int>,
@@ -85,6 +81,115 @@ class UpdateStatusType(
             }
         }
 
-        return dataFetchingEnvironment.getValueFromDataLoader<List<Int>, MangaNodeList>("MangaForIdsDataLoader", mangaIds)
+        return dataFetchingEnvironment.getValueFromDataLoader<List<Int>, MangaNodeList>(
+            "MangaForIdsDataLoader",
+            mangaIds,
+        )
     }
+}
+
+class UpdateStatusCategoryType(
+    @get:GraphQLIgnore
+    val categoryIds: List<Int>,
+) {
+    fun categories(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<CategoryNodeList> =
+        dataFetchingEnvironment.getValueFromDataLoader("CategoryForIdsDataLoader", categoryIds)
+}
+
+class LibraryUpdateStatus(
+    val categoryUpdates: List<CategoryUpdateType>,
+    val mangaUpdates: List<MangaUpdateType>,
+    val jobsInfo: UpdaterJobsInfoType,
+) {
+    constructor(updates: UpdateUpdates) : this(
+        categoryUpdates = updates.categoryUpdates.map(::CategoryUpdateType),
+        mangaUpdates = updates.mangaUpdates.map(::MangaUpdateType),
+        jobsInfo =
+            UpdaterJobsInfoType(
+                isRunning = updates.isRunning,
+                totalJobs = updates.totalJobs,
+                finishedJobs = updates.finishedJobs,
+                skippedCategoriesCount = updates.skippedCategoriesCount,
+                skippedMangasCount = updates.skippedMangasCount,
+            ),
+    )
+}
+
+enum class MangaJobStatus {
+    PENDING,
+    RUNNING,
+    COMPLETE,
+    FAILED,
+    SKIPPED,
+}
+
+enum class CategoryJobStatus {
+    UPDATING,
+    SKIPPED,
+}
+
+class MangaUpdateType(
+    val manga: MangaType,
+    val status: MangaJobStatus,
+) {
+    constructor(job: UpdateJob) : this(
+        MangaType(job.manga),
+        when (job.status) {
+            JobStatus.PENDING -> MangaJobStatus.PENDING
+            JobStatus.RUNNING -> MangaJobStatus.RUNNING
+            JobStatus.COMPLETE -> MangaJobStatus.COMPLETE
+            JobStatus.FAILED -> MangaJobStatus.FAILED
+            JobStatus.SKIPPED -> MangaJobStatus.SKIPPED
+        },
+    )
+}
+
+class CategoryUpdateType(
+    val category: CategoryType,
+    val status: CategoryJobStatus,
+) {
+    constructor(job: CategoryUpdateJob) : this(
+        CategoryType(job.category),
+        when (job.status) {
+            CategoryUpdateStatus.UPDATING -> CategoryJobStatus.UPDATING
+            CategoryUpdateStatus.SKIPPED -> CategoryJobStatus.SKIPPED
+        },
+    )
+}
+
+// wrap this info in a data class so that the update subscription updates the date of the update status in the clients cache
+data class UpdaterJobsInfoType(
+    val isRunning: Boolean,
+    val totalJobs: Int,
+    val finishedJobs: Int,
+    val skippedCategoriesCount: Int,
+    val skippedMangasCount: Int,
+)
+
+data class UpdaterUpdates(
+    val categoryUpdates: List<CategoryUpdateType>,
+    val mangaUpdates: List<MangaUpdateType>,
+    @GraphQLDescription("The current update status at the time of sending the initial message. Is null for all following messages")
+    val initial: LibraryUpdateStatus?,
+    val jobsInfo: UpdaterJobsInfoType,
+    @GraphQLDescription(
+        "Indicates whether updates have been omitted based on the \"maxUpdates\" subscription variable. " +
+            "In case updates have been omitted, the \"updateStatus\" query should be re-fetched.",
+    )
+    val omittedUpdates: Boolean,
+) {
+    constructor(updates: UpdateUpdates, omittedUpdates: Boolean) : this(
+        categoryUpdates = updates.categoryUpdates.map(::CategoryUpdateType),
+        mangaUpdates = updates.mangaUpdates.map(::MangaUpdateType),
+        initial = updates.initial?.let { LibraryUpdateStatus(updates.initial) },
+        jobsInfo =
+            UpdaterJobsInfoType(
+                isRunning = updates.isRunning,
+                totalJobs = updates.totalJobs,
+                finishedJobs = updates.finishedJobs,
+                skippedCategoriesCount = updates.skippedCategoriesCount,
+                skippedMangasCount = updates.skippedMangasCount,
+            ),
+        omittedUpdates = omittedUpdates,
+    )
 }

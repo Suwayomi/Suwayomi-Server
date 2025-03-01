@@ -15,6 +15,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import java.util.concurrent.CompletableFuture
@@ -34,6 +35,15 @@ class CategoryType(
         row[CategoryTable.isDefault],
         IncludeOrExclude.fromValue(row[CategoryTable.includeInUpdate]),
         IncludeOrExclude.fromValue(row[CategoryTable.includeInDownload]),
+    )
+
+    constructor(dataClass: CategoryDataClass) : this(
+        dataClass.id,
+        dataClass.order,
+        dataClass.name,
+        dataClass.default,
+        dataClass.includeInUpdate,
+        dataClass.includeInDownload,
     )
 
     fun mangas(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> =
