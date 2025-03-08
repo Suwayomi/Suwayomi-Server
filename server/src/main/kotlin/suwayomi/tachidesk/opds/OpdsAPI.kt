@@ -23,10 +23,15 @@ object OpdsAPI {
             get("genres", OpdsV1Controller.genresFeed)
             get("status", OpdsV1Controller.statusFeed)
             get("languages", OpdsV1Controller.languagesFeed)
+            get("library-updates", OpdsV1Controller.libraryUpdatesFeed)
 
             // Faceted feeds (Acquisition Feeds)
             path("manga/{mangaId}") {
                 get(OpdsV1Controller.mangaFeed)
+            }
+
+            path("manga/{mangaId}/chapter/{chapterId}/fetch") {
+                get(OpdsV1Controller.chapterMetadataFeed)
             }
 
             path("source/{sourceId}") {

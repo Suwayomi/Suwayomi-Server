@@ -278,6 +278,31 @@ object OpdsV1Controller {
             },
         )
 
+    var chapterMetadataFeed =
+        handler(
+            pathParam<Int>("mangaId"),
+            pathParam<Int>("chapterId"),
+            documentWith = {
+                withOperation {
+                    summary("OPDS Chapter Details Feed")
+                    description("OPDS feed for a specific undownloaded chapter of a manga")
+                }
+            },
+            behaviorOf = { ctx, mangaId, chapterId ->
+                ctx.future {
+                    future {
+                        Opds.getChapterMetadataFeed(mangaId, chapterId, BASE_URL)
+                    }.thenApply { xml ->
+                        ctx.contentType(OPDS_MIME).result(xml)
+                    }
+                }
+            },
+            withResults = {
+                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
+            },
+        )
+
     // Specific Source Feed
     val sourceFeed =
         handler(
@@ -405,6 +430,30 @@ object OpdsV1Controller {
             withResults = {
                 httpCode(HttpStatus.OK)
                 httpCode(HttpStatus.NOT_FOUND)
+            },
+        )
+
+    // Main Library Updates Feed
+    val libraryUpdatesFeed =
+        handler(
+            queryParam<Int?>("pageNumber"),
+            documentWith = {
+                withOperation {
+                    summary("OPDS Library Updates Feed")
+                    description("OPDS feed listing recent manga chapter updates")
+                }
+            },
+            behaviorOf = { ctx, pageNumber ->
+                ctx.future {
+                    future {
+                        Opds.getLibraryUpdatesFeed(BASE_URL, pageNumber ?: 1)
+                    }.thenApply { xml ->
+                        ctx.contentType(OPDS_MIME).result(xml)
+                    }
+                }
+            },
+            withResults = {
+                httpCode(HttpStatus.OK)
             },
         )
 }

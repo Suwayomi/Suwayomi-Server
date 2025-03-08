@@ -125,7 +125,10 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                                 .distinctUntilChanged()
                                 .onEach {
                                     download.progress = (pageNum.toFloat() + (it.toFloat() * 0.01f)) / pageCount
-                                    step(null, false) // don't throw on canceled download here since we can't do anything
+                                    step(
+                                        null,
+                                        false,
+                                    ) // don't throw on canceled download here since we can't do anything
                                 }.launchIn(scope)
                     }.first
                     .close()
@@ -159,4 +162,6 @@ abstract class ChaptersFilesProvider<Type : FileType>(
         FileDownload3Args(::downloadImpl)
 
     abstract override fun delete(): Boolean
+
+    abstract fun getAsArchiveStream(): Pair<InputStream, Long>
 }

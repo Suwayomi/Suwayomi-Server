@@ -64,6 +64,8 @@ data class OpdsXmlModels(
         val title: String? = null,
         @XmlSerialName("pse:count", "", "")
         val pseCount: Int? = null,
+        @XmlSerialName("pse:lastRead", "", "")
+        val pseLastRead: Int? = null,
         @XmlSerialName("opds:facetGroup", "", "")
         val facetGroup: String? = null,
         @XmlSerialName("opds:activeFacet", "", "")

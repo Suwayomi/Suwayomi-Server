@@ -262,8 +262,8 @@ object Chapter {
                 // we got some clean up due
                 if (chaptersIdsToDelete.isNotEmpty()) {
                     transaction {
-                        PageTable.deleteWhere { PageTable.chapter inList chaptersIdsToDelete }
-                        ChapterTable.deleteWhere { ChapterTable.id inList chaptersIdsToDelete }
+                        PageTable.deleteWhere { chapter inList chaptersIdsToDelete }
+                        ChapterTable.deleteWhere { id inList chaptersIdsToDelete }
                     }
                 }
 
@@ -321,7 +321,7 @@ object Chapter {
                     }
 
                     MangaTable.update({ MangaTable.id eq mangaId }) {
-                        it[MangaTable.chaptersLastFetchedAt] = Instant.now().epochSecond
+                        it[chaptersLastFetchedAt] = Instant.now().epochSecond
                     }
                 }
 
@@ -443,7 +443,7 @@ object Chapter {
                     }
                     lastPageRead?.also {
                         update[ChapterTable.lastPageRead] = it
-                        update[ChapterTable.lastReadAt] = Instant.now().epochSecond
+                        update[lastReadAt] = Instant.now().epochSecond
                     }
                 }
             }
@@ -534,7 +534,7 @@ object Chapter {
                 }
                 lastPageRead?.also {
                     update[ChapterTable.lastPageRead] = it
-                    update[ChapterTable.lastReadAt] = now
+                    update[lastReadAt] = now
                 }
             }
         }
@@ -603,7 +603,7 @@ object Chapter {
                 ChapterMetaTable.insert {
                     it[ChapterMetaTable.key] = key
                     it[ChapterMetaTable.value] = value
-                    it[ChapterMetaTable.ref] = chapterId
+                    it[ref] = chapterId
                 }
             } else {
                 ChapterMetaTable.update({ (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }) {
@@ -693,4 +693,33 @@ object Chapter {
                     }
             }
         }
+
+    fun updateChapterProgress(
+        mangaId: Int,
+        chapterIndex: Int,
+        pageNo: Int,
+    ) {
+        val chapterData =
+            transaction {
+                ChapterTable
+                    .selectAll()
+                    .where {
+                        (ChapterTable.sourceOrder eq chapterIndex) and
+                            (ChapterTable.manga eq mangaId)
+                    }.first()
+                    .let { ChapterTable.toDataClass(it) }
+            }
+
+        val oneIndexedPageNo = pageNo.inc()
+        val isRead = chapterData.pageCount.takeIf { it == oneIndexedPageNo }?.let { true }
+
+        modifyChapter(
+            mangaId,
+            chapterIndex,
+            isRead = isRead,
+            lastPageRead = pageNo,
+            isBookmarked = null,
+            markPrevRead = null,
+        )
+    }
 }
