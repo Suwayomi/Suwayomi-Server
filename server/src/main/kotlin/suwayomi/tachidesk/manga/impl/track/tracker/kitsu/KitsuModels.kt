@@ -4,10 +4,10 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
-import kotlinx.serialization.json.longOrNull
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
@@ -20,7 +20,7 @@ class KitsuSearchManga(
 ) {
     val id = obj["id"]!!.jsonPrimitive.long
     private val canonicalTitle = obj["canonicalTitle"]!!.jsonPrimitive.content
-    private val chapterCount = obj["chapterCount"]?.jsonPrimitive?.longOrNull
+    private val chapterCount = obj["chapterCount"]?.jsonPrimitive?.intOrNull
     val subType = obj["subtype"]?.jsonPrimitive?.contentOrNull
     val original =
         try {
@@ -46,7 +46,7 @@ class KitsuSearchManga(
         TrackSearch.create(TrackerManager.KITSU).apply {
             media_id = this@KitsuSearchManga.id
             title = canonicalTitle
-            total_chapters = chapterCount?.toInt() ?: 0
+            total_chapters = chapterCount ?: 0
             cover_url = original ?: ""
             summary = synopsis ?: ""
             tracking_url = KitsuApi.mangaUrl(media_id)
@@ -68,7 +68,7 @@ class KitsuLibManga(
 ) {
     val id = manga["id"]!!.jsonPrimitive.int
     private val canonicalTitle = manga["attributes"]!!.jsonObject["canonicalTitle"]!!.jsonPrimitive.content
-    private val chapterCount = manga["attributes"]!!.jsonObject["chapterCount"]?.jsonPrimitive?.longOrNull
+    private val chapterCount = manga["attributes"]!!.jsonObject["chapterCount"]?.jsonPrimitive?.intOrNull
     val type =
         manga["attributes"]!!
             .jsonObject["mangaType"]
@@ -98,7 +98,7 @@ class KitsuLibManga(
         Track.create(TrackerManager.KITSU).apply {
             media_id = libraryId
             title = canonicalTitle
-            total_chapters = chapterCount?.toInt() ?: 0
+            total_chapters = chapterCount ?: 0
             // cover_url = original
             // summary = synopsis
             tracking_url = KitsuApi.mangaUrl(media_id)
