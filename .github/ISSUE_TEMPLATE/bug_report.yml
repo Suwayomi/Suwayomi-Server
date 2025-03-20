@@ -77,6 +77,26 @@ body:
       required: true
 
   - type: input
+    id: client-name
+    attributes:
+      label: Used client name
+      description:
+      placeholder: |
+        Example: "Suwayomi-WebUI"
+    validations:
+      required: true
+
+  - type: input
+    id: client-version
+    attributes:
+      label: Client version
+      description:
+      placeholder: |
+        Example: "v1.2.3"
+    validations:
+      required: true
+
+  - type: input
     id: client-browser
     attributes:
       label: Used web browser
