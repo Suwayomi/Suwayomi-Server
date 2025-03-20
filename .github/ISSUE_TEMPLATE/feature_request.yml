@@ -1,0 +1,37 @@
+name: 🌟 Feature request
+description: Suggest a feature to improve Suwayomi-Server
+labels: [enhancement]
+body:
+
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Describe your suggested feature
+      description: How can Suwayomi-Server be improved?
+      placeholder: |
+        Example:
+          "It should work like this..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: other-details
+    attributes:
+      label: Other details
+      placeholder: |
+        Additional details and attachments.
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Acknowledgements
+      description: Read this carefully, we will close and ignore your issue if you skimmed through this.
+      options:
+        - label: I have searched the existing issues and this is a new ticket, **NOT** a duplicate or related to another open or closed issue.
+          required: true
+        - label: I have written a short but informative title (ideally less than ~100 characters).
+          required: true
+        - label: I have updated to the **[latest version](https://github.com/suwayomi/suwayomi-server/releases/latest)**.
+          required: true
+        - label: I have filled out all of the requested information in this form, including specific version numbers.
+          required: true
