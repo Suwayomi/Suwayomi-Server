@@ -125,7 +125,7 @@ settings-core = { module = "com.russhwolf:multiplatform-settings-jvm", version.r
 settings-serialization = { module = "com.russhwolf:multiplatform-settings-serialization-jvm", version.ref = "settings" }
 
 # ICU4J
-icu4j = "com.ibm.icu:icu4j:76.1"
+icu4j = "com.ibm.icu:icu4j:77.1"
 
 # Image Decoding implementation provider
 twelvemonkeys-common-lang = { module = "com.twelvemonkeys.common:common-lang", version.ref = "twelvemonkeys" }
