@@ -3,14 +3,11 @@ package suwayomi.tachidesk.graphql.mutations
 import graphql.execution.DataFetcherResult
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.asDataFetcherResult
+import suwayomi.tachidesk.graphql.types.LibraryUpdateStatus
 import suwayomi.tachidesk.graphql.types.UpdateStatus
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.update.IUpdater
-import suwayomi.tachidesk.manga.model.table.CategoryTable
-import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
 import uy.kohesive.injekt.injectLazy
 import java.util.concurrent.CompletableFuture
@@ -18,6 +15,38 @@ import kotlin.time.Duration.Companion.seconds
 
 class UpdateMutation {
     private val updater: IUpdater by injectLazy()
+
+    data class UpdateLibraryInput(
+        val clientMutationId: String? = null,
+        val categories: List<Int>?,
+    )
+
+    data class UpdateLibraryPayload(
+        val clientMutationId: String? = null,
+        val updateStatus: LibraryUpdateStatus,
+    )
+
+    fun updateLibrary(input: UpdateLibraryInput): CompletableFuture<DataFetcherResult<UpdateLibraryPayload?>> {
+        updater.addCategoriesToUpdateQueue(
+            Category.getCategoryList().filter { input.categories?.contains(it.id) ?: true },
+            clear = true,
+            forceAll = !input.categories.isNullOrEmpty(),
+        )
+
+        return future {
+            asDataFetcherResult {
+                UpdateLibraryPayload(
+                    input.clientMutationId,
+                    updateStatus =
+                        withTimeout(30.seconds) {
+                            LibraryUpdateStatus(
+                                updater.updates.first(),
+                            )
+                        },
+                )
+            }
+        }
+    }
 
     data class UpdateLibraryMangaInput(
         val clientMutationId: String? = null,
@@ -29,10 +58,11 @@ class UpdateMutation {
     )
 
     fun updateLibraryManga(input: UpdateLibraryMangaInput): CompletableFuture<DataFetcherResult<UpdateLibraryMangaPayload?>> {
-        updater.addCategoriesToUpdateQueue(
-            Category.getCategoryList(),
-            clear = true,
-            forceAll = false,
+        updateLibrary(
+            UpdateLibraryInput(
+                clientMutationId = input.clientMutationId,
+                categories = null,
+            ),
         )
 
         return future {
@@ -59,13 +89,12 @@ class UpdateMutation {
     )
 
     fun updateCategoryManga(input: UpdateCategoryMangaInput): CompletableFuture<DataFetcherResult<UpdateCategoryMangaPayload?>> {
-        val categories =
-            transaction {
-                CategoryTable.selectAll().where { CategoryTable.id inList input.categories }.map {
-                    CategoryTable.toDataClass(it)
-                }
-            }
-        updater.addCategoriesToUpdateQueue(categories, clear = true, forceAll = true)
+        updateLibrary(
+            UpdateLibraryInput(
+                clientMutationId = input.clientMutationId,
+                categories = input.categories,
+            ),
+        )
 
         return future {
             asDataFetcherResult {

@@ -4,11 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 
-enum class CategoryUpdateStatus {
-    UPDATING,
-    SKIPPED,
-}
-
 data class UpdateStatus(
     val categoryStatusMap: Map<CategoryUpdateStatus, List<CategoryDataClass>> = emptyMap(),
     val mangaStatusMap: Map<JobStatus, List<MangaDataClass>> = emptyMap(),
@@ -33,3 +28,14 @@ data class UpdateStatus(
         numberOfJobs = jobs.size,
     )
 }
+
+data class UpdateUpdates(
+    val isRunning: Boolean = false,
+    val categoryUpdates: List<CategoryUpdateJob>,
+    val mangaUpdates: List<UpdateJob>,
+    val totalJobs: Int,
+    val finishedJobs: Int,
+    val skippedCategoriesCount: Int,
+    val skippedMangasCount: Int,
+    val initial: UpdateUpdates?,
+)
