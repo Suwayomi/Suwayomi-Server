@@ -60,7 +60,12 @@ class TachideskGraphQLServer(
 
                     logger.error(exception) { "GraphQL execution failed due to" }
 
-                    val error = ExceptionWhileDataFetching(path, exception, sourceLocation)
+                    val error =
+                        ExceptionWhileDataFetching(
+                            path,
+                            Throwable(exception.message + "\r\n\r\n" + exception.stackTraceToString(), exception),
+                            sourceLocation,
+                        )
 
                     DataFetcherExceptionHandlerResult.newResult().error(error).build()
                 }
