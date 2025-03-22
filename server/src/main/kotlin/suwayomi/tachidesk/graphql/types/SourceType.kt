@@ -339,7 +339,7 @@ sealed interface Preference
 
 data class SwitchPreference(
     val key: String,
-    val title: String,
+    val title: String?,
     val summary: String?,
     val visible: Boolean,
     val currentValue: Boolean?,
@@ -348,7 +348,7 @@ data class SwitchPreference(
 
 data class CheckBoxPreference(
     val key: String,
-    val title: String,
+    val title: String?,
     val summary: String?,
     val visible: Boolean,
     val currentValue: Boolean?,
@@ -396,7 +396,7 @@ fun preferenceOf(preference: SourcePreference): Preference =
         is SourceSwitchPreference ->
             SwitchPreference(
                 preference.key,
-                preference.title.toString(),
+                preference.title?.toString(),
                 preference.summary?.toString(),
                 preference.visible,
                 preference.currentValue as Boolean,
@@ -405,7 +405,7 @@ fun preferenceOf(preference: SourcePreference): Preference =
         is SourceCheckBoxPreference ->
             CheckBoxPreference(
                 preference.key,
-                preference.title.toString(),
+                preference.title?.toString(),
                 preference.summary?.toString(),
                 preference.visible,
                 preference.currentValue as Boolean,
