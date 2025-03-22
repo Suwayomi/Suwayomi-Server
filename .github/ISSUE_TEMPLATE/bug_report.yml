@@ -1,0 +1,144 @@
+name: 🐞 Bug report
+description: Report a bug in Suwayomi-Server
+labels: [bug]
+body:
+
+  - type: textarea
+    id: reproduce-steps
+    attributes:
+      label: Steps to reproduce
+      description: Provide an example of the issue.
+      placeholder: |
+        Example:
+          1. First step
+          2. Second step
+          3. Issue here
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: Explain what you should expect to happen.
+      placeholder: |
+        Example: "This should happen..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual behavior
+      description: Explain what actually happens.
+      placeholder: |
+        Example: "This happened instead..."
+    validations:
+      required: true
+
+  - type: input
+    id: suwayomi-server-version
+    attributes:
+      label: Suwayomi-Server version
+      description: You can find your Suwayomi-Server version in **More → About**.
+      placeholder: |
+        Example: "v1.1.1 | v1.1.1-r1701"
+    validations:
+      required: true
+
+  - type: input
+    id: server-os
+    attributes:
+      label: Server operating system
+      description: The operating system on which Suwayomi-Server is running on
+      placeholder: |
+        Example: "Windows 11 Pro 24H2 | Ubuntu 24.04.2 LTS"
+    validations:
+      required: true
+
+  - type: input
+    id: server-desktop-environment
+    attributes:
+      label: Server Desktop Environment
+      description:
+      placeholder: |
+        Example: "Gnome 40"
+    validations:
+      required: false
+
+  - type: input
+    id: server-jvm-version
+    attributes:
+      label: Server JVM version
+      description: The java version used to run Suwayomi-Server
+      placeholder: |
+        Example: "openjdk 21.0.5 2024-10-15 LTS"
+    validations:
+      required: true
+
+  - type: input
+    id: client-name
+    attributes:
+      label: Used client name
+      description:
+      placeholder: |
+        Example: "Suwayomi-WebUI"
+    validations:
+      required: true
+
+  - type: input
+    id: client-version
+    attributes:
+      label: Client version
+      description:
+      placeholder: |
+        Example: "v1.2.3"
+    validations:
+      required: true
+
+  - type: input
+    id: client-browser
+    attributes:
+      label: Used web browser
+      description: The browser which is used to open Suwayomi-WebUI
+      placeholder: |
+        Example: "Chrome 134.0.6998.118 (64-Bit) | FireFox 136.0.2 (64-Bit) | Electron v35.0.2"
+    validations:
+      required: true
+
+  - type: input
+    id: client-os
+    attributes:
+      label: Client operating system
+      description: The system on which the Suwayomi-WebUI is running on
+      placeholder: |
+        Example: "Windows 11 Pro 24H2 | Ubuntu 24.04.2 LTS"
+    validations:
+      required: true
+
+  - type: textarea
+    id: other-details
+    attributes:
+      label: Other details
+      description: The more information that gets provided the better, especially via videos and images
+      placeholder: |
+        Additional details and attachments.
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Acknowledgements
+      description: Read this carefully, we will close and ignore your issue if you skimmed through this.
+      options:
+        - label: I have searched the existing issues and this is a new ticket, **NOT** a duplicate or related to another open or closed issue.
+          required: true
+        - label: I have written a short but informative title (ideally less than ~100 characters).
+          required: true
+        - label: I have tried the troubleshooting guide described in [README.md](https://github.com/Suwayomi/Suwayomi-Server?tab=readme-ov-file#troubleshooting-and-support)
+          required: true
+        - label: I have updated to the **[latest version](https://github.com/suwayomi/suwayomi-server/releases/latest)**.
+          required: true
+        - label: I have filled out all of the requested information in this form, including specific version numbers.
+          required: true
+        - label: I understand that **Suwayomi does not have or fix any extensions**, and I **will not receive help** for any issues related to sources or extensions.
+          required: true
