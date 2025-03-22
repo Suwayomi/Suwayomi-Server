@@ -24,6 +24,7 @@ import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
@@ -292,7 +293,8 @@ object ProtoBackupExport : ProtoBackupBase() {
             .orderBy(CategoryTable.order to SortOrder.ASC)
             .map {
                 CategoryTable.toDataClass(it)
-            }.map {
+            }.filter { it.id != Category.DEFAULT_CATEGORY_ID }
+            .map {
                 BackupCategory(
                     it.name,
                     it.order,
