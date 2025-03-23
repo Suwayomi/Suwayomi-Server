@@ -59,8 +59,8 @@ class UpdateSubscription {
             UpdaterUpdates(
                 UpdateUpdates(
                     updates.isRunning,
-                    updates.categoryUpdates.subList(0, maxUpdates),
-                    updates.mangaUpdates.subList(0, maxUpdatesAfterCategoryUpdates),
+                    updates.categoryUpdates.take(maxUpdates),
+                    updates.mangaUpdates.take(maxUpdatesAfterCategoryUpdates),
                     updates.totalJobs,
                     updates.finishedJobs,
                     updates.skippedCategoriesCount,
