@@ -15,7 +15,11 @@ object AppInfo {
      *
      * @since extension-lib 1.3
      */
-    fun getVersionCode() = BuildConfig.REVISION.substring(1).toInt()
+    fun getVersionCode() =
+        BuildConfig.VERSION
+            .split('.')
+            .joinToString("")
+            .toInt()
 
     /**
      * should be something like "0.13.1"
