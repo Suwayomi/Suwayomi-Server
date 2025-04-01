@@ -591,14 +591,18 @@ object WebInterfaceManager {
             return BuildConfig.WEBUI_TAG
         }
 
-        val currentServerVersionNumber = extractVersion(BuildConfig.REVISION)
+        val currentServerVersionNumber =
+            BuildConfig.VERSION
+                .split(".")
+                .last()
+                .toInt()
         val webUIToServerVersionMappings = fetchServerMappingFile(flavor)
 
         logger.debug {
             "getLatestCompatibleVersion: " +
                 "flavor= ${flavor.uiName}, " +
                 "webUIChannel= ${serverConfig.webUIChannel.value}, " +
-                "currentServerVersion= ${BuildConfig.REVISION}, " +
+                "currentServerVersion= ${BuildConfig.VERSION}, " +
                 "mappingFile= $webUIToServerVersionMappings"
         }
 
