@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.graphql.queries
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import suwayomi.tachidesk.global.impl.AppUpdate
 import suwayomi.tachidesk.graphql.types.AboutWebUI
 import suwayomi.tachidesk.graphql.types.WebUIUpdateCheck
@@ -15,6 +16,7 @@ class InfoQuery {
     data class AboutServerPayload(
         val name: String,
         val version: String,
+        @GraphQLDeprecated("The version includes the revision as the patch number")
         val revision: String,
         val buildType: String,
         val buildTime: Long,
