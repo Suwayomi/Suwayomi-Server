@@ -10,9 +10,9 @@ import java.io.BufferedReader
 const val MainClass = "suwayomi.tachidesk.MainKt"
 
 // should be bumped with each stable release
-val getTachideskVersion = { System.getenv("ProductVersion") ?: "v1.1.${getCommitCount()}" }
+val getTachideskVersion = { "v1.1.${getCommitCount()}" }
 
-val webUIRevisionTag = System.getenv("WebUIRevision") ?: "r1689"
+val webUIRevisionTag = "r1689"
 
 private val getCommitCount = {
     runCatching {
@@ -31,5 +31,5 @@ private val getCommitCount = {
 }
 
 // counts commits on the current checked out branch
-val getTachideskRevision = { System.getenv("ProductRevision") ?: "r${getCommitCount()}" }
+val getTachideskRevision = { "r${getCommitCount()}" }
 
