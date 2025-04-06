@@ -11,9 +11,6 @@ import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
-import suwayomi.tachidesk.server.util.WebUIChannel
-import suwayomi.tachidesk.server.util.WebUIFlavor
-import suwayomi.tachidesk.server.util.WebUIInterface
 
 interface Settings : Node {
     val ip: String?
