@@ -137,7 +137,7 @@ fun applicationSetup() {
 
     setupLogLevelUpdating(serverConfig.debugLogsEnabled, listOf(BASE_LOGGER_NAME))
 
-    logger.info { "Running Suwayomi-Server ${BuildConfig.VERSION} revision ${BuildConfig.REVISION}" }
+    logger.info { "Running Suwayomi-Server ${BuildConfig.VERSION}" }
 
     logger.debug {
         "Loaded config:\n" +
