@@ -78,7 +78,7 @@ main() {
       setup_jre
       tree "$RELEASE_NAME"
 
-      RELEASE="$RELEASE_NAME.zip"
+      RELEASE="$RELEASE_NAME.tar.gz"
       make_macos_bundle
       move_release_to_output_dir
       ;;
@@ -94,7 +94,7 @@ main() {
       setup_jre
       tree "$RELEASE_NAME"
 
-      RELEASE="$RELEASE_NAME.zip"
+      RELEASE="$RELEASE_NAME.tar.gz"
       make_macos_bundle
       move_release_to_output_dir
       ;;
