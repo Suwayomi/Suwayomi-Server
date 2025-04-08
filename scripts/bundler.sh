@@ -191,7 +191,7 @@ make_macos_bundle() {
   cp "$JAR" "$RELEASE_NAME/bin/Suwayomi-Server.jar"
   cp "scripts/resources/Suwayomi Launcher.command" "$RELEASE_NAME/"
 
-  zip -9 -r "$RELEASE" "$RELEASE_NAME/"
+  tar -I "gzip -9" -cvf "$RELEASE" "$RELEASE_NAME/"
 }
 
 # https://wiki.debian.org/SimplePackagingTutorial
