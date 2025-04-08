@@ -104,7 +104,9 @@ jobs:
 
       - name: Chmod JRE
         if: matrix.name == 'macOS-arm64' || matrix.name == 'macOS-x64' || matrix.name == 'linux-x64'
-        run: chmod +x ./suwa/bin/java
+        run: |
+          chmod +x ./suwa/bin/java
+          chmod +x ./suwa/lib/jspawnhelper
 
       - name: Upload JRE package
         uses: actions/upload-artifact@v4
