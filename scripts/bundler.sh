@@ -148,6 +148,8 @@ download_electron() {
 
 setup_jre() {
   if [ -d "jre" ]; then
+    chmod +x ./jre/bin/java
+    chmod +x ./jre/lib/jspawnhelper
     mv "jre" "$RELEASE_NAME/jre"
   else
     if [ ! -f "$JRE" ]; then
