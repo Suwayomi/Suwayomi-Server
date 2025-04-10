@@ -11,7 +11,7 @@ polyglot = "24.2.0"
 settings = "1.3.0"
 twelvemonkeys = "3.12.0"
 graphqlkotlin = "8.4.0"
-xmlserialization = "0.90.3"
+xmlserialization = "0.91.0"
 ktlint = "1.5.0"
 koin = "4.0.2"
 
