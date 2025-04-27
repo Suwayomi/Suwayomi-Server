@@ -52,9 +52,10 @@ You can use Mihon (Tachiyomi) to access your Suwayomi-Server. For more info look
 - Ability to download Manga for offline read
 - Backup and restore support powered by Mihon (Tachiyomi)-compatible Backups
 - Automated backup creations
-- Tracking via [MyAnimeList](https://myanimelist.net/), [AniList](https://anilist.co/), [MangaUpdates](https://www.mangaupdates.com/)
+- Tracking via [MyAnimeList](https://myanimelist.net/), [AniList](https://anilist.co/), [MangaUpdates](https://www.mangaupdates.com/), etc.
 - [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) support to bypass Cloudflare protection
 - Automated WebUI updates (supports the default WebUI and VUI)
+- OPDS and OPDS-PSE support (endpoint: `/api/opds/v1.2`)
 
 # Suwayomi client projects
 **You need a client/user interface app as a front-end for Suwayomi-Server, if you [Directly Download Suwayomi-Server](https://github.com/Suwayomi/Suwayomi-Server/releases/latest) you'll get a bundled version of [Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI) with it.**
