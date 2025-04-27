@@ -21,6 +21,6 @@ class M0045_PreventDuplicatedChapterPages : SQLMigration() {
         );
 
         ALTER TABLE PAGE
-            ADD CONSTRAINT UC_PAGE UNIQUE (INDEX, imageUrl, CHAPTER)
+            ADD CONSTRAINT UC_PAGE UNIQUE (INDEX, "imageUrl", CHAPTER);
         """.trimIndent()
 }
