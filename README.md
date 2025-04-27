@@ -111,17 +111,15 @@ Download the latest deb package from the release section.
 > ### MPR
 > ```
 > git clone https://mpr.makedeb.org/tachidesk-server.git
-> cd suwayomi-server
+> cd tachidesk-server
 > makedeb -si
 > ```
 > ### Ubuntu
 > ```
 > sudo add-apt-repository ppa:suwayomi/tachidesk-server
 > sudo apt update
-> sudo apt install suwayomi-server
+> sudo apt install tachidesk-server
 > ```
-
-
 
 ### NixOS
 You can deploy Suwayomi on NixOS using the module `services.suwayomi-server` in your configuration:
