@@ -13,7 +13,7 @@ import org.jetbrains.exposed.sql.ReferenceOption
 object PageTable : IntIdTable() {
     val index = integer("index")
     val url = varchar("url", 2048)
-    val imageUrl = varchar("imageUrl", 2048).nullable()
+    val imageUrl = varchar("image_url", 2048).nullable()
 
     val chapter = reference("chapter", ChapterTable, ReferenceOption.CASCADE)
 }
