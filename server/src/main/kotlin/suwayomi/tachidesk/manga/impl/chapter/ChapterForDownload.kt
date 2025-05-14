@@ -11,6 +11,9 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.github.reactivecircus.cache4k.Cache
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
@@ -28,6 +31,7 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import kotlin.time.Duration.Companion.minutes
 
 suspend fun getChapterDownloadReady(
     userId: Int,
@@ -36,7 +40,6 @@ suspend fun getChapterDownloadReady(
     mangaId: Int? = null,
 ): ChapterDataClass {
     val chapter = ChapterForDownload(userId, chapterId, chapterIndex, mangaId)
-
     return chapter.asDownloadReady()
 }
 
@@ -50,6 +53,12 @@ suspend fun getChapterDownloadReadyByIndex(
     chapterIndex: Int,
     mangaId: Int,
 ): ChapterDataClass = getChapterDownloadReady(userId = userId, chapterIndex = chapterIndex, mangaId = mangaId)
+
+private val mutexByChapterId: Cache<Int, Mutex> =
+    Cache
+        .Builder<Int, Mutex>()
+        .expireAfterAccess(10.minutes)
+        .build()
 
 private class ChapterForDownload(
     private val userId: Int,
@@ -78,9 +87,7 @@ private class ChapterForDownload(
 
             markAsNotDownloaded()
 
-            val pageList = fetchPageList()
-
-            updateDatabasePages(pageList)
+            updatePageList()
         }
 
         return asDataClass()
@@ -117,6 +124,14 @@ private class ChapterForDownload(
                     throw Exception("'optChapterId' or 'optChapterIndex' and 'optMangaId' have to be passed")
                 }
             }.first()
+    }
+
+    private suspend fun updatePageList() {
+        val mutex = mutexByChapterId.get(chapterId) { Mutex() }
+        mutex.withLock {
+            val pageList = fetchPageList()
+            updateDatabasePages(pageList)
+        }
     }
 
     private suspend fun fetchPageList(): List<Page> {
@@ -176,7 +191,7 @@ private class ChapterForDownload(
                     ChapterUserTable.chapter eq chapterId and (ChapterUserTable.lastPageRead greaterEq pageCount)
                 }.forEach { row ->
                     ChapterUserTable.update({ ChapterUserTable.id eq row[ChapterUserTable.id] }) {
-                        it[ChapterUserTable.lastPageRead] = pageCount - 1
+                        it[ChapterUserTable.lastPageRead] = row[ChapterUserTable.lastPageRead].coerceAtMost(pageCount - 1).coerceAtLeast(0)
                     }
                 }
         }

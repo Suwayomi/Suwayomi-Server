@@ -21,7 +21,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
-import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyByIndex
+import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyById
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Error
@@ -44,6 +44,10 @@ class Downloader(
     private val onComplete: () -> Unit,
     private val onDownloadFinished: () -> Unit,
 ) {
+    companion object {
+        private const val MAX_RETRIES = 3
+    }
+
     private val logger = KotlinLogging.logger("${Downloader::class.java.name} source($sourceId)")
 
     private var job: Job? = null
@@ -53,6 +57,8 @@ class Downloader(
     class StopDownloadException : Exception("Cancelled download")
 
     class PauseDownloadException : Exception("Pause download")
+
+    class EmptyChapterException : Exception("Chapter does not have any pages to download")
 
     private suspend fun step(
         downloadUpdate: DownloadUpdate?,
@@ -111,7 +117,7 @@ class Downloader(
         while (downloadQueue.isNotEmpty() && currentCoroutineContext().isActive) {
             val download =
                 availableSourceDownloads.firstOrNull {
-                    (it.state == Queued || it.state == Finished || (it.state == Error && it.tries < 3)) // 3 re-tries per download
+                    (it.state == Queued || it.state == Finished || (it.state == Error && it.tries < MAX_RETRIES))
                 } ?: break
 
             val logContext = "${logger.name} - downloadChapter($download))"
@@ -131,7 +137,11 @@ class Downloader(
                 download.state = Downloading
                 step(DownloadUpdate(PROGRESS, download), true)
 
-                download.chapter = getChapterDownloadReadyByIndex(0, download.chapterIndex, download.mangaId)
+                download.chapter = getChapterDownloadReadyById(0, download.chapter.id)
+
+                if (download.chapter.pageCount <= 0) {
+                    throw EmptyChapterException()
+                }
 
                 ChapterDownloadHelper.download(download.mangaId, download.chapter.id, download, scope) { downloadChapter, immediate ->
                     step(downloadChapter?.let { DownloadUpdate(PROGRESS, downloadChapter) }, immediate)
@@ -153,6 +163,11 @@ class Downloader(
                 downloadLogger.debug { "paused" }
                 download.state = Queued
                 notifier(false, DownloadUpdate(PAUSED, download))
+            } catch (e: EmptyChapterException) {
+                downloadLogger.warn(e) { "failed due to" }
+                download.tries = MAX_RETRIES
+                download.state = Error
+                notifier(false, DownloadUpdate(ERROR, download))
             } catch (e: Exception) {
                 downloadLogger.warn(e) { "failed due to" }
                 download.tries++

@@ -186,8 +186,8 @@ class DownloadMutation {
                             DownloadStatus(
                                 DownloadManager.updates
                                     .first {
-                                        it.updates.none {
-                                            it.downloadChapter.chapter.id in chapters && it.type != DEQUEUED
+                                        it.updates.any {
+                                            it.downloadChapter.chapter.id in chapters && it.type == DEQUEUED
                                         }
                                     }.let { DownloadManager.getStatus() },
                             )
@@ -225,8 +225,8 @@ class DownloadMutation {
                             DownloadStatus(
                                 DownloadManager.updates
                                     .first {
-                                        it.updates.none {
-                                            it.downloadChapter.chapter.id == chapter && it.type != DEQUEUED
+                                        it.updates.any {
+                                            it.downloadChapter.chapter.id == chapter && it.type == DEQUEUED
                                         }
                                     }.let { DownloadManager.getStatus() },
                             )

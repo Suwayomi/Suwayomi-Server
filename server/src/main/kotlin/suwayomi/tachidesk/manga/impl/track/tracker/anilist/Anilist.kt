@@ -12,6 +12,7 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.hours
 
 class Anilist(
@@ -37,19 +38,15 @@ class Anilist(
 
     private val json: Json by injectLazy()
 
-    private val interceptors =
-        Cache
-            .Builder<Int, AnilistInterceptor>()
-            .expireAfterAccess(1.hours)
-            .build()
+    private val interceptors = ConcurrentHashMap<Int, AnilistInterceptor>()
     private val apis =
         Cache
             .Builder<Int, AnilistApi>()
             .expireAfterAccess(1.hours)
             .build()
 
-    suspend fun interceptor(userId: Int): AnilistInterceptor =
-        interceptors.get(userId) {
+    fun interceptor(userId: Int): AnilistInterceptor =
+        interceptors.getOrPut(userId) {
             AnilistInterceptor(userId, this)
         }
 

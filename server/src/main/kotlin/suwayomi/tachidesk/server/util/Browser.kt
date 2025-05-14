@@ -9,6 +9,7 @@ package suwayomi.tachidesk.server.util
 
 import dorkbox.desktop.Desktop
 import io.github.oshai.kotlinlogging.KotlinLogging
+import suwayomi.tachidesk.graphql.types.WebUIInterface
 import suwayomi.tachidesk.server.serverConfig
 
 object Browser {

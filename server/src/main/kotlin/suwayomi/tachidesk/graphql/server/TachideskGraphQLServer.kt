@@ -11,8 +11,12 @@ import com.expediagroup.graphql.generator.execution.FlowSubscriptionExecutionStr
 import com.expediagroup.graphql.server.execution.GraphQLRequestHandler
 import com.expediagroup.graphql.server.execution.GraphQLServer
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import graphql.ExceptionWhileDataFetching
 import graphql.GraphQL
 import graphql.execution.AsyncExecutionStrategy
+import graphql.execution.DataFetcherExceptionHandler
+import graphql.execution.DataFetcherExceptionHandlerResult
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.http.Context
 import io.javalin.websocket.WsCloseContext
 import io.javalin.websocket.WsMessageContext
@@ -21,6 +25,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import suwayomi.tachidesk.graphql.server.subscriptions.ApolloSubscriptionProtocolHandler
+import suwayomi.tachidesk.server.JavalinSetup.future
 
 class TachideskGraphQLServer(
     requestParser: JavalinGraphQLRequestParser,
@@ -44,12 +49,34 @@ class TachideskGraphQLServer(
     }
 
     companion object {
+        private val logger = KotlinLogging.logger {}
+
+        private val exceptionHandler =
+            DataFetcherExceptionHandler { handlerParameters ->
+                future {
+                    val exception = handlerParameters.exception
+                    val sourceLocation = handlerParameters.sourceLocation
+                    val path = handlerParameters.path
+
+                    logger.error(exception) { "GraphQL execution failed due to" }
+
+                    val error =
+                        ExceptionWhileDataFetching(
+                            path,
+                            Throwable(exception.message + "\r\n\r\n" + exception.stackTraceToString(), exception),
+                            sourceLocation,
+                        )
+
+                    DataFetcherExceptionHandlerResult.newResult().error(error).build()
+                }
+            }
+
         private fun getGraphQLObject(): GraphQL =
             GraphQL
                 .newGraphQL(schema)
-                .subscriptionExecutionStrategy(FlowSubscriptionExecutionStrategy())
-                .mutationExecutionStrategy(AsyncExecutionStrategy())
-                .defaultDataFetcherExceptionHandler(TachideskDataFetcherExceptionHandler())
+                .queryExecutionStrategy(AsyncExecutionStrategy(exceptionHandler))
+                .mutationExecutionStrategy(AsyncExecutionStrategy(exceptionHandler))
+                .subscriptionExecutionStrategy(FlowSubscriptionExecutionStrategy(exceptionHandler))
                 .build()
 
         fun create(): TachideskGraphQLServer {

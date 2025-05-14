@@ -12,6 +12,7 @@ import suwayomi.tachidesk.server.generated.BuildConfig
 data class AboutDataClass(
     val name: String,
     val version: String,
+    @Deprecated("The version includes the revision as the patch number")
     val revision: String,
     val buildType: String,
     val buildTime: Long,

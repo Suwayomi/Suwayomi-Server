@@ -48,6 +48,10 @@ import java.io.InputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
+import kotlin.io.path.Path
+import kotlin.io.path.absolutePathString
+import kotlin.io.path.outputStream
+import kotlin.io.path.relativeTo
 
 object Extension {
     private val logger = KotlinLogging.logger {}
@@ -77,17 +81,20 @@ object Extension {
         apkName: String,
     ): Int =
         installAPK(true) {
-            val savePath = "${applicationDirs.extensionsRoot}/$apkName"
+            val rootPath = Path(applicationDirs.extensionsRoot)
+            val downloadedFile = rootPath.resolve(apkName).normalize()
+            check(downloadedFile.startsWith(rootPath) && downloadedFile.parent == rootPath) {
+                "File '$apkName' is not a valid extension file"
+            }
             logger.debug { "Saving apk at $apkName" }
             // download apk file
-            val downloadedFile = File(savePath)
-            downloadedFile.sink().buffer().use { sink ->
+            downloadedFile.outputStream().sink().buffer().use { sink ->
                 inputStream.source().use { source ->
                     sink.writeAll(source)
                     sink.flush()
                 }
             }
-            savePath
+            downloadedFile.absolutePathString()
         }
 
     suspend fun installAPK(

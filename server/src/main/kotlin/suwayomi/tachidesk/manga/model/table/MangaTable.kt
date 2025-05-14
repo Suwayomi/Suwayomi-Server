@@ -46,6 +46,7 @@ object MangaTable : IntIdTable() {
 fun MangaTable.toDataClass(
     userId: Int,
     mangaEntry: ResultRow,
+    includeMangaMeta: Boolean = true,
 ) = MangaDataClass(
     id = mangaEntry[this.id].value,
     sourceId = mangaEntry[sourceReference].toString(),
@@ -61,7 +62,12 @@ fun MangaTable.toDataClass(
     status = Companion.valueOf(mangaEntry[status]).name,
     inLibrary = mangaEntry.getOrNull(MangaUserTable.inLibrary) ?: false,
     inLibraryAt = mangaEntry.getOrNull(MangaUserTable.inLibraryAt) ?: 0,
-    meta = getMangaMetaMap(userId, mangaEntry[id].value),
+    meta =
+        if (includeMangaMeta) {
+            getMangaMetaMap(userId, mangaEntry[id].value)
+        } else {
+            emptyMap()
+        },
     realUrl = mangaEntry[realUrl],
     lastFetchedAt = mangaEntry[lastFetchedAt],
     chaptersLastFetchedAt = mangaEntry[chaptersLastFetchedAt],

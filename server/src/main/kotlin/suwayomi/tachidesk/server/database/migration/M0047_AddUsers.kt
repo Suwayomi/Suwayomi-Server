@@ -12,7 +12,7 @@ import org.intellij.lang.annotations.Language
 import suwayomi.tachidesk.global.impl.util.Bcrypt
 
 @Suppress("ClassName", "unused")
-class M0043_AddUsers : SQLMigration() {
+class M0047_AddUsers : SQLMigration() {
     class UserSql {
         private val password = Bcrypt.encryptPassword("password")
 

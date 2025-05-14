@@ -9,6 +9,7 @@ import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.copyTo
 import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.toTrackSearch
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.hours
 
 class MangaUpdates(
@@ -38,19 +39,15 @@ class MangaUpdates(
 
     override val supportsTrackDeletion: Boolean = true
 
-    private val interceptors =
-        Cache
-            .Builder<Int, MangaUpdatesInterceptor>()
-            .expireAfterAccess(1.hours)
-            .build()
+    private val interceptors = ConcurrentHashMap<Int, MangaUpdatesInterceptor>()
     private val apis =
         Cache
             .Builder<Int, MangaUpdatesApi>()
             .expireAfterAccess(1.hours)
             .build()
 
-    suspend fun interceptor(userId: Int): MangaUpdatesInterceptor =
-        interceptors.get(userId) {
+    fun interceptor(userId: Int): MangaUpdatesInterceptor =
+        interceptors.getOrPut(userId) {
             MangaUpdatesInterceptor(userId, this)
         }
 

@@ -9,6 +9,7 @@ package suwayomi.tachidesk.test
 
 import ch.qos.logback.classic.Level
 import eu.kanade.tachiyomi.source.model.SManga
+import io.github.oshai.kotlinlogging.DelegatingKLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.sql.batchInsert
@@ -25,7 +26,7 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
 
 fun setLoggingEnabled(enabled: Boolean = true) {
-    val logger = (KotlinLogging.logger(Logger.ROOT_LOGGER_NAME).underlyingLogger as ch.qos.logback.classic.Logger)
+    val logger = ((KotlinLogging.logger(Logger.ROOT_LOGGER_NAME) as DelegatingKLogger<*>).underlyingLogger as ch.qos.logback.classic.Logger)
     logger.level =
         if (enabled) {
             Level.DEBUG

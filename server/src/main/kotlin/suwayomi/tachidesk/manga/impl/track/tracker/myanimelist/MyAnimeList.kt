@@ -12,6 +12,7 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.hours
 
 class MyAnimeList(
@@ -34,19 +35,15 @@ class MyAnimeList(
 
     private val json: Json by injectLazy()
 
-    private val interceptors =
-        Cache
-            .Builder<Int, MyAnimeListInterceptor>()
-            .expireAfterAccess(1.hours)
-            .build()
+    private val interceptors = ConcurrentHashMap<Int, MyAnimeListInterceptor>()
     private val apis =
         Cache
             .Builder<Int, MyAnimeListApi>()
             .expireAfterAccess(1.hours)
             .build()
 
-    suspend fun interceptor(userId: Int): MyAnimeListInterceptor =
-        interceptors.get(userId) {
+    fun interceptor(userId: Int): MyAnimeListInterceptor =
+        interceptors.getOrPut(userId) {
             MyAnimeListInterceptor(userId, this)
         }
 

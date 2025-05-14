@@ -4,16 +4,12 @@ import graphql.execution.DataFetcherResult
 import graphql.schema.DataFetchingEnvironment
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.server.getAttribute
+import suwayomi.tachidesk.graphql.types.LibraryUpdateStatus
 import suwayomi.tachidesk.graphql.types.UpdateStatus
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.update.IUpdater
-import suwayomi.tachidesk.manga.model.table.CategoryTable
-import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.user.requireUser
@@ -23,6 +19,42 @@ import kotlin.time.Duration.Companion.seconds
 
 class UpdateMutation {
     private val updater: IUpdater by injectLazy()
+
+    data class UpdateLibraryInput(
+        val clientMutationId: String? = null,
+        val categories: List<Int>?,
+    )
+
+    data class UpdateLibraryPayload(
+        val clientMutationId: String? = null,
+        val updateStatus: LibraryUpdateStatus,
+    )
+
+    fun updateLibrary(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateLibraryInput,
+    ): CompletableFuture<DataFetcherResult<UpdateLibraryPayload?>> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        updater.addCategoriesToUpdateQueue(
+            Category.getCategoryList(userId).filter { input.categories?.contains(it.id) ?: true },
+            clear = true,
+            forceAll = !input.categories.isNullOrEmpty(),
+        )
+
+        return future {
+            asDataFetcherResult {
+                UpdateLibraryPayload(
+                    input.clientMutationId,
+                    updateStatus =
+                        withTimeout(30.seconds) {
+                            LibraryUpdateStatus(
+                                updater.updates.first(),
+                            )
+                        },
+                )
+            }
+        }
+    }
 
     data class UpdateLibraryMangaInput(
         val clientMutationId: String? = null,
@@ -36,16 +68,18 @@ class UpdateMutation {
     fun updateLibraryManga(
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: UpdateLibraryMangaInput,
-    ): CompletableFuture<DataFetcherResult<UpdateLibraryMangaPayload?>> =
-        future {
-            asDataFetcherResult {
-                val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-                updater.addCategoriesToUpdateQueue(
-                    Category.getCategoryList(userId),
-                    clear = true,
-                    forceAll = false,
-                )
+    ): CompletableFuture<DataFetcherResult<UpdateLibraryMangaPayload?>> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        updateLibrary(
+            dataFetchingEnvironment,
+            UpdateLibraryInput(
+                clientMutationId = input.clientMutationId,
+                categories = null, // todo filter by user's categories
+            ),
+        )
 
+        return future {
+            asDataFetcherResult {
                 UpdateLibraryMangaPayload(
                     input.clientMutationId,
                     updateStatus =
@@ -55,6 +89,7 @@ class UpdateMutation {
                 )
             }
         }
+    }
 
     data class UpdateCategoryMangaInput(
         val clientMutationId: String? = null,
@@ -69,22 +104,18 @@ class UpdateMutation {
     fun updateCategoryManga(
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: UpdateCategoryMangaInput,
-    ): CompletableFuture<DataFetcherResult<UpdateCategoryMangaPayload?>> =
-        future {
-            asDataFetcherResult {
-                val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-                val categories =
-                    transaction {
-                        CategoryTable
-                            .selectAll()
-                            .where {
-                                CategoryTable.id inList input.categories and (CategoryTable.user eq userId)
-                            }.map {
-                                CategoryTable.toDataClass(it)
-                            }
-                    }
-                updater.addCategoriesToUpdateQueue(categories, clear = true, forceAll = true)
+    ): CompletableFuture<DataFetcherResult<UpdateCategoryMangaPayload?>> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        updateLibrary(
+            dataFetchingEnvironment,
+            UpdateLibraryInput(
+                clientMutationId = input.clientMutationId,
+                categories = input.categories, // todo filter by user's categories
+            ),
+        )
 
+        return future {
+            asDataFetcherResult {
                 UpdateCategoryMangaPayload(
                     input.clientMutationId,
                     updateStatus =
@@ -94,6 +125,7 @@ class UpdateMutation {
                 )
             }
         }
+    }
 
     data class UpdateStopInput(
         val clientMutationId: String? = null,
@@ -103,7 +135,11 @@ class UpdateMutation {
         val clientMutationId: String?,
     )
 
-    fun updateStop(input: UpdateStopInput): UpdateStopPayload {
+    fun updateStop(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateStopInput,
+    ): UpdateStopPayload {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         updater.reset()
         return UpdateStopPayload(input.clientMutationId)
     }

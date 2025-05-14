@@ -54,8 +54,14 @@ class Updater : IUpdater {
 
     private val notifyFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
+    @Deprecated("Replaced with updatesFlow", replaceWith = ReplaceWith("updatesFlow"))
     private val statusFlow = MutableSharedFlow<UpdateStatus>()
-    override val status = statusFlow.onStart { emit(getStatus()) }
+
+    @Deprecated("Replaced with updates", replaceWith = ReplaceWith("updates"))
+    override val status = statusFlow.onStart { emit(getStatusDeprecated(null)) }
+
+    private val updatesFlow = MutableSharedFlow<UpdateUpdates>()
+    override val updates = updatesFlow.onStart { emit(getUpdates(addInitial = true)) }
 
     init {
         // has to be in its own scope (notifyFlowScope), otherwise, the collection gets canceled due to canceling the scopes (scope) children in the reset function
@@ -69,8 +75,11 @@ class Updater : IUpdater {
     private val _status = MutableStateFlow(UpdateStatus())
     override val statusDeprecated = _status.asStateFlow()
 
+    private val mangaUpdates = ConcurrentHashMap<Int, UpdateJob>()
+    private val categoryUpdates = ConcurrentHashMap<Int, CategoryUpdateJob>()
     private var updateStatusCategories: Map<CategoryUpdateStatus, List<CategoryDataClass>> = emptyMap()
     private var updateStatusSkippedMangas: List<MangaDataClass> = emptyList()
+
     private val tracker = ConcurrentHashMap<Int, UpdateJob>()
     private val updateChannels = ConcurrentHashMap<String, Channel<UpdateJob>>()
 
@@ -112,7 +121,7 @@ class Updater : IUpdater {
             val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
             preferences.edit().putLong(lastAutomatedUpdateKey, System.currentTimeMillis()).apply()
 
-            if (getStatus().running) {
+            if (getStatus().isRunning) {
                 logger.debug { "Global update is already in progress" }
                 return
             }
@@ -158,28 +167,78 @@ class Updater : IUpdater {
         HAScheduler.schedule(::autoUpdateTask, updateInterval, timeToNextExecution, "global-update")
     }
 
-    private fun getStatus(running: Boolean? = null): UpdateStatus {
+    private fun isRunning(): Boolean =
+        tracker.values.toList().any { job -> job.status == JobStatus.PENDING || job.status == JobStatus.RUNNING }
+
+    // old status that is still required for the deprecated endpoints
+    private fun getStatusDeprecated(running: Boolean? = null): UpdateStatus {
         val jobs = tracker.values.toList()
-        val isRunning =
-            running
-                ?: jobs.any { job ->
-                    job.status == JobStatus.PENDING || job.status == JobStatus.RUNNING
-                }
+        val isRunning = running ?: isRunning()
         return UpdateStatus(this.updateStatusCategories, jobs, this.updateStatusSkippedMangas, isRunning)
     }
+
+    private fun getStatus(
+        categories: List<CategoryUpdateJob>,
+        mangas: List<UpdateJob>,
+        running: Boolean? = null,
+        addInitial: Boolean? = false,
+    ): UpdateUpdates =
+        UpdateUpdates(
+            running ?: isRunning(),
+            categories,
+            mangas,
+            tracker.size,
+            tracker.values.count { it.status == JobStatus.COMPLETE || it.status == JobStatus.FAILED },
+            this.updateStatusCategories[CategoryUpdateStatus.SKIPPED]?.size ?: 0,
+            this.updateStatusSkippedMangas.size,
+            if (addInitial == true) getStatus() else null,
+        )
+
+    override fun getStatus(): UpdateUpdates =
+        getStatus(
+            this.updateStatusCategories[CategoryUpdateStatus.UPDATING]
+                ?.map {
+                    CategoryUpdateJob(
+                        it,
+                        CategoryUpdateStatus.UPDATING,
+                    )
+                }.orEmpty(),
+            tracker.values.toList(),
+        )
+
+    private fun getUpdates(
+        running: Boolean? = null,
+        addInitial: Boolean? = null,
+    ): UpdateUpdates =
+        getStatus(
+            categoryUpdates.values.toList(),
+            mangaUpdates.values.toList(),
+            running,
+            addInitial = addInitial,
+        )
 
     /**
      * Pass "isRunning" to force a specific running state
      */
     private suspend fun updateStatus(
         immediate: Boolean = false,
+        categoryUpdates: List<CategoryUpdateJob> = emptyList(),
+        mangaUpdates: List<UpdateJob> = emptyList(),
         isRunning: Boolean? = null,
     ) {
+        mangaUpdates.forEach { this.mangaUpdates[it.manga.id] = it }
+        categoryUpdates.forEach { this.categoryUpdates[it.category.id] = it }
+
         if (immediate) {
-            val status = getStatus(running = isRunning)
+            val status = getStatusDeprecated(running = isRunning)
+            val updates = getUpdates(isRunning)
+
+            this.mangaUpdates.clear()
+            this.categoryUpdates.clear()
 
             statusFlow.emit(status)
             _status.update { status }
+            updatesFlow.emit(updates)
 
             return
         }
@@ -218,18 +277,15 @@ class Updater : IUpdater {
         }
 
         // fail all updates for source
-        tracker
-            .filter { (_, job) -> !isFailedSourceUpdate(job) }
-            .forEach { (mangaId, job) ->
-                tracker[mangaId] = job.copy(status = JobStatus.FAILED)
-            }
+        val sourceUpdateJobs = tracker.filter { (_, job) -> !isFailedSourceUpdate(job) }
+        sourceUpdateJobs.forEach { (mangaId, job) -> tracker[mangaId] = job.copy(status = JobStatus.FAILED) }
 
-        updateStatus()
+        updateStatus(mangaUpdates = sourceUpdateJobs.values.toList())
     }
 
     private suspend fun process(job: UpdateJob) {
         tracker[job.manga.id] = job.copy(status = JobStatus.RUNNING)
-        updateStatus()
+        updateStatus(mangaUpdates = listOf(tracker[job.manga.id]!!))
 
         tracker[job.manga.id] =
             try {
@@ -249,7 +305,7 @@ class Updater : IUpdater {
 
         // in case this is the last update job, the running flag has to be true, before it gets set to false, to be able
         // to properly clear the dataloader store in UpdateType
-        updateStatus(immediate = wasLastJob, isRunning = true)
+        updateStatus(immediate = wasLastJob, isRunning = true, mangaUpdates = listOf(tracker[job.manga.id]!!))
 
         if (wasLastJob) {
             updateStatus(isRunning = false)
@@ -329,6 +385,18 @@ class Updater : IUpdater {
             return
         }
 
+        scope.launch {
+            updateStatus(
+                categoryUpdates =
+                    updateStatusCategories[CategoryUpdateStatus.UPDATING]
+                        ?.map {
+                            CategoryUpdateJob(it, CategoryUpdateStatus.UPDATING)
+                        }.orEmpty(),
+                mangaUpdates = mangasToUpdate.map { UpdateJob(it) },
+                isRunning = true,
+            )
+        }
+
         addMangasToQueue(
             mangasToUpdate
                 .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, MangaDataClass::title)),
@@ -351,12 +419,17 @@ class Updater : IUpdater {
 
     override fun reset() {
         scope.coroutineContext.cancelChildren()
+
         tracker.clear()
+        this.mangaUpdates.clear()
+        this.categoryUpdates.clear()
         this.updateStatusCategories = emptyMap()
         this.updateStatusSkippedMangas = emptyList()
+
         scope.launch {
             updateStatus(immediate = true, isRunning = false)
         }
+
         updateChannels.forEach { (_, channel) -> channel.cancel() }
         updateChannels.clear()
     }

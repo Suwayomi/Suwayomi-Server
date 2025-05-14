@@ -11,9 +11,9 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -34,28 +34,40 @@ object Category {
     fun createCategory(
         userId: Int,
         name: String,
-    ): Int {
-        // creating a category named Default is illegal
-        if (name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)) return -1
+    ): Int = createCategories(userId, listOf(name)).first()
 
-        return transaction {
-            if (CategoryTable.selectAll().where { CategoryTable.name eq name and (CategoryTable.user eq userId) }.firstOrNull() == null) {
-                val newCategoryId =
-                    CategoryTable
-                        .insertAndGetId {
-                            it[CategoryTable.name] = name
-                            it[CategoryTable.order] = Int.MAX_VALUE
-                            it[CategoryTable.user] = userId
-                        }.value
+    fun createCategories(
+        userId: Int,
+        names: List<String>,
+    ): List<Int> =
+        transaction {
+            val categoryIdToName = getCategoryList(userId).associate { it.id to it.name.lowercase() }
 
-                normalizeCategories(userId)
+            val categoriesToCreate =
+                names
+                    .filter {
+                        !it.equals(DEFAULT_CATEGORY_NAME, true)
+                    }.filter { !categoryIdToName.values.contains(it.lowercase()) }
 
-                newCategoryId
-            } else {
-                -1
+            val newCategoryIdsByName =
+                CategoryTable
+                    .batchInsert(categoriesToCreate) {
+                        this[CategoryTable.name] = it
+                        this[CategoryTable.order] = Int.MAX_VALUE
+                        this[CategoryTable.user] = userId
+                    }.associate { it[CategoryTable.name] to it[CategoryTable.id].value }
+
+            normalizeCategories(userId)
+
+            names.map {
+                // creating a category named Default is illegal
+                if (it.equals(DEFAULT_CATEGORY_NAME, true)) {
+                    DEFAULT_CATEGORY_ID
+                } else {
+                    newCategoryIdsByName[it] ?: categoryIdToName.entries.find { (_, name) -> name.equals(it, true) }!!.key
+                }
             }
         }
-    }
 
     fun updateCategory(
         userId: Int,

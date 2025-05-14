@@ -41,6 +41,8 @@ import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
 import suwayomi.tachidesk.graphql.types.UpdateState.ERROR
 import suwayomi.tachidesk.graphql.types.UpdateState.FINISHED
 import suwayomi.tachidesk.graphql.types.UpdateState.IDLE
+import suwayomi.tachidesk.graphql.types.WebUIChannel
+import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -67,71 +69,6 @@ private val tmpDir = System.getProperty("java.io.tmpdir")
 private fun ByteArray.toHex(): String = joinToString(separator = "") { eachByte -> "%02x".format(eachByte) }
 
 class BundledWebUIMissing : Exception("No bundled webUI version found")
-
-enum class WebUIInterface {
-    BROWSER,
-    ELECTRON,
-    ;
-
-    companion object {
-        fun from(value: String): WebUIInterface = entries.find { it.name.lowercase() == value.lowercase() } ?: BROWSER
-    }
-}
-
-enum class WebUIChannel {
-    BUNDLED, // the default webUI version bundled with the server release
-    STABLE,
-    PREVIEW,
-    ;
-
-    companion object {
-        fun from(channel: String): WebUIChannel = entries.find { it.name.lowercase() == channel.lowercase() } ?: STABLE
-
-        fun doesConfigChannelEqual(channel: WebUIChannel): Boolean = serverConfig.webUIChannel.value.equals(channel.name, true)
-    }
-}
-
-enum class WebUIFlavor(
-    val uiName: String,
-    val repoUrl: String,
-    val versionMappingUrl: String,
-    val latestReleaseInfoUrl: String,
-    val baseFileName: String,
-) {
-    WEBUI(
-        "WebUI",
-        "https://github.com/Suwayomi/Suwayomi-WebUI-preview",
-        "https://raw.githubusercontent.com/Suwayomi/Suwayomi-WebUI/master/versionToServerVersionMapping.json",
-        "https://api.github.com/repos/Suwayomi/Suwayomi-WebUI-preview/releases/latest",
-        "Suwayomi-WebUI",
-    ),
-
-    VUI(
-        "VUI",
-        "https://github.com/Suwayomi/Suwayomi-VUI",
-        "https://raw.githubusercontent.com/Suwayomi/Suwayomi-VUI/main/versionToServerVersionMapping.json",
-        "https://api.github.com/repos/Suwayomi/Suwayomi-VUI/releases/latest",
-        "Suwayomi-VUI-Web",
-    ),
-
-    CUSTOM(
-        "Custom",
-        "repoURL",
-        "versionMappingUrl",
-        "latestReleaseInfoURL",
-        "baseFileName",
-    ),
-    ;
-
-    companion object {
-        val default: WebUIFlavor = WEBUI
-
-        fun from(value: String): WebUIFlavor = entries.find { it.uiName == value } ?: default
-
-        val current: WebUIFlavor
-            get() = from(serverConfig.webUIFlavor.value)
-    }
-}
 
 fun WebUIFlavor.isDefault(): Boolean = this == WebUIFlavor.default
 
@@ -188,7 +125,7 @@ object WebInterfaceManager {
         }
 
         return AboutWebUI(
-            channel = serverConfig.webUIChannel.value,
+            channel = WebUIChannel.from(serverConfig.webUIChannel.value),
             tag = currentVersion,
         )
     }
@@ -201,7 +138,7 @@ object WebInterfaceManager {
         WebUIUpdateStatus(
             info =
                 WebUIUpdateInfo(
-                    channel = serverConfig.webUIChannel.value,
+                    channel = WebUIChannel.from(serverConfig.webUIChannel.value),
                     tag = version,
                 ),
             state,
@@ -591,14 +528,18 @@ object WebInterfaceManager {
             return BuildConfig.WEBUI_TAG
         }
 
-        val currentServerVersionNumber = extractVersion(BuildConfig.REVISION)
+        val currentServerVersionNumber =
+            BuildConfig.VERSION
+                .split(".")
+                .last()
+                .toInt()
         val webUIToServerVersionMappings = fetchServerMappingFile(flavor)
 
         logger.debug {
             "getLatestCompatibleVersion: " +
                 "flavor= ${flavor.uiName}, " +
                 "webUIChannel= ${serverConfig.webUIChannel.value}, " +
-                "currentServerVersion= ${BuildConfig.REVISION}, " +
+                "currentServerVersion= ${BuildConfig.VERSION}, " +
                 "mappingFile= $webUIToServerVersionMappings"
         }
 

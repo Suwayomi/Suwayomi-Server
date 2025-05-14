@@ -8,7 +8,7 @@ Homepage: https://github.com/Suwayomi/Suwayomi-Server
 
 Package: suwayomi-server
 Architecture: all
-Depends: ${misc:Depends}, openjdk-21-jre, libc++-dev
+Depends: ${misc:Depends}, openjdk-21-jre | openjdk-21-jre-headless | openjdk-21-jdk | openjdk-21-jdk-headless | temurin-21-jre | temurin-21-jdk | zulu21-jre | zulu21-jre-headless | zulu21-jdk | zulu21-jdk-headless | msopenjdk-21 | java-21-amazon-corretto-jdk
 Description: Manga Reader
  A free and open source manga reader server that runs extensions built for Tachiyomi.
  Suwayomi is an independent Tachiyomi compatible software and is not a Fork of Tachiyomi.

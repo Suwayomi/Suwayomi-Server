@@ -11,6 +11,7 @@ import io.javalin.http.HttpStatus
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
+import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.Page
@@ -420,6 +421,7 @@ object MangaController {
             pathParam<Int>("mangaId"),
             pathParam<Int>("chapterIndex"),
             pathParam<Int>("index"),
+            queryParam<Boolean?>("updateProgress"),
             documentWith = {
                 withOperation {
                     summary("Get a chapter page")
@@ -428,20 +430,51 @@ object MangaController {
                     )
                 }
             },
-            behaviorOf = { ctx, mangaId, chapterIndex, index ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+            behaviorOf = { ctx, mangaId, chapterIndex, index, updateProgress ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { Page.getPageImage(mangaId, chapterIndex, index) }
+                    future { Page.getPageImage(mangaId, chapterIndex, index, null) }
                         .thenApply {
                             ctx.header("content-type", it.second)
                             val httpCacheSeconds = 1.days.inWholeSeconds
                             ctx.header("cache-control", "max-age=$httpCacheSeconds")
                             ctx.result(it.first)
+
+                            if (updateProgress == true) {
+                                Chapter.updateChapterProgress(userId, mangaId, chapterIndex, pageNo = index)
+                            }
                         }
                 }
             },
             withResults = {
                 image(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
+            },
+        )
+
+    val downloadChapter =
+        handler(
+            pathParam<Int>("chapterId"),
+            documentWith = {
+                withOperation {
+                    summary("Download chapter as CBZ")
+                    description("Get the CBZ file of the specified chapter")
+                }
+            },
+            behaviorOf = { ctx, chapterId ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.future {
+                    future { ChapterDownloadHelper.getCbzForDownload(userId, chapterId) }
+                        .thenApply { (inputStream, fileName, fileSize) ->
+                            ctx.header("Content-Type", "application/vnd.comicbook+zip")
+                            ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
+                            ctx.header("Content-Length", fileSize.toString())
+                            ctx.result(inputStream)
+                        }
+                }
+            },
+            withResults = {
+                httpCode(HttpStatus.OK)
                 httpCode(HttpStatus.NOT_FOUND)
             },
         )

@@ -100,7 +100,9 @@ class ChapterMutation {
                         update[isBookmarked] = it
                     }
                     patch.lastPageRead?.also {
-                        update[lastPageRead] = it // todo user accounts it.coerceAtMost(chapterIdToPageCount[this.chapter] ?: 0).coerceAtLeast(0)
+                        update[lastPageRead] = it // todo user accounts it.coerceAtMost(
+                        // chapterIdToPageCount[this.chapter] ?: 0
+                        // ).coerceAtLeast(0)
                         update[lastReadAt] = now
                     }
                 }

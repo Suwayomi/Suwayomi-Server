@@ -124,7 +124,7 @@ buildConfig {
     fun quoteWrap(obj: Any): String = """"$obj""""
 
     buildConfigField("String", "NAME", quoteWrap(rootProject.name))
-    buildConfigField("String", "VERSION", quoteWrap(tachideskVersion))
+    buildConfigField("String", "VERSION", quoteWrap(getTachideskVersion()))
     buildConfigField("String", "REVISION", quoteWrap(getTachideskRevision()))
     buildConfigField("String", "BUILD_TYPE", quoteWrap(if (System.getenv("ProductBuildType") == "Stable") "Stable" else "Preview"))
     buildConfigField("long", "BUILD_TIME", Instant.now().epochSecond.toString())
@@ -143,14 +143,15 @@ tasks {
                 "Main-Class" to MainClass,
                 "Implementation-Title" to rootProject.name,
                 "Implementation-Vendor" to "The Suwayomi Project",
-                "Specification-Version" to tachideskVersion,
+                "Specification-Version" to getTachideskVersion(),
                 "Implementation-Version" to getTachideskRevision(),
             )
         }
         archiveBaseName.set(rootProject.name)
-        archiveVersion.set(tachideskVersion)
-        archiveClassifier.set(getTachideskRevision())
+        archiveVersion.set(getTachideskVersion())
+        archiveClassifier.set("")
         destinationDirectory.set(File("$rootDir/server/build"))
+        mergeServiceFiles()
     }
 
     test {
