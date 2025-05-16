@@ -104,7 +104,13 @@ abstract class ChaptersFilesProvider<Type : FileType>(
         downloadCacheFolder.mkdirs()
 
         val pageCount = download.chapter.pageCount
-        if (downloadCacheFolder.listFiles().orEmpty().size >= pageCount) {
+        if (
+            downloadCacheFolder
+                .listFiles()
+                .orEmpty()
+                .filter { it.name != COMIC_INFO_FILE }
+                .size >= pageCount
+        ) {
             download.progress = 1f
             step(download, false)
         } else {
