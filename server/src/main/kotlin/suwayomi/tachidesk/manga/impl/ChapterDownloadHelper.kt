@@ -22,6 +22,11 @@ object ChapterDownloadHelper {
         index: Int,
     ): Pair<InputStream, String> = provider(mangaId, chapterId).getImage().execute(index)
 
+    fun getImageCount(
+        mangaId: Int,
+        chapterId: Int,
+    ): Int = provider(mangaId, chapterId).getImageCount()
+
     fun delete(
         mangaId: Int,
         chapterId: Int,

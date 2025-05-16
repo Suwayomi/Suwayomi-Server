@@ -80,6 +80,8 @@ private class ChapterForDownload(
             markAsNotDownloaded()
 
             updatePageList()
+        } else {
+            updatePageCount(ChapterDownloadHelper.getImageCount(mangaId, chapterId))
         }
 
         return asDataClass()
@@ -160,19 +162,17 @@ private class ChapterForDownload(
             }
         }
 
-        updatePageCount(pageList, chapterId)
+        updatePageCount(pageList.size)
 
         // chapter was updated
         chapterEntry = freshChapterEntry(chapterId, chapterIndex, mangaId)
     }
 
     private fun updatePageCount(
-        pageList: List<Page>,
-        chapterId: Int,
+        pageCount: Int,
     ) {
         transaction {
             ChapterTable.update({ ChapterTable.id eq chapterId }) {
-                val pageCount = pageList.size
                 it[ChapterTable.pageCount] = pageCount
                 it[ChapterTable.lastPageRead] = chapterEntry[ChapterTable.lastPageRead].coerceAtMost(pageCount - 1).coerceAtLeast(0)
             }
