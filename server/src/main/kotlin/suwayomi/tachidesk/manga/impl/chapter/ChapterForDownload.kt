@@ -70,7 +70,7 @@ private class ChapterForDownload(
 
         val isMarkedAsDownloaded = chapterEntry[ChapterTable.isDownloaded]
         val doesFirstPageExist = firstPageExists()
-        val isDownloaded = isMarkedAsDownloaded && doesFirstPageExist
+        val isDownloaded = isMarkedAsDownloaded || doesFirstPageExist
 
         log.debug { "isDownloaded= $isDownloaded (isMarkedAsDownloaded= $isMarkedAsDownloaded, doesFirstPageExist= $doesFirstPageExist)" }
 
@@ -80,12 +80,22 @@ private class ChapterForDownload(
             markAsNotDownloaded()
 
             updatePageList()
+        } else {
+            updatePageCount(ChapterDownloadHelper.getImageCount(mangaId, chapterId))
         }
 
         return asDataClass()
     }
 
-    private fun asDataClass() = ChapterTable.toDataClass(chapterEntry)
+    private fun asDataClass() =
+        ChapterTable.toDataClass(
+            transaction {
+                ChapterTable
+                    .selectAll()
+                    .where { ChapterTable.id eq chapterId }
+                    .first()
+            },
+        )
 
     init {
         chapterEntry = freshChapterEntry(optChapterId, optChapterIndex, optMangaId)
@@ -160,19 +170,15 @@ private class ChapterForDownload(
             }
         }
 
-        updatePageCount(pageList, chapterId)
+        updatePageCount(pageList.size)
 
         // chapter was updated
         chapterEntry = freshChapterEntry(chapterId, chapterIndex, mangaId)
     }
 
-    private fun updatePageCount(
-        pageList: List<Page>,
-        chapterId: Int,
-    ) {
+    private fun updatePageCount(pageCount: Int) {
         transaction {
             ChapterTable.update({ ChapterTable.id eq chapterId }) {
-                val pageCount = pageList.size
                 it[ChapterTable.pageCount] = pageCount
                 it[ChapterTable.lastPageRead] = chapterEntry[ChapterTable.lastPageRead].coerceAtMost(pageCount - 1).coerceAtLeast(0)
             }

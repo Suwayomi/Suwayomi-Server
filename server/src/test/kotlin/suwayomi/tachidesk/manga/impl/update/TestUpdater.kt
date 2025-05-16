@@ -45,10 +45,16 @@ class TestUpdater : IUpdater {
 
     override val status: Flow<UpdateStatus>
         get() = TODO("Not yet implemented")
+    override val updates: Flow<UpdateUpdates>
+        get() = TODO("Not yet implemented")
     override val statusDeprecated: StateFlow<UpdateStatus>
         get() = TODO("Not yet implemented")
 
     override fun reset() {
+        TODO("Not yet implemented")
+    }
+
+    override fun getStatus(): UpdateUpdates {
         TODO("Not yet implemented")
     }
 }

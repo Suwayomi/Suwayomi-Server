@@ -110,7 +110,7 @@ object Page {
             }
         }
 
-        val fileName = getPageName(index)
+        val fileName = getPageName(index, chapterEntry[ChapterTable.pageCount])
 
         val cacheSaveDir = getChapterCachePath(mangaId, chapterId)
 
@@ -121,5 +121,8 @@ object Page {
     }
 
     /** converts 0 to "001" */
-    fun getPageName(index: Int): String = String.format("%03d", index + 1)
+    fun getPageName(
+        index: Int,
+        pageCount: Int,
+    ): String = String.format("%0${pageCount.toString().length.coerceAtLeast(3)}d", index + 1)
 }
