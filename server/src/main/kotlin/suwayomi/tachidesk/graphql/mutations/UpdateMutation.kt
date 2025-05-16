@@ -1,14 +1,18 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import graphql.execution.DataFetcherResult
+import graphql.schema.DataFetchingEnvironment
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
 import suwayomi.tachidesk.graphql.asDataFetcherResult
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.LibraryUpdateStatus
 import suwayomi.tachidesk.graphql.types.UpdateStatus
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.update.IUpdater
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.requireUser
 import uy.kohesive.injekt.injectLazy
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
@@ -26,9 +30,13 @@ class UpdateMutation {
         val updateStatus: LibraryUpdateStatus,
     )
 
-    fun updateLibrary(input: UpdateLibraryInput): CompletableFuture<DataFetcherResult<UpdateLibraryPayload?>> {
+    fun updateLibrary(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateLibraryInput,
+    ): CompletableFuture<DataFetcherResult<UpdateLibraryPayload?>> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         updater.addCategoriesToUpdateQueue(
-            Category.getCategoryList().filter { input.categories?.contains(it.id) ?: true },
+            Category.getCategoryList(userId).filter { input.categories?.contains(it.id) ?: true },
             clear = true,
             forceAll = !input.categories.isNullOrEmpty(),
         )
@@ -57,11 +65,16 @@ class UpdateMutation {
         val updateStatus: UpdateStatus,
     )
 
-    fun updateLibraryManga(input: UpdateLibraryMangaInput): CompletableFuture<DataFetcherResult<UpdateLibraryMangaPayload?>> {
+    fun updateLibraryManga(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateLibraryMangaInput,
+    ): CompletableFuture<DataFetcherResult<UpdateLibraryMangaPayload?>> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         updateLibrary(
+            dataFetchingEnvironment,
             UpdateLibraryInput(
                 clientMutationId = input.clientMutationId,
-                categories = null,
+                categories = null, // todo filter by user's categories
             ),
         )
 
@@ -88,11 +101,16 @@ class UpdateMutation {
         val updateStatus: UpdateStatus,
     )
 
-    fun updateCategoryManga(input: UpdateCategoryMangaInput): CompletableFuture<DataFetcherResult<UpdateCategoryMangaPayload?>> {
+    fun updateCategoryManga(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateCategoryMangaInput,
+    ): CompletableFuture<DataFetcherResult<UpdateCategoryMangaPayload?>> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         updateLibrary(
+            dataFetchingEnvironment,
             UpdateLibraryInput(
                 clientMutationId = input.clientMutationId,
-                categories = input.categories,
+                categories = input.categories, // todo filter by user's categories
             ),
         )
 
@@ -117,7 +135,11 @@ class UpdateMutation {
         val clientMutationId: String?,
     )
 
-    fun updateStop(input: UpdateStopInput): UpdateStopPayload {
+    fun updateStop(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateStopInput,
+    ): UpdateStopPayload {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         updater.reset()
         return UpdateStopPayload(input.clientMutationId)
     }

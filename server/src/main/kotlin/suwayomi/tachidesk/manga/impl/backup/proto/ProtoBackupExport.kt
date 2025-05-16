@@ -38,7 +38,9 @@ import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.serverConfig
@@ -117,6 +119,7 @@ object ProtoBackupExport : ProtoBackupBase() {
         logger.info { "Creating automated backup..." }
 
         createBackup(
+            1, // todo figure out how to make a global backup with all user data
             BackupFlags(
                 includeManga = true,
                 includeCategories = true,
@@ -172,16 +175,19 @@ object ProtoBackupExport : ProtoBackupBase() {
         }
     }
 
-    fun createBackup(flags: BackupFlags): InputStream {
+    fun createBackup(
+        userId: Int,
+        flags: BackupFlags,
+    ): InputStream {
         // Create root object
 
-        val databaseManga = transaction { MangaTable.selectAll().where { MangaTable.inLibrary eq true } }
+        val databaseManga = transaction { MangaTable.getWithUserData(userId).selectAll().where { MangaUserTable.inLibrary eq true } }
 
         val backup: Backup =
             transaction {
                 Backup(
-                    backupManga(databaseManga, flags),
-                    backupCategories(),
+                    backupManga(userId, databaseManga, flags),
+                    backupCategories(userId),
                     backupExtensionInfo(databaseManga),
                 )
             }
@@ -198,6 +204,7 @@ object ProtoBackupExport : ProtoBackupBase() {
     }
 
     private fun backupManga(
+        userId: Int,
         databaseManga: Query,
         flags: BackupFlags,
     ): List<BackupManga> =
@@ -213,7 +220,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                     genre = mangaRow[MangaTable.genre]?.split(", ") ?: emptyList(),
                     status = MangaStatus.valueOf(mangaRow[MangaTable.status]).value,
                     thumbnailUrl = mangaRow[MangaTable.thumbnail_url],
-                    dateAdded = TimeUnit.SECONDS.toMillis(mangaRow[MangaTable.inLibraryAt]),
+                    dateAdded = TimeUnit.SECONDS.toMillis(mangaRow[MangaUserTable.inLibraryAt]),
                     viewer = 0, // not supported in Tachidesk
                     updateStrategy = UpdateStrategy.valueOf(mangaRow[MangaTable.updateStrategy]),
                 )
@@ -224,11 +231,12 @@ object ProtoBackupExport : ProtoBackupBase() {
                 val chapters =
                     transaction {
                         ChapterTable
+                            .getWithUserData(userId)
                             .selectAll()
                             .where { ChapterTable.manga eq mangaId }
                             .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
                             .map {
-                                ChapterTable.toDataClass(it)
+                                ChapterTable.toDataClass(userId, it)
                             }
                     }
 
@@ -250,12 +258,12 @@ object ProtoBackupExport : ProtoBackupBase() {
             }
 
             if (flags.includeCategories) {
-                backupManga.categories = CategoryManga.getMangaCategories(mangaId).map { it.order }
+                backupManga.categories = CategoryManga.getMangaCategories(userId, mangaId).map { it.order }
             }
 
             if (flags.includeTracking) {
                 val tracks =
-                    Track.getTrackRecordsByMangaId(mangaRow[MangaTable.id].value).mapNotNull {
+                    Track.getTrackRecordsByMangaId(userId, mangaRow[MangaTable.id].value).mapNotNull {
                         if (it.record == null) {
                             null
                         } else {
@@ -287,9 +295,10 @@ object ProtoBackupExport : ProtoBackupBase() {
             backupManga
         }
 
-    private fun backupCategories(): List<BackupCategory> =
+    private fun backupCategories(userId: Int): List<BackupCategory> =
         CategoryTable
             .selectAll()
+            .where { CategoryTable.user eq userId }
             .orderBy(CategoryTable.order to SortOrder.ASC)
             .map {
                 CategoryTable.toDataClass(it)

@@ -3,7 +3,10 @@ package suwayomi.tachidesk.opds.controller
 import SearchCriteria
 import io.javalin.http.HttpStatus
 import suwayomi.tachidesk.opds.impl.Opds
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.queryParam
@@ -23,6 +26,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
                         Opds.getRootFeed(BASE_URL)
@@ -46,6 +50,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.contentType("application/opensearchdescription+xml").result(
                     """
                     <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/"
@@ -109,11 +114,12 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, query, author, title ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 if (query != null || author != null || title != null) {
                     val searchCriteria = SearchCriteria(query, author, title)
                     ctx.future {
                         future {
-                            Opds.getMangasFeed(searchCriteria, BASE_URL, 1)
+                            Opds.getMangasFeed(userId, searchCriteria, BASE_URL, 1)
                         }.thenApply { xml ->
                             ctx.contentType(OPDS_MIME).result(xml)
                         }
@@ -121,7 +127,7 @@ object OpdsV1Controller {
                 } else {
                     ctx.future {
                         future {
-                            Opds.getMangasFeed(null, BASE_URL, pageNumber ?: 1)
+                            Opds.getMangasFeed(userId, null, BASE_URL, pageNumber ?: 1)
                         }.thenApply { xml ->
                             ctx.contentType(OPDS_MIME).result(xml)
                         }
@@ -144,6 +150,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
                         Opds.getSourcesFeed(BASE_URL, pageNumber ?: 1)
@@ -168,9 +175,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        Opds.getCategoriesFeed(BASE_URL, pageNumber ?: 1)
+                        Opds.getCategoriesFeed(userId, BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -192,9 +200,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        Opds.getGenresFeed(BASE_URL, pageNumber ?: 1)
+                        Opds.getGenresFeed(userId, BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -216,6 +225,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
                         Opds.getStatusFeed(BASE_URL, pageNumber ?: 1)
@@ -239,6 +249,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
                         Opds.getLanguagesFeed(BASE_URL)
@@ -264,9 +275,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, mangaId, pageNumber ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        Opds.getMangaFeed(mangaId, BASE_URL, pageNumber ?: 1)
+                        Opds.getMangaFeed(userId, mangaId, BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -289,9 +301,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, mangaId, chapterId ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        Opds.getChapterMetadataFeed(mangaId, chapterId, BASE_URL)
+                        Opds.getChapterMetadataFeed(userId, mangaId, chapterId, BASE_URL)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -315,9 +328,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, sourceId, pageNumber ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        Opds.getSourceFeed(sourceId, BASE_URL, pageNumber ?: 1)
+                        Opds.getSourceFeed(userId, sourceId, BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -341,9 +355,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, categoryId, pageNumber ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        Opds.getCategoryFeed(categoryId, BASE_URL, pageNumber ?: 1)
+                        Opds.getCategoryFeed(userId, categoryId, BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -367,9 +382,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, genre, pageNumber ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        Opds.getGenreFeed(genre, BASE_URL, pageNumber ?: 1)
+                        Opds.getGenreFeed(userId, genre, BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -393,9 +409,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, statusId, pageNumber ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        Opds.getStatusMangaFeed(statusId, BASE_URL, pageNumber ?: 1)
+                        Opds.getStatusMangaFeed(userId, statusId, BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -419,9 +436,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, langCode, pageNumber ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        Opds.getLanguageFeed(langCode, BASE_URL, pageNumber ?: 1)
+                        Opds.getLanguageFeed(userId, langCode, BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -444,9 +462,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        Opds.getLibraryUpdatesFeed(BASE_URL, pageNumber ?: 1)
+                        Opds.getLibraryUpdatesFeed(userId, BASE_URL, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }

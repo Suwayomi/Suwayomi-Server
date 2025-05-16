@@ -137,7 +137,7 @@ class Downloader(
                 download.state = Downloading
                 step(DownloadUpdate(PROGRESS, download), true)
 
-                download.chapter = getChapterDownloadReadyById(download.chapter.id)
+                download.chapter = getChapterDownloadReadyById(0, download.chapter.id)
 
                 if (download.chapter.pageCount <= 0) {
                     throw EmptyChapterException()

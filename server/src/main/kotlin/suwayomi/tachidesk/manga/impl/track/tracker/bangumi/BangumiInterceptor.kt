@@ -7,6 +7,7 @@ import suwayomi.tachidesk.server.generated.BuildConfig
 import uy.kohesive.injekt.injectLazy
 
 class BangumiInterceptor(
+    private val userId: Int,
     private val bangumi: Bangumi,
 ) : Interceptor {
     private val json: Json by injectLazy()
@@ -14,7 +15,7 @@ class BangumiInterceptor(
     /**
      * OAuth object used for authenticated requests.
      */
-    private var oauth: BGMOAuth? = bangumi.restoreToken()
+    private var oauth: BGMOAuth? = bangumi.restoreToken(userId)
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
@@ -57,6 +58,6 @@ class BangumiInterceptor(
                 )
             }
 
-        bangumi.saveToken(oauth)
+        bangumi.saveToken(userId, oauth)
     }
 }

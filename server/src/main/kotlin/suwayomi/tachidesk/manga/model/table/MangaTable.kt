@@ -31,9 +31,6 @@ object MangaTable : IntIdTable() {
     val thumbnail_url = varchar("thumbnail_url", 2048).nullable()
     val thumbnailUrlLastFetched = long("thumbnail_url_last_fetched").default(0)
 
-    val inLibrary = bool("in_library").default(false)
-    val inLibraryAt = long("in_library_at").default(0)
-
     // the [source] field name is used by some ancestor of IntIdTable
     val sourceReference = long("source")
 
@@ -47,6 +44,7 @@ object MangaTable : IntIdTable() {
 }
 
 fun MangaTable.toDataClass(
+    userId: Int,
     mangaEntry: ResultRow,
     includeMangaMeta: Boolean = true,
 ) = MangaDataClass(
@@ -62,11 +60,11 @@ fun MangaTable.toDataClass(
     description = mangaEntry[description],
     genre = mangaEntry[genre].toGenreList(),
     status = Companion.valueOf(mangaEntry[status]).name,
-    inLibrary = mangaEntry[inLibrary],
-    inLibraryAt = mangaEntry[inLibraryAt],
+    inLibrary = mangaEntry.getOrNull(MangaUserTable.inLibrary) ?: false,
+    inLibraryAt = mangaEntry.getOrNull(MangaUserTable.inLibraryAt) ?: 0,
     meta =
         if (includeMangaMeta) {
-            getMangaMetaMap(mangaEntry[id].value)
+            getMangaMetaMap(userId, mangaEntry[id].value)
         } else {
             emptyMap()
         },

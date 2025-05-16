@@ -19,7 +19,10 @@ import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyByIndex
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.formParam
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
@@ -42,9 +45,10 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, onlineFetch ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        Manga.getManga(mangaId, onlineFetch)
+                        Manga.getManga(userId, mangaId, onlineFetch)
                     }.thenApply { ctx.json(it) }
                 }
             },
@@ -66,9 +70,10 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, onlineFetch ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        Manga.getMangaFull(mangaId, onlineFetch)
+                        Manga.getMangaFull(userId, mangaId, onlineFetch)
                     }.thenApply { ctx.json(it) }
                 }
             },
@@ -89,6 +94,7 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future { Manga.getMangaThumbnail(mangaId) }
                         .thenApply {
@@ -116,8 +122,9 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { Library.addMangaToLibrary(mangaId) }
+                    future { Library.addMangaToLibrary(userId, mangaId) }
                         .thenApply { ctx.status(HttpStatus.OK) }
                 }
             },
@@ -138,8 +145,9 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { Library.removeMangaFromLibrary(mangaId) }
+                    future { Library.removeMangaFromLibrary(userId, mangaId) }
                         .thenApply { ctx.status(HttpStatus.OK) }
                 }
             },
@@ -160,7 +168,8 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId ->
-                ctx.json(CategoryManga.getMangaCategories(mangaId))
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.json(CategoryManga.getMangaCategories(userId, mangaId))
             },
             withResults = {
                 json<Array<CategoryDataClass>>(HttpStatus.OK)
@@ -179,7 +188,8 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, categoryId ->
-                CategoryManga.addMangaToCategory(mangaId, categoryId)
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                CategoryManga.addMangaToCategory(userId, mangaId, categoryId)
                 ctx.status(200)
             },
             withResults = {
@@ -199,7 +209,8 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, categoryId ->
-                CategoryManga.removeMangaFromCategory(mangaId, categoryId)
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                CategoryManga.removeMangaFromCategory(userId, mangaId, categoryId)
                 ctx.status(200)
             },
             withResults = {
@@ -220,7 +231,8 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, key, value ->
-                Manga.modifyMangaMeta(mangaId, key, value)
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                Manga.modifyMangaMeta(userId, mangaId, key, value)
                 ctx.status(200)
             },
             withResults = {
@@ -245,8 +257,9 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, onlineFetch ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { Chapter.getChapterList(mangaId, onlineFetch) }
+                    future { Chapter.getChapterList(userId, mangaId, onlineFetch) }
                         .thenApply { ctx.json(it) }
                 }
             },
@@ -268,8 +281,9 @@ object MangaController {
                 body<Chapter.MangaChapterBatchEditInput>()
             },
             behaviorOf = { ctx, mangaId ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val input = json.decodeFromString<Chapter.MangaChapterBatchEditInput>(ctx.body())
-                Chapter.modifyChapters(input, mangaId)
+                Chapter.modifyChapters(userId, input, mangaId)
             },
             withResults = {
                 httpCode(HttpStatus.OK)
@@ -287,8 +301,10 @@ object MangaController {
                 body<Chapter.ChapterBatchEditInput>()
             },
             behaviorOf = { ctx ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val input = json.decodeFromString<Chapter.ChapterBatchEditInput>(ctx.body())
                 Chapter.modifyChapters(
+                    userId,
                     Chapter.MangaChapterBatchEditInput(
                         input.chapterIds,
                         null,
@@ -313,8 +329,9 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, chapterIndex ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { getChapterDownloadReadyByIndex(chapterIndex, mangaId) }
+                    future { getChapterDownloadReadyByIndex(userId, chapterIndex, mangaId) }
                         .thenApply { ctx.json(it) }
                 }
             },
@@ -340,7 +357,8 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead ->
-                Chapter.modifyChapter(mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead)
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                Chapter.modifyChapter(userId, mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead)
 
                 ctx.status(200)
             },
@@ -361,6 +379,7 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, chapterIndex ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 Chapter.deleteChapter(mangaId, chapterIndex)
 
                 ctx.status(200)
@@ -385,7 +404,8 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, chapterIndex, key, value ->
-                Chapter.modifyChapterMeta(mangaId, chapterIndex, key, value)
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                Chapter.modifyChapterMeta(userId, mangaId, chapterIndex, key, value)
 
                 ctx.status(200)
             },
@@ -411,6 +431,7 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, chapterIndex, index, updateProgress ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future { Page.getPageImage(mangaId, chapterIndex, index, null) }
                         .thenApply {
@@ -420,7 +441,7 @@ object MangaController {
                             ctx.result(it.first)
 
                             if (updateProgress == true) {
-                                Chapter.updateChapterProgress(mangaId, chapterIndex, pageNo = index)
+                                Chapter.updateChapterProgress(userId, mangaId, chapterIndex, pageNo = index)
                             }
                         }
                 }
@@ -441,8 +462,9 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, chapterId ->
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { ChapterDownloadHelper.getCbzForDownload(chapterId) }
+                    future { ChapterDownloadHelper.getCbzForDownload(userId, chapterId) }
                         .thenApply { (inputStream, fileName, fileSize) ->
                             ctx.header("Content-Type", "application/vnd.comicbook+zip")
                             ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")

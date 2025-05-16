@@ -52,7 +52,10 @@ object ChapterDownloadHelper {
         chapterId: Int,
     ): Pair<InputStream, Long> = provider(mangaId, chapterId).getAsArchiveStream()
 
-    fun getCbzForDownload(chapterId: Int): Triple<InputStream, String, Long> {
+    fun getCbzForDownload(
+        userId: Int,
+        chapterId: Int,
+    ): Triple<InputStream, String, Long> {
         val (chapterData, mangaTitle) =
             transaction {
                 val row =
@@ -60,7 +63,7 @@ object ChapterDownloadHelper {
                         .select(ChapterTable.columns + MangaTable.columns)
                         .where { ChapterTable.id eq chapterId }
                         .firstOrNull() ?: throw IllegalArgumentException("ChapterId $chapterId not found")
-                val chapter = ChapterTable.toDataClass(row)
+                val chapter = ChapterTable.toDataClass(userId, row)
                 val title = row[MangaTable.title]
                 Pair(chapter, title)
             }

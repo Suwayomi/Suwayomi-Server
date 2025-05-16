@@ -27,7 +27,9 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.opds.model.OpdsXmlModels
 import java.net.URLEncoder
@@ -72,6 +74,7 @@ object Opds {
     }
 
     fun getMangasFeed(
+        userId: Int,
         criteria: SearchCriteria?,
         baseUrl: String,
         pageNum: Int,
@@ -80,6 +83,7 @@ object Opds {
             transaction {
                 val query =
                     MangaTable
+                        .getWithUserData(userId)
                         .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
                         .select(MangaTable.columns)
                         .where {
@@ -102,7 +106,7 @@ object Opds {
                                 conditions += (MangaTable.title.lowerCase() like "%${title.lowercase()}%")
                             }
 
-                            if (conditions.isEmpty()) (MangaTable.inLibrary eq true) else conditions.reduce { acc, op -> acc and op }
+                            if (conditions.isEmpty()) (MangaUserTable.inLibrary eq true) else conditions.reduce { acc, op -> acc and op }
                         }.groupBy(MangaTable.id)
                         .orderBy(MangaTable.title to SortOrder.ASC)
                 val totalCount = query.count()
@@ -110,7 +114,7 @@ object Opds {
                     query
                         .limit(ITEMS_PER_PAGE)
                         .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
-                        .map { MangaTable.toDataClass(it, includeMangaMeta = false) }
+                        .map { MangaTable.toDataClass(userId, it, includeMangaMeta = false) }
                 Pair(mangas, totalCount)
             }
 
@@ -187,6 +191,7 @@ object Opds {
     }
 
     fun getCategoriesFeed(
+        userId: Int,
         baseUrl: String,
         pageNum: Int,
     ): String {
@@ -198,6 +203,7 @@ object Opds {
                     .join(MangaTable, JoinType.INNER, onColumn = CategoryMangaTable.manga, otherColumn = MangaTable.id)
                     .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
                     .select(CategoryTable.id, CategoryTable.name)
+                    .where { CategoryTable.user eq userId }
                     .groupBy(CategoryTable.id)
                     .orderBy(CategoryTable.order to SortOrder.ASC)
                     .map { row ->
@@ -234,6 +240,7 @@ object Opds {
     }
 
     fun getGenresFeed(
+        userId: Int,
         baseUrl: String,
         pageNum: Int,
     ): String {
@@ -374,6 +381,7 @@ object Opds {
     }
 
     fun getMangaFeed(
+        userId: Int,
         mangaId: Int,
         baseUrl: String,
         pageNum: Int,
@@ -385,7 +393,7 @@ object Opds {
                         .selectAll()
                         .where { MangaTable.id eq mangaId }
                         .first()
-                val mangaData = MangaTable.toDataClass(mangaEntry, includeMangaMeta = false)
+                val mangaData = MangaTable.toDataClass(userId, mangaEntry, includeMangaMeta = false)
                 val chaptersQuery =
                     ChapterTable
                         .selectAll()
@@ -398,7 +406,7 @@ object Opds {
                     chaptersQuery
                         .limit(ITEMS_PER_PAGE)
                         .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
-                        .map { ChapterTable.toDataClass(it, includeChapterCount = false, includeChapterMeta = false) }
+                        .map { ChapterTable.toDataClass(userId, it, includeChapterCount = false, includeChapterMeta = false) }
                 Triple(mangaData, chaptersData, total)
             }
 
@@ -426,6 +434,7 @@ object Opds {
     }
 
     suspend fun getChapterMetadataFeed(
+        userId: Int,
         mangaId: Int,
         chapterIndex: Int,
         baseUrl: String,
@@ -438,11 +447,11 @@ object Opds {
                             .selectAll()
                             .where { MangaTable.id eq mangaId }
                             .first()
-                    MangaTable.toDataClass(mangaEntry, includeMangaMeta = false)
+                    MangaTable.toDataClass(userId, mangaEntry, includeMangaMeta = false)
                 }
             }
 
-        val updatedChapterData = getChapterDownloadReady(chapterIndex = chapterIndex, mangaId = mangaId)
+        val updatedChapterData = getChapterDownloadReady(userId, chapterIndex = chapterIndex, mangaId = mangaId)
         val updatedEntry = createChapterEntry(updatedChapterData, mangaData, baseUrl, isMetaDataEntry = true)
 
         return FeedBuilder(
@@ -558,6 +567,7 @@ object Opds {
     }
 
     fun getSourceFeed(
+        userId: Int,
         sourceId: Long,
         baseUrl: String,
         pageNum: Int,
@@ -586,7 +596,7 @@ object Opds {
                     query
                         .limit(ITEMS_PER_PAGE)
                         .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
-                        .map { MangaTable.toDataClass(it, includeMangaMeta = false) }
+                        .map { MangaTable.toDataClass(userId, it, includeMangaMeta = false) }
 
                 Triple(paginatedResults, totalCount, sourceRow)
             }
@@ -601,6 +611,7 @@ object Opds {
     }
 
     fun getCategoryFeed(
+        userId: Int,
         categoryId: Int,
         baseUrl: String,
         pageNum: Int,
@@ -615,10 +626,14 @@ object Opds {
                 val categoryName = categoryRow[CategoryTable.name]
                 val query =
                     CategoryMangaTable
-                        .join(MangaTable, JoinType.INNER, onColumn = CategoryMangaTable.manga, otherColumn = MangaTable.id)
-                        .join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
+                        .join(
+                            MangaTable.getWithUserData(userId),
+                            JoinType.INNER,
+                            onColumn = CategoryMangaTable.manga,
+                            otherColumn = MangaTable.id,
+                        ).join(ChapterTable, JoinType.INNER, onColumn = MangaTable.id, otherColumn = ChapterTable.manga)
                         .select(MangaTable.columns)
-                        .where { (CategoryMangaTable.category eq categoryId) }
+                        .where { (CategoryMangaTable.category eq categoryId) and (CategoryMangaTable.user eq userId) }
                         .groupBy(MangaTable.id)
                         .orderBy(MangaTable.title to SortOrder.ASC)
                 val totalCount = query.count()
@@ -626,7 +641,7 @@ object Opds {
                     query
                         .limit(ITEMS_PER_PAGE)
                         .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
-                        .map { MangaTable.toDataClass(it, includeMangaMeta = false) }
+                        .map { MangaTable.toDataClass(userId, it, includeMangaMeta = false) }
                 Triple(mangas, totalCount, categoryName)
             }
         return FeedBuilder(baseUrl, pageNum, "category/$categoryId", "Category: $categoryName")
@@ -638,6 +653,7 @@ object Opds {
     }
 
     fun getGenreFeed(
+        userId: Int,
         genre: String,
         baseUrl: String,
         pageNum: Int,
@@ -657,7 +673,7 @@ object Opds {
                     query
                         .limit(ITEMS_PER_PAGE)
                         .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
-                        .map { MangaTable.toDataClass(it, includeMangaMeta = false) }
+                        .map { MangaTable.toDataClass(userId, it, includeMangaMeta = false) }
                 Pair(mangas, totalCount)
             }
         return FeedBuilder(baseUrl, pageNum, "genre/${genre.encodeURL()}", "Genre: $genre")
@@ -669,6 +685,7 @@ object Opds {
     }
 
     fun getStatusMangaFeed(
+        userId: Int,
         statusId: Long,
         baseUrl: String,
         pageNum: Int,
@@ -694,7 +711,7 @@ object Opds {
                     query
                         .limit(ITEMS_PER_PAGE)
                         .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
-                        .map { MangaTable.toDataClass(it, includeMangaMeta = false) }
+                        .map { MangaTable.toDataClass(userId, it, includeMangaMeta = false) }
                 Pair(mangas, totalCount)
             }
         return FeedBuilder(baseUrl, pageNum, "status/$statusId", "Status: $statusName")
@@ -706,6 +723,7 @@ object Opds {
     }
 
     fun getLanguageFeed(
+        userId: Int,
         langCode: String,
         baseUrl: String,
         pageNum: Int,
@@ -726,7 +744,7 @@ object Opds {
                     query
                         .limit(ITEMS_PER_PAGE)
                         .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
-                        .map { MangaTable.toDataClass(it, includeMangaMeta = false) }
+                        .map { MangaTable.toDataClass(userId, it, includeMangaMeta = false) }
                 Pair(mangas, totalCount)
             }
         return FeedBuilder(baseUrl, pageNum, "language/$langCode", "Language: $langCode")
@@ -738,6 +756,7 @@ object Opds {
     }
 
     fun getLibraryUpdatesFeed(
+        userId: Int,
         baseUrl: String,
         pageNum: Int,
     ): String {
@@ -745,9 +764,13 @@ object Opds {
             transaction {
                 val query =
                     ChapterTable
-                        .join(MangaTable, JoinType.INNER, onColumn = ChapterTable.manga, otherColumn = MangaTable.id)
-                        .selectAll()
-                        .where { (MangaTable.inLibrary eq true) }
+                        .join(
+                            MangaTable.getWithUserData(userId),
+                            JoinType.INNER,
+                            onColumn = ChapterTable.manga,
+                            otherColumn = MangaTable.id,
+                        ).selectAll()
+                        .where { (MangaUserTable.inLibrary eq true) }
                         .orderBy(ChapterTable.fetchedAt to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC)
 
                 val totalCount = query.count()
@@ -757,10 +780,11 @@ object Opds {
                         .offset(((pageNum - 1) * ITEMS_PER_PAGE).toLong())
                         .map {
                             ChapterTable.toDataClass(
+                                userId,
                                 it,
                                 includeChapterCount = false,
                                 includeChapterMeta = false,
-                            ) to MangaTable.toDataClass(it, includeMangaMeta = false)
+                            ) to MangaTable.toDataClass(userId, it, includeMangaMeta = false)
                         }
 
                 Pair(chapters, totalCount)

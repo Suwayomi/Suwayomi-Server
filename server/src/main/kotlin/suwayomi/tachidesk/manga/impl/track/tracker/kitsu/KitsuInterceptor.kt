@@ -7,6 +7,7 @@ import suwayomi.tachidesk.server.generated.BuildConfig
 import uy.kohesive.injekt.injectLazy
 
 class KitsuInterceptor(
+    private val userId: Int,
     private val kitsu: Kitsu,
 ) : Interceptor {
     private val json: Json by injectLazy()
@@ -14,7 +15,7 @@ class KitsuInterceptor(
     /**
      * OAuth object used for authenticated requests.
      */
-    private var oauth: OAuth? = kitsu.restoreToken()
+    private var oauth: OAuth? = kitsu.restoreToken(userId)
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
@@ -48,6 +49,6 @@ class KitsuInterceptor(
 
     fun newAuth(oauth: OAuth?) {
         this.oauth = oauth
-        kitsu.saveToken(oauth)
+        kitsu.saveToken(userId, oauth)
     }
 }

@@ -65,6 +65,7 @@ interface Settings : Node {
     val basicAuthEnabled: Boolean?
     val basicAuthUsername: String?
     val basicAuthPassword: String?
+    val multiUser: Boolean?
 
     // misc
     val debugLogsEnabled: Boolean?
@@ -137,6 +138,7 @@ data class PartialSettingsType(
     override val basicAuthEnabled: Boolean?,
     override val basicAuthUsername: String?,
     override val basicAuthPassword: String?,
+    override val multiUser: Boolean?,
     // misc
     override val debugLogsEnabled: Boolean?,
     @GraphQLDeprecated("Removed - does not do anything")
@@ -204,6 +206,7 @@ class SettingsType(
     override val basicAuthEnabled: Boolean,
     override val basicAuthUsername: String,
     override val basicAuthPassword: String,
+    override val multiUser: Boolean?,
     // misc
     override val debugLogsEnabled: Boolean,
     @GraphQLDeprecated("Removed - does not do anything")
@@ -266,6 +269,7 @@ class SettingsType(
         config.basicAuthEnabled.value,
         config.basicAuthUsername.value,
         config.basicAuthPassword.value,
+        config.multiUser.value,
         // misc
         config.debugLogsEnabled.value,
         false,
