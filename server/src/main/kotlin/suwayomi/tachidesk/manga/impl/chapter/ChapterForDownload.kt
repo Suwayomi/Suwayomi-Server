@@ -70,7 +70,7 @@ private class ChapterForDownload(
 
         val isMarkedAsDownloaded = chapterEntry[ChapterTable.isDownloaded]
         val doesFirstPageExist = firstPageExists()
-        val isDownloaded = isMarkedAsDownloaded && doesFirstPageExist
+        val isDownloaded = isMarkedAsDownloaded || doesFirstPageExist
 
         log.debug { "isDownloaded= $isDownloaded (isMarkedAsDownloaded= $isMarkedAsDownloaded, doesFirstPageExist= $doesFirstPageExist)" }
 
