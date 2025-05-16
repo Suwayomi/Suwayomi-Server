@@ -87,14 +87,15 @@ private class ChapterForDownload(
         return asDataClass()
     }
 
-    private fun asDataClass() = ChapterTable.toDataClass(
-        transaction {
-            ChapterTable
-                .selectAll()
-                .where { ChapterTable.id eq chapterId }
-                .first()
-        }
-    )
+    private fun asDataClass() =
+        ChapterTable.toDataClass(
+            transaction {
+                ChapterTable
+                    .selectAll()
+                    .where { ChapterTable.id eq chapterId }
+                    .first()
+            },
+        )
 
     init {
         chapterEntry = freshChapterEntry(optChapterId, optChapterIndex, optMangaId)
@@ -175,9 +176,7 @@ private class ChapterForDownload(
         chapterEntry = freshChapterEntry(chapterId, chapterIndex, mangaId)
     }
 
-    private fun updatePageCount(
-        pageCount: Int,
-    ) {
+    private fun updatePageCount(pageCount: Int) {
         transaction {
             ChapterTable.update({ ChapterTable.id eq chapterId }) {
                 it[ChapterTable.pageCount] = pageCount
