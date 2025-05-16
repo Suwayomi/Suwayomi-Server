@@ -289,6 +289,7 @@ class LocalSource(
         fileSystem
             .getFilesInMangaDirectory(manga.url)
             // Only keep supported formats
+            .filterNot { it.name.orEmpty().startsWith('.') }
             .filter { it.isDirectory || Archive.isSupported(it) }
             .map { chapterFile ->
                 SChapter.create().apply {
