@@ -92,6 +92,13 @@ interface Settings : Node {
     val flareSolverrSessionName: String?
     val flareSolverrSessionTtl: Int?
     val flareSolverrAsResponseFallback: Boolean?
+
+    // opds
+    val opdsItemsPerPage: Int?
+    val opdsEnablePageReadProgress: Boolean?
+    val opdsMarkAsReadOnDownload: Boolean?
+    val opdsShowOnlyUnreadChapters: Boolean?
+    val opdsChapterSortOrder: String?
 }
 
 data class PartialSettingsType(
@@ -159,6 +166,12 @@ data class PartialSettingsType(
     override val flareSolverrSessionName: String?,
     override val flareSolverrSessionTtl: Int?,
     override val flareSolverrAsResponseFallback: Boolean?,
+    // opds
+    override val opdsItemsPerPage: Int?,
+    override val opdsEnablePageReadProgress: Boolean?,
+    override val opdsMarkAsReadOnDownload: Boolean?,
+    override val opdsShowOnlyUnreadChapters: Boolean?,
+    override val opdsChapterSortOrder: String?,
 ) : Settings
 
 class SettingsType(
@@ -226,6 +239,12 @@ class SettingsType(
     override val flareSolverrSessionName: String,
     override val flareSolverrSessionTtl: Int,
     override val flareSolverrAsResponseFallback: Boolean,
+    // opds
+    override val opdsItemsPerPage: Int?,
+    override val opdsEnablePageReadProgress: Boolean?,
+    override val opdsMarkAsReadOnDownload: Boolean?,
+    override val opdsShowOnlyUnreadChapters: Boolean?,
+    override val opdsChapterSortOrder: String?,
 ) : Settings {
     constructor(config: ServerConfig = serverConfig) : this(
         config.ip.value,
@@ -287,5 +306,11 @@ class SettingsType(
         config.flareSolverrSessionName.value,
         config.flareSolverrSessionTtl.value,
         config.flareSolverrAsResponseFallback.value,
+        // opds
+        config.opdsItemsPerPage.value,
+        config.opdsEnablePageReadProgress.value,
+        config.opdsMarkAsReadOnDownload.value,
+        config.opdsShowOnlyUnreadChapters.value,
+        config.opdsChapterSortOrder.value,
     )
 }
