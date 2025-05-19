@@ -8,6 +8,7 @@
 package suwayomi.tachidesk.graphql.types
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import org.jetbrains.exposed.sql.SortOrder
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
@@ -98,7 +99,7 @@ interface Settings : Node {
     val opdsEnablePageReadProgress: Boolean?
     val opdsMarkAsReadOnDownload: Boolean?
     val opdsShowOnlyUnreadChapters: Boolean?
-    val opdsChapterSortOrder: String?
+    val opdsChapterSortOrder: SortOrder?
 }
 
 data class PartialSettingsType(
@@ -171,7 +172,7 @@ data class PartialSettingsType(
     override val opdsEnablePageReadProgress: Boolean?,
     override val opdsMarkAsReadOnDownload: Boolean?,
     override val opdsShowOnlyUnreadChapters: Boolean?,
-    override val opdsChapterSortOrder: String?,
+    override val opdsChapterSortOrder: SortOrder?,
 ) : Settings
 
 class SettingsType(
@@ -244,7 +245,7 @@ class SettingsType(
     override val opdsEnablePageReadProgress: Boolean,
     override val opdsMarkAsReadOnDownload: Boolean,
     override val opdsShowOnlyUnreadChapters: Boolean,
-    override val opdsChapterSortOrder: String,
+    override val opdsChapterSortOrder: SortOrder,
 ) : Settings {
     constructor(config: ServerConfig = serverConfig) : this(
         config.ip.value,

@@ -97,7 +97,6 @@ class SettingsMutation {
 
         // opds
         validateValue(settings.opdsItemsPerPage, "opdsItemsPerPage") { it in 10..5000 }
-        validateValue(settings.opdsChapterSortOrder, "opdsChapterSortOrder") { it in listOf("ASC", "DESC") }
     }
 
     private fun <SettingType : Any> updateSetting(

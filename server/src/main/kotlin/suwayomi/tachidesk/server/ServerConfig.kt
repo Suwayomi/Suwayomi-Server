@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
+import org.jetbrains.exposed.sql.SortOrder
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.SystemPropertyOverridableConfigModule
 import kotlin.reflect.KProperty
@@ -160,7 +161,7 @@ class ServerConfig(
     val opdsEnablePageReadProgress: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val opdsMarkAsReadOnDownload: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val opdsShowOnlyUnreadChapters: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val opdsChapterSortOrder: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+    val opdsChapterSortOrder: MutableStateFlow<SortOrder> by OverrideConfigValue(SortOrderConfigAdapter)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun <T> subscribeTo(
