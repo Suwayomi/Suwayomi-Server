@@ -39,6 +39,9 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 object Opds {
+    private val opdsItemsPerPageBounded: Int
+        get() = serverConfig.opdsItemsPerPage.value.coerceIn(10, 5000)
+
     fun getRootFeed(baseUrl: String): String {
         val rootSection =
             listOf(
@@ -111,8 +114,8 @@ object Opds {
                 val totalCount = query.count()
                 val mangas =
                     query
-                        .limit(serverConfig.opdsItemsPerPage.value)
-                        .offset(((pageNum - 1) * serverConfig.opdsItemsPerPage.value).toLong())
+                        .limit(opdsItemsPerPageBounded)
+                        .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
                         .map { MangaTable.toDataClass(it, includeMangaMeta = false) }
                 Pair(mangas, totalCount)
             }
@@ -149,8 +152,8 @@ object Opds {
                 val totalCount = query.count()
                 val sources =
                     query
-                        .limit(serverConfig.opdsItemsPerPage.value)
-                        .offset(((pageNum - 1) * serverConfig.opdsItemsPerPage.value).toLong())
+                        .limit(opdsItemsPerPageBounded)
+                        .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
                         .map {
                             SourceDataClass(
                                 id = it[SourceTable.id].value.toString(),
@@ -209,8 +212,8 @@ object Opds {
 
                 val paginated =
                     query
-                        .limit(serverConfig.opdsItemsPerPage.value)
-                        .offset(((pageNum - 1) * serverConfig.opdsItemsPerPage.value).toLong())
+                        .limit(opdsItemsPerPageBounded)
+                        .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
                         .map { row -> Pair(row[CategoryTable.id].value, row[CategoryTable.name]) }
 
                 Pair(paginated, total)
@@ -258,8 +261,8 @@ object Opds {
             }
 
         val totalCount = genres.size
-        val fromIndex = (pageNum - 1) * serverConfig.opdsItemsPerPage.value
-        val toIndex = minOf(fromIndex + serverConfig.opdsItemsPerPage.value, totalCount)
+        val fromIndex = (pageNum - 1) * opdsItemsPerPageBounded
+        val toIndex = minOf(fromIndex + opdsItemsPerPageBounded, totalCount)
         val paginatedGenres = if (fromIndex < totalCount) genres.subList(fromIndex, toIndex) else emptyList()
 
         return serialize(
@@ -269,7 +272,7 @@ object Opds {
                 updated = formattedNow,
                 author = OpdsXmlModels.Author("Suwayomi", "https://suwayomi.org/"),
                 totalResults = totalCount.toLong(),
-                itemsPerPage = serverConfig.opdsItemsPerPage.value,
+                itemsPerPage = opdsItemsPerPageBounded,
                 startIndex = fromIndex + 1,
                 links =
                     listOf(
@@ -312,8 +315,8 @@ object Opds {
 
         val statuses = MangaStatus.entries.sortedBy { it.value }
         val totalCount = statuses.size
-        val fromIndex = (pageNum - 1) * serverConfig.opdsItemsPerPage.value
-        val toIndex = minOf(fromIndex + serverConfig.opdsItemsPerPage.value, totalCount)
+        val fromIndex = (pageNum - 1) * opdsItemsPerPageBounded
+        val toIndex = minOf(fromIndex + opdsItemsPerPageBounded, totalCount)
         val paginatedStatuses = if (fromIndex < totalCount) statuses.subList(fromIndex, toIndex) else emptyList()
 
         return FeedBuilder(baseUrl, pageNum, "status", "Status")
@@ -384,7 +387,10 @@ object Opds {
         baseUrl: String,
         pageNum: Int,
     ): String {
-        val sortOrder = SortOrder.valueOf(serverConfig.opdsChapterSortOrder.value)
+        val sortOrder = runCatching {
+            SortOrder.valueOf(serverConfig.opdsChapterSortOrder.value)
+        }.getOrElse { SortOrder.DESC }
+
         val (manga, chapters, totalCount) =
             transaction {
                 val mangaEntry =
@@ -411,8 +417,8 @@ object Opds {
                 val total = chaptersQuery.count()
                 val chaptersData =
                     chaptersQuery
-                        .limit(serverConfig.opdsItemsPerPage.value)
-                        .offset(((pageNum - 1) * serverConfig.opdsItemsPerPage.value).toLong())
+                        .limit(opdsItemsPerPageBounded)
+                        .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
                         .map { ChapterTable.toDataClass(it, includeChapterCount = false, includeChapterMeta = false) }
                 Triple(mangaData, chaptersData, total)
             }
@@ -604,8 +610,8 @@ object Opds {
                 val totalCount = query.count()
                 val paginatedResults =
                     query
-                        .limit(serverConfig.opdsItemsPerPage.value)
-                        .offset(((pageNum - 1) * serverConfig.opdsItemsPerPage.value).toLong())
+                        .limit(opdsItemsPerPageBounded)
+                        .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
                         .map { MangaTable.toDataClass(it, includeMangaMeta = false) }
 
                 Triple(paginatedResults, totalCount, sourceRow)
@@ -644,8 +650,8 @@ object Opds {
                 val totalCount = query.count()
                 val mangas =
                     query
-                        .limit(serverConfig.opdsItemsPerPage.value)
-                        .offset(((pageNum - 1) * serverConfig.opdsItemsPerPage.value).toLong())
+                        .limit(opdsItemsPerPageBounded)
+                        .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
                         .map { MangaTable.toDataClass(it, includeMangaMeta = false) }
                 Triple(mangas, totalCount, categoryName)
             }
@@ -675,8 +681,8 @@ object Opds {
                 val totalCount = query.count()
                 val mangas =
                     query
-                        .limit(serverConfig.opdsItemsPerPage.value)
-                        .offset(((pageNum - 1) * serverConfig.opdsItemsPerPage.value).toLong())
+                        .limit(opdsItemsPerPageBounded)
+                        .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
                         .map { MangaTable.toDataClass(it, includeMangaMeta = false) }
                 Pair(mangas, totalCount)
             }
@@ -712,8 +718,8 @@ object Opds {
                 val totalCount = query.count()
                 val mangas =
                     query
-                        .limit(serverConfig.opdsItemsPerPage.value)
-                        .offset(((pageNum - 1) * serverConfig.opdsItemsPerPage.value).toLong())
+                        .limit(opdsItemsPerPageBounded)
+                        .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
                         .map { MangaTable.toDataClass(it, includeMangaMeta = false) }
                 Pair(mangas, totalCount)
             }
@@ -744,8 +750,8 @@ object Opds {
                 val totalCount = query.count()
                 val mangas =
                     query
-                        .limit(serverConfig.opdsItemsPerPage.value)
-                        .offset(((pageNum - 1) * serverConfig.opdsItemsPerPage.value).toLong())
+                        .limit(opdsItemsPerPageBounded)
+                        .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
                         .map { MangaTable.toDataClass(it, includeMangaMeta = false) }
                 Pair(mangas, totalCount)
             }
@@ -773,8 +779,8 @@ object Opds {
                 val totalCount = query.count()
                 val chapters =
                     query
-                        .limit(serverConfig.opdsItemsPerPage.value)
-                        .offset(((pageNum - 1) * serverConfig.opdsItemsPerPage.value).toLong())
+                        .limit(opdsItemsPerPageBounded)
+                        .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
                         .map {
                             ChapterTable.toDataClass(
                                 it,
@@ -853,7 +859,7 @@ object Opds {
                                     type = "application/atom+xml;profile=opds-catalog;kind=navigation",
                                 )
                             },
-                            (totalResults > pageNum * serverConfig.opdsItemsPerPage.value).takeIf { it }?.let {
+                            (totalResults > pageNum * opdsItemsPerPageBounded).takeIf { it }?.let {
                                 OpdsXmlModels.Link(
                                     rel = "next",
                                     href = "$baseUrl/$id?pageNumber=${pageNum + 1}",
@@ -863,8 +869,8 @@ object Opds {
                         ),
                 entries = entries,
                 totalResults = totalResults,
-                itemsPerPage = serverConfig.opdsItemsPerPage.value,
-                startIndex = (pageNum - 1) * serverConfig.opdsItemsPerPage.value + 1,
+                itemsPerPage = opdsItemsPerPageBounded,
+                startIndex = (pageNum - 1) * opdsItemsPerPageBounded + 1,
             )
     }
 
