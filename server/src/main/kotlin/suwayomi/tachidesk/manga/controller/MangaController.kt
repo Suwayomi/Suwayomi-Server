@@ -451,6 +451,7 @@ object MangaController {
                             ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
                             ctx.header("Content-Length", fileSize.toString())
                             if (ctx.method() == HandlerType.HEAD) {
+                                inputStream.close()
                                 ctx.status(200)
                             } else {
                                 ctx.result(inputStream)

@@ -240,11 +240,11 @@ class SettingsType(
     override val flareSolverrSessionTtl: Int,
     override val flareSolverrAsResponseFallback: Boolean,
     // opds
-    override val opdsItemsPerPage: Int?,
-    override val opdsEnablePageReadProgress: Boolean?,
-    override val opdsMarkAsReadOnDownload: Boolean?,
-    override val opdsShowOnlyUnreadChapters: Boolean?,
-    override val opdsChapterSortOrder: String?,
+    override val opdsItemsPerPage: Int,
+    override val opdsEnablePageReadProgress: Boolean,
+    override val opdsMarkAsReadOnDownload: Boolean,
+    override val opdsShowOnlyUnreadChapters: Boolean,
+    override val opdsChapterSortOrder: String,
 ) : Settings {
     constructor(config: ServerConfig = serverConfig) : this(
         config.ip.value,
