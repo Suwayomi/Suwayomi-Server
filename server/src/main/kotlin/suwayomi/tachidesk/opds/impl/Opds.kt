@@ -387,9 +387,10 @@ object Opds {
         baseUrl: String,
         pageNum: Int,
     ): String {
-        val sortOrder = runCatching {
-            SortOrder.valueOf(serverConfig.opdsChapterSortOrder.value)
-        }.getOrElse { SortOrder.DESC }
+        val sortOrder =
+            runCatching {
+                SortOrder.valueOf(serverConfig.opdsChapterSortOrder.value)
+            }.getOrElse { SortOrder.DESC }
 
         val (manga, chapters, totalCount) =
             transaction {
