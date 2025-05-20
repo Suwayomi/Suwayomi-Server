@@ -403,6 +403,10 @@ object Opds {
                         if (serverConfig.opdsShowOnlyUnreadChapters.value) {
                             add(ChapterTable.isRead eq false)
                         }
+
+                        if (serverConfig.opdsShowOnlyDownloadedChapters.value) {
+                            add(ChapterTable.isDownloaded eq true)
+                        }
                         add(ChapterTable.manga eq mangaId)
                     }.reduce { acc, op -> acc and op }
 

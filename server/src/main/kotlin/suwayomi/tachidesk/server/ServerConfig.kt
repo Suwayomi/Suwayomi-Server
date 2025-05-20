@@ -161,6 +161,7 @@ class ServerConfig(
     val opdsEnablePageReadProgress: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val opdsMarkAsReadOnDownload: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val opdsShowOnlyUnreadChapters: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
+    val opdsShowOnlyDownloadedChapters: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val opdsChapterSortOrder: MutableStateFlow<SortOrder> by OverrideConfigValue(SortOrderConfigAdapter)
 
     @OptIn(ExperimentalCoroutinesApi::class)

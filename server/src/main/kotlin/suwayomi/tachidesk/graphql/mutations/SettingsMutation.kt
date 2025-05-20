@@ -186,6 +186,7 @@ class SettingsMutation {
         updateSetting(settings.opdsEnablePageReadProgress, serverConfig.opdsEnablePageReadProgress)
         updateSetting(settings.opdsMarkAsReadOnDownload, serverConfig.opdsMarkAsReadOnDownload)
         updateSetting(settings.opdsShowOnlyUnreadChapters, serverConfig.opdsShowOnlyUnreadChapters)
+        updateSetting(settings.opdsShowOnlyDownloadedChapters, serverConfig.opdsShowOnlyDownloadedChapters)
         updateSetting(settings.opdsChapterSortOrder, serverConfig.opdsChapterSortOrder)
     }
 

@@ -112,7 +112,8 @@ open class ConfigManager {
         value: Any,
     ) {
         mutex.withLock {
-            val configValue = ConfigValueFactory.fromAnyRef(value)
+            val actualValue = if (value is Enum<*>) value.name else value
+            val configValue = ConfigValueFactory.fromAnyRef(actualValue)
 
             updateUserConfigFile(path, configValue)
             internalConfig = internalConfig.withValue(path, configValue)

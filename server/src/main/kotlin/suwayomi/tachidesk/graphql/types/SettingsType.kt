@@ -99,6 +99,7 @@ interface Settings : Node {
     val opdsEnablePageReadProgress: Boolean?
     val opdsMarkAsReadOnDownload: Boolean?
     val opdsShowOnlyUnreadChapters: Boolean?
+    val opdsShowOnlyDownloadedChapters: Boolean?
     val opdsChapterSortOrder: SortOrder?
 }
 
@@ -172,6 +173,7 @@ data class PartialSettingsType(
     override val opdsEnablePageReadProgress: Boolean?,
     override val opdsMarkAsReadOnDownload: Boolean?,
     override val opdsShowOnlyUnreadChapters: Boolean?,
+    override val opdsShowOnlyDownloadedChapters: Boolean?,
     override val opdsChapterSortOrder: SortOrder?,
 ) : Settings
 
@@ -245,6 +247,7 @@ class SettingsType(
     override val opdsEnablePageReadProgress: Boolean,
     override val opdsMarkAsReadOnDownload: Boolean,
     override val opdsShowOnlyUnreadChapters: Boolean,
+    override val opdsShowOnlyDownloadedChapters: Boolean,
     override val opdsChapterSortOrder: SortOrder,
 ) : Settings {
     constructor(config: ServerConfig = serverConfig) : this(
@@ -312,6 +315,7 @@ class SettingsType(
         config.opdsEnablePageReadProgress.value,
         config.opdsMarkAsReadOnDownload.value,
         config.opdsShowOnlyUnreadChapters.value,
+        config.opdsShowOnlyDownloadedChapters.value,
         config.opdsChapterSortOrder.value,
     )
 }
