@@ -265,14 +265,14 @@ class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTy
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    val firstUnreadChaptersByMangaId =
+                    val highestNumberedChaptersByMangaId =
                         ChapterTable
                             .selectAll()
                             .where { (ChapterTable.manga inList ids) and (ChapterTable.chapter_number greater 0f) }
                             .orderBy(ChapterTable.chapter_number to SortOrder.DESC_NULLS_LAST)
                             .groupBy { it[ChapterTable.manga].value }
                     ids.map { id ->
-                        firstUnreadChaptersByMangaId[id]
+                        highestNumberedChaptersByMangaId[id]
                             ?.firstOrNull()
                             ?.let { chapter -> ChapterType(chapter) }
                     }
