@@ -256,3 +256,27 @@ class FirstUnreadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?>
             }
         }
 }
+
+class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
+    override val dataLoaderName = "HighestNumberedChapterForMangaDataLoader"
+
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType?> =
+        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val firstUnreadChaptersByMangaId =
+                        ChapterTable
+                            .selectAll()
+                            .where { (ChapterTable.manga inList ids) and (ChapterTable.chapter_number greater 0f) }
+                            .orderBy(ChapterTable.chapter_number to SortOrder.DESC_NULLS_LAST)
+                            .groupBy { it[ChapterTable.manga].value }
+                    ids.map { id ->
+                        firstUnreadChaptersByMangaId[id]
+                            ?.firstOrNull()
+                            ?.let { chapter -> ChapterType(chapter) }
+                    }
+                }
+            }
+        }
+}
