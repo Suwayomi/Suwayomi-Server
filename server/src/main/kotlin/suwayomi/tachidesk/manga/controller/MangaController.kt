@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import io.javalin.http.HandlerType
 import io.javalin.http.HttpStatus
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.CategoryManga
@@ -434,20 +435,27 @@ object MangaController {
     val downloadChapter =
         handler(
             pathParam<Int>("chapterId"),
+            queryParam<Boolean?>("markAsRead"),
             documentWith = {
                 withOperation {
                     summary("Download chapter as CBZ")
                     description("Get the CBZ file of the specified chapter")
                 }
             },
-            behaviorOf = { ctx, chapterId ->
+            behaviorOf = { ctx, chapterId, markAsRead ->
+                val shouldMarkAsRead = if (ctx.method() == HandlerType.HEAD) false else markAsRead
                 ctx.future {
-                    future { ChapterDownloadHelper.getCbzForDownload(chapterId) }
+                    future { ChapterDownloadHelper.getCbzForDownload(chapterId, shouldMarkAsRead) }
                         .thenApply { (inputStream, fileName, fileSize) ->
                             ctx.header("Content-Type", "application/vnd.comicbook+zip")
                             ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
                             ctx.header("Content-Length", fileSize.toString())
-                            ctx.result(inputStream)
+                            if (ctx.method() == HandlerType.HEAD) {
+                                inputStream.close()
+                                ctx.status(200)
+                            } else {
+                                ctx.result(inputStream)
+                            }
                         }
                 }
             },

@@ -9,6 +9,7 @@ package suwayomi.tachidesk.manga
 
 import io.javalin.apibuilder.ApiBuilder.delete
 import io.javalin.apibuilder.ApiBuilder.get
+import io.javalin.apibuilder.ApiBuilder.head
 import io.javalin.apibuilder.ApiBuilder.patch
 import io.javalin.apibuilder.ApiBuilder.path
 import io.javalin.apibuilder.ApiBuilder.post
@@ -83,6 +84,7 @@ object MangaAPI {
         path("chapter") {
             post("batch", MangaController.anyChapterBatch)
             get("{chapterId}/download", MangaController.downloadChapter)
+            head("{chapterId}/download", MangaController.downloadChapter)
         }
 
         path("category") {

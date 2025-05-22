@@ -94,6 +94,9 @@ class SettingsMutation {
 
         // local source
         validateFilePath(settings.localSourcePath, "localSourcePath")
+
+        // opds
+        validateValue(settings.opdsItemsPerPage, "opdsItemsPerPage") { it in 10..5000 }
     }
 
     private fun <SettingType : Any> updateSetting(
@@ -177,6 +180,14 @@ class SettingsMutation {
         updateSetting(settings.flareSolverrSessionName, serverConfig.flareSolverrSessionName)
         updateSetting(settings.flareSolverrSessionTtl, serverConfig.flareSolverrSessionTtl)
         updateSetting(settings.flareSolverrAsResponseFallback, serverConfig.flareSolverrAsResponseFallback)
+
+        // opds
+        updateSetting(settings.opdsItemsPerPage, serverConfig.opdsItemsPerPage)
+        updateSetting(settings.opdsEnablePageReadProgress, serverConfig.opdsEnablePageReadProgress)
+        updateSetting(settings.opdsMarkAsReadOnDownload, serverConfig.opdsMarkAsReadOnDownload)
+        updateSetting(settings.opdsShowOnlyUnreadChapters, serverConfig.opdsShowOnlyUnreadChapters)
+        updateSetting(settings.opdsShowOnlyDownloadedChapters, serverConfig.opdsShowOnlyDownloadedChapters)
+        updateSetting(settings.opdsChapterSortOrder, serverConfig.opdsChapterSortOrder)
     }
 
     fun setSettings(input: SetSettingsInput): SetSettingsPayload {
