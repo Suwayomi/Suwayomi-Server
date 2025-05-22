@@ -559,7 +559,7 @@ object Chapter {
                 .where { ChapterMetaTable.ref inList chapterIds }
                 .groupBy { it[ChapterMetaTable.ref] }
                 .mapValues { it.value.associate { it[ChapterMetaTable.key] to it[ChapterMetaTable.value] } }
-                .withDefault { emptyMap<String, String>() }
+                .withDefault { emptyMap() }
         }
 
     fun getChapterMetaMap(chapter: EntityID<Int>): Map<String, String> =

@@ -73,7 +73,7 @@ fun updateMangaDownloadDir(
     val mangaEntry = getMangaEntry(mangaId)
     val source = GetCatalogueSource.getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
-    val sourceDir = source.toString()
+    val sourceDir = SafePath.buildValidFilename(source.toString())
     val mangaDir = SafePath.buildValidFilename(mangaEntry[MangaTable.title])
 
     val newMangaDir = SafePath.buildValidFilename(newTitle)

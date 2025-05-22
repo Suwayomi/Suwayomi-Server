@@ -23,6 +23,7 @@ import suwayomi.tachidesk.graphql.dataLoaders.ExtensionForSourceDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.FirstUnreadChapterForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.GlobalMetaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.HasDuplicateChaptersForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.HighestNumberedChapterForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.LastReadChapterForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.LatestFetchedChapterForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.LatestReadChapterForMangaDataLoader
@@ -60,6 +61,7 @@ class TachideskDataLoaderRegistryFactory {
                 LatestFetchedChapterForMangaDataLoader(),
                 LatestUploadedChapterForMangaDataLoader(),
                 FirstUnreadChapterForMangaDataLoader(),
+                HighestNumberedChapterForMangaDataLoader(),
                 GlobalMetaDataLoader(),
                 ChapterMetaDataLoader(),
                 MangaMetaDataLoader(),
