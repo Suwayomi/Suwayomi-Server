@@ -1,0 +1,92 @@
+{
+  "opds": {
+    "search": {
+      "shortname": "Suwayomi OPDS Search",
+      "description": "Search manga in the catalog"
+    },
+    "feeds": {
+      "root": "Suwayomi OPDS Catalog",
+      "mangaChapters": "{{0}} Chapters",
+      "allManga": {
+        "title": "All Manga",
+        "description": "Browse your library",
+        "feedContent": "Browse all manga in your library"
+      },
+      "searchResults": "Search Results",
+      "sources": {
+        "title": "Sources",
+        "description": "Browse by source",
+        "feedContent": "Browse manga by source"
+      },
+      "categories": {
+        "title": "Categories",
+        "description": "Browse by category",
+        "feedContent": "Browse manga organized by categories"
+      },
+      "genres": {
+        "title": "Genres",
+        "description": "Browse by genre",
+        "feedContent": "Browse manga by genre tags"
+      },
+      "status": {
+        "title": "Status",
+        "description": "Browse by status",
+        "feedContent": "Browse manga by publication status"
+      },
+      "languages": {
+        "title": "Languages",
+        "description": "Browse by language",
+        "feedContent": "Browse manga by content language"
+      },
+      "libraryUpdates": {
+        "title": "Library Update History",
+        "description": "Recent updates",
+        "feedContent": "Recently updated chapters from your library"
+      }
+    },
+    "facetgroup": {
+      "sortOrder": "Sort Order",
+      "readStatus": "Read Status"
+    },
+    "facet": {
+      "sort": {
+        "oldestFirst": "Oldest First",
+        "newestFirst": "Newest First",
+        "dateAsc": "Date ascending",
+        "dateDesc": "Date descending"
+      },
+      "filter": {
+        "allChapters": "All Chapters",
+        "unreadOnly": "Unread Only",
+        "readOnly": "Read Only"
+      }
+    },
+    "linktitle": {
+      "viewChapterDetails": "View Chapter Details & Get Pages",
+      "downloadCbz": "Download CBZ",
+      "streamPages": "View Pages (Streaming)",
+      "chapterCover": "Chapter Cover",
+      "currentPage": "Current Page",
+      "catalogRoot": "Catalog Root",
+      "searchCatalog": "Search Catalog",
+      "previousPage": "Previous Page",
+      "nextPage": "Next Page",
+      "selfFeed": "Current Feed"
+    },
+    "chapter": {
+      "status": {
+        "downloaded": "⬇️ ",
+        "read": "✅ ",
+        "inProgress": "⌛ ",
+        "error": "⚠️ ",
+        "unknown": "❔ ",
+        "unread": "⭕ "
+      },
+      "details": {
+        "base": "{{0}} | {{1}}",
+        "scanlator": " | By {{0}}",
+        "progress": " | Progress: {{0}} of {{1}}"
+      }
+    }
+  }
+}

@@ -23,6 +23,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
+import suwayomi.tachidesk.i18n.LocalizationService
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.update.IUpdater
@@ -47,8 +48,10 @@ import xyz.nulldev.ts.config.updateFileAppender
 import java.io.File
 import java.net.Authenticator
 import java.net.PasswordAuthentication
+import java.net.URLDecoder
 import java.security.Security
 import java.util.Locale
+import java.util.jar.JarFile
 
 private val logger = KotlinLogging.logger {}
 
@@ -61,6 +64,7 @@ class ApplicationDirs(
     val localMangaRoot get() = serverConfig.localSourcePath.value.ifBlank { "$dataRoot/local" }
     val webUIRoot = "$dataRoot/webUI"
     val automatedBackupRoot get() = serverConfig.backupPath.value.ifBlank { "$dataRoot/backups" }
+    val localizationRoot = "$dataRoot/i18n"
 
     val tempThumbnailCacheRoot = "$tempRoot/thumbnails"
     val tempMangaCacheRoot = "$tempRoot/manga-cache"
@@ -221,6 +225,90 @@ fun applicationSetup() {
 
     // fixes #119 , ref: https://github.com/Suwayomi/Suwayomi-Server/issues/119#issuecomment-894681292 , source Id calculation depends on String.lowercase()
     Locale.setDefault(Locale.ENGLISH)
+
+// Make sure the localization directory exists
+    val targetDir = File(applicationDirs.localizationRoot).apply { mkdirs() }
+    logger.info { "Initializing localization files in ${targetDir.absolutePath}" }
+
+    try {
+        val resourcePath = "i18n"
+        val localeFileNames = mutableSetOf<String>()
+
+        // Detect localization files in resources
+        val resourceUrl = JavalinSetup::class.java.classLoader.getResource(resourcePath)
+
+        if (resourceUrl != null) {
+            logger.debug { "Resource URL for i18n: $resourceUrl (protocol: ${resourceUrl.protocol})" }
+            when (resourceUrl.protocol) {
+                "jar" -> {
+                    // Running from JAR
+                    val jarPathFull = resourceUrl.path
+                    // Format is "jar:file:/path/to/your.jar!/path/inside/jar"
+                    val jarFilePath = jarPathFull.substringAfter("file:").substringBefore("!")
+                    val decodedJarPath = URLDecoder.decode(jarFilePath, "UTF-8")
+                    logger.debug { "Extracting localization files from JAR: $decodedJarPath" }
+
+                    JarFile(decodedJarPath).use { jar ->
+                        jar
+                            .entries()
+                            .asSequence()
+                            .filter { entry ->
+                                !entry.isDirectory &&
+                                    entry.name.startsWith("$resourcePath/") &&
+                                    entry.name.endsWith(".json") &&
+                                    entry.name.length > "$resourcePath/".length
+                            }.map { entry -> entry.name.substring("$resourcePath/".length) }
+                            .filter { it.isNotEmpty() }
+                            .forEach { fileName -> localeFileNames.add(fileName) }
+                    }
+                    logger.info { "Found following localization files in JAR: $localeFileNames" }
+                }
+                "file" -> {
+                    // Running from filesystem (e.g. in development from IDE)
+                    logger.debug { "Extracting localization files from filesystem path: ${resourceUrl.path}" }
+                    val directory = File(resourceUrl.toURI())
+                    if (directory.exists() && directory.isDirectory) {
+                        directory
+                            .listFiles { f -> f.isFile && f.name.endsWith(".json") }
+                            ?.forEach { file -> localeFileNames.add(file.name) }
+                        logger.info { "Found following localization files in filesystem: $localeFileNames" }
+                    } else {
+                        logger.warn { "Localization resource directory not found or not a directory: ${directory.absolutePath}" }
+                    }
+                }
+                else -> {
+                    logger.warn { "Unsupported protocol '${resourceUrl.protocol}' for localization resources at '$resourcePath'." }
+                }
+            }
+        } else {
+            logger.warn { "Localization resource path '$resourcePath' not found in classpath." }
+        }
+
+        if (localeFileNames.isEmpty()) {
+            logger.warn { "No localization files (.json) found in resource path '$resourcePath'. Localization might not work as expected." }
+        }
+
+        // Copy localization files that don't exist in target directory
+        for (fileName in localeFileNames) {
+            val targetFile = File(targetDir, fileName)
+            if (!targetFile.exists()) {
+                JavalinSetup::class.java.classLoader.getResourceAsStream("$resourcePath/$fileName")?.use { input ->
+                    targetFile.outputStream().use { output ->
+                        input.copyTo(output)
+                        logger.info { "Copied localization file: '$fileName' to '${targetFile.absolutePath}'" }
+                    }
+                } ?: logger.error { "Failed to get resource stream for '$resourcePath/$fileName' during copy." }
+            } else {
+                logger.debug { "Localization file '$fileName' already exists at '${targetFile.absolutePath}'. Skipping copy." }
+            }
+        }
+    } catch (e: Exception) {
+        logger.error(e) { "Error during initialization of localization files" }
+    }
+
+// Initialize the localization service
+    LocalizationService.initialize(applicationDirs.localizationRoot)
+    logger.info { "Localization service initialized. Supported languages: ${LocalizationService.getSupportedLanguageCodes()}" }
 
     databaseUp()
 
