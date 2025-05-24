@@ -1,0 +1,92 @@
+{
+  "opds": {
+    "search": {
+      "shortname": "Búsqueda OPDS de Suwayomi",
+      "description": "Buscar mangas en el catálogo"
+    },
+    "feeds": {
+      "root": "Catálogo OPDS de Suwayomi",
+      "mangaChapters": "Capítulos de {{0}}",
+      "allManga": {
+        "title": "Todos los mangas",
+        "description": "Explorar biblioteca",
+        "feedContent": "Explorar todos los mangas en tu biblioteca"
+      },
+      "searchResults": "Resultados de búsqueda",
+      "sources": {
+        "title": "Fuentes",
+        "description": "Buscar por fuente",
+        "feedContent": "Explorar mangas por fuente"
+      },
+      "categories": {
+        "title": "Categorías",
+        "description": "Buscar por categoría",
+        "feedContent": "Explorar mangas organizados por categorías"
+      },
+      "genres": {
+        "title": "Géneros",
+        "description": "Buscar por género",
+        "feedContent": "Explorar mangas por etiquetas de género"
+      },
+      "status": {
+        "title": "Estado",
+        "description": "Buscar por estado",
+        "feedContent": "Explorar mangas por estado de publicación"
+      },
+      "languages": {
+        "title": "Idiomas",
+        "description": "Buscar por idioma",
+        "feedContent": "Explorar mangas por idioma del contenido"
+      },
+      "libraryUpdates": {
+        "title": "Historial de actualizaciones",
+        "description": "Actualizaciones recientes",
+        "feedContent": "Capítulos recientemente actualizados de tu biblioteca"
+      }
+    },
+    "facetgroup": {
+      "sortOrder": "Ordenar por",
+      "readStatus": "Estado de lectura"
+    },
+    "facet": {
+      "sort": {
+        "oldestFirst": "Más antiguos primero",
+        "newestFirst": "Más recientes primero",
+        "dateAsc": "Fecha ascendente",
+        "dateDesc": "Fecha descendente"
+      },
+      "filter": {
+        "allChapters": "Todos los capítulos",
+        "unreadOnly": "Solo sin leer",
+        "readOnly": "Solo leídos"
+      }
+    },
+    "linktitle": {
+      "viewChapterDetails": "Ver detalles del capítulo y obtener páginas",
+      "downloadCbz": "Descargar CBZ",
+      "streamPages": "Ver páginas (streaming)",
+      "chapterCover": "Portada del capítulo",
+      "currentPage": "Página actual",
+      "catalogRoot": "Raíz del catálogo",
+      "searchCatalog": "Buscar en catálogo",
+      "previousPage": "Página anterior",
+      "nextPage": "Página siguiente",
+      "selfFeed": "Feed actual"
+    },
+    "chapter": {
+      "status": {
+        "downloaded": "⬇️ ",
+        "read": "✅ ",
+        "inProgress": "⌛ ",
+        "error": "⚠️ ",
+        "unknown": "❔ ",
+        "unread": "⭕ "
+      },
+      "details": {
+        "base": "Manga: {{0}} | {{1}}",
+        "scanlator": " | Publicado por: {{0}}",
+        "progress": " | Progreso: {{0}} de {{1}}"
+      }
+    }
+  }
+}
