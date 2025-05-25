@@ -13,7 +13,7 @@ import suwayomi.tachidesk.server.util.queryParam
 import suwayomi.tachidesk.server.util.withOperation
 
 object OpdsV1Controller {
-    private const val OPDS_MIME = "application/atom+xml;profile=opds-catalog;charset=UTF-8"
+    private const val OPDS_MIME = "application/xml;profile=opds-catalog;charset=UTF-8"
     private const val BASE_URL = "/api/opds/v1.2"
 
     private fun determineLanguage(
