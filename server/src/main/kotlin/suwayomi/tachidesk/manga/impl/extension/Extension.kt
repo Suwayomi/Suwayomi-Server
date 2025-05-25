@@ -207,7 +207,7 @@ object Extension {
                 val extensionId =
                     ExtensionTable
                         .selectAll()
-                        .where { ExtensionTable.pkgName eq pkgName }
+                        。where { ExtensionTable.pkgName eq pkgName }
                         .first()[ExtensionTable.id]
                         .value
 
@@ -240,7 +240,7 @@ object Extension {
         ZipInputStream(apkFile.inputStream()).use { zipInputStream ->
             var zipEntry = zipInputStream.nextEntry
             while (zipEntry != null) {
-                if (zipEntry.name.startsWith("assets/")) {
+                if (zipEntry.name.startsWith("assets/") && !zipEntry.isDirectory) {
                     val assetFile = File(assetsFolder, zipEntry.name)
                     assetFile.parentFile.mkdirs()
                     FileOutputStream(assetFile).use { outputStream ->
