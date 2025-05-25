@@ -686,44 +686,73 @@ object OpdsFeedBuilder {
 
     suspend fun getChapterMetadataFeed(
         mangaId: Int,
-        chapterIdFromPath: Int,
+        chapterIndexFromPath: Int,
         baseUrl: String,
         langCode: String,
     ): String {
-        val (mangaData, initialChapterData) =
+        // 1. Get manga data
+        val mangaData =
             withContext(Dispatchers.IO) {
                 transaction {
-                    val mangaEntry = MangaTable.selectAll().where { MangaTable.id eq mangaId }.firstOrNull()
-                    val chapterEntry = ChapterTable.selectAll().where { ChapterTable.id eq chapterIdFromPath }.firstOrNull()
-                    if (mangaEntry == null || chapterEntry == null) {
-                        null to null
-                    } else {
-                        MangaTable.toDataClass(mangaEntry, false) to ChapterTable.toDataClass(chapterEntry, true, true)
-                    }
+                    MangaTable
+                        .selectAll()
+                        .where { MangaTable.id eq mangaId }
+                        .firstOrNull()
+                        ?.let { MangaTable.toDataClass(it, includeMangaMeta = false) }
                 }
             }
 
-        if (mangaData == null || initialChapterData == null) {
+        if (mangaData == null) {
             val errorTitle =
                 LocalizationService.getString(
                     langCode,
-                    "opds.error.chapterOrMangaNotFound",
-                    defaultValue = "Chapter or Manga not found",
+                    "opds.error.mangaNotFound",
+                    mangaId.toString(),
+                    defaultValue = "Manga with ID $mangaId not found",
                 )
             return FeedBuilder(
                 baseUrl,
                 1,
-                "manga/$mangaId/chapter/$chapterIdFromPath/error",
+                "manga/$mangaId/chapter/$chapterIndexFromPath/error",
                 errorTitle,
                 langCode = langCode,
+                isPaginated = false,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
             ).apply { totalResults = 0 }
                 .build()
                 .let(OpdsXmlUtil::serializeFeedToString)
         }
 
-        val updatedChapterData = getChapterDownloadReady(chapterId = initialChapterData.id, mangaId = mangaData.id)
+        // 2. Get chapter data using mangaId and chapterIndexFromPath (sourceOrder)
+        val updatedChapterData =
+            try {
+                getChapterDownloadReady(chapterIndex = chapterIndexFromPath, mangaId = mangaData.id)
+            } catch (e: Exception) {
+                val errorTitle =
+                    LocalizationService.getString(
+                        langCode,
+                        "opds.error.chapterNotFoundForManga",
+                        chapterIndexFromPath.toString(),
+                        mangaData.title,
+                        defaultValue = "Chapter with index $chapterIndexFromPath not found for manga \"${mangaData.title}\"",
+                    )
+                return FeedBuilder(
+                    baseUrl,
+                    1,
+                    "manga/$mangaId/chapter/$chapterIndexFromPath/error",
+                    errorTitle,
+                    langCode = langCode,
+                    isPaginated = false,
+                    feedType = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
+                ).apply { totalResults = 0 }
+                    .build()
+                    .let(OpdsXmlUtil::serializeFeedToString)
+            }
+
+        // 3. Create feed entry for this chapter
         val updatedEntry = createChapterEntry(updatedChapterData, mangaData, baseUrl, isMetaDataEntry = true, langCode = langCode)
+
+        // 4. Build the feed
         val feedTitle =
             LocalizationService.getString(
                 langCode,
@@ -737,14 +766,14 @@ object OpdsFeedBuilder {
             FeedBuilder(
                 baseUrl = baseUrl,
                 pageNum = 1,
-                idWithoutParams = "manga/$mangaId/chapter/${initialChapterData.id}/details",
+                idWithoutParams = "manga/$mangaId/chapter/$chapterIndexFromPath/details",
                 titleKeyOrActual = feedTitle,
                 langCode = langCode,
                 isPaginated = false,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
             ).apply {
                 totalResults = 1
-                this.icon = mangaData.thumbnailUrl
+                icon = mangaData.thumbnailUrl
                 mangaData.thumbnailUrl?.let { url ->
                     links += OpdsLinkXml(rel = OpdsConstants.LINK_REL_IMAGE, href = url, type = OpdsConstants.TYPE_IMAGE_JPEG)
                     links +=
@@ -863,7 +892,7 @@ object OpdsFeedBuilder {
         } else {
             links.add(
                 OpdsLinkXml(
-                    rel = OpdsConstants.LINK_REL_ALTERNATE,
+                    rel = OpdsConstants.LINK_REL_SUBSECTION,
                     href = "$baseUrl/manga/${manga.id}/chapter/${chapter.index}/fetch?lang=$langCode",
                     type = OpdsConstants.TYPE_ATOM_XML_ENTRY_PROFILE_OPDS,
                     title =
