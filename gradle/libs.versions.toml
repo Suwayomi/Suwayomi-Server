@@ -14,6 +14,7 @@ graphqlkotlin = "8.4.0"
 xmlserialization = "0.91.0"
 ktlint = "1.5.0"
 koin = "4.0.4"
+moko = "0.24.5"
 
 [libraries]
 # Kotlin
@@ -148,10 +149,14 @@ cronUtils = "com.cronutils:cron-utils:9.2.1"
 # lint - used for renovate to update ktlint version
 ktlint = { module = "com.pinterest.ktlint:ktlint-cli", version.ref = "ktlint" }
 
+# moko
+moko = { module = "dev.icerock.moko:resources", version.ref = "moko" }
+
 [plugins]
 # Kotlin
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin"}
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin"}
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin"}
 
 # Linter
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version = "12.2.0"}
@@ -164,6 +169,9 @@ download = { id = "de.undercouch.download", version = "5.6.0"}
 
 # ShadowJar
 shadowjar = { id = "com.github.johnrengelman.shadow", version = "8.1.1"}
+
+# Moko
+moko = { id = "dev.icerock.mobile.multiplatform-resources", version.ref = "moko" }
 
 [bundles]
 shared = [

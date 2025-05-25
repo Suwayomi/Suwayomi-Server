@@ -1,8 +1,8 @@
 package suwayomi.tachidesk.opds.controller
 
-import io.javalin.http.Context
 import io.javalin.http.HttpStatus
-import suwayomi.tachidesk.i18n.LocalizationService
+import suwayomi.tachidesk.i18n.LocalizationHelper
+import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.opds.constants.OpdsConstants
 import suwayomi.tachidesk.opds.dto.OpdsSearchCriteria
 import suwayomi.tachidesk.opds.impl.OpdsFeedBuilder
@@ -16,27 +16,6 @@ object OpdsV1Controller {
     private const val OPDS_MIME = "application/xml;profile=opds-catalog;charset=UTF-8"
     private const val BASE_URL = "/api/opds/v1.2"
 
-    private fun determineLanguage(
-        ctx: Context,
-        langParam: String?,
-    ): String {
-        langParam?.trim()?.takeIf { it.isNotBlank() }?.lowercase()?.let {
-            return it
-        }
-        ctx
-            .header("Accept-Language")
-            ?.split(",")
-            ?.firstOrNull()
-            ?.split(";")
-            ?.firstOrNull()
-            ?.trim()
-            ?.lowercase()
-            ?.let {
-                return it
-            }
-        return LocalizationService.getDefaultLocale()
-    }
-
     // Root Feed
     val rootFeed =
         handler(
@@ -48,10 +27,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, lang ->
-                val determinedLang = determineLanguage(ctx, lang)
+                val locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getRootFeed(BASE_URL, determinedLang)
+                        OpdsFeedBuilder.getRootFeed(BASE_URL, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -73,7 +52,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, lang ->
-                val determinedLang = determineLanguage(ctx, lang)
+                val locale = LocalizationHelper.ctxToLocale(ctx, lang)
 
                 // The OpenSearch Description itself is localized by determinedLang
                 // The template URL for searches will point to mangasFeed, which will handle its own lang
@@ -81,22 +60,13 @@ object OpdsV1Controller {
                     """
                     <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/"
                         xmlns:atom="http://www.w3.org/2005/Atom">
-                        <ShortName>${
-                        LocalizationService.getString(
-                            determinedLang,
-                            "opds.search.shortname",
-                            defaultValue = "Suwayomi OPDS Search",
-                        )}</ShortName>
-                        <Description>${LocalizationService.getString(
-                        determinedLang,
-                        "opds.search.description",
-                        defaultValue = "Search manga in the catalog",
-                    )}</Description>
+                        <ShortName>${MR.strings.opds_search_shortname.localized(locale)}</ShortName>
+                        <Description>${MR.strings.opds_search_description.localized(locale)}</Description>
                         <InputEncoding>UTF-8</InputEncoding>
                         <OutputEncoding>UTF-8</OutputEncoding>
                         <Url type="${OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION}" 
                             rel="results" 
-                            template="$BASE_URL/mangas?query={searchTerms}&amp;lang=$determinedLang"/>
+                            template="$BASE_URL/mangas?query={searchTerms}&amp;lang=${locale.toLanguageTag()}"/>
                     </OpenSearchDescription>
                     """.trimIndent(), // Added lang to template
                 )
@@ -153,7 +123,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, query, author, title, lang ->
-                val determinedLang = determineLanguage(ctx, lang)
+                val locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 val opdsSearchCriteria =
                     if (query != null || author != null || title != null) {
                         OpdsSearchCriteria(query, author, title)
@@ -164,7 +134,7 @@ object OpdsV1Controller {
 
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getMangasFeed(opdsSearchCriteria, BASE_URL, effectivePageNumber, determinedLang)
+                        OpdsFeedBuilder.getMangasFeed(opdsSearchCriteria, BASE_URL, effectivePageNumber, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -187,10 +157,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
-                val determinedLang = determineLanguage(ctx, lang)
+                val locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getSourcesFeed(BASE_URL, pageNumber ?: 1, determinedLang)
+                        OpdsFeedBuilder.getSourcesFeed(BASE_URL, pageNumber ?: 1, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -213,10 +183,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
-                val determinedLang = determineLanguage(ctx, lang)
+                val locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getCategoriesFeed(BASE_URL, pageNumber ?: 1, determinedLang)
+                        OpdsFeedBuilder.getCategoriesFeed(BASE_URL, pageNumber ?: 1, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -239,10 +209,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
-                val determinedLang = determineLanguage(ctx, lang)
+                val locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getGenresFeed(BASE_URL, pageNumber ?: 1, determinedLang)
+                        OpdsFeedBuilder.getGenresFeed(BASE_URL, pageNumber ?: 1, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -267,10 +237,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
-                val determinedLang = determineLanguage(ctx, lang)
+                val locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getStatusFeed(BASE_URL, pageNumber ?: 1, determinedLang)
+                        OpdsFeedBuilder.getStatusFeed(BASE_URL, pageNumber ?: 1, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -295,10 +265,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, lang ->
-                val determinedLang = determineLanguage(ctx, lang)
+                val locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getLanguagesFeed(BASE_URL, determinedLang)
+                        OpdsFeedBuilder.getLanguagesFeed(BASE_URL, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -327,10 +297,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, mangaId, pageNumber, sort, filter, lang ->
-                val determinedLang = determineLanguage(ctx, lang)
+                val locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getMangaFeed(mangaId, BASE_URL, pageNumber ?: 1, sort, filter, determinedLang)
+                        OpdsFeedBuilder.getMangaFeed(mangaId, BASE_URL, pageNumber ?: 1, sort, filter, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -357,10 +327,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, mangaId, chapterId, lang ->
-                val determinedLang = determineLanguage(ctx, lang)
+                val locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getChapterMetadataFeed(mangaId, chapterId, BASE_URL, determinedLang)
+                        OpdsFeedBuilder.getChapterMetadataFeed(mangaId, chapterId, BASE_URL, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -385,10 +355,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, sourceId, pageNumber, lang ->
-                val determinedLang = determineLanguage(ctx, lang)
+                val locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getSourceFeed(sourceId, BASE_URL, pageNumber ?: 1, determinedLang)
+                        OpdsFeedBuilder.getSourceFeed(sourceId, BASE_URL, pageNumber ?: 1, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -413,10 +383,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, categoryId, pageNumber, lang ->
-                val determinedLang = determineLanguage(ctx, lang)
+                val locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getCategoryFeed(categoryId, BASE_URL, pageNumber ?: 1, determinedLang)
+                        OpdsFeedBuilder.getCategoryFeed(categoryId, BASE_URL, pageNumber ?: 1, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -441,10 +411,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, genre, pageNumber, lang ->
-                val determinedLang = determineLanguage(ctx, lang)
+                val locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getGenreFeed(genre, BASE_URL, pageNumber ?: 1, determinedLang)
+                        OpdsFeedBuilder.getGenreFeed(genre, BASE_URL, pageNumber ?: 1, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -469,10 +439,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, statusId, pageNumber, lang ->
-                val determinedLang = determineLanguage(ctx, lang)
+                val locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getStatusMangaFeed(statusId, BASE_URL, pageNumber ?: 1, determinedLang)
+                        OpdsFeedBuilder.getStatusMangaFeed(statusId, BASE_URL, pageNumber ?: 1, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -497,10 +467,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, contentLangCodePath, pageNumber, uiLangParam ->
-                val determinedUiLang = determineLanguage(ctx, uiLangParam)
+                val locale = LocalizationHelper.ctxToLocale(ctx, uiLangParam)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getLanguageFeed(contentLangCodePath, BASE_URL, pageNumber ?: 1, determinedUiLang)
+                        OpdsFeedBuilder.getLanguageFeed(contentLangCodePath, BASE_URL, pageNumber ?: 1, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -524,10 +494,10 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
-                val determinedLang = determineLanguage(ctx, lang)
+                val locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getLibraryUpdatesFeed(BASE_URL, pageNumber ?: 1, determinedLang)
+                        OpdsFeedBuilder.getLibraryUpdatesFeed(BASE_URL, pageNumber ?: 1, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }

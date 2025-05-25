@@ -85,6 +85,9 @@ dependencies {
     implementation(projects.androidCompat)
     implementation(projects.androidCompat.config)
 
+    // i18n
+    implementation(projects.server.i18n)
+
     // uncomment to test extensions directly
 //    implementation(fileTree("lib/"))
     implementation(kotlin("script-runtime"))

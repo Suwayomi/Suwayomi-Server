@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.opds.impl
 
+import dev.icerock.moko.resources.StringResource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.sql.JoinType
@@ -11,7 +12,7 @@ import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.i18n.LocalizationService
+import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper.getArchiveStreamWithSize
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
@@ -41,6 +42,7 @@ import suwayomi.tachidesk.opds.util.OpdsStringUtil.encodeForOpdsURL
 import suwayomi.tachidesk.opds.util.OpdsStringUtil.formatFileSizeForOpds
 import suwayomi.tachidesk.opds.util.OpdsXmlUtil
 import suwayomi.tachidesk.server.serverConfig
+import java.util.Locale
 
 object OpdsFeedBuilder {
     private val opdsItemsPerPageBounded: Int
@@ -48,41 +50,88 @@ object OpdsFeedBuilder {
 
     private val formattedNow: String get() = OpdsDateUtil.formatCurrentInstantForOpds()
 
+    sealed class FeedSections(
+        val type: String,
+        val title: StringResource,
+        val description: StringResource,
+    ) {
+        data object Mangas : FeedSections(
+            OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
+            MR.strings.opds_feeds_all_manga_title,
+            MR.strings.opds_feeds_all_manga_description,
+        )
+
+        data object Sources : FeedSections(
+            OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
+            MR.strings.opds_feeds_sources_title,
+            MR.strings.opds_feeds_sources_description,
+        )
+
+        data object Categories : FeedSections(
+            OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
+            MR.strings.opds_feeds_categories_title,
+            MR.strings.opds_feeds_categories_description,
+        )
+
+        data object Genres : FeedSections(
+            OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
+            MR.strings.opds_feeds_genres_title,
+            MR.strings.opds_feeds_genres_description,
+        )
+
+        data object Status : FeedSections(
+            OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
+            MR.strings.opds_feeds_status_title,
+            MR.strings.opds_feeds_status_description,
+        )
+
+        data object Languages : FeedSections(
+            OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
+            MR.strings.opds_feeds_languages_title,
+            MR.strings.opds_feeds_languages_description,
+        )
+
+        data object LibraryUpdates : FeedSections(
+            OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
+            MR.strings.opds_feeds_library_updates_title,
+            MR.strings.opds_feeds_library_updates_description,
+        )
+
+        companion object {
+            val sections by lazy {
+                mapOf(
+                    "mangas" to Mangas,
+                    "sources" to Sources,
+                    "categories" to Categories,
+                    "genres" to Genres,
+                    "status" to Status,
+                    "languages" to Languages,
+                    "library-updates" to LibraryUpdates,
+                )
+            }
+        }
+    }
+
     fun getRootFeed(
         baseUrl: String,
-        langCode: String,
+        locale: Locale,
     ): String {
-        val rootSections =
-            mapOf(
-                "mangas" to (OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION to "opds.feeds.allManga"),
-                "sources" to (OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION to "opds.feeds.sources"),
-                "categories" to (OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION to "opds.feeds.categories"),
-                "genres" to (OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION to "opds.feeds.genres"),
-                "status" to (OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION to "opds.feeds.status"),
-                "languages" to (OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION to "opds.feeds.languages"),
-                "library-updates" to (OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION to "opds.feeds.libraryUpdates"),
-            )
+        val rootSections = FeedSections.sections
 
         val builder =
             FeedBuilder(
                 baseUrl = baseUrl,
                 pageNum = 1,
                 idWithoutParams = "root",
-                titleKeyOrActual = "opds.feeds.root",
-                langCode = langCode,
+                titleKey = MR.strings.opds_feeds_root,
+                locale = locale,
                 isPaginated = false,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
             ).apply {
                 totalResults = rootSections.size.toLong()
                 entries +=
-                    rootSections.map { (id, typeAndTitleKey) ->
-                        val (entryLinkType, titleKeyBase) = typeAndTitleKey
-                        val localizedTitle =
-                            LocalizationService.getString(
-                                langCode,
-                                "$titleKeyBase.title",
-                                defaultValue = id.replaceFirstChar { it.titlecase() },
-                            )
+                    rootSections.map { (id, type) ->
+                        val localizedTitle = type.title.localized(locale)
                         OpdsEntryXml(
                             id = "section_$id",
                             title = localizedTitle,
@@ -91,20 +140,15 @@ object OpdsFeedBuilder {
                                 listOf(
                                     OpdsLinkXml(
                                         rel = OpdsConstants.LINK_REL_SUBSECTION,
-                                        href = "$baseUrl/$id?lang=$langCode",
-                                        type = entryLinkType,
+                                        href = "$baseUrl/$id?lang=${locale.toLanguageTag()}",
+                                        type = type.type,
                                         title = localizedTitle,
                                     ),
                                 ),
                             content =
                                 OpdsContentXml(
                                     type = "text",
-                                    value =
-                                        LocalizationService.getString(
-                                            langCode,
-                                            "$titleKeyBase.description",
-                                            defaultValue = "Browse $localizedTitle",
-                                        ),
+                                    value = type.description.localized(locale),
                                 ),
                         )
                     }
@@ -116,7 +160,7 @@ object OpdsFeedBuilder {
         criteria: OpdsSearchCriteria?,
         baseUrl: String,
         pageNum: Int,
-        langCode: String,
+        locale: Locale,
     ): String {
         val (mangas, total) =
             transaction {
@@ -155,7 +199,7 @@ object OpdsFeedBuilder {
             }
 
         val feedId = "mangas"
-        val titleKey = if (criteria == null) "opds.feeds.allManga" else "opds.feeds.searchResults"
+        val titleKey = if (criteria == null) MR.strings.opds_feeds_all_manga_title else MR.strings.opds_feeds_search_results
         val searchQuery =
             criteria
                 ?.let { c ->
@@ -171,14 +215,14 @@ object OpdsFeedBuilder {
                 baseUrl = baseUrl,
                 pageNum = pageNum,
                 idWithoutParams = feedId,
-                titleKeyOrActual = titleKey,
+                titleKey = titleKey,
                 searchQuery = criteria?.query,
-                langCode = langCode,
+                locale = locale,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
             ).apply {
                 totalResults = total
                 this.explicitQueryParams = searchQuery
-                entries += mangas.map { mangaEntry(it, baseUrl, formattedNow, langCode) }
+                entries += mangas.map { mangaEntry(it, baseUrl, formattedNow, locale) }
             }
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
@@ -186,7 +230,7 @@ object OpdsFeedBuilder {
     fun getSourcesFeed(
         baseUrl: String,
         pageNum: Int,
-        langCode: String,
+        locale: Locale,
     ): String {
         val (sourceList, totalCount) =
             transaction {
@@ -223,8 +267,8 @@ object OpdsFeedBuilder {
                 baseUrl = baseUrl,
                 pageNum = pageNum,
                 idWithoutParams = "sources",
-                titleKeyOrActual = "opds.feeds.sources",
-                langCode = langCode,
+                titleKey = MR.strings.opds_feeds_sources_title,
+                locale = locale,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
             ).apply {
                 totalResults = totalCount
@@ -238,7 +282,7 @@ object OpdsFeedBuilder {
                                 listOf(
                                     OpdsLinkXml(
                                         rel = OpdsConstants.LINK_REL_SUBSECTION,
-                                        href = "$baseUrl/source/${it.id}?lang=$langCode",
+                                        href = "$baseUrl/source/${it.id}?lang=${locale.toLanguageTag()}",
                                         type = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                                         title = it.name,
                                     ),
@@ -253,7 +297,7 @@ object OpdsFeedBuilder {
     fun getCategoriesFeed(
         baseUrl: String,
         pageNum: Int,
-        langCode: String,
+        locale: Locale,
     ): String {
         val (categoryList, total) =
             transaction {
@@ -279,25 +323,24 @@ object OpdsFeedBuilder {
                 baseUrl = baseUrl,
                 pageNum = pageNum,
                 idWithoutParams = "categories",
-                titleKeyOrActual = "opds.feeds.categories",
-                langCode = langCode,
+                titleKey = MR.strings.opds_feeds_categories_title,
+                locale = locale,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
             ).apply {
                 totalResults = total
                 entries +=
                     categoryList.map { (id, name) ->
-                        val categoryTitle = LocalizationService.getString(langCode, "category.$id.name", defaultValue = name)
                         OpdsEntryXml(
                             id = "category_nav_$id",
-                            title = categoryTitle,
+                            title = name,
                             updated = formattedNow,
                             link =
                                 listOf(
                                     OpdsLinkXml(
                                         rel = OpdsConstants.LINK_REL_SUBSECTION,
-                                        href = "$baseUrl/category/$id?lang=$langCode",
+                                        href = "$baseUrl/category/$id?lang=${locale.toLanguageTag()}",
                                         type = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
-                                        title = categoryTitle,
+                                        title = name,
                                     ),
                                 ),
                         )
@@ -309,7 +352,7 @@ object OpdsFeedBuilder {
     fun getGenresFeed(
         baseUrl: String,
         pageNum: Int,
-        langCode: String,
+        locale: Locale,
     ): String {
         val genres =
             transaction {
@@ -332,30 +375,24 @@ object OpdsFeedBuilder {
                 baseUrl = baseUrl,
                 pageNum = pageNum,
                 idWithoutParams = "genres",
-                titleKeyOrActual = "opds.feeds.genres",
-                langCode = langCode,
+                titleKey = MR.strings.opds_feeds_genres_title,
+                locale = locale,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
             ).apply {
                 this.totalResults = totalCount
                 entries +=
                     paginatedGenres.map { genre ->
-                        val localizedGenre =
-                            LocalizationService.getString(
-                                langCode,
-                                "genre.${genre.lowercase().replace(" ", "_")}",
-                                defaultValue = genre,
-                            )
                         OpdsEntryXml(
                             id = "genre_nav_${genre.encodeForOpdsURL()}",
-                            title = localizedGenre,
+                            title = genre,
                             updated = formattedNow,
                             link =
                                 listOf(
                                     OpdsLinkXml(
                                         rel = OpdsConstants.LINK_REL_SUBSECTION,
-                                        href = "$baseUrl/genre/${genre.encodeForOpdsURL()}?lang=$langCode",
+                                        href = "$baseUrl/genre/${genre.encodeForOpdsURL()}?lang=${locale.toLanguageTag()}",
                                         type = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
-                                        title = localizedGenre,
+                                        title = genre,
                                     ),
                                 ),
                         )
@@ -367,7 +404,7 @@ object OpdsFeedBuilder {
     fun getStatusFeed(
         baseUrl: String,
         pageNum: Int,
-        langCode: String,
+        locale: Locale,
     ): String {
         val statuses = MangaStatus.entries.sortedBy { it.value }
         val totalCount = statuses.size.toLong()
@@ -382,24 +419,20 @@ object OpdsFeedBuilder {
                 baseUrl = baseUrl,
                 pageNum = currentPageNum,
                 idWithoutParams = "status",
-                titleKeyOrActual = "opds.feeds.status",
-                langCode = langCode,
+                titleKey = MR.strings.opds_feeds_status_title,
+                locale = locale,
                 isPaginated = isStatusListPaginated,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
             ).apply {
                 totalResults = totalCount
                 entries +=
                     paginatedStatuses.map { status ->
+                        // todo: Localize this later
                         val statusTitle =
-                            LocalizationService.getString(
-                                langCode,
-                                "manga.status.${status.name.lowercase()}",
-                                defaultValue =
-                                    status.name
-                                        .lowercase()
-                                        .replace('_', ' ')
-                                        .replaceFirstChar { it.uppercase() },
-                            )
+                            status.name
+                                .lowercase()
+                                .replace('_', ' ')
+                                .replaceFirstChar { it.uppercase() }
                         OpdsEntryXml(
                             id = "status_nav_val_${status.value}",
                             title = statusTitle,
@@ -408,7 +441,7 @@ object OpdsFeedBuilder {
                                 listOf(
                                     OpdsLinkXml(
                                         rel = OpdsConstants.LINK_REL_SUBSECTION,
-                                        href = "$baseUrl/status/${status.value}?lang=$langCode",
+                                        href = "$baseUrl/status/${status.value}?lang=${locale.toLanguageTag()}",
                                         type = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                                         title = statusTitle,
                                     ),
@@ -421,7 +454,7 @@ object OpdsFeedBuilder {
 
     fun getLanguagesFeed(
         baseUrl: String,
-        uiLangCode: String,
+        uiLocale: Locale,
     ): String {
         val contentLanguages =
             transaction {
@@ -439,20 +472,15 @@ object OpdsFeedBuilder {
                 baseUrl = baseUrl,
                 pageNum = 1,
                 idWithoutParams = "languages",
-                titleKeyOrActual = "opds.feeds.languages",
-                langCode = uiLangCode,
+                titleKey = MR.strings.opds_feeds_languages_title,
+                locale = uiLocale,
                 isPaginated = false,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
             ).apply {
                 totalResults = contentLanguages.size.toLong()
                 entries +=
                     contentLanguages.map { contentLang ->
-                        val contentLangTitle =
-                            LocalizationService.getString(
-                                uiLangCode,
-                                "language.$contentLang",
-                                defaultValue = contentLang.uppercase(),
-                            )
+                        val contentLangTitle = Locale.forLanguageTag(contentLang).displayLanguage
                         OpdsEntryXml(
                             id = "language_nav_code_$contentLang",
                             title = contentLangTitle,
@@ -461,7 +489,7 @@ object OpdsFeedBuilder {
                                 listOf(
                                     OpdsLinkXml(
                                         rel = OpdsConstants.LINK_REL_SUBSECTION,
-                                        href = "$baseUrl/language/$contentLang?lang=$uiLangCode",
+                                        href = "$baseUrl/language/$contentLang?lang=${locale.toLanguageTag()}",
                                         type = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                                         title = contentLangTitle,
                                     ),
@@ -478,7 +506,7 @@ object OpdsFeedBuilder {
         pageNum: Int,
         sortParam: String?,
         filterParam: String?,
-        langCode: String,
+        locale: Locale,
     ): String {
         val (orderColumn, currentSortOrder) =
             when (sortParam?.lowercase()) {
@@ -519,26 +547,21 @@ object OpdsFeedBuilder {
             }
 
         if (manga == null) {
-            val errorTitle = LocalizationService.getString(langCode, "opds.error.mangaNotFound", defaultValue = "Manga not found")
+            val errorTitle = "Manga not found" // todo: Localize this later
             return FeedBuilder(
                 baseUrl,
                 1,
                 "manga/$mangaId/error",
-                errorTitle,
-                langCode = langCode,
+                null,
+                title = errorTitle,
+                locale = locale,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
             ).apply { totalResults = 0 }
                 .build()
                 .let(OpdsXmlUtil::serializeFeedToString)
         }
 
-        val feedTitle =
-            LocalizationService.getString(
-                langCode,
-                "opds.feeds.mangaChapters",
-                manga.title,
-                defaultValue = "${manga.title} Chapters",
-            )
+        val feedTitle = MR.strings.opds_feeds_manga_chapters.localized(locale, manga.title)
         val actualSortParamForBuilder =
             sortParam
                 ?: ((if (orderColumn == ChapterTable.sourceOrder) "number_" else "date_") + currentSortOrder.name.lowercase())
@@ -548,10 +571,11 @@ object OpdsFeedBuilder {
                 baseUrl = baseUrl,
                 pageNum = pageNum,
                 idWithoutParams = "manga/$mangaId",
-                titleKeyOrActual = feedTitle,
+                titleKey = null,
+                title = feedTitle,
                 currentSort = actualSortParamForBuilder,
                 currentFilter = currentFilter,
-                langCode = langCode,
+                locale = locale,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
             ).apply {
                 this.totalResults = totalCount
@@ -563,39 +587,24 @@ object OpdsFeedBuilder {
                 }
 
                 val baseMangaUrlForFacets = "$baseUrl/manga/$mangaId"
-                val sortFacetGroup =
-                    LocalizationService.getString(
-                        langCode,
-                        "opds.facetgroup.sortOrder",
-                        defaultValue = "Sort Order",
-                    )
+                val sortFacetGroup = MR.strings.opds_facetgroup_sort_order.localized(locale)
 
                 // Number-based sort facets
                 links +=
                     OpdsLinkXml(
                         rel = OpdsConstants.LINK_REL_FACET,
-                        href = "$baseMangaUrlForFacets?sort=number_asc&filter=$currentFilter&lang=$langCode",
+                        href = "$baseMangaUrlForFacets?sort=number_asc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
                         type = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
-                        title =
-                            LocalizationService.getString(
-                                langCode,
-                                "opds.facet.sort.oldestFirst",
-                                defaultValue = "Oldest First",
-                            ),
+                        title = MR.strings.opds_facet_sort_oldest_first.localized(locale),
                         facetGroup = sortFacetGroup,
                         activeFacet = (currentSortOrder == SortOrder.ASC && orderColumn == ChapterTable.sourceOrder),
                     )
                 links +=
                     OpdsLinkXml(
                         rel = OpdsConstants.LINK_REL_FACET,
-                        href = "$baseMangaUrlForFacets?sort=number_desc&filter=$currentFilter&lang=$langCode",
+                        href = "$baseMangaUrlForFacets?sort=number_desc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
                         type = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
-                        title =
-                            LocalizationService.getString(
-                                langCode,
-                                "opds.facet.sort.newestFirst",
-                                defaultValue = "Newest First",
-                            ),
+                        title = MR.strings.opds_facet_sort_newest_first.localized(locale),
                         facetGroup = sortFacetGroup,
                         activeFacet = (currentSortOrder == SortOrder.DESC && orderColumn == ChapterTable.sourceOrder),
                     )
@@ -604,82 +613,52 @@ object OpdsFeedBuilder {
                 links +=
                     OpdsLinkXml(
                         rel = OpdsConstants.LINK_REL_FACET,
-                        href = "$baseMangaUrlForFacets?sort=date_asc&filter=$currentFilter&lang=$langCode",
+                        href = "$baseMangaUrlForFacets?sort=date_asc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
                         type = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
-                        title =
-                            LocalizationService.getString(
-                                langCode,
-                                "opds.facet.sort.dateAsc",
-                                defaultValue = "Date ascending",
-                            ),
+                        title = MR.strings.opds_facet_sort_date_asc.localized(locale),
                         facetGroup = sortFacetGroup,
                         activeFacet = (currentSortOrder == SortOrder.ASC && orderColumn == ChapterTable.date_upload),
                     )
                 links +=
                     OpdsLinkXml(
                         rel = OpdsConstants.LINK_REL_FACET,
-                        href = "$baseMangaUrlForFacets?sort=date_desc&filter=$currentFilter&lang=$langCode",
+                        href = "$baseMangaUrlForFacets?sort=date_desc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
                         type = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
-                        title =
-                            LocalizationService.getString(
-                                langCode,
-                                "opds.facet.sort.dateDesc",
-                                defaultValue = "Date descending",
-                            ),
+                        title = MR.strings.opds_facet_sort_date_desc.localized(locale),
                         facetGroup = sortFacetGroup,
                         activeFacet = (currentSortOrder == SortOrder.DESC && orderColumn == ChapterTable.date_upload),
                     )
 
                 // Filter facets
-                val filterFacetGroup =
-                    LocalizationService.getString(
-                        langCode,
-                        "opds.facetgroup.readStatus",
-                        defaultValue = "Read Status",
-                    )
+                val filterFacetGroup = MR.strings.opds_facetgroup_read_status.localized(locale)
                 links +=
                     OpdsLinkXml(
                         rel = OpdsConstants.LINK_REL_FACET,
-                        href = "$baseMangaUrlForFacets?filter=all&sort=$actualSortParamForBuilder&lang=$langCode",
+                        href = "$baseMangaUrlForFacets?filter=all&sort=$actualSortParamForBuilder&lang=${locale.toLanguageTag()}",
                         type = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
-                        title =
-                            LocalizationService.getString(
-                                langCode,
-                                "opds.facet.filter.allChapters",
-                                defaultValue = "All Chapters",
-                            ),
+                        title = MR.strings.opds_facet_filter_all_chapters.localized(locale),
                         facetGroup = filterFacetGroup,
                         activeFacet = (currentFilter == "all"),
                     )
                 links +=
                     OpdsLinkXml(
                         rel = OpdsConstants.LINK_REL_FACET,
-                        href = "$baseMangaUrlForFacets?filter=unread&sort=$actualSortParamForBuilder&lang=$langCode",
+                        href = "$baseMangaUrlForFacets?filter=unread&sort=$actualSortParamForBuilder&lang=${locale.toLanguageTag()}",
                         type = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
-                        title =
-                            LocalizationService.getString(
-                                langCode,
-                                "opds.facet.filter.unreadOnly",
-                                defaultValue = "Unread Only",
-                            ),
+                        title = MR.strings.opds_facet_filter_unread_only.localized(locale),
                         facetGroup = filterFacetGroup,
                         activeFacet = (currentFilter == "unread"),
                     )
                 links +=
                     OpdsLinkXml(
                         rel = OpdsConstants.LINK_REL_FACET,
-                        href = "$baseMangaUrlForFacets?filter=read&sort=$actualSortParamForBuilder&lang=$langCode",
+                        href = "$baseMangaUrlForFacets?filter=read&sort=$actualSortParamForBuilder&lang=${locale.toLanguageTag()}",
                         type = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
-                        title =
-                            LocalizationService.getString(
-                                langCode,
-                                "opds.facet.filter.readOnly",
-                                defaultValue = "Read Only",
-                            ),
+                        title = MR.strings.opds_facet_filter_read_only.localized(locale),
                         facetGroup = filterFacetGroup,
                         activeFacet = (currentFilter == "read"),
                     )
-                entries += chapters.map { createChapterEntry(it, manga, baseUrl, isMetaDataEntry = false, langCode = langCode) }
+                entries += chapters.map { createChapterEntry(it, manga, baseUrl, isMetaDataEntry = false, locale = locale) }
             }
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
@@ -688,7 +667,7 @@ object OpdsFeedBuilder {
         mangaId: Int,
         chapterIndexFromPath: Int,
         baseUrl: String,
-        langCode: String,
+        locale: Locale,
     ): String {
         // 1. Get manga data
         val mangaData =
@@ -703,19 +682,15 @@ object OpdsFeedBuilder {
             }
 
         if (mangaData == null) {
-            val errorTitle =
-                LocalizationService.getString(
-                    langCode,
-                    "opds.error.mangaNotFound",
-                    mangaId.toString(),
-                    defaultValue = "Manga with ID $mangaId not found",
-                )
+            // todo: Localize
+            val errorTitle = "Manga with ID $mangaId not found"
             return FeedBuilder(
                 baseUrl,
                 1,
                 "manga/$mangaId/chapter/$chapterIndexFromPath/error",
-                errorTitle,
-                langCode = langCode,
+                titleKey = null,
+                title = errorTitle,
+                locale = locale,
                 isPaginated = false,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
             ).apply { totalResults = 0 }
@@ -728,20 +703,15 @@ object OpdsFeedBuilder {
             try {
                 getChapterDownloadReady(chapterIndex = chapterIndexFromPath, mangaId = mangaData.id)
             } catch (e: Exception) {
-                val errorTitle =
-                    LocalizationService.getString(
-                        langCode,
-                        "opds.error.chapterNotFoundForManga",
-                        chapterIndexFromPath.toString(),
-                        mangaData.title,
-                        defaultValue = "Chapter with index $chapterIndexFromPath not found for manga \"${mangaData.title}\"",
-                    )
+                // todo: Localize
+                val errorTitle = "Chapter with index $chapterIndexFromPath not found for manga \"${mangaData.title}\""
                 return FeedBuilder(
                     baseUrl,
                     1,
                     "manga/$mangaId/chapter/$chapterIndexFromPath/error",
-                    errorTitle,
-                    langCode = langCode,
+                    titleKey = null,
+                    title = errorTitle,
+                    locale = locale,
                     isPaginated = false,
                     feedType = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                 ).apply { totalResults = 0 }
@@ -750,25 +720,20 @@ object OpdsFeedBuilder {
             }
 
         // 3. Create feed entry for this chapter
-        val updatedEntry = createChapterEntry(updatedChapterData, mangaData, baseUrl, isMetaDataEntry = true, langCode = langCode)
+        val updatedEntry = createChapterEntry(updatedChapterData, mangaData, baseUrl, isMetaDataEntry = true, locale = locale)
 
         // 4. Build the feed
-        val feedTitle =
-            LocalizationService.getString(
-                langCode,
-                "opds.feeds.chapterDetails",
-                mangaData.title,
-                updatedChapterData.name,
-                defaultValue = "${mangaData.title} | ${updatedChapterData.name} | Details",
-            )
+        // todo: Localize
+        val feedTitle = "${mangaData.title} | ${updatedChapterData.name} | Details"
 
         val builder =
             FeedBuilder(
                 baseUrl = baseUrl,
                 pageNum = 1,
                 idWithoutParams = "manga/$mangaId/chapter/$chapterIndexFromPath/details",
-                titleKeyOrActual = feedTitle,
-                langCode = langCode,
+                titleKey = null,
+                title = feedTitle,
+                locale = locale,
                 isPaginated = false,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
             ).apply {
@@ -790,54 +755,33 @@ object OpdsFeedBuilder {
         baseUrl: String,
         isMetaDataEntry: Boolean,
         addMangaTitleInEntry: Boolean = false,
-        langCode: String,
+        locale: Locale,
     ): OpdsEntryXml {
         val chapterStatusKey =
             when {
-                isMetaDataEntry && chapter.downloaded -> "opds.chapter.status.downloaded"
-                chapter.read -> "opds.chapter.status.read"
-                chapter.lastPageRead > 0 -> "opds.chapter.status.inProgress"
-                else -> "opds.chapter.status.unread"
+                isMetaDataEntry && chapter.downloaded -> MR.strings.opds_chapter_status_downloaded
+                chapter.read -> MR.strings.opds_chapter_status_read
+                chapter.lastPageRead > 0 -> MR.strings.opds_chapter_status_in_progress
+                else -> MR.strings.opds_chapter_status_unread
             }
-        val entryTitlePrefix =
-            LocalizationService.getString(
-                langCode,
-                chapterStatusKey,
-                defaultValue = chapterStatusKey.substringAfterLast('.').uppercase(),
-            )
-        val entryTitle = entryTitlePrefix + (if (addMangaTitleInEntry) "${manga.title}: " else "") + "${chapter.name}"
+        val entryTitlePrefix = chapterStatusKey.localized(locale)
+        val entryTitle = entryTitlePrefix + (if (addMangaTitleInEntry) "${manga.title}: " else "") + chapter.name
 
         val chapterDetails =
             buildString {
                 append(
-                    LocalizationService.getString(
-                        langCode,
-                        "opds.chapter.details.base",
-                        manga.title,
-                        chapter.name,
-                        defaultValue = "Manga: ${manga.title}, Chapter: ${chapter.name}",
-                    ),
+                    MR.strings.opds_chapter_details_base
+                        .localized(locale, manga.title, chapter.name),
                 )
                 chapter.scanlator?.takeIf { it.isNotBlank() }?.let { scanlatorName ->
                     append(
-                        LocalizationService.getString(
-                            langCode,
-                            "opds.chapter.details.scanlator",
-                            scanlatorName,
-                            defaultValue = " | Scanlator: $scanlatorName",
-                        ),
+                        MR.strings.opds_chapter_details_scanlator.localized(locale, scanlatorName),
                     )
                 }
                 if (isMetaDataEntry || chapter.pageCount > 0) {
-                    val pageCountDisplay = chapter.pageCount.takeIf { it > 0 } ?: "?"
+                    val pageCountDisplay = chapter.pageCount.takeIf { it > 0 }?.toString() ?: "?"
                     append(
-                        LocalizationService.getString(
-                            langCode,
-                            "opds.chapter.details.progress",
-                            chapter.lastPageRead.toString(),
-                            pageCountDisplay.toString(),
-                            defaultValue = " | Progress: ${chapter.lastPageRead}/$pageCountDisplay",
-                        ),
+                        MR.strings.opds_chapter_details_progress.localized(locale, chapter.lastPageRead, pageCountDisplay),
                     )
                 }
             }
@@ -857,7 +801,7 @@ object OpdsFeedBuilder {
                         rel = OpdsConstants.LINK_REL_ACQUISITION_OPEN_ACCESS,
                         href = "/api/v1/chapter/${chapter.id}/download?markAsRead=${serverConfig.opdsMarkAsReadOnDownload.value}",
                         type = OpdsConstants.TYPE_CBZ,
-                        title = LocalizationService.getString(langCode, "opds.linktitle.downloadCbz"),
+                        title = MR.strings.opds_linktitle_download_cbz.localized(locale),
                     ),
                 )
             }
@@ -871,7 +815,7 @@ object OpdsFeedBuilder {
                         rel = OpdsConstants.LINK_REL_PSE_STREAM,
                         href = pageUrl,
                         type = OpdsConstants.TYPE_IMAGE_JPEG,
-                        title = LocalizationService.getString(langCode, "opds.linktitle.streamPages"),
+                        title = MR.strings.opds_linktitle_stream_pages.localized(locale),
                         pseCount = pageCountForPse,
                         pseLastRead = chapter.lastPageRead.takeIf { it > 0 },
                         pseLastReadDate =
@@ -885,7 +829,7 @@ object OpdsFeedBuilder {
                         rel = OpdsConstants.LINK_REL_IMAGE,
                         href = "/api/v1/manga/${manga.id}/chapter/${chapter.index}/page/0",
                         type = OpdsConstants.TYPE_IMAGE_JPEG,
-                        title = LocalizationService.getString(langCode, "opds.linktitle.chapterCover"),
+                        title = MR.strings.opds_linktitle_chapter_cover.localized(locale),
                     ),
                 )
             }
@@ -893,14 +837,9 @@ object OpdsFeedBuilder {
             links.add(
                 OpdsLinkXml(
                     rel = OpdsConstants.LINK_REL_SUBSECTION,
-                    href = "$baseUrl/manga/${manga.id}/chapter/${chapter.index}/fetch?lang=$langCode",
+                    href = "$baseUrl/manga/${manga.id}/chapter/${chapter.index}/fetch?lang=${locale.toLanguageTag()}",
                     type = OpdsConstants.TYPE_ATOM_XML_ENTRY_PROFILE_OPDS,
-                    title =
-                        LocalizationService.getString(
-                            langCode,
-                            "opds.linktitle.viewChapterDetails",
-                            defaultValue = "View Chapter Details & Get Pages",
-                        ),
+                    title = MR.strings.opds_linktitle_view_chapter_details.localized(locale),
                 ),
             )
         }
@@ -931,7 +870,7 @@ object OpdsFeedBuilder {
         sourceId: Long,
         baseUrl: String,
         pageNum: Int,
-        langCode: String,
+        locale: Locale,
     ): String {
         val (mangas, total, sourceInfo) =
             transaction {
@@ -962,25 +901,20 @@ object OpdsFeedBuilder {
             }
 
         val (sourceName, iconApkName, _) = sourceInfo
-        val feedActualTitle =
-            sourceName ?: LocalizationService.getString(
-                langCode,
-                "opds.source.unknown",
-                sourceId.toString(),
-                defaultValue = "Source $sourceId",
-            )
+        val feedActualTitle = sourceName ?: "Source $sourceId" // todo: Localize
         val builder =
             FeedBuilder(
                 baseUrl,
                 pageNum,
                 "source/$sourceId",
-                feedActualTitle,
-                langCode = langCode,
+                titleKey = null,
+                title = feedActualTitle,
+                locale = locale,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
             ).apply {
                 this.totalResults = total
                 this.icon = iconApkName?.let { getExtensionIconUrl(it) }
-                entries += mangas.map { mangaEntry(it, baseUrl, formattedNow, langCode) }
+                entries += mangas.map { mangaEntry(it, baseUrl, formattedNow, locale) }
             }
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
@@ -989,21 +923,16 @@ object OpdsFeedBuilder {
         categoryId: Int,
         baseUrl: String,
         pageNum: Int,
-        langCode: String,
+        locale: Locale,
     ): String {
-        val (mangas, total, categoryNameFromDb) =
+        val (mangas, total, categoryName) =
             transaction {
                 val catRow = CategoryTable.selectAll().where { CategoryTable.id eq categoryId }.firstOrNull()
                 if (catRow == null) {
                     Triple(
                         emptyList(),
                         0L,
-                        LocalizationService.getString(
-                            langCode,
-                            "opds.category.unknown",
-                            categoryId.toString(),
-                            defaultValue = "Unknown Category",
-                        ),
+                        "Unknown Category", // todo: Localize
                     )
                 } else {
                     val cName = catRow[CategoryTable.name]
@@ -1025,25 +954,20 @@ object OpdsFeedBuilder {
                     Triple(mangaResults, totalCount, cName)
                 }
             }
-        val localizedCategoryName = LocalizationService.getString(langCode, "category.$categoryId.name", defaultValue = categoryNameFromDb)
-        val feedTitle =
-            LocalizationService.getString(
-                langCode,
-                "opds.feeds.categorySpecific",
-                localizedCategoryName,
-                defaultValue = "Category: $localizedCategoryName",
-            )
+        // todo: Localize
+        val feedTitle = "Category: $categoryName"
         val builder =
             FeedBuilder(
                 baseUrl,
                 pageNum,
                 "category/$categoryId",
-                feedTitle,
-                langCode = langCode,
+                titleKey = null,
+                title = feedTitle,
+                locale = locale,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
             ).apply {
                 this.totalResults = total
-                entries += mangas.map { mangaEntry(it, baseUrl, formattedNow, langCode) }
+                entries += mangas.map { mangaEntry(it, baseUrl, formattedNow, locale) }
             }
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
@@ -1052,7 +976,7 @@ object OpdsFeedBuilder {
         genre: String,
         baseUrl: String,
         pageNum: Int,
-        langCode: String,
+        locale: Locale,
     ): String {
         val (mangas, total) =
             transaction {
@@ -1072,30 +996,19 @@ object OpdsFeedBuilder {
                         .map { MangaTable.toDataClass(it, includeMangaMeta = false).copy(sourceLang = it[SourceTable.lang]) }
                 Pair(mangaResults, totalCount)
             }
-        val localizedGenre =
-            LocalizationService.getString(
-                langCode,
-                "genre.${genre.lowercase().replace(" ", "_")}",
-                defaultValue = genre,
-            )
-        val feedTitle =
-            LocalizationService.getString(
-                langCode,
-                "opds.feeds.genreSpecific",
-                localizedGenre,
-                defaultValue = "Genre: $localizedGenre",
-            )
+        val feedTitle = "Genre: $genre"
         val builder =
             FeedBuilder(
                 baseUrl,
                 pageNum,
                 "genre/${genre.encodeForOpdsURL()}",
-                feedTitle,
-                langCode = langCode,
+                titleKey = null,
+                title = feedTitle,
+                locale = locale,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
             ).apply {
                 this.totalResults = total
-                entries += mangas.map { mangaEntry(it, baseUrl, formattedNow, langCode) }
+                entries += mangas.map { mangaEntry(it, baseUrl, formattedNow, locale) }
             }
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
@@ -1104,15 +1017,11 @@ object OpdsFeedBuilder {
         statusId: Long,
         baseUrl: String,
         pageNum: Int,
-        langCode: String,
+        locale: Locale,
     ): String {
         val statusEnum = MangaStatus.valueOf(statusId.toInt())
-        val statusName =
-            LocalizationService.getString(
-                langCode,
-                "manga.status.${statusEnum.name.lowercase()}",
-                defaultValue = statusEnum.name.lowercase().replaceFirstChar { it.uppercase() },
-            )
+        // todo: Localize
+        val statusName = statusEnum.name.lowercase().replaceFirstChar { it.uppercase() }
         val (mangas, total) =
             transaction {
                 val query =
@@ -1131,24 +1040,19 @@ object OpdsFeedBuilder {
                         .map { MangaTable.toDataClass(it, includeMangaMeta = false).copy(sourceLang = it[SourceTable.lang]) }
                 Pair(mangaResults, totalCount)
             }
-        val feedTitle =
-            LocalizationService.getString(
-                langCode,
-                "opds.feeds.statusSpecific",
-                statusName,
-                defaultValue = "Status: $statusName",
-            )
+        val feedTitle = "Status: $statusName"
         val builder =
             FeedBuilder(
                 baseUrl,
                 pageNum,
                 "status/$statusId",
-                feedTitle,
-                langCode = langCode,
+                titleKey = null,
+                title = feedTitle,
+                locale = locale,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
             ).apply {
                 this.totalResults = total
-                entries += mangas.map { mangaEntry(it, baseUrl, formattedNow, langCode) }
+                entries += mangas.map { mangaEntry(it, baseUrl, formattedNow, locale) }
             }
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
@@ -1157,7 +1061,7 @@ object OpdsFeedBuilder {
         contentLangCode: String,
         baseUrl: String,
         pageNum: Int,
-        uiLangCode: String,
+        uiLocale: Locale,
     ): String {
         val (mangas, total) =
             transaction {
@@ -1177,30 +1081,21 @@ object OpdsFeedBuilder {
                         .map { MangaTable.toDataClass(it, includeMangaMeta = false).copy(sourceLang = it[SourceTable.lang]) }
                 Pair(mangaResults, totalCount)
             }
-        val languageDisplayName =
-            LocalizationService.getString(
-                uiLangCode,
-                "language.$contentLangCode",
-                defaultValue = contentLangCode.uppercase(),
-            )
-        val feedTitle =
-            LocalizationService.getString(
-                uiLangCode,
-                "opds.feeds.languageSpecific",
-                languageDisplayName,
-                defaultValue = "Language: $languageDisplayName",
-            )
+        val languageDisplayName = Locale.forLanguageTag(contentLangCode).displayName
+        // todo: Localize
+        val feedTitle = "Language: $languageDisplayName"
         val builder =
             FeedBuilder(
                 baseUrl,
                 pageNum,
                 "language/$contentLangCode",
-                feedTitle,
-                langCode = uiLangCode,
+                titleKey = null,
+                title = feedTitle,
+                locale = uiLocale,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
             ).apply {
                 this.totalResults = total
-                entries += mangas.map { mangaEntry(it, baseUrl, formattedNow, uiLangCode) }
+                entries += mangas.map { mangaEntry(it, baseUrl, formattedNow, uiLocale) }
             }
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
@@ -1208,7 +1103,7 @@ object OpdsFeedBuilder {
     fun getLibraryUpdatesFeed(
         baseUrl: String,
         pageNum: Int,
-        langCode: String,
+        locale: Locale,
     ): String {
         val (chapterToMangaMap, total) =
             transaction {
@@ -1235,14 +1130,14 @@ object OpdsFeedBuilder {
                 baseUrl,
                 pageNum,
                 "library-updates",
-                "opds.feeds.libraryUpdates",
-                langCode = langCode,
+                MR.strings.opds_feeds_library_updates_title,
+                locale = locale,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
             ).apply {
                 this.totalResults = total
                 entries +=
                     chapterToMangaMap.map { (chapter, manga) ->
-                        createChapterEntry(chapter, manga, baseUrl, false, true, langCode)
+                        createChapterEntry(chapter, manga, baseUrl, isMetaDataEntry = false, addMangaTitleInEntry = true, locale = locale)
                     }
             }
         return OpdsXmlUtil.serializeFeedToString(builder.build())
@@ -1252,12 +1147,13 @@ object OpdsFeedBuilder {
         val baseUrl: String,
         val pageNum: Int,
         val idWithoutParams: String,
-        var titleKeyOrActual: String,
+        val titleKey: StringResource?,
+        val title: String? = null,
         val searchQuery: String? = null,
         var explicitQueryParams: String? = null,
         val currentSort: String? = null,
         val currentFilter: String? = null,
-        val langCode: String,
+        val locale: Locale,
         val isPaginated: Boolean = true,
         val feedType: String,
     ) {
@@ -1268,11 +1164,7 @@ object OpdsFeedBuilder {
         val entries = mutableListOf<OpdsEntryXml>()
 
         private val feedTitle: String by lazy {
-            if (titleKeyOrActual.startsWith("opds.")) {
-                LocalizationService.getString(langCode, titleKeyOrActual, defaultValue = titleKeyOrActual.substringAfterLast('.'))
-            } else {
-                titleKeyOrActual
-            }
+            titleKey?.localized(locale) ?: title ?: ""
         }
 
         private fun buildUrlWithParams(
@@ -1292,7 +1184,7 @@ object OpdsFeedBuilder {
 
             currentSort?.let { queryParams.add("sort=$it") }
             currentFilter?.let { queryParams.add("filter=$it") }
-            queryParams.add("lang=$langCode")
+            queryParams.add("lang=${locale.toLanguageTag()}")
 
             return sb.append(queryParams.joinToString("&")).toString().replace("?&", "?")
         }
@@ -1309,31 +1201,23 @@ object OpdsFeedBuilder {
                     OpdsConstants.LINK_REL_SELF,
                     selfLinkHref,
                     feedType,
-                    LocalizationService.getString(langCode, "opds.linktitle.selfFeed", defaultValue = "Self Feed"),
+                    MR.strings.opds_linktitle_self_feed.localized(locale),
                 ),
             )
             feedLinks.add(
                 OpdsLinkXml(
                     OpdsConstants.LINK_REL_START,
-                    "$baseUrl?lang=$langCode",
+                    "$baseUrl?lang=${locale.toLanguageTag()}",
                     OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
-                    LocalizationService.getString(
-                        langCode,
-                        "opds.linktitle.catalogRoot",
-                        defaultValue = "Catalog Root",
-                    ),
+                    MR.strings.opds_linktitle_catalog_root.localized(locale),
                 ),
             )
             feedLinks.add(
                 OpdsLinkXml(
                     OpdsConstants.LINK_REL_SEARCH,
-                    "$baseUrl/search?lang=$langCode",
+                    "$baseUrl/search?lang=${locale.toLanguageTag()}",
                     OpdsConstants.TYPE_OPENSEARCH_DESCRIPTION,
-                    LocalizationService.getString(
-                        langCode,
-                        "opds.linktitle.searchCatalog",
-                        defaultValue = "Search Catalog",
-                    ),
+                    MR.strings.opds_linktitle_search_catalog.localized(locale),
                 ),
             )
 
@@ -1344,11 +1228,7 @@ object OpdsFeedBuilder {
                             OpdsConstants.LINK_REL_PREV,
                             buildUrlWithParams(idWithoutParams, pageNum - 1),
                             feedType,
-                            LocalizationService.getString(
-                                langCode,
-                                "opds.linktitle.previousPage",
-                                defaultValue = "Previous Page",
-                            ),
+                            MR.strings.opds_linktitle_previous_page.localized(locale),
                         ),
                     )
                 }
@@ -1358,11 +1238,7 @@ object OpdsFeedBuilder {
                             OpdsConstants.LINK_REL_NEXT,
                             buildUrlWithParams(idWithoutParams, pageNum + 1),
                             feedType,
-                            LocalizationService.getString(
-                                langCode,
-                                "opds.linktitle.nextPage",
-                                defaultValue = "Next Page",
-                            ),
+                            MR.strings.opds_linktitle_next_page.localized(locale),
                         ),
                     )
                 }
@@ -1370,7 +1246,7 @@ object OpdsFeedBuilder {
 
             return OpdsFeedXml(
                 id =
-                    "urn:suwayomi:feed:$idWithoutParams:$langCode:$pageNum" +
+                    "urn:suwayomi:feed:$idWithoutParams:${locale.toLanguageTag()}:$pageNum" +
                         (searchQuery?.let { ":query=${it.encodeForOpdsURL()}" } ?: "") +
                         (currentSort?.let { ":sort=$it" } ?: "") +
                         (currentFilter?.let { ":filter=$it" } ?: ""),
@@ -1391,7 +1267,7 @@ object OpdsFeedBuilder {
         manga: MangaDataClass,
         baseUrl: String,
         formattedNow: String,
-        langCode: String,
+        locale: Locale,
     ): OpdsEntryXml {
         val displayThumbnailUrl = manga.thumbnailUrl?.let { proxyThumbnailUrl(manga.id) }
         val title = manga.title
@@ -1411,7 +1287,7 @@ object OpdsFeedBuilder {
                 listOfNotNull(
                     OpdsLinkXml(
                         rel = OpdsConstants.LINK_REL_SUBSECTION,
-                        href = "$baseUrl/manga/${manga.id}?lang=$langCode",
+                        href = "$baseUrl/manga/${manga.id}?lang=${locale.toLanguageTag()}",
                         type = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                         title = title,
                     ),

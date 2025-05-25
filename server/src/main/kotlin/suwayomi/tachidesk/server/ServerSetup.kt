@@ -23,7 +23,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
-import suwayomi.tachidesk.i18n.LocalizationService
+import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.update.IUpdater
@@ -307,8 +307,8 @@ fun applicationSetup() {
     }
 
 // Initialize the localization service
-    LocalizationService.initialize(applicationDirs.localizationRoot)
-    logger.info { "Localization service initialized. Supported languages: ${LocalizationService.getSupportedLanguageCodes()}" }
+    LocalizationHelper.initialize()
+    logger.debug { "Localization service initialized. Supported languages: ${LocalizationHelper.getSupportedLocales()}" }
 
     databaseUp()
 
