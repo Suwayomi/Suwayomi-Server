@@ -26,9 +26,7 @@ object LocalizationHelper {
         supportedLocales = languages.map { Locale.forLanguageTag(it) }
     }
 
-    fun getSupportedLocales(): List<String> {
-        return supportedLocales.map { it.displayLanguage }
-    }
+    fun getSupportedLocales(): List<String> = supportedLocales.map { it.displayLanguage }
 
     fun ctxToLocale(
         ctx: Context,
