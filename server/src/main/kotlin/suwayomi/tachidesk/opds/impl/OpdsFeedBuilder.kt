@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.opds.impl
 
+import dev.icerock.moko.resources.StringResource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.sql.SortOrder
@@ -35,7 +36,6 @@ import suwayomi.tachidesk.opds.util.OpdsStringUtil.formatFileSizeForOpds
 import suwayomi.tachidesk.opds.util.OpdsXmlUtil
 import suwayomi.tachidesk.server.serverConfig
 import java.util.Locale
-import dev.icerock.moko.resources.StringResource
 
 object OpdsFeedBuilder {
     private val opdsItemsPerPageBounded: Int
@@ -348,7 +348,12 @@ object OpdsFeedBuilder {
     ): String {
         val mangaDetails =
             MangaRepository.getMangaDetails(mangaId)
-                ?: return buildNotFoundFeed(baseUrl, "manga/$mangaId", MR.strings.opds_error_manga_not_found.localized(locale, mangaId.toString()), locale)
+                ?: return buildNotFoundFeed(
+                    baseUrl,
+                    "manga/$mangaId",
+                    MR.strings.opds_error_manga_not_found.localized(locale, mangaId.toString()),
+                    locale,
+                )
 
         val (sortColumn, currentSortOrder) =
             when (sortParam?.lowercase()) {

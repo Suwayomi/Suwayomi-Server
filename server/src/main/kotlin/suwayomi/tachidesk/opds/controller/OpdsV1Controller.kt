@@ -1,6 +1,5 @@
 package suwayomi.tachidesk.opds.controller
 
-import io.javalin.http.Context
 import io.javalin.http.HttpStatus
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.i18n.MR

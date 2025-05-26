@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.opds.repository
 
+import dev.icerock.moko.resources.StringResource
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -22,7 +23,6 @@ import suwayomi.tachidesk.opds.dto.OpdsStatusNavEntry
 import suwayomi.tachidesk.opds.util.OpdsStringUtil.encodeForOpdsURL
 import suwayomi.tachidesk.server.serverConfig
 import java.util.Locale
-import dev.icerock.moko.resources.StringResource
 
 object NavigationRepository {
     private val opdsItemsPerPageBounded: Int
@@ -31,17 +31,52 @@ object NavigationRepository {
     // Mapeo de IDs de sección a sus StringResources para título y descripción
     private val rootSectionDetails: Map<String, Triple<String, StringResource, StringResource>> =
         mapOf(
-            "mangas" to Triple(OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION, MR.strings.opds_feeds_all_manga_title, MR.strings.opds_feeds_all_manga_entry_content),
-            "sources" to Triple(OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION, MR.strings.opds_feeds_sources_title, MR.strings.opds_feeds_sources_entry_content),
-            "categories" to Triple(OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION, MR.strings.opds_feeds_categories_title, MR.strings.opds_feeds_categories_entry_content),
-            "genres" to Triple(OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION, MR.strings.opds_feeds_genres_title, MR.strings.opds_feeds_genres_entry_content),
-            "status" to Triple(OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION, MR.strings.opds_feeds_status_title, MR.strings.opds_feeds_status_entry_content),
-            "languages" to Triple(OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION, MR.strings.opds_feeds_languages_title, MR.strings.opds_feeds_languages_entry_content),
-            "library-updates" to Triple(OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION, MR.strings.opds_feeds_library_updates_title, MR.strings.opds_feeds_library_updates_entry_content),
+            "mangas" to
+                Triple(
+                    OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
+                    MR.strings.opds_feeds_all_manga_title,
+                    MR.strings.opds_feeds_all_manga_entry_content,
+                ),
+            "sources" to
+                Triple(
+                    OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
+                    MR.strings.opds_feeds_sources_title,
+                    MR.strings.opds_feeds_sources_entry_content,
+                ),
+            "categories" to
+                Triple(
+                    OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
+                    MR.strings.opds_feeds_categories_title,
+                    MR.strings.opds_feeds_categories_entry_content,
+                ),
+            "genres" to
+                Triple(
+                    OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
+                    MR.strings.opds_feeds_genres_title,
+                    MR.strings.opds_feeds_genres_entry_content,
+                ),
+            "status" to
+                Triple(
+                    OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
+                    MR.strings.opds_feeds_status_title,
+                    MR.strings.opds_feeds_status_entry_content,
+                ),
+            "languages" to
+                Triple(
+                    OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
+                    MR.strings.opds_feeds_languages_title,
+                    MR.strings.opds_feeds_languages_entry_content,
+                ),
+            "library-updates" to
+                Triple(
+                    OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
+                    MR.strings.opds_feeds_library_updates_title,
+                    MR.strings.opds_feeds_library_updates_entry_content,
+                ),
         )
 
-    fun getRootNavigationItems(locale: Locale): List<OpdsRootNavEntry> {
-        return rootSectionDetails.map { (id, details) ->
+    fun getRootNavigationItems(locale: Locale): List<OpdsRootNavEntry> =
+        rootSectionDetails.map { (id, details) ->
             val (linkType, titleRes, descriptionRes) = details
             OpdsRootNavEntry(
                 id = id,
@@ -50,7 +85,6 @@ object NavigationRepository {
                 linkType = linkType,
             )
         }
-    }
 
     fun getSources(pageNum: Int): Pair<List<OpdsSourceNavEntry>, Long> =
         transaction {
@@ -133,15 +167,16 @@ object NavigationRepository {
 
     fun getStatuses(locale: Locale): List<OpdsStatusNavEntry> {
         // Mapeo de MangaStatus a sus StringResources
-        val statusStringResources: Map<MangaStatus, StringResource> = mapOf(
-            MangaStatus.UNKNOWN to MR.strings.manga_status_unknown,
-            MangaStatus.ONGOING to MR.strings.manga_status_ongoing,
-            MangaStatus.COMPLETED to MR.strings.manga_status_completed,
-            MangaStatus.LICENSED to MR.strings.manga_status_licensed,
-            MangaStatus.PUBLISHING_FINISHED to MR.strings.manga_status_publishing_finished,
-            MangaStatus.CANCELLED to MR.strings.manga_status_cancelled,
-            MangaStatus.ON_HIATUS to MR.strings.manga_status_on_hiatus,
-        )
+        val statusStringResources: Map<MangaStatus, StringResource> =
+            mapOf(
+                MangaStatus.UNKNOWN to MR.strings.manga_status_unknown,
+                MangaStatus.ONGOING to MR.strings.manga_status_ongoing,
+                MangaStatus.COMPLETED to MR.strings.manga_status_completed,
+                MangaStatus.LICENSED to MR.strings.manga_status_licensed,
+                MangaStatus.PUBLISHING_FINISHED to MR.strings.manga_status_publishing_finished,
+                MangaStatus.CANCELLED to MR.strings.manga_status_cancelled,
+                MangaStatus.ON_HIATUS to MR.strings.manga_status_on_hiatus,
+            )
 
         return MangaStatus.entries
             .map { mangaStatus ->
@@ -165,9 +200,10 @@ object NavigationRepository {
                 .map { langCode ->
                     OpdsLanguageNavEntry(
                         id = langCode,
-                        title = Locale.forLanguageTag(langCode).getDisplayName(uiLocale).replaceFirstChar {
-                            if (it.isLowerCase()) it.titlecase(uiLocale) else it.toString()
-                        },
+                        title =
+                            Locale.forLanguageTag(langCode).getDisplayName(uiLocale).replaceFirstChar {
+                                if (it.isLowerCase()) it.titlecase(uiLocale) else it.toString()
+                            },
                     )
                 }
         }
