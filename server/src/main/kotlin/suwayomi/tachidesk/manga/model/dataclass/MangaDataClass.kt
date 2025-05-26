@@ -43,7 +43,6 @@ data class MangaDataClass(
     val age: Long? = if (lastFetchedAt == null) 0 else Instant.now().epochSecond.minus(lastFetchedAt),
     val chaptersAge: Long? = if (chaptersLastFetchedAt == null) null else Instant.now().epochSecond.minus(chaptersLastFetchedAt),
     val trackers: List<MangaTrackerDataClass>? = null,
-    val sourceLang: String? = null,
 ) {
     override fun toString(): String = "\"$title\" (id= $id) (sourceId= $sourceId)"
 }
