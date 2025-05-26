@@ -1,6 +1,5 @@
 package suwayomi.tachidesk.i18n
 
-import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.http.Context
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json

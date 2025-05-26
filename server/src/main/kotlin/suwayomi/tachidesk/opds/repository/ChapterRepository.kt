@@ -106,8 +106,7 @@ object ChapterRepository {
                     .select(
                         ChapterTable.columns + MangaTable.title + MangaTable.author + MangaTable.thumbnail_url + MangaTable.id +
                             SourceTable.lang,
-                    )
-                    .where { MangaTable.inLibrary eq true }
+                    ).where { MangaTable.inLibrary eq true }
 
             val totalCount = query.count()
 
