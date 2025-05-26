@@ -110,7 +110,7 @@ object ProtoBackupExport : ProtoBackupBase() {
             }
         }
 
-        HAScheduler.scheduleCron(task, "$backupMinute $backupHour */${backupInterval.inWholeDays} * *", "backup")
+        backupSchedulerJobId = HAScheduler.scheduleCron(task, "$backupMinute $backupHour */${backupInterval.inWholeDays} * *", "backup")
     }
 
     private fun createAutomatedBackup() {

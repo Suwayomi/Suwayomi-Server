@@ -163,7 +163,7 @@ class Updater : IUpdater {
             }
         }
 
-        HAScheduler.schedule(::autoUpdateTask, updateInterval, timeToNextExecution, "global-update")
+        currentUpdateTaskId = HAScheduler.schedule(::autoUpdateTask, updateInterval, timeToNextExecution, "global-update")
     }
 
     private fun isRunning(): Boolean =
