@@ -48,10 +48,8 @@ import xyz.nulldev.ts.config.updateFileAppender
 import java.io.File
 import java.net.Authenticator
 import java.net.PasswordAuthentication
-import java.net.URLDecoder
 import java.security.Security
 import java.util.Locale
-import java.util.jar.JarFile
 
 private val logger = KotlinLogging.logger {}
 
