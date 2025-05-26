@@ -157,7 +157,7 @@ class ServerConfig(
     val flareSolverrAsResponseFallback: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
 
     // opds settings
-    val useBinaryFileSizes: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
+    val opdsUseBinaryFileSizes: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val opdsItemsPerPage: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
     val opdsEnablePageReadProgress: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val opdsMarkAsReadOnDownload: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)

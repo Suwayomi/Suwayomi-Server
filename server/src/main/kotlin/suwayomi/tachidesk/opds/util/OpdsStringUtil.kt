@@ -42,7 +42,7 @@ object OpdsStringUtil {
      * @return Human-readable representation of the size
      */
     fun formatFileSizeForOpds(size: Long): String =
-        if (serverConfig.useBinaryFileSizes.value) {
+        if (serverConfig.opdsUseBinaryFileSizes.value) {
             // Binary notation (base 1024)
             when {
                 size >= 1_125_899_906_842_624 -> "%.2f TiB".format(size / 1_125_899_906_842_624.0) // 1024^4
