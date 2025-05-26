@@ -351,7 +351,7 @@ object OpdsFeedBuilder {
                 ?: return buildNotFoundFeed(
                     baseUrl,
                     "manga/$mangaId",
-                    MR.strings.opds_error_manga_not_found.localized(locale, mangaId.toString()),
+                    MR.strings.opds_error_manga_not_found.localized(locale, mangaId),
                     locale,
                 )
 
@@ -423,7 +423,7 @@ object OpdsFeedBuilder {
                 ?: return buildNotFoundFeed(
                     baseUrl,
                     "manga/$mangaId/chapter/$chapterSourceOrder/metadata",
-                    MR.strings.opds_error_manga_not_found.localized(locale, mangaId.toString()),
+                    MR.strings.opds_error_manga_not_found.localized(locale, mangaId),
                     locale,
                 )
 
@@ -432,7 +432,7 @@ object OpdsFeedBuilder {
                 ?: return buildNotFoundFeed(
                     baseUrl,
                     "manga/$mangaId/chapter/$chapterSourceOrder/metadata",
-                    MR.strings.opds_error_chapter_not_found.localized(locale, chapterSourceOrder.toString()),
+                    MR.strings.opds_error_chapter_not_found.localized(locale, chapterSourceOrder),
                     locale,
                 )
 
@@ -464,10 +464,11 @@ object OpdsFeedBuilder {
     ): String {
         val (mangaEntries, total) = MangaRepository.getMangaBySource(sourceId, pageNum)
         val sourceNavEntry = NavigationRepository.getSources(1).first.find { it.id == sourceId }
+        val sourceNameOrId = sourceNavEntry?.name ?: sourceId.toString()
         val feedTitle =
             MR.strings.opds_feeds_source_specific_title.localized(
                 locale,
-                sourceNavEntry?.name ?: MR.strings.opds_feeds_source_specific_title.localized(locale, sourceId.toString()),
+                sourceNameOrId,
             )
 
         val builder =

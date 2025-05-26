@@ -39,8 +39,8 @@
     <string name="opds_facetgroup_sort_order">Ordenar por</string>
     <string name="opds_facetgroup_read_status">Estado de lectura</string>
 
-    <string name="opds_error_manga_not_found">Manga con ID %1$s no encontrado</string>
-    <string name="opds_error_chapter_not_found">Capítulo con índice %1$s no encontrado</string>
+    <string name="opds_error_manga_not_found">Manga con ID %1$d no encontrado</string>
+    <string name="opds_error_chapter_not_found">Capítulo con índice %1$d no encontrado</string>
 
     <string name="opds_facet_sort_oldest_first">Más antiguos primero</string>
     <string name="opds_facet_sort_newest_first">Más recientes primero</string>

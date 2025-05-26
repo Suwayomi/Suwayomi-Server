@@ -6,8 +6,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.util.Locale
 
-private val logger = KotlinLogging.logger {}
-
 object LocalizationHelper {
     // Supported language codes (lowercase)
     private var supportedLocales = emptyList<Locale>()

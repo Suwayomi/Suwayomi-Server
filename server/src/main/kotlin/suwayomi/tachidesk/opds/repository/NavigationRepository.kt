@@ -28,7 +28,7 @@ object NavigationRepository {
     private val opdsItemsPerPageBounded: Int
         get() = serverConfig.opdsItemsPerPage.value.coerceIn(10, 5000)
 
-    // Mapeo de IDs de sección a sus StringResources para título y descripción
+    // Mapping of section IDs to their StringResources for title and description
     private val rootSectionDetails: Map<String, Triple<String, StringResource, StringResource>> =
         mapOf(
             "mangas" to
@@ -166,7 +166,7 @@ object NavigationRepository {
         }
 
     fun getStatuses(locale: Locale): List<OpdsStatusNavEntry> {
-        // Mapeo de MangaStatus a sus StringResources
+        // Mapping of MangaStatus to its StringResources
         val statusStringResources: Map<MangaStatus, StringResource> =
             mapOf(
                 MangaStatus.UNKNOWN to MR.strings.manga_status_unknown,

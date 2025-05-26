@@ -106,7 +106,7 @@ object ChapterRepository {
                     .select(
                         ChapterTable.columns + MangaTable.title + MangaTable.author + MangaTable.thumbnail_url + MangaTable.id +
                             SourceTable.lang,
-                    ) // Reemplaza slice().selectAll()
+                    )
                     .where { MangaTable.inLibrary eq true }
 
             val totalCount = query.count()
@@ -114,11 +114,11 @@ object ChapterRepository {
             val items =
                 query
                     .orderBy(ChapterTable.fetchedAt to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC)
-                    .limit(opdsItemsPerPageBounded) // Moderno: .limit(n).offset(m)
+                    .limit(opdsItemsPerPageBounded)
                     .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
                     .map {
                         OpdsLibraryUpdateAcqEntry(
-                            chapter = it.toOpdsChapterListAcqEntry(), // Esto funcionará si las columnas de ChapterTable no colisionan
+                            chapter = it.toOpdsChapterListAcqEntry(), // This will work if ChapterTable columns do not collide
                             mangaTitle = it[MangaTable.title],
                             mangaAuthor = it[MangaTable.author],
                             mangaId = it[MangaTable.id].value,

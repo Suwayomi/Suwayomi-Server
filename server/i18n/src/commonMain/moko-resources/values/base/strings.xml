@@ -36,8 +36,8 @@
     <string name="opds_feeds_language_specific_title">Language: %1$s</string>
     <string name="opds_feeds_source_specific_title">Source: %1$s</string>
     
-    <string name="opds_error_manga_not_found">Manga with ID %1$s not found</string>
-    <string name="opds_error_chapter_not_found">Chapter with index %1$s not found</string>
+    <string name="opds_error_manga_not_found">Manga with ID %1$d not found</string>
+    <string name="opds_error_chapter_not_found">Chapter with index %1$d not found</string>
 
     <string name="opds_facetgroup_sort_order">Sort Order</string>
     <string name="opds_facetgroup_read_status">Read Status</string>
