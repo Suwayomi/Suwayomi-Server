@@ -5,36 +5,39 @@
 
     <string name="opds_feeds_root">Suwayomi OPDS Catalog</string>
     <string name="opds_feeds_manga_chapters">%1$s Chapters</string>
+    <string name="opds_feeds_chapter_details">%1$s | %2$s | Details</string>
 
     <string name="opds_feeds_all_manga_title">All Manga</string>
-    <string name="opds_feeds_all_manga_description">Browse your library</string>
-    <string name="opds_feeds_all_manga_feed_content">Browse all manga in your library</string>
+    <string name="opds_feeds_all_manga_entry_content">Browse all manga in your library</string>
 
     <string name="opds_feeds_search_results">Search Results</string>
 
     <string name="opds_feeds_sources_title">Sources</string>
-    <string name="opds_feeds_sources_description">Browse by source</string>
-    <string name="opds_feeds_sources_feed_content">Browse manga by source</string>
+    <string name="opds_feeds_sources_entry_content">Browse manga by source</string>
 
     <string name="opds_feeds_categories_title">Categories</string>
-    <string name="opds_feeds_categories_description">Browse by category</string>
-    <string name="opds_feeds_categories_feed_content">Browse manga organized by categories</string>
+    <string name="opds_feeds_categories_entry_content">Browse manga organized by categories</string>
 
     <string name="opds_feeds_genres_title">Genres</string>
-    <string name="opds_feeds_genres_description">Browse by genre</string>
-    <string name="opds_feeds_genres_feed_content">Browse manga by genre tags</string>
+    <string name="opds_feeds_genres_entry_content">Browse manga by genre tags</string>
 
     <string name="opds_feeds_status_title">Status</string>
-    <string name="opds_feeds_status_description">Browse by status</string>
-    <string name="opds_feeds_status_feed_content">Browse manga by publication status</string>
+    <string name="opds_feeds_status_entry_content">Browse manga by publication status</string>
 
     <string name="opds_feeds_languages_title">Languages</string>
-    <string name="opds_feeds_languages_description">Browse by language</string>
-    <string name="opds_feeds_languages_feed_content">Browse manga by content language</string>
+    <string name="opds_feeds_languages_entry_content">Browse manga by content language</string>
 
     <string name="opds_feeds_library_updates_title">Library Update History</string>
-    <string name="opds_feeds_library_updates_description">Recent updates</string>
-    <string name="opds_feeds_library_updates_feed_content">Recently updated chapters from your library</string>
+    <string name="opds_feeds_library_updates_entry_content">Recently updated chapters from your library</string>
+
+    <string name="opds_feeds_category_specific_title">Category: %1$s</string>
+    <string name="opds_feeds_genre_specific_title">Genre: %1$s</string>
+    <string name="opds_feeds_status_specific_title">Status: %1$s</string>
+    <string name="opds_feeds_language_specific_title">Language: %1$s</string>
+    <string name="opds_feeds_source_specific_title">Source: %1$s</string>
+    
+    <string name="opds_error_manga_not_found">Manga with ID %1$s not found</string>
+    <string name="opds_error_chapter_not_found">Chapter with index %1$s not found</string>
 
     <string name="opds_facetgroup_sort_order">Sort Order</string>
     <string name="opds_facetgroup_read_status">Read Status</string>
@@ -68,5 +71,13 @@
 
     <string name="opds_chapter_details_base">%1$s | %2$s</string>
     <string name="opds_chapter_details_scanlator"> | By %1$s</string>
-    <string name="opds_chapter_details_progress"> | Progress: %1$d of %2$s</string>
+    <string name="opds_chapter_details_progress"> | Progress: %1$d of %2$d</string>
+
+    <string name="manga_status_unknown">Unknown</string>
+    <string name="manga_status_ongoing">Ongoing</string>
+    <string name="manga_status_completed">Completed</string>
+    <string name="manga_status_licensed">Licensed</string>
+    <string name="manga_status_publishing_finished">Publishing Finished</string>
+    <string name="manga_status_cancelled">Cancelled</string>
+    <string name="manga_status_on_hiatus">On Hiatus</string>
 </resources>

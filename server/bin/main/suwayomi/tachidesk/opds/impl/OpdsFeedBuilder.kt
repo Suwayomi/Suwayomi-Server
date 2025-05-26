@@ -459,17 +459,12 @@ object OpdsFeedBuilder {
     ): String {
         val (mangaEntries, total) = MangaRepository.getMangaBySource(sourceId, pageNum)
         val sourceNavEntry = NavigationRepository.getSources(1).first.find { it.id == sourceId }
-        val feedTitle =
-            MR.strings.opds_feeds_source_specific_title.localized(
-                locale,
-                sourceNavEntry?.name ?: MR.strings.opds_feeds_source_specific_title.localized(locale, sourceId.toString()),
-            )
 
         val builder =
             FeedBuilderInternal(
                 baseUrl,
                 "source/$sourceId",
-                feedTitle,
+                sourceNavEntry?.name ?: MR.strings.opds_generic_source_title.localized(locale, sourceId.toString()),
                 locale = locale,
                 pageNum = pageNum,
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
@@ -672,8 +667,8 @@ object OpdsFeedBuilder {
                     append(
                         MR.strings.opds_chapter_details_progress.localized(
                             locale,
-                            chapter.lastPageRead,
-                            chapter.pageCount,
+                            chapter.lastPageRead.toString(),
+                            chapter.pageCount.toString(),
                         ),
                     )
                 }
@@ -728,8 +723,8 @@ object OpdsFeedBuilder {
                 append(
                     MR.strings.opds_chapter_details_progress.localized(
                         locale,
-                        chapter.lastPageRead,
-                        pageCountDisplay,
+                        chapter.lastPageRead.toString(),
+                        pageCountDisplay.toString(),
                     ),
                 )
             }
@@ -930,7 +925,7 @@ object OpdsFeedBuilder {
 
         fun build(): OpdsFeedXml {
             val actualPageNum = pageNum ?: 1
-            // val needsPagination = pageNum != null && totalResults > opdsItemsPerPageBounded
+            val needsPagination = pageNum != null && totalResults > opdsItemsPerPageBounded
 
             val selfLinkHref = buildUrlWithParams(idPath, if (pageNum != null) actualPageNum else null)
             val feedLinks = mutableListOf<OpdsLinkXml>()
