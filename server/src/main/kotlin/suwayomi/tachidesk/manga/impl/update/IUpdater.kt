@@ -8,6 +8,8 @@ import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 interface IUpdater {
     fun getLastUpdateTimestamp(): Long
 
+    fun deleteLastAutomatedUpdateTimestamp()
+
     fun addCategoriesToUpdateQueue(
         categories: List<CategoryDataClass>,
         clear: Boolean?,
