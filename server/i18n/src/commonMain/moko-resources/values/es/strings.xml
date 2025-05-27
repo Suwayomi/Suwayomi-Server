@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<resources>
+    <string name="opds_search_shortname">Búsqueda OPDS de Suwayomi</string>
+    <string name="opds_search_description">Buscar mangas en el catálogo</string>
+
+    <string name="opds_feeds_root">Catálogo OPDS de Suwayomi</string>
+    <string name="opds_feeds_manga_chapters">Capítulos de %1$s</string>
+    <string name="opds_feeds_chapter_details">%1$s | Detalles de %2$s</string>
+
+    <string name="opds_feeds_all_manga_title">Todos los mangas</string>
+    <string name="opds_feeds_all_manga_entry_content">Explorar todos los mangas en tu biblioteca</string>
+
+    <string name="opds_feeds_search_results">Resultados de búsqueda</string>
+
+    <string name="opds_feeds_sources_title">Fuentes</string>
+    <string name="opds_feeds_sources_entry_content">Explorar mangas por fuente</string>
+
+    <string name="opds_feeds_categories_title">Categorías</string>
+    <string name="opds_feeds_categories_entry_content">Explorar mangas organizados por categorías</string>
+
+    <string name="opds_feeds_genres_title">Géneros</string>
+    <string name="opds_feeds_genres_entry_content">Explorar mangas por etiquetas de género</string>
+
+    <string name="opds_feeds_status_title">Estado</string>
+    <string name="opds_feeds_status_entry_content">Explorar mangas por estado de publicación</string>
+
+    <string name="opds_feeds_languages_title">Idiomas</string>
+    <string name="opds_feeds_languages_entry_content">Explorar mangas por idioma del contenido</string>
+
+    <string name="opds_feeds_library_updates_title">Historial de actualizaciones</string>
+    <string name="opds_feeds_library_updates_entry_content">Capítulos recientemente actualizados de tu biblioteca</string>
+
+    <string name="opds_feeds_category_specific_title">Categoría: %1$s</string>
+    <string name="opds_feeds_genre_specific_title">Género: %1$s</string>
+    <string name="opds_feeds_status_specific_title">Estado: %1$s</string>
+    <string name="opds_feeds_language_specific_title">Idioma: %1$s</string>
+    <string name="opds_feeds_source_specific_title">Fuente: %1$s</string>
+
+    <string name="opds_facetgroup_sort_order">Ordenar por</string>
+    <string name="opds_facetgroup_read_status">Estado de lectura</string>
+
+    <string name="opds_error_manga_not_found">Manga con ID %1$d no encontrado</string>
+    <string name="opds_error_chapter_not_found">Capítulo con índice %1$d no encontrado</string>
+
+    <string name="opds_facet_sort_oldest_first">Más antiguos primero</string>
+    <string name="opds_facet_sort_newest_first">Más recientes primero</string>
+    <string name="opds_facet_sort_date_asc">Fecha ascendente</string>
+    <string name="opds_facet_sort_date_desc">Fecha descendente</string>
+
+    <string name="opds_facet_filter_all_chapters">Todos los capítulos</string>
+    <string name="opds_facet_filter_unread_only">Solo sin leer</string>
+    <string name="opds_facet_filter_read_only">Solo leídos</string>
+
+    <string name="opds_linktitle_view_chapter_details">Ver detalles del capítulo y obtener páginas</string>
+    <string name="opds_linktitle_download_cbz">Descargar CBZ</string>
+    <string name="opds_linktitle_stream_pages">Ver páginas (streaming)</string>
+    <string name="opds_linktitle_chapter_cover">Portada del capítulo</string>
+    <string name="opds_linktitle_current_page">Página actual</string>
+    <string name="opds_linktitle_catalog_root">Raíz del catálogo</string>
+    <string name="opds_linktitle_search_catalog">Buscar en catálogo</string>
+    <string name="opds_linktitle_previous_page">Página anterior</string>
+    <string name="opds_linktitle_next_page">Página siguiente</string>
+    <string name="opds_linktitle_self_feed">Feed actual</string>
+
+    <string name="opds_chapter_status_downloaded">⬇️ </string>
+    <string name="opds_chapter_status_read">✅ </string>
+    <string name="opds_chapter_status_in_progress">⌛ </string>
+    <string name="opds_chapter_status_error">⚠️ </string>
+    <string name="opds_chapter_status_unknown">❔ </string>
+    <string name="opds_chapter_status_unread">⭕ </string>
+
+    <string name="opds_chapter_details_base">Manga: %s | %s</string>
+    <string name="opds_chapter_details_scanlator"> | Publicado por: %1$s</string>
+    <string name="opds_chapter_details_progress"> | Progreso: %1$d de %2$d</string>
+    
+    <string name="manga_status_unknown">Desconocido</string>
+    <string name="manga_status_ongoing">En emisión</string>
+    <string name="manga_status_completed">Completado</string>
+    <string name="manga_status_licensed">Licenciado</string>
+    <string name="manga_status_publishing_finished">Publicación finalizada</string>
+    <string name="manga_status_cancelled">Cancelado</string>
+    <string name="manga_status_on_hiatus">En pausa</string>
+</resources>

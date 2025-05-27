@@ -23,6 +23,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
+import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.update.IUpdater
@@ -221,6 +222,10 @@ fun applicationSetup() {
 
     // fixes #119 , ref: https://github.com/Suwayomi/Suwayomi-Server/issues/119#issuecomment-894681292 , source Id calculation depends on String.lowercase()
     Locale.setDefault(Locale.ENGLISH)
+
+    // Initialize the localization service
+    LocalizationHelper.initialize()
+    logger.debug { "Localization service initialized. Supported languages: ${LocalizationHelper.getSupportedLocales()}" }
 
     databaseUp()
 
