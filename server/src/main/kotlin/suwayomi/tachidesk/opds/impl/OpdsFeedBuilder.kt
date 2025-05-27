@@ -639,7 +639,7 @@ object OpdsFeedBuilder {
                 listOfNotNull(
                     OpdsLinkXml(
                         OpdsConstants.LINK_REL_SUBSECTION,
-                        "$baseUrl/manga/${entry.id}?lang=${locale.toLanguageTag()}",
+                        "$baseUrl/manga/${entry.id}/chapters?lang=${locale.toLanguageTag()}",
                         OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                         entry.title,
                     ),
@@ -699,7 +699,7 @@ object OpdsFeedBuilder {
                 listOf(
                     OpdsLinkXml(
                         rel = OpdsConstants.LINK_REL_SUBSECTION,
-                        href = "$baseUrl/manga/${manga.id}/chapter/${chapter.sourceOrder}/fetch?lang=${locale.toLanguageTag()}",
+                        href = "$baseUrl/manga/${manga.id}/chapter/${chapter.sourceOrder}/metadata?lang=${locale.toLanguageTag()}",
                         type = OpdsConstants.TYPE_ATOM_XML_ENTRY_PROFILE_OPDS,
                         title = MR.strings.opds_linktitle_view_chapter_details.localized(locale),
                     ),
