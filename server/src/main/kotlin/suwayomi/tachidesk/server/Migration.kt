@@ -3,6 +3,7 @@ package suwayomi.tachidesk.server
 import android.app.Application
 import android.content.Context
 import io.github.oshai.kotlinlogging.KotlinLogging
+import suwayomi.tachidesk.manga.impl.update.IUpdater
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File
@@ -43,7 +44,7 @@ private fun migratePreferences(
     }
 }
 
-const val MIGRATION_VERSION = 1
+const val MIGRATION_VERSION = 2
 
 fun runMigrations(applicationDirs: ApplicationDirs) {
     val migrationPreferences =
@@ -53,7 +54,7 @@ fun runMigrations(applicationDirs: ApplicationDirs) {
                 "migrations",
                 Context.MODE_PRIVATE,
             )
-    val version = migrationPreferences.getInt("version", 0)
+    var version = migrationPreferences.getInt("version", 0)
     val logger = KotlinLogging.logger("Migration")
     logger.info { "Running migrations, previous version $version, target version $MIGRATION_VERSION" }
 
@@ -84,6 +85,17 @@ fun runMigrations(applicationDirs: ApplicationDirs) {
             migratePreferences(null, preferences)
             preferences.removeNode()
         }
+
+        version += 1
+        migrationPreferences.edit().putInt("version", version).apply()
     }
-    migrationPreferences.edit().putInt("version", MIGRATION_VERSION).apply()
+
+    if (version < 2) {
+        logger.info { "Running migration for version: 2" }
+
+        Injekt.get<IUpdater>().deleteLastAutomatedUpdateTimestamp()
+
+        version += 1
+        migrationPreferences.edit().putInt("version", version).apply()
+    }
 }

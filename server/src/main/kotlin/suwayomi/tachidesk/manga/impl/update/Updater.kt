@@ -116,10 +116,24 @@ class Updater : IUpdater {
 
     override fun getLastUpdateTimestamp(): Long = preferences.getLong(lastUpdateKey, 0)
 
+    fun saveLastUpdateTimestamp() {
+        preferences.edit().putLong(lastUpdateKey, System.currentTimeMillis()).apply()
+    }
+
+    fun getLastAutomatedUpdateTimestamp(): Long = preferences.getLong(lastAutomatedUpdateKey, 0)
+
+    fun saveLastAutomatedUpdateTimestamp() {
+        preferences.edit().putLong(lastAutomatedUpdateKey, System.currentTimeMillis()).apply()
+    }
+
+    override fun deleteLastAutomatedUpdateTimestamp() {
+        preferences.edit().remove(lastAutomatedUpdateKey).apply()
+    }
+
     private fun autoUpdateTask() {
         try {
-            val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
-            preferences.edit().putLong(lastAutomatedUpdateKey, System.currentTimeMillis()).apply()
+            val lastAutomatedUpdate = getLastAutomatedUpdateTimestamp()
+            saveLastAutomatedUpdateTimestamp()
 
             if (getStatus().isRunning) {
                 logger.debug { "Global update is already in progress" }
@@ -150,7 +164,7 @@ class Updater : IUpdater {
             serverConfig.globalUpdateInterval.value.hours
                 .coerceAtLeast(6.hours)
                 .inWholeMilliseconds
-        val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
+        val lastAutomatedUpdate = getLastAutomatedUpdateTimestamp()
         val isInitialScheduling = lastAutomatedUpdate == 0L
 
         val timeToNextExecution =
@@ -161,7 +175,7 @@ class Updater : IUpdater {
             }
 
         if (isInitialScheduling) {
-            preferences.edit().putLong(lastAutomatedUpdateKey, System.currentTimeMillis()).apply()
+            saveLastAutomatedUpdateTimestamp()
         }
 
         val wasPreviousUpdateTriggered =
@@ -327,7 +341,7 @@ class Updater : IUpdater {
         clear: Boolean?,
         forceAll: Boolean,
     ) {
-        preferences.edit().putLong(lastUpdateKey, System.currentTimeMillis()).apply()
+        saveLastUpdateTimestamp()
 
         if (clear == true) {
             reset()
