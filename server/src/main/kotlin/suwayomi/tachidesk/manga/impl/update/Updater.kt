@@ -151,11 +151,22 @@ class Updater : IUpdater {
                 .coerceAtLeast(6.hours)
                 .inWholeMilliseconds
         val lastAutomatedUpdate = preferences.getLong(lastAutomatedUpdateKey, 0)
-        val timeToNextExecution = (updateInterval - (System.currentTimeMillis() - lastAutomatedUpdate)).mod(updateInterval)
+        val isInitialScheduling = lastAutomatedUpdate == 0L
+
+        val timeToNextExecution =
+            if (!isInitialScheduling) {
+                (updateInterval - (System.currentTimeMillis() - lastAutomatedUpdate)).mod(updateInterval)
+            } else {
+                updateInterval
+            }
+
+        if (isInitialScheduling) {
+            preferences.edit().putLong(lastAutomatedUpdateKey, System.currentTimeMillis()).apply()
+        }
 
         val wasPreviousUpdateTriggered =
             System.currentTimeMillis() - (
-                if (lastAutomatedUpdate > 0) lastAutomatedUpdate else System.currentTimeMillis()
+                if (!isInitialScheduling) lastAutomatedUpdate else System.currentTimeMillis()
             ) < updateInterval
         if (!wasPreviousUpdateTriggered) {
             GlobalScope.launch {
