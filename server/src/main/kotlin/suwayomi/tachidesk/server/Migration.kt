@@ -76,9 +76,20 @@ private fun migrateMangaDownloadDir(applicationDirs: ApplicationDirs) {
     }
 }
 
-const val MIGRATION_VERSION = 2
+private val MIGRATIONS =
+    listOf<Pair<String, (ApplicationDirs) -> Unit>>(
+        "InitialMigration" to { applicationDirs ->
+            migrateMangaDownloadDir(applicationDirs)
+            migratePreferencesToNewXmlFileBasedStorage()
+        },
+        "FixGlobalUpdateScheduling" to {
+            Injekt.get<IUpdater>().deleteLastAutomatedUpdateTimestamp()
+        },
+    )
 
 fun runMigrations(applicationDirs: ApplicationDirs) {
+    val logger = KotlinLogging.logger("Migration")
+
     val migrationPreferences =
         Injekt
             .get<Application>()
@@ -86,26 +97,23 @@ fun runMigrations(applicationDirs: ApplicationDirs) {
                 "migrations",
                 Context.MODE_PRIVATE,
             )
-    var version = migrationPreferences.getInt("version", 0)
-    val logger = KotlinLogging.logger("Migration")
-    logger.info { "Running migrations, previous version $version, target version $MIGRATION_VERSION" }
+    val version = migrationPreferences.getInt("version", 0)
 
-    if (version < 1) {
-        logger.info { "Running migration for version: 1" }
+    logger.info { "Running migrations, previous version $version, target version ${MIGRATIONS.size}" }
 
-        migrateMangaDownloadDir(applicationDirs)
-        migratePreferencesToNewXmlFileBasedStorage()
+    MIGRATIONS.forEachIndexed { index, (migrationName, migrationFunction) ->
+        val migrationVersion = index + 1
 
-        version += 1
-        migrationPreferences.edit().putInt("version", version).apply()
-    }
+        val isMigrationRequired = version < migrationVersion
+        if (!isMigrationRequired) {
+            logger.info { "Skipping migration version $migrationVersion: $migrationName" }
+            return@forEachIndexed
+        }
 
-    if (version < 2) {
-        logger.info { "Running migration for version: 2" }
+        logger.info { "Running migration version $migrationVersion: $migrationName" }
 
-        Injekt.get<IUpdater>().deleteLastAutomatedUpdateTimestamp()
+        migrationFunction(applicationDirs)
 
-        version += 1
-        migrationPreferences.edit().putInt("version", version).apply()
+        migrationPreferences.edit().putInt("version", migrationVersion).apply()
     }
 }
