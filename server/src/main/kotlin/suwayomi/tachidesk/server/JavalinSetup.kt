@@ -112,8 +112,11 @@ object JavalinSetup {
             }
 
         app.beforeMatched { ctx ->
+            val isWebManifest = listOf("site.webmanifest", "manifest.json").any { ctx.path().endsWith(it) }
             val isPreFlight = ctx.method() == HandlerType.OPTIONS
-            if (isPreFlight) {
+
+            val requiresAuthentication = !isPreFlight && !isWebManifest
+            if (!requiresAuthentication) {
                 return@beforeMatched
             }
 
