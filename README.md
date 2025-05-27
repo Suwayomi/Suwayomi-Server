@@ -23,6 +23,7 @@
 - [Syncing With Mihon (Tachiyomi)](#syncing-with-mihon-tachiyomi)
 - [Troubleshooting and Support](#troubleshooting-and-support)
 - [Contributing and Technical info](#contributing-and-technical-info)
+- [Translation](#translation)
 - [Credit](#credit)
 - [License](#license)
 <!-- Generated with https://ecotrust-canada.github.io/markdown-toc/ -->
@@ -174,6 +175,15 @@ See [this troubleshooting wiki page](https://github.com/Suwayomi/Suwayomi-Server
 
 ## Contributing and Technical info
 See [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+## Translation
+Feel free to translate the project on [Weblate](https://hosted.weblate.org/projects/suwayomi/suwayomi-server/)
+
+<details><summary>Translation Progress</summary>
+<a href="https://hosted.weblate.org/engage/suwayomi-server/">
+<img src="https://hosted.weblate.org/widgets/suwayomi/-/suwayomi-server/multi-auto.svg" alt="Translation status" />
+</a>
+</details>
 
 ## Credit
 This project is a spiritual successor of [TachiWeb-Server](https://github.com/Tachiweb/TachiWeb-server), Many of the ideas and the groundwork adopted in this project comes from TachiWeb.
