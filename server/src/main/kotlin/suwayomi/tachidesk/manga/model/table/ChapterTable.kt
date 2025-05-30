@@ -20,7 +20,7 @@ object ChapterTable : IntIdTable() {
     val name = varchar("name", 512)
     val date_upload = long("date_upload").default(0)
     val chapter_number = float("chapter_number").default(-1f)
-    val scanlator = varchar("scanlator", 128).nullable()
+    val scanlator = varchar("scanlator", 256).nullable()
 
     val isRead = bool("read").default(false)
     val isBookmarked = bool("bookmark").default(false)
