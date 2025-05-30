@@ -58,16 +58,6 @@ import java.time.Instant
 private val logger = KotlinLogging.logger { }
 
 object Manga {
-    private fun truncate(
-        text: String?,
-        maxLength: Int,
-    ): String? =
-        if (text?.length ?: 0 > maxLength) {
-            text?.take(maxLength - 3) + "..."
-        } else {
-            text
-        }
-
     suspend fun getManga(
         mangaId: Int,
         onlineFetch: Boolean = false,
@@ -148,7 +138,7 @@ object Manga {
 
                 it[MangaTable.artist] = sManga.artist ?: mangaEntry[MangaTable.artist]
                 it[MangaTable.author] = sManga.author ?: mangaEntry[MangaTable.author]
-                it[MangaTable.description] = sManga.description?.let { truncate(it, 4096) }
+                it[MangaTable.description] = sManga.description
                     ?: mangaEntry[MangaTable.description]
                 it[MangaTable.genre] = sManga.genre ?: mangaEntry[MangaTable.genre]
                 it[MangaTable.status] = sManga.status
