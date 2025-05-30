@@ -261,6 +261,7 @@ object Chapter {
 
                 // we got some clean up due
                 if (chaptersIdsToDelete.isNotEmpty()) {
+                    DownloadManager.dequeue(chaptersIdsToDelete)
                     transaction {
                         PageTable.deleteWhere { chapter inList chaptersIdsToDelete }
                         ChapterTable.deleteWhere { id inList chaptersIdsToDelete }
