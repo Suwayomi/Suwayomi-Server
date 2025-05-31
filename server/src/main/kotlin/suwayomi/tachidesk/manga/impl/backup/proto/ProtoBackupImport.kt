@@ -33,6 +33,7 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.toStatus
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
+import suwayomi.tachidesk.manga.impl.Manga.clearThumbnail
 import suwayomi.tachidesk.manga.impl.backup.models.Chapter
 import suwayomi.tachidesk.manga.impl.backup.models.Manga
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.ValidationResult
@@ -313,6 +314,9 @@ object ProtoBackupImport : ProtoBackupBase() {
 
                         dbMangaId
                     }
+
+                // delete thumbnail in case cached data still exists
+                clearThumbnail(mangaId)
 
                 // merge chapter data
                 restoreMangaChapterData(mangaId, restoreMode, chapters)
