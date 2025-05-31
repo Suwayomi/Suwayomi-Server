@@ -193,6 +193,16 @@ object Category {
                 .associate { it[CategoryMetaTable.key] to it[CategoryMetaTable.value] }
         }
 
+    fun getCategoriesMetaMaps(ids: List<Int>): Map<Int, Map<String, String>> =
+        transaction {
+            CategoryMetaTable
+                .selectAll()
+                .where { CategoryMetaTable.ref inList ids }
+                .groupBy { it[CategoryMetaTable.ref].value }
+                .mapValues { it.value.associate { it[CategoryMetaTable.key] to it[CategoryMetaTable.value] } }
+                .withDefault { emptyMap() }
+        }
+
     fun modifyMeta(
         categoryId: Int,
         key: String,

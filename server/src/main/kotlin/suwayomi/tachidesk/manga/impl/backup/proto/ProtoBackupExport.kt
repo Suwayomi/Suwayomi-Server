@@ -24,8 +24,12 @@ import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.global.impl.GlobalMeta
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
+import suwayomi.tachidesk.manga.impl.Chapter
+import suwayomi.tachidesk.manga.impl.Manga
+import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
@@ -123,6 +127,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                 includeChapters = true,
                 includeTracking = true,
                 includeHistory = true,
+                includeClientData = true,
             ),
         ).use { input ->
             val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
@@ -181,8 +186,9 @@ object ProtoBackupExport : ProtoBackupBase() {
             transaction {
                 Backup(
                     backupManga(databaseManga, flags),
-                    backupCategories(),
-                    backupExtensionInfo(databaseManga),
+                    backupCategories(flags),
+                    backupExtensionInfo(databaseManga, flags),
+                    backupGlobalMeta(flags),
                 )
             }
 
@@ -220,6 +226,10 @@ object ProtoBackupExport : ProtoBackupBase() {
 
             val mangaId = mangaRow[MangaTable.id].value
 
+            if (flags.includeClientData) {
+                backupManga.meta = Manga.getMangaMetaMap(mangaId)
+            }
+
             if (flags.includeChapters) {
                 val chapters =
                     transaction {
@@ -231,6 +241,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                                 ChapterTable.toDataClass(it)
                             }
                     }
+                val chapterToMeta = Chapter.getChaptersMetaMaps(chapters.map { it.id })
 
                 backupManga.chapters =
                     chapters.map {
@@ -245,7 +256,11 @@ object ProtoBackupExport : ProtoBackupBase() {
                             it.uploadDate,
                             it.chapterNumber,
                             chapters.size - it.index,
-                        )
+                        ).apply {
+                            if (flags.includeClientData) {
+                                this.meta = chapterToMeta[it.id] ?: emptyMap()
+                            }
+                        }
                     }
             }
 
@@ -287,31 +302,59 @@ object ProtoBackupExport : ProtoBackupBase() {
             backupManga
         }
 
-    private fun backupCategories(): List<BackupCategory> =
-        CategoryTable
-            .selectAll()
-            .orderBy(CategoryTable.order to SortOrder.ASC)
-            .map {
-                CategoryTable.toDataClass(it)
-            }.filter { it.id != Category.DEFAULT_CATEGORY_ID }
-            .map {
-                BackupCategory(
-                    it.name,
-                    it.order,
-                    0, // not supported in Tachidesk
-                )
-            }
+    private fun backupCategories(flags: BackupFlags): List<BackupCategory> {
+        val categories =
+            CategoryTable
+                .selectAll()
+                .orderBy(CategoryTable.order to SortOrder.ASC)
+                .map { CategoryTable.toDataClass(it) }
+        val categoryToMeta = Category.getCategoriesMetaMaps(categories.map { it.id })
 
-    private fun backupExtensionInfo(mangas: Query): List<BackupSource> =
-        mangas
-            .asSequence()
-            .map { it[MangaTable.sourceReference] }
-            .distinct()
-            .map {
-                val sourceRow = SourceTable.selectAll().where { SourceTable.id eq it }.firstOrNull()
+        return categories.map {
+            BackupCategory(
+                it.name,
+                it.order,
+                0, // not supported in Tachidesk
+            ).apply {
+                if (flags.includeClientData) {
+                    this.meta = categoryToMeta[it.id] ?: emptyMap()
+                }
+            }
+        }
+    }
+
+    private fun backupExtensionInfo(
+        mangas: Query,
+        flags: BackupFlags,
+    ): List<BackupSource> {
+        val inLibraryMangaSourceIds =
+            mangas
+                .asSequence()
+                .map { it[MangaTable.sourceReference] }
+                .distinct()
+                .toList()
+        val sources = SourceTable.selectAll().where { SourceTable.id inList inLibraryMangaSourceIds }
+        val sourceToMeta = Source.getSourcesMetaMaps(sources.map { it[SourceTable.id].value })
+
+        return inLibraryMangaSourceIds
+            .map { mangaSourceId ->
+                val source = sources.firstOrNull { it[SourceTable.id].value == mangaSourceId }
                 BackupSource(
-                    sourceRow?.get(SourceTable.name) ?: "",
-                    it,
-                )
+                    source?.get(SourceTable.name) ?: "",
+                    mangaSourceId,
+                ).apply {
+                    if (flags.includeClientData) {
+                        this.meta = sourceToMeta[mangaSourceId] ?: emptyMap()
+                    }
+                }
             }.toList()
+    }
+
+    private fun backupGlobalMeta(flags: BackupFlags): Map<String, String> {
+        if (!flags.includeClientData) {
+            return emptyMap()
+        }
+
+        return GlobalMeta.getMetaMap()
+    }
 }
