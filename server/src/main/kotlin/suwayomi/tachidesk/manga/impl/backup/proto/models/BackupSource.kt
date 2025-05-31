@@ -8,6 +8,8 @@ import kotlinx.serialization.protobuf.ProtoNumber
 data class BackupSource(
     @ProtoNumber(1) var name: String = "",
     @ProtoNumber(2) var sourceId: Long,
+    // suwayomi
+    @ProtoNumber(9000) var meta: Map<String, String> = emptyMap(),
 ) {
     companion object {
         fun copyFrom(source: Source): BackupSource =

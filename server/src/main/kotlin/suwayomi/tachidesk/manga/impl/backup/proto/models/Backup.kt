@@ -13,6 +13,8 @@ data class Backup(
     // Bump by 100 to specify this is a 0.x value
     // @ProtoNumber(100) var brokenBackupSources: List<BrokenBackupSource> = emptyList(),
     @ProtoNumber(101) var backupSources: List<BackupSource> = emptyList(),
+    // suwayomi
+    @ProtoNumber(9000) var meta: Map<String, String> = emptyMap(),
 ) {
     fun getSourceMap(): Map<Long, String> =
         backupSources

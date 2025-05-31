@@ -151,6 +151,16 @@ object Source {
         unregisterCatalogueSource(sourceId)
     }
 
+    fun getSourcesMetaMaps(ids: List<Long>): Map<Long, Map<String, String>> =
+        transaction {
+            SourceMetaTable
+                .selectAll()
+                .where { SourceMetaTable.ref inList ids }
+                .groupBy { it[SourceMetaTable.ref] }
+                .mapValues { it.value.associate { it[SourceMetaTable.key] to it[SourceMetaTable.value] } }
+                .withDefault { emptyMap() }
+        }
+
     fun modifyMeta(
         sourceId: Long,
         key: String,
