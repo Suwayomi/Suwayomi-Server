@@ -13,4 +13,5 @@ data class BackupFlags(
     val includeChapters: Boolean,
     val includeTracking: Boolean,
     val includeHistory: Boolean,
+    val includeClientData: Boolean,
 )
