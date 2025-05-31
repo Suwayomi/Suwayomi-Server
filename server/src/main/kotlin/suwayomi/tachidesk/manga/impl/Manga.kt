@@ -152,7 +152,7 @@ object Manga {
                     ?: mangaEntry[MangaTable.description]
                 it[MangaTable.genre] = sManga.genre ?: mangaEntry[MangaTable.genre]
                 it[MangaTable.status] = sManga.status
-                if (!sManga.thumbnail_url.isNullOrEmpty() && sManga.thumbnail_url != mangaEntry[MangaTable.thumbnail_url]) {
+                if (!sManga.thumbnail_url.isNullOrEmpty()) {
                     it[MangaTable.thumbnail_url] = sManga.thumbnail_url
                     it[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
                     clearThumbnail(mangaId)
