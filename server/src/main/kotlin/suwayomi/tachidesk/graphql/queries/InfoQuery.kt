@@ -3,7 +3,6 @@ package suwayomi.tachidesk.graphql.queries
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import suwayomi.tachidesk.global.impl.AppUpdate
 import suwayomi.tachidesk.graphql.types.AboutWebUI
-import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIUpdateCheck
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
@@ -63,7 +62,7 @@ class InfoQuery {
         future {
             val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable(WebUIFlavor.current, raiseError = true)
             WebUIUpdateCheck(
-                channel = WebUIChannel.from(serverConfig.webUIChannel.value),
+                channel = serverConfig.webUIChannel.value,
                 tag = version,
                 updateAvailable,
             )

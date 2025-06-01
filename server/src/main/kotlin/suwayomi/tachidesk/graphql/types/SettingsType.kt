@@ -264,11 +264,11 @@ class SettingsType(
         config.socksProxyUsername.value,
         config.socksProxyPassword.value,
         // webUI
-        WebUIFlavor.from(config.webUIFlavor.value),
+        config.webUIFlavor.value,
         config.initialOpenInBrowserEnabled.value,
-        WebUIInterface.from(config.webUIInterface.value),
+        config.webUIInterface.value,
         config.electronPath.value,
-        WebUIChannel.from(config.webUIChannel.value),
+        config.webUIChannel.value,
         config.webUIUpdateCheckInterval.value,
         // downloader
         config.downloadAsCbz.value,

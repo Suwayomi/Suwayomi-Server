@@ -125,11 +125,11 @@ class SettingsMutation {
         updateSetting(settings.socksProxyPassword, serverConfig.socksProxyPassword)
 
         // webUI
-        updateSetting(settings.webUIFlavor?.uiName, serverConfig.webUIFlavor)
+        updateSetting(settings.webUIFlavor, serverConfig.webUIFlavor)
         updateSetting(settings.initialOpenInBrowserEnabled, serverConfig.initialOpenInBrowserEnabled)
-        updateSetting(settings.webUIInterface?.name?.lowercase(), serverConfig.webUIInterface)
+        updateSetting(settings.webUIInterface, serverConfig.webUIInterface)
         updateSetting(settings.electronPath, serverConfig.electronPath)
-        updateSetting(settings.webUIChannel?.name?.lowercase(), serverConfig.webUIChannel)
+        updateSetting(settings.webUIChannel, serverConfig.webUIChannel)
         updateSetting(settings.webUIUpdateCheckInterval, serverConfig.webUIUpdateCheckInterval)
 
         // downloader
