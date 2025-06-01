@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import kotlinx.coroutines.flow.MutableStateFlow
 import suwayomi.tachidesk.graphql.types.PartialSettingsType
 import suwayomi.tachidesk.graphql.types.Settings
@@ -110,7 +111,8 @@ class SettingsMutation {
         configSetting.value = newSetting
     }
 
-    private fun updateSettings(settings: Settings) {
+    @GraphQLIgnore
+    fun updateSettings(settings: Settings) {
         updateSetting(settings.ip, serverConfig.ip)
         updateSetting(settings.port, serverConfig.port)
 
