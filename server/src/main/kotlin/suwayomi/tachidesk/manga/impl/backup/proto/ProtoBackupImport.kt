@@ -200,7 +200,7 @@ object ProtoBackupImport : ProtoBackupBase() {
 
         restoreSourceMeta(backup.backupSources)
 
-        restoreServerSettings(backup.backupManga)
+        restoreServerSettings(backup.serverSettings)
 
         // Store source mapping for error messages
         sourceMapping = backup.getSourceMap()
@@ -493,8 +493,12 @@ object ProtoBackupImport : ProtoBackupBase() {
         modifySourceMetas(backupSources.associateBy { it.sourceId }.mapValues { it.value.meta })
     }
 
-    private fun restoreServerSettings(backupServerSettings: BackupServerSettings) {
-        SettingsMutation().setSettings(backupServerSettings)
+    private fun restoreServerSettings(backupServerSettings: BackupServerSettings?) {
+        if (backupServerSettings == null) {
+            return
+        }
+
+        SettingsMutation().updateSettings(backupServerSettings)
     }
 
     private fun TrackRecordDataClass.forComparison() = this.copy(id = 0, mangaId = 0)
