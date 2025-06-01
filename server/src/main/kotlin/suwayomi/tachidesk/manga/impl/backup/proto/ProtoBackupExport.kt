@@ -25,6 +25,9 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.global.impl.GlobalMeta
+import suwayomi.tachidesk.graphql.types.WebUIChannel
+import suwayomi.tachidesk.graphql.types.WebUIFlavor
+import suwayomi.tachidesk.graphql.types.WebUIInterface
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
@@ -35,6 +38,7 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupServerSettings
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSource
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupTracking
 import suwayomi.tachidesk.manga.impl.track.Track
@@ -128,6 +132,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                 includeTracking = true,
                 includeHistory = true,
                 includeClientData = true,
+                includeServerSettings = true,
             ),
         ).use { input ->
             val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
@@ -189,6 +194,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                     backupCategories(flags),
                     backupExtensionInfo(databaseManga, flags),
                     backupGlobalMeta(flags),
+                    backupServerSettings(flags),
                 )
             }
 
@@ -356,5 +362,81 @@ object ProtoBackupExport : ProtoBackupBase() {
         }
 
         return GlobalMeta.getMetaMap()
+    }
+
+    private fun backupServerSettings(flags: BackupFlags): BackupServerSettings? {
+        if (!flags.includeServerSettings) {
+            return null
+        }
+
+        return BackupServerSettings(
+            ip = serverConfig.ip.value,
+            port = serverConfig.port.value,
+            // socks
+            socksProxyEnabled = serverConfig.socksProxyEnabled.value,
+            socksProxyVersion = serverConfig.socksProxyVersion.value,
+            socksProxyHost = serverConfig.socksProxyHost.value,
+            socksProxyPort = serverConfig.socksProxyPort.value,
+            socksProxyUsername = serverConfig.socksProxyUsername.value,
+            socksProxyPassword = serverConfig.socksProxyPassword.value,
+            // webUI
+            webUIFlavor = WebUIFlavor.from(serverConfig.webUIFlavor.value),
+            initialOpenInBrowserEnabled = serverConfig.initialOpenInBrowserEnabled.value,
+            webUIInterface = WebUIInterface.from(serverConfig.webUIInterface.value),
+            electronPath = serverConfig.electronPath.value,
+            webUIChannel = WebUIChannel.from(serverConfig.webUIChannel.value),
+            webUIUpdateCheckInterval = serverConfig.webUIUpdateCheckInterval.value,
+            // downloader
+            downloadAsCbz = serverConfig.downloadAsCbz.value,
+            downloadsPath = serverConfig.downloadsPath.value,
+            autoDownloadNewChapters = serverConfig.autoDownloadNewChapters.value,
+            excludeEntryWithUnreadChapters = serverConfig.excludeEntryWithUnreadChapters.value,
+            autoDownloadAheadLimit = 0, // deprecated
+            autoDownloadNewChaptersLimit = serverConfig.autoDownloadNewChaptersLimit.value,
+            autoDownloadIgnoreReUploads = serverConfig.autoDownloadIgnoreReUploads.value,
+            // extension
+            extensionRepos = serverConfig.extensionRepos.value,
+            // requests
+            maxSourcesInParallel = serverConfig.maxSourcesInParallel.value,
+            // updater
+            excludeUnreadChapters = serverConfig.excludeUnreadChapters.value,
+            excludeNotStarted = serverConfig.excludeNotStarted.value,
+            excludeCompleted = serverConfig.excludeCompleted.value,
+            globalUpdateInterval = serverConfig.globalUpdateInterval.value,
+            updateMangas = serverConfig.updateMangas.value,
+            // Authentication
+            basicAuthEnabled = serverConfig.basicAuthEnabled.value,
+            basicAuthUsername = serverConfig.basicAuthUsername.value,
+            basicAuthPassword = serverConfig.basicAuthPassword.value,
+            // misc
+            debugLogsEnabled = serverConfig.debugLogsEnabled.value,
+            gqlDebugLogsEnabled = false, // deprecated
+            systemTrayEnabled = serverConfig.systemTrayEnabled.value,
+            maxLogFiles = serverConfig.maxLogFiles.value,
+            maxLogFileSize = serverConfig.maxLogFileSize.value,
+            maxLogFolderSize = serverConfig.maxLogFolderSize.value,
+            // backup
+            backupPath = serverConfig.backupPath.value,
+            backupTime = serverConfig.backupTime.value,
+            backupInterval = serverConfig.backupInterval.value,
+            backupTTL = serverConfig.backupTTL.value,
+            // local source
+            localSourcePath = serverConfig.localSourcePath.value,
+            // cloudflare bypass
+            flareSolverrEnabled = serverConfig.flareSolverrEnabled.value,
+            flareSolverrUrl = serverConfig.flareSolverrUrl.value,
+            flareSolverrTimeout = serverConfig.flareSolverrTimeout.value,
+            flareSolverrSessionName = serverConfig.flareSolverrSessionName.value,
+            flareSolverrSessionTtl = serverConfig.flareSolverrSessionTtl.value,
+            flareSolverrAsResponseFallback = serverConfig.flareSolverrAsResponseFallback.value,
+            // opds
+            opdsUseBinaryFileSizes = serverConfig.opdsUseBinaryFileSizes.value,
+            opdsItemsPerPage = serverConfig.opdsItemsPerPage.value,
+            opdsEnablePageReadProgress = serverConfig.opdsEnablePageReadProgress.value,
+            opdsMarkAsReadOnDownload = serverConfig.opdsMarkAsReadOnDownload.value,
+            opdsShowOnlyUnreadChapters = serverConfig.opdsShowOnlyUnreadChapters.value,
+            opdsShowOnlyDownloadedChapters = serverConfig.opdsShowOnlyDownloadedChapters.value,
+            opdsChapterSortOrder = serverConfig.opdsChapterSortOrder.value,
+        )
     }
 }

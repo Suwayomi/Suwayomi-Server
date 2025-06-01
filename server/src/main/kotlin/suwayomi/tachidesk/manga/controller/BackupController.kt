@@ -91,6 +91,7 @@ object BackupController {
                                 includeTracking = true,
                                 includeHistory = true,
                                 includeClientData = true,
+                                includeServerSettings = true,
                             ),
                         )
                     }.thenApply { ctx.result(it) }
@@ -124,6 +125,7 @@ object BackupController {
                                 includeTracking = true,
                                 includeHistory = true,
                                 includeClientData = true,
+                                includeServerSettings = true,
                             ),
                         )
                     }.thenApply { ctx.result(it) }
