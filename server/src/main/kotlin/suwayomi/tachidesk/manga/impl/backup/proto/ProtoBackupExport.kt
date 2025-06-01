@@ -25,9 +25,6 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.global.impl.GlobalMeta
-import suwayomi.tachidesk.graphql.types.WebUIChannel
-import suwayomi.tachidesk.graphql.types.WebUIFlavor
-import suwayomi.tachidesk.graphql.types.WebUIInterface
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
@@ -380,11 +377,11 @@ object ProtoBackupExport : ProtoBackupBase() {
             socksProxyUsername = serverConfig.socksProxyUsername.value,
             socksProxyPassword = serverConfig.socksProxyPassword.value,
             // webUI
-            webUIFlavor = WebUIFlavor.from(serverConfig.webUIFlavor.value),
+            webUIFlavor = serverConfig.webUIFlavor.value,
             initialOpenInBrowserEnabled = serverConfig.initialOpenInBrowserEnabled.value,
-            webUIInterface = WebUIInterface.from(serverConfig.webUIInterface.value),
+            webUIInterface = serverConfig.webUIInterface.value,
             electronPath = serverConfig.electronPath.value,
-            webUIChannel = WebUIChannel.from(serverConfig.webUIChannel.value),
+            webUIChannel = serverConfig.webUIChannel.value,
             webUIUpdateCheckInterval = serverConfig.webUIUpdateCheckInterval.value,
             // downloader
             downloadAsCbz = serverConfig.downloadAsCbz.value,

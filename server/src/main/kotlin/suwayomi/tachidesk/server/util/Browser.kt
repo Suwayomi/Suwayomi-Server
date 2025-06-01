@@ -25,7 +25,7 @@ object Browser {
         if (serverConfig.webUIEnabled.value) {
             val appBaseUrl = getAppBaseUrl()
 
-            if (serverConfig.webUIInterface.value == WebUIInterface.ELECTRON.name.lowercase()) {
+            if (serverConfig.webUIInterface.value == WebUIInterface.ELECTRON) {
                 try {
                     val electronPath = serverConfig.electronPath.value
                     electronInstances.add(ProcessBuilder(electronPath, appBaseUrl).start())
