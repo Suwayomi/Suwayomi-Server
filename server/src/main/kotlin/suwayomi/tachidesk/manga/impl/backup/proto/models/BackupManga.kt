@@ -38,6 +38,8 @@ data class BackupManga(
     @ProtoNumber(103) var viewer_flags: Int? = null,
     @ProtoNumber(104) var history: List<BackupHistory> = emptyList(),
     @ProtoNumber(105) var updateStrategy: UpdateStrategy = UpdateStrategy.ALWAYS_UPDATE,
+    // suwayomi
+    @ProtoNumber(9000) var meta: Map<String, String> = emptyMap(),
 ) {
     fun getMangaImpl(): MangaImpl =
         MangaImpl().apply {
@@ -55,6 +57,7 @@ data class BackupManga(
             viewer_flags = this@BackupManga.viewer_flags ?: this@BackupManga.viewer
             chapter_flags = this@BackupManga.chapterFlags
             update_strategy = this@BackupManga.updateStrategy
+            meta = this@BackupManga.meta
         }
 
     fun getChaptersImpl(): List<ChapterImpl> =

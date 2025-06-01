@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import kotlinx.coroutines.flow.MutableStateFlow
 import suwayomi.tachidesk.graphql.types.PartialSettingsType
 import suwayomi.tachidesk.graphql.types.Settings
@@ -110,7 +111,8 @@ class SettingsMutation {
         configSetting.value = newSetting
     }
 
-    private fun updateSettings(settings: Settings) {
+    @GraphQLIgnore
+    fun updateSettings(settings: Settings) {
         updateSetting(settings.ip, serverConfig.ip)
         updateSetting(settings.port, serverConfig.port)
 
@@ -123,11 +125,11 @@ class SettingsMutation {
         updateSetting(settings.socksProxyPassword, serverConfig.socksProxyPassword)
 
         // webUI
-        updateSetting(settings.webUIFlavor?.uiName, serverConfig.webUIFlavor)
+        updateSetting(settings.webUIFlavor, serverConfig.webUIFlavor)
         updateSetting(settings.initialOpenInBrowserEnabled, serverConfig.initialOpenInBrowserEnabled)
-        updateSetting(settings.webUIInterface?.name?.lowercase(), serverConfig.webUIInterface)
+        updateSetting(settings.webUIInterface, serverConfig.webUIInterface)
         updateSetting(settings.electronPath, serverConfig.electronPath)
-        updateSetting(settings.webUIChannel?.name?.lowercase(), serverConfig.webUIChannel)
+        updateSetting(settings.webUIChannel, serverConfig.webUIChannel)
         updateSetting(settings.webUIUpdateCheckInterval, serverConfig.webUIUpdateCheckInterval)
 
         // downloader
@@ -182,6 +184,7 @@ class SettingsMutation {
         updateSetting(settings.flareSolverrAsResponseFallback, serverConfig.flareSolverrAsResponseFallback)
 
         // opds
+        updateSetting(settings.opdsUseBinaryFileSizes, serverConfig.opdsUseBinaryFileSizes)
         updateSetting(settings.opdsItemsPerPage, serverConfig.opdsItemsPerPage)
         updateSetting(settings.opdsEnablePageReadProgress, serverConfig.opdsEnablePageReadProgress)
         updateSetting(settings.opdsMarkAsReadOnDownload, serverConfig.opdsMarkAsReadOnDownload)

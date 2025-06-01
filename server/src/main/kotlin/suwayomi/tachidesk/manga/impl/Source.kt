@@ -14,11 +14,12 @@ import eu.kanade.tachiyomi.source.sourcePreferences
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.json.JsonMapper
 import io.javalin.json.fromJsonString
+import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.extension.Extension.getExtensionIconUrl
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
@@ -27,7 +28,6 @@ import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
-import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.androidimpl.CustomContext
 
@@ -151,26 +151,72 @@ object Source {
         unregisterCatalogueSource(sourceId)
     }
 
+    fun getSourcesMetaMaps(ids: List<Long>): Map<Long, Map<String, String>> =
+        transaction {
+            SourceMetaTable
+                .selectAll()
+                .where { SourceMetaTable.ref inList ids }
+                .groupBy { it[SourceMetaTable.ref] }
+                .mapValues { it.value.associate { it[SourceMetaTable.key] to it[SourceMetaTable.value] } }
+                .withDefault { emptyMap() }
+        }
+
     fun modifyMeta(
         sourceId: Long,
         key: String,
         value: String,
     ) {
-        transaction {
-            val meta =
-                transaction {
-                    SourceMetaTable.selectAll().where { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
-                }.firstOrNull()
+        modifySourceMetas(mapOf(sourceId to mapOf(key to value)))
+    }
 
-            if (meta == null) {
-                SourceMetaTable.insert {
-                    it[SourceMetaTable.key] = key
-                    it[SourceMetaTable.value] = value
-                    it[SourceMetaTable.ref] = sourceId
+    fun modifySourceMetas(metaBySourceIds: Map<Long, Map<String, String>>) {
+        transaction {
+            val sourceIds = metaBySourceIds.keys
+            val metaKeys = metaBySourceIds.flatMap { it.value.keys }
+
+            val dbMetaBySourceId =
+                SourceMetaTable
+                    .selectAll()
+                    .where { (SourceMetaTable.ref inList sourceIds) and (SourceMetaTable.key inList metaKeys) }
+                    .groupBy { it[SourceMetaTable.ref] }
+
+            val existingMetaByMetaId =
+                sourceIds.flatMap { sourceId ->
+                    val metaByKey = dbMetaBySourceId[sourceId].orEmpty().associateBy { it[SourceMetaTable.key] }
+                    val existingMetas = metaBySourceIds[sourceId].orEmpty().filter { (key) -> key in metaByKey.keys }
+
+                    existingMetas.map { entry ->
+                        val metaId = metaByKey[entry.key]!![SourceMetaTable.id].value
+
+                        metaId to entry
+                    }
                 }
-            } else {
-                SourceMetaTable.update({ (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }) {
-                    it[SourceMetaTable.value] = value
+
+            val newMetaBySourceId =
+                sourceIds.flatMap { sourceId ->
+                    val metaByKey = dbMetaBySourceId[sourceId].orEmpty().associateBy { it[SourceMetaTable.key] }
+
+                    metaBySourceIds[sourceId]
+                        .orEmpty()
+                        .filter { entry -> entry.key !in metaByKey.keys }
+                        .map { entry -> sourceId to entry }
+                }
+
+            if (existingMetaByMetaId.isNotEmpty()) {
+                BatchUpdateStatement(SourceMetaTable).apply {
+                    existingMetaByMetaId.forEach { (metaId, entry) ->
+                        addBatch(EntityID(metaId, SourceMetaTable))
+                        this[SourceMetaTable.value] = entry.value
+                    }
+                    execute(this@transaction)
+                }
+            }
+
+            if (newMetaBySourceId.isNotEmpty()) {
+                SourceMetaTable.batchInsert(newMetaBySourceId) { (sourceId, entry) ->
+                    this[SourceMetaTable.ref] = sourceId
+                    this[SourceMetaTable.key] = entry.key
+                    this[SourceMetaTable.value] = entry.value
                 }
             }
         }

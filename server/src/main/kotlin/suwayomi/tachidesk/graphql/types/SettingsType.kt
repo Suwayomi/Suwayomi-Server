@@ -95,6 +95,7 @@ interface Settings : Node {
     val flareSolverrAsResponseFallback: Boolean?
 
     // opds
+    val opdsUseBinaryFileSizes: Boolean?
     val opdsItemsPerPage: Int?
     val opdsEnablePageReadProgress: Boolean?
     val opdsMarkAsReadOnDownload: Boolean?
@@ -169,6 +170,7 @@ data class PartialSettingsType(
     override val flareSolverrSessionTtl: Int?,
     override val flareSolverrAsResponseFallback: Boolean?,
     // opds
+    override val opdsUseBinaryFileSizes: Boolean?,
     override val opdsItemsPerPage: Int?,
     override val opdsEnablePageReadProgress: Boolean?,
     override val opdsMarkAsReadOnDownload: Boolean?,
@@ -243,6 +245,7 @@ class SettingsType(
     override val flareSolverrSessionTtl: Int,
     override val flareSolverrAsResponseFallback: Boolean,
     // opds
+    override val opdsUseBinaryFileSizes: Boolean,
     override val opdsItemsPerPage: Int,
     override val opdsEnablePageReadProgress: Boolean,
     override val opdsMarkAsReadOnDownload: Boolean,
@@ -261,11 +264,11 @@ class SettingsType(
         config.socksProxyUsername.value,
         config.socksProxyPassword.value,
         // webUI
-        WebUIFlavor.from(config.webUIFlavor.value),
+        config.webUIFlavor.value,
         config.initialOpenInBrowserEnabled.value,
-        WebUIInterface.from(config.webUIInterface.value),
+        config.webUIInterface.value,
         config.electronPath.value,
-        WebUIChannel.from(config.webUIChannel.value),
+        config.webUIChannel.value,
         config.webUIUpdateCheckInterval.value,
         // downloader
         config.downloadAsCbz.value,
@@ -311,6 +314,7 @@ class SettingsType(
         config.flareSolverrSessionTtl.value,
         config.flareSolverrAsResponseFallback.value,
         // opds
+        config.opdsUseBinaryFileSizes.value,
         config.opdsItemsPerPage.value,
         config.opdsEnablePageReadProgress.value,
         config.opdsMarkAsReadOnDownload.value,
