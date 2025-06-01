@@ -8,6 +8,7 @@ enum class BackupRestoreState {
     FAILURE,
     RESTORING_CATEGORIES,
     RESTORING_MANGA,
+    RESTORING_META,
 }
 
 data class BackupRestoreStatus(
@@ -39,6 +40,12 @@ fun ProtoBackupImport.BackupRestoreState.toStatus(): BackupRestoreStatus =
         is ProtoBackupImport.BackupRestoreState.RestoringCategories ->
             BackupRestoreStatus(
                 state = BackupRestoreState.RESTORING_CATEGORIES,
+                totalManga = totalManga,
+                mangaProgress = 0,
+            )
+        is ProtoBackupImport.BackupRestoreState.RestoringMeta ->
+            BackupRestoreStatus(
+                state = BackupRestoreState.RESTORING_META,
                 totalManga = totalManga,
                 mangaProgress = 0,
             )

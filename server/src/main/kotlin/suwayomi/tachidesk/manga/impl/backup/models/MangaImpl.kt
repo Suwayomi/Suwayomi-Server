@@ -37,6 +37,8 @@ open class MangaImpl : Manga {
 
     override var initialized: Boolean = false
 
+    override var meta: Map<String, String> = emptyMap()
+
     /** Reader mode value
      * ref: https://github.com/tachiyomiorg/tachiyomi/blob/ff369010074b058bb734ce24c66508300e6e9ac6/app/src/main/java/eu/kanade/tachiyomi/ui/reader/setting/ReadingModeType.kt#L8
      * 0 -> Default

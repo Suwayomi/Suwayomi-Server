@@ -57,6 +57,7 @@ data class BackupManga(
             viewer_flags = this@BackupManga.viewer_flags ?: this@BackupManga.viewer
             chapter_flags = this@BackupManga.chapterFlags
             update_strategy = this@BackupManga.updateStrategy
+            meta = this@BackupManga.meta
         }
 
     fun getChaptersImpl(): List<ChapterImpl> =
