@@ -97,6 +97,10 @@ object ProtoBackupImport : ProtoBackupBase() {
             val totalManga: Int,
         ) : BackupRestoreState()
 
+        data class RestoringSettings(
+            val totalManga: Int,
+        ) : BackupRestoreState()
+
         data class RestoringManga(
             val current: Int,
             val totalManga: Int,
@@ -189,7 +193,7 @@ object ProtoBackupImport : ProtoBackupBase() {
 
         val validationResult = validate(backup)
 
-        restoreAmount = backup.backupManga.size + 3 // +1 for categories, +1 for meta
+        restoreAmount = backup.backupManga.size + 3 // +1 for categories, +1 for meta, +1 for settings
 
         updateRestoreState(id, BackupRestoreState.RestoringCategories(backup.backupManga.size))
 
@@ -201,7 +205,9 @@ object ProtoBackupImport : ProtoBackupBase() {
 
         restoreSourceMeta(backup.backupSources)
 
-        restoreServerSettings(backup.backupManga)
+        updateRestoreState(id, BackupRestoreState.RestoringSettings(backup.backupManga.size))
+
+        restoreServerSettings(backup.serverSettings)
 
         // Store source mapping for error messages
         sourceMapping = backup.getSourceMap()
@@ -497,8 +503,12 @@ object ProtoBackupImport : ProtoBackupBase() {
         modifySourceMetas(backupSources.associateBy { it.sourceId }.mapValues { it.value.meta })
     }
 
-    private fun restoreServerSettings(backupServerSettings: BackupServerSettings) {
-        SettingsMutation().setSettings(backupServerSettings)
+    private fun restoreServerSettings(backupServerSettings: BackupServerSettings?) {
+        if (backupServerSettings == null) {
+            return
+        }
+
+        SettingsMutation().updateSettings(backupServerSettings)
     }
 
     private fun TrackRecordDataClass.forComparison() = this.copy(id = 0, mangaId = 0)
