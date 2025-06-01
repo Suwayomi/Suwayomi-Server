@@ -65,6 +65,7 @@ class BackupMutation {
                     includeTracking = true,
                     includeHistory = true,
                     includeClientData = true,
+                    includeServerSettings = true,
                 ),
             )
 

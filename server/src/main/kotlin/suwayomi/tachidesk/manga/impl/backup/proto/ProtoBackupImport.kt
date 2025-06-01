@@ -31,6 +31,7 @@ import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.global.impl.GlobalMeta
+import suwayomi.tachidesk.graphql.mutations.SettingsMutation
 import suwayomi.tachidesk.graphql.types.toStatus
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.Category.modifyCategoriesMetas
@@ -47,6 +48,7 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupHistory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupServerSettings
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSource
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupTracking
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
@@ -198,6 +200,8 @@ object ProtoBackupImport : ProtoBackupBase() {
         restoreGlobalMeta(backup.meta)
 
         restoreSourceMeta(backup.backupSources)
+
+        restoreServerSettings(backup.backupManga)
 
         // Store source mapping for error messages
         sourceMapping = backup.getSourceMap()
@@ -491,6 +495,10 @@ object ProtoBackupImport : ProtoBackupBase() {
 
     private fun restoreSourceMeta(backupSources: List<BackupSource>) {
         modifySourceMetas(backupSources.associateBy { it.sourceId }.mapValues { it.value.meta })
+    }
+
+    private fun restoreServerSettings(backupServerSettings: BackupServerSettings) {
+        SettingsMutation().setSettings(backupServerSettings)
     }
 
     private fun TrackRecordDataClass.forComparison() = this.copy(id = 0, mangaId = 0)

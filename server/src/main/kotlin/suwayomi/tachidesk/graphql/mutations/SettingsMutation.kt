@@ -182,6 +182,7 @@ class SettingsMutation {
         updateSetting(settings.flareSolverrAsResponseFallback, serverConfig.flareSolverrAsResponseFallback)
 
         // opds
+        updateSetting(settings.opdsUseBinaryFileSizes, serverConfig.opdsUseBinaryFileSizes)
         updateSetting(settings.opdsItemsPerPage, serverConfig.opdsItemsPerPage)
         updateSetting(settings.opdsEnablePageReadProgress, serverConfig.opdsEnablePageReadProgress)
         updateSetting(settings.opdsMarkAsReadOnDownload, serverConfig.opdsMarkAsReadOnDownload)
