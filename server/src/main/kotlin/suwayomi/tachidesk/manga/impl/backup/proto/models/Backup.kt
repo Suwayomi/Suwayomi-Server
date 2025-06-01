@@ -15,6 +15,7 @@ data class Backup(
     @ProtoNumber(101) var backupSources: List<BackupSource> = emptyList(),
     // suwayomi
     @ProtoNumber(9000) var meta: Map<String, String> = emptyMap(),
+    @ProtoNumber(9001) var serverSettings: BackupServerSettings?,
 ) {
     fun getSourceMap(): Map<Long, String> =
         backupSources
