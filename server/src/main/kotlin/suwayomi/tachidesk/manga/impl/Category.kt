@@ -21,6 +21,7 @@ import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
+import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 
@@ -191,6 +192,16 @@ object Category {
                 .selectAll()
                 .where { CategoryMetaTable.ref eq categoryId }
                 .associate { it[CategoryMetaTable.key] to it[CategoryMetaTable.value] }
+        }
+
+    fun getCategoriesMetaMaps(ids: List<Int>): Map<Int, Map<String, String>> =
+        transaction {
+            ChapterMetaTable
+                .selectAll()
+                .where { CategoryMetaTable.ref inList ids }
+                .groupBy { it[CategoryMetaTable.ref].value }
+                .mapValues { it.value.associate { it[CategoryMetaTable.key] to it[CategoryMetaTable.value] } }
+                .withDefault { emptyMap() }
         }
 
     fun modifyMeta(

@@ -10,4 +10,6 @@ class BackupCategory(
     // @ProtoNumber(3) val updateInterval: Int = 0, 1.x value not used in 0.x
     // Bump by 100 to specify this is a 0.x value
     @ProtoNumber(100) var flags: Int = 0,
+    // suwayomi
+    @ProtoNumber(9000) var meta: Map<String, String> = emptyMap(),
 )

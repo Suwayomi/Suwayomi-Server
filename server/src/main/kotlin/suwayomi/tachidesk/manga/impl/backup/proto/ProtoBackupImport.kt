@@ -25,11 +25,13 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
+import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import suwayomi.tachidesk.global.model.table.GlobalMetaTable
 import suwayomi.tachidesk.graphql.types.toStatus
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
@@ -41,19 +43,27 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupHistory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSource
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupTracking
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrack
 import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrackRecordDataClass
 import suwayomi.tachidesk.manga.model.dataclass.TrackRecordDataClass
+import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
+import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.SourceMetaTable
+import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.database.dbTransaction
 import java.io.InputStream
 import java.util.Date
 import java.util.Timer
 import java.util.TimerTask
 import java.util.concurrent.TimeUnit
+import kotlin.collections.component1
+import kotlin.collections.component2
 import kotlin.math.max
 import suwayomi.tachidesk.manga.impl.track.Track as Tracker
 
@@ -176,11 +186,15 @@ object ProtoBackupImport : ProtoBackupBase() {
 
         val validationResult = validate(backup)
 
-        restoreAmount = backup.backupManga.size + 1 // +1 for categories
+        restoreAmount = backup.backupManga.size + 3 // +1 for categories, +1 for global meta, +1 for source meta
 
         updateRestoreState(id, BackupRestoreState.RestoringCategories(backup.backupManga.size))
 
         val categoryMapping = restoreCategories(backup.backupCategories)
+
+        restoreGlobalMeta(backup.meta)
+
+        restoreSourceMeta(backup.backupSources)
 
         // Store source mapping for error messages
         sourceMapping = backup.getSourceMap()
@@ -223,6 +237,20 @@ object ProtoBackupImport : ProtoBackupBase() {
 
     private fun restoreCategories(backupCategories: List<BackupCategory>): Map<Int, Int> {
         val categoryIds = Category.createCategories(backupCategories.map { it.name })
+
+        categoryIds.forEachIndexed { index, categoryId ->
+            val meta = backupCategories[index].meta
+
+            if (meta.isEmpty()) {
+                return@forEachIndexed
+            }
+
+            CategoryMetaTable.batchUpsert(meta.entries) { (key, value) ->
+                this[CategoryMetaTable.ref] = EntityID(categoryId, CategoryMetaTable)
+                this[CategoryMetaTable.key] = key
+                this[CategoryMetaTable.value] = value
+            }
+        }
 
         return backupCategories.withIndex().associate { (index, backupCategory) ->
             backupCategory.order to categoryIds[index]
@@ -314,6 +342,14 @@ object ProtoBackupImport : ProtoBackupBase() {
                         dbMangaId
                     }
 
+                if (manga.meta.isNotEmpty()) {
+                    MangaMetaTable.batchUpsert(manga.meta.entries) { (key, value) ->
+                        this[MangaMetaTable.ref] = EntityID(mangaId, MangaTable)
+                        this[MangaMetaTable.key] = key
+                        this[MangaMetaTable.value] = value
+                    }
+                }
+
                 // merge chapter data
                 restoreMangaChapterData(mangaId, restoreMode, chapters)
 
@@ -354,26 +390,28 @@ object ProtoBackupImport : ProtoBackupBase() {
     ) = dbTransaction {
         val (chaptersToInsert, chaptersToUpdateToDbChapter) = getMangaChapterToRestoreInfo(mangaId, restoreMode, chapters)
 
-        ChapterTable.batchInsert(chaptersToInsert) { chapter ->
-            this[ChapterTable.url] = chapter.url
-            this[ChapterTable.name] = chapter.name
-            if (chapter.date_upload == 0L) {
-                this[ChapterTable.date_upload] = chapter.date_fetch
-            } else {
-                this[ChapterTable.date_upload] = chapter.date_upload
-            }
-            this[ChapterTable.chapter_number] = chapter.chapter_number
-            this[ChapterTable.scanlator] = chapter.scanlator
+        val insertedChapterIds =
+            ChapterTable
+                .batchInsert(chaptersToInsert) { chapter ->
+                    this[ChapterTable.url] = chapter.url
+                    this[ChapterTable.name] = chapter.name
+                    if (chapter.date_upload == 0L) {
+                        this[ChapterTable.date_upload] = chapter.date_fetch
+                    } else {
+                        this[ChapterTable.date_upload] = chapter.date_upload
+                    }
+                    this[ChapterTable.chapter_number] = chapter.chapter_number
+                    this[ChapterTable.scanlator] = chapter.scanlator
 
-            this[ChapterTable.sourceOrder] = chaptersToInsert.size - chapter.source_order
-            this[ChapterTable.manga] = mangaId
+                    this[ChapterTable.sourceOrder] = chaptersToInsert.size - chapter.source_order
+                    this[ChapterTable.manga] = mangaId
 
-            this[ChapterTable.isRead] = chapter.read
-            this[ChapterTable.lastPageRead] = chapter.last_page_read.coerceAtLeast(0)
-            this[ChapterTable.isBookmarked] = chapter.bookmark
+                    this[ChapterTable.isRead] = chapter.read
+                    this[ChapterTable.lastPageRead] = chapter.last_page_read.coerceAtLeast(0)
+                    this[ChapterTable.isBookmarked] = chapter.bookmark
 
-            this[ChapterTable.fetchedAt] = TimeUnit.MILLISECONDS.toSeconds(chapter.date_fetch)
-        }
+                    this[ChapterTable.fetchedAt] = TimeUnit.MILLISECONDS.toSeconds(chapter.date_fetch)
+                }.map { it[ChapterTable.id].value }
 
         if (chaptersToUpdateToDbChapter.isNotEmpty()) {
             BatchUpdateStatement(ChapterTable).apply {
@@ -385,6 +423,26 @@ object ProtoBackupImport : ProtoBackupBase() {
                     this[ChapterTable.isBookmarked] = backupChapter.bookmark || dbChapter[ChapterTable.isBookmarked]
                 }
                 execute(this@dbTransaction)
+            }
+        }
+
+        val chapterIdsByUrl = (
+            insertedChapterIds.withIndex().associate { (index, id) -> chaptersToInsert[index].url to id } +
+                chaptersToUpdateToDbChapter.associate { it.first.url to it.second[ChapterTable.id].value }
+        )
+        val chapterMetaMaps = chapters.associate { it.url to it.meta }
+
+        chapterMetaMaps.forEach { (url, meta) ->
+            val chapterId = chapterIdsByUrl[url]
+
+            if (chapterId == null || meta.isEmpty()) {
+                return@forEach
+            }
+
+            ChapterMetaTable.batchUpsert(meta.entries) { (key, value) ->
+                this[ChapterMetaTable.ref] = EntityID(chapterId, ChapterTable)
+                this[ChapterMetaTable.key] = key
+                this[ChapterMetaTable.value] = value
             }
         }
     }
@@ -434,6 +492,45 @@ object ProtoBackupImport : ProtoBackupBase() {
 
         Tracker.updateTrackRecords(existingTracks)
         Tracker.insertTrackRecords(newTracks)
+    }
+
+    private fun restoreGlobalMeta(meta: Map<String, String>) {
+        if (meta.isEmpty()) {
+            return
+        }
+
+        dbTransaction {
+            GlobalMetaTable.batchUpsert(meta.entries) { (key, value) ->
+                this[GlobalMetaTable.key] = key
+                this[GlobalMetaTable.value] = value
+            }
+        }
+    }
+
+    private fun restoreSourceMeta(backupSources: List<BackupSource>) {
+        val sourceMetaMaps = backupSources.associate { it.sourceId to it.meta }
+
+        dbTransaction {
+            val dbSourceIds =
+                SourceTable.selectAll().where { SourceTable.id inList sourceMetaMaps.keys }.associateBy {
+                    it[SourceTable.id]
+                        .value
+                }
+
+            val (existingSourceIds, missingSourceIds) = backupSources.map { it.sourceId }.partition { dbSourceIds.contains(it) }
+
+            sourceMetaMaps.filterKeys { existingSourceIds.contains(it) }.forEach { (sourceId, meta) ->
+                if (meta.isEmpty()) {
+                    return@forEach
+                }
+
+                SourceMetaTable.batchInsert(meta.entries) { (key, value) ->
+                    this[SourceMetaTable.ref] = sourceId
+                    this[SourceMetaTable.key] = key
+                    this[SourceMetaTable.value] = value
+                }
+            }
+        }
     }
 
     private fun TrackRecordDataClass.forComparison() = this.copy(id = 0, mangaId = 0)
