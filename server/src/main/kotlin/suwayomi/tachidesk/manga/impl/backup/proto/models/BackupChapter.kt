@@ -35,5 +35,6 @@ data class BackupChapter(
             date_fetch = this@BackupChapter.dateFetch
             date_upload = this@BackupChapter.dateUpload
             source_order = this@BackupChapter.sourceOrder
+            meta = this@BackupChapter.meta
         }
 }
