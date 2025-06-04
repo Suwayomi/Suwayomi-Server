@@ -11,7 +11,8 @@ import android.content.Context;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class TwoStatePreference extends Preference {
-    // Note: remove @JsonIgnore and implement methods if any extension ever uses these methods or the variables behind them
+    private CharSequence mSummaryOn;
+    private CharSequence mSummaryOff;
 
     public TwoStatePreference(Context context) {
         super(context);
@@ -25,16 +26,41 @@ public class TwoStatePreference extends Preference {
     public void setChecked(boolean checked) { throw new RuntimeException("Stub!"); }
 
     @JsonIgnore
-    public CharSequence getSummaryOn() { throw new RuntimeException("Stub!"); }
+    public CharSequence getSummaryOn() {
+        return mSummaryOn;
+    }
 
     @JsonIgnore
-    public void setSummaryOn(CharSequence summary) { throw new RuntimeException("Stub!"); }
+    public void setSummaryOn(CharSequence summary) {
+        this.mSummaryOn = summary;
+    }
 
     @JsonIgnore
-    public CharSequence getSummaryOff() { throw new RuntimeException("Stub!"); }
+    public CharSequence getSummaryOff() {
+        return mSummaryOff;
+    }
 
     @JsonIgnore
-    public void setSummaryOff(CharSequence summary) { throw new RuntimeException("Stub!"); }
+    public void setSummaryOff(CharSequence summary) {
+        this.mSummaryOff = summary;
+    }
+
+    @Override
+    public CharSequence getSummary() {
+        final CharSequence summary = super.getSummary();
+        if (summary != null) {
+            return summary;
+        }
+
+        final boolean checked = (Boolean) getCurrentValue();
+        if (checked && mSummaryOn != null) {
+            return mSummaryOn;
+        } else if (!checked && mSummaryOff != null) {
+            return mSummaryOff;
+        }
+
+        return null;
+    }
 
     @JsonIgnore
     public boolean getDisableDependentsState() { throw new RuntimeException("Stub!"); }
