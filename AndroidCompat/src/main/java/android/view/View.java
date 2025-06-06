@@ -24,7 +24,6 @@ import android.annotation.ColorInt;
 import android.annotation.DrawableRes;
 import android.annotation.FloatRange;
 import android.annotation.IdRes;
-import android.annotation.IntDef;
 import android.annotation.IntRange;
 import android.annotation.LayoutRes;
 import android.annotation.NonNull;
@@ -182,7 +181,6 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
     static boolean sForceLayoutWhenInsetsChanged;
 
     /** @hide */
-    @IntDef({NOT_FOCUSABLE, FOCUSABLE, FOCUSABLE_AUTO})
     @Retention(RetentionPolicy.SOURCE)
     public @interface Focusable {}
 
@@ -193,7 +191,6 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
     public static final int FOCUSABLE_AUTO = 0x00000010;
 
     /** @hide */
-    @IntDef({VISIBLE, INVISIBLE, GONE})
     @Retention(RetentionPolicy.SOURCE)
     public @interface Visibility {}
 
@@ -240,13 +237,6 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
     public static final String AUTOFILL_HINT_CREDENTIAL_MANAGER = "credential";
 
     /** @hide */
-    @IntDef(prefix = { "AUTOFILL_TYPE_" }, value = {
-            AUTOFILL_TYPE_NONE,
-            AUTOFILL_TYPE_TEXT,
-            AUTOFILL_TYPE_TOGGLE,
-            AUTOFILL_TYPE_LIST,
-            AUTOFILL_TYPE_DATE,
-    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface AutofillType {}
 
@@ -262,13 +252,6 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
 
 
     /** @hide */
-    @IntDef(prefix = { "IMPORTANT_FOR_AUTOFILL_" }, value = {
-            IMPORTANT_FOR_AUTOFILL_AUTO,
-            IMPORTANT_FOR_AUTOFILL_YES,
-            IMPORTANT_FOR_AUTOFILL_NO,
-            IMPORTANT_FOR_AUTOFILL_YES_EXCLUDE_DESCENDANTS,
-            IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
-    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface AutofillImportance {}
 
@@ -283,22 +266,12 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
     public static final int IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS = 0x8;
 
     /** @hide */
-    @IntDef(flag = true, prefix = { "AUTOFILL_FLAG_" }, value = {
-            AUTOFILL_FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
-    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface AutofillFlags {}
 
     public static final int AUTOFILL_FLAG_INCLUDE_NOT_IMPORTANT_VIEWS = 0x1;
 
     /** @hide */
-    @IntDef(prefix = { "IMPORTANT_FOR_CONTENT_CAPTURE_" }, value = {
-            IMPORTANT_FOR_CONTENT_CAPTURE_AUTO,
-            IMPORTANT_FOR_CONTENT_CAPTURE_YES,
-            IMPORTANT_FOR_CONTENT_CAPTURE_NO,
-            IMPORTANT_FOR_CONTENT_CAPTURE_YES_EXCLUDE_DESCENDANTS,
-            IMPORTANT_FOR_CONTENT_CAPTURE_NO_EXCLUDE_DESCENDANTS
-    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface ContentCaptureImportance {}
 
@@ -313,13 +286,6 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
     public static final int IMPORTANT_FOR_CONTENT_CAPTURE_NO_EXCLUDE_DESCENDANTS = 0x8;
 
     /** {@hide} */
-    @IntDef(flag = true, prefix = {"SCROLL_CAPTURE_HINT_"},
-            value = {
-                    SCROLL_CAPTURE_HINT_AUTO,
-                    SCROLL_CAPTURE_HINT_EXCLUDE,
-                    SCROLL_CAPTURE_HINT_INCLUDE,
-                    SCROLL_CAPTURE_HINT_EXCLUDE_DESCENDANTS
-    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface ScrollCaptureHint {}
 
@@ -375,11 +341,6 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
 
     /** @hide */
     @Retention(RetentionPolicy.SOURCE)
-    @IntDef(prefix = { "DRAWING_CACHE_QUALITY_" }, value = {
-            DRAWING_CACHE_QUALITY_LOW,
-            DRAWING_CACHE_QUALITY_HIGH,
-            DRAWING_CACHE_QUALITY_AUTO
-    })
     public @interface DrawingCacheQuality {}
 
     @Deprecated
@@ -400,12 +361,6 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
     static final int CONTEXT_CLICKABLE = 0x00800000;
 
     /** @hide */
-    @IntDef(prefix = { "SCROLLBARS_" }, value = {
-            SCROLLBARS_INSIDE_OVERLAY,
-            SCROLLBARS_INSIDE_INSET,
-            SCROLLBARS_OUTSIDE_OVERLAY,
-            SCROLLBARS_OUTSIDE_INSET
-    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface ScrollBarStyle {}
 
@@ -436,11 +391,6 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
     static final int TOOLTIP = 0x40000000;
 
     /** @hide */
-    @IntDef(prefix = { "CONTENT_SENSITIVITY_" }, value = {
-            CONTENT_SENSITIVITY_AUTO,
-            CONTENT_SENSITIVITY_SENSITIVE,
-            CONTENT_SENSITIVITY_NOT_SENSITIVE
-    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface ContentSensitivity {}
 
@@ -451,10 +401,6 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
     public static final int CONTENT_SENSITIVITY_NOT_SENSITIVE = 0x2;
 
     /** @hide */
-    @IntDef(flag = true, prefix = { "FOCUSABLES_" }, value = {
-            FOCUSABLES_ALL,
-            FOCUSABLES_TOUCH_MODE
-    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface FocusableMode {}
 
@@ -463,24 +409,10 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
     public static final int FOCUSABLES_TOUCH_MODE = 0x00000001;
 
     /** @hide */
-    @IntDef(prefix = { "FOCUS_" }, value = {
-            FOCUS_BACKWARD,
-            FOCUS_FORWARD,
-            FOCUS_LEFT,
-            FOCUS_UP,
-            FOCUS_RIGHT,
-            FOCUS_DOWN
-    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface FocusDirection {}
 
     /** @hide */
-    @IntDef(prefix = { "FOCUS_" }, value = {
-            FOCUS_LEFT,
-            FOCUS_UP,
-            FOCUS_RIGHT,
-            FOCUS_DOWN
-    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface FocusRealDirection {} // Like @FocusDirection, but without forward/backward
 
@@ -565,7 +497,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
     // Used to set frame rate compatibility.
     int mFrameRateCompatibility;
 
-    static final int DEBUG_CORNERS_COLOR = Color.rgb(63, 127, 255);
+    static final int DEBUG_CORNERS_COLOR = 0;
 
     static final int DEBUG_CORNERS_SIZE_DIP = 8;
 
@@ -726,21 +658,11 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
     static final int PFLAG2_DRAG_HOVERED               = 0x00000002;
 
     /** @hide */
-    @IntDef(prefix = { "LAYOUT_DIRECTION_" }, value = {
-            LAYOUT_DIRECTION_LTR,
-            LAYOUT_DIRECTION_RTL,
-            LAYOUT_DIRECTION_INHERIT,
-            LAYOUT_DIRECTION_LOCALE
-    })
     @Retention(RetentionPolicy.SOURCE)
     // Not called LayoutDirection to avoid conflict with android.util.LayoutDirection
     public @interface LayoutDir {}
 
     /** @hide */
-    @IntDef(prefix = { "LAYOUT_DIRECTION_" }, value = {
-            LAYOUT_DIRECTION_LTR,
-            LAYOUT_DIRECTION_RTL
-    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface ResolvedLayoutDir {}
 
@@ -802,15 +724,6 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
             TEXT_DIRECTION_RESOLVED_DEFAULT << PFLAG2_TEXT_DIRECTION_RESOLVED_MASK_SHIFT;
 
     /** @hide */
-    @IntDef(prefix = { "TEXT_ALIGNMENT_" }, value = {
-            TEXT_ALIGNMENT_INHERIT,
-            TEXT_ALIGNMENT_GRAVITY,
-            TEXT_ALIGNMENT_CENTER,
-            TEXT_ALIGNMENT_TEXT_START,
-            TEXT_ALIGNMENT_TEXT_END,
-            TEXT_ALIGNMENT_VIEW_START,
-            TEXT_ALIGNMENT_VIEW_END
-    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface TextAlignment {}
 
@@ -862,11 +775,6 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
     public static final int ACCESSIBILITY_DATA_SENSITIVE_NO = 0x00000002;
 
     /** @hide */
-    @IntDef(prefix = { "ACCESSIBILITY_DATA_SENSITIVE_" }, value = {
-            ACCESSIBILITY_DATA_SENSITIVE_AUTO,
-            ACCESSIBILITY_DATA_SENSITIVE_YES,
-            ACCESSIBILITY_DATA_SENSITIVE_NO,
-    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface AccessibilityDataSensitive {}
 
@@ -988,14 +896,6 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
 
     /** @hide */
     @Retention(RetentionPolicy.SOURCE)
-    @IntDef(flag = true, prefix = { "SCROLL_INDICATOR_" }, value = {
-            SCROLL_INDICATOR_TOP,
-            SCROLL_INDICATOR_BOTTOM,
-            SCROLL_INDICATOR_LEFT,
-            SCROLL_INDICATOR_RIGHT,
-            SCROLL_INDICATOR_START,
-            SCROLL_INDICATOR_END,
-    })
     public @interface ScrollIndicators {}
 
     public static final int SCROLL_INDICATOR_TOP =
@@ -1085,11 +985,6 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
     protected  static final int VIEW_STRUCTURE_FOR_CONTENT_CAPTURE = 2;
 
     /** @hide */
-    @IntDef(flag = true, prefix = { "VIEW_STRUCTURE_FOR" }, value = {
-            VIEW_STRUCTURE_FOR_ASSIST,
-            VIEW_STRUCTURE_FOR_AUTOFILL,
-            VIEW_STRUCTURE_FOR_CONTENT_CAPTURE
-    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface ViewStructureType {}
 
@@ -1171,10 +1066,6 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
             | SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN;
 
     /** @hide */
-    @IntDef(flag = true, prefix = { "FIND_VIEWS_" }, value = {
-            FIND_VIEWS_WITH_TEXT,
-            FIND_VIEWS_WITH_CONTENT_DESCRIPTION
-    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface FindViewFlags {}
 
@@ -1200,114 +1091,14 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
 
     // AttachInfo mAttachInfo;
 
-    @ViewDebug.ExportedProperty(flagMapping = {
-        @ViewDebug.FlagToString(mask = PFLAG_FORCE_LAYOUT, equals = PFLAG_FORCE_LAYOUT,
-                name = "FORCE_LAYOUT"),
-        @ViewDebug.FlagToString(mask = PFLAG_LAYOUT_REQUIRED, equals = PFLAG_LAYOUT_REQUIRED,
-                name = "LAYOUT_REQUIRED"),
-        @ViewDebug.FlagToString(mask = PFLAG_DRAWING_CACHE_VALID, equals = PFLAG_DRAWING_CACHE_VALID,
-            name = "DRAWING_CACHE_INVALID", outputIf = false),
-        @ViewDebug.FlagToString(mask = PFLAG_DRAWN, equals = PFLAG_DRAWN, name = "DRAWN", outputIf = true),
-        @ViewDebug.FlagToString(mask = PFLAG_DRAWN, equals = PFLAG_DRAWN, name = "NOT_DRAWN", outputIf = false),
-        @ViewDebug.FlagToString(mask = PFLAG_DIRTY_MASK, equals = PFLAG_DIRTY, name = "DIRTY")
-    }, formatToHexString = true)
-
     /* @hide */
     public int mPrivateFlags;
     int mPrivateFlags2;
     int mPrivateFlags3;
 
-    @ViewDebug.ExportedProperty(flagMapping = {
-            @ViewDebug.FlagToString(mask = SYSTEM_UI_FLAG_LOW_PROFILE,
-                    equals = SYSTEM_UI_FLAG_LOW_PROFILE,
-                    name = "LOW_PROFILE"),
-            @ViewDebug.FlagToString(mask = SYSTEM_UI_FLAG_HIDE_NAVIGATION,
-                    equals = SYSTEM_UI_FLAG_HIDE_NAVIGATION,
-                    name = "HIDE_NAVIGATION"),
-            @ViewDebug.FlagToString(mask = SYSTEM_UI_FLAG_FULLSCREEN,
-                    equals = SYSTEM_UI_FLAG_FULLSCREEN,
-                    name = "FULLSCREEN"),
-            @ViewDebug.FlagToString(mask = SYSTEM_UI_FLAG_LAYOUT_STABLE,
-                    equals = SYSTEM_UI_FLAG_LAYOUT_STABLE,
-                    name = "LAYOUT_STABLE"),
-            @ViewDebug.FlagToString(mask = SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION,
-                    equals = SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION,
-                    name = "LAYOUT_HIDE_NAVIGATION"),
-            @ViewDebug.FlagToString(mask = SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN,
-                    equals = SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN,
-                    name = "LAYOUT_FULLSCREEN"),
-            @ViewDebug.FlagToString(mask = SYSTEM_UI_FLAG_IMMERSIVE,
-                    equals = SYSTEM_UI_FLAG_IMMERSIVE,
-                    name = "IMMERSIVE"),
-            @ViewDebug.FlagToString(mask = SYSTEM_UI_FLAG_IMMERSIVE_STICKY,
-                    equals = SYSTEM_UI_FLAG_IMMERSIVE_STICKY,
-                    name = "IMMERSIVE_STICKY"),
-            @ViewDebug.FlagToString(mask = SYSTEM_UI_FLAG_LIGHT_STATUS_BAR,
-                    equals = SYSTEM_UI_FLAG_LIGHT_STATUS_BAR,
-                    name = "LIGHT_STATUS_BAR"),
-            @ViewDebug.FlagToString(mask = SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR,
-                    equals = SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR,
-                    name = "LIGHT_NAVIGATION_BAR"),
-            @ViewDebug.FlagToString(mask = STATUS_BAR_DISABLE_EXPAND,
-                    equals = STATUS_BAR_DISABLE_EXPAND,
-                    name = "STATUS_BAR_DISABLE_EXPAND"),
-            @ViewDebug.FlagToString(mask = STATUS_BAR_DISABLE_NOTIFICATION_ICONS,
-                    equals = STATUS_BAR_DISABLE_NOTIFICATION_ICONS,
-                    name = "STATUS_BAR_DISABLE_NOTIFICATION_ICONS"),
-            @ViewDebug.FlagToString(mask = STATUS_BAR_DISABLE_NOTIFICATION_ALERTS,
-                    equals = STATUS_BAR_DISABLE_NOTIFICATION_ALERTS,
-                    name = "STATUS_BAR_DISABLE_NOTIFICATION_ALERTS"),
-            @ViewDebug.FlagToString(mask = STATUS_BAR_DISABLE_NOTIFICATION_TICKER,
-                    equals = STATUS_BAR_DISABLE_NOTIFICATION_TICKER,
-                    name = "STATUS_BAR_DISABLE_NOTIFICATION_TICKER"),
-            @ViewDebug.FlagToString(mask = STATUS_BAR_DISABLE_SYSTEM_INFO,
-                    equals = STATUS_BAR_DISABLE_SYSTEM_INFO,
-                    name = "STATUS_BAR_DISABLE_SYSTEM_INFO"),
-            @ViewDebug.FlagToString(mask = STATUS_BAR_DISABLE_HOME,
-                    equals = STATUS_BAR_DISABLE_HOME,
-                    name = "STATUS_BAR_DISABLE_HOME"),
-            @ViewDebug.FlagToString(mask = STATUS_BAR_DISABLE_BACK,
-                    equals = STATUS_BAR_DISABLE_BACK,
-                    name = "STATUS_BAR_DISABLE_BACK"),
-            @ViewDebug.FlagToString(mask = STATUS_BAR_DISABLE_CLOCK,
-                    equals = STATUS_BAR_DISABLE_CLOCK,
-                    name = "STATUS_BAR_DISABLE_CLOCK"),
-            @ViewDebug.FlagToString(mask = STATUS_BAR_DISABLE_RECENT,
-                    equals = STATUS_BAR_DISABLE_RECENT,
-                    name = "STATUS_BAR_DISABLE_RECENT"),
-            @ViewDebug.FlagToString(mask = STATUS_BAR_DISABLE_SEARCH,
-                    equals = STATUS_BAR_DISABLE_SEARCH,
-                    name = "STATUS_BAR_DISABLE_SEARCH"),
-            @ViewDebug.FlagToString(mask = STATUS_BAR_DISABLE_ONGOING_CALL_CHIP,
-                    equals = STATUS_BAR_DISABLE_ONGOING_CALL_CHIP,
-                    name = "STATUS_BAR_DISABLE_ONGOING_CALL_CHIP")
-    }, formatToHexString = true)
     @SystemUiVisibility
     int mSystemUiVisibility;
 
-    @IntDef(flag = true, prefix = "", value = {
-            SYSTEM_UI_FLAG_LOW_PROFILE,
-            SYSTEM_UI_FLAG_HIDE_NAVIGATION,
-            SYSTEM_UI_FLAG_FULLSCREEN,
-            SYSTEM_UI_FLAG_LAYOUT_STABLE,
-            SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION,
-            SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN,
-            SYSTEM_UI_FLAG_IMMERSIVE,
-            SYSTEM_UI_FLAG_IMMERSIVE_STICKY,
-            SYSTEM_UI_FLAG_LIGHT_STATUS_BAR,
-            SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR,
-            STATUS_BAR_DISABLE_EXPAND,
-            STATUS_BAR_DISABLE_NOTIFICATION_ICONS,
-            STATUS_BAR_DISABLE_NOTIFICATION_ALERTS,
-            STATUS_BAR_DISABLE_NOTIFICATION_TICKER,
-            STATUS_BAR_DISABLE_SYSTEM_INFO,
-            STATUS_BAR_DISABLE_HOME,
-            STATUS_BAR_DISABLE_BACK,
-            STATUS_BAR_DISABLE_CLOCK,
-            STATUS_BAR_DISABLE_RECENT,
-            STATUS_BAR_DISABLE_SEARCH,
-            STATUS_BAR_DISABLE_ONGOING_CALL_CHIP,
-    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface SystemUiVisibility {}
 
@@ -1436,11 +1227,6 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
     public static final int LAYER_TYPE_HARDWARE = 2;
 
     /** @hide */
-    @IntDef(prefix = { "LAYER_TYPE_" }, value = {
-            LAYER_TYPE_NONE,
-            LAYER_TYPE_SOFTWARE,
-            LAYER_TYPE_HARDWARE
-    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface LayerType {}
 
@@ -3491,10 +3277,6 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
         throw new RuntimeException("Stub!");
     }
 
-    @ViewDebug.ExportedProperty(category = "measurement", flagMapping = {
-            @ViewDebug.FlagToString(mask = MEASURED_STATE_MASK, equals = MEASURED_STATE_TOO_SMALL,
-                    name = "MEASURED_STATE_TOO_SMALL"),
-    })
     public final int getMeasuredWidthAndState() {
         throw new RuntimeException("Stub!");
     }
@@ -3503,10 +3285,6 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
         throw new RuntimeException("Stub!");
     }
 
-    @ViewDebug.ExportedProperty(category = "measurement", flagMapping = {
-            @ViewDebug.FlagToString(mask = MEASURED_STATE_MASK, equals = MEASURED_STATE_TOO_SMALL,
-                    name = "MEASURED_STATE_TOO_SMALL"),
-    })
     public final int getMeasuredHeightAndState() {
         throw new RuntimeException("Stub!");
     }
@@ -5456,155 +5234,34 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
 
     // Properties
     //
-    public static final Property<View, Float> ALPHA = new FloatProperty<View>("alpha") {
-        @Override
-        public void setValue(View object, float value) {
-            object.setAlpha(value);
-        }
+    public static final Property<View, Float> ALPHA = null;
 
-        @Override
-        public Float get(View object) {
-            return object.getAlpha();
-        }
-    };
+    public static final Property<View, Float> TRANSLATION_X = null;
 
-    public static final Property<View, Float> TRANSLATION_X = new FloatProperty<View>("translationX") {
-        @Override
-        public void setValue(View object, float value) {
-            object.setTranslationX(value);
-        }
+    public static final Property<View, Float> TRANSLATION_Y = null;
 
-                @Override
-        public Float get(View object) {
-            return object.getTranslationX();
-        }
-    };
+    public static final Property<View, Float> TRANSLATION_Z = null;
 
-    public static final Property<View, Float> TRANSLATION_Y = new FloatProperty<View>("translationY") {
-        @Override
-        public void setValue(View object, float value) {
-            object.setTranslationY(value);
-        }
+    public static final Property<View, Float> X = null;
 
-        @Override
-        public Float get(View object) {
-            return object.getTranslationY();
-        }
-    };
+    public static final Property<View, Float> Y = null;
 
-    public static final Property<View, Float> TRANSLATION_Z = new FloatProperty<View>("translationZ") {
-        @Override
-        public void setValue(View object, float value) {
-            object.setTranslationZ(value);
-        }
+    public static final Property<View, Float> Z = null;
 
-        @Override
-        public Float get(View object) {
-            return object.getTranslationZ();
-        }
-    };
+    public static final Property<View, Float> ROTATION = null;
 
-    public static final Property<View, Float> X = new FloatProperty<View>("x") {
-        @Override
-        public void setValue(View object, float value) {
-            object.setX(value);
-        }
+    public static final Property<View, Float> ROTATION_X = null;
 
-        @Override
-        public Float get(View object) {
-            return object.getX();
-        }
-    };
+    public static final Property<View, Float> ROTATION_Y = null;
 
-    public static final Property<View, Float> Y = new FloatProperty<View>("y") {
-        @Override
-        public void setValue(View object, float value) {
-            object.setY(value);
-        }
+    public static final Property<View, Float> SCALE_X = null;
 
-        @Override
-        public Float get(View object) {
-            return object.getY();
-        }
-    };
-
-    public static final Property<View, Float> Z = new FloatProperty<View>("z") {
-        @Override
-        public void setValue(View object, float value) {
-            object.setZ(value);
-        }
-
-        @Override
-        public Float get(View object) {
-            return object.getZ();
-        }
-    };
-
-    public static final Property<View, Float> ROTATION = new FloatProperty<View>("rotation") {
-        @Override
-        public void setValue(View object, float value) {
-            object.setRotation(value);
-        }
-
-        @Override
-        public Float get(View object) {
-            return object.getRotation();
-        }
-    };
-
-    public static final Property<View, Float> ROTATION_X = new FloatProperty<View>("rotationX") {
-        @Override
-        public void setValue(View object, float value) {
-            object.setRotationX(value);
-        }
-
-        @Override
-        public Float get(View object) {
-            return object.getRotationX();
-        }
-    };
-
-    public static final Property<View, Float> ROTATION_Y = new FloatProperty<View>("rotationY") {
-        @Override
-        public void setValue(View object, float value) {
-            object.setRotationY(value);
-        }
-
-        @Override
-        public Float get(View object) {
-            return object.getRotationY();
-        }
-    };
-
-    public static final Property<View, Float> SCALE_X = new FloatProperty<View>("scaleX") {
-        @Override
-        public void setValue(View object, float value) {
-            object.setScaleX(value);
-        }
-
-        @Override
-        public Float get(View object) {
-            return object.getScaleX();
-        }
-    };
-
-    public static final Property<View, Float> SCALE_Y = new FloatProperty<View>("scaleY") {
-        @Override
-        public void setValue(View object, float value) {
-            object.setScaleY(value);
-        }
-
-        @Override
-        public Float get(View object) {
-            return object.getScaleY();
-        }
-    };
+    public static final Property<View, Float> SCALE_Y = null;
 
     public static class MeasureSpec {
         private static final int MODE_SHIFT = 30;
 
         /** @hide */
-        @IntDef({UNSPECIFIED, EXACTLY, AT_MOST})
         @Retention(RetentionPolicy.SOURCE)
         public @interface MeasureSpecMode {}
 
