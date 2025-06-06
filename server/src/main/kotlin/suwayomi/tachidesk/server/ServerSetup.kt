@@ -7,6 +7,7 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.os.Looper
 import ch.qos.logback.classic.Level
 import com.typesafe.config.ConfigRenderOptions
 import eu.kanade.tachiyomi.App
@@ -70,6 +71,14 @@ class ApplicationDirs(
     val mangaDownloadsRoot get() = "$downloadsRoot/mangas"
 }
 
+class LooperThread : Thread() {
+    public override fun run(): Unit {
+        logger.info { "Starting Android Main Loop" }
+        Looper.prepareMainLooper();
+        Looper.loop();
+    }
+}
+
 data class ProxySettings(
     val proxyEnabled: Boolean,
     val socksProxyVersion: Int,
@@ -104,6 +113,9 @@ fun applicationSetup() {
     Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
         KotlinLogging.logger { }.error(throwable) { "unhandled exception" }
     }
+
+    val mainLoop = LooperThread()
+    mainLoop.start();
 
     // register Tachidesk's config which is dubbed "ServerConfig"
     GlobalConfigManager.registerModule(
