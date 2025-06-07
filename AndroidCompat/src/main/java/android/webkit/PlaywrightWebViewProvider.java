@@ -87,6 +87,10 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
 
     private static final String TAG = "PlaywrightWebViewProvider";
 
+    private static String BROWSER_TYPE = "chromium";
+    private static String BROWSER_CONNECT = "";
+    private static Boolean BROWSER_SANDBOX = true;
+
     public PlaywrightWebViewProvider(WebView view) {
         _view = view;
         _settings = new PlaywrightWebSettings();
@@ -98,11 +102,28 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
             boolean privateBrowsing) {
         destroy();
         _playwright = Playwright.create();
-        _browser = _playwright.chromium().launch(
-            new BrowserType.LaunchOptions()
-                /* .setChromiumSandbox(true) */
-                .setHeadless(true)
-        );
+        BrowserType b = getBrowserType(_playwright, BROWSER_TYPE);
+        if (BROWSER_CONNECT == null || BROWSER_CONNECT.equals("")) {
+            _browser = b.launch(
+                new BrowserType.LaunchOptions()
+                    .setChromiumSandbox(BROWSER_SANDBOX)
+                    .setHeadless(true)
+            );
+        } else {
+            _browser = b.connect(BROWSER_CONNECT, new BrowserType.ConnectOptions().setTimeout(5000));
+        }
+    }
+
+    public static void setBrowserType(String type) {
+        BROWSER_TYPE = type;
+    }
+
+    public static void setBrowserConnect(String url) {
+        BROWSER_CONNECT = url;
+    }
+
+    public static void setBrowserSandbox(Boolean value) {
+        BROWSER_SANDBOX = value;
     }
 
     // Deprecated - should never be called
@@ -849,6 +870,20 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
 
         public void computeScroll() {
             throw new RuntimeException("Stub!");
+        }
+    }
+
+    private static BrowserType getBrowserType(Playwright playwright, String type) {
+        type = type.toLowerCase();
+        switch (type) {
+            case "chromium":
+                return playwright.chromium();
+            case "firefox":
+                return playwright.firefox();
+            case "webkit":
+                return playwright.webkit();
+            default:
+                throw new RuntimeException("Invalid browser type specified: " + type);
         }
     }
 

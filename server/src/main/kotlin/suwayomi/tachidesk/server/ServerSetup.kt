@@ -8,6 +8,7 @@ package suwayomi.tachidesk.server
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import android.os.Looper
+import android.webkit.PlaywrightWebViewProvider
 import ch.qos.logback.classic.Level
 import com.typesafe.config.ConfigRenderOptions
 import eu.kanade.tachiyomi.App
@@ -121,6 +122,10 @@ fun applicationSetup() {
     GlobalConfigManager.registerModule(
         ServerConfig.register { GlobalConfigManager.config },
     )
+
+    PlaywrightWebViewProvider.setBrowserType(serverConfig.playwrightBrowser.value)
+    PlaywrightWebViewProvider.setBrowserConnect(serverConfig.playwrightWsEndpoint.value)
+    PlaywrightWebViewProvider.setBrowserSandbox(serverConfig.playwrightSandbox.value)
 
     // Application dirs
     val applicationDirs = ApplicationDirs()
