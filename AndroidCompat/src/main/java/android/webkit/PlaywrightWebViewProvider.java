@@ -32,6 +32,7 @@ import android.net.Uri;
 import android.net.http.SslCertificate;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.print.PrintDocumentAdapter;
 import android.util.Log;
@@ -88,6 +89,9 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
     WebChromeClient _chromeClient;
     List<FunctionMapping> _mappings;
 
+    Looper _looper;
+    Handler _handler;
+
     private static final String TAG = "PlaywrightWebViewProvider";
 
     private static String BROWSER_TYPE = "chromium";
@@ -100,6 +104,8 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
         _viewClient = new WebViewClient();
         _chromeClient = new WebChromeClient();
         _mappings = new ArrayList<FunctionMapping>();
+        _looper = Looper.myLooper();
+        _handler = new Handler(_looper);
     }
 
     public void init(Map<String, Object> javaScriptInterfaces,
@@ -233,11 +239,19 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
                 }
             }
             Log.d(TAG, "Page loaded at URL " + url);
+            _handler.post(() -> pumpMessageLoop());
         } catch (Exception e) {
             Log.w(TAG, "Exception while loading URL " + url, e);
             // TODO: translate correctly
             _viewClient.onReceivedError(_view, WebViewClient.ERROR_UNKNOWN, e.getMessage(), url);
         }
+    }
+
+    private void pumpMessageLoop() {
+        // pump Playwright's message loop every 100ms
+        if (_page == null) return;
+        _page.waitForTimeout(1);
+        _handler.postDelayed(() -> pumpMessageLoop(), 100);
     }
 
     public void loadUrl(String url) {
