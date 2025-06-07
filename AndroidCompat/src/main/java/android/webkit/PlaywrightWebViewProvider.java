@@ -193,8 +193,6 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
         ensurePage();
         _page.setExtraHTTPHeaders(additionalHttpHeaders);
         try {
-            // TODO: this is too early actually
-            _viewClient.onPageStarted(_view, url, null);
             _chromeClient.onProgressChanged(_view, 0);
             Response response = _page.navigate(url, new Page.NavigateOptions().setWaitUntil(WaitUntilState.LOAD));
             if (response != null) {
@@ -494,6 +492,7 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
                     return null;
                 }
             });
+            Log.v(TAG, "Exposing: " + interfaceName + "." + method.getName());
         }
     }
 
@@ -891,14 +890,19 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
         }
         if (_page == null) {
             _page = _context.newPage();
+            _page.onFrameNavigated(p -> _viewClient.onPageStarted(_view, p.url(), null));
             _page.onDOMContentLoaded(p -> _viewClient.onPageCommitVisible(_view, p.url()));
             _page.onLoad(p -> {
                 _viewClient.onPageFinished(_view, p.url());
                 _chromeClient.onProgressChanged(_view, 100);
                 _chromeClient.onReceivedTitle(_view, p.title());
             });
+            _page.onFrameNavigated(p -> Log.v(TAG, "Navigate: " + p.url()));
+            _page.onDOMContentLoaded(p -> Log.v(TAG, "DOM Loaded: " + p.url()));
+            _page.onLoad(p -> Log.v(TAG, "Load: " + p.url()));
             _page.onRequest(r -> _viewClient.onLoadResource(_view, r.url()));
             _page.onPageError(ex -> Log.w(TAG, "Page exception: " + ex));
+            _page.onConsoleMessage(m -> Log.v(TAG, "console: " + m.text()));
             _page.route("**/*", route -> {
                 WebResourceResponse resp = _viewClient.shouldInterceptRequest(_view, new PlaywrightWebResourceRequest(route));
                 if (resp == null) {
