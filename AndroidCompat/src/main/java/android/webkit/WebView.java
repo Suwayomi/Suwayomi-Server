@@ -193,7 +193,7 @@ public class WebView extends AbsoluteLayout
             throw new RuntimeException(
                 "WebView cannot be initialized on a thread that has no Looper.");
         }
-        sEnforceThreadChecking = false;
+        sEnforceThreadChecking = true;
         checkThread();
 
         ensureProviderCreated();

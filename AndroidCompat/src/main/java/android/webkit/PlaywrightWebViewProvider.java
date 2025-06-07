@@ -83,6 +83,7 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
     WebView _view;
     PlaywrightWebSettings _settings;
     WebViewClient _viewClient;
+    WebChromeClient _chromeClient;
 
     private static final String TAG = "PlaywrightWebViewProvider";
 
@@ -90,6 +91,7 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
         _view = view;
         _settings = new PlaywrightWebSettings();
         _viewClient = new WebViewClient();
+        _chromeClient = new WebChromeClient();
     }
 
     public void init(Map<String, Object> javaScriptInterfaces,
@@ -193,6 +195,7 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
         try {
             // TODO: this is too early actually
             _viewClient.onPageStarted(_view, url, null);
+            _chromeClient.onProgressChanged(_view, 0);
             Response response = _page.navigate(url, new Page.NavigateOptions().setWaitUntil(WaitUntilState.LOAD));
             if (response != null) {
                 if (response.status() == 404) {
@@ -467,11 +470,11 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
     }
 
     public void setWebChromeClient(WebChromeClient client) {
-        throw new RuntimeException("Stub!");
+        _chromeClient = client;
     }
 
     public WebChromeClient getWebChromeClient() {
-        throw new RuntimeException("Stub!");
+        return _chromeClient;
     }
 
     public void setPictureListener(PictureListener listener) {
@@ -889,7 +892,11 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
         if (_page == null) {
             _page = _context.newPage();
             _page.onDOMContentLoaded(p -> _viewClient.onPageCommitVisible(_view, p.url()));
-            _page.onLoad(p -> _viewClient.onPageFinished(_view, p.url()));
+            _page.onLoad(p -> {
+                _viewClient.onPageFinished(_view, p.url());
+                _chromeClient.onProgressChanged(_view, 100);
+                _chromeClient.onReceivedTitle(_view, p.title());
+            });
             _page.onRequest(r -> _viewClient.onLoadResource(_view, r.url()));
             _page.onPageError(ex -> Log.w(TAG, "Page exception: " + ex));
             _page.route("**/*", route -> {
