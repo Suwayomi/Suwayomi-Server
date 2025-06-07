@@ -21,6 +21,8 @@ dependencies {
     implementation(libs.bundles.shared)
     testImplementation(libs.bundles.sharedTest)
 
+    implementation("com.microsoft.playwright:playwright:1.51.0")
+
     // Android stub library
     implementation(libs.android.stubs)
 
