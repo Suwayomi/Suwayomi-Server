@@ -1280,8 +1280,7 @@ public class WebView extends AbsoluteLayout
 
     @Override
     public void setLayerType(int layerType, Paint paint) {
-        super.setLayerType(layerType, paint);
-        mProvider.getViewDelegate().setLayerType(layerType, paint);
+        // ignore
     }
 
     @Override

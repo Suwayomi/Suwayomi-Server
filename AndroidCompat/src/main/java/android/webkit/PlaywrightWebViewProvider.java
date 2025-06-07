@@ -62,6 +62,7 @@ import com.microsoft.playwright.BrowserType;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.Response;
+import com.microsoft.playwright.Route;
 import com.microsoft.playwright.options.WaitUntilState;
 
 import java.io.BufferedWriter;
@@ -248,7 +249,9 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
     }
 
     public void stopLoading() {
-        throw new RuntimeException("Stub!");
+        if (_page != null) {
+            _page.close();
+        }
     }
 
     public void reload() {
@@ -776,7 +779,7 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
         }
 
         public void setLayerType(int layerType, Paint paint) {
-            throw new RuntimeException("Stub!");
+            // ignore
         }
 
         public void preDispatchDraw(Canvas canvas) {
@@ -847,6 +850,38 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
         }
     }
 
+    private static class PlaywrightWebResourceRequest implements WebResourceRequest {
+        private Route _route;
+
+        private PlaywrightWebResourceRequest(Route r) {
+            _route = r;
+        }
+
+        public Uri getUrl() {
+            return Uri.parse(_route.request().url());
+        }
+
+        public boolean isForMainFrame() {
+            return true;
+        }
+
+        public boolean isRedirect() {
+            return _route.request().redirectedFrom() != null;
+        }
+
+        public boolean hasGesture() {
+            return false;
+        }
+
+        public String getMethod() {
+            return _route.request().method();
+        }
+
+        public Map<String, String> getRequestHeaders() {
+            return _route.request().headers();
+        }
+    }
+
     private void ensurePage() {
         if (_context == null) {
             _context = _browser.newContext(_settings.getBrowserOptions());
@@ -856,7 +891,34 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
             _page.onDOMContentLoaded(p -> _viewClient.onPageCommitVisible(_view, p.url()));
             _page.onLoad(p -> _viewClient.onPageFinished(_view, p.url()));
             _page.onRequest(r -> _viewClient.onLoadResource(_view, r.url()));
-            _page.onDOMContentLoaded(ex -> Log.w(TAG, "Page exception: " + ex));
+            _page.onPageError(ex -> Log.w(TAG, "Page exception: " + ex));
+            _page.route("**/*", route -> {
+                WebResourceResponse resp = _viewClient.shouldInterceptRequest(_view, new PlaywrightWebResourceRequest(route));
+                if (resp == null) {
+                    route.resume();
+                    return;
+                }
+                Log.v(TAG, "Intercepting request " + route.request().url());
+                Map<String, String> headers = resp.getResponseHeaders();
+                try {
+                    headers.put("Content-Encoding", resp.getEncoding());
+                } catch (Exception e) {
+                    Log.v(TAG, "Failed to add content encoding", e);
+                }
+                byte[] data = null;
+                try {
+                    data = resp.getData().readAllBytes();
+                } catch (Exception e) {
+                    Log.v(TAG, "Failed read response body", e);
+                }
+                route.fulfill(
+                    new Route.FulfillOptions()
+                        .setStatus(resp.getStatusCode())
+                        .setContentType(resp.getMimeType())
+                        .setHeaders(headers)
+                        .setBodyBytes(data)
+                );
+            });
         }
     }
 }

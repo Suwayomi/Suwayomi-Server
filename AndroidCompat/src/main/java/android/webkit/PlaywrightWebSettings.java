@@ -326,19 +326,21 @@ public class PlaywrightWebSettings extends WebSettings {
     }
 
     public void setBlockNetworkImage(boolean flag) {
-        throw new RuntimeException("Stub!");
+        // _options.setOffline(flag);
     }
 
     public boolean getBlockNetworkImage() {
-        throw new RuntimeException("Stub!");
+        // return _options.offline;
+        return false;
     }
 
     public void setBlockNetworkLoads(boolean flag) {
-        throw new RuntimeException("Stub!");
+        // _options.setOffline(flag);
     }
 
     public boolean getBlockNetworkLoads() {
-        throw new RuntimeException("Stub!");
+        // return _options.offline;
+        return false;
     }
 
     public void setJavaScriptEnabled(boolean flag) {
