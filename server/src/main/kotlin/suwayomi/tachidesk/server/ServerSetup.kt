@@ -7,6 +7,8 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.os.Looper
+import android.webkit.PlaywrightWebViewProvider
 import ch.qos.logback.classic.Level
 import com.typesafe.config.ConfigRenderOptions
 import eu.kanade.tachiyomi.App
@@ -70,6 +72,14 @@ class ApplicationDirs(
     val mangaDownloadsRoot get() = "$downloadsRoot/mangas"
 }
 
+class LooperThread : Thread() {
+    public override fun run() {
+        logger.info { "Starting Android Main Loop" }
+        Looper.prepareMainLooper()
+        Looper.loop()
+    }
+}
+
 data class ProxySettings(
     val proxyEnabled: Boolean,
     val socksProxyVersion: Int,
@@ -105,9 +115,34 @@ fun applicationSetup() {
         KotlinLogging.logger { }.error(throwable) { "unhandled exception" }
     }
 
+    val mainLoop = LooperThread()
+    mainLoop.start()
+
     // register Tachidesk's config which is dubbed "ServerConfig"
     GlobalConfigManager.registerModule(
         ServerConfig.register { GlobalConfigManager.config },
+    )
+
+    PlaywrightWebViewProvider.setBrowserType(serverConfig.playwrightBrowser.value)
+    PlaywrightWebViewProvider.setBrowserConnect(serverConfig.playwrightWsEndpoint.value)
+    PlaywrightWebViewProvider.setBrowserSandbox(serverConfig.playwrightSandbox.value)
+
+    serverConfig.subscribeTo(
+        combine(
+            serverConfig.playwrightBrowser,
+            serverConfig.playwrightWsEndpoint,
+            serverConfig.playwrightSandbox,
+        ) { browser, connect, sandbox ->
+            Triple(browser, connect, sandbox)
+        }.distinctUntilChanged(),
+        { (browser, connect, sandbox) ->
+            logger.debug {
+                "playwright: browser= $browser, wsEndpoint= $connect, sandbox= $sandbox"
+            }
+            PlaywrightWebViewProvider.setBrowserType(browser)
+            PlaywrightWebViewProvider.setBrowserConnect(connect)
+            PlaywrightWebViewProvider.setBrowserSandbox(sandbox)
+        },
     )
 
     // Application dirs

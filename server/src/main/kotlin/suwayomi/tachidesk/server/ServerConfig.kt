@@ -117,6 +117,11 @@ class ServerConfig(
     // extensions
     val extensionRepos: MutableStateFlow<List<String>> by OverrideConfigValues(StringConfigAdapter)
 
+    // playwright webview
+    val playwrightBrowser: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+    val playwrightWsEndpoint: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+    val playwrightSandbox: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
+
     // requests
     val maxSourcesInParallel: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
 
