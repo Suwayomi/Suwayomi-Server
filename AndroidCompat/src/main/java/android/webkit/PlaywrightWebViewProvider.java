@@ -68,6 +68,8 @@ import com.microsoft.playwright.options.WaitUntilState;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,6 +86,7 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
     PlaywrightWebSettings _settings;
     WebViewClient _viewClient;
     WebChromeClient _chromeClient;
+    List<FunctionMapping> _mappings;
 
     private static final String TAG = "PlaywrightWebViewProvider";
 
@@ -96,6 +99,7 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
         _settings = new PlaywrightWebSettings();
         _viewClient = new WebViewClient();
         _chromeClient = new WebChromeClient();
+        _mappings = new ArrayList<FunctionMapping>();
     }
 
     public void init(Map<String, Object> javaScriptInterfaces,
@@ -500,20 +504,40 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
         throw new RuntimeException("Stub!");
     }
 
+    private static class FunctionMapping {
+        public final String interfaceName;
+        public final String functionName;
+
+        public FunctionMapping(String ifn, String fn) {
+            interfaceName = ifn;
+            functionName = fn;
+        }
+
+        public String toExposed() {
+            return "__$_" + this.interfaceName + "|" + this.functionName;
+        }
+
+        public String toNice() {
+            return this.interfaceName + "." + this.functionName;
+        }
+    }
+
     public void addJavascriptInterface(Object obj, String interfaceName) {
         ensurePage();
         Class cls = obj.getClass();
         Method methodlist[] = cls.getDeclaredMethods();
         for (Method method : methodlist) {
-            _context.exposeFunction(interfaceName + "." + method.getName(), args -> {
+            FunctionMapping map = new FunctionMapping(interfaceName, method.getName());
+            _context.exposeFunction(map.toExposed(), args -> {
                 try {
                     return method.invoke(obj, args);
                 } catch (Exception e) {
-                    Log.w(TAG, "Failed to invoke interface method", e);
+                    Log.w(TAG, "Failed to invoke interface method " + map.toNice(), e);
                     return null;
                 }
             });
-            Log.v(TAG, "Exposing: " + interfaceName + "." + method.getName());
+            Log.v(TAG, "Exposing: " + map.toNice());
+            _mappings.add(map);
         }
     }
 
@@ -925,7 +949,15 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
         }
         if (_page == null) {
             _page = _context.newPage();
-            _page.onFrameNavigated(p -> _viewClient.onPageStarted(_view, p.url(), null));
+            _page.onFrameNavigated(p -> {
+                // rebind all mappins, expose still make them persistent, but we need to match what WebView did
+                for (FunctionMapping map : _mappings) {
+                    p.evaluate("([i, n, e]) => (window[i] = window[i] || {})[n] = window[e]",
+                        Arrays.asList(map.interfaceName, map.functionName, map.toExposed()));
+                }
+
+                _viewClient.onPageStarted(_view, p.url(), null);
+            });
             _page.onDOMContentLoaded(p -> _viewClient.onPageCommitVisible(_view, p.url()));
             _page.onLoad(p -> {
                 _viewClient.onPageFinished(_view, p.url());
