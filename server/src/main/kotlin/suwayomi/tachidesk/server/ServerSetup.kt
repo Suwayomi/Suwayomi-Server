@@ -72,10 +72,10 @@ class ApplicationDirs(
 }
 
 class LooperThread : Thread() {
-    public override fun run(): Unit {
+    public override fun run() {
         logger.info { "Starting Android Main Loop" }
-        Looper.prepareMainLooper();
-        Looper.loop();
+        Looper.prepareMainLooper()
+        Looper.loop()
     }
 }
 
@@ -115,7 +115,7 @@ fun applicationSetup() {
     }
 
     val mainLoop = LooperThread()
-    mainLoop.start();
+    mainLoop.start()
 
     // register Tachidesk's config which is dubbed "ServerConfig"
     GlobalConfigManager.registerModule(
