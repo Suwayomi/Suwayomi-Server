@@ -47,7 +47,11 @@ public class ShadowPausedMessageQueue {
     synchronized (this) {
       isPolling = true;
       try {
-        this.wait();
+        if (timeoutMillis < 0) {
+          this.wait();
+        } else {
+          this.wait(timeoutMillis);
+        }
       } catch (InterruptedException e) {
         // ignore
       }
