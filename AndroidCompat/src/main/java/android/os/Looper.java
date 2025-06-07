@@ -230,13 +230,14 @@ public final class Looper {
             if (observer != null) {
                 observer.messageDispatched(token, msg);
             }
-            dispatchEnd = needEndTime ? SystemClock.uptimeMillis() : 0;
         } catch (Exception exception) {
             if (observer != null) {
                 observer.dispatchingThrewException(token, msg, exception);
             }
-            throw exception;
+            Log.e(TAG, "Loop handler threw", exception);
+            // throw exception;
         } finally {
+            dispatchEnd = needEndTime ? SystemClock.uptimeMillis() : 0;
             ThreadLocalWorkSource.restore(origWorkSource);
         }
         if (logSlowDelivery) {
