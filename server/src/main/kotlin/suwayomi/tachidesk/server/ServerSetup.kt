@@ -127,6 +127,24 @@ fun applicationSetup() {
     PlaywrightWebViewProvider.setBrowserConnect(serverConfig.playwrightWsEndpoint.value)
     PlaywrightWebViewProvider.setBrowserSandbox(serverConfig.playwrightSandbox.value)
 
+    serverConfig.subscribeTo(
+        combine(
+            serverConfig.playwrightBrowser,
+            serverConfig.playwrightWsEndpoint,
+            serverConfig.playwrightSandbox,
+        ) { browser, connect, sandbox ->
+            Triple(browser, connect, sandbox)
+        }.distinctUntilChanged(),
+        { (browser, connect, sandbox) ->
+            logger.debug {
+                "playwright: browser= $browser, wsEndpoint= $connect, sandbox= $sandbox"
+            }
+            PlaywrightWebViewProvider.setBrowserType(browser)
+            PlaywrightWebViewProvider.setBrowserConnect(connect)
+            PlaywrightWebViewProvider.setBrowserSandbox(sandbox)
+        },
+    )
+
     // Application dirs
     val applicationDirs = ApplicationDirs()
 
