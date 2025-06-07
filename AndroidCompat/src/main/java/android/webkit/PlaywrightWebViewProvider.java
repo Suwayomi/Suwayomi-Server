@@ -249,12 +249,20 @@ public class PlaywrightWebViewProvider implements WebViewProvider {
     }
 
     public void loadData(String data, String mimeType, String encoding) {
-        throw new RuntimeException("Stub!");
+        loadDataWithBaseURL(null, data, mimeType, encoding, null);
     }
 
     public void loadDataWithBaseURL(String baseUrl, String data,
             String mimeType, String encoding, String historyUrl) {
-        throw new RuntimeException("Stub!");
+        ensurePage();
+        try {
+            _page.setContent(data, new Page.SetContentOptions().setWaitUntil(WaitUntilState.LOAD));
+            Log.d(TAG, "Page loaded from content at base URL " + baseUrl);
+        } catch (Exception e) {
+            Log.w(TAG, "Exception while loading content at base URL " + baseUrl, e);
+            // TODO: translate correctly
+            _viewClient.onReceivedError(_view, WebViewClient.ERROR_UNKNOWN, e.getMessage(), baseUrl);
+        }
     }
 
     public void evaluateJavaScript(String script, ValueCallback<String> resultCallback) {
