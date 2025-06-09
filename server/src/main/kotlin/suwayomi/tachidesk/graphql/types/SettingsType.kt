@@ -218,9 +218,9 @@ class SettingsType(
     // extension
     override val extensionRepos: List<String>,
     // playwright webview
-    override val playwrightBrowser: String?,
-    override val playwrightWsEndpoint: String?,
-    override val playwrightSandbox: Boolean?,
+    override val playwrightBrowser: String,
+    override val playwrightWsEndpoint: String,
+    override val playwrightSandbox: Boolean,
     // requests
     override val maxSourcesInParallel: Int,
     // updater
