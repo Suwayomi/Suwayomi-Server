@@ -362,6 +362,9 @@ fun applicationSetup() {
                 }
                 download { github() }
             },
+            onError = {
+                it?.printStackTrace()
+            },
         )
     }
 }

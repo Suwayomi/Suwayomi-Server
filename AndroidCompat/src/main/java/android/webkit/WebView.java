@@ -71,8 +71,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
+
+import xyz.nulldev.androidcompat.CallableArgument;
 
 // Implementation notes.
 // The WebView is a thin API class that delegates its public API to a backend WebViewProvider
@@ -91,6 +94,11 @@ public class WebView extends AbsoluteLayout
     // build target is JB MR2 or newer. Defaults to false, and is
     // set in the WebView constructor.
     private static volatile boolean sEnforceThreadChecking = false;
+    private static CallableArgument<WebView, WebViewProvider> mProviderFactory;
+
+    public static void setProviderFactory(CallableArgument<WebView, WebViewProvider> factory) {
+        mProviderFactory = factory;
+    }
 
     public class WebViewTransport {
         private WebView mWebview;
@@ -937,9 +945,11 @@ public class WebView extends AbsoluteLayout
     private void ensureProviderCreated() {
         checkThread();
         if (mProvider == null) {
+            if (mProviderFactory == null)
+                throw new IllegalStateException("No factory registered");
             // As this can get called during the base class constructor chain, pass the minimum
             // number of dependencies here; the rest are deferred to init().
-            mProvider = new PlaywrightWebViewProvider(this);
+            mProvider = mProviderFactory.call(this);
         }
     }
 

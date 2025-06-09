@@ -42,8 +42,33 @@ import android.webkit.WebView.VisualStateCallback
 import android.webkit.WebViewProvider.ScrollDelegate
 import android.webkit.WebViewProvider.ViewDelegate
 
+import dev.datlag.kcef.KCEF
+import dev.datlag.kcef.KCEFBrowser
+import dev.datlag.kcef.KCEFClient
+import dev.datlag.kcef.KCEFResourceRequestHandler
+import org.cef.CefSettings
+import org.cef.callback.CefQueryCallback
+import org.cef.handler.CefDisplayHandlerAdapter
+import org.cef.handler.CefLoadHandler
+import org.cef.handler.CefLoadHandlerAdapter
+import org.cef.handler.CefMessageRouterHandlerAdapter
+import org.cef.handler.CefRequestHandlerAdapter
+import org.cef.browser.CefBrowser
+import org.cef.browser.CefFrame
+import org.cef.browser.CefMessageRouter
+import org.cef.browser.CefRendering
+import org.cef.browser.CefRequestContext
+import org.cef.network.CefPostData
+import org.cef.network.CefPostDataElement
+import org.cef.network.CefRequest
+
 import kotlin.collections.List
 import kotlin.collections.Map
+import kotlin.reflect.full.declaredMemberFunctions
+import kotlin.reflect.KFunction
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.decodeFromString
 
 import java.io.BufferedWriter
 import java.io.File
@@ -52,18 +77,132 @@ import java.util.concurrent.Executor
 import java.util.function.Consumer
 
 class KcefWebViewProvider(view: WebView) : WebViewProvider {
-    private val _view: WebView = view
-    // val _settings: TODO: implement
-    private var _viewClient: WebViewClient? = null // TODO: implement
-    private var _chromeClient: WebChromeClient? = null // TODO: implement
-    private val _mappings: MutableList<FunctionMapping> = mutableListOf()
+    private val view = view
+    private val settings = KcefWebSettings()
+    private var viewClient = WebViewClient()
+    private var chromeClient = WebChromeClient()
+    private val mappings: MutableList<FunctionMapping> = mutableListOf()
 
-    private val _handler: Handler = Handler(Looper.myLooper()!!)
+    private var kcefClient: KCEFClient? = null
+    private var browser: KCEFBrowser? = null
 
-    override fun init(javaScriptInterfaces: Map<String, Any>,
+    private val handler = Handler(view.webViewLooper)
+
+    companion object {
+        const val TAG = "KcefWebViewProvider";
+        const val QUERY_FN = "__\$_suwayomiQuery";
+        const val QUERY_CANCEL_FN = "__\$_suwayomiQueryCancel";
+    }
+
+    override fun init(javaScriptInterfaces: Map<String, Any>?,
              privateBrowsing: Boolean) {
         destroy();
-        // TODO: create
+        kcefClient = KCEF.newClientBlocking().apply {
+            addDisplayHandler(object : CefDisplayHandlerAdapter() {
+                override fun onConsoleMessage(browser: CefBrowser, level: CefSettings.LogSeverity, message: String, source: String, line: Int): Boolean {
+                    Log.v(TAG, "$source:$line[$level]: $message")
+                    return true
+                }
+
+                override fun onAddressChange(browser: CefBrowser, frame: CefFrame, url: String) {
+                    Log.d(TAG, "Navigate to $url")
+                }
+
+                override fun onStatusMessage(browser: CefBrowser, value: String) {
+                    Log.v(TAG, "Status update: $value")
+                }
+            })
+            addLoadHandler(object : CefLoadHandlerAdapter() {
+                override fun onLoadEnd(browser: CefBrowser, frame: CefFrame, httpStatusCode: Int) {
+                    val url = frame.url ?: ""
+                    Log.v(TAG, "Load end $url")
+                    handler.post {
+                        if (httpStatusCode == 404) {
+                                viewClient.onReceivedError(view, WebViewClient.ERROR_FILE_NOT_FOUND, "Not Found", url);
+                        }
+                        if (httpStatusCode == 429) {
+                            viewClient.onReceivedError(view, WebViewClient.ERROR_TOO_MANY_REQUESTS, "Too Many Requests", url);
+                        }
+                        if (httpStatusCode >= 400) {
+                            // TODO: create request and response
+                            // viewClient.onReceivedHttpError(_view, ...);
+                        }
+                        viewClient.onPageFinished(view, url);
+                        chromeClient.onProgressChanged(view, 100);
+                    }
+                }
+
+                override fun onLoadError(browser: CefBrowser, frame: CefFrame, errorCode: CefLoadHandler.ErrorCode, errorText: String, failedUrl: String) {
+                    Log.w(TAG, "Load error ($failedUrl) [$errorCode]: $errorText")
+                    // TODO: translate correctly
+                    handler.post {
+                        viewClient.onReceivedError(view, WebViewClient.ERROR_UNKNOWN, errorText, url);
+                    }
+                }
+
+                override fun onLoadStart(browser: CefBrowser, frame: CefFrame, transitionType: CefRequest.TransitionType) {
+                    Log.v(TAG, "Load start, pushing mappings")
+                    mappings.forEach {
+                        val js = """
+                            window.${it.interfaceName} = window.${it.interfaceName} || {}
+                            window.${it.interfaceName}.${it.functionName} = function() {
+                                return new Promise((resolve, reject) => {
+                                    window.${QUERY_FN}({
+                                        request: JSON.stringify({
+                                            functionName: ${Json.encodeToString(it.functionName)},
+                                            interfaceName: ${Json.encodeToString(it.interfaceName)},
+                                            args: Array.from(arguments),
+                                        }),
+                                        persistent: false,
+                                        onSuccess: resolve,
+                                        onFailure: (_, err) => reject(err),
+                                    })
+                                });
+                            }
+                        """
+                        browser.executeJavaScript(js, "SUWAYOMI ${it.toNice()}", 0)
+                    }
+
+                    handler.post {
+                        viewClient.onPageStarted(view, frame.url, null);
+                    }
+                }
+            })
+            var config = CefMessageRouter.CefMessageRouterConfig();
+            config.jsQueryFunction = QUERY_FN;
+            config.jsCancelFunction = QUERY_CANCEL_FN;
+            addMessageRouter(CefMessageRouter.create(config, object : CefMessageRouterHandlerAdapter() {
+                override fun onQuery(browser: CefBrowser, frame: CefFrame, queryId: Long, request: String, persistent: Boolean, callback: CefQueryCallback): Boolean {
+                    val invoke = try {
+                        Json.decodeFromString<FunctionCall>(request)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Invalid request received $e")
+                        return false
+                    }
+                    // TODO: Use a map
+                    mappings.find { it.functionName == invoke.functionName && it.interfaceName == invoke.interfaceName }?.let {
+                        handler.post {
+                            try {
+                                Log.v(TAG, "Received request to invoke ${it.toNice()}")
+                                // NOTE: first argument is implicitly this
+                                val retval = it.fn.call(it.obj, *invoke.args)
+                                callback.success(retval.toString())
+                            } catch (e: Exception) {
+                                Log.w(TAG, "JS-invoke on ${it.toNice()} failed: $e")
+                                callback.failure(0, e.message)
+                            }
+                        }
+                        return true
+                    }
+                    return false
+                }
+            }))
+
+            // NOTE: Using the blank URI here is important. Using null, we won't receive any events, very fun.
+            browser = createBrowser(KCEFBrowser.BLANK_URI, CefRendering.OFFSCREEN).apply {
+                createImmediately()
+            }
+        }
     }
 
     // Deprecated - should never be called
@@ -112,7 +251,11 @@ class KcefWebViewProvider(view: WebView) : WebViewProvider {
     }
 
     override fun destroy() {
-        throw RuntimeException("Stub!");
+        browser?.close(true)
+        browser?.dispose()
+        browser = null
+        kcefClient?.dispose()
+        kcefClient = null
     }
 
     override fun setNetworkAvailable(networkUp: Boolean) {
@@ -135,8 +278,17 @@ class KcefWebViewProvider(view: WebView) : WebViewProvider {
         throw RuntimeException("Stub!");
     }
 
-    override fun loadUrl(url: String, additionalHttpHeaders: Map<String, String>) {
-        throw RuntimeException("Stub!");
+    override fun loadUrl(loadUrl: String, additionalHttpHeaders: Map<String, String>) {
+        chromeClient.onProgressChanged(view, 0);
+        browser!!.loadRequest(CefRequest.create().apply {
+            url = loadUrl
+            if (!additionalHttpHeaders.isNullOrEmpty()) {
+                additionalHttpHeaders.forEach {
+                    setHeaderByName(it.key, it.value, true)
+                }
+            }
+        })
+        Log.d(TAG, "Page loaded at URL " + loadUrl);
     }
 
     override fun loadUrl(url: String) {
@@ -157,7 +309,12 @@ class KcefWebViewProvider(view: WebView) : WebViewProvider {
     }
 
     override fun evaluateJavaScript(script: String, resultCallback: ValueCallback<String>) {
-        throw RuntimeException("Stub!");
+        browser!!.evaluateJavaScript(script, {
+            Log.v(TAG, "JS returned: $it")
+            it?.let {
+                resultCallback.onReceiveValue(it)
+            }
+        })
     }
 
     override fun saveWebArchive(filename: String) {
@@ -357,12 +514,10 @@ class KcefWebViewProvider(view: WebView) : WebViewProvider {
     }
 
     override fun setWebViewClient(client: WebViewClient) {
-        _viewClient = client;
+        viewClient = client;
     }
 
-    override fun getWebViewClient(): WebViewClient {
-        return _viewClient!!;
-    }
+    override fun getWebViewClient(): WebViewClient = viewClient
 
     override fun getWebViewRenderProcess(): WebViewRenderProcess? {
         throw RuntimeException("Stub!");
@@ -383,30 +538,29 @@ class KcefWebViewProvider(view: WebView) : WebViewProvider {
     }
 
     override fun setWebChromeClient(client: WebChromeClient) {
-        _chromeClient = client;
+        chromeClient = client;
     }
 
-    override fun getWebChromeClient(): WebChromeClient {
-        return _chromeClient!!;
-    }
+    override fun getWebChromeClient(): WebChromeClient = chromeClient
 
     override fun setPictureListener(listener: PictureListener) {
         throw RuntimeException("Stub!");
     }
 
-    private class FunctionMapping(val interfaceName: String, val functionName: String) {
+    @Serializable
+    private data class FunctionCall(val interfaceName: String, val functionName: String, val args: Array<String>)
 
-        fun toExposed(): String {
-            return "__\$_" + this.interfaceName + "|" + this.functionName;
-        }
-
-        fun toNice(): String {
-            return this.interfaceName + "." + this.functionName;
-        }
+    private data class FunctionMapping(val interfaceName: String, val functionName: String, val obj: Any, val fn: KFunction<*>) {
+        fun toNice(): String = "$interfaceName.$functionName"
     }
 
     override fun addJavascriptInterface(obj: Any, interfaceName: String) {
-        throw RuntimeException("Stub!");
+        val cls = obj::class;
+        mappings.addAll(cls.declaredMemberFunctions.map {
+            val map = FunctionMapping(interfaceName, it.name, obj, it);
+            Log.v(TAG, "Exposing: " + map.toNice());
+            map
+        })
     }
 
     override fun removeJavascriptInterface(interfaceName: String) {
@@ -421,10 +575,7 @@ class KcefWebViewProvider(view: WebView) : WebViewProvider {
         throw RuntimeException("Stub!");
     }
 
-    override fun getSettings(): WebSettings {
-        throw RuntimeException("Stub!");
-        // return _settings;
-    }
+    override fun getSettings(): WebSettings = settings
 
     override fun setMapTrackballToArrowKeys(setMap: Boolean) {
         throw RuntimeException("Stub!");
@@ -481,7 +632,7 @@ class KcefWebViewProvider(view: WebView) : WebViewProvider {
     @SuppressWarnings("unused")
     override fun setTextClassifier(textClassifier: TextClassifier?) {}
 
-    override fun getTextClassifier(): TextClassifier { return TextClassifier.NO_OP; }
+    override fun getTextClassifier(): TextClassifier = TextClassifier.NO_OP
 
     //-------------------------------------------------------------------------
     // Provider internal methods
@@ -701,19 +852,13 @@ class KcefWebViewProvider(view: WebView) : WebViewProvider {
         }
 
         @SuppressWarnings("unused")
-        override fun onCheckIsTextEditor(): Boolean {
-            return false;
-        }
+        override fun onCheckIsTextEditor(): Boolean = false
 
         @SuppressWarnings("unused")
-        override fun onApplyWindowInsets(insets: WindowInsets?): WindowInsets? {
-            return null;
-        }
+        override fun onApplyWindowInsets(insets: WindowInsets?): WindowInsets? = null
 
         @SuppressWarnings("unused")
-        override fun onResolvePointerIcon(event: MotionEvent, pointerIndex: Int): PointerIcon? {
-            return null;
-        }
+        override fun onResolvePointerIcon(event: MotionEvent, pointerIndex: Int): PointerIcon? = null
     }
 
     class PlaywrightScrollDelegate : ScrollDelegate {
