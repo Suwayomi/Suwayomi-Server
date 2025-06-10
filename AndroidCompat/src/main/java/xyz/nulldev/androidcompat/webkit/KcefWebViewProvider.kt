@@ -30,7 +30,16 @@ import android.view.autofill.AutofillValue
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.textclassifier.TextClassifier
+import android.webkit.DownloadListener
+import android.webkit.RenderProcessGoneDetail
+import android.webkit.ValueCallback
+import android.webkit.WebBackForwardList
 import android.webkit.WebChromeClient
+import android.webkit.WebMessage
+import android.webkit.WebMessagePort
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebView.HitTestResult
 import android.webkit.WebView.PictureListener
@@ -39,6 +48,8 @@ import android.webkit.WebViewClient
 import android.webkit.WebViewProvider
 import android.webkit.WebViewProvider.ScrollDelegate
 import android.webkit.WebViewProvider.ViewDelegate
+import android.webkit.WebViewRenderProcess
+import android.webkit.WebViewRenderProcessClient
 import dev.datlag.kcef.KCEF
 import dev.datlag.kcef.KCEFBrowser
 import dev.datlag.kcef.KCEFClient
