@@ -122,6 +122,9 @@ class ServerConfig(
     val playwrightWsEndpoint: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
     val playwrightSandbox: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
 
+    // webview
+    val webviewImpl: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+
     // requests
     val maxSourcesInParallel: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
 

@@ -108,6 +108,12 @@ fun setupLogLevelUpdating(
     }, ignoreInitialValue = false)
 }
 
+fun setupWebview(configFlow: MutableStateFlow<String>) {
+    serverConfig.subscribeTo(configFlow, { value ->
+        AndroidCompatInitializer.setWebViewImplementation(value)
+    }, ignoreInitialValue = false)
+}
+
 fun serverModule(applicationDirs: ApplicationDirs): Module =
     module {
         single { applicationDirs }
@@ -149,6 +155,8 @@ fun applicationSetup() {
             PlaywrightWebViewProvider.setBrowserSandbox(sandbox)
         },
     )
+
+    setupWebview(serverConfig.webviewImpl)
 
     // Application dirs
     val applicationDirs = ApplicationDirs()

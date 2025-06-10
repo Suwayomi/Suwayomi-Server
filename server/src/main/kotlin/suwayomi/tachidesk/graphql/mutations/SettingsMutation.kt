@@ -147,6 +147,9 @@ class SettingsMutation {
         updateSetting(settings.playwrightWsEndpoint, serverConfig.playwrightWsEndpoint)
         updateSetting(settings.playwrightSandbox, serverConfig.playwrightSandbox)
 
+        // webview
+        updateSetting(settings.webviewImpl, serverConfig.webviewImpl)
+
         // requests
         updateSetting(settings.maxSourcesInParallel, serverConfig.maxSourcesInParallel)
 
