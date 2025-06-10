@@ -229,7 +229,7 @@ fun applicationSetup() {
     // Initialize NetworkHelper early
     Injekt.get<NetworkHelper>().userAgentFlow.onEach {
         SystemProperties.set("http.agent", it)
-    }
+    }.launchIn(GlobalScope)
 
     // create or update conf file if doesn't exist
     try {
