@@ -82,181 +82,155 @@ class KcefWebViewProvider(view: WebView) : WebViewProvider {
         const val QUERY_CANCEL_FN = "__\$_suwayomiQueryCancel"
     }
 
+    private inner class KcefDisplayHandler : CefDisplayHandlerAdapter() {
+        override fun onConsoleMessage(
+                browser: CefBrowser,
+                level: CefSettings.LogSeverity,
+                message: String,
+                source: String,
+                line: Int
+        ): Boolean {
+            Log.v(TAG, "$source:$line[$level]: $message")
+            return true
+        }
+
+        override fun onAddressChange(browser: CefBrowser, frame: CefFrame, url: String) {
+            Log.d(TAG, "Navigate to $url")
+        }
+
+        override fun onStatusMessage(browser: CefBrowser, value: String) {
+            Log.v(TAG, "Status update: $value")
+        }
+    }
+
+    private inner class KcefLoadHandler : CefLoadHandlerAdapter() {
+        override fun onLoadEnd(browser: CefBrowser, frame: CefFrame, httpStatusCode: Int) {
+            val url = frame.url ?: ""
+            Log.v(TAG, "Load end $url")
+            handler.post {
+                if (httpStatusCode == 404) {
+                    viewClient.onReceivedError(
+                            view,
+                            WebViewClient.ERROR_FILE_NOT_FOUND,
+                            "Not Found",
+                            url
+                    )
+                }
+                if (httpStatusCode == 429) {
+                    viewClient.onReceivedError(
+                            view,
+                            WebViewClient.ERROR_TOO_MANY_REQUESTS,
+                            "Too Many Requests",
+                            url
+                    )
+                }
+                if (httpStatusCode >= 400) {
+                    // TODO: create request and response
+                    // viewClient.onReceivedHttpError(_view, ...);
+                }
+                viewClient.onPageFinished(view, url)
+                chromeClient.onProgressChanged(view, 100)
+            }
+        }
+
+        override fun onLoadError(
+                browser: CefBrowser,
+                frame: CefFrame,
+                errorCode: CefLoadHandler.ErrorCode,
+                errorText: String,
+                failedUrl: String
+        ) {
+            Log.w(TAG, "Load error ($failedUrl) [$errorCode]: $errorText")
+            // TODO: translate correctly
+            handler.post {
+                viewClient.onReceivedError(view, WebViewClient.ERROR_UNKNOWN, errorText, url)
+            }
+        }
+
+        override fun onLoadStart(
+                browser: CefBrowser,
+                frame: CefFrame,
+                transitionType: CefRequest.TransitionType
+        ) {
+            Log.v(TAG, "Load start, pushing mappings")
+            mappings.forEach {
+                val js =
+                        """
+                                                window.${it.interfaceName} = window.${it.interfaceName} || {}
+                                                window.${it.interfaceName}.${it.functionName} = function() {
+                                                    return new Promise((resolve, reject) => {
+                                                        window.${QUERY_FN}({
+                                                            request: JSON.stringify({
+                                                                functionName: ${Json.encodeToString(it.functionName)},
+                                                                interfaceName: ${Json.encodeToString(it.interfaceName)},
+                                                                args: Array.from(arguments),
+                                                            }),
+                                                            persistent: false,
+                                                            onSuccess: resolve,
+                                                            onFailure: (_, err) => reject(err),
+                                                        })
+                                                    });
+                                                }
+                                                """
+                browser.executeJavaScript(js, "SUWAYOMI ${it.toNice()}", 0)
+            }
+
+            handler.post { viewClient.onPageStarted(view, frame.url, null) }
+        }
+    }
+
+    private inner class KcefMessageRouterHandler : CefMessageRouterHandlerAdapter() {
+        override fun onQuery(
+                browser: CefBrowser,
+                frame: CefFrame,
+                queryId: Long,
+                request: String,
+                persistent: Boolean,
+                callback: CefQueryCallback
+        ): Boolean {
+            val invoke =
+                    try {
+                        Json.decodeFromString<FunctionCall>(request)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Invalid request received $e")
+                        return false
+                    }
+            // TODO: Use a map
+            mappings
+                    .find {
+                        it.functionName == invoke.functionName &&
+                                it.interfaceName == invoke.interfaceName
+                    }
+                    ?.let {
+                        handler.post {
+                            try {
+                                Log.v(TAG, "Received request to invoke ${it.toNice()}")
+                                // NOTE: first argument is
+                                // implicitly this
+                                val retval = it.fn.call(it.obj, *invoke.args)
+                                callback.success(retval.toString())
+                            } catch (e: Exception) {
+                                Log.w(TAG, "JS-invoke on ${it.toNice()} failed: $e")
+                                callback.failure(0, e.message)
+                            }
+                        }
+                        return true
+                    }
+            return false
+        }
+    }
+
     override fun init(javaScriptInterfaces: Map<String, Any>?, privateBrowsing: Boolean) {
         destroy()
         kcefClient =
                 KCEF.newClientBlocking().apply {
-                    addDisplayHandler(
-                            object : CefDisplayHandlerAdapter() {
-                                override fun onConsoleMessage(
-                                        browser: CefBrowser,
-                                        level: CefSettings.LogSeverity,
-                                        message: String,
-                                        source: String,
-                                        line: Int
-                                ): Boolean {
-                                    Log.v(TAG, "$source:$line[$level]: $message")
-                                    return true
-                                }
+                    addDisplayHandler(KcefDisplayHandler())
+                    addLoadHandler(KcefLoadHandler())
 
-                                override fun onAddressChange(
-                                        browser: CefBrowser,
-                                        frame: CefFrame,
-                                        url: String
-                                ) {
-                                    Log.d(TAG, "Navigate to $url")
-                                }
-
-                                override fun onStatusMessage(browser: CefBrowser, value: String) {
-                                    Log.v(TAG, "Status update: $value")
-                                }
-                            }
-                    )
-                    addLoadHandler(
-                            object : CefLoadHandlerAdapter() {
-                                override fun onLoadEnd(
-                                        browser: CefBrowser,
-                                        frame: CefFrame,
-                                        httpStatusCode: Int
-                                ) {
-                                    val url = frame.url ?: ""
-                                    Log.v(TAG, "Load end $url")
-                                    handler.post {
-                                        if (httpStatusCode == 404) {
-                                            viewClient.onReceivedError(
-                                                    view,
-                                                    WebViewClient.ERROR_FILE_NOT_FOUND,
-                                                    "Not Found",
-                                                    url
-                                            )
-                                        }
-                                        if (httpStatusCode == 429) {
-                                            viewClient.onReceivedError(
-                                                    view,
-                                                    WebViewClient.ERROR_TOO_MANY_REQUESTS,
-                                                    "Too Many Requests",
-                                                    url
-                                            )
-                                        }
-                                        if (httpStatusCode >= 400) {
-                                            // TODO: create request and response
-                                            // viewClient.onReceivedHttpError(_view, ...);
-                                        }
-                                        viewClient.onPageFinished(view, url)
-                                        chromeClient.onProgressChanged(view, 100)
-                                    }
-                                }
-
-                                override fun onLoadError(
-                                        browser: CefBrowser,
-                                        frame: CefFrame,
-                                        errorCode: CefLoadHandler.ErrorCode,
-                                        errorText: String,
-                                        failedUrl: String
-                                ) {
-                                    Log.w(TAG, "Load error ($failedUrl) [$errorCode]: $errorText")
-                                    // TODO: translate correctly
-                                    handler.post {
-                                        viewClient.onReceivedError(
-                                                view,
-                                                WebViewClient.ERROR_UNKNOWN,
-                                                errorText,
-                                                url
-                                        )
-                                    }
-                                }
-
-                                override fun onLoadStart(
-                                        browser: CefBrowser,
-                                        frame: CefFrame,
-                                        transitionType: CefRequest.TransitionType
-                                ) {
-                                    Log.v(TAG, "Load start, pushing mappings")
-                                    mappings.forEach {
-                                        val js =
-                                                """
-                            window.${it.interfaceName} = window.${it.interfaceName} || {}
-                            window.${it.interfaceName}.${it.functionName} = function() {
-                                return new Promise((resolve, reject) => {
-                                    window.${QUERY_FN}({
-                                        request: JSON.stringify({
-                                            functionName: ${Json.encodeToString(it.functionName)},
-                                            interfaceName: ${Json.encodeToString(it.interfaceName)},
-                                            args: Array.from(arguments),
-                                        }),
-                                        persistent: false,
-                                        onSuccess: resolve,
-                                        onFailure: (_, err) => reject(err),
-                                    })
-                                });
-                            }
-                        """
-                                        browser.executeJavaScript(js, "SUWAYOMI ${it.toNice()}", 0)
-                                    }
-
-                                    handler.post { viewClient.onPageStarted(view, frame.url, null) }
-                                }
-                            }
-                    )
                     var config = CefMessageRouter.CefMessageRouterConfig()
                     config.jsQueryFunction = QUERY_FN
                     config.jsCancelFunction = QUERY_CANCEL_FN
-                    addMessageRouter(
-                            CefMessageRouter.create(
-                                    config,
-                                    object : CefMessageRouterHandlerAdapter() {
-                                        override fun onQuery(
-                                                browser: CefBrowser,
-                                                frame: CefFrame,
-                                                queryId: Long,
-                                                request: String,
-                                                persistent: Boolean,
-                                                callback: CefQueryCallback
-                                        ): Boolean {
-                                            val invoke =
-                                                    try {
-                                                        Json.decodeFromString<FunctionCall>(request)
-                                                    } catch (e: Exception) {
-                                                        Log.w(TAG, "Invalid request received $e")
-                                                        return false
-                                                    }
-                                            // TODO: Use a map
-                                            mappings
-                                                    .find {
-                                                        it.functionName == invoke.functionName &&
-                                                                it.interfaceName ==
-                                                                        invoke.interfaceName
-                                                    }
-                                                    ?.let {
-                                                        handler.post {
-                                                            try {
-                                                                Log.v(
-                                                                        TAG,
-                                                                        "Received request to invoke ${it.toNice()}"
-                                                                )
-                                                                // NOTE: first argument is
-                                                                // implicitly this
-                                                                val retval =
-                                                                        it.fn.call(
-                                                                                it.obj,
-                                                                                *invoke.args
-                                                                        )
-                                                                callback.success(retval.toString())
-                                                            } catch (e: Exception) {
-                                                                Log.w(
-                                                                        TAG,
-                                                                        "JS-invoke on ${it.toNice()} failed: $e"
-                                                                )
-                                                                callback.failure(0, e.message)
-                                                            }
-                                                        }
-                                                        return true
-                                                    }
-                                            return false
-                                        }
-                                    }
-                            )
-                    )
+                    addMessageRouter(CefMessageRouter.create(config, KcefMessageRouterHandler()))
                 }
     }
 
