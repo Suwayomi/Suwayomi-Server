@@ -1,6 +1,5 @@
 package xyz.nulldev.androidcompat.webkit
 
-import android.os.SystemProperties
 import android.webkit.WebSettings
 
 class KcefWebSettings : WebSettings() {
@@ -425,6 +424,6 @@ class KcefWebSettings : WebSettings() {
     override fun getDisabledActionModeMenuItems() = disabledActionModeMenuItems
 
     companion object {
-        fun defaultUserAgent() = SystemProperties.get("http.agent")
+        fun defaultUserAgent() = System.getProperty("http.agent")
     }
 }
