@@ -18,6 +18,7 @@ import eu.kanade.tachiyomi.source.local.LocalSource
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.json.JavalinJackson
 import io.javalin.json.JsonMapper
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -57,6 +58,10 @@ import java.net.Authenticator
 import java.net.PasswordAuthentication
 import java.security.Security
 import java.util.Locale
+import kotlin.io.path.Path
+import kotlin.io.path.createDirectories
+import kotlin.io.path.div
+import kotlin.math.roundToInt
 
 private val logger = KotlinLogging.logger {}
 
@@ -77,8 +82,9 @@ class ApplicationDirs(
     val mangaDownloadsRoot get() = "$downloadsRoot/mangas"
 }
 
+@Suppress("DEPRECATION")
 class LooperThread : Thread() {
-    public override fun run() {
+    override fun run() {
         logger.info { "Starting Android Main Loop" }
         Looper.prepareMainLooper()
         Looper.loop()
@@ -142,6 +148,7 @@ fun serverModule(applicationDirs: ApplicationDirs): Module =
         single<JsonMapper> { JavalinJackson() }
     }
 
+@OptIn(DelicateCoroutinesApi::class)
 fun applicationSetup() {
     Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
         KotlinLogging.logger { }.error(throwable) { "unhandled exception" }
@@ -371,11 +378,19 @@ fun applicationSetup() {
         KCEF.init(
             builder = {
                 progress {
+                    var lastNum = -1
                     onDownloading {
-                        logger.info { "KCEF download progress: $it%" }
+                        val num = it.roundToInt()
+                        if (num > lastNum) {
+                            lastNum = num
+                            logger.info { "KCEF download progress: $num%" }
+                        }
                     }
                 }
                 download { github() }
+                val kcefDir = Path(applicationDirs.dataRoot) / "bin/kcef"
+                kcefDir.createDirectories()
+                installDir(kcefDir.toFile())
             },
             onError = {
                 it?.printStackTrace()

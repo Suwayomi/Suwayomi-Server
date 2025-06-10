@@ -91,9 +91,8 @@ import kotlin.reflect.KFunction
 import kotlin.reflect.full.declaredMemberFunctions
 
 class KcefWebViewProvider(
-    view: WebView,
+    private val view: WebView,
 ) : WebViewProvider {
-    private val view = view
     private val settings = KcefWebSettings()
     private var viewClient = WebViewClient()
     private var chromeClient = WebChromeClient()
@@ -317,7 +316,7 @@ class KcefWebViewProvider(
             callback: CefCallback,
         ): Boolean {
             val data = resolvedData ?: return false
-            var bytesToTransfer = Math.min(bytesToRead, data.size - readOffset)
+            val bytesToTransfer = Math.min(bytesToRead, data.size - readOffset)
             Log.v(
                 TAG,
                 "readResponse: $readOffset/${data.size}, reading $bytesToRead->$bytesToTransfer",
@@ -406,7 +405,7 @@ class KcefWebViewProvider(
                 addLoadHandler(LoadHandler())
                 addRequestHandler(RequestHandler())
 
-                var config = CefMessageRouter.CefMessageRouterConfig()
+                val config = CefMessageRouter.CefMessageRouterConfig()
                 config.jsQueryFunction = QUERY_FN
                 config.jsCancelFunction = QUERY_CANCEL_FN
                 addMessageRouter(CefMessageRouter.create(config, MessageRouterHandler()))
