@@ -1,5 +1,6 @@
 package xyz.nulldev.androidcompat.webkit
 
+import android.os.SystemProperties
 import android.webkit.WebSettings
 
 class KcefWebSettings : WebSettings() {
@@ -370,7 +371,7 @@ class KcefWebSettings : WebSettings() {
         userAgentString = p0
     }
 
-    override fun getUserAgentString() = userAgentString ?: ""
+    override fun getUserAgentString() = userAgentString ?: defaultUserAgent()
 
     override fun setNeedInitialFocus(p0: Boolean) {
         needInitialFocus = p0
@@ -417,4 +418,8 @@ class KcefWebSettings : WebSettings() {
     }
 
     override fun getDisabledActionModeMenuItems() = disabledActionModeMenuItems
+
+    companion object {
+        fun defaultUserAgent() = SystemProperties.get("http.agent")
+    }
 }

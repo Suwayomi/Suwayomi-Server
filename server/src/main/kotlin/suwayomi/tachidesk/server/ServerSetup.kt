@@ -8,6 +8,7 @@ package suwayomi.tachidesk.server
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import android.os.Looper
+import android.os.SystemProperties
 import ch.qos.logback.classic.Level
 import com.typesafe.config.ConfigRenderOptions
 import dev.datlag.kcef.KCEF
@@ -22,6 +23,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.koin.core.context.startKoin
@@ -225,7 +227,10 @@ fun applicationSetup() {
     androidCompat.startApp(app)
 
     // Initialize NetworkHelper early
-    Injekt.get<NetworkHelper>()
+    Injekt.get<NetworkHelper>().userAgentFlow.onEach {
+        SystemProperties.set("http.agent", it)
+    }
+
 
     // create or update conf file if doesn't exist
     try {
