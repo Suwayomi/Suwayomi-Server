@@ -42,6 +42,7 @@ import dev.datlag.kcef.KCEFClient
 import dev.datlag.kcef.KCEFResourceRequestHandler
 import java.io.BufferedWriter
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.Executor
 import kotlin.collections.Map
 import kotlin.reflect.KFunction
@@ -55,14 +56,25 @@ import org.cef.browser.CefFrame
 import org.cef.browser.CefMessageRouter
 import org.cef.browser.CefRendering
 import org.cef.browser.CefRequestContext
+import org.cef.callback.CefCallback
 import org.cef.callback.CefQueryCallback
 import org.cef.handler.CefDisplayHandlerAdapter
 import org.cef.handler.CefLoadHandler
 import org.cef.handler.CefLoadHandlerAdapter
 import org.cef.handler.CefMessageRouterHandlerAdapter
+import org.cef.handler.CefRequestHandler
+import org.cef.handler.CefRequestHandlerAdapter
+import org.cef.handler.CefResourceHandler
+import org.cef.handler.CefResourceHandlerAdapter
+import org.cef.handler.CefResourceRequestHandler
+import org.cef.handler.CefResourceRequestHandlerAdapter
+import org.cef.misc.BoolRef
+import org.cef.misc.IntRef
+import org.cef.misc.StringRef
 import org.cef.network.CefPostData
 import org.cef.network.CefPostDataElement
 import org.cef.network.CefRequest
+import org.cef.network.CefResponse
 
 class KcefWebViewProvider(view: WebView) : WebViewProvider {
     private val view = view
@@ -82,7 +94,29 @@ class KcefWebViewProvider(view: WebView) : WebViewProvider {
         const val QUERY_CANCEL_FN = "__\$_suwayomiQueryCancel"
     }
 
-    private inner class KcefDisplayHandler : CefDisplayHandlerAdapter() {
+    private class CefWebResourceRequest(
+            val request: CefRequest?,
+            val frame: CefFrame?,
+            val redirect: Boolean
+    ) : WebResourceRequest {
+        override fun getUrl(): Uri = Uri.parse(request?.url)
+
+        override fun isForMainFrame(): Boolean = frame?.isMain ?: false
+
+        override fun isRedirect(): Boolean = redirect
+
+        override fun hasGesture(): Boolean = false
+
+        override fun getMethod(): String = request?.method ?: "GET"
+
+        override fun getRequestHeaders(): Map<String, String> {
+            val headers = mutableMapOf<String, String>()
+            request?.getHeaderMap(headers)
+            return headers
+        }
+    }
+
+    private inner class DisplayHandler : CefDisplayHandlerAdapter() {
         override fun onConsoleMessage(
                 browser: CefBrowser,
                 level: CefSettings.LogSeverity,
@@ -103,7 +137,7 @@ class KcefWebViewProvider(view: WebView) : WebViewProvider {
         }
     }
 
-    private inner class KcefLoadHandler : CefLoadHandlerAdapter() {
+    private inner class LoadHandler : CefLoadHandlerAdapter() {
         override fun onLoadEnd(browser: CefBrowser, frame: CefFrame, httpStatusCode: Int) {
             val url = frame.url ?: ""
             Log.v(TAG, "Load end $url")
@@ -156,22 +190,22 @@ class KcefWebViewProvider(view: WebView) : WebViewProvider {
             mappings.forEach {
                 val js =
                         """
-                                                window.${it.interfaceName} = window.${it.interfaceName} || {}
-                                                window.${it.interfaceName}.${it.functionName} = function() {
-                                                    return new Promise((resolve, reject) => {
-                                                        window.${QUERY_FN}({
-                                                            request: JSON.stringify({
-                                                                functionName: ${Json.encodeToString(it.functionName)},
-                                                                interfaceName: ${Json.encodeToString(it.interfaceName)},
-                                                                args: Array.from(arguments),
-                                                            }),
-                                                            persistent: false,
-                                                            onSuccess: resolve,
-                                                            onFailure: (_, err) => reject(err),
-                                                        })
-                                                    });
-                                                }
-                                                """
+                        window.${it.interfaceName} = window.${it.interfaceName} || {}
+                        window.${it.interfaceName}.${it.functionName} = function() {
+                            return new Promise((resolve, reject) => {
+                                window.${QUERY_FN}({
+                                    request: JSON.stringify({
+                                        functionName: ${Json.encodeToString(it.functionName)},
+                                        interfaceName: ${Json.encodeToString(it.interfaceName)},
+                                        args: Array.from(arguments),
+                                    }),
+                                    persistent: false,
+                                    onSuccess: resolve,
+                                    onFailure: (_, err) => reject(err),
+                                })
+                            });
+                        }
+                        """
                 browser.executeJavaScript(js, "SUWAYOMI ${it.toNice()}", 0)
             }
 
@@ -179,7 +213,7 @@ class KcefWebViewProvider(view: WebView) : WebViewProvider {
         }
     }
 
-    private inner class KcefMessageRouterHandler : CefMessageRouterHandlerAdapter() {
+    private inner class MessageRouterHandler : CefMessageRouterHandlerAdapter() {
         override fun onQuery(
                 browser: CefBrowser,
                 frame: CefFrame,
@@ -220,17 +254,132 @@ class KcefWebViewProvider(view: WebView) : WebViewProvider {
         }
     }
 
+    private inner class WebResponseResourceHandler(val webResponse: WebResourceResponse) :
+            CefResourceHandlerAdapter() {
+        private var resolvedData: ByteArray? = null
+        private var readOffset = 0
+
+        override fun processRequest(request: CefRequest, callback: CefCallback): Boolean {
+            Log.v(TAG, "Handling request from client's response for ${request.url}")
+            handler.post {
+                try {
+                    resolvedData = webResponse.data.readAllBytes()
+                } catch (e: IOException) {}
+                callback.Continue()
+            }
+            return true
+        }
+
+        override fun getResponseHeaders(
+                response: CefResponse,
+                responseLength: IntRef,
+                redirectUrl: StringRef
+        ) {
+            webResponse.responseHeaders.forEach { response.setHeaderByName(it.key, it.value, true) }
+            responseLength.set(resolvedData?.size ?: 0)
+        }
+
+        override fun readResponse(
+                dataOut: ByteArray,
+                bytesToRead: Int,
+                bytesRead: IntRef,
+                callback: CefCallback
+        ): Boolean {
+            val data = resolvedData ?: return false
+            var bytesToTransfer = Math.min(bytesToRead, data.size - readOffset)
+            Log.v(
+                    TAG,
+                    "readResponse: $readOffset/${data.size}, reading $bytesToRead->$bytesToTransfer"
+            )
+            data.copyInto(dataOut, startIndex = readOffset, endIndex = readOffset + bytesToTransfer)
+            bytesRead.set(bytesToTransfer)
+            readOffset += bytesToTransfer
+            return readOffset < data.size
+        }
+    }
+
+    private inner class ResourceRequestHandler : CefResourceRequestHandlerAdapter() {
+        override fun onBeforeResourceLoad(
+                browser: CefBrowser?,
+                frame: CefFrame?,
+                request: CefRequest
+        ): Boolean {
+            request.setHeaderByName(
+                    "user-agent",
+                    settings.userAgentString, // TODO: default user agent
+                    true
+            )
+
+            // TODO: we should be calling this on the handler, since CEF calls us on its IO thread
+            // thus if a client tried to use WebView#loadUrl as the docs suggest, this fails
+            val cancel =
+                    viewClient.shouldOverrideUrlLoading(
+                            view,
+                            CefWebResourceRequest(request, frame, false),
+                    )
+            Log.v(TAG, "Resource ${request?.url}, result is cancel? $cancel")
+
+            handler.post { viewClient.onLoadResource(view, frame?.url) }
+
+            return cancel || settings.blockNetworkLoads
+        }
+
+        override fun getResourceHandler(
+                browser: CefBrowser,
+                frame: CefFrame,
+                request: CefRequest
+        ): CefResourceHandler? {
+            // TODO: we should be calling this on the handler, since CEF calls us on its IO thread
+            val response =
+                    viewClient.shouldInterceptRequest(
+                            view,
+                            CefWebResourceRequest(request, frame, false),
+                    )
+            response ?: return null
+            return WebResponseResourceHandler(response)
+        }
+    }
+
+    private inner class RequestHandler : CefRequestHandlerAdapter() {
+        override fun getResourceRequestHandler(
+                browser: CefBrowser,
+                frame: CefFrame,
+                request: CefRequest,
+                isNavigation: Boolean,
+                isDownload: Boolean,
+                requestInitiator: String,
+                disableDefaultHandling: BoolRef
+        ): CefResourceRequestHandler? = ResourceRequestHandler()
+
+        override fun onRenderProcessTerminated(
+                browser: CefBrowser,
+                status: CefRequestHandler.TerminationStatus
+        ) {
+            handler.post {
+                viewClient.onRenderProcessGone(
+                        view,
+                        object : RenderProcessGoneDetail() {
+                            override fun didCrash(): Boolean =
+                                    status == CefRequestHandler.TerminationStatus.TS_PROCESS_CRASHED
+                            override fun rendererPriorityAtExit(): Int = -1
+                        }
+                )
+            }
+        }
+    }
+
     override fun init(javaScriptInterfaces: Map<String, Any>?, privateBrowsing: Boolean) {
         destroy()
         kcefClient =
                 KCEF.newClientBlocking().apply {
-                    addDisplayHandler(KcefDisplayHandler())
-                    addLoadHandler(KcefLoadHandler())
+                    addDisplayHandler(DisplayHandler())
+                    addLoadHandler(LoadHandler())
+                    addRequestHandler(RequestHandler())
 
                     var config = CefMessageRouter.CefMessageRouterConfig()
                     config.jsQueryFunction = QUERY_FN
                     config.jsCancelFunction = QUERY_CANCEL_FN
-                    addMessageRouter(CefMessageRouter.create(config, KcefMessageRouterHandler()))
+                    addMessageRouter(CefMessageRouter.create(config, MessageRouterHandler()))
                 }
     }
 
@@ -378,7 +527,7 @@ class KcefWebViewProvider(view: WebView) : WebViewProvider {
 
     override fun evaluateJavaScript(script: String, resultCallback: ValueCallback<String>) {
         browser!!.evaluateJavaScript(
-                script,
+                script.removePrefix("javascript:"),
                 {
                     Log.v(TAG, "JS returned: $it")
                     it?.let { resultCallback.onReceiveValue(it) }
