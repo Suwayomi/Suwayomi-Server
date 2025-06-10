@@ -19,6 +19,7 @@ package android.webkit;
 import android.annotation.Nullable;
 import android.annotation.SystemApi;
 import android.content.Context;
+import android.os.SystemProperties;
 
 import com.microsoft.playwright.Browser;
 
@@ -468,7 +469,7 @@ public class PlaywrightWebSettings extends WebSettings {
     }
 
     public static String getDefaultUserAgent(Context context) {
-        return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36";
+        return SystemProperties.get("http.agent");
     }
 
     public void setNeedInitialFocus(boolean flag) {

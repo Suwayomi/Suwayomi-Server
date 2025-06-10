@@ -8,7 +8,6 @@ package suwayomi.tachidesk.server
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import android.os.Looper
-import android.webkit.PlaywrightWebViewProvider
 import ch.qos.logback.classic.Level
 import com.typesafe.config.ConfigRenderOptions
 import dev.datlag.kcef.KCEF
@@ -43,6 +42,7 @@ import uy.kohesive.injekt.api.get
 import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
 import xyz.nulldev.androidcompat.androidCompatModule
+import xyz.nulldev.androidcompat.webkit.PlaywrightWebViewProvider
 import xyz.nulldev.ts.config.ApplicationRootDir
 import xyz.nulldev.ts.config.BASE_LOGGER_NAME
 import xyz.nulldev.ts.config.GlobalConfigManager

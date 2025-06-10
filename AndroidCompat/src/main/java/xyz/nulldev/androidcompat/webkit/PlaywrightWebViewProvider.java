@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package android.webkit;
+package xyz.nulldev.androidcompat.webkit;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -53,6 +53,7 @@ import android.view.autofill.AutofillValue;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.textclassifier.TextClassifier;
+import android.webkit.*;
 import android.webkit.WebView.HitTestResult;
 import android.webkit.WebView.PictureListener;
 import android.webkit.WebView.VisualStateCallback;
