@@ -425,27 +425,23 @@ class KcefWebViewProvider(view: WebView) : WebViewProvider {
     }
 
     override fun stopLoading() {
-        throw RuntimeException("Stub!")
+        browser!!.stopLoad()
     }
 
     override fun reload() {
-        throw RuntimeException("Stub!")
+        browser!!.reload()
     }
 
-    override fun canGoBack(): Boolean {
-        throw RuntimeException("Stub!")
-    }
+    override fun canGoBack(): Boolean = browser!!.canGoBack()
 
     override fun goBack() {
-        throw RuntimeException("Stub!")
+        browser!!.goBack()
     }
 
-    override fun canGoForward(): Boolean {
-        throw RuntimeException("Stub!")
-    }
+    override fun canGoForward(): Boolean = browser!!.canGoForward()
 
     override fun goForward() {
-        throw RuntimeException("Stub!")
+        browser!!.goForward()
     }
 
     override fun canGoBackOrForward(steps: Int): Boolean {
@@ -508,13 +504,9 @@ class KcefWebViewProvider(view: WebView) : WebViewProvider {
         throw RuntimeException("Stub!")
     }
 
-    override fun getUrl(): String {
-        throw RuntimeException("Stub!")
-    }
+    override fun getUrl(): String = browser!!.url
 
-    override fun getOriginalUrl(): String {
-        throw RuntimeException("Stub!")
-    }
+    override fun getOriginalUrl(): String = browser!!.url
 
     override fun getTitle(): String {
         throw RuntimeException("Stub!")
