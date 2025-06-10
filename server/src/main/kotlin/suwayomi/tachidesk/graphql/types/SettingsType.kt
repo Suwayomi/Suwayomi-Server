@@ -41,14 +41,6 @@ interface Settings : Node {
     val autoDownloadNewChapters: Boolean?
     val excludeEntryWithUnreadChapters: Boolean?
 
-    // playwright webview
-    val playwrightBrowser: String?
-    val playwrightWsEndpoint: String?
-    val playwrightSandbox: Boolean?
-
-    // playwright webview
-    val webviewImpl: String?
-
     @GraphQLDeprecated(
         "Replaced with autoDownloadNewChaptersLimit",
         replaceWith = ReplaceWith("autoDownloadNewChaptersLimit"),
@@ -142,12 +134,6 @@ data class PartialSettingsType(
     override val autoDownloadIgnoreReUploads: Boolean?,
     // extension
     override val extensionRepos: List<String>?,
-    // playwright webview
-    override val playwrightBrowser: String?,
-    override val playwrightWsEndpoint: String?,
-    override val playwrightSandbox: Boolean?,
-    // playwright webview
-    override val webviewImpl: String?,
     // requests
     override val maxSourcesInParallel: Int?,
     // updater
@@ -222,12 +208,6 @@ class SettingsType(
     override val autoDownloadIgnoreReUploads: Boolean?,
     // extension
     override val extensionRepos: List<String>,
-    // playwright webview
-    override val playwrightBrowser: String,
-    override val playwrightWsEndpoint: String,
-    override val playwrightSandbox: Boolean,
-    // webview
-    override val webviewImpl: String,
     // requests
     override val maxSourcesInParallel: Int,
     // updater
@@ -297,12 +277,6 @@ class SettingsType(
         config.autoDownloadIgnoreReUploads.value,
         // extension
         config.extensionRepos.value,
-        // playwright webview
-        config.playwrightBrowser.value,
-        config.playwrightWsEndpoint.value,
-        config.playwrightSandbox.value,
-        // webview
-        config.webviewImpl.value,
         // requests
         config.maxSourcesInParallel.value,
         // updater

@@ -21,8 +21,6 @@ dependencies {
     implementation(libs.bundles.shared)
     testImplementation(libs.bundles.sharedTest)
 
-    implementation(libs.playwright)
-
     // Android stub library
     implementation(libs.android.stubs)
 

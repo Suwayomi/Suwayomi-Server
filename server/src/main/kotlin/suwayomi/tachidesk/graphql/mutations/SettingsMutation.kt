@@ -142,14 +142,6 @@ class SettingsMutation {
         // extension
         updateSetting(settings.extensionRepos, serverConfig.extensionRepos)
 
-        // playwright webview
-        updateSetting(settings.playwrightBrowser, serverConfig.playwrightBrowser)
-        updateSetting(settings.playwrightWsEndpoint, serverConfig.playwrightWsEndpoint)
-        updateSetting(settings.playwrightSandbox, serverConfig.playwrightSandbox)
-
-        // webview
-        updateSetting(settings.webviewImpl, serverConfig.webviewImpl)
-
         // requests
         updateSetting(settings.maxSourcesInParallel, serverConfig.maxSourcesInParallel)
 

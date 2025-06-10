@@ -45,7 +45,6 @@ import uy.kohesive.injekt.api.get
 import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
 import xyz.nulldev.androidcompat.androidCompatModule
-import xyz.nulldev.androidcompat.webkit.PlaywrightWebViewProvider
 import xyz.nulldev.ts.config.ApplicationRootDir
 import xyz.nulldev.ts.config.BASE_LOGGER_NAME
 import xyz.nulldev.ts.config.GlobalConfigManager
@@ -114,33 +113,6 @@ fun setupLogLevelUpdating(
     }, ignoreInitialValue = false)
 }
 
-fun setupPlaywright() {
-    serverConfig.subscribeTo(
-        combine(
-            serverConfig.playwrightBrowser,
-            serverConfig.playwrightWsEndpoint,
-            serverConfig.playwrightSandbox,
-        ) { browser, connect, sandbox ->
-            Triple(browser, connect, sandbox)
-        }.distinctUntilChanged(),
-        { (browser, connect, sandbox) ->
-            logger.debug {
-                "playwright: browser= $browser, wsEndpoint= $connect, sandbox= $sandbox"
-            }
-            PlaywrightWebViewProvider.setBrowserType(browser)
-            PlaywrightWebViewProvider.setBrowserConnect(connect)
-            PlaywrightWebViewProvider.setBrowserSandbox(sandbox)
-        },
-        ignoreInitialValue = false,
-    )
-}
-
-fun setupWebview(configFlow: MutableStateFlow<String>) {
-    serverConfig.subscribeTo(configFlow, { value ->
-        AndroidCompatInitializer.setWebViewImplementation(value)
-    }, ignoreInitialValue = false)
-}
-
 fun serverModule(applicationDirs: ApplicationDirs): Module =
     module {
         single { applicationDirs }
@@ -161,9 +133,6 @@ fun applicationSetup() {
     GlobalConfigManager.registerModule(
         ServerConfig.register { GlobalConfigManager.config },
     )
-
-    setupWebview(serverConfig.webviewImpl)
-    setupPlaywright()
 
     // Application dirs
     val applicationDirs = ApplicationDirs()
