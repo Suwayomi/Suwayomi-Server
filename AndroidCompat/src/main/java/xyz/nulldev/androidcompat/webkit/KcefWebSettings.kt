@@ -69,10 +69,12 @@ class KcefWebSettings : WebSettings() {
     // Implementations
 
     @SuppressWarnings("HiddenAbstractMethod")
+    @Deprecated("inherit")
     override fun setNavDump(p0: Boolean) {
         navDumps = p0
     }
 
+    @Deprecated("inherit")
     @SuppressWarnings("HiddenAbstractMethod")
     override fun getNavDump(): Boolean = navDumps
 
@@ -118,35 +120,42 @@ class KcefWebSettings : WebSettings() {
 
     override fun getLoadWithOverviewMode() = loadWithOverviewMode
 
+    @Deprecated("inherit")
     override fun setPluginsEnabled(p0: Boolean) {
         pluginsEnabled = p0
     }
 
-    override fun getPluginsEnabled() = pluginsEnabled
+    @Deprecated("inherit") override fun getPluginsEnabled() = pluginsEnabled
 
+    @Deprecated("inherit")
     override fun setEnableSmoothTransition(p0: Boolean) {
         enableSmoothTransition = p0
     }
 
-    override fun enableSmoothTransition() = enableSmoothTransition
+    @Deprecated("inherit") override fun enableSmoothTransition() = enableSmoothTransition
 
+    @Deprecated("inherit")
     override fun setUseWebViewBackgroundForOverscrollBackground(p0: Boolean) {
         useWebViewBackgroundForOverscrollBackground = p0
     }
 
-    override fun getUseWebViewBackgroundForOverscrollBackground() = useWebViewBackgroundForOverscrollBackground
+    @Deprecated("inherit")
+    override fun getUseWebViewBackgroundForOverscrollBackground() =
+            useWebViewBackgroundForOverscrollBackground
 
+    @Deprecated("inherit")
     override fun setSaveFormData(p0: Boolean) {
         saveFormData = p0
     }
 
-    override fun getSaveFormData() = saveFormData
+    @Deprecated("inherit") override fun getSaveFormData() = saveFormData
 
+    @Deprecated("inherit")
     override fun setSavePassword(p0: Boolean) {
         savePassword = p0
     }
 
-    override fun getSavePassword() = savePassword
+    @Deprecated("inherit") override fun getSavePassword() = savePassword
 
     override fun setTextZoom(p0: Int) {
         textZoom = p0
@@ -154,6 +163,7 @@ class KcefWebSettings : WebSettings() {
 
     override fun getTextZoom() = textZoom
 
+    @Deprecated("inherit")
     override fun setDefaultZoom(p0: ZoomDensity?) {
         defaultZoom = p0
     }
@@ -164,20 +174,23 @@ class KcefWebSettings : WebSettings() {
 
     override fun getAcceptThirdPartyCookies() = acceptThirdPartyCookies
 
-    override fun getDefaultZoom() = defaultZoom
+    @Deprecated("inherit") override fun getDefaultZoom() = defaultZoom
 
+    @Deprecated("inherit")
     override fun setLightTouchEnabled(p0: Boolean) {
         lightTouchEnabled = p0
     }
 
-    override fun getLightTouchEnabled() = lightTouchEnabled
+    @Deprecated("inherit") override fun getLightTouchEnabled() = lightTouchEnabled
 
+    @Deprecated("inherit")
     override fun setUserAgent(ua: Int) {
-        throw RuntimeException("Stub!");
+        throw RuntimeException("Stub!")
     }
 
+    @Deprecated("inherit")
     override fun getUserAgent(): Int {
-        throw RuntimeException("Stub!");
+        throw RuntimeException("Stub!")
     }
 
     override fun setUseWideViewPort(p0: Boolean) {
@@ -282,47 +295,54 @@ class KcefWebSettings : WebSettings() {
 
     override fun getJavaScriptEnabled() = javaScriptEnabled
 
+    @Deprecated("inherit")
     override fun setAllowUniversalAccessFromFileURLs(p0: Boolean) {
         allowUniversalAccessFromFileURLs = p0
     }
 
     override fun getAllowUniversalAccessFromFileURLs() = allowUniversalAccessFromFileURLs
 
+    @Deprecated("inherit")
     override fun setAllowFileAccessFromFileURLs(p0: Boolean) {
         allowFileAccessFromFileURLs = p0
     }
 
     override fun getAllowFileAccessFromFileURLs() = allowFileAccessFromFileURLs
 
+    @Deprecated("inherit")
     override fun setPluginState(p0: PluginState?) {
         pluginState = p0
     }
 
-    override fun getPluginState() = pluginState
+    @Deprecated("inherit") override fun getPluginState() = pluginState
 
+    @Deprecated("inherit")
     override fun setDatabasePath(p0: String?) {
         databasePath = p0
     }
 
-    override fun getDatabasePath() = databasePath ?: ""
+    @Deprecated("inherit") override fun getDatabasePath() = databasePath ?: ""
 
+    @Deprecated("inherit")
     override fun setGeolocationDatabasePath(p0: String?) {
         geolocationDatabasePath = p0
     }
 
-    override fun setAppCacheEnabled(p0: Boolean) {}
+    @Deprecated("inherit") override fun setAppCacheEnabled(p0: Boolean) {}
 
+    @Deprecated("inherit")
     override fun setAppCachePath(p0: String?) {
         appCachePath = p0
     }
 
+    @Deprecated("inherit")
     override fun setAppCacheMaxSize(p0: Long) {
         appCacheMaxSize = p0
     }
 
-    override fun setDatabaseEnabled(p0: Boolean) {}
+    @Deprecated("inherit") override fun setDatabaseEnabled(p0: Boolean) {}
 
-    override fun getDatabaseEnabled() = true
+    @Deprecated("inherit") override fun getDatabaseEnabled() = true
 
     override fun setDomStorageEnabled(p0: Boolean) {
         domStorageEnabled = p0
@@ -356,6 +376,7 @@ class KcefWebSettings : WebSettings() {
         needInitialFocus = p0
     }
 
+    @Deprecated("inherit")
     override fun setRenderPriority(p0: RenderPriority?) {
         renderPriority = p0
     }
@@ -382,7 +403,8 @@ class KcefWebSettings : WebSettings() {
         videoOverlayForEmbeddedEncryptedVideoEnabled = p0
     }
 
-    override fun getVideoOverlayForEmbeddedEncryptedVideoEnabled() = videoOverlayForEmbeddedEncryptedVideoEnabled
+    override fun getVideoOverlayForEmbeddedEncryptedVideoEnabled() =
+            videoOverlayForEmbeddedEncryptedVideoEnabled
 
     override fun setSafeBrowsingEnabled(p0: Boolean) {
         safeBrowsingEnabled = p0
