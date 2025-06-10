@@ -1,11 +1,11 @@
 package xyz.nulldev.androidcompat
 
+import android.webkit.WebView
 import xyz.nulldev.androidcompat.config.ApplicationInfoConfigModule
 import xyz.nulldev.androidcompat.config.FilesConfigModule
 import xyz.nulldev.androidcompat.config.SystemConfigModule
 import xyz.nulldev.androidcompat.webkit.KcefWebViewProvider
 import xyz.nulldev.ts.config.GlobalConfigManager
-import android.webkit.WebView
 
 /**
  * Initializes the Android compatibility module

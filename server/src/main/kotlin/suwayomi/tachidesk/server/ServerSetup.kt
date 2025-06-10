@@ -231,7 +231,6 @@ fun applicationSetup() {
         SystemProperties.set("http.agent", it)
     }
 
-
     // create or update conf file if doesn't exist
     try {
         val dataConfFile = File("${applicationDirs.dataRoot}/server.conf")
