@@ -42,19 +42,19 @@ public class SystemProperties {
             return native_get(key);
     }
     private static int native_get_int(String key, int def) {
-        if(configModule.hasProperty(key))
+        if(!configModule.hasProperty(key))
             return def;
         else
             return configModule.getIntProperty(key);
     }
     private static long native_get_long(String key, long def) {
-        if(configModule.hasProperty(key))
+        if(!configModule.hasProperty(key))
             return def;
         else
             return configModule.getLongProperty(key);
     }
     private static boolean native_get_boolean(String key, boolean def) {
-        if(configModule.hasProperty(key))
+        if(!configModule.hasProperty(key))
             return def;
         else
             return configModule.getBooleanProperty(key);
