@@ -3,10 +3,13 @@ package suwayomi.tachidesk.server
 import android.app.Application
 import android.content.Context
 import io.github.oshai.kotlinlogging.KotlinLogging
+import suwayomi.tachidesk.manga.impl.update.IUpdater
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File
 import java.util.prefs.Preferences
+import kotlin.collections.isNotEmpty
+import kotlin.collections.orEmpty
 
 private fun migratePreferences(
     parent: String?,
@@ -43,9 +46,50 @@ private fun migratePreferences(
     }
 }
 
-const val MIGRATION_VERSION = 1
+private fun migratePreferencesToNewXmlFileBasedStorage() {
+    // Migrate from old preferences api
+    val prefRootNode = "suwayomi/tachidesk"
+    val isMigrationRequired = Preferences.userRoot().nodeExists(prefRootNode)
+    if (isMigrationRequired) {
+        val preferences = Preferences.userRoot().node(prefRootNode)
+        migratePreferences(null, preferences)
+        preferences.removeNode()
+    }
+}
+
+private fun migrateMangaDownloadDir(applicationDirs: ApplicationDirs) {
+    val oldMangaDownloadDir = File(applicationDirs.downloadsRoot)
+    val newMangaDownloadDir = File(applicationDirs.mangaDownloadsRoot)
+    val downloadDirs = oldMangaDownloadDir.listFiles().orEmpty()
+
+    val moveDownloadsToNewFolder = !newMangaDownloadDir.exists() && downloadDirs.isNotEmpty()
+    if (moveDownloadsToNewFolder) {
+        newMangaDownloadDir.mkdirs()
+
+        for (downloadDir in downloadDirs) {
+            if (downloadDir == File(applicationDirs.thumbnailDownloadsRoot)) {
+                continue
+            }
+
+            downloadDir.renameTo(File(newMangaDownloadDir, downloadDir.name))
+        }
+    }
+}
+
+private val MIGRATIONS =
+    listOf<Pair<String, (ApplicationDirs) -> Unit>>(
+        "InitialMigration" to { applicationDirs ->
+            migrateMangaDownloadDir(applicationDirs)
+            migratePreferencesToNewXmlFileBasedStorage()
+        },
+        "FixGlobalUpdateScheduling" to {
+            Injekt.get<IUpdater>().deleteLastAutomatedUpdateTimestamp()
+        },
+    )
 
 fun runMigrations(applicationDirs: ApplicationDirs) {
+    val logger = KotlinLogging.logger("Migration")
+
     val migrationPreferences =
         Injekt
             .get<Application>()
@@ -54,36 +98,22 @@ fun runMigrations(applicationDirs: ApplicationDirs) {
                 Context.MODE_PRIVATE,
             )
     val version = migrationPreferences.getInt("version", 0)
-    val logger = KotlinLogging.logger("Migration")
-    logger.info { "Running migrations, previous version $version, target version $MIGRATION_VERSION" }
 
-    if (version < 1) {
-        logger.info { "Running migration for version: 1" }
-        val oldMangaDownloadDir = File(applicationDirs.downloadsRoot)
-        val newMangaDownloadDir = File(applicationDirs.mangaDownloadsRoot)
-        val downloadDirs = oldMangaDownloadDir.listFiles().orEmpty()
+    logger.info { "Running migrations, previous version $version, target version ${MIGRATIONS.size}" }
 
-        val moveDownloadsToNewFolder = !newMangaDownloadDir.exists() && downloadDirs.isNotEmpty()
-        if (moveDownloadsToNewFolder) {
-            newMangaDownloadDir.mkdirs()
+    MIGRATIONS.forEachIndexed { index, (migrationName, migrationFunction) ->
+        val migrationVersion = index + 1
 
-            for (downloadDir in downloadDirs) {
-                if (downloadDir == File(applicationDirs.thumbnailDownloadsRoot)) {
-                    continue
-                }
-
-                downloadDir.renameTo(File(newMangaDownloadDir, downloadDir.name))
-            }
+        val isMigrationRequired = version < migrationVersion
+        if (!isMigrationRequired) {
+            logger.info { "Skipping migration version $migrationVersion: $migrationName" }
+            return@forEachIndexed
         }
 
-        // Migrate from old preferences api
-        val prefRootNode = "suwayomi/tachidesk"
-        val isMigrationRequired = Preferences.userRoot().nodeExists(prefRootNode)
-        if (isMigrationRequired) {
-            val preferences = Preferences.userRoot().node(prefRootNode)
-            migratePreferences(null, preferences)
-            preferences.removeNode()
-        }
+        logger.info { "Running migration version $migrationVersion: $migrationName" }
+
+        migrationFunction(applicationDirs)
+
+        migrationPreferences.edit().putInt("version", migrationVersion).apply()
     }
-    migrationPreferences.edit().putInt("version", MIGRATION_VERSION).apply()
 }
