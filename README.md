@@ -102,7 +102,7 @@ Download the latest `linux-x64`(x86_64) release from [the releases section](http
 
 `tar xvf` the downloaded file and double-click on one of the launcher scripts or run them using the terminal.
 
-#### WebView support
+#### WebView support (GNU/Linux)
 
 WebView support is implemented via [KCEF](https://github.com/DATL4G/KCEF).
 This is optional, and is only necessary to support some extensions.
