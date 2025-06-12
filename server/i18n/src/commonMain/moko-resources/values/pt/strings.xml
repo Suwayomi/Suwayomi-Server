@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="opds_search_description">Pesquisar manga no catalogo</string>
+    <string name="opds_feeds_manga_chapters">%1$s Capitulos</string>
+    <string name="opds_feeds_chapter_details">%1$s | %2$s | Detalhes</string>
+    <string name="opds_feeds_all_manga_title">Todos os Mangas</string>
+    <string name="opds_feeds_search_results">Procurar Resultados</string>
+    <string name="opds_feeds_categories_title">Categorias</string>
+    <string name="opds_feeds_genres_title">Géneros</string>
+    <string name="opds_feeds_languages_title">Linguas</string>
+    <string name="opds_feeds_category_specific_title">Categoria: %1$s</string>
+    <string name="opds_feeds_language_specific_title">Lingua: %1$s</string>
+    <string name="opds_feeds_source_specific_title">Fonte: %1$s</string>
+    <string name="opds_feeds_sources_title">Fontes</string>
+    <string name="opds_feeds_genre_specific_title">Género: %1$s</string>
+</resources>
