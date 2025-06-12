@@ -95,6 +95,25 @@ Download the latest `linux-x64`(x86_64) release from [the releases section](http
 
 `tar xvf` the downloaded file and double-click on one of the launcher scripts or run them using the terminal.
 
+#### WebView support
+
+WebView support is implemented via [KCEF](https://github.com/DATL4G/KCEF).
+This is optional, and is only necessary to support some extensions.
+
+To have a functional WebView, several dependencies are required; aside from X11 libraries necessary for rendering Chromium, some JNI bindings are necessary: gluegen and jogl (found in Ubuntu as `libgluegen2-jni` and `libjogl2-jni`).
+Note that on some systems (e.g. Ubuntu), the JNI libraries are not automatically found, see below.
+
+A KCEF server is launched on startup, which loads the X11 libraries.
+If those are missing, you should see "Could not load 'jcef' library".
+If so, use `ldd ~/.local/share/Tachidesk/bin/kcef/libjcef.so | grep not` to figure out which libraries are not found on your system.
+
+The JNI bindings are only loaded when a browser is actually launched.
+This is done by extensions that rely on WebView, not by Suwayomi itself.
+If there is a problem loading the JNI libraries, you should see a message indicating the library and the search path.
+This search path includes the current working directory, if you do not want to modify system directories.
+
+Refer to the [Dockerfile](https://github.com/Suwayomi/Suwayomi-Server-docker/blob/main/Dockerfile) for more details.
+
 ## Other methods of getting Suwayomi
 ### Docker
 Check our Official Docker release [Suwayomi Container](https://github.com/orgs/Suwayomi/packages/container/package/tachidesk) for running Suwayomi Server in a docker container. Source code for our container is available at [docker-tachidesk](https://github.com/Suwayomi/docker-tachidesk), an example compose file can also be found there. By default, the server will be running on http://localhost:4567 open this url in your browser.

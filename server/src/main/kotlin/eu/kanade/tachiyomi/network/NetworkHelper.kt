@@ -16,6 +16,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -54,6 +55,7 @@ class NetworkHelper(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
                 "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         )
+    val userAgentFlow = userAgent.asStateFlow()
 
     fun defaultUserAgentProvider(): String = userAgent.value
 
