@@ -5,27 +5,34 @@
 
 ## Table of Content
 - [What is Suwayomi?](#what-is-suwayomi)
-- [Features](#Features)
-- [Suwayomi client projects](#Suwayomi-client-projects)
+  - [Features](#features)
+- [Suwayomi client projects](#suwayomi-client-projects)
+  - [Actively Developed Clients](#actively-developed-clients)
+  - [Inactive Clients (functional but outdated)](#inactive-clients-functional-but-outdated)
+  - [Abandoned Clients (functionality unknown)](#abandoned-clients-functionality-unknown)
 - [Downloading and Running the app](#downloading-and-running-the-app)
-  * [Using Operating System Specific Bundles](#using-operating-system-specific-bundles)
-      - [Launcher Scripts](#launcher-scripts)
-    + [Windows](#windows)
-    + [macOS](#macos)
-    + [GNU/Linux](#gnulinux)
-  * [Other methods of getting Suwayomi](#other-methods-of-getting-suwayomi)
-    + [Arch Linux](#arch-linux)
-    + [Ubuntu-based distributions](#ubuntu-based-distributions)
-    + [Docker](#docker)
-  * [Advanced Methods](#advanced-methods)
-    + [Running the jar release directly](#running-the-jar-release-directly)
-    + [Using Suwayomi Remotely](#using-suwayomi-remotely)
-- [Syncing With Mihon (Tachiyomi)](#syncing-with-mihon-tachiyomi)
-- [Troubleshooting and Support](#troubleshooting-and-support)
-- [Contributing and Technical info](#contributing-and-technical-info)
-- [Translation](#translation)
-- [Credit](#credit)
-- [License](#license)
+  - [Using Operating System Specific Bundles](#using-operating-system-specific-bundles)
+    - [Windows](#windows)
+    - [macOS](#macos)
+    - [GNU/Linux](#gnulinux)
+  - [Other methods of getting Suwayomi](#other-methods-of-getting-suwayomi)
+    - [Docker](#docker)
+    - [Arch Linux](#arch-linux)
+    - [Debian/Ubuntu](#debianubuntu)
+    - [NixOS](#nixos)
+  - [Advanced Methods](#advanced-methods)
+    - [Running the jar release directly](#running-the-jar-release-directly)
+    - [Using Suwayomi Remotely](#using-suwayomi-remotely)
+  - [Syncing With Mihon (Tachiyomi) and Neko](#syncing-with-mihon-tachiyomi-and-neko)
+    - [The Suwayomi extension and tracker](#the-suwayomi-extension-and-tracker)
+    - [The Suwayomi merge source in Neko](#the-suwayomi-merge-source-in-neko)
+    - [Other methods](#other-methods)
+  - [Troubleshooting and Support](#troubleshooting-and-support)
+  - [Contributing and Technical info](#contributing-and-technical-info)
+  - [Translation](#translation)
+  - [Credit](#credit)
+  - [License](#license)
+  - [Disclaimer](#disclaimer)
 <!-- Generated with https://ecotrust-canada.github.io/markdown-toc/ -->
 
 # What is Suwayomi?
@@ -176,15 +183,24 @@ Check out [this wiki page](https://github.com/Suwayomi/Suwayomi-Server/wiki/Conf
 
 If you face issues with your setup then we are happy to provide help, just join our discord server(a discord badge is on the top of the page, you are just a click-clack away!).
 
-## Syncing With Mihon (Tachiyomi)
+## Syncing With Mihon (Tachiyomi) and Neko
 ### The Suwayomi extension and tracker
-- You can install the `Suwayomi` extension inside Mihon (Tachiyomi).
+- You can install and configure the `Suwayomi` [extension](https://github.com/Suwayomi/tachiyomi-extension) inside Mihon (Tachiyomi) and forks.
 - The extension will load your Suwayomi library.
 - By manipulating extension search filters you can browse your categories.
 - You can enable the Suwayomi tracker to track reading progress with your Suwayomi server.
   - Note: to sync from
     - Mihon (Tachiyomi) to Suwayomi: Mihon (Tachiyomi) automatically updates the chapters read status when it's updating the tracker (e.g. while reading)
     - Suwayomi to Mihon (Tachiyomi): To sync Mihon (Tachiyomi) with Suwayomi, you have to open the manga's track information, then, Mihon (Tachiyomi) will automatically update its chapter list with the state from Suwayomi
+
+### The Suwayomi merge source in Neko
+- You can enable the `Suwayomi` source in the Merge Source settings
+- You can merge titles in Neko with titles from your Suwayomi library.
+- You can enable 2-way automatic sync to track reading progress with your Suwayomi server.
+  - Note: only applies to merged titles
+    - Neko automatically updates the chapters read status in Suwayomi
+    - During updates, Neko will automatically update its chapter list with the read state from Suwayomi
+    - This only pulls if the status is read, to prevent marking read chapters as unread in Neko
 
 ### Other methods
 Checkout [this issue](https://github.com/Suwayomi/Suwayomi-Server/issues/159) for tracking progress.
