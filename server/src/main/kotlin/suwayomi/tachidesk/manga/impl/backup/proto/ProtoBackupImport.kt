@@ -90,14 +90,17 @@ object ProtoBackupImport : ProtoBackupBase() {
         data object Failure : BackupRestoreState()
 
         data class RestoringCategories(
+            val current: Int,
             val totalManga: Int,
         ) : BackupRestoreState()
 
         data class RestoringMeta(
+            val current: Int,
             val totalManga: Int,
         ) : BackupRestoreState()
 
         data class RestoringSettings(
+            val current: Int,
             val totalManga: Int,
         ) : BackupRestoreState()
 
@@ -193,19 +196,26 @@ object ProtoBackupImport : ProtoBackupBase() {
 
         val validationResult = validate(backup)
 
-        restoreAmount = backup.backupManga.size + 3 // +1 for categories, +1 for meta, +1 for settings
+        val restoreCategories = 1
+        val restoreMeta = 1
+        val restoreSettings = 1
+        val getRestoreAmount = { size: Int -> size + restoreCategories + restoreMeta + restoreSettings }
+        restoreAmount = getRestoreAmount(backup.backupManga.size)
 
-        updateRestoreState(id, BackupRestoreState.RestoringCategories(backup.backupManga.size))
+        updateRestoreState(id, BackupRestoreState.RestoringCategories(restoreCategories, restoreAmount))
 
         val categoryMapping = restoreCategories(backup.backupCategories)
 
-        updateRestoreState(id, BackupRestoreState.RestoringMeta(backup.backupManga.size))
+        updateRestoreState(id, BackupRestoreState.RestoringMeta(restoreCategories + restoreMeta, restoreAmount))
 
         restoreGlobalMeta(backup.meta)
 
         restoreSourceMeta(backup.backupSources)
 
-        updateRestoreState(id, BackupRestoreState.RestoringSettings(backup.backupManga.size))
+        updateRestoreState(
+            id,
+            BackupRestoreState.RestoringSettings(restoreCategories + restoreMeta + restoreSettings, restoreAmount),
+        )
 
         restoreServerSettings(backup.serverSettings)
 
@@ -217,8 +227,8 @@ object ProtoBackupImport : ProtoBackupBase() {
             updateRestoreState(
                 id,
                 BackupRestoreState.RestoringManga(
-                    current = index + 1,
-                    totalManga = backup.backupManga.size,
+                    current = getRestoreAmount(index + 1),
+                    totalManga = restoreAmount,
                     title = manga.title,
                 ),
             )

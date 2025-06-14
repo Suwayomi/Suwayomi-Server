@@ -42,19 +42,19 @@ fun ProtoBackupImport.BackupRestoreState.toStatus(): BackupRestoreStatus =
             BackupRestoreStatus(
                 state = BackupRestoreState.RESTORING_CATEGORIES,
                 totalManga = totalManga,
-                mangaProgress = 0,
+                mangaProgress = current,
             )
         is ProtoBackupImport.BackupRestoreState.RestoringMeta ->
             BackupRestoreStatus(
                 state = BackupRestoreState.RESTORING_META,
                 totalManga = totalManga,
-                mangaProgress = 0,
+                mangaProgress = current,
             )
         is ProtoBackupImport.BackupRestoreState.RestoringSettings ->
             BackupRestoreStatus(
                 state = BackupRestoreState.RESTORING_SETTINGS,
                 totalManga = totalManga,
-                mangaProgress = 0,
+                mangaProgress = current,
             )
         is ProtoBackupImport.BackupRestoreState.RestoringManga ->
             BackupRestoreStatus(
