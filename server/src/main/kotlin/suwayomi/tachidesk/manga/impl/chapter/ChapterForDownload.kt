@@ -68,19 +68,37 @@ private class ChapterForDownload(
     suspend fun asDownloadReady(): ChapterDataClass {
         val log = KotlinLogging.logger("${logger.name}::asDownloadReady")
 
+        val downloadPageCount =
+            try {
+                ChapterDownloadHelper.getImageCount(mangaId, chapterId)
+            } catch (_: Exception) {
+                0
+            }
         val isMarkedAsDownloaded = chapterEntry[ChapterTable.isDownloaded]
-        val doesFirstPageExist = firstPageExists()
-        val isDownloaded = isMarkedAsDownloaded || doesFirstPageExist
+        val dbPageCount = chapterEntry[ChapterTable.pageCount]
+        val doesDownloadExist = downloadPageCount != 0
+        val doPageCountsMatch = dbPageCount == downloadPageCount
 
-        log.debug { "isDownloaded= $isDownloaded (isMarkedAsDownloaded= $isMarkedAsDownloaded, doesFirstPageExist= $doesFirstPageExist)" }
+        log.debug { "isMarkedAsDownloaded= $isMarkedAsDownloaded, dbPageCount= $dbPageCount, downloadPageCount= $downloadPageCount" }
 
-        if (!isDownloaded) {
+        if (!doesDownloadExist) {
             log.debug { "reset download status and fetch page list" }
 
-            markAsNotDownloaded()
-
+            updateDownloadStatus(false)
             updatePageList()
-        } else {
+
+            return asDataClass()
+        }
+
+        if (!isMarkedAsDownloaded) {
+            log.debug { "mark as downloaded" }
+
+            updateDownloadStatus(true)
+        }
+
+        if (!doPageCountsMatch) {
+            log.debug { "use page count of downloaded chapter" }
+
             updatePageCount(ChapterDownloadHelper.getImageCount(mangaId, chapterId))
         }
 
@@ -150,11 +168,10 @@ private class ChapterForDownload(
         )
     }
 
-    private fun markAsNotDownloaded() {
-        // chapter may be downloaded but if we are here, then images might be deleted and database data be false
+    private fun updateDownloadStatus(downloaded: Boolean) {
         transaction {
             ChapterTable.update({ (ChapterTable.sourceOrder eq chapterIndex) and (ChapterTable.manga eq mangaId) }) {
-                it[isDownloaded] = false
+                it[isDownloaded] = downloaded
             }
         }
     }
