@@ -1,7 +1,5 @@
 package suwayomi.tachidesk.server
 
-import org.jetbrains.exposed.sql.SortOrder
-
 interface ConfigAdapter<T> {
     fun toType(configValue: String): T
 }
@@ -22,6 +20,8 @@ object DoubleConfigAdapter : ConfigAdapter<Double> {
     override fun toType(configValue: String): Double = configValue.toDouble()
 }
 
-object SortOrderConfigAdapter : ConfigAdapter<SortOrder> {
-    override fun toType(configValue: String): SortOrder = SortOrder.valueOf(configValue)
+class EnumConfigAdapter<T : Enum<T>>(
+    private val enumClass: Class<T>,
+) : ConfigAdapter<T> {
+    override fun toType(configValue: String): T = java.lang.Enum.valueOf(enumClass, configValue.uppercase())
 }

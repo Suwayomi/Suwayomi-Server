@@ -24,7 +24,6 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -102,7 +101,7 @@ object Chapter {
             }
 
         val chapterIds = chapterList.map { dbChapterMap.getValue(it.url)[ChapterTable.id] }
-        val chapterMetas = getChaptersMetaMaps(chapterIds)
+        val chapterMetas = getChaptersMetaMaps(chapterIds.map { it.value })
 
         return chapterList.mapIndexed { index, it ->
 
@@ -126,7 +125,7 @@ object Chapter {
                 downloaded = dbChapter[ChapterTable.isDownloaded],
                 pageCount = dbChapter[ChapterTable.pageCount],
                 chapterCount = chapterList.size,
-                meta = chapterMetas.getValue(dbChapter[ChapterTable.id]),
+                meta = chapterMetas.getValue(dbChapter[ChapterTable.id].value),
             )
         }
     }
@@ -553,12 +552,12 @@ object Chapter {
         }
     }
 
-    fun getChaptersMetaMaps(chapterIds: List<EntityID<Int>>): Map<EntityID<Int>, Map<String, String>> =
+    fun getChaptersMetaMaps(chapterIds: List<Int>): Map<Int, Map<String, String>> =
         transaction {
             ChapterMetaTable
                 .selectAll()
                 .where { ChapterMetaTable.ref inList chapterIds }
-                .groupBy { it[ChapterMetaTable.ref] }
+                .groupBy { it[ChapterMetaTable.ref].value }
                 .mapValues { it.value.associate { it[ChapterMetaTable.key] to it[ChapterMetaTable.value] } }
                 .withDefault { emptyMap() }
         }
@@ -593,22 +592,57 @@ object Chapter {
         key: String,
         value: String,
     ) {
+        modifyChaptersMetas(mapOf(chapterId to mapOf(key to value)))
+    }
+
+    fun modifyChaptersMetas(metaByChapterId: Map<Int, Map<String, String>>) {
         transaction {
-            val meta =
+            val chapterIds = metaByChapterId.keys
+            val metaKeys = metaByChapterId.flatMap { it.value.keys }
+
+            val dbMetaByChapterId =
                 ChapterMetaTable
                     .selectAll()
-                    .where { (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }
-                    .firstOrNull()
+                    .where { (ChapterMetaTable.ref inList chapterIds) and (ChapterMetaTable.key inList metaKeys) }
+                    .groupBy { it[ChapterMetaTable.ref].value }
 
-            if (meta == null) {
-                ChapterMetaTable.insert {
-                    it[ChapterMetaTable.key] = key
-                    it[ChapterMetaTable.value] = value
-                    it[ref] = chapterId
+            val existingMetaByMetaId =
+                chapterIds.flatMap { chapterId ->
+                    val dbMetaByKey = dbMetaByChapterId[chapterId].orEmpty().associateBy { it[ChapterMetaTable.key] }
+                    val existingMetas = metaByChapterId[chapterId].orEmpty().filter { (key) -> key in dbMetaByKey.keys }
+
+                    existingMetas.map { entry ->
+                        val metaId = dbMetaByKey[entry.key]!![ChapterMetaTable.id].value
+
+                        metaId to entry
+                    }
                 }
-            } else {
-                ChapterMetaTable.update({ (ChapterMetaTable.ref eq chapterId) and (ChapterMetaTable.key eq key) }) {
-                    it[ChapterMetaTable.value] = value
+
+            val newMetaByChapterId =
+                chapterIds.flatMap { chapterId ->
+                    val dbMetaByKey = dbMetaByChapterId[chapterId].orEmpty().associateBy { it[ChapterMetaTable.key] }
+
+                    metaByChapterId[chapterId]
+                        .orEmpty()
+                        .filter { entry -> entry.key !in dbMetaByKey.keys }
+                        .map { entry -> chapterId to entry }
+                }
+
+            if (existingMetaByMetaId.isNotEmpty()) {
+                BatchUpdateStatement(ChapterMetaTable).apply {
+                    existingMetaByMetaId.forEach { (metaId, entry) ->
+                        addBatch(EntityID(metaId, ChapterMetaTable))
+                        this[ChapterMetaTable.value] = entry.value
+                    }
+                    execute(this@transaction)
+                }
+            }
+
+            if (newMetaByChapterId.isNotEmpty()) {
+                ChapterMetaTable.batchInsert(newMetaByChapterId) { (chapterId, entry) ->
+                    this[ChapterMetaTable.ref] = EntityID(chapterId, ChapterTable)
+                    this[ChapterMetaTable.key] = entry.key
+                    this[ChapterMetaTable.value] = entry.value
                 }
             }
         }
