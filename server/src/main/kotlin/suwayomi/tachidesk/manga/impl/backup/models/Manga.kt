@@ -37,6 +37,8 @@ interface Manga : SManga {
 
     var cover_last_modified: Long
 
+    var meta: Map<String, String>
+
     fun setChapterOrder(order: Int) {
         setChapterFlags(order, CHAPTER_SORT_MASK)
     }

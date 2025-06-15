@@ -24,13 +24,18 @@ import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.global.impl.GlobalMeta
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
+import suwayomi.tachidesk.manga.impl.Chapter
+import suwayomi.tachidesk.manga.impl.Manga
+import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupServerSettings
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSource
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupTracking
 import suwayomi.tachidesk.manga.impl.track.Track
@@ -123,6 +128,8 @@ object ProtoBackupExport : ProtoBackupBase() {
                 includeChapters = true,
                 includeTracking = true,
                 includeHistory = true,
+                includeClientData = true,
+                includeServerSettings = true,
             ),
         ).use { input ->
             val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
@@ -181,8 +188,10 @@ object ProtoBackupExport : ProtoBackupBase() {
             transaction {
                 Backup(
                     backupManga(databaseManga, flags),
-                    backupCategories(),
-                    backupExtensionInfo(databaseManga),
+                    backupCategories(flags),
+                    backupExtensionInfo(databaseManga, flags),
+                    backupGlobalMeta(flags),
+                    backupServerSettings(flags),
                 )
             }
 
@@ -220,6 +229,10 @@ object ProtoBackupExport : ProtoBackupBase() {
 
             val mangaId = mangaRow[MangaTable.id].value
 
+            if (flags.includeClientData) {
+                backupManga.meta = Manga.getMangaMetaMap(mangaId)
+            }
+
             if (flags.includeChapters) {
                 val chapters =
                     transaction {
@@ -231,6 +244,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                                 ChapterTable.toDataClass(it)
                             }
                     }
+                val chapterToMeta = Chapter.getChaptersMetaMaps(chapters.map { it.id })
 
                 backupManga.chapters =
                     chapters.map {
@@ -245,7 +259,11 @@ object ProtoBackupExport : ProtoBackupBase() {
                             it.uploadDate,
                             it.chapterNumber,
                             chapters.size - it.index,
-                        )
+                        ).apply {
+                            if (flags.includeClientData) {
+                                this.meta = chapterToMeta[it.id] ?: emptyMap()
+                            }
+                        }
                     }
             }
 
@@ -287,31 +305,135 @@ object ProtoBackupExport : ProtoBackupBase() {
             backupManga
         }
 
-    private fun backupCategories(): List<BackupCategory> =
-        CategoryTable
-            .selectAll()
-            .orderBy(CategoryTable.order to SortOrder.ASC)
-            .map {
-                CategoryTable.toDataClass(it)
-            }.filter { it.id != Category.DEFAULT_CATEGORY_ID }
-            .map {
-                BackupCategory(
-                    it.name,
-                    it.order,
-                    0, // not supported in Tachidesk
-                )
-            }
+    private fun backupCategories(flags: BackupFlags): List<BackupCategory> {
+        val categories =
+            CategoryTable
+                .selectAll()
+                .orderBy(CategoryTable.order to SortOrder.ASC)
+                .map { CategoryTable.toDataClass(it) }
+        val categoryToMeta = Category.getCategoriesMetaMaps(categories.map { it.id })
 
-    private fun backupExtensionInfo(mangas: Query): List<BackupSource> =
-        mangas
-            .asSequence()
-            .map { it[MangaTable.sourceReference] }
-            .distinct()
-            .map {
-                val sourceRow = SourceTable.selectAll().where { SourceTable.id eq it }.firstOrNull()
+        return categories.map {
+            BackupCategory(
+                it.name,
+                it.order,
+                0, // not supported in Tachidesk
+            ).apply {
+                if (flags.includeClientData) {
+                    this.meta = categoryToMeta[it.id] ?: emptyMap()
+                }
+            }
+        }
+    }
+
+    private fun backupExtensionInfo(
+        mangas: Query,
+        flags: BackupFlags,
+    ): List<BackupSource> {
+        val inLibraryMangaSourceIds =
+            mangas
+                .asSequence()
+                .map { it[MangaTable.sourceReference] }
+                .distinct()
+                .toList()
+        val sources = SourceTable.selectAll().where { SourceTable.id inList inLibraryMangaSourceIds }
+        val sourceToMeta = Source.getSourcesMetaMaps(sources.map { it[SourceTable.id].value })
+
+        return inLibraryMangaSourceIds
+            .map { mangaSourceId ->
+                val source = sources.firstOrNull { it[SourceTable.id].value == mangaSourceId }
                 BackupSource(
-                    sourceRow?.get(SourceTable.name) ?: "",
-                    it,
-                )
+                    source?.get(SourceTable.name) ?: "",
+                    mangaSourceId,
+                ).apply {
+                    if (flags.includeClientData) {
+                        this.meta = sourceToMeta[mangaSourceId] ?: emptyMap()
+                    }
+                }
             }.toList()
+    }
+
+    private fun backupGlobalMeta(flags: BackupFlags): Map<String, String> {
+        if (!flags.includeClientData) {
+            return emptyMap()
+        }
+
+        return GlobalMeta.getMetaMap()
+    }
+
+    private fun backupServerSettings(flags: BackupFlags): BackupServerSettings? {
+        if (!flags.includeServerSettings) {
+            return null
+        }
+
+        return BackupServerSettings(
+            ip = serverConfig.ip.value,
+            port = serverConfig.port.value,
+            // socks
+            socksProxyEnabled = serverConfig.socksProxyEnabled.value,
+            socksProxyVersion = serverConfig.socksProxyVersion.value,
+            socksProxyHost = serverConfig.socksProxyHost.value,
+            socksProxyPort = serverConfig.socksProxyPort.value,
+            socksProxyUsername = serverConfig.socksProxyUsername.value,
+            socksProxyPassword = serverConfig.socksProxyPassword.value,
+            // webUI
+            webUIFlavor = serverConfig.webUIFlavor.value,
+            initialOpenInBrowserEnabled = serverConfig.initialOpenInBrowserEnabled.value,
+            webUIInterface = serverConfig.webUIInterface.value,
+            electronPath = serverConfig.electronPath.value,
+            webUIChannel = serverConfig.webUIChannel.value,
+            webUIUpdateCheckInterval = serverConfig.webUIUpdateCheckInterval.value,
+            // downloader
+            downloadAsCbz = serverConfig.downloadAsCbz.value,
+            downloadsPath = serverConfig.downloadsPath.value,
+            autoDownloadNewChapters = serverConfig.autoDownloadNewChapters.value,
+            excludeEntryWithUnreadChapters = serverConfig.excludeEntryWithUnreadChapters.value,
+            autoDownloadAheadLimit = 0, // deprecated
+            autoDownloadNewChaptersLimit = serverConfig.autoDownloadNewChaptersLimit.value,
+            autoDownloadIgnoreReUploads = serverConfig.autoDownloadIgnoreReUploads.value,
+            // extension
+            extensionRepos = serverConfig.extensionRepos.value,
+            // requests
+            maxSourcesInParallel = serverConfig.maxSourcesInParallel.value,
+            // updater
+            excludeUnreadChapters = serverConfig.excludeUnreadChapters.value,
+            excludeNotStarted = serverConfig.excludeNotStarted.value,
+            excludeCompleted = serverConfig.excludeCompleted.value,
+            globalUpdateInterval = serverConfig.globalUpdateInterval.value,
+            updateMangas = serverConfig.updateMangas.value,
+            // Authentication
+            basicAuthEnabled = serverConfig.basicAuthEnabled.value,
+            basicAuthUsername = serverConfig.basicAuthUsername.value,
+            basicAuthPassword = serverConfig.basicAuthPassword.value,
+            // misc
+            debugLogsEnabled = serverConfig.debugLogsEnabled.value,
+            gqlDebugLogsEnabled = false, // deprecated
+            systemTrayEnabled = serverConfig.systemTrayEnabled.value,
+            maxLogFiles = serverConfig.maxLogFiles.value,
+            maxLogFileSize = serverConfig.maxLogFileSize.value,
+            maxLogFolderSize = serverConfig.maxLogFolderSize.value,
+            // backup
+            backupPath = serverConfig.backupPath.value,
+            backupTime = serverConfig.backupTime.value,
+            backupInterval = serverConfig.backupInterval.value,
+            backupTTL = serverConfig.backupTTL.value,
+            // local source
+            localSourcePath = serverConfig.localSourcePath.value,
+            // cloudflare bypass
+            flareSolverrEnabled = serverConfig.flareSolverrEnabled.value,
+            flareSolverrUrl = serverConfig.flareSolverrUrl.value,
+            flareSolverrTimeout = serverConfig.flareSolverrTimeout.value,
+            flareSolverrSessionName = serverConfig.flareSolverrSessionName.value,
+            flareSolverrSessionTtl = serverConfig.flareSolverrSessionTtl.value,
+            flareSolverrAsResponseFallback = serverConfig.flareSolverrAsResponseFallback.value,
+            // opds
+            opdsUseBinaryFileSizes = serverConfig.opdsUseBinaryFileSizes.value,
+            opdsItemsPerPage = serverConfig.opdsItemsPerPage.value,
+            opdsEnablePageReadProgress = serverConfig.opdsEnablePageReadProgress.value,
+            opdsMarkAsReadOnDownload = serverConfig.opdsMarkAsReadOnDownload.value,
+            opdsShowOnlyUnreadChapters = serverConfig.opdsShowOnlyUnreadChapters.value,
+            opdsShowOnlyDownloadedChapters = serverConfig.opdsShowOnlyDownloadedChapters.value,
+            opdsChapterSortOrder = serverConfig.opdsChapterSortOrder.value,
+        )
+    }
 }

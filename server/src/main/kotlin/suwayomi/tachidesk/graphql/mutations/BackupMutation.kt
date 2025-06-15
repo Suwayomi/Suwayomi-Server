@@ -64,6 +64,8 @@ class BackupMutation {
                     includeChapters = input?.includeChapters ?: true,
                     includeTracking = true,
                     includeHistory = true,
+                    includeClientData = true,
+                    includeServerSettings = true,
                 ),
             )
 

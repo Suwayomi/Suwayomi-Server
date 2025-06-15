@@ -22,6 +22,8 @@ interface Chapter :
 
     var source_order: Int
 
+    var meta: Map<String, String>
+
     val isRecognizedNumber: Boolean
         get() = chapter_number >= 0f
 }
