@@ -13,6 +13,6 @@ import de.neonew.exposed.migrations.helpers.SQLMigration
 class M0047_ChapterScanlatorIncreaseLength : SQLMigration() {
     override val sql =
         """
-        ALTER TABLE CHAPTER ALTER COLUMN SCANLATOR VARCHAR(256);`
+        ALTER TABLE CHAPTER ALTER COLUMN SCANLATOR VARCHAR(256);
         """.trimIndent()
 }
