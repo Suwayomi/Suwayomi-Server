@@ -53,7 +53,7 @@ private fun getChapterDirV1(
     return getMangaDir(mangaId) + "/$chapterDir"
 }
 
-private fun getChapterDir(
+private fun getChapterDirs(
     mangaId: Int,
     chapterId: Int,
 ): List<String> {
@@ -75,7 +75,7 @@ fun getChapterDownloadPaths(
     mangaId: Int,
     chapterId: Int,
 ): List<String> {
-    val chapterDirs = getChapterDir(mangaId, chapterId)
+    val chapterDirs = getChapterDirs(mangaId, chapterId)
     return buildList (chapterDirs.size){
         chapterDirs.forEach {
             add(applicationDirs.mangaDownloadsRoot + "/" + it)
@@ -89,7 +89,7 @@ fun getChapterDownloadPaths(
 fun getChapterCachePath(
     mangaId: Int,
     chapterId: Int,
-): String = applicationDirs.tempMangaCacheRoot + "/" + getChapterDir(mangaId, chapterId).first()
+): String = applicationDirs.tempMangaCacheRoot + "/" + getChapterDirs(mangaId, chapterId).first()
 
 /** return value says if rename/move was successful */
 fun updateMangaDownloadDir(
