@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -17,7 +16,7 @@ import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.util.createComicInfoFile
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
-import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
+import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPaths
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -58,6 +57,7 @@ sealed class FileType {
 * Base class for downloaded chapter files provider, example: Folder, Archive
 */
 abstract class ChaptersFilesProvider<Type : FileType>(
+    val path: String,
     val mangaId: Int,
     val chapterId: Int,
 ) : DownloadedFilesProvider {
@@ -83,7 +83,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
     override fun getImage(): RetrieveFile1Args<Int> = RetrieveFile1Args(::getImageImpl)
 
     /**
-     * Extract the existing download to the base download folder (see [getChapterDownloadPath])
+     * Extract the existing download to the base download folder (see [getChapterDownloadPaths])
      */
     protected abstract fun extractExistingDownload()
 
@@ -97,7 +97,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
     ): Boolean {
         extractExistingDownload()
 
-        val finalDownloadFolder = getChapterDownloadPath(mangaId, chapterId)
+        val finalDownloadFolder = path
 
         val cacheChapterDir = getChapterCachePath(mangaId, chapterId)
         val downloadCacheFolder = File(cacheChapterDir)
