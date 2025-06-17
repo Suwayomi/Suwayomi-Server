@@ -29,7 +29,7 @@ private fun getMangaDir(mangaId: Int): String {
     return "$sourceDir/$mangaDir"
 }
 
-private fun getChapterDir(
+private fun getChapterDirV1(
     mangaId: Int,
     chapterId: Int,
 ): String {
@@ -53,34 +53,43 @@ private fun getChapterDir(
     return getMangaDir(mangaId) + "/$chapterDir"
 }
 
-fun getThumbnailDownloadPath(mangaId: Int): String = applicationDirs.thumbnailDownloadsRoot + "/$mangaId"
-
-fun getMangaDownloadDir(mangaId: Int): String = applicationDirs.mangaDownloadsRoot + "/" + getMangaDir(mangaId)
-
-fun getChapterDownloadPaths(
+private fun getChapterDir(
     mangaId: Int,
     chapterId: Int,
 ): List<String> {
     return buildList {
-        add(applicationDirs.mangaDownloadsRoot + "/" + getChapterDir(mangaId, chapterId))
+        // add any new (more preferred) formats here when there are filename format changes.
+        add(getChapterDirV1(mangaId, chapterId))
+        // add any legacy (less preferred) formats here when there are filename format changes.
     }
 }
-//
-//fun getChapterCbzPath(
-//    mangaId: Int,
-//    chapterId: Int,
-//): List<String> {
-//    return buildList {
-//        getChapterDownloadPath(mangaId, chapterId).forEach {
-//            add("${it}.cbz")
-//        }
-//    }
-//}
 
+fun getThumbnailDownloadPath(mangaId: Int): String = applicationDirs.thumbnailDownloadsRoot + "/$mangaId"
+
+fun getMangaDownloadDir(mangaId: Int): String = applicationDirs.mangaDownloadsRoot + "/" + getMangaDir(mangaId)
+
+/**
+ * Return a list of possible download paths in order of preference.
+ */
+fun getChapterDownloadPaths(
+    mangaId: Int,
+    chapterId: Int,
+): List<String> {
+    val chapterDirs = getChapterDir(mangaId, chapterId)
+    return buildList (chapterDirs.size){
+        chapterDirs.forEach {
+            add(applicationDirs.mangaDownloadsRoot + "/" + it)
+        }
+    }
+}
+
+/**
+ * Use the most preferred name for cache path.
+ */
 fun getChapterCachePath(
     mangaId: Int,
     chapterId: Int,
-): String = applicationDirs.tempMangaCacheRoot + "/" + getChapterDir(mangaId, chapterId)
+): String = applicationDirs.tempMangaCacheRoot + "/" + getChapterDir(mangaId, chapterId).first()
 
 /** return value says if rename/move was successful */
 fun updateMangaDownloadDir(
