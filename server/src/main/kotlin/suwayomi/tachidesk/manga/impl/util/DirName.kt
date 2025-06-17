@@ -57,15 +57,25 @@ fun getThumbnailDownloadPath(mangaId: Int): String = applicationDirs.thumbnailDo
 
 fun getMangaDownloadDir(mangaId: Int): String = applicationDirs.mangaDownloadsRoot + "/" + getMangaDir(mangaId)
 
-fun getChapterDownloadPath(
+fun getChapterDownloadPaths(
     mangaId: Int,
     chapterId: Int,
-): String = applicationDirs.mangaDownloadsRoot + "/" + getChapterDir(mangaId, chapterId)
-
-fun getChapterCbzPath(
-    mangaId: Int,
-    chapterId: Int,
-): String = getChapterDownloadPath(mangaId, chapterId) + ".cbz"
+): List<String> {
+    return buildList {
+        add(applicationDirs.mangaDownloadsRoot + "/" + getChapterDir(mangaId, chapterId))
+    }
+}
+//
+//fun getChapterCbzPath(
+//    mangaId: Int,
+//    chapterId: Int,
+//): List<String> {
+//    return buildList {
+//        getChapterDownloadPath(mangaId, chapterId).forEach {
+//            add("${it}.cbz")
+//        }
+//    }
+//}
 
 fun getChapterCachePath(
     mangaId: Int,

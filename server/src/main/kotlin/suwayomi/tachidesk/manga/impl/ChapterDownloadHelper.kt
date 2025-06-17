@@ -6,8 +6,8 @@ import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.ArchiveProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.FolderProvider
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
-import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
-import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
+import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPaths
+import suwayomi.tachidesk.manga.impl.util.lang.renameTo
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
@@ -45,11 +45,39 @@ object ChapterDownloadHelper {
         mangaId: Int,
         chapterId: Int,
     ): ChaptersFilesProvider<*> {
-        val chapterFolder = File(getChapterDownloadPath(mangaId, chapterId))
-        val cbzFile = File(getChapterCbzPath(mangaId, chapterId))
-        if (cbzFile.exists()) return ArchiveProvider(mangaId, chapterId)
-        if (!chapterFolder.exists() && serverConfig.downloadAsCbz.value) return ArchiveProvider(mangaId, chapterId)
-        return FolderProvider(mangaId, chapterId)
+        val chapterDownloadPaths = getChapterDownloadPaths(mangaId, chapterId)
+        val preferredPath = chapterDownloadPaths.first()
+        val preferredPathCbz = "${preferredPath}.cbz"
+
+        // find whatever exists, using order of chapterDownloadPaths as preference.
+        for (cdl in chapterDownloadPaths) {
+            val cdlCbz = "${cdl}.cbz"
+            val cdlCbzFile = File(cdlCbz)
+            if (cdlCbzFile.exists()) {
+                return if ((cdlCbz != preferredPathCbz) && (cdlCbzFile.renameTo(preferredPathCbz))) {
+                    ArchiveProvider(preferredPathCbz, mangaId, chapterId)
+                } else {
+                    ArchiveProvider(cdlCbz, mangaId, chapterId)
+                }
+            }
+
+            val cdlFolder = File(cdl)
+            if (File(cdl).exists()) {
+                return if ((cdl != preferredPath) && (cdlFolder.renameTo(preferredPath))) {
+                    FolderProvider(preferredPath, mangaId, chapterId)
+                } else {
+                    FolderProvider(cdl, mangaId, chapterId)
+                }
+            }
+        }
+
+        // file doesn't exist if we get here, so it's a new file.
+        // preference of new files is the newest format (earliest entry in chapterDownloadPaths)
+        return if (serverConfig.downloadAsCbz.value) {
+            ArchiveProvider("${preferredPath}.cbz", mangaId, chapterId)
+        } else {
+            FolderProvider(preferredPath, mangaId, chapterId)
+        }
     }
 
     fun getArchiveStreamWithSize(

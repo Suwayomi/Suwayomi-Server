@@ -9,7 +9,6 @@ import org.apache.commons.compress.archivers.zip.ZipFile
 import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.FileType
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
-import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getMangaDownloadDir
 import suwayomi.tachidesk.manga.impl.util.storage.FileDeletionHelper
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -20,23 +19,24 @@ import java.io.InputStream
 private val applicationDirs: ApplicationDirs by injectLazy()
 
 class ArchiveProvider(
+    path: String,
     mangaId: Int,
     chapterId: Int,
-) : ChaptersFilesProvider<FileType.ZipFile>(mangaId, chapterId) {
+) : ChaptersFilesProvider<FileType.ZipFile>(path, mangaId, chapterId) {
     override fun getImageFiles(): List<FileType.ZipFile> {
-        val zipFile = ZipFile.builder().setFile(getChapterCbzPath(mangaId, chapterId)).get()
+        val zipFile = ZipFile.builder().setFile(path).get()
         return zipFile.entries.toList().map { FileType.ZipFile(it) }
     }
 
     override fun getImageInputStream(image: FileType.ZipFile): InputStream =
         ZipFile
             .builder()
-            .setFile(getChapterCbzPath(mangaId, chapterId))
+            .setFile(path)
             .get()
             .getInputStream(image.entry)
 
     override fun extractExistingDownload() {
-        val outputFile = File(getChapterCbzPath(mangaId, chapterId))
+        val outputFile = File(path)
         val chapterCacheFolder = File(getChapterCachePath(mangaId, chapterId))
 
         if (!outputFile.exists()) {
@@ -48,7 +48,7 @@ class ArchiveProvider(
 
     override suspend fun handleSuccessfulDownload() {
         val mangaDownloadFolder = File(getMangaDownloadDir(mangaId))
-        val outputFile = File(getChapterCbzPath(mangaId, chapterId))
+        val outputFile = File(path)
         val chapterCacheFolder = File(getChapterCachePath(mangaId, chapterId))
 
         withContext(Dispatchers.IO) {
@@ -78,7 +78,7 @@ class ArchiveProvider(
     }
 
     override fun delete(): Boolean {
-        val cbzFile = File(getChapterCbzPath(mangaId, chapterId))
+        val cbzFile = File(path)
         if (!cbzFile.exists()) {
             return true
         }
@@ -90,7 +90,7 @@ class ArchiveProvider(
 
     override fun getAsArchiveStream(): Pair<InputStream, Long> {
         val cbzFile =
-            File(getChapterCbzPath(mangaId, chapterId))
+            File(path)
                 .takeIf { it.exists() }
                 ?: throw IllegalArgumentException("CBZ file not found for chapter ID: $chapterId (Manga ID: $mangaId)")
 

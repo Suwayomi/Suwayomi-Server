@@ -3,7 +3,6 @@ package suwayomi.tachidesk.manga.impl.download.fileProvider.impl
 import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.FileType.RegularFile
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
-import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.storage.FileDeletionHelper
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
@@ -22,11 +21,12 @@ private val applicationDirs: ApplicationDirs by injectLazy()
 * Provides downloaded files when pages were downloaded into folders
 * */
 class FolderProvider(
+    path: String,
     mangaId: Int,
     chapterId: Int,
-) : ChaptersFilesProvider<RegularFile>(mangaId, chapterId) {
+) : ChaptersFilesProvider<RegularFile>(path, mangaId, chapterId) {
     override fun getImageFiles(): List<RegularFile> {
-        val chapterFolder = File(getChapterDownloadPath(mangaId, chapterId))
+        val chapterFolder = File(path)
 
         if (!chapterFolder.exists()) {
             throw Exception("download folder does not exist")
@@ -46,27 +46,25 @@ class FolderProvider(
     }
 
     override suspend fun handleSuccessfulDownload() {
-        val chapterDir = getChapterDownloadPath(mangaId, chapterId)
-        val folder = File(chapterDir)
+        val folder = File(path)
 
         val cacheChapterDir = getChapterCachePath(mangaId, chapterId)
         File(cacheChapterDir).copyRecursively(folder, true)
     }
 
     override fun delete(): Boolean {
-        val chapterDirPath = getChapterDownloadPath(mangaId, chapterId)
-        val chapterDir = File(chapterDirPath)
-        if (!chapterDir.exists()) {
+        val folder = File(path)
+        if (!folder.exists()) {
             return true
         }
 
-        val chapterDirDeleted = chapterDir.deleteRecursively()
-        FileDeletionHelper.cleanupParentFoldersFor(chapterDir, applicationDirs.mangaDownloadsRoot)
+        val chapterDirDeleted = folder.deleteRecursively()
+        FileDeletionHelper.cleanupParentFoldersFor(folder, applicationDirs.mangaDownloadsRoot)
         return chapterDirDeleted
     }
 
     override fun getAsArchiveStream(): Pair<InputStream, Long> {
-        val chapterDir = File(getChapterDownloadPath(mangaId, chapterId))
+        val chapterDir = File(path)
 
         if (!chapterDir.exists() || !chapterDir.isDirectory || chapterDir.listFiles().isNullOrEmpty()) {
             throw IllegalArgumentException("Invalid folder to create CBZ for chapter ID: $chapterId")
