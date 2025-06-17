@@ -53,12 +53,38 @@ private fun getChapterDirV1(
     return getMangaDir(mangaId) + "/$chapterDir"
 }
 
+private fun getChapterDirV2(
+    mangaId: Int,
+    chapterId: Int,
+): String {
+    val chapterEntry = transaction { ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first() }
+
+    // it was discovered that chapter number is a float, not a string.
+    val sortValueComponents = chapterEntry[ChapterTable.chapter_number].toString().split( ".", limit = 2)
+    var sortValue = sortValueComponents[0].padStart(5, '0')
+    if (sortValueComponents.size > 1) {
+        sortValue += "." + sortValueComponents[1].padStart(2, '0')
+    }
+
+    val chapterDir =
+        SafePath.buildValidFilename(
+            when {
+                chapterEntry[ChapterTable.scanlator] != null ->
+                    "$sortValue-${chapterEntry[ChapterTable.name]}_${chapterEntry[ChapterTable.scanlator]}"
+                else -> "$sortValue-${chapterEntry[ChapterTable.name]}"
+            },
+        )
+
+    return getMangaDir(mangaId) + "/$chapterDir"
+}
+
 private fun getChapterDirs(
     mangaId: Int,
     chapterId: Int,
 ): List<String> {
     return buildList {
         // add any new (more preferred) formats here when there are filename format changes.
+        add(getChapterDirV2(mangaId, chapterId))
         add(getChapterDirV1(mangaId, chapterId))
         // add any legacy (less preferred) formats here when there are filename format changes.
     }

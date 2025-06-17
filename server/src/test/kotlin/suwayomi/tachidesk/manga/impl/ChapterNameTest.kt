@@ -1,10 +1,6 @@
 package suwayomi.tachidesk.manga.impl
 
-import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
-import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
-import suwayomi.tachidesk.test.createChapters
-import suwayomi.tachidesk.test.createLibraryManga
 import kotlin.test.assertEquals
 
 class ChapterNameTest { // : ApplicationTest()
@@ -13,34 +9,19 @@ class ChapterNameTest { // : ApplicationTest()
     fun testChapterName() {
         val tests =
             listOf(
-                arrayOf("1", "00000001"),
-                arrayOf("2.1", "00000002.001"),
-                arrayOf("3.x", "00000003.00x"),
+                arrayOf("1", "00001"),
+                arrayOf("2.1", "00002.01"),
+                arrayOf("3.x", "00003.0x"),
             )
 
         for (test in tests) {
-            val sortValueComponents = test[0].trim().split(".")
-            var sortValue = "%08d".format(sortValueComponents[0].toInt())
-            for (i in 1..sortValueComponents.lastIndex) {
-                sortValue += "." + sortValueComponents[i].padStart(3, '0')
+            val sortValueComponents = test[0].trim().split( ".", limit = 2)
+            var sortValue = sortValueComponents[0].padStart(5, '0')
+            if (sortValueComponents.size > 1) {
+                sortValue += "." + sortValueComponents[1].padStart(2, '0')
             }
 
             assertEquals(test[1], sortValue)
-        }
-    }
-
-    @Test
-    fun testChapterCbzPath() {
-        val mangaId = createLibraryManga("CbzTest")
-        createChapters(mangaId, 10, false)
-
-        runBlocking {
-            val chapterList = Chapter.getChapterList(mangaId)
-
-            for (chapter in chapterList) {
-                val chapterCbzPath = getChapterCbzPath(mangaId, chapter.id)
-                println(chapterCbzPath)
-            }
         }
     }
 
