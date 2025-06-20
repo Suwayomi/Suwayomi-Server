@@ -255,4 +255,8 @@ public final class Bitmap {
         graphics.fillRect(0, 0, width, height);
         graphics.dispose();
     }
+
+    public void recycle() {
+        // do nothing
+    }
 }

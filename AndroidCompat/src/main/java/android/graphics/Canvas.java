@@ -33,6 +33,11 @@ public final class Canvas {
         canvas.drawImage(sourceImageCropped, dst.left, dst.top, dst.getWidth(), dst.getHeight(), null);
     }
 
+    public void drawBitmap(Bitmap sourceBitmap, float left, float top, Paint paint) {
+        BufferedImage sourceImage = sourceBitmap.getImage();
+        canvas.drawImage(sourceImage, null, (int) left, (int) top);
+    }
+
     public void drawText(@NonNull char[] text, int index, int count, float x, float y,
             @NonNull Paint paint) {
         drawText(new String(text, index, count), x, y, paint);
