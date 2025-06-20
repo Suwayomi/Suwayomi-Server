@@ -35,7 +35,7 @@ public final class Canvas {
 
     public void drawText(@NonNull char[] text, int index, int count, float x, float y,
             @NonNull Paint paint) {
-        throw new RuntimeException("Stub!");
+        drawText(new String(text, index, count), x, y, paint);
     }
 
     public void drawText(@NonNull String text, float x, float y, @NonNull Paint paint) {
@@ -64,7 +64,7 @@ public final class Canvas {
 
     public void drawText(@NonNull String text, int start, int end, float x, float y,
             @NonNull Paint paint) {
-        throw new RuntimeException("Stub!");
+        drawText(text.substring(start, end), x, y, paint);
     }
 
     public void drawText(@NonNull CharSequence text, int start, int end, float x, float y,
