@@ -87,8 +87,10 @@ import java.io.File
 import java.io.IOException
 import java.util.concurrent.Executor
 import kotlin.collections.Map
+import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.declaredMemberFunctions
+import kotlin.reflect.jvm.javaMethod
 
 class KcefWebViewProvider(
     private val view: WebView,
@@ -97,6 +99,7 @@ class KcefWebViewProvider(
     private var viewClient = WebViewClient()
     private var chromeClient = WebChromeClient()
     private val mappings: MutableList<FunctionMapping> = mutableListOf()
+    private val urlHttpMapping: MutableMap<String, String> = mutableMapOf()
 
     private var kcefClient: KCEFClient? = null
     private var browser: KCEFBrowser? = null
@@ -203,7 +206,7 @@ class KcefWebViewProvider(
             Log.w(TAG, "Load error ($failedUrl) [$errorCode]: $errorText")
             // TODO: translate correctly
             handler.post {
-                viewClient.onReceivedError(view, WebViewClient.ERROR_UNKNOWN, errorText, url)
+                viewClient.onReceivedError(view, WebViewClient.ERROR_UNKNOWN, errorText, frame.url)
             }
         }
 
@@ -217,13 +220,14 @@ class KcefWebViewProvider(
                 val js =
                     """
                         window.${it.interfaceName} = window.${it.interfaceName} || {}
-                        window.${it.interfaceName}.${it.functionName} = function() {
+                        window.${it.interfaceName}.${it.functionName} = async function() {
+                            const args = await Promise.all(Array.from(arguments));
                             return new Promise((resolve, reject) => {
                                 window.${QUERY_FN}({
                                     request: JSON.stringify({
                                         functionName: ${Json.encodeToString(it.functionName)},
                                         interfaceName: ${Json.encodeToString(it.interfaceName)},
-                                        args: Array.from(arguments),
+                                        args,
                                     }),
                                     persistent: false,
                                     onSuccess: resolve,
@@ -263,13 +267,16 @@ class KcefWebViewProvider(
                 }?.let {
                     handler.post {
                         try {
-                            Log.v(TAG, "Received request to invoke ${it.toNice()}")
+                            Log.v(
+                                TAG,
+                                "Received request to invoke ${it.toNice()} with ${invoke.args.size} args",
+                            )
                             // NOTE: first argument is
                             // implicitly this
                             val retval = it.fn.call(it.obj, *invoke.args)
                             callback.success(retval.toString())
                         } catch (e: Exception) {
-                            Log.w(TAG, "JS-invoke on ${it.toNice()} failed: $e")
+                            Log.w(TAG, "JS-invoke on ${it.toNice()} failed:", e)
                             callback.failure(0, e.message)
                         }
                     }
@@ -279,34 +286,19 @@ class KcefWebViewProvider(
         }
     }
 
-    private inner class WebResponseResourceHandler(
-        val webResponse: WebResourceResponse,
-    ) : CefResourceHandlerAdapter() {
-        private var resolvedData: ByteArray? = null
-        private var readOffset = 0
-
-        override fun processRequest(
-            request: CefRequest,
-            callback: CefCallback,
-        ): Boolean {
-            Log.v(TAG, "Handling request from client's response for ${request.url}")
-            handler.post {
-                try {
-                    resolvedData = webResponse.data.readAllBytes()
-                } catch (e: IOException) {
-                }
-                callback.Continue()
-            }
-            return true
-        }
+    private abstract class ArrayResponseResourceHandler : CefResourceHandlerAdapter() {
+        protected var resolvedData: ByteArray? = null
+        protected var readOffset = 0
 
         override fun getResponseHeaders(
             response: CefResponse,
             responseLength: IntRef,
             redirectUrl: StringRef,
         ) {
-            webResponse.responseHeaders.forEach { response.setHeaderByName(it.key, it.value, true) }
             responseLength.set(resolvedData?.size ?: 0)
+            response.status = 200
+            response.statusText = "OK"
+            response.mimeType = "text/html"
         }
 
         override fun readResponse(
@@ -324,7 +316,49 @@ class KcefWebViewProvider(
             data.copyInto(dataOut, startIndex = readOffset, endIndex = readOffset + bytesToTransfer)
             bytesRead.set(bytesToTransfer)
             readOffset += bytesToTransfer
-            return readOffset < data.size
+            return bytesToTransfer != 0
+        }
+    }
+
+    private inner class WebResponseResourceHandler(
+        val webResponse: WebResourceResponse,
+    ) : ArrayResponseResourceHandler() {
+        override fun processRequest(
+            request: CefRequest,
+            callback: CefCallback,
+        ): Boolean {
+            Log.v(TAG, "Handling request from client's response for ${request.url}")
+            try {
+                resolvedData = webResponse.data.readAllBytes()
+            } catch (e: IOException) {
+            }
+            callback.Continue()
+            return true
+        }
+
+        override fun getResponseHeaders(
+            response: CefResponse,
+            responseLength: IntRef,
+            redirectUrl: StringRef,
+        ) {
+            super.getResponseHeaders(response, responseLength, redirectUrl)
+            webResponse.responseHeaders.forEach { response.setHeaderByName(it.key, it.value, true) }
+            response.status = webResponse.statusCode
+            response.mimeType = webResponse.mimeType
+        }
+    }
+
+    private inner class HtmlResponseResourceHandler(
+        val html: String,
+    ) : ArrayResponseResourceHandler() {
+        override fun processRequest(
+            request: CefRequest,
+            callback: CefCallback,
+        ): Boolean {
+            Log.v(TAG, "Handling request from HTML cache for ${request.url}")
+            resolvedData = html.toByteArray()
+            callback.Continue()
+            return true
         }
     }
 
@@ -361,6 +395,12 @@ class KcefWebViewProvider(
                     view,
                     CefWebResourceRequest(request, frame, false),
                 )
+            if (response == null) {
+                // prefer user's response override
+                urlHttpMapping.get(request.url)?.let {
+                    return HtmlResponseResourceHandler(it)
+                }
+            }
             response ?: return null
             return WebResponseResourceHandler(response)
         }
@@ -398,6 +438,7 @@ class KcefWebViewProvider(
         javaScriptInterfaces: Map<String, Any>?,
         privateBrowsing: Boolean,
     ) {
+        Log.v(TAG, "KcefWebViewProvider: initialize")
         destroy()
         kcefClient =
             KCEF.newClientBlocking().apply {
@@ -534,16 +575,27 @@ class KcefWebViewProvider(
         browser?.close(true)
         browser?.dispose()
         chromeClient.onProgressChanged(view, 0)
+
         browser =
-            kcefClient!!
-                .createBrowserWithHtml(
-                    data,
-                    baseUrl ?: KCEFBrowser.BLANK_URI,
-                    CefRendering.OFFSCREEN,
-                ).apply {
-                    // NOTE: Without this, we don't seem to be receiving any events
-                    createImmediately()
+            (
+                baseUrl?.let { url ->
+                    urlHttpMapping.put(url, data)
+                    kcefClient!!.createBrowser(
+                        url,
+                        CefRendering.OFFSCREEN,
+                    )
                 }
+                    ?: run {
+                        kcefClient!!.createBrowserWithHtml(
+                            data,
+                            KCEFBrowser.BLANK_URI,
+                            CefRendering.OFFSCREEN,
+                        )
+                    }
+            ).apply {
+                // NOTE: Without this, we don't seem to be receiving any events
+                createImmediately()
+            }
         Log.d(TAG, "Page loaded from data at base URL $baseUrl")
     }
 
@@ -555,7 +607,7 @@ class KcefWebViewProvider(
             script.removePrefix("javascript:"),
             {
                 Log.v(TAG, "JS returned: $it")
-                it?.let { resultCallback.onReceiveValue(it) }
+                it?.let { handler.post { resultCallback.onReceiveValue(it) } }
             },
         )
     }
@@ -721,11 +773,13 @@ class KcefWebViewProvider(
         obj: Any,
         interfaceName: String,
     ) {
-        val cls = obj::class
+        val cls = obj::class as KClass<Any>
         mappings.addAll(
             cls.declaredMemberFunctions.map {
+                // This is ridiculous, but necessary, otherwise "public final" throws
+                it.javaMethod?.isAccessible = true
                 val map = FunctionMapping(interfaceName, it.name, obj, it)
-                Log.v(TAG, "Exposing: " + map.toNice())
+                Log.v(TAG, "Exposing: ${map.toNice()}")
                 map
             },
         )
