@@ -64,6 +64,9 @@ public class Paint {
     private float           mShadowLayerDy;
     @ColorLong private long mShadowLayerColor;
 
+    private int             mFlags;
+    private float           mTextSize;
+
     private static final Object sCacheLock = new Object();
 
     private static final HashMap<String, Integer> sMinikinLocaleListIdCache = new HashMap<>();
@@ -237,7 +240,6 @@ public class Paint {
         // setHinting(DisplayMetrics.DENSITY_DEVICE >= DisplayMetrics.DENSITY_TV
         //        ? HINTING_OFF : HINTING_ON);
         mCompatScaling = mInvCompatScaling = 1;
-        setTextLocales(LocaleList.getAdjustedDefault());
         mColor = Color.pack(Color.BLACK);
     }
 
@@ -267,7 +269,6 @@ public class Paint {
         mInvCompatScaling = 1;
 
         mBidiFlags = BIDI_DEFAULT_LTR;
-        setTextLocales(LocaleList.getAdjustedDefault());
         mFontFeatureSettings = null;
         mFontVariationSettings = null;
 
@@ -334,11 +335,11 @@ public class Paint {
     }
 
     public @PaintFlag int getFlags() {
-        throw new RuntimeException("Stub!");
+        return mFlags;
     }
 
     public void setFlags(@PaintFlag int flags) {
-        throw new RuntimeException("Stub!");
+        mFlags = flags;
     }
 
     public int getHinting() {
@@ -354,7 +355,7 @@ public class Paint {
     }
 
     public void setAntiAlias(boolean aa) {
-        throw new RuntimeException("Stub!");
+        setFlags(getFlags() | ANTI_ALIAS_FLAG);
     }
 
     public final boolean isDither() {
@@ -653,11 +654,11 @@ public class Paint {
     }
 
     public float getTextSize() {
-        throw new RuntimeException("Stub!");
+        return mTextSize;
     }
 
     public void setTextSize(float textSize) {
-        throw new RuntimeException("Stub!");
+        mTextSize = textSize;
     }
 
     public float getTextScaleX() {
