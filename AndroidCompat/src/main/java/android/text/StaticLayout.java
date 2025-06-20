@@ -17,13 +17,22 @@
 package android.text;
 
 import android.annotation.ColorInt;
+import android.annotation.IntRange;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.SuppressLint;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.Log;
-import android.annotation.IntRange;
+import java.awt.RenderingHints;
+import java.awt.font.LineBreakMeasurer;
+import java.awt.font.FontRenderContext;
+import java.awt.font.TextAttribute;
+import java.awt.font.TextLayout;
+import java.text.AttributedString;
+
+import com.android.internal.util.ArrayUtils;
+import com.android.internal.util.GrowingArrayUtils;
 
 
 public class StaticLayout extends Layout {
@@ -346,6 +355,7 @@ public class StaticLayout extends Layout {
             e.mLayout = this;
             e.mWidth = b.mEllipsizedWidth;
             e.mMethod = b.mEllipsize;
+            throw new UnsupportedOperationException("Ellipsis not supported");
         }
 
         mLineDirections = new Directions[2];
@@ -355,7 +365,38 @@ public class StaticLayout extends Layout {
         mLeftIndents = b.mLeftIndents;
         mRightIndents = b.mRightIndents;
 
-        // TODO: generate?
+        String str = b.mText.subSequence(b.mStart, b.mEnd).toString();
+        AttributedString text = new AttributedString(str);
+        text.addAttribute(TextAttribute.FONT, getPaint().getFont());
+        FontRenderContext frc = new FontRenderContext(getPaint().getFont().getTransform(), RenderingHints.VALUE_TEXT_ANTIALIAS_DEFAULT, RenderingHints.VALUE_FRACTIONALMETRICS_DEFAULT);
+        LineBreakMeasurer measurer = new LineBreakMeasurer(text.getIterator(), frc);
+        // TODO: directions
+
+        float y = 0;
+        while (measurer.getPosition() < str.length()) {
+            int off = mLineCount * mColumns;
+            int want = off + mColumns + TOP;
+            if (want >= mLines.length) {
+                final int[] grow = ArrayUtils.newUnpaddedIntArray(GrowingArrayUtils.growSize(want));
+                System.arraycopy(mLines, 0, grow, 0, mLines.length);
+                mLines = grow;
+            }
+
+            int pos = measurer.getPosition();
+            TextLayout l = measurer.nextLayout(getWidth());
+            mLines[off + START] = pos;
+            mLines[off + TOP] = (int) y;
+            mLines[off + DESCENT] = (int) (l.getDescent() + l.getLeading());
+            mLines[off + EXTRA] = (int) l.getLeading();
+
+            y += l.getAscent();
+            y += l.getDescent() + l.getLeading();
+
+            mLines[off + mColumns + START] = measurer.getPosition();
+            mLines[off + mColumns + TOP] = (int) y;
+
+            mLineCount += 1;
+        }
     }
 
     // Override the base class so we can directly access our members,
@@ -423,7 +464,8 @@ public class StaticLayout extends Layout {
         if (line > getLineCount()) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        return mLineDirections[line];
+        return new Directions(null);
+        // return mLineDirections[line];
     }
 
     @Override

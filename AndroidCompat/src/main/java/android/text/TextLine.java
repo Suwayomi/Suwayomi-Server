@@ -21,12 +21,32 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.graphics.Canvas;
 import android.graphics.Paint.FontMetricsInt;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.text.Layout.Directions;
 import android.text.Layout.TabStops;
+import java.awt.RenderingHints;
+import java.awt.font.FontRenderContext;
 
 
 public class TextLine {
+    private TextPaint mPaint;
+    private CharSequence mText;
+    private int mStart;
+    private int mLen;
+    private int mDir;
+    private Directions mDirections;
+    private boolean mHasTabs;
+    private TabStops mTabs;
+    private char[] mChars;
+    private boolean mCharsValid;
+    private Spanned mSpanned;
+    private PrecomputedText mComputed;
+    private RectF mTmpRectForMeasure;
+    private RectF mTmpRectForPaintAPI;
+    private Rect mTmpRectForPrecompute;
+
+
     public static final class LineInfo {
         private int mClusterCount;
 
@@ -84,7 +104,33 @@ public class TextLine {
     public void set(TextPaint paint, CharSequence text, int start, int limit, int dir,
             Directions directions, boolean hasTabs, TabStops tabStops,
             int ellipsisStart, int ellipsisEnd, boolean useFallbackLineSpacing) {
-        throw new RuntimeException("Stub!");
+        mPaint = paint;
+        mText = text;
+        mStart = start;
+        mLen = limit - start;
+        mDir = dir;
+        mDirections = directions;
+        if (mDirections == null) {
+            throw new IllegalArgumentException("Directions cannot be null");
+        }
+        mHasTabs = hasTabs;
+        mSpanned = null;
+
+        if (text instanceof Spanned) {
+            mSpanned = (Spanned) text;
+        }
+
+        mComputed = null;
+        if (text instanceof PrecomputedText) {
+            // Here, no need to check line break strategy or hyphenation frequency since there is no
+            // line break concept here.
+            mComputed = (PrecomputedText) text;
+            if (!mComputed.getParams().getTextPaint().equalsForTextMeasurement(paint)) {
+                mComputed = null;
+            }
+        }
+
+        mTabs = tabStops;
     }
 
     public void justify(@Layout.JustificationMode int justificationMode, float justifyWidth) {
@@ -102,7 +148,8 @@ public class TextLine {
 
     public float metrics(FontMetricsInt fmi, @Nullable RectF drawBounds, boolean returnDrawWidth,
             @Nullable LineInfo lineInfo) {
-        throw new RuntimeException("Stub!");
+        FontRenderContext frc = new FontRenderContext(null, RenderingHints.VALUE_TEXT_ANTIALIAS_DEFAULT, RenderingHints.VALUE_FRACTIONALMETRICS_DEFAULT);
+        return (float) mPaint.getFont().getStringBounds(mText.toString(), mStart, mStart + mLen, frc).getWidth();
     }
 
     public float measure(@IntRange(from = 0) int offset, boolean trailing,
@@ -126,6 +173,6 @@ public class TextLine {
     }
 
     void draw(Canvas c, float x, int top, int y, int bottom) {
-        throw new RuntimeException("Stub!");
+        c.drawText(mText, mStart, mStart + mLen, x, y, mPaint);
     }
 }

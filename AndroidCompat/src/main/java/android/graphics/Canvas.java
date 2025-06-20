@@ -1,6 +1,7 @@
 package android.graphics;
 
 import android.annotation.NonNull;
+import android.util.Log;
 import java.awt.BasicStroke;
 import java.awt.Font;
 import java.awt.Graphics2D;
@@ -19,6 +20,8 @@ public final class Canvas {
     private Graphics2D canvas;
     private List<AffineTransform> transformStack = new ArrayList<AffineTransform>();
 
+    private static final String TAG = "Canvas";
+
     public Canvas(Bitmap bitmap) {
         canvasImage = bitmap.getImage();
         canvas = canvasImage.createGraphics();
@@ -36,6 +39,7 @@ public final class Canvas {
     }
 
     public void drawText(@NonNull String text, float x, float y, @NonNull Paint paint) {
+        Log.v(TAG, "drawText: " + text + " at " + x + "," + y);
         applyPaint(paint);
         GlyphVector glyphVector = paint.getFont().createGlyphVector(canvas.getFontRenderContext(), text);
         Shape textShape = glyphVector.getOutline();

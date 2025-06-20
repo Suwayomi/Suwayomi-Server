@@ -221,8 +221,7 @@ public class Color {
 
     @NonNull
     public static ColorSpace colorSpace(@ColorLong long color) {
-        throw new RuntimeException("Stub!");
-        // return ColorSpace.get((int) (color & 0x3fL));
+        return ColorSpace.get((int) (color & 0x3fL));
     }
 
     public static float red(@ColorLong long color) {

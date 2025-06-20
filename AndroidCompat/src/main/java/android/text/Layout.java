@@ -34,6 +34,7 @@ import android.text.style.AlignmentSpan;
 import android.text.style.LeadingMarginSpan;
 import android.text.style.LeadingMarginSpan.LeadingMarginSpan2;
 import android.text.style.ParagraphStyle;
+import android.util.Log;
 import com.android.internal.util.ArrayUtils;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -44,6 +45,8 @@ import android.annotation.ColorInt;
 
 
 public abstract class Layout {
+
+    private static final String TAG = "Layout";
 
     // These should match the constants in framework/base/libs/hwui/hwui/DrawTextFunctor.h
     private static final float HIGH_CONTRAST_TEXT_BORDER_WIDTH_MIN_PX = 0f;
@@ -449,8 +452,9 @@ public abstract class Layout {
             final boolean justify = isJustificationRequired(lineNum);
             int end = getLineVisibleEnd(lineNum, start, previousLineEnd,
                     true /* trailingSpaceAtLastLineIsVisible */);
-            paint.setStartHyphenEdit(getStartHyphenEdit(lineNum));
-            paint.setEndHyphenEdit(getEndHyphenEdit(lineNum));
+            // TODO: not supported
+            // paint.setStartHyphenEdit(getStartHyphenEdit(lineNum));
+            // paint.setEndHyphenEdit(getEndHyphenEdit(lineNum));
 
             int ltop = previousLineBottom;
             int lbottom = getLineTop(lineNum + 1);
@@ -596,7 +600,7 @@ public abstract class Layout {
     public void drawBackground(
             @NonNull Canvas canvas,
             int firstLine, int lastLine) {
-        throw new RuntimeException("Stub!");
+        // TODO: do we need this?
     }
 
 
@@ -615,6 +619,7 @@ public abstract class Layout {
 
         final int top = Math.max(dtop, 0);
         final int bottom = Math.min(getLineTop(getLineCount()), dbottom);
+        Log.v(TAG, String.format("getLineRangeForDraw: %d-%d, %d-%d", dtop, dbottom, top, bottom));
 
         if (top >= bottom) return TextUtils.packRangeInLong(0, -1);
         return TextUtils.packRangeInLong(getLineForVertical(top), getLineForVertical(bottom));
@@ -1001,8 +1006,9 @@ public abstract class Layout {
         final TextLine tl = TextLine.obtain();
         final TextPaint paint = mWorkPaint;
         paint.set(mPaint);
-        paint.setStartHyphenEdit(getStartHyphenEdit(line));
-        paint.setEndHyphenEdit(getEndHyphenEdit(line));
+        // TODO: not supported
+        // paint.setStartHyphenEdit(getStartHyphenEdit(line));
+        // paint.setEndHyphenEdit(getEndHyphenEdit(line));
         tl.set(paint, mText, start, end, dir, directions, hasTabs, tabStops,
                 getEllipsisStart(line), getEllipsisStart(line) + getEllipsisCount(line),
                 isFallbackLineSpacingEnabled());
