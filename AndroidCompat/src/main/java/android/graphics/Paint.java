@@ -32,10 +32,13 @@ import android.util.Log;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.awt.Font;
+import java.awt.font.TextAttribute;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 public class Paint {
@@ -63,7 +66,9 @@ public class Paint {
     @ColorLong private long mShadowLayerColor;
 
     private int             mFlags;
-    private float           mTextSize;
+    private Font            mFont = new Font(null);
+    private Style           mStyle = Style.FILL;
+    private float           mStrokeWidth = 1.0f;
 
     private static final Object sCacheLock = new Object();
 
@@ -338,6 +343,25 @@ public class Paint {
 
     public void setFlags(@PaintFlag int flags) {
         mFlags = flags;
+
+        Map<TextAttribute, Object> fontAttributes = new HashMap<TextAttribute, Object>();
+        if ((flags & UNDERLINE_TEXT_FLAG) != 0) {
+            fontAttributes.put(TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON);
+        } else {
+            fontAttributes.put(TextAttribute.UNDERLINE, -1);
+        }
+        if ((flags & STRIKE_THRU_TEXT_FLAG) != 0) {
+            fontAttributes.put(TextAttribute.STRIKETHROUGH, TextAttribute.STRIKETHROUGH_ON);
+        } else {
+            fontAttributes.put(TextAttribute.STRIKETHROUGH, false);
+        }
+        if ((flags & FAKE_BOLD_TEXT_FLAG) != 0) {
+            fontAttributes.put(TextAttribute.WEIGHT, TextAttribute.WEIGHT_BOLD);
+        } else {
+            fontAttributes.put(TextAttribute.WEIGHT, TextAttribute.WEIGHT_REGULAR);
+        }
+
+        mFont = mFont.deriveFont(fontAttributes);
     }
 
     public int getHinting() {
@@ -429,11 +453,11 @@ public class Paint {
     }
 
     public Style getStyle() {
-        throw new RuntimeException("Stub!");
+        return mStyle;
     }
 
     public void setStyle(Style style) {
-        throw new RuntimeException("Stub!");
+        mStyle = style;
     }
 
     @ColorInt
@@ -473,11 +497,11 @@ public class Paint {
     }
 
     public float getStrokeWidth() {
-        throw new RuntimeException("Stub!");
+        return mStrokeWidth;
     }
 
     public void setStrokeWidth(float width) {
-        throw new RuntimeException("Stub!");
+        mStrokeWidth = width;
     }
 
     public float getStrokeMiter() {
@@ -651,12 +675,16 @@ public class Paint {
         throw new RuntimeException("Stub!");
     }
 
+    public Font getFont() {
+        return mFont;
+    }
+
     public float getTextSize() {
-        return mTextSize;
+        return mFont.getSize2D();
     }
 
     public void setTextSize(float textSize) {
-        mTextSize = textSize;
+        mFont = mFont.deriveFont(textSize);
     }
 
     public float getTextScaleX() {
@@ -789,7 +817,14 @@ public class Paint {
     }
 
     public float getFontMetrics(FontMetrics metrics) {
-        throw new RuntimeException("Stub!");
+        java.awt.Canvas c = new java.awt.Canvas();
+        java.awt.FontMetrics m = c.getFontMetrics(mFont);
+        metrics.top = m.getMaxAscent();
+        metrics.ascent = m.getAscent();
+        metrics.descent = m.getDescent();
+        metrics.bottom = m.getMaxDescent();
+        metrics.leading = m.getLeading();
+        return m.getLeading();
     }
 
     public FontMetrics getFontMetrics() {

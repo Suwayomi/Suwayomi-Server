@@ -1,14 +1,22 @@
 package android.graphics;
 
 import android.annotation.NonNull;
+import java.awt.BasicStroke;
 import java.awt.Font;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.Shape;
+import java.awt.font.GlyphVector;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
 import javax.imageio.ImageIO;
 
 public final class Canvas {
     private BufferedImage canvasImage;
     private Graphics2D canvas;
+    private List<AffineTransform> transformStack = new ArrayList<AffineTransform>();
 
     public Canvas(Bitmap bitmap) {
         canvasImage = bitmap.getImage();
@@ -27,7 +35,28 @@ public final class Canvas {
     }
 
     public void drawText(@NonNull String text, float x, float y, @NonNull Paint paint) {
-        throw new RuntimeException("Stub!");
+        applyPaint(paint);
+        GlyphVector glyphVector = paint.getFont().createGlyphVector(canvas.getFontRenderContext(), text);
+        Shape textShape = glyphVector.getOutline();
+        // TODO: check translate
+        switch (paint.getStyle()) {
+            case Paint.Style.FILL:
+                canvas.drawString(text, x, y);
+                break;
+            case Paint.Style.STROKE:
+                save();
+                translate(x, y);
+                canvas.draw(textShape);
+                restore();
+                break;
+            case Paint.Style.FILL_AND_STROKE:
+                save();
+                translate(x, y);
+                canvas.draw(textShape);
+                canvas.fill(textShape);
+                restore();
+                break;
+        }
     }
 
     public void drawText(@NonNull String text, int start, int end, float x, float y,
@@ -37,13 +66,8 @@ public final class Canvas {
 
     public void drawText(@NonNull CharSequence text, int start, int end, float x, float y,
             @NonNull Paint paint) {
-        Font fnt = canvas.getFont();
-        canvas.setFont(fnt.deriveFont(paint.getTextSize()));
-        java.awt.Color color = Color.valueOf(paint.getColorLong()).toJavaColor();
-        canvas.setColor(color);
-        // TODO: use more from paint?
         String str = text.subSequence(start, end).toString();
-        canvas.drawString(str, x, y);
+        drawText(str, x, y, paint);
     }
 
     public void drawRoundRect(@NonNull RectF rect, float rx, float ry, @NonNull Paint paint) {
@@ -60,7 +84,77 @@ public final class Canvas {
     }
 
     public void translate(float dx, float dy) {
+        if (dx == 0.0f && dy == 0.0f) return;
         // TODO: check this, should translations stack?
         canvas.translate(dx, dy);
+    }
+
+    public void scale(float sx, float sy) {
+        if (sx == 1.0f && sy == 1.0f) return;
+        canvas.scale(sx, sy);
+    }
+
+    public final void scale(float sx, float sy, float px, float py) {
+        if (sx == 1.0f && sy == 1.0f) return;
+        translate(px, py);
+        scale(sx, sy);
+        translate(-px, -py);
+    }
+
+    public void rotate(float degrees) {
+        if (degrees == 0.0f) return;
+        canvas.rotate(degrees);
+    }
+
+    public final void rotate(float degrees, float px, float py) {
+        if (degrees == 0.0f) return;
+        canvas.rotate(degrees, px, py);
+    }
+
+    public int getSaveCount() {
+        return transformStack.size();
+    }
+
+    public int save() {
+        transformStack.add(canvas.getTransform());
+        return getSaveCount();
+    }
+
+    public void restoreToCount(int saveCount) {
+        if (saveCount < 1) {
+            throw new IllegalArgumentException(
+                    "Underflow in restoreToCount - more restores than saves");
+        }
+        if (saveCount > getSaveCount()) {
+            throw new IllegalArgumentException("Overflow in restoreToCount");
+
+        }
+        AffineTransform ts = transformStack.get(saveCount - 1);
+        canvas.setTransform(ts);
+        while (transformStack.size() >= saveCount) {
+            transformStack.remove(transformStack.size() - 1);
+        }
+    }
+
+    public void restore() {
+        restoreToCount(getSaveCount());
+    }
+
+    private void applyPaint(Paint paint) {
+        canvas.setFont(paint.getFont());
+        java.awt.Color color = Color.valueOf(paint.getColorLong()).toJavaColor();
+        canvas.setColor(color);
+        canvas.setStroke(new BasicStroke(paint.getStrokeWidth()));
+        if (paint.isAntiAlias()) {
+            canvas.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        } else {
+            canvas.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+        }
+        if (paint.isDither()) {
+            canvas.setRenderingHint(RenderingHints.KEY_DITHERING, RenderingHints.VALUE_DITHER_ENABLE);
+        } else {
+            canvas.setRenderingHint(RenderingHints.KEY_DITHERING, RenderingHints.VALUE_DITHER_DISABLE);
+        }
+        // TODO: use more from paint?
     }
 }
