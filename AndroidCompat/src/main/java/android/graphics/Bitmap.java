@@ -192,6 +192,12 @@ public final class Bitmap {
         return true;
     }
 
+    public Bitmap copy(Config config, boolean isMutable) {
+        Bitmap ret = createBitmap(width, height, config);
+        ret.image.getGraphics().drawImage(image, 0, 0, null);
+        return ret;
+    }
+
     /**
      * Shared code to check for illegal arguments passed to getPixels()
      * or setPixels()
