@@ -606,7 +606,7 @@ class KcefWebViewProvider(
             script.removePrefix("javascript:"),
             {
                 Log.v(TAG, "JS returned: $it")
-                it?.let { resultCallback.onReceiveValue(it) }
+                it?.let { handler.post { resultCallback.onReceiveValue(it) } }
             },
         )
     }
