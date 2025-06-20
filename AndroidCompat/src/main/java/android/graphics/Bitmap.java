@@ -2,6 +2,7 @@ package android.graphics;
 
 import android.annotation.ColorInt;
 import android.annotation.NonNull;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -245,5 +246,13 @@ public final class Bitmap {
         checkPixelsAccess(x, y, width, height, offset, stride, pixels);
 
         image.getRGB(x, y, width, height, pixels, offset, stride);
+    }
+
+    public void eraseColor(int c) {
+        java.awt.Color color = Color.valueOf(c).toJavaColor();
+        Graphics2D graphics = image.createGraphics();
+        graphics.setColor(color);
+        graphics.fillRect(0, 0, width, height);
+        graphics.dispose();
     }
 }
