@@ -279,6 +279,11 @@ public class Paint {
         mShadowLayerDx = 0.0f;
         mShadowLayerDy = 0.0f;
         mShadowLayerColor = Color.pack(0);
+
+        setFlags(ANTI_ALIAS_FLAG);
+        mFont = new Font(null);
+        mStyle = Style.FILL;
+        mStrokeWidth = 1.0f;
     }
 
     public void set(Paint src) {
@@ -310,6 +315,11 @@ public class Paint {
         mShadowLayerDx = paint.mShadowLayerDx;
         mShadowLayerDy = paint.mShadowLayerDy;
         mShadowLayerColor = paint.mShadowLayerColor;
+
+        mFlags = paint.mFlags;
+        mFont = paint.mFont;
+        mStyle = paint.mStyle;
+        mStrokeWidth = paint.mStrokeWidth;
     }
 
     /** @hide */
