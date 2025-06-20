@@ -30,7 +30,7 @@ public final class Canvas {
     public void drawBitmap(Bitmap sourceBitmap, Rect src, Rect dst, Paint paint) {
         BufferedImage sourceImage = sourceBitmap.getImage();
         BufferedImage sourceImageCropped = sourceImage.getSubimage(src.left, src.top, src.getWidth(), src.getHeight());
-        canvas.drawImage(sourceImageCropped, null, dst.left, dst.top);
+        canvas.drawImage(sourceImageCropped, dst.left, dst.top, dst.getWidth(), dst.getHeight(), null);
     }
 
     public void drawText(@NonNull char[] text, int index, int count, float x, float y,
