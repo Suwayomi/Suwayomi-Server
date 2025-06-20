@@ -1,18 +1,18 @@
 package android.graphics;
 
-import android.annotation.ColorInt;
 import android.annotation.NonNull;
-
-import javax.imageio.IIOImage;
-import javax.imageio.ImageIO;
-import javax.imageio.ImageWriteParam;
-import javax.imageio.ImageWriter;
-import javax.imageio.stream.ImageOutputStream;
 import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Iterator;
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
+import android.annotation.ColorInt;
+
 
 public final class Bitmap {
     private final int width;
@@ -75,6 +75,19 @@ public final class Bitmap {
         }
     }
 
+    private static int configToBufferedImageType(Config config) {
+        switch (config) {
+            case ALPHA_8:
+                return BufferedImage.TYPE_BYTE_GRAY;
+            case RGB_565:
+                return BufferedImage.TYPE_USHORT_565_RGB;
+            case ARGB_8888:
+                return BufferedImage.TYPE_INT_ARGB;
+            default:
+                throw new UnsupportedOperationException("Bitmap.Config(" + config + ") not supported");
+        }
+    }
+
     /**
      * Common code for checking that x and y are >= 0
      *
@@ -106,7 +119,7 @@ public final class Bitmap {
     }
 
     public static Bitmap createBitmap(int width, int height, Config config) {
-        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        BufferedImage image = new BufferedImage(width, height, configToBufferedImageType(config));
         return new Bitmap(image);
     }
 
