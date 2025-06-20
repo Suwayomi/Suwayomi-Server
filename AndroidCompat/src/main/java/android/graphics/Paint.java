@@ -684,7 +684,9 @@ public class Paint {
     }
 
     public void setTextSize(float textSize) {
-        mFont = mFont.deriveFont(textSize);
+        // convert px to pt using default DPI of 96
+        float fontSize = 72.0f * textSize / 96.0f;
+        mFont = mFont.deriveFont(fontSize);
     }
 
     public float getTextScaleX() {
@@ -819,10 +821,10 @@ public class Paint {
     public float getFontMetrics(FontMetrics metrics) {
         java.awt.Canvas c = new java.awt.Canvas();
         java.awt.FontMetrics m = c.getFontMetrics(mFont);
-        metrics.top = m.getMaxAscent();
+        metrics.top = m.getMaxDescent();
         metrics.ascent = m.getAscent();
         metrics.descent = m.getDescent();
-        metrics.bottom = m.getMaxDescent();
+        metrics.bottom = m.getMaxAscent();
         metrics.leading = m.getLeading();
         return m.getLeading();
     }
