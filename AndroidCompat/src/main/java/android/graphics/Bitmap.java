@@ -1,8 +1,8 @@
 package android.graphics;
 
+import android.annotation.ColorInt;
 import android.annotation.NonNull;
 import java.awt.image.BufferedImage;
-import java.awt.image.Raster;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Iterator;
@@ -11,7 +11,6 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageOutputStream;
-import android.annotation.ColorInt;
 
 
 public final class Bitmap {
@@ -243,12 +242,6 @@ public final class Bitmap {
                           int x, int y, int width, int height) {
         checkPixelsAccess(x, y, width, height, offset, stride, pixels);
 
-        Raster raster = image.getData();
-        int[] rasterPixels = raster.getPixels(x, y, width, height, (int[]) null);
-
-        for (int ht = 0; ht < height; ht++) {
-            int rowOffset = offset + stride * ht;
-            System.arraycopy(rasterPixels, ht * width, pixels, rowOffset, width);
-        }
+        image.getRGB(x, y, width, height, pixels, offset, stride);
     }
 }
