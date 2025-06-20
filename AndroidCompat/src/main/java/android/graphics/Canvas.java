@@ -43,7 +43,6 @@ public final class Canvas {
         applyPaint(paint);
         GlyphVector glyphVector = paint.getFont().createGlyphVector(canvas.getFontRenderContext(), text);
         Shape textShape = glyphVector.getOutline();
-        // TODO: check translate
         switch (paint.getStyle()) {
             case Paint.Style.FILL:
                 canvas.drawString(text, x, y);
@@ -165,7 +164,7 @@ public final class Canvas {
         canvas.setFont(paint.getFont());
         java.awt.Color color = Color.valueOf(paint.getColorLong()).toJavaColor();
         canvas.setColor(color);
-        canvas.setStroke(new BasicStroke(paint.getStrokeWidth()));
+        canvas.setStroke(new BasicStroke(paint.getStrokeWidth(), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         if (paint.isAntiAlias()) {
             canvas.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         } else {
