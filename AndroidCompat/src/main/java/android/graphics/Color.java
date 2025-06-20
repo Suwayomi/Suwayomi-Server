@@ -24,7 +24,6 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.Size;
 import android.util.Half;
-
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
@@ -69,6 +68,10 @@ public class Color {
     private Color(@Size(min = 4, max = 5) float[] components, @NonNull ColorSpace colorSpace) {
         mComponents = components;
         mColorSpace = colorSpace;
+    }
+
+    public java.awt.Color toJavaColor() {
+        return new java.awt.Color(red(), green(), blue(), alpha());
     }
 
     @NonNull

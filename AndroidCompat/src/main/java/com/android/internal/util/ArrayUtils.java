@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 package com.android.internal.util;
-import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.util.ArraySet;
-import libcore.util.EmptyArray;
-
 import java.lang.reflect.Array;
 import java.util.*;
+import libcore.util.EmptyArray;
+import android.annotation.NonNull;
+
 /**
  * ArrayUtils contains some methods that you can call to find out
  * the most efficient increments by which to grow arrays.
@@ -49,6 +49,10 @@ public class ArrayUtils {
     }
     public static Object[] newUnpaddedObjectArray(int minLen) {
         return new Object[minLen];
+    }
+    @SuppressWarnings("unchecked")
+    public static <T> T[] newUnpaddedArray(Class<T> clazz, int minLen) {
+        return (T[])Array.newInstance(clazz, minLen);
     }
     /**
      * Checks if the beginnings of two byte arrays are equal.
