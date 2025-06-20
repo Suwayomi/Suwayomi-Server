@@ -156,8 +156,10 @@ public final class Bitmap {
             formatString = "png";
         } else if (format == Bitmap.CompressFormat.JPEG) {
             formatString = "jpg";
+        } else if (format == Bitmap.CompressFormat.WEBP || format == Bitmap.CompressFormat.WEBP_LOSSY) {
+            formatString = "webp";
         } else {
-            throw new IllegalArgumentException("unsupported compression format!");
+            throw new IllegalArgumentException("unsupported compression format! " + format);
         }
 
         Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName(formatString);
