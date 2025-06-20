@@ -16,7 +16,6 @@
 
 package android.text;
 
-import android.annotation.ColorInt;
 import android.annotation.FloatRange;
 import android.annotation.IntRange;
 import android.annotation.NonNull;
@@ -30,17 +29,17 @@ import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.text.LineBreaker;
+import android.text.SpannableString;
 import android.text.style.AlignmentSpan;
 import android.text.style.LeadingMarginSpan;
 import android.text.style.LeadingMarginSpan.LeadingMarginSpan2;
-import android.text.style.LineBackgroundSpan;
 import android.text.style.ParagraphStyle;
 import com.android.internal.util.ArrayUtils;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.Arrays;
 import java.util.List;
-import android.annotation.FloatRange;
+import android.annotation.ColorInt;
 
 
 
@@ -602,7 +601,23 @@ public abstract class Layout {
 
 
     public long getLineRangeForDraw(Canvas canvas) {
-        throw new RuntimeException("Stub!");
+        int dtop, dbottom;
+
+        synchronized (sTempRect) {
+            if (!canvas.getClipBounds(sTempRect)) {
+                // Negative range end used as a special flag
+                return TextUtils.packRangeInLong(0, -1);
+            }
+
+            dtop = sTempRect.top;
+            dbottom = sTempRect.bottom;
+        }
+
+        final int top = Math.max(dtop, 0);
+        final int bottom = Math.min(getLineTop(getLineCount()), dbottom);
+
+        if (top >= bottom) return TextUtils.packRangeInLong(0, -1);
+        return TextUtils.packRangeInLong(getLineForVertical(top), getLineForVertical(bottom));
     }
 
     public final void increaseWidthTo(int wid) {

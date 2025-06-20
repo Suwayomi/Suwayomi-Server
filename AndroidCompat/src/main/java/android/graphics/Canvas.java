@@ -4,6 +4,7 @@ import android.annotation.NonNull;
 import java.awt.BasicStroke;
 import java.awt.Font;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.font.GlyphVector;
@@ -138,6 +139,22 @@ public final class Canvas {
 
     public void restore() {
         restoreToCount(getSaveCount());
+    }
+
+    public boolean getClipBounds(@NonNull Rect bounds) {
+        Rectangle r = canvas.getClipBounds();
+        if (r == null) {
+            bounds.left = 0;
+            bounds.top = 0;
+            bounds.right = canvasImage.getWidth();
+            bounds.bottom = canvasImage.getHeight();
+            return true;
+        }
+        bounds.left = r.x;
+        bounds.top = r.y;
+        bounds.right = r.x + r.width;
+        bounds.bottom = r.y + r.height;
+        return r.width != 0 && r.height != 0;
     }
 
     private void applyPaint(Paint paint) {
