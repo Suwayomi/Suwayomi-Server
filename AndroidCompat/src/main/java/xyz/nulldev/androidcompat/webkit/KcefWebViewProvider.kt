@@ -220,13 +220,14 @@ class KcefWebViewProvider(
                 val js =
                     """
                         window.${it.interfaceName} = window.${it.interfaceName} || {}
-                        window.${it.interfaceName}.${it.functionName} = function() {
+                        window.${it.interfaceName}.${it.functionName} = async function() {
+                            const args = await Promise.all(Array.from(arguments));
                             return new Promise((resolve, reject) => {
                                 window.${QUERY_FN}({
                                     request: JSON.stringify({
                                         functionName: ${Json.encodeToString(it.functionName)},
                                         interfaceName: ${Json.encodeToString(it.interfaceName)},
-                                        args: Array.from(arguments),
+                                        args,
                                     }),
                                     persistent: false,
                                     onSuccess: resolve,
