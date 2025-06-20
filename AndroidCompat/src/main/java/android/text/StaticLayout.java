@@ -388,6 +388,7 @@ public class StaticLayout extends Layout {
             mLines[off + TOP] = (int) y;
             mLines[off + DESCENT] = (int) (l.getDescent() + l.getLeading());
             mLines[off + EXTRA] = (int) l.getLeading();
+            mLines[off + DIR] |= Layout.DIR_LEFT_TO_RIGHT << DIR_SHIFT;
 
             y += l.getAscent();
             y += l.getDescent() + l.getLeading();
