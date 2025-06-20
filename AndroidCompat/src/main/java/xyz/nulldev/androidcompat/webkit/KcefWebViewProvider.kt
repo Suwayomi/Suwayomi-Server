@@ -87,8 +87,10 @@ import java.io.File
 import java.io.IOException
 import java.util.concurrent.Executor
 import kotlin.collections.Map
+import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.declaredMemberFunctions
+import kotlin.reflect.jvm.javaMethod
 
 class KcefWebViewProvider(
     private val view: WebView,
@@ -264,13 +266,16 @@ class KcefWebViewProvider(
                 }?.let {
                     handler.post {
                         try {
-                            Log.v(TAG, "Received request to invoke ${it.toNice()}")
+                            Log.v(
+                                TAG,
+                                "Received request to invoke ${it.toNice()} with ${invoke.args.size} args",
+                            )
                             // NOTE: first argument is
                             // implicitly this
                             val retval = it.fn.call(it.obj, *invoke.args)
                             callback.success(retval.toString())
                         } catch (e: Exception) {
-                            Log.w(TAG, "JS-invoke on ${it.toNice()} failed: $e")
+                            Log.w(TAG, "JS-invoke on ${it.toNice()} failed:", e)
                             callback.failure(0, e.message)
                         }
                     }
@@ -767,11 +772,13 @@ class KcefWebViewProvider(
         obj: Any,
         interfaceName: String,
     ) {
-        val cls = obj::class
+        val cls = obj::class as KClass<Any>
         mappings.addAll(
             cls.declaredMemberFunctions.map {
+                // This is ridiculous, but necessary, otherwise "public final" throws
+                it.javaMethod?.isAccessible = true
                 val map = FunctionMapping(interfaceName, it.name, obj, it)
-                Log.v(TAG, "Exposing: " + map.toNice())
+                Log.v(TAG, "Exposing: ${map.toNice()}")
                 map
             },
         )
