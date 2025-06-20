@@ -177,14 +177,19 @@ public final class Bitmap {
         }
         writer.setOutput(ios);
 
+        BufferedImage img = image;
+
         ImageWriteParam param = writer.getDefaultWriteParam();
         if ("jpg".equals(formatString)) {
             param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
             param.setCompressionQuality(qualityFloat);
+
+            img = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
+            img.getGraphics().drawImage(image, 0, 0, null);
         }
 
         try {
-            writer.write(null, new IIOImage(image, null, null), param);
+            writer.write(null, new IIOImage(img, null, null), param);
             ios.close();
             writer.dispose();
         } catch (IOException ex) {
