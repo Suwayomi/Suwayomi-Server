@@ -43,7 +43,6 @@ dependencies {
     // GraphQL
     implementation(libs.graphql.kotlin.server)
     implementation(libs.graphql.kotlin.scheme)
-    implementation(libs.graphql.java.core)
     implementation(libs.graphql.java.scalars)
 
     // Exposed ORM
