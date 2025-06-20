@@ -619,7 +619,6 @@ public abstract class Layout {
 
         final int top = Math.max(dtop, 0);
         final int bottom = Math.min(getLineTop(getLineCount()), dbottom);
-        Log.v(TAG, String.format("getLineRangeForDraw: %d-%d, %d-%d", dtop, dbottom, top, bottom));
 
         if (top >= bottom) return TextUtils.packRangeInLong(0, -1);
         return TextUtils.packRangeInLong(getLineForVertical(top), getLineForVertical(bottom));

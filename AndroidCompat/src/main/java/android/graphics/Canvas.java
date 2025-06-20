@@ -39,7 +39,6 @@ public final class Canvas {
     }
 
     public void drawText(@NonNull String text, float x, float y, @NonNull Paint paint) {
-        Log.v(TAG, "drawText: " + text + " at " + x + "," + y);
         applyPaint(paint);
         GlyphVector glyphVector = paint.getFont().createGlyphVector(canvas.getFontRenderContext(), text);
         Shape textShape = glyphVector.getOutline();
