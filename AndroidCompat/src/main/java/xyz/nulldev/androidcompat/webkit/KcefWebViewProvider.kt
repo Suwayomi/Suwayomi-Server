@@ -206,7 +206,7 @@ class KcefWebViewProvider(
             Log.w(TAG, "Load error ($failedUrl) [$errorCode]: $errorText")
             // TODO: translate correctly
             handler.post {
-                viewClient.onReceivedError(view, WebViewClient.ERROR_UNKNOWN, errorText, url)
+                viewClient.onReceivedError(view, WebViewClient.ERROR_UNKNOWN, errorText, frame.url)
             }
         }
 
