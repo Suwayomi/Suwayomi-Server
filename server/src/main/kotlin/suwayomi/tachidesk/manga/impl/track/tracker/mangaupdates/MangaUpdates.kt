@@ -2,8 +2,8 @@ package suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates
 
 import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
-import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.ListItem
-import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.Rating
+import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.MUListItem
+import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.MURating
 import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.copyTo
 import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.toTrackSearch
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
@@ -107,12 +107,12 @@ class MangaUpdates(
     }
 
     private fun Track.copyFrom(
-        item: ListItem,
-        rating: Rating?,
+        item: MUListItem,
+        rating: MURating?,
     ): Track =
         apply {
             item.copyTo(this)
-            score = rating?.rating?.toDouble() ?: 0.0
+            score = rating?.rating ?: 0.0
         }
 
     override suspend fun login(
@@ -124,5 +124,5 @@ class MangaUpdates(
         interceptor.newAuth(authenticated.sessionToken)
     }
 
-    fun restoreSession(): String? = trackPreferences.getTrackPassword(this)
+    fun restoreSession(): String? = trackPreferences.getTrackPassword(this)?.ifBlank { null }
 }

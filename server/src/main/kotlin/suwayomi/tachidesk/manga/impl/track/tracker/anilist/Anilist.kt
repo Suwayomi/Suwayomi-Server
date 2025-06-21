@@ -41,6 +41,8 @@ class Anilist(
 
     override val supportsReadingDates: Boolean = true
 
+    override val supportsPrivateTracking: Boolean = true
+
     private val logger = KotlinLogging.logger {}
 
     override fun getLogo(): String = "/static/tracker/anilist.png"

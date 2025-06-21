@@ -16,6 +16,7 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jsoup.Jsoup
 import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
@@ -491,4 +492,6 @@ object Track {
         val finishDate: Long? = null,
         val unbind: Boolean? = null,
     )
+
+    fun String.htmlDecode(): String = Jsoup.parse(this).wholeText()
 }

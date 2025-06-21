@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto
 
+import suwayomi.tachidesk.manga.impl.track.Track.htmlDecode
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.impl.track.tracker.anilist.Anilist
 import suwayomi.tachidesk.manga.impl.track.tracker.anilist.AnilistApi
@@ -26,7 +27,7 @@ data class ALManga(
             title = this@ALManga.title
             total_chapters = totalChapters
             cover_url = imageUrl
-            summary = description ?: "" // description?.htmlDecode()
+            summary = description?.htmlDecode() ?: ""
             score = averageScore.toDouble()
             tracking_url = AnilistApi.mangaUrl(remote_id)
             publishing_status = publishingStatus
