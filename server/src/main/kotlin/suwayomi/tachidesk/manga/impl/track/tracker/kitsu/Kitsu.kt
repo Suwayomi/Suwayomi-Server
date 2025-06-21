@@ -2,9 +2,8 @@ package suwayomi.tachidesk.manga.impl.track.tracker.kitsu
 
 import android.annotation.StringRes
 import eu.kanade.tachiyomi.data.track.kitsu.dto.KitsuOAuth
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTrackService
+import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
@@ -14,7 +13,7 @@ import java.text.DecimalFormat
 class Kitsu(
     id: Int,
 ) : Tracker(id, "Kitsu"),
-    DeletableTrackService {
+    DeletableTracker {
     companion object {
         const val READING = 1
         const val COMPLETED = 2
@@ -26,6 +25,8 @@ class Kitsu(
     override val supportsTrackDeletion: Boolean = true
 
     override val supportsReadingDates: Boolean = true
+
+    override val supportsPrivateTracking: Boolean = true
 
     private val json: Json by injectLazy()
 
@@ -99,7 +100,7 @@ class Kitsu(
     ): Track {
         val remoteTrack = api.findLibManga(track, getUserId())
         return if (remoteTrack != null) {
-            track.copyPersonalFrom(remoteTrack)
+            track.copyPersonalFrom(remoteTrack, copyRemotePrivate = false)
             track.remote_id = remoteTrack.remote_id
 
             if (track.status != COMPLETED) {

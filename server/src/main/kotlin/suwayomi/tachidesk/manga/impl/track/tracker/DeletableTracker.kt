@@ -5,6 +5,6 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 /**
  * For track services api that support deleting a manga entry for a user's list
  */
-interface DeletableTrackService {
+interface DeletableTracker {
     suspend fun delete(track: Track)
 }

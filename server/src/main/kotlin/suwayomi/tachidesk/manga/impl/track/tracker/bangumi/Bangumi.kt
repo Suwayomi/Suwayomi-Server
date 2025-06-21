@@ -3,6 +3,7 @@ package suwayomi.tachidesk.manga.impl.track.tracker.bangumi
 import android.annotation.StringRes
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
+import suwayomi.tachidesk.manga.impl.track.tracker.bangumi.dto.BGMOAuth
 import suwayomi.tachidesk.manga.impl.track.tracker.extractToken
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
@@ -31,6 +32,8 @@ class Bangumi(
     private val interceptor by lazy { BangumiInterceptor(this) }
 
     private val api by lazy { BangumiApi(id, client, interceptor) }
+
+    override val supportsPrivateTracking: Boolean = true
 
     override fun getScoreList(): List<String> = SCORE_LIST
 
@@ -61,7 +64,7 @@ class Bangumi(
     ): Track {
         val statusTrack = api.statusLibManga(track, getUsername())
         return if (statusTrack != null) {
-            track.copyPersonalFrom(statusTrack)
+            track.copyPersonalFrom(statusTrack, copyRemotePrivate = false)
             track.library_id = statusTrack.library_id
             track.score = statusTrack.score
             track.last_chapter_read = statusTrack.last_chapter_read
@@ -151,13 +154,3 @@ class Bangumi(
         interceptor.newAuth(null)
     }
 }
-
-fun Track.toApiStatus() =
-    when (status) {
-        Bangumi.PLAN_TO_READ -> 1
-        Bangumi.COMPLETED -> 2
-        Bangumi.READING -> 3
-        Bangumi.ON_HOLD -> 4
-        Bangumi.DROPPED -> 5
-        else -> throw NotImplementedError("Unknown status: $status")
-    }

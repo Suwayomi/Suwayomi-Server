@@ -20,6 +20,8 @@ abstract class Tracker(
     // Application and remote support for reading dates
     open val supportsReadingDates: Boolean = false
 
+    open val supportsPrivateTracking: Boolean = false
+
     abstract val supportsTrackDeletion: Boolean
 
     override fun toString() = "$name ($id) (isLoggedIn= $isLoggedIn, isAuthExpired= ${getIfAuthExpired()})"

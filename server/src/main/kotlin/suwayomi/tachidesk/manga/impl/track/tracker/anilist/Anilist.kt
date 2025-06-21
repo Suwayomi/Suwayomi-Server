@@ -2,9 +2,8 @@ package suwayomi.tachidesk.manga.impl.track.tracker.anilist
 
 import android.annotation.StringRes
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTrackService
+import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
 import suwayomi.tachidesk.manga.impl.track.tracker.extractToken
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
@@ -15,7 +14,7 @@ import java.io.IOException
 class Anilist(
     id: Int,
 ) : Tracker(id, "AniList"),
-    DeletableTrackService {
+    DeletableTracker {
     companion object {
         const val READING = 1
         const val COMPLETED = 2

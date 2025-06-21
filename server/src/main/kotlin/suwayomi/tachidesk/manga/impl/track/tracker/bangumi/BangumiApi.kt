@@ -20,6 +20,10 @@ import okhttp3.Headers.Companion.headersOf
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import suwayomi.tachidesk.manga.impl.track.tracker.bangumi.dto.BGMCollectionResponse
+import suwayomi.tachidesk.manga.impl.track.tracker.bangumi.dto.BGMOAuth
+import suwayomi.tachidesk.manga.impl.track.tracker.bangumi.dto.BGMSearchResult
+import suwayomi.tachidesk.manga.impl.track.tracker.bangumi.dto.BGMUser
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
@@ -41,9 +45,13 @@ class BangumiApi(
                     put("type", track.toApiStatus())
                     put("rate", track.score.toInt().coerceIn(0, 10))
                     put("ep_status", track.last_chapter_read.toInt())
-                }.toString().toRequestBody()
+                    put("private", track.private)
+                }.toString()
+                    .toRequestBody()
             // Returns with 202 Accepted on success with no body
-            authClient.newCall(POST(url, body = body, headers = headersOf("Content-Type", APP_JSON))).awaitSuccess()
+            authClient
+                .newCall(POST(url, body = body, headers = headersOf("Content-Type", APP_JSON)))
+                .awaitSuccess()
             track
         }
 
@@ -55,7 +63,9 @@ class BangumiApi(
                     put("type", track.toApiStatus())
                     put("rate", track.score.toInt().coerceIn(0, 10))
                     put("ep_status", track.last_chapter_read.toInt())
-                }.toString().toRequestBody()
+                    put("private", track.private)
+                }.toString()
+                    .toRequestBody()
 
             val request =
                 Request
@@ -65,7 +75,9 @@ class BangumiApi(
                     .headers(headersOf("Content-Type", APP_JSON))
                     .build()
             // Returns with 204 No Content
-            authClient.newCall(request).awaitSuccess()
+            authClient
+                .newCall(request)
+                .awaitSuccess()
 
             track
         }
@@ -86,7 +98,8 @@ class BangumiApi(
                             add(1) // "Book" (书籍) type
                         }
                     }
-                }.toString().toRequestBody()
+                }.toString()
+                    .toRequestBody()
             with(json) {
                 authClient
                     .newCall(POST(url, body = body, headers = headersOf("Content-Type", APP_JSON)))
@@ -140,7 +153,10 @@ class BangumiApi(
                     .add("redirect_uri", REDIRECT_URL)
                     .build()
             with(json) {
-                client.newCall(POST(OAUTH_URL, body = body)).awaitSuccess().parseAs<BGMOAuth>()
+                client
+                    .newCall(POST(OAUTH_URL, body = body))
+                    .awaitSuccess()
+                    .parseAs<BGMOAuth>()
             }
         }
 
@@ -156,14 +172,14 @@ class BangumiApi(
         }
 
     companion object {
-        private const val CLIENT_ID = "bgm376667faf473119bb"
-        private const val CLIENT_SECRET = "d74caf0b874ddd18e6c6e7fb86d77a06"
+        private const val CLIENT_ID = "bgm291665acbd06a4c28"
+        private const val CLIENT_SECRET = "43e5ce36b207de16e5d3cfd3e79118db"
 
         private const val API_URL = "https://api.bgm.tv"
         private const val OAUTH_URL = "https://bgm.tv/oauth/access_token"
         private const val LOGIN_URL = "https://bgm.tv/oauth/authorize"
 
-        private const val REDIRECT_URL = "https://suwayomi.org/tracker-oauth"
+        private const val REDIRECT_URL = "mihon://bangumi-auth"
 
         private const val APP_JSON = "application/json"
 

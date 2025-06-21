@@ -1,6 +1,6 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates
 
-import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTrackService
+import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
 import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.ListItem
 import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.Rating
@@ -12,7 +12,7 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 class MangaUpdates(
     id: Int,
 ) : Tracker(id, "MangaUpdates"),
-    DeletableTrackService {
+    DeletableTracker {
     companion object {
         const val READING_LIST = 0
         const val WISH_LIST = 1

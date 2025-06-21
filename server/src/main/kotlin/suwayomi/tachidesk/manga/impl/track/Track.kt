@@ -16,8 +16,7 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
-import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTrackService
+import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrack
@@ -243,7 +242,7 @@ object Track {
 
         val tracker = TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])
 
-        if (deleteRemoteTrack == true && tracker is DeletableTrackService) {
+        if (deleteRemoteTrack == true && tracker is DeletableTracker) {
             tracker.delete(recordDb.toTrack())
         }
 
