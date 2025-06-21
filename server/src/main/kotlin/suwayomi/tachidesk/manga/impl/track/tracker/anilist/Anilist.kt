@@ -5,6 +5,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
+import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALOAuth
 import suwayomi.tachidesk.manga.impl.track.tracker.extractToken
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
@@ -79,26 +80,26 @@ class Anilist(
             else -> throw Exception("Unknown score type")
         }
 
-    override fun indexToScore(index: Int): Float =
+    override fun indexToScore(index: Int): Double =
         when (trackPreferences.getScoreType(this)) {
             // 10 point
-            POINT_10 -> index * 10f
+            POINT_10 -> index * 10.0
             // 100 point
-            POINT_100 -> index.toFloat()
+            POINT_100 -> index.toDouble()
             // 5 stars
             POINT_5 ->
                 when (index) {
-                    0 -> 0f
-                    else -> index * 20f - 10f
+                    0 -> 0.0
+                    else -> index * 20.0 - 10.0
                 }
             // Smiley
             POINT_3 ->
                 when (index) {
-                    0 -> 0f
-                    else -> index * 25f + 10f
+                    0 -> 0.0
+                    else -> index * 25.0 + 10.0
                 }
             // 10 point decimal
-            POINT_10_DECIMAL -> index.toFloat()
+            POINT_10_DECIMAL -> index.toDouble()
             else -> throw Exception("Unknown score type")
         }
 
@@ -117,7 +118,7 @@ class Anilist(
                     score <= 60 -> "😐"
                     else -> "😊"
                 }
-            else -> track.toAnilistScore(type)
+            else -> track.toApiScore(type)
         }
     }
 
@@ -167,12 +168,12 @@ class Anilist(
     ): Track {
         val remoteTrack = api.findLibManga(track, getUsername().toInt())
         return if (remoteTrack != null) {
-            track.copyPersonalFrom(remoteTrack)
+            track.copyPersonalFrom(remoteTrack, copyRemotePrivate = false)
             track.library_id = remoteTrack.library_id
 
             if (track.status != COMPLETED) {
                 val isRereading = track.status == REREADING
-                track.status = if (isRereading.not() && hasReadChapters) READING else track.status
+                track.status = if (!isRereading && hasReadChapters) READING else track.status
             }
 
             update(track)
@@ -213,7 +214,7 @@ class Anilist(
             interceptor.setAuth(oauth)
             val (username, scoreType) = api.getCurrentUser()
             trackPreferences.setScoreType(this, scoreType)
-            saveCredentials(username.toString(), oauth.access_token)
+            saveCredentials(username.toString(), oauth.accessToken)
         } catch (e: Throwable) {
             logger.error(e) { "oauth err" }
             logout()
@@ -227,13 +228,13 @@ class Anilist(
         interceptor.setAuth(null)
     }
 
-    fun saveOAuth(oAuth: OAuth?) {
+    fun saveOAuth(oAuth: ALOAuth?) {
         trackPreferences.setTrackToken(this, json.encodeToString(oAuth))
     }
 
-    fun loadOAuth(): OAuth? =
+    fun loadOAuth(): ALOAuth? =
         try {
-            json.decodeFromString<OAuth>(trackPreferences.getTrackToken(this)!!)
+            json.decodeFromString<ALOAuth>(trackPreferences.getTrackToken(this)!!)
         } catch (e: Exception) {
             logger.error(e) { "loadOAuth err" }
             null

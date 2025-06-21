@@ -62,7 +62,7 @@ class MangaUpdates(
 
     override fun getScoreList(): List<String> = SCORE_LIST
 
-    override fun indexToScore(index: Int): Float = if (index == 0) 0f else SCORE_LIST[index].toFloat()
+    override fun indexToScore(index: Int): Double = if (index == 0) 0.0 else SCORE_LIST[index].toDouble()
 
     override fun displayScore(track: Track): String = track.score.toString()
 

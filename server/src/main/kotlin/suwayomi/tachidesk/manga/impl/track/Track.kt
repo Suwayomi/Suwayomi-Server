@@ -286,8 +286,7 @@ object Track {
         }
         if (input.scoreString != null) {
             val score = tracker.indexToScore(tracker.getScoreList().indexOf(input.scoreString))
-            // conversion issues between Float <-> Double so convert to string before double
-            recordDb[TrackRecordTable.score] = score.toString().toDouble()
+            recordDb[TrackRecordTable.score] = score
         }
         if (input.startDate != null) {
             recordDb[TrackRecordTable.startDate] = input.startDate

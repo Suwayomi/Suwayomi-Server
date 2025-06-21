@@ -12,22 +12,21 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.int
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.long
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
+import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALAddMangaResult
+import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALCurrentUserResult
+import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALOAuth
+import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALSearchResult
+import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALUserListMangaQueryResult
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
-import java.util.Calendar
-import kotlin.time.Duration.Companion.days
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import kotlin.time.Duration.Companion.minutes
 
 class AnilistApi(
@@ -47,11 +46,11 @@ class AnilistApi(
         withIOContext {
             val query =
                 """
-            |mutation AddManga(${'$'}mangaId: Int, ${'$'}progress: Int, ${'$'}status: MediaListStatus) {
-                |SaveMediaListEntry (mediaId: ${'$'}mangaId, progress: ${'$'}progress, status: ${'$'}status) { 
-                |   id 
-                |   status 
-                |} 
+            |mutation AddManga(${'$'}mangaId: Int, ${'$'}progress: Int, ${'$'}status: MediaListStatus, ${'$'}private: Boolean) {
+                |SaveMediaListEntry (mediaId: ${'$'}mangaId, progress: ${'$'}progress, status: ${'$'}status, private: ${'$'}private) {
+                |   id
+                |   status
+                |}
             |}
             |
                 """.trimMargin()
@@ -61,7 +60,8 @@ class AnilistApi(
                     putJsonObject("variables") {
                         put("mangaId", track.remote_id)
                         put("progress", track.last_chapter_read.toInt())
-                        put("status", track.toAnilistStatus())
+                        put("status", track.toApiStatus())
+                        put("private", track.private)
                     }
                 }
             with(json) {
@@ -72,13 +72,9 @@ class AnilistApi(
                             body = payload.toString().toRequestBody(jsonMime),
                         ),
                     ).awaitSuccess()
-                    .parseAs<JsonObject>()
+                    .parseAs<ALAddMangaResult>()
                     .let {
-                        track.library_id =
-                            it["data"]!!
-                                .jsonObject["SaveMediaListEntry"]!!
-                                .jsonObject["id"]!!
-                                .jsonPrimitive.long
+                        track.library_id = it.data.entry.id
                         track
                     }
             }
@@ -89,11 +85,11 @@ class AnilistApi(
             val query =
                 """
             |mutation UpdateManga(
-                |${'$'}listId: Int, ${'$'}progress: Int, ${'$'}status: MediaListStatus,
+                |${'$'}listId: Int, ${'$'}progress: Int, ${'$'}status: MediaListStatus, ${'$'}private: Boolean,
                 |${'$'}score: Int, ${'$'}startedAt: FuzzyDateInput, ${'$'}completedAt: FuzzyDateInput
             |) {
                 |SaveMediaListEntry(
-                    |id: ${'$'}listId, progress: ${'$'}progress, status: ${'$'}status,
+                    |id: ${'$'}listId, progress: ${'$'}progress, status: ${'$'}status, private: ${'$'}private,
                     |scoreRaw: ${'$'}score, startedAt: ${'$'}startedAt, completedAt: ${'$'}completedAt
                 |) {
                     |id
@@ -109,10 +105,11 @@ class AnilistApi(
                     putJsonObject("variables") {
                         put("listId", track.library_id)
                         put("progress", track.last_chapter_read.toInt())
-                        put("status", track.toAnilistStatus())
+                        put("status", track.toApiStatus())
                         put("score", track.score.toInt())
                         put("startedAt", createDate(track.started_reading_date))
                         put("completedAt", createDate(track.finished_reading_date))
+                        put("private", track.private)
                     }
                 }
             authClient
@@ -121,14 +118,14 @@ class AnilistApi(
             track
         }
 
-    suspend fun deleteLibManga(track: Track) =
+    suspend fun deleteLibManga(track: Track) {
         withIOContext {
             val query =
                 """
             |mutation DeleteManga(${'$'}listId: Int) {
-                |DeleteMediaListEntry(id: ${'$'}listId) { 
+                |DeleteMediaListEntry(id: ${'$'}listId) {
                     |deleted
-                |} 
+                |}
             |}
             |
                 """.trimMargin()
@@ -143,6 +140,7 @@ class AnilistApi(
                 .newCall(POST(API_URL, body = payload.toString().toRequestBody(jsonMime)))
                 .awaitSuccess()
         }
+    }
 
     suspend fun search(search: String): List<TrackSearch> =
         withIOContext {
@@ -152,6 +150,19 @@ class AnilistApi(
                 |Page (perPage: 50) {
                     |media(search: ${'$'}query, type: MANGA, format_not_in: [NOVEL]) {
                         |id
+                        |staff {
+                            |edges {
+                                |role
+                                |id
+                                |node {
+                                    |name {
+                                        |full
+                                        |userPreferred
+                                        |native
+                                    |}
+                                |}
+                            |}
+                        |}
                         |title {
                             |userPreferred
                         |}
@@ -167,6 +178,7 @@ class AnilistApi(
                             |month
                             |day
                         |}
+                        |averageScore
                     |}
                 |}
             |}
@@ -187,14 +199,9 @@ class AnilistApi(
                             body = payload.toString().toRequestBody(jsonMime),
                         ),
                     ).awaitSuccess()
-                    .parseAs<JsonObject>()
-                    .let { response ->
-                        val data = response["data"]!!.jsonObject
-                        val page = data["Page"]!!.jsonObject
-                        val media = page["media"]!!.jsonArray
-                        val entries = media.map { jsonToALManga(it.jsonObject) }
-                        entries.map { it.toTrack() }
-                    }
+                    .parseAs<ALSearchResult>()
+                    .data.page.media
+                    .map { it.toALManga().toTrack() }
             }
         }
 
@@ -212,6 +219,7 @@ class AnilistApi(
                         |status
                         |scoreRaw: score(format: POINT_100)
                         |progress
+                        |private
                         |startedAt {
                             |year
                             |month
@@ -239,6 +247,19 @@ class AnilistApi(
                                 |month
                                 |day
                             |}
+                            |staff {
+                                |edges {
+                                    |role
+                                    |id
+                                    |node {
+                                        |name {
+                                            |full
+                                            |userPreferred
+                                            |native
+                                        |}
+                                    |}
+                                |}
+                            |}
                         |}
                     |}
                 |}
@@ -261,24 +282,20 @@ class AnilistApi(
                             body = payload.toString().toRequestBody(jsonMime),
                         ),
                     ).awaitSuccess()
-                    .parseAs<JsonObject>()
-                    .let { response ->
-                        val data = response["data"]!!.jsonObject
-                        val page = data["Page"]!!.jsonObject
-                        val media = page["mediaList"]!!.jsonArray
-                        val entries = media.map { jsonToALUserManga(it.jsonObject) }
-                        entries.firstOrNull()?.toTrack()
-                    }
+                    .parseAs<ALUserListMangaQueryResult>()
+                    .data.page.mediaList
+                    .map { it.toALUserManga() }
+                    .firstOrNull()
+                    ?.toTrack()
             }
         }
 
     suspend fun getLibManga(
         track: Track,
-        userid: Int,
-    ): Track = findLibManga(track, userid) ?: throw Exception("Could not find manga")
+        userId: Int,
+    ): Track = findLibManga(track, userId) ?: throw Exception("Could not find manga")
 
-    fun createOAuth(token: String): OAuth =
-        OAuth(token, "Bearer", System.currentTimeMillis() + 365.days.inWholeMilliseconds, 365.days.inWholeMilliseconds)
+    fun createOAuth(token: String): ALOAuth = ALOAuth(token, "Bearer", System.currentTimeMillis() + 31536000000, 31536000000)
 
     suspend fun getCurrentUser(): Pair<Int, String> =
         withIOContext {
@@ -306,55 +323,12 @@ class AnilistApi(
                             body = payload.toString().toRequestBody(jsonMime),
                         ),
                     ).awaitSuccess()
-                    .parseAs<JsonObject>()
+                    .parseAs<ALCurrentUserResult>()
                     .let {
-                        val data = it["data"]!!.jsonObject
-                        val viewer = data["Viewer"]!!.jsonObject
-                        Pair(
-                            viewer["id"]!!.jsonPrimitive.int,
-                            viewer["mediaListOptions"]!!.jsonObject["scoreFormat"]!!.jsonPrimitive.content,
-                        )
+                        val viewer = it.data.viewer
+                        Pair(viewer.id, viewer.mediaListOptions.scoreFormat)
                     }
             }
-        }
-
-    private fun jsonToALManga(struct: JsonObject): ALManga =
-        ALManga(
-            struct["id"]!!.jsonPrimitive.long,
-            struct["title"]!!.jsonObject["userPreferred"]!!.jsonPrimitive.content,
-            struct["coverImage"]!!.jsonObject["large"]!!.jsonPrimitive.content,
-            struct["description"]!!.jsonPrimitive.contentOrNull,
-            struct["format"]!!.jsonPrimitive.content.replace("_", "-"),
-            struct["status"]!!.jsonPrimitive.contentOrNull ?: "",
-            parseDate(struct, "startDate"),
-            struct["chapters"]!!.jsonPrimitive.intOrNull ?: 0,
-        )
-
-    private fun jsonToALUserManga(struct: JsonObject): ALUserManga =
-        ALUserManga(
-            struct["id"]!!.jsonPrimitive.long,
-            struct["status"]!!.jsonPrimitive.content,
-            struct["scoreRaw"]!!.jsonPrimitive.int,
-            struct["progress"]!!.jsonPrimitive.int,
-            parseDate(struct, "startedAt"),
-            parseDate(struct, "completedAt"),
-            jsonToALManga(struct["media"]!!.jsonObject),
-        )
-
-    private fun parseDate(
-        struct: JsonObject,
-        dateKey: String,
-    ): Long =
-        try {
-            val date = Calendar.getInstance()
-            date.set(
-                struct[dateKey]!!.jsonObject["year"]!!.jsonPrimitive.int,
-                struct[dateKey]!!.jsonObject["month"]!!.jsonPrimitive.int - 1,
-                struct[dateKey]!!.jsonObject["day"]!!.jsonPrimitive.int,
-            )
-            date.timeInMillis
-        } catch (_: Exception) {
-            0L
         }
 
     private fun createDate(dateValue: Long): JsonObject {
@@ -366,17 +340,16 @@ class AnilistApi(
             }
         }
 
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = dateValue
+        val dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(dateValue), ZoneId.systemDefault())
         return buildJsonObject {
-            put("year", calendar.get(Calendar.YEAR))
-            put("month", calendar.get(Calendar.MONTH) + 1)
-            put("day", calendar.get(Calendar.DAY_OF_MONTH))
+            put("year", dateTime.year)
+            put("month", dateTime.monthValue)
+            put("day", dateTime.dayOfMonth)
         }
     }
 
     companion object {
-        private const val CLIENT_ID = "16186"
+        private const val CLIENT_ID = "16329"
         private const val API_URL = "https://graphql.anilist.co/"
         private const val BASE_URL = "https://anilist.co/api/v2/"
         private const val BASE_MANGA_URL = "https://anilist.co/manga/"

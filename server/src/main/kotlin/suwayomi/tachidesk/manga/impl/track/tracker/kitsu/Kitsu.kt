@@ -60,7 +60,7 @@ class Kitsu(
         return listOf("0") + IntRange(2, 20).map { df.format(it / 2f) }
     }
 
-    override fun indexToScore(index: Int): Float = if (index > 0) (index + 1) / 2.0f else 0.0f
+    override fun indexToScore(index: Int): Double = if (index > 0) (index + 1) / 2.0 else 0.0
 
     override fun displayScore(track: Track): String {
         val df = DecimalFormat("0.#")

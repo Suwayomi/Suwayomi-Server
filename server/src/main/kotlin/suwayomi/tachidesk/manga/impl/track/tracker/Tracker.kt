@@ -40,7 +40,7 @@ abstract class Tracker(
 
     abstract fun getScoreList(): List<String>
 
-    open fun indexToScore(index: Int): Float = index.toFloat()
+    open fun indexToScore(index: Int): Double = index.toDouble()
 
     abstract fun displayScore(track: Track): String
 
