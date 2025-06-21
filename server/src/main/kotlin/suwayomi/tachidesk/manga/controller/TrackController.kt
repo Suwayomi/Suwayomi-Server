@@ -114,15 +114,16 @@ object TrackController {
             queryParam<Int>("mangaId"),
             queryParam<Int>("trackerId"),
             queryParam<String>("remoteId"),
+            queryParam<Boolean>("private"),
             documentWith = {
                 withOperation {
                     summary("Track Record Bind")
                     description("Bind a Track Record to a Manga")
                 }
             },
-            behaviorOf = { ctx, mangaId, trackerId, remoteId ->
+            behaviorOf = { ctx, mangaId, trackerId, remoteId, private ->
                 ctx.future {
-                    future { Track.bind(mangaId, trackerId, remoteId.toLong()) }
+                    future { Track.bind(mangaId, trackerId, remoteId.toLong(), private) }
                         .thenApply { ctx.status(HttpStatus.OK) }
                 }
             },

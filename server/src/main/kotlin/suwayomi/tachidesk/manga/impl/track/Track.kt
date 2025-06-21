@@ -158,6 +158,7 @@ object Track {
         mangaId: Int,
         trackerId: Int,
         remoteId: Long,
+        private: Boolean,
     ) {
         val track =
             transaction {
@@ -176,7 +177,8 @@ object Track {
                         }.first()
                         .toTrack()
                         .apply {
-                            manga_id = mangaId
+                            this.manga_id = mangaId
+                            this.private = private
                         }
             }
         val tracker = TrackerManager.getTracker(trackerId)!!

@@ -108,6 +108,7 @@ class TrackMutation {
         val mangaId: Int,
         val trackerId: Int,
         val remoteId: Long,
+        val private: Boolean = false,
     )
 
     data class BindTrackPayload(
@@ -116,13 +117,14 @@ class TrackMutation {
     )
 
     fun bindTrack(input: BindTrackInput): CompletableFuture<BindTrackPayload> {
-        val (clientMutationId, mangaId, trackerId, remoteId) = input
+        val (clientMutationId, mangaId, trackerId, remoteId, private) = input
 
         return future {
             Track.bind(
                 mangaId,
                 trackerId,
                 remoteId,
+                private,
             )
             val trackRecord =
                 transaction {
