@@ -38,6 +38,10 @@ main() {
 
   download_launcher
 
+  if [ ! -f scripts/resources/catch_abort.so ]; then
+    gcc -fPIC -I$JAVA_HOME/include -I$JAVA_HOME/include/linux -shared scripts/resources/catch_abort.c -lpthread -o scripts/resources/catch_abort.so
+  fi
+
   case "$OS" in
     debian-all)
       RELEASE="$RELEASE_NAME.deb"
@@ -184,6 +188,7 @@ make_linux_bundle() {
   cp "$JAR" "$RELEASE_NAME/bin/Suwayomi-Server.jar"
   cp "scripts/resources/suwayomi-launcher.sh" "$RELEASE_NAME/"
   cp "scripts/resources/suwayomi-server.sh" "$RELEASE_NAME/"
+  cp "scripts/resources/catch_abort.so" "$RELEASE_NAME/bin/"
 
   tar -I "gzip -9" -cvf "$RELEASE" "$RELEASE_NAME/"
 }
@@ -208,6 +213,7 @@ make_deb_package() {
   mv "$RELEASE_NAME/Suwayomi-Launcher.jar" "$RELEASE_NAME/$source_dir/Suwayomi-Launcher.jar"
   cp "$JAR" "$RELEASE_NAME/$source_dir/Suwayomi-Server.jar"
   copy_linux_package_assets_to "$RELEASE_NAME/$source_dir/"
+  cp "scripts/resources/catch_abort.so" "$RELEASE_NAME/$source_dir/"
   tar -I "gzip" -C "$RELEASE_NAME/" -cvf "$upstream_source" "$source_dir"
 
   cp -r "scripts/resources/deb/" "$RELEASE_NAME/$source_dir/debian/"
