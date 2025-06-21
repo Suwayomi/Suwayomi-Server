@@ -11,3 +11,4 @@ suwayomi-server.tmpfiles => usr/lib/tmpfiles.d/suwayomi-server.conf
 suwayomi-server.conf     => etc/suwayomi/server.conf
 suwayomi-server.sh       => usr/bin/suwayomi-server
 suwayomi-launcher.sh     => usr/bin/suwayomi-launcher
+catch_abort.so              usr/share/java/suwayomi-server/bin/

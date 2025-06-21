@@ -20,3 +20,4 @@ scripts/OpenJDK*
 scripts/zulu*
 scripts/electron-*
 scripts/rcedit-*
+scripts/resources/*.so
