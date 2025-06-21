@@ -14,7 +14,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.float
+import kotlinx.serialization.json.double
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -120,7 +120,7 @@ class MyAnimeListApi(
                     .let {
                         val obj = it.jsonObject
                         TrackSearch.create(TrackerManager.MYANIMELIST).apply {
-                            media_id = obj["id"]!!.jsonPrimitive.long
+                            remote_id = obj["id"]!!.jsonPrimitive.long
                             title = obj["title"]!!.jsonPrimitive.content
                             summary = obj["synopsis"]?.jsonPrimitive?.content ?: ""
                             total_chapters = obj["num_chapters"]!!.jsonPrimitive.int
@@ -131,7 +131,7 @@ class MyAnimeListApi(
                                     ?.jsonPrimitive
                                     ?.content
                                     ?: ""
-                            tracking_url = "https://myanimelist.net/manga/$media_id"
+                            tracking_url = "https://myanimelist.net/manga/$remote_id"
                             publishing_status =
                                 obj["status"]!!.jsonPrimitive.content.replace("_", " ")
                             publishing_type =
@@ -161,7 +161,7 @@ class MyAnimeListApi(
             val request =
                 Request
                     .Builder()
-                    .url(mangaUrl(track.media_id).toString())
+                    .url(mangaUrl(track.remote_id).toString())
                     .put(formBodyBuilder.build())
                     .build()
             with(json) {
@@ -178,7 +178,7 @@ class MyAnimeListApi(
             val request =
                 Request
                     .Builder()
-                    .url(mangaUrl(track.media_id).toString())
+                    .url(mangaUrl(track.remote_id).toString())
                     .delete()
                     .build()
             authClient
@@ -192,7 +192,7 @@ class MyAnimeListApi(
                 "$BASE_API_URL/manga"
                     .toUri()
                     .buildUpon()
-                    .appendPath(track.media_id.toString())
+                    .appendPath(track.remote_id.toString())
                     .appendQueryParameter("fields", "num_chapters,my_list_status{start_date,finish_date}")
                     .build()
             with(json) {
@@ -280,8 +280,8 @@ class MyAnimeListApi(
         return track.apply {
             val isRereading = obj["is_rereading"]!!.jsonPrimitive.boolean
             status = if (isRereading) MyAnimeList.REREADING else getStatus(obj["status"]?.jsonPrimitive?.content)
-            last_chapter_read = obj["num_chapters_read"]!!.jsonPrimitive.float
-            score = obj["score"]!!.jsonPrimitive.int.toFloat()
+            last_chapter_read = obj["num_chapters_read"]!!.jsonPrimitive.double
+            score = obj["score"]!!.jsonPrimitive.int.toDouble()
             obj["start_date"]?.let {
                 started_reading_date = parseDate(it.jsonPrimitive.content)
             }

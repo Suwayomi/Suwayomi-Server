@@ -59,7 +59,7 @@ class AnilistApi(
                 buildJsonObject {
                     put("query", query)
                     putJsonObject("variables") {
-                        put("mangaId", track.media_id)
+                        put("mangaId", track.remote_id)
                         put("progress", track.last_chapter_read.toInt())
                         put("status", track.toAnilistStatus())
                     }
@@ -250,7 +250,7 @@ class AnilistApi(
                     put("query", query)
                     putJsonObject("variables") {
                         put("id", userid)
-                        put("manga_id", track.media_id)
+                        put("manga_id", track.remote_id)
                     }
                 }
             with(json) {

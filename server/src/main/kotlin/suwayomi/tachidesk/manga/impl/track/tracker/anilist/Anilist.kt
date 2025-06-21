@@ -108,12 +108,12 @@ class Anilist(
         return when (val type = trackPreferences.getScoreType(this)) {
             POINT_5 ->
                 when (score) {
-                    0f -> "0 ★"
+                    0.0 -> "0 ★"
                     else -> "${((score + 10) / 20).toInt()} ★"
                 }
             POINT_3 ->
                 when {
-                    score == 0f -> "0"
+                    score == 0.0 -> "0"
                     score <= 35 -> "😦"
                     score <= 60 -> "😐"
                     else -> "😊"
@@ -143,7 +143,7 @@ class Anilist(
                     track.finished_reading_date = System.currentTimeMillis()
                 } else if (track.status != REREADING) {
                     track.status = READING
-                    if (track.last_chapter_read == 1F) {
+                    if (track.last_chapter_read == 1.0) {
                         track.started_reading_date = System.currentTimeMillis()
                     }
                 }
@@ -180,7 +180,7 @@ class Anilist(
         } else {
             // Set default fields if it's not found in the list
             track.status = if (hasReadChapters) READING else PLAN_TO_READ
-            track.score = 0F
+            track.score = 0.0
             add(track)
         }
     }

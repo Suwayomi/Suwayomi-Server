@@ -19,7 +19,7 @@ data class ALManga(
 ) {
     fun toTrack() =
         TrackSearch.create(TrackerManager.ANILIST).apply {
-            media_id = this@ALManga.media_id
+            remote_id = this@ALManga.media_id
             title = title_user_pref
             total_chapters = this@ALManga.total_chapters
             cover_url = image_url_lge
@@ -50,13 +50,13 @@ data class ALUserManga(
 ) {
     fun toTrack() =
         Track.create(TrackerManager.ANILIST).apply {
-            media_id = manga.media_id
+            remote_id = manga.media_id
             title = manga.title_user_pref
             status = toTrackStatus()
-            score = score_raw.toFloat()
+            score = score_raw.toDouble()
             started_reading_date = start_date_fuzzy
             finished_reading_date = completed_date_fuzzy
-            last_chapter_read = chapters_read.toFloat()
+            last_chapter_read = chapters_read.toDouble()
             library_id = this@ALUserManga.library_id
             total_chapters = manga.total_chapters
         }
@@ -103,7 +103,7 @@ fun Track.toAnilistScore(scoreType: String?): String =
 // 5 stars
         "POINT_5" ->
             when {
-                score == 0f -> "0"
+                score == 0.0 -> "0"
                 score < 30 -> "1"
                 score < 50 -> "2"
                 score < 70 -> "3"
@@ -113,7 +113,7 @@ fun Track.toAnilistScore(scoreType: String?): String =
 // Smiley
         "POINT_3" ->
             when {
-                score == 0f -> "0"
+                score == 0.0 -> "0"
                 score <= 35 -> ":("
                 score <= 60 -> ":|"
                 else -> ":)"

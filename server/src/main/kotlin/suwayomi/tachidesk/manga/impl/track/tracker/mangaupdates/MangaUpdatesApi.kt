@@ -49,7 +49,7 @@ class MangaUpdatesApi(
         val listItem =
             with(json) {
                 authClient
-                    .newCall(GET("$baseUrl/v1/lists/series/${track.media_id}"))
+                    .newCall(GET("$baseUrl/v1/lists/series/${track.remote_id}"))
                     .awaitSuccess()
                     .parseAs<ListItem>()
             }
@@ -68,7 +68,7 @@ class MangaUpdatesApi(
             buildJsonArray {
                 addJsonObject {
                     putJsonObject("series") {
-                        put("id", track.media_id)
+                        put("id", track.remote_id)
                     }
                     put("list_id", status)
                 }
@@ -83,7 +83,7 @@ class MangaUpdatesApi(
             .let {
                 if (it.code == 200) {
                     track.status = status
-                    track.last_chapter_read = 1f
+                    track.last_chapter_read = 1.0
                 }
             }
     }
@@ -93,7 +93,7 @@ class MangaUpdatesApi(
             buildJsonArray {
                 addJsonObject {
                     putJsonObject("series") {
-                        put("id", track.media_id)
+                        put("id", track.remote_id)
                     }
                     put("list_id", track.status)
                     putJsonObject("status") {
@@ -115,7 +115,7 @@ class MangaUpdatesApi(
     suspend fun deleteSeriesFromList(track: Track) {
         val body =
             buildJsonArray {
-                add(track.media_id)
+                add(track.remote_id)
             }
         authClient
             .newCall(
@@ -130,7 +130,7 @@ class MangaUpdatesApi(
         try {
             with(json) {
                 authClient
-                    .newCall(GET("$baseUrl/v1/series/${track.media_id}/rating"))
+                    .newCall(GET("$baseUrl/v1/series/${track.remote_id}/rating"))
                     .awaitSuccess()
                     .parseAs<Rating>()
             }
@@ -139,7 +139,7 @@ class MangaUpdatesApi(
         }
 
     private suspend fun updateSeriesRating(track: Track) {
-        if (track.score != 0f) {
+        if (track.score != 0.0) {
             val body =
                 buildJsonObject {
                     put("rating", track.score)
@@ -147,7 +147,7 @@ class MangaUpdatesApi(
             authClient
                 .newCall(
                     PUT(
-                        url = "$baseUrl/v1/series/${track.media_id}/rating",
+                        url = "$baseUrl/v1/series/${track.remote_id}/rating",
                         body = body.toString().toRequestBody(contentType),
                     ),
                 ).awaitSuccess()
@@ -155,7 +155,7 @@ class MangaUpdatesApi(
             authClient
                 .newCall(
                     DELETE(
-                        url = "$baseUrl/v1/series/${track.media_id}/rating",
+                        url = "$baseUrl/v1/series/${track.remote_id}/rating",
                     ),
                 ).awaitSuccess()
         }

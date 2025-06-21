@@ -10,5 +10,5 @@ data class Rating(
 
 fun Rating.copyTo(track: Track): Track =
     track.apply {
-        this.score = rating ?: 0f
+        this.score = rating?.toDouble() ?: 0.0
     }

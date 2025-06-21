@@ -35,7 +35,7 @@ class BangumiApi(
 
     suspend fun addLibManga(track: Track): Track =
         withIOContext {
-            val url = "$API_URL/v0/users/-/collections/${track.media_id}"
+            val url = "$API_URL/v0/users/-/collections/${track.remote_id}"
             val body =
                 buildJsonObject {
                     put("type", track.toApiStatus())
@@ -49,7 +49,7 @@ class BangumiApi(
 
     suspend fun updateLibManga(track: Track): Track =
         withIOContext {
-            val url = "$API_URL/v0/users/-/collections/${track.media_id}"
+            val url = "$API_URL/v0/users/-/collections/${track.remote_id}"
             val body =
                 buildJsonObject {
                     put("type", track.toApiStatus())
@@ -104,7 +104,7 @@ class BangumiApi(
         username: String,
     ): Track? =
         withIOContext {
-            val url = "$API_URL/v0/users/$username/collections/${track.media_id}"
+            val url = "$API_URL/v0/users/$username/collections/${track.remote_id}"
             with(json) {
                 try {
                     authClient
@@ -113,8 +113,8 @@ class BangumiApi(
                         .parseAs<BGMCollectionResponse>()
                         .let {
                             track.status = it.getStatus()
-                            track.last_chapter_read = it.epStatus?.toFloat() ?: 0.0F
-                            track.score = it.rate?.toFloat() ?: 0.0F
+                            track.last_chapter_read = it.epStatus?.toDouble() ?: 0.0
+                            track.score = it.rate?.toDouble() ?: 0.0
                             track.total_chapters = it.subject?.eps ?: 0
                             track
                         }

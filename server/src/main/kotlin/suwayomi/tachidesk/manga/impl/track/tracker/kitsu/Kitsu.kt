@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.kitsu
 
 import android.annotation.StringRes
+import eu.kanade.tachiyomi.data.track.kitsu.dto.KitsuOAuth
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTrackService
@@ -78,7 +79,7 @@ class Kitsu(
                     track.finished_reading_date = System.currentTimeMillis()
                 } else {
                     track.status = READING
-                    if (track.last_chapter_read == 1.0f) {
+                    if (track.last_chapter_read == 1.0) {
                         track.started_reading_date = System.currentTimeMillis()
                     }
                 }
@@ -99,7 +100,7 @@ class Kitsu(
         val remoteTrack = api.findLibManga(track, getUserId())
         return if (remoteTrack != null) {
             track.copyPersonalFrom(remoteTrack)
-            track.media_id = remoteTrack.media_id
+            track.remote_id = remoteTrack.remote_id
 
             if (track.status != COMPLETED) {
                 track.status = if (hasReadChapters) READING else track.status
@@ -108,7 +109,7 @@ class Kitsu(
             update(track)
         } else {
             track.status = if (hasReadChapters) READING else PLAN_TO_READ
-            track.score = 0.0f
+            track.score = 0.0
             add(track)
         }
     }
@@ -140,14 +141,14 @@ class Kitsu(
     private fun getUserId(): String = getPassword()
 
     // TODO: this seems to be called saveOAuth in other trackers
-    fun saveToken(oauth: OAuth?) {
+    fun saveToken(oauth: KitsuOAuth?) {
         trackPreferences.setTrackToken(this, json.encodeToString(oauth))
     }
 
     // TODO: this seems to be called loadOAuth in other trackers
-    fun restoreToken(): OAuth? =
+    fun restoreToken(): KitsuOAuth? =
         try {
-            json.decodeFromString<OAuth>(trackPreferences.getTrackToken(this)!!)
+            json.decodeFromString<KitsuOAuth>(trackPreferences.getTrackToken(this)!!)
         } catch (e: Exception) {
             null
         }

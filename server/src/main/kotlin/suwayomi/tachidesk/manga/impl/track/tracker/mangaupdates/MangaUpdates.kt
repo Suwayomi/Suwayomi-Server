@@ -88,8 +88,8 @@ class MangaUpdates(
         try {
             val (series, rating) = api.getSeriesListItem(track)
             track.copyFrom(series, rating)
-        } catch (e: Exception) {
-            track.score = 0f
+        } catch (_: Exception) {
+            track.score = 0.0
             api.addSeriesToList(track, hasReadChapters)
             track
         }
@@ -112,7 +112,7 @@ class MangaUpdates(
     ): Track =
         apply {
             item.copyTo(this)
-            score = rating?.rating ?: 0f
+            score = rating?.rating?.toDouble() ?: 0.0
         }
 
     override suspend fun login(

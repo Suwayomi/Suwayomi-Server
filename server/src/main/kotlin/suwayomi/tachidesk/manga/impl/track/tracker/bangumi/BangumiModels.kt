@@ -37,7 +37,7 @@ data class BGMSubject(
 ) {
     fun toTrackSearch(trackId: Int): TrackSearch =
         TrackSearch.create(TrackerManager.BANGUMI).apply {
-            media_id = this@BGMSubject.id
+            remote_id = this@BGMSubject.id
             title = nameCn.ifBlank { name }
             cover_url = images?.common.orEmpty()
             summary =
