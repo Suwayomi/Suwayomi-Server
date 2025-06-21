@@ -2,6 +2,7 @@ package suwayomi.tachidesk.manga.impl.track.tracker.myanimelist
 
 import android.net.Uri
 import androidx.core.net.toUri
+import eu.kanade.tachiyomi.network.DELETE
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.network.awaitSuccess
@@ -11,15 +12,6 @@ import eu.kanade.tachiyomi.util.lang.withIOContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.boolean
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.double
-import kotlinx.serialization.json.int
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.long
 import okhttp3.FormBody
 import okhttp3.Headers
 import okhttp3.OkHttpClient
@@ -28,6 +20,13 @@ import okhttp3.RequestBody
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
+import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALListItem
+import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALListItemStatus
+import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALManga
+import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALOAuth
+import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALSearchResult
+import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALUser
+import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALUserSearchResult
 import uy.kohesive.injekt.injectLazy
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -40,7 +39,7 @@ class MyAnimeListApi(
 
     private val authClient = client.newBuilder().addInterceptor(interceptor).build()
 
-    suspend fun getAccessToken(authCode: String): OAuth =
+    suspend fun getAccessToken(authCode: String): MALOAuth =
         withIOContext {
             val formBody: RequestBody =
                 FormBody
@@ -70,8 +69,8 @@ class MyAnimeListApi(
                 authClient
                     .newCall(request)
                     .awaitSuccess()
-                    .parseAs<JsonObject>()
-                    .let { it["name"]!!.jsonPrimitive.content }
+                    .parseAs<MALUser>()
+                    .name
             }
         }
 
@@ -89,17 +88,11 @@ class MyAnimeListApi(
                 authClient
                     .newCall(GET(url.toString()))
                     .awaitSuccess()
-                    .parseAs<JsonObject>()
-                    .let {
-                        it["data"]!!
-                            .jsonArray
-                            .map { data -> data.jsonObject["node"]!!.jsonObject }
-                            .map { node ->
-                                val id = node["id"]!!.jsonPrimitive.int
-                                async { getMangaDetails(id) }
-                            }.awaitAll()
-                            .filter { trackSearch -> !trackSearch.publishing_type.contains("novel") }
-                    }
+                    .parseAs<MALSearchResult>()
+                    .data
+                    .map { async { getMangaDetails(it.node.id) } }
+                    .awaitAll()
+                    .filter { !it.publishing_type.contains("novel") }
             }
         }
 
@@ -110,33 +103,27 @@ class MyAnimeListApi(
                     .toUri()
                     .buildUpon()
                     .appendPath(id.toString())
-                    .appendQueryParameter("fields", "id,title,synopsis,num_chapters,main_picture,status,media_type,start_date")
-                    .build()
+                    .appendQueryParameter(
+                        "fields",
+                        "id,title,synopsis,num_chapters,mean,main_picture,status,media_type,start_date",
+                    ).build()
             with(json) {
                 authClient
                     .newCall(GET(url.toString()))
                     .awaitSuccess()
-                    .parseAs<JsonObject>()
+                    .parseAs<MALManga>()
                     .let {
-                        val obj = it.jsonObject
                         TrackSearch.create(TrackerManager.MYANIMELIST).apply {
-                            remote_id = obj["id"]!!.jsonPrimitive.long
-                            title = obj["title"]!!.jsonPrimitive.content
-                            summary = obj["synopsis"]?.jsonPrimitive?.content ?: ""
-                            total_chapters = obj["num_chapters"]!!.jsonPrimitive.int
-                            cover_url =
-                                obj["main_picture"]
-                                    ?.jsonObject
-                                    ?.get("large")
-                                    ?.jsonPrimitive
-                                    ?.content
-                                    ?: ""
+                            remote_id = it.id
+                            title = it.title
+                            summary = it.synopsis
+                            total_chapters = it.numChapters
+                            score = it.mean
+                            cover_url = it.covers?.large.orEmpty()
                             tracking_url = "https://myanimelist.net/manga/$remote_id"
-                            publishing_status =
-                                obj["status"]!!.jsonPrimitive.content.replace("_", " ")
-                            publishing_type =
-                                obj["media_type"]!!.jsonPrimitive.content.replace("_", " ")
-                            start_date = obj["start_date"]?.jsonPrimitive?.content ?: ""
+                            publishing_status = it.status.replace("_", " ")
+                            publishing_type = it.mediaType.replace("_", " ")
+                            start_date = it.startDate ?: ""
                         }
                     }
             }
@@ -168,23 +155,18 @@ class MyAnimeListApi(
                 authClient
                     .newCall(request)
                     .awaitSuccess()
-                    .parseAs<JsonObject>()
+                    .parseAs<MALListItemStatus>()
                     .let { parseMangaItem(it, track) }
             }
         }
 
-    suspend fun deleteItem(track: Track) =
+    suspend fun deleteItem(track: Track) {
         withIOContext {
-            val request =
-                Request
-                    .Builder()
-                    .url(mangaUrl(track.remote_id).toString())
-                    .delete()
-                    .build()
             authClient
-                .newCall(request)
+                .newCall(DELETE(mangaUrl(track.remote_id).toString()))
                 .awaitSuccess()
         }
+    }
 
     suspend fun findListItem(track: Track): Track? =
         withIOContext {
@@ -199,12 +181,10 @@ class MyAnimeListApi(
                 authClient
                     .newCall(GET(uri.toString()))
                     .awaitSuccess()
-                    .parseAs<JsonObject>()
-                    .let { obj ->
-                        track.total_chapters = obj["num_chapters"]!!.jsonPrimitive.int
-                        obj.jsonObject["my_list_status"]?.jsonObject?.let {
-                            parseMangaItem(it, track)
-                        }
+                    .parseAs<MALListItem>()
+                    .let { item ->
+                        track.total_chapters = item.numChapters
+                        item.myListStatus?.let { parseMangaItem(it, track) }
                     }
             }
         }
@@ -214,39 +194,23 @@ class MyAnimeListApi(
         offset: Int = 0,
     ): List<TrackSearch> =
         withIOContext {
-            val json = getListPage(offset)
-            val obj = json.jsonObject
+            val myListSearchResult = getListPage(offset)
 
             val matches =
-                obj["data"]!!
-                    .jsonArray
-                    .filter {
-                        it.jsonObject["node"]!!.jsonObject["title"]!!.jsonPrimitive.content.contains(
-                            query,
-                            ignoreCase = true,
-                        )
-                    }.map {
-                        val id =
-                            it.jsonObject["node"]!!
-                                .jsonObject["id"]!!
-                                .jsonPrimitive.int
-                        async { getMangaDetails(id) }
-                    }.awaitAll()
+                myListSearchResult.data
+                    .filter { it.node.title.contains(query, ignoreCase = true) }
+                    .map { async { getMangaDetails(it.node.id) } }
+                    .awaitAll()
 
             // Check next page if there's more
-            if (!obj["paging"]!!
-                    .jsonObject["next"]
-                    ?.jsonPrimitive
-                    ?.contentOrNull
-                    .isNullOrBlank()
-            ) {
+            if (!myListSearchResult.paging.next.isNullOrBlank()) {
                 matches + findListItems(query, offset + LIST_PAGINATION_AMOUNT)
             } else {
                 matches
             }
         }
 
-    private suspend fun getListPage(offset: Int): JsonObject =
+    private suspend fun getListPage(offset: Int): MALUserSearchResult =
         withIOContext {
             val urlBuilder =
                 "$BASE_API_URL/users/@me/mangalist"
@@ -273,23 +237,17 @@ class MyAnimeListApi(
         }
 
     private fun parseMangaItem(
-        response: JsonObject,
+        listStatus: MALListItemStatus,
         track: Track,
-    ): Track {
-        val obj = response.jsonObject
-        return track.apply {
-            val isRereading = obj["is_rereading"]!!.jsonPrimitive.boolean
-            status = if (isRereading) MyAnimeList.REREADING else getStatus(obj["status"]?.jsonPrimitive?.content)
-            last_chapter_read = obj["num_chapters_read"]!!.jsonPrimitive.double
-            score = obj["score"]!!.jsonPrimitive.int.toDouble()
-            obj["start_date"]?.let {
-                started_reading_date = parseDate(it.jsonPrimitive.content)
-            }
-            obj["finish_date"]?.let {
-                finished_reading_date = parseDate(it.jsonPrimitive.content)
-            }
+    ): Track =
+        track.apply {
+            val isRereading = listStatus.isRereading
+            status = if (isRereading) MyAnimeList.REREADING else getStatus(listStatus.status)
+            last_chapter_read = listStatus.numChaptersRead
+            score = listStatus.score.toDouble()
+            listStatus.startDate?.let { started_reading_date = parseDate(it) }
+            listStatus.finishDate?.let { finished_reading_date = parseDate(it) }
         }
-    }
 
     private fun parseDate(isoDate: String): Long = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(isoDate)?.time ?: 0L
 
@@ -332,12 +290,12 @@ class MyAnimeListApi(
                 .appendPath("my_list_status")
                 .build()
 
-        fun refreshTokenRequest(oauth: OAuth): Request {
+        fun refreshTokenRequest(oauth: MALOAuth): Request {
             val formBody: RequestBody =
                 FormBody
                     .Builder()
                     .add("client_id", CLIENT_ID)
-                    .add("refresh_token", oauth.refresh_token)
+                    .add("refresh_token", oauth.refreshToken)
                     .add("grant_type", "refresh_token")
                     .build()
 
@@ -347,7 +305,7 @@ class MyAnimeListApi(
             val headers =
                 Headers
                     .Builder()
-                    .add("Authorization", "Bearer ${oauth.access_token}")
+                    .add("Authorization", "Bearer ${oauth.accessToken}")
                     .build()
 
             return POST("$BASE_OAUTH_URL/token", body = formBody, headers = headers)

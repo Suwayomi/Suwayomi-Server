@@ -211,7 +211,6 @@ class Anilist(
 
     private suspend fun login(token: String) {
         try {
-            logger.debug { "login $token" }
             val oauth = api.createOAuth(token)
             interceptor.setAuth(oauth)
             val (username, scoreType) = api.getCurrentUser()

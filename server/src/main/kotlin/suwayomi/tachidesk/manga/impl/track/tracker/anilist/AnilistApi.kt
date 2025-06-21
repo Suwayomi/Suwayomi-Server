@@ -349,7 +349,7 @@ class AnilistApi(
     }
 
     companion object {
-        private const val CLIENT_ID = "16329"
+        private const val CLIENT_ID = "16186"
         private const val API_URL = "https://graphql.anilist.co/"
         private const val BASE_URL = "https://anilist.co/api/v2/"
         private const val BASE_MANGA_URL = "https://anilist.co/manga/"

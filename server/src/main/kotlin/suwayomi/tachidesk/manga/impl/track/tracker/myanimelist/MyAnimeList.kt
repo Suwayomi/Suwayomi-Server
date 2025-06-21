@@ -8,6 +8,7 @@ import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
 import suwayomi.tachidesk.manga.impl.track.tracker.extractToken
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
+import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALOAuth
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 
@@ -102,7 +103,7 @@ class MyAnimeList(
 
             if (track.status != COMPLETED) {
                 val isRereading = track.status == REREADING
-                track.status = if (isRereading.not() && hasReadChapters) READING else track.status
+                track.status = if (!isRereading && hasReadChapters) READING else track.status
             }
 
             update(track)
@@ -146,11 +147,10 @@ class MyAnimeList(
 
     suspend fun login(authCode: String) {
         try {
-            logger.debug { "login $authCode" }
             val oauth = api.getAccessToken(authCode)
             interceptor.setAuth(oauth)
             val username = api.getCurrentUser()
-            saveCredentials(username, oauth.access_token)
+            saveCredentials(username, oauth.accessToken)
         } catch (e: Throwable) {
             logger.error(e) { "oauth err" }
             logout()
@@ -164,13 +164,13 @@ class MyAnimeList(
         interceptor.setAuth(null)
     }
 
-    fun saveOAuth(oAuth: OAuth?) {
+    fun saveOAuth(oAuth: MALOAuth?) {
         trackPreferences.setTrackToken(this, json.encodeToString(oAuth))
     }
 
-    fun loadOAuth(): OAuth? =
+    fun loadOAuth(): MALOAuth? =
         try {
-            json.decodeFromString<OAuth>(trackPreferences.getTrackToken(this)!!)
+            json.decodeFromString<MALOAuth>(trackPreferences.getTrackToken(this)!!)
         } catch (e: Exception) {
             logger.error(e) { "loadOAuth err" }
             null

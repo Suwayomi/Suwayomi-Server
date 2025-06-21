@@ -27,7 +27,6 @@ object TrackerPreferences {
         username: String,
         password: String,
     ) {
-        logger.debug { "setTrackCredentials: id=${sync.id} username=$username" }
         preferenceStore
             .edit()
             .putString(trackUsername(sync.id), username)
@@ -42,7 +41,6 @@ object TrackerPreferences {
         sync: Tracker,
         token: String?,
     ) {
-        logger.debug { "setTrackToken: id=${sync.id} token=$token" }
         if (token == null) {
             preferenceStore
                 .edit()
