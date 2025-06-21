@@ -108,7 +108,7 @@ class TrackMutation {
         val mangaId: Int,
         val trackerId: Int,
         val remoteId: Long,
-        val private: Boolean = false,
+        val private: Boolean? = null,
     )
 
     data class BindTrackPayload(
@@ -124,7 +124,7 @@ class TrackMutation {
                 mangaId,
                 trackerId,
                 remoteId,
-                private,
+                private ?: false,
             )
             val trackRecord =
                 transaction {
