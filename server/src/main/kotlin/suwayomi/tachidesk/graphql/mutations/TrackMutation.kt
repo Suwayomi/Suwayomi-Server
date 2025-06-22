@@ -242,6 +242,7 @@ class TrackMutation {
         val scoreString: String? = null,
         val startDate: Long? = null,
         val finishDate: Long? = null,
+        val private: Boolean? = null,
         @GraphQLDeprecated("Replaced with \"unbindTrack\" mutation", replaceWith = ReplaceWith("unbindTrack"))
         val unbind: Boolean? = null,
     )
@@ -262,6 +263,7 @@ class TrackMutation {
                     input.startDate,
                     input.finishDate,
                     input.unbind,
+                    input.private,
                 ),
             )
 

@@ -297,6 +297,9 @@ object Track {
         if (input.finishDate != null) {
             recordDb[TrackRecordTable.finishDate] = input.finishDate
         }
+        if (input.private != null) {
+            recordDb[TrackRecordTable.private] = input.private
+        }
 
         val track = recordDb.toTrack()
         tracker.update(track)
@@ -493,6 +496,7 @@ object Track {
         val startDate: Long? = null,
         val finishDate: Long? = null,
         val unbind: Boolean? = null,
+        val private: Boolean? = null,
     )
 
     fun String.htmlDecode(): String = Jsoup.parse(this).wholeText()
