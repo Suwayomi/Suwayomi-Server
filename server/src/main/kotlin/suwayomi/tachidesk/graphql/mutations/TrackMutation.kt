@@ -240,8 +240,11 @@ class TrackMutation {
         val status: Int? = null,
         val lastChapterRead: Double? = null,
         val scoreString: String? = null,
+        @GraphQLDescription("This will only work if the tracker of the track record supports reading dates")
         val startDate: Long? = null,
+        @GraphQLDescription("This will only work if the tracker of the track record supports reading dates")
         val finishDate: Long? = null,
+        @GraphQLDescription("This will only work if the tracker of the track record supports private tracking")
         val private: Boolean? = null,
         @GraphQLDeprecated("Replaced with \"unbindTrack\" mutation", replaceWith = ReplaceWith("unbindTrack"))
         val unbind: Boolean? = null,
