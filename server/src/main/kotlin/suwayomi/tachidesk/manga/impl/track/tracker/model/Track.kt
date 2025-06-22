@@ -9,19 +9,19 @@ interface Track : Serializable {
 
     var manga_id: Int
 
-    var sync_id: Int
+    var tracker_id: Int
 
-    var media_id: Long
+    var remote_id: Long
 
     var library_id: Long?
 
     var title: String
 
-    var last_chapter_read: Float
+    var last_chapter_read: Double
 
     var total_chapters: Int
 
-    var score: Float
+    var score: Double
 
     var status: Int
 
@@ -31,18 +31,24 @@ interface Track : Serializable {
 
     var tracking_url: String
 
-    fun copyPersonalFrom(other: Track) {
+    var private: Boolean
+
+    fun copyPersonalFrom(
+        other: Track,
+        copyRemotePrivate: Boolean = true,
+    ) {
         last_chapter_read = other.last_chapter_read
         score = other.score
         status = other.status
         started_reading_date = other.started_reading_date
         finished_reading_date = other.finished_reading_date
+        if (copyRemotePrivate) private = other.private
     }
 
     companion object {
         fun create(serviceId: Int): Track =
             TrackImpl().apply {
-                sync_id = serviceId
+                tracker_id = serviceId
             }
     }
 }

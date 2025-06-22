@@ -1,9 +1,9 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates
 
-import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTrackService
+import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
-import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.ListItem
-import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.Rating
+import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.MUListItem
+import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.MURating
 import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.copyTo
 import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.toTrackSearch
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
@@ -12,7 +12,7 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 class MangaUpdates(
     id: Int,
 ) : Tracker(id, "MangaUpdates"),
-    DeletableTrackService {
+    DeletableTracker {
     companion object {
         const val READING_LIST = 0
         const val WISH_LIST = 1
@@ -33,8 +33,6 @@ class MangaUpdates(
                     }
                 }
     }
-
-    override val supportsTrackDeletion: Boolean = true
 
     private val interceptor by lazy { MangaUpdatesInterceptor(this) }
 
@@ -62,7 +60,7 @@ class MangaUpdates(
 
     override fun getScoreList(): List<String> = SCORE_LIST
 
-    override fun indexToScore(index: Int): Float = if (index == 0) 0f else SCORE_LIST[index].toFloat()
+    override fun indexToScore(index: Int): Double = if (index == 0) 0.0 else SCORE_LIST[index].toDouble()
 
     override fun displayScore(track: Track): String = track.score.toString()
 
@@ -88,8 +86,8 @@ class MangaUpdates(
         try {
             val (series, rating) = api.getSeriesListItem(track)
             track.copyFrom(series, rating)
-        } catch (e: Exception) {
-            track.score = 0f
+        } catch (_: Exception) {
+            track.score = 0.0
             api.addSeriesToList(track, hasReadChapters)
             track
         }
@@ -107,12 +105,12 @@ class MangaUpdates(
     }
 
     private fun Track.copyFrom(
-        item: ListItem,
-        rating: Rating?,
+        item: MUListItem,
+        rating: MURating?,
     ): Track =
         apply {
             item.copyTo(this)
-            score = rating?.rating ?: 0f
+            score = rating?.rating ?: 0.0
         }
 
     override suspend fun login(
@@ -124,5 +122,5 @@ class MangaUpdates(
         interceptor.newAuth(authenticated.sessionToken)
     }
 
-    fun restoreSession(): String? = trackPreferences.getTrackPassword(this)
+    fun restoreSession(): String? = trackPreferences.getTrackPassword(this)?.ifBlank { null }
 }

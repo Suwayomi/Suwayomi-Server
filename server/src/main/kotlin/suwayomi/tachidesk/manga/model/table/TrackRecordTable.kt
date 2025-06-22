@@ -24,4 +24,5 @@ object TrackRecordTable : IntIdTable() {
     val remoteUrl = varchar("remote_url", 512)
     val startDate = long("start_date")
     val finishDate = long("finish_date")
+    val private = bool("private").default(false)
 }

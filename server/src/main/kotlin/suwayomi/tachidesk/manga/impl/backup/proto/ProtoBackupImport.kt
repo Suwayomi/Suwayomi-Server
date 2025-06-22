@@ -473,14 +473,14 @@ object ProtoBackupImport : ProtoBackupBase() {
             Tracker
                 .getTrackRecordsByMangaId(mangaId)
                 .mapNotNull { it.record?.toTrack() }
-                .associateBy { it.sync_id }
+                .associateBy { it.tracker_id }
 
         val (existingTracks, newTracks) =
             tracks
                 .mapNotNull { backupTrack ->
                     val track = backupTrack.toTrack(mangaId)
 
-                    val isUnsupportedTracker = TrackerManager.getTracker(track.sync_id) == null
+                    val isUnsupportedTracker = TrackerManager.getTracker(track.tracker_id) == null
                     if (isUnsupportedTracker) {
                         return@mapNotNull null
                     }
@@ -495,7 +495,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                     }
 
                     dbTrack.also {
-                        it.media_id = track.media_id
+                        it.remote_id = track.remote_id
                         it.library_id = track.library_id
                         it.last_chapter_read = max(dbTrack.last_chapter_read, track.last_chapter_read)
                     }

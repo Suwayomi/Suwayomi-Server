@@ -1,18 +1,6 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.myanimelist
 
-import kotlinx.serialization.Serializable
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
-
-@Serializable
-data class OAuth(
-    val refresh_token: String,
-    val access_token: String,
-    val token_type: String,
-    val created_at: Long = System.currentTimeMillis(),
-    val expires_in: Long,
-)
-
-fun OAuth.isExpired() = System.currentTimeMillis() > created_at + (expires_in * 1000)
 
 fun Track.toMyAnimeListStatus() =
     when (status) {
