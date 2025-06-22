@@ -702,9 +702,7 @@ public class Paint {
     }
 
     public void setTextSize(float textSize) {
-        // convert px to pt using default DPI of 96
-        float fontSize = 72.0f * textSize / 96.0f;
-        mFont = mFont.deriveFont(fontSize);
+        mFont = mFont.deriveFont(textSize);
     }
 
     public float getTextScaleX() {
