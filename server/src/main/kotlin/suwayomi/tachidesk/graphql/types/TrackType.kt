@@ -119,10 +119,10 @@ class TrackSearchType(
     val publishingStatus: String,
     val publishingType: String,
     val startDate: String,
-    val status: Int?,
-    val score: Double?,
-    val startedReadingDate: Long?,
-    val finishedReadingDate: Long?,
+    val status: Int,
+    val score: Double,
+    val startedReadingDate: Long,
+    val finishedReadingDate: Long,
     val private: Boolean,
 ) {
     constructor(row: ResultRow) : this(
