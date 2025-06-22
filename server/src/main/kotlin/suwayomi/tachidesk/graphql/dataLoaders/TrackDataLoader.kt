@@ -127,7 +127,7 @@ class DisplayScoreForTrackRecordDataLoader : KotlinDataLoader<Int, String> {
 }
 
 class DisplayScoreForTrackSearchDataLoader : KotlinDataLoader<Int, String> {
-    override val dataLoaderName = "DisplayScoreForTrackRecordDataLoader"
+    override val dataLoaderName = "DisplayScoreForTrackSearchDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, String> =
         DataLoaderFactory.newDataLoader<Int, String> { ids ->
