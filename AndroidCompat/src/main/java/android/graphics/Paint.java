@@ -49,7 +49,6 @@ public class Paint {
     private MaskFilter      mMaskFilter;
     private PathEffect      mPathEffect;
     private Shader          mShader;
-    private Typeface        mTypeface;
     private Xfermode        mXfermode;
 
     private boolean         mHasCompatScaling;
@@ -264,7 +263,6 @@ public class Paint {
         mMaskFilter = null;
         mPathEffect = null;
         mShader = null;
-        mTypeface = null;
         mXfermode = null;
 
         mHasCompatScaling = false;
@@ -299,7 +297,6 @@ public class Paint {
         mMaskFilter = paint.mMaskFilter;
         mPathEffect = paint.mPathEffect;
         mShader = paint.mShader;
-        mTypeface = paint.mTypeface;
         mXfermode = paint.mXfermode;
 
         mHasCompatScaling = paint.mHasCompatScaling;
@@ -369,6 +366,12 @@ public class Paint {
             fontAttributes.put(TextAttribute.WEIGHT, TextAttribute.WEIGHT_BOLD);
         } else {
             fontAttributes.put(TextAttribute.WEIGHT, TextAttribute.WEIGHT_REGULAR);
+        }
+
+        Map<TextAttribute, Object> atts = (Map<TextAttribute, Object>) mFont.getAttributes();
+        Object weight = atts.getOrDefault(TextAttribute.WEIGHT, null);
+        if (weight instanceof Float) {
+            fontAttributes.put(TextAttribute.WEIGHT, weight);
         }
 
         mFont = mFont.deriveFont(fontAttributes);
@@ -602,11 +605,16 @@ public class Paint {
     }
 
     public Typeface getTypeface() {
-        return mTypeface;
+        return new Typeface(mFont);
     }
 
     public Typeface setTypeface(Typeface typeface) {
-        mTypeface = typeface;
+        Map<TextAttribute, Object> fontAttributes = new HashMap<TextAttribute, Object>();
+        fontAttributes.put(TextAttribute.WEIGHT, typeface.getJavaWeight());
+        mFont = typeface.getFont()
+            .deriveFont(mFont.getStyle(), mFont.getSize())
+            .deriveFont(fontAttributes);
+        setFlags(mFlags);
         return typeface;
     }
 
