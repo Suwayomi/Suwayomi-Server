@@ -108,6 +108,7 @@ class TrackMutation {
         val mangaId: Int,
         val trackerId: Int,
         val remoteId: Long,
+        @GraphQLDescription("This will only work if the tracker of the track record supports private tracking")
         val private: Boolean? = null,
     )
 
