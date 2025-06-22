@@ -22,8 +22,6 @@ abstract class Tracker(
 
     open val supportsPrivateTracking: Boolean = false
 
-    abstract val supportsTrackDeletion: Boolean
-
     override fun toString() = "$name ($id) (isLoggedIn= $isLoggedIn, isAuthExpired= ${getIfAuthExpired()})"
 
     abstract fun getLogo(): String

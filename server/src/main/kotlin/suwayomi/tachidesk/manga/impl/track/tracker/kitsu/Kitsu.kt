@@ -22,8 +22,6 @@ class Kitsu(
         const val PLAN_TO_READ = 5
     }
 
-    override val supportsTrackDeletion: Boolean = true
-
     override val supportsReadingDates: Boolean = true
 
     override val supportsPrivateTracking: Boolean = true

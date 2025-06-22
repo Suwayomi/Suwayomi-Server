@@ -34,8 +34,6 @@ class MangaUpdates(
                 }
     }
 
-    override val supportsTrackDeletion: Boolean = true
-
     private val interceptor by lazy { MangaUpdatesInterceptor(this) }
 
     private val api by lazy { MangaUpdatesApi(interceptor, client) }

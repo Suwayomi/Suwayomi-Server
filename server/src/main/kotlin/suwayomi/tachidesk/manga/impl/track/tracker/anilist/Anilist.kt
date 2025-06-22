@@ -31,8 +31,6 @@ class Anilist(
         const val POINT_3 = "POINT_3"
     }
 
-    override val supportsTrackDeletion: Boolean = true
-
     private val json: Json by injectLazy()
 
     private val interceptor by lazy { AnilistInterceptor(this) }

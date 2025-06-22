@@ -25,8 +25,6 @@ class Bangumi(
                 .map(Int::toString)
     }
 
-    override val supportsTrackDeletion: Boolean = false
-
     private val json: Json by injectLazy()
 
     private val interceptor by lazy { BangumiInterceptor(this) }

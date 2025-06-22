@@ -28,8 +28,6 @@ class MyAnimeList(
         private const val SEARCH_LIST_PREFIX = "my:"
     }
 
-    override val supportsTrackDeletion: Boolean = true
-
     private val json: Json by injectLazy()
 
     private val interceptor by lazy { MyAnimeListInterceptor(this) }

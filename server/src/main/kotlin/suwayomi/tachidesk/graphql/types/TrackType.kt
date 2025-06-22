@@ -9,6 +9,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.impl.track.Track
+import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
 import suwayomi.tachidesk.manga.model.table.TrackSearchTable
@@ -39,7 +40,7 @@ class TrackerType(
         } else {
             tracker.authUrl()
         },
-        tracker.supportsTrackDeletion,
+        tracker is DeletableTracker,
         tracker.supportsReadingDates,
         tracker.supportsPrivateTracking,
     )
