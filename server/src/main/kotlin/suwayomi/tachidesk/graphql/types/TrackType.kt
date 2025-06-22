@@ -9,6 +9,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.impl.track.Track
+import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
 import suwayomi.tachidesk.manga.model.table.TrackSearchTable
@@ -20,7 +21,9 @@ class TrackerType(
     val icon: String,
     val isLoggedIn: Boolean,
     val authUrl: String?,
-    val supportsTrackDeletion: Boolean?,
+    val supportsTrackDeletion: Boolean,
+    val supportsReadingDates: Boolean,
+    val supportsPrivateTracking: Boolean,
 ) : Node {
     constructor(tracker: Tracker) : this(
         tracker.isLoggedIn,
@@ -37,7 +40,9 @@ class TrackerType(
         } else {
             tracker.authUrl()
         },
-        tracker.supportsTrackDeletion,
+        tracker is DeletableTracker,
+        tracker.supportsReadingDates,
+        tracker.supportsPrivateTracking,
     )
 
     fun statuses(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<TrackStatusType>> =
@@ -72,6 +77,7 @@ class TrackRecordType(
     val remoteUrl: String,
     val startDate: Long,
     val finishDate: Long,
+    val private: Boolean,
 ) : Node {
     constructor(row: ResultRow) : this(
         row[TrackRecordTable.id].value,
@@ -87,6 +93,7 @@ class TrackRecordType(
         row[TrackRecordTable.remoteUrl],
         row[TrackRecordTable.startDate],
         row[TrackRecordTable.finishDate],
+        row[TrackRecordTable.private],
     )
 
     fun displayScore(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<String> =
@@ -103,7 +110,9 @@ class TrackSearchType(
     val id: Int,
     val trackerId: Int,
     val remoteId: Long,
+    val libraryId: Long?,
     val title: String,
+    val lastChapterRead: Double,
     val totalChapters: Int,
     val trackingUrl: String,
     val coverUrl: String,
@@ -111,12 +120,19 @@ class TrackSearchType(
     val publishingStatus: String,
     val publishingType: String,
     val startDate: String,
+    val status: Int,
+    val score: Double,
+    val startedReadingDate: Long,
+    val finishedReadingDate: Long,
+    val private: Boolean,
 ) {
     constructor(row: ResultRow) : this(
         row[TrackSearchTable.id].value,
         row[TrackSearchTable.trackerId],
         row[TrackSearchTable.remoteId],
+        row[TrackSearchTable.libraryId],
         row[TrackSearchTable.title],
+        row[TrackSearchTable.lastChapterRead],
         row[TrackSearchTable.totalChapters],
         row[TrackSearchTable.trackingUrl],
         row[TrackSearchTable.coverUrl],
@@ -124,10 +140,18 @@ class TrackSearchType(
         row[TrackSearchTable.publishingStatus],
         row[TrackSearchTable.publishingType],
         row[TrackSearchTable.startDate],
+        row[TrackSearchTable.status],
+        row[TrackSearchTable.score],
+        row[TrackSearchTable.startedReadingDate],
+        row[TrackSearchTable.finishedReadingDate],
+        row[TrackSearchTable.private],
     )
 
     fun tracker(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<TrackerType> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, TrackerType>("TrackerDataLoader", trackerId)
+
+    fun displayScore(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<String> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, String>("DisplayScoreForTrackSearchDataLoader", id)
 }
 
 data class TrackRecordNodeList(

@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.kitsu
 
 import androidx.core.net.toUri
+import eu.kanade.tachiyomi.data.track.kitsu.dto.KitsuOAuth
 import eu.kanade.tachiyomi.network.DELETE
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.POST
@@ -9,12 +10,7 @@ import eu.kanade.tachiyomi.network.jsonMime
 import eu.kanade.tachiyomi.network.parseAs
 import eu.kanade.tachiyomi.util.lang.withIOContext
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.long
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import okhttp3.FormBody
@@ -24,6 +20,11 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import suwayomi.tachidesk.manga.impl.track.tracker.kitsu.dto.KitsuAddMangaResult
+import suwayomi.tachidesk.manga.impl.track.tracker.kitsu.dto.KitsuAlgoliaSearchResult
+import suwayomi.tachidesk.manga.impl.track.tracker.kitsu.dto.KitsuCurrentUserResult
+import suwayomi.tachidesk.manga.impl.track.tracker.kitsu.dto.KitsuListSearchResult
+import suwayomi.tachidesk.manga.impl.track.tracker.kitsu.dto.KitsuSearchResult
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
@@ -48,8 +49,9 @@ class KitsuApi(
                     putJsonObject("data") {
                         put("type", "libraryEntries")
                         putJsonObject("attributes") {
-                            put("status", track.toKitsuStatus())
+                            put("status", track.toApiStatus())
                             put("progress", track.last_chapter_read.toInt())
+                            put("private", track.private)
                         }
                         putJsonObject("relationships") {
                             putJsonObject("user") {
@@ -60,7 +62,7 @@ class KitsuApi(
                             }
                             putJsonObject("media") {
                                 putJsonObject("data") {
-                                    put("id", track.media_id)
+                                    put("id", track.remote_id)
                                     put("type", "manga")
                                 }
                             }
@@ -73,20 +75,13 @@ class KitsuApi(
                     .newCall(
                         POST(
                             "${BASE_URL}library-entries",
-                            headers =
-                                headersOf(
-                                    "Content-Type",
-                                    "application/vnd.api+json",
-                                ),
-                            body =
-                                data
-                                    .toString()
-                                    .toRequestBody("application/vnd.api+json".toMediaType()),
+                            headers = headersOf("Content-Type", VND_API_JSON),
+                            body = data.toString().toRequestBody(VND_JSON_MEDIA_TYPE),
                         ),
                     ).awaitSuccess()
-                    .parseAs<JsonObject>()
+                    .parseAs<KitsuAddMangaResult>()
                     .let {
-                        track.media_id = it["data"]!!.jsonObject["id"]!!.jsonPrimitive.long
+                        track.remote_id = it.data.id
                         track
                     }
             }
@@ -98,37 +93,30 @@ class KitsuApi(
                 buildJsonObject {
                     putJsonObject("data") {
                         put("type", "libraryEntries")
-                        put("id", track.media_id)
+                        put("id", track.remote_id)
                         putJsonObject("attributes") {
-                            put("status", track.toKitsuStatus())
+                            put("status", track.toApiStatus())
                             put("progress", track.last_chapter_read.toInt())
-                            put("ratingTwenty", track.toKitsuScore())
+                            put("ratingTwenty", track.toApiScore())
                             put("startedAt", KitsuDateHelper.convert(track.started_reading_date))
                             put("finishedAt", KitsuDateHelper.convert(track.finished_reading_date))
+                            put("private", track.private)
                         }
                     }
                 }
 
-            with(json) {
-                authClient
-                    .newCall(
-                        Request
-                            .Builder()
-                            .url("${BASE_URL}library-entries/${track.media_id}")
-                            .headers(
-                                headersOf(
-                                    "Content-Type",
-                                    "application/vnd.api+json",
-                                ),
-                            ).patch(
-                                data.toString().toRequestBody("application/vnd.api+json".toMediaType()),
-                            ).build(),
-                    ).awaitSuccess()
-                    .parseAs<JsonObject>()
-                    .let {
-                        track
-                    }
-            }
+            authClient
+                .newCall(
+                    Request
+                        .Builder()
+                        .url("${BASE_URL}library-entries/${track.remote_id}")
+                        .headers(
+                            headersOf("Content-Type", VND_API_JSON),
+                        ).patch(data.toString().toRequestBody(VND_JSON_MEDIA_TYPE))
+                        .build(),
+                ).awaitSuccess()
+
+            track
         }
 
     suspend fun removeLibManga(track: Track) {
@@ -136,12 +124,8 @@ class KitsuApi(
             authClient
                 .newCall(
                     DELETE(
-                        "${BASE_URL}library-entries/${track.media_id}",
-                        headers =
-                            headersOf(
-                                "Content-Type",
-                                "application/vnd.api+json",
-                            ),
+                        "${BASE_URL}library-entries/${track.remote_id}",
+                        headers = headersOf("Content-Type", VND_API_JSON),
                     ),
                 ).awaitSuccess()
         }
@@ -153,10 +137,9 @@ class KitsuApi(
                 authClient
                     .newCall(GET(ALGOLIA_KEY_URL))
                     .awaitSuccess()
-                    .parseAs<JsonObject>()
+                    .parseAs<KitsuSearchResult>()
                     .let {
-                        val key = it["media"]!!.jsonObject["key"]!!.jsonPrimitive.content
-                        algoliaSearch(key, query)
+                        algoliaSearch(it.media.key, query)
                     }
             }
         }
@@ -186,14 +169,10 @@ class KitsuApi(
                             body = jsonObject.toString().toRequestBody(jsonMime),
                         ),
                     ).awaitSuccess()
-                    .parseAs<JsonObject>()
-                    .let {
-                        it["hits"]!!
-                            .jsonArray
-                            .map { KitsuSearchManga(it.jsonObject) }
-                            .filter { it.subType != "novel" }
-                            .map { it.toTrack() }
-                    }
+                    .parseAs<KitsuAlgoliaSearchResult>()
+                    .hits
+                    .filter { it.subtype != "novel" }
+                    .map { it.toTrack() }
             }
         }
 
@@ -206,19 +185,17 @@ class KitsuApi(
                 "${BASE_URL}library-entries"
                     .toUri()
                     .buildUpon()
-                    .encodedQuery("filter[manga_id]=${track.media_id}&filter[user_id]=$userId")
+                    .encodedQuery("filter[manga_id]=${track.remote_id}&filter[user_id]=$userId")
                     .appendQueryParameter("include", "manga")
                     .build()
             with(json) {
                 authClient
                     .newCall(GET(url.toString()))
                     .awaitSuccess()
-                    .parseAs<JsonObject>()
+                    .parseAs<KitsuListSearchResult>()
                     .let {
-                        val data = it["data"]!!.jsonArray
-                        if (data.size > 0) {
-                            val manga = it["included"]!!.jsonArray[0].jsonObject
-                            KitsuLibManga(data[0].jsonObject, manga).toTrack()
+                        if (it.data.isNotEmpty() && it.included.isNotEmpty()) {
+                            it.firstToTrack()
                         } else {
                             null
                         }
@@ -232,19 +209,17 @@ class KitsuApi(
                 "${BASE_URL}library-entries"
                     .toUri()
                     .buildUpon()
-                    .encodedQuery("filter[id]=${track.media_id}")
+                    .encodedQuery("filter[id]=${track.remote_id}")
                     .appendQueryParameter("include", "manga")
                     .build()
             with(json) {
                 authClient
                     .newCall(GET(url.toString()))
                     .awaitSuccess()
-                    .parseAs<JsonObject>()
+                    .parseAs<KitsuListSearchResult>()
                     .let {
-                        val data = it["data"]!!.jsonArray
-                        if (data.size > 0) {
-                            val manga = it["included"]!!.jsonArray[0].jsonObject
-                            KitsuLibManga(data[0].jsonObject, manga).toTrack()
+                        if (it.data.isNotEmpty() && it.included.isNotEmpty()) {
+                            it.firstToTrack()
                         } else {
                             throw Exception("Could not find manga")
                         }
@@ -255,7 +230,7 @@ class KitsuApi(
     suspend fun login(
         username: String,
         password: String,
-    ): OAuth =
+    ): KitsuOAuth =
         withIOContext {
             val formBody: RequestBody =
                 FormBody
@@ -286,13 +261,9 @@ class KitsuApi(
                 authClient
                     .newCall(GET(url.toString()))
                     .awaitSuccess()
-                    .parseAs<JsonObject>()
-                    .let {
-                        it["data"]!!
-                            .jsonArray[0]
-                            .jsonObject["id"]!!
-                            .jsonPrimitive.content
-                    }
+                    .parseAs<KitsuCurrentUserResult>()
+                    .data[0]
+                    .id
             }
         }
 
@@ -311,6 +282,9 @@ class KitsuApi(
             "&facetFilters=%5B%22kind%3Amanga%22%5D&attributesToRetrieve=" +
                 "%5B%22synopsis%22%2C%22averageRating%22%2C%22canonicalTitle%22%2C%22chapterCount%22%2C%22" +
                 "posterImage%22%2C%22startDate%22%2C%22subtype%22%2C%22endDate%22%2C%20%22id%22%5D"
+
+        private const val VND_API_JSON = "application/vnd.api+json"
+        private val VND_JSON_MEDIA_TYPE = VND_API_JSON.toMediaType()
 
         fun mangaUrl(remoteId: Long): String = BASE_MANGA_URL + remoteId
 

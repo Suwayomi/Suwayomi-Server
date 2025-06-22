@@ -108,6 +108,8 @@ class TrackMutation {
         val mangaId: Int,
         val trackerId: Int,
         val remoteId: Long,
+        @GraphQLDescription("This will only work if the tracker of the track record supports private tracking")
+        val private: Boolean? = null,
     )
 
     data class BindTrackPayload(
@@ -116,13 +118,14 @@ class TrackMutation {
     )
 
     fun bindTrack(input: BindTrackInput): CompletableFuture<BindTrackPayload> {
-        val (clientMutationId, mangaId, trackerId, remoteId) = input
+        val (clientMutationId, mangaId, trackerId, remoteId, private) = input
 
         return future {
             Track.bind(
                 mangaId,
                 trackerId,
                 remoteId,
+                private ?: false,
             )
             val trackRecord =
                 transaction {
@@ -238,8 +241,12 @@ class TrackMutation {
         val status: Int? = null,
         val lastChapterRead: Double? = null,
         val scoreString: String? = null,
+        @GraphQLDescription("This will only work if the tracker of the track record supports reading dates")
         val startDate: Long? = null,
+        @GraphQLDescription("This will only work if the tracker of the track record supports reading dates")
         val finishDate: Long? = null,
+        @GraphQLDescription("This will only work if the tracker of the track record supports private tracking")
+        val private: Boolean? = null,
         @GraphQLDeprecated("Replaced with \"unbindTrack\" mutation", replaceWith = ReplaceWith("unbindTrack"))
         val unbind: Boolean? = null,
     )
@@ -260,6 +267,7 @@ class TrackMutation {
                     input.startDate,
                     input.finishDate,
                     input.unbind,
+                    input.private,
                 ),
             )
 
