@@ -3,9 +3,6 @@ package suwayomi.tachidesk.manga.impl.backup.proto.models
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
-import suwayomi.tachidesk.manga.impl.backup.models.ChapterImpl
-import suwayomi.tachidesk.manga.impl.backup.models.MangaImpl
-import suwayomi.tachidesk.manga.impl.backup.models.TrackImpl
 
 @Serializable
 data class BackupManga(
@@ -39,33 +36,4 @@ data class BackupManga(
     @ProtoNumber(105) var updateStrategy: UpdateStrategy = UpdateStrategy.ALWAYS_UPDATE,
     // suwayomi
     @ProtoNumber(9000) var meta: Map<String, String> = emptyMap(),
-) {
-    fun getMangaImpl(): MangaImpl =
-        MangaImpl().apply {
-            url = this@BackupManga.url
-            title = this@BackupManga.title
-            artist = this@BackupManga.artist
-            author = this@BackupManga.author
-            description = this@BackupManga.description
-            genre = this@BackupManga.genre.joinToString()
-            status = this@BackupManga.status
-            thumbnail_url = this@BackupManga.thumbnailUrl
-            favorite = this@BackupManga.favorite
-            source = this@BackupManga.source
-            date_added = this@BackupManga.dateAdded
-            viewer_flags = this@BackupManga.viewer_flags ?: this@BackupManga.viewer
-            chapter_flags = this@BackupManga.chapterFlags
-            update_strategy = this@BackupManga.updateStrategy
-            meta = this@BackupManga.meta
-        }
-
-    fun getChaptersImpl(): List<ChapterImpl> =
-        chapters.map {
-            it.toChapterImpl()
-        }
-
-    fun getTrackingImpl(): List<TrackImpl> =
-        tracking.map {
-            it.getTrackingImpl()
-        }
-}
+)

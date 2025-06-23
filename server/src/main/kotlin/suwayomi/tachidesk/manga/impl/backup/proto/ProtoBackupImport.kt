@@ -40,12 +40,11 @@ import suwayomi.tachidesk.manga.impl.Chapter.modifyChaptersMetas
 import suwayomi.tachidesk.manga.impl.Manga.clearThumbnail
 import suwayomi.tachidesk.manga.impl.Manga.modifyMangasMetas
 import suwayomi.tachidesk.manga.impl.Source.modifySourceMetas
-import suwayomi.tachidesk.manga.impl.backup.models.Chapter
-import suwayomi.tachidesk.manga.impl.backup.models.Manga
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.ValidationResult
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.validate
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupHistory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupServerSettings
@@ -62,8 +61,8 @@ import java.io.InputStream
 import java.util.Date
 import java.util.Timer
 import java.util.TimerTask
-import java.util.concurrent.TimeUnit
 import kotlin.math.max
+import kotlin.time.Duration.Companion.milliseconds
 import suwayomi.tachidesk.manga.impl.track.Track as Tracker
 
 enum class RestoreMode {
@@ -144,7 +143,7 @@ object ProtoBackupImport : ProtoBackupBase() {
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    suspend fun restore(sourceStream: InputStream): String {
+    fun restore(sourceStream: InputStream): String {
         val restoreId = System.currentTimeMillis().toString()
 
         logger.info { "restore($restoreId): queued" }
@@ -279,25 +278,24 @@ object ProtoBackupImport : ProtoBackupBase() {
         backupManga: BackupManga,
         categoryMapping: Map<Int, Int>,
     ) {
-        val manga = backupManga.getMangaImpl()
-        val chapters = backupManga.getChaptersImpl()
+        val chapters = backupManga.chapters
         val categories = backupManga.categories
         val history = backupManga.history
 
         val dbCategoryIds = categories.map { categoryMapping[it]!! }
 
         try {
-            restoreMangaData(manga, chapters, dbCategoryIds, history, backupManga.tracking)
+            restoreMangaData(backupManga, chapters, dbCategoryIds, history, backupManga.tracking)
         } catch (e: Exception) {
-            val sourceName = sourceMapping[manga.source] ?: manga.source.toString()
-            errors.add(Date() to "${manga.title} [$sourceName]: ${e.message}")
+            val sourceName = sourceMapping[backupManga.source] ?: backupManga.source.toString()
+            errors.add(Date() to "${backupManga.title} [$sourceName]: ${e.message}")
         }
     }
 
     @Suppress("UNUSED_PARAMETER") // TODO: remove
     private fun restoreMangaData(
-        manga: Manga,
-        chapters: List<Chapter>,
+        manga: BackupManga,
+        chapters: List<BackupChapter>,
         categoryIds: List<Int>,
         history: List<BackupHistory>,
         tracks: List<BackupTracking>,
@@ -324,10 +322,10 @@ object ProtoBackupImport : ProtoBackupBase() {
                                 it[artist] = manga.artist
                                 it[author] = manga.author
                                 it[description] = manga.description
-                                it[genre] = manga.genre
+                                it[genre] = manga.genre.joinToString()
                                 it[status] = manga.status
-                                it[thumbnail_url] = manga.thumbnail_url
-                                it[updateStrategy] = manga.update_strategy.name
+                                it[thumbnail_url] = manga.thumbnailUrl
+                                it[updateStrategy] = manga.updateStrategy.name
 
                                 it[sourceReference] = manga.source
 
@@ -335,7 +333,7 @@ object ProtoBackupImport : ProtoBackupBase() {
 
                                 it[inLibrary] = manga.favorite
 
-                                it[inLibraryAt] = TimeUnit.MILLISECONDS.toSeconds(manga.date_added)
+                                it[inLibraryAt] = manga.dateAdded.milliseconds.inWholeSeconds
                             }.value
                     } else {
                         val dbMangaId = dbManga[MangaTable.id].value
@@ -345,16 +343,16 @@ object ProtoBackupImport : ProtoBackupBase() {
                             it[artist] = manga.artist ?: dbManga[artist]
                             it[author] = manga.author ?: dbManga[author]
                             it[description] = manga.description ?: dbManga[description]
-                            it[genre] = manga.genre ?: dbManga[genre]
+                            it[genre] = manga.genre.ifEmpty { null }?.joinToString() ?: dbManga[genre]
                             it[status] = manga.status
-                            it[thumbnail_url] = manga.thumbnail_url ?: dbManga[thumbnail_url]
-                            it[updateStrategy] = manga.update_strategy.name
+                            it[thumbnail_url] = manga.thumbnailUrl ?: dbManga[thumbnail_url]
+                            it[updateStrategy] = manga.updateStrategy.name
 
                             it[initialized] = dbManga[initialized] || manga.description != null
 
                             it[inLibrary] = manga.favorite || dbManga[inLibrary]
 
-                            it[inLibraryAt] = TimeUnit.MILLISECONDS.toSeconds(manga.date_added)
+                            it[inLibraryAt] = manga.dateAdded.milliseconds.inWholeSeconds
                         }
 
                         dbMangaId
@@ -384,8 +382,8 @@ object ProtoBackupImport : ProtoBackupBase() {
     private fun getMangaChapterToRestoreInfo(
         mangaId: Int,
         restoreMode: RestoreMode,
-        chapters: List<Chapter>,
-    ): Pair<List<Chapter>, List<Pair<Chapter, ResultRow>>> {
+        chapters: List<BackupChapter>,
+    ): Pair<List<BackupChapter>, List<Pair<BackupChapter, ResultRow>>> {
         val uniqueChapters = chapters.distinctBy { it.url }
 
         if (restoreMode == RestoreMode.NEW) {
@@ -403,7 +401,7 @@ object ProtoBackupImport : ProtoBackupBase() {
     private fun restoreMangaChapterData(
         mangaId: Int,
         restoreMode: RestoreMode,
-        chapters: List<Chapter>,
+        chapters: List<BackupChapter>,
     ) = dbTransaction {
         val (chaptersToInsert, chaptersToUpdateToDbChapter) = getMangaChapterToRestoreInfo(mangaId, restoreMode, chapters)
 
@@ -412,22 +410,22 @@ object ProtoBackupImport : ProtoBackupBase() {
                 .batchInsert(chaptersToInsert) { chapter ->
                     this[ChapterTable.url] = chapter.url
                     this[ChapterTable.name] = chapter.name
-                    if (chapter.date_upload == 0L) {
-                        this[ChapterTable.date_upload] = chapter.date_fetch
+                    if (chapter.dateUpload == 0L) {
+                        this[ChapterTable.date_upload] = chapter.dateFetch
                     } else {
-                        this[ChapterTable.date_upload] = chapter.date_upload
+                        this[ChapterTable.date_upload] = chapter.dateUpload
                     }
-                    this[ChapterTable.chapter_number] = chapter.chapter_number
+                    this[ChapterTable.chapter_number] = chapter.chapterNumber
                     this[ChapterTable.scanlator] = chapter.scanlator
 
-                    this[ChapterTable.sourceOrder] = chaptersToInsert.size - chapter.source_order
+                    this[ChapterTable.sourceOrder] = chaptersToInsert.size - chapter.sourceOrder
                     this[ChapterTable.manga] = mangaId
 
                     this[ChapterTable.isRead] = chapter.read
-                    this[ChapterTable.lastPageRead] = chapter.last_page_read.coerceAtLeast(0)
+                    this[ChapterTable.lastPageRead] = chapter.lastPageRead.coerceAtLeast(0)
                     this[ChapterTable.isBookmarked] = chapter.bookmark
 
-                    this[ChapterTable.fetchedAt] = TimeUnit.MILLISECONDS.toSeconds(chapter.date_fetch)
+                    this[ChapterTable.fetchedAt] = chapter.dateFetch.milliseconds.inWholeSeconds
                 }.map { it[ChapterTable.id].value }
 
         if (chaptersToUpdateToDbChapter.isNotEmpty()) {
@@ -436,7 +434,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                     addBatch(EntityID(dbChapter[ChapterTable.id].value, ChapterTable))
                     this[ChapterTable.isRead] = backupChapter.read || dbChapter[ChapterTable.isRead]
                     this[ChapterTable.lastPageRead] =
-                        max(backupChapter.last_page_read, dbChapter[ChapterTable.lastPageRead]).coerceAtLeast(0)
+                        max(backupChapter.lastPageRead, dbChapter[ChapterTable.lastPageRead]).coerceAtLeast(0)
                     this[ChapterTable.isBookmarked] = backupChapter.bookmark || dbChapter[ChapterTable.isBookmarked]
                 }
                 execute(this@dbTransaction)
