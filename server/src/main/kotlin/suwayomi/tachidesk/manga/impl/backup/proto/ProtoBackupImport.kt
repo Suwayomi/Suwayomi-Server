@@ -65,7 +65,6 @@ import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
 import suwayomi.tachidesk.manga.impl.track.Track as Tracker
 
-
 object ProtoBackupImport : ProtoBackupBase() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -279,7 +278,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         backupManga: BackupManga,
         categoryMapping: Map<Int, Int>,
         sourceMapping: Map<Long, String>,
-        errors: MutableList<Pair<Date, String>>
+        errors: MutableList<Pair<Date, String>>,
     ) {
         val chapters = backupManga.chapters
         val categories = backupManga.categories
