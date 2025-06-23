@@ -4,7 +4,6 @@ import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
 import suwayomi.tachidesk.manga.impl.backup.models.ChapterImpl
-import suwayomi.tachidesk.manga.impl.backup.models.Manga
 import suwayomi.tachidesk.manga.impl.backup.models.MangaImpl
 import suwayomi.tachidesk.manga.impl.backup.models.TrackImpl
 
@@ -69,24 +68,4 @@ data class BackupManga(
         tracking.map {
             it.getTrackingImpl()
         }
-
-    companion object {
-        fun copyFrom(manga: Manga): BackupManga =
-            BackupManga(
-                url = manga.url,
-                title = manga.title,
-                artist = manga.artist,
-                author = manga.author,
-                description = manga.description,
-                genre = manga.getGenres() ?: emptyList(),
-                status = manga.status,
-                thumbnailUrl = manga.thumbnail_url,
-                favorite = manga.favorite,
-                source = manga.source,
-                dateAdded = manga.date_added,
-                viewer = manga.readingModeType,
-                viewer_flags = manga.viewer_flags,
-                chapterFlags = manga.chapter_flags,
-            )
-    }
 }

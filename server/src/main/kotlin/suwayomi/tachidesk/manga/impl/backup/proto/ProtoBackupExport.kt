@@ -290,6 +290,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                                 startedReadingDate = it.record.startDate,
                                 finishedReadingDate = it.record.finishDate,
                                 trackingUrl = it.record.remoteUrl,
+                                private = it.record.private,
                             )
                         }
                     }

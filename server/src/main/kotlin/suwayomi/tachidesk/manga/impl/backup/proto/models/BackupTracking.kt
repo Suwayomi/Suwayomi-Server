@@ -2,7 +2,6 @@ package suwayomi.tachidesk.manga.impl.backup.proto.models
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
-import suwayomi.tachidesk.manga.impl.backup.models.Track
 import suwayomi.tachidesk.manga.impl.backup.models.TrackImpl
 
 @Serializable
@@ -48,24 +47,6 @@ data class BackupTracking(
             started_reading_date = this@BackupTracking.startedReadingDate
             finished_reading_date = this@BackupTracking.finishedReadingDate
             tracking_url = this@BackupTracking.trackingUrl
+            private = this@BackupTracking.private
         }
-
-    companion object {
-        fun copyFrom(track: Track): BackupTracking =
-            BackupTracking(
-                syncId = track.sync_id,
-                mediaId = track.media_id,
-                // forced not null so its compatible with 1.x backup system
-                libraryId = track.library_id!!,
-                title = track.title,
-                // convert to float for 1.x
-                lastChapterRead = track.last_chapter_read.toFloat(),
-                totalChapters = track.total_chapters,
-                score = track.score,
-                status = track.status,
-                startedReadingDate = track.started_reading_date,
-                finishedReadingDate = track.finished_reading_date,
-                trackingUrl = track.tracking_url,
-            )
-    }
 }
