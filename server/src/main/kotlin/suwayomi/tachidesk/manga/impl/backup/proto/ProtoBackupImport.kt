@@ -431,7 +431,7 @@ object ProtoBackupImport : ProtoBackupBase() {
 
                     this[ChapterTable.fetchedAt] = chapter.dateFetch.milliseconds.inWholeSeconds
 
-                    this[ChapterTable.lastReadAt] = historyByChapter[chapter.url]?.max()?.milliseconds?.inWholeSeconds ?: 0
+                    this[ChapterTable.lastReadAt] = historyByChapter[chapter.url]?.maxOrNull()?.milliseconds?.inWholeSeconds ?: 0
                 }.map { it[ChapterTable.id].value }
 
         if (chaptersToUpdateToDbChapter.isNotEmpty()) {
@@ -443,7 +443,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                         max(backupChapter.lastPageRead, dbChapter[ChapterTable.lastPageRead]).coerceAtLeast(0)
                     this[ChapterTable.isBookmarked] = backupChapter.bookmark || dbChapter[ChapterTable.isBookmarked]
                     this[ChapterTable.lastReadAt] =
-                        (historyByChapter[backupChapter.url]?.max()?.milliseconds?.inWholeSeconds ?: 0)
+                        (historyByChapter[backupChapter.url]?.maxOrNull()?.milliseconds?.inWholeSeconds ?: 0)
                             .coerceAtLeast(dbChapter[ChapterTable.lastReadAt])
                 }
                 execute(this@dbTransaction)
