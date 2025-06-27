@@ -65,21 +65,17 @@ import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
 import suwayomi.tachidesk.manga.impl.track.Track as Tracker
 
-enum class RestoreMode {
-    NEW,
-    EXISTING,
-}
-
 object ProtoBackupImport : ProtoBackupBase() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val logger = KotlinLogging.logger {}
 
-    private var restoreAmount = 0
-
-    private val errors = mutableListOf<Pair<Date, String>>()
-
     private val backupMutex = Mutex()
+
+    enum class RestoreMode {
+        NEW,
+        EXISTING,
+    }
 
     sealed class BackupRestoreState {
         data object Idle : BackupRestoreState()
@@ -199,7 +195,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         val restoreMeta = 1
         val restoreSettings = 1
         val getRestoreAmount = { size: Int -> size + restoreCategories + restoreMeta + restoreSettings }
-        restoreAmount = getRestoreAmount(backup.backupManga.size)
+        val restoreAmount = getRestoreAmount(backup.backupManga.size)
 
         updateRestoreState(id, BackupRestoreState.RestoringCategories(restoreCategories, restoreAmount))
 
@@ -219,7 +215,9 @@ object ProtoBackupImport : ProtoBackupBase() {
         restoreServerSettings(backup.serverSettings)
 
         // Store source mapping for error messages
-        sourceMapping = backup.getSourceMap()
+        val sourceMapping = backup.getSourceMap()
+
+        val errors = mutableListOf<Pair<Date, String>>()
 
         // Restore individual manga
         backup.backupManga.forEachIndexed { index, manga ->
@@ -235,6 +233,8 @@ object ProtoBackupImport : ProtoBackupBase() {
             restoreManga(
                 backupManga = manga,
                 categoryMapping = categoryMapping,
+                sourceMapping = sourceMapping,
+                errors = errors,
             )
         }
 
@@ -277,6 +277,8 @@ object ProtoBackupImport : ProtoBackupBase() {
     private fun restoreManga(
         backupManga: BackupManga,
         categoryMapping: Map<Int, Int>,
+        sourceMapping: Map<Long, String>,
+        errors: MutableList<Pair<Date, String>>,
     ) {
         val chapters = backupManga.chapters
         val categories = backupManga.categories

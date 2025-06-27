@@ -10,7 +10,5 @@ package suwayomi.tachidesk.manga.impl.backup.proto
 import kotlinx.serialization.protobuf.ProtoBuf
 
 open class ProtoBackupBase {
-    var sourceMapping: Map<Long, String> = emptyMap()
-
     val parser = ProtoBuf
 }
