@@ -59,9 +59,8 @@ class KcefWebView {
                 source: String,
                 line: Int,
         ): Boolean {
-            WebView.notifyAllClients(
-                    Json.encodeToString(ConsoleEvent(level.ordinal, message, source, line))
-            )
+            val ev: Event = ConsoleEvent(level.ordinal, message, source, line)
+            WebView.notifyAllClients(Json.encodeToString(ev))
             return true
         }
 
@@ -70,14 +69,16 @@ class KcefWebView {
                 frame: CefFrame,
                 url: String,
         ) {
-            WebView.notifyAllClients(Json.encodeToString(AddressEvent(url)))
+            val ev: Event = AddressEvent(url)
+            WebView.notifyAllClients(Json.encodeToString(ev))
         }
 
         override fun onStatusMessage(
                 browser: CefBrowser,
                 value: String,
         ) {
-            WebView.notifyAllClients(Json.encodeToString(StatusEvent(value)))
+            val ev: Event = StatusEvent(value)
+            WebView.notifyAllClients(Json.encodeToString(ev))
         }
     }
 
