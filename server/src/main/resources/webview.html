@@ -2,8 +2,134 @@
 <html lang="en">
 <head>
     <title>Suwayomi Webview</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+        button[disabled], input[disabled] {
+            cursor: not-allowed;
+        }
+        header {
+            background-color: rgb(12, 16, 33);
+            color: #fff;
+            padding: 8px 32px;
+        }
+        header h1 {
+            margin: 0;
+        }
+        header form {
+            display: flex;
+            gap: 5px;
+        }
+        header button {
+            all: unset;
+            padding: 8px;
+            border-radius: 50%;
+            min-width: 1em;
+            line-height: 1;
+            text-align: center;
+        }
+        header button:not([disabled]) {
+            cursor: pointer;
+        }
+        header button:not([disabled]):hover {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+        header input {
+            flex: 100% 1 1;
+        }
+        main, iframe {
+            height: 100%;
+        }
+        main {
+            position: relative;
+        }
+        iframe {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            border: none;
+        }
+        main .message {
+            padding: 8px;
+            max-width: 1100px;
+            margin: auto;
+            font-style: italic;
+        }
+        main .message.error {
+            color: red;
+            font-style: regular;
+            font-weight: bold;
+        }
+
+        /* https://css-tricks.com/snippets/css/css-triangle/ */
+        .arrow-right {
+            display: inline-block;
+            width: 0;
+            height: 0;
+            border-top: 9px solid transparent;
+            border-bottom: 9px solid transparent;
+            border-left: 9px solid currentcolor;
+        }
+    </style>
 </head>
 <body>
-    <h1>Hello World!</h1>
+    <header>
+        <h1>Suwayomi: WebView</h1>
+        <nav>
+            <form id="browseForm">
+                <button type="button" id="backButton" aria-label="back" disabled>&lt;</button>
+                <button type="button" id="forwardButton" aria-label="forward" disabled>&gt;</button>
+                <input type="text" id="url" name="url" placeholder="Enter URL..." disabled/>
+                <button type="submit" id="goButton" disabled><span class="arrow-right"></span></button>
+            </form>
+        </nav>
+    </header>
+    <main>
+        <div class="message" id="message">Initializing... Please wait</div>
+        <!-- We don't want any JS inside the iframe. Everything is handled by here and on the server -->
+        <!-- NOTE: The sandbox directive will block opening popups, alerts, form submissions etc -->
+        <iframe csp="script-src 'none'" sandbox="allow-same-origin">
+        </iframe>
+    </main>
+    <script>
+        const messageDiv = document.getElementById('message');
+        const browseForm = document.getElementById('browseForm');
+        const backButton = document.getElementById('backButton');
+        const forwardButton = document.getElementById('forwardButton');
+        const goButton = document.getElementById('goButton');
+        const urlInput = document.getElementById('url');
+
+        try {
+            const socket = new WebSocket(window.location.href.replace(/^http/,'ws'));
+
+            backButton.disabled = false;
+            forwardButton.disabled = false;
+            urlInput.disabled = false;
+            goButton.disabled = false;
+
+            const url = window.decodeURIComponent(window.location.hash.replace(/^#/, ''));
+            urlInput.value = url;
+            messageDiv.textContent = "Loading page...";
+
+            browseForm.addEventListener('submit', e => {
+                e.preventDefault();
+                console.log(e);
+            });
+        } catch (e) {
+            messageDiv.textContent = "Error: " + (e.message || e);
+            messageDiv.classList.add('error');
+            console.error(e);
+        }
+    </script>
 </body>
 </html>
