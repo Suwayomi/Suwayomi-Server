@@ -207,12 +207,15 @@ class KcefWebView {
                 """
                 (function() {
                     // NOTE: reading .src and .href normalizes to qualified URL (with origin)
-                    for (let img in document.querySelectorAll('img')) {
+                    for (let img of document.querySelectorAll('img')) {
                         img.src = img.src;
                     }
-                    for (let a in document.querySelectorAll('a[href]')) {
+                    for (let link of document.querySelectorAll('link[href]')) {
+                        link.href = link.href;
+                    }
+                    for (let a of document.querySelectorAll('a[href]')) {
                         a.href = a.href;
-                        a.target = "_blank";
+                        a.target = "";
                     }
                     let html = "";
                     const title = document.title;
