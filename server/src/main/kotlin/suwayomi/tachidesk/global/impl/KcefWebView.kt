@@ -166,6 +166,18 @@ class KcefWebView {
         loadUrl(url, mapOf())
     }
 
+    public fun click(element: String, buttons: Int) {
+        val js =
+                """
+                (function() {
+                    const e = document.querySelector(${Json.encodeToString(element)});
+                    const ev = new MouseEvent('click', { buttons: $buttons });
+                    e.dispatchEvent(ev);
+                })();
+                """
+        browser!!.executeJavaScript(js, browser!!.url, 0)
+    }
+
     public fun canGoBack(): Boolean = browser!!.canGoBack()
 
     public fun goBack() {

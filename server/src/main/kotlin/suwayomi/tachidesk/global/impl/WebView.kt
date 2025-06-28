@@ -43,6 +43,9 @@ object WebView : Websocket<String>() {
     @Serializable
     @SerialName("loadUrl")
     private data class LoadUrlMessage(val url: String) : TypeObject()
+    @Serializable
+    @SerialName("click")
+    private data class ClickMessage(val elementPath: String, val buttons: Int) : TypeObject()
 
     override fun handleRequest(ctx: WsMessageContext) {
         val dr = driver ?: return
@@ -53,6 +56,11 @@ object WebView : Websocket<String>() {
                     val url = event.url
                     dr.loadUrl(url)
                     logger.info { "Loading URL $url" }
+                }
+                is ClickMessage -> {
+                    val path = event.elementPath
+                    dr.click(path, event.buttons)
+                    logger.info { "Click on $path" }
                 }
             }
         } catch (e: Exception) {

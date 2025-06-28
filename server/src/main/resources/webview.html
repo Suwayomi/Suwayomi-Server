@@ -150,6 +150,8 @@
                 console.error(e);
             }
 
+            /// Helpers
+
             const setHash = (u) => {
                 let current = '';
                 try {
@@ -187,6 +189,8 @@
                 frame.srcdoc = "";
             };
 
+            /// Form
+
             window.addEventListener('hashchange', e => {
                 const url = window.decodeURIComponent(window.location.hash.replace(/^#/, ''));
                 loadUrl(url);
@@ -199,6 +203,8 @@
                 loadUrl(url);
                 console.log('Navigate to', url);
             });
+
+            /// Server events
 
             socket.addEventListener('open', () => {
                 loadUrl(url);
@@ -251,6 +257,40 @@
                 messageDiv.classList.add('error');
                 console.error('WebSocket error:', e);
             });
+
+            /// Page events
+
+            const frameClick = (e) => {
+                e.preventDefault();
+                console.log(e);
+                let path = '';
+                let node = e.target;
+                while (node) {
+                    const classes = Array.from(node.classList).map(x => `.${x}`).join("");
+                    const id = node.id ? `#${node.id}` : "";
+                    const idx = node.parentElement ? Array.from(node.parentElement.children).indexOf(node) : -1;
+                    const idx1 = idx >= 0 ? `:nth-child(${idx + 1})` : "";
+                    if (path) path = " > " + path;
+                    path = `${node.tagName}${id}${classes}${idx1}` + path;
+                    node = node.parentElement;
+                }
+                console.log(path)
+                socket.send(JSON.stringify({ type: 'click', elementPath: path, buttons: e.buttons }));
+            };
+
+            const attachEvents = () => {
+                console.log('Attaching event handlers to new document');
+                const frameDoc = frame.contentDocument || frame.contentWindow.document;
+                if (typeof frameDoc.addEventListener != "undefined") {
+                    frameDoc.addEventListener("click", frameClick, false);
+                } else if (typeof iframeDoc.attachEvent != "undefined") {
+                    frameDoc.attachEvent("onclick", frameClick);
+                } else {
+                    console.error("Failed to attach event listeners");
+                }
+            };
+
+            frame.addEventListener('load', attachEvents);
         } catch (e) {
             messageDiv.textContent = "Error: " + (e.message || e);
             messageDiv.classList.add('error');
