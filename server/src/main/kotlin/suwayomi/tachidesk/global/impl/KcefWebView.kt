@@ -204,6 +204,7 @@ class KcefWebView {
                         a.href = a.href;
                     }
                     let html = "";
+                    const title = document.title;
                     try {
                         html = new XMLSerializer().serializeToString(document.doctype) + document.documentElement.outerHTML;
                     } catch (e) {
@@ -211,6 +212,7 @@ class KcefWebView {
                     window.${QUERY_FN}({
                         request: JSON.stringify({
                             type: ${Json.encodeToString(ev)},
+                            title,
                             html,${serializedArgs}
                         }),
                         persistent: false,

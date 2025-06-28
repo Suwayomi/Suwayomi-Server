@@ -59,6 +59,10 @@
             width: 100%;
             border: none;
         }
+        main .message, main .status {
+            position: relative;
+            z-index: 1;
+        }
         main .message {
             padding: 8px;
             max-width: 1100px;
@@ -101,7 +105,7 @@
 </head>
 <body>
     <header>
-        <h1>Suwayomi: WebView</h1>
+        <h1 id="title">Suwayomi: WebView</h1>
         <nav>
             <form id="browseForm">
                 <button type="button" id="backButton" aria-label="back" disabled>&lt;</button>
@@ -128,6 +132,7 @@
         const forwardButton = document.getElementById('forwardButton');
         const goButton = document.getElementById('goButton');
         const urlInput = document.getElementById('url');
+        const titleDiv = document.getElementById('title');
 
         try {
             const socketUrl = (window.location.origin + window.location.pathname).replace(/^http/,'ws');
@@ -138,21 +143,61 @@
             urlInput.disabled = false;
             goButton.disabled = false;
 
-            const url = window.decodeURIComponent(window.location.hash.replace(/^#/, ''));
-            urlInput.value = url;
+            let url = '';
+            try {
+                url = window.decodeURIComponent(window.location.hash.replace(/^#/, ''));
+            } catch (e) {
+                console.error(e);
+            }
+
+            const setHash = (u) => {
+                let current = '';
+                try {
+                    current = window.decodeURIComponent(window.location.hash.replace(/^#/, ''));
+                } catch (e) {
+                    console.error(e);
+                }
+                if (current != u)
+                    history.pushState(null, null, window.location.origin + window.location.pathname + '#' + window.encodeURIComponent(u));
+            };
+
+            const setTitle = (title) => {
+                if (!title) {
+                    document.title = "Suwayomi Webview";
+                    titleDiv.textContent = "Suwayomi Webview";
+                } else {
+                    document.title = "Suwayomi: " + title;
+                    titleDiv.textContent = "Suwayomi: " + title;
+                }
+            }
 
             const loadUrl = (u) => {
+                if (!u) {
+                    urlInput.value = u;
+                    setHash(u);
+                    setTitle();
+                    messageDiv.textContent = 'Enter a URL to get started';
+                    frame.srcdoc = "";
+                    return;
+                }
                 messageDiv.textContent = "Loading page...";
                 messageDiv.classList.remove('error');
-                window.location.hash = u;
+                urlInput.value = u;
                 socket.send(JSON.stringify({ type: 'loadUrl', detail: u }));
-            }
+                frame.srcdoc = "";
+            };
+
+            window.addEventListener('hashchange', e => {
+                const url = window.decodeURIComponent(window.location.hash.replace(/^#/, ''));
+                loadUrl(url);
+                console.log('Navigate to', url);
+            });
 
             browseForm.addEventListener('submit', e => {
                 e.preventDefault();
                 const url = urlInput.value;
                 loadUrl(url);
-                console.log('Navigate to ', url);
+                console.log('Navigate to', url);
             });
 
             socket.addEventListener('open', () => {
@@ -168,6 +213,7 @@
                         console.log('Loaded');
                         messageDiv.textContent = '';
                         urlInput.value = obj.url;
+                        setHash(obj.url);
                         break;
                     case "statusChange":
                         statusDiv.textContent = obj.message;
@@ -179,6 +225,7 @@
                         } else {
                             messageDiv.textContent = "";
                         }
+                        setTitle(obj.title);
                         frame.srcdoc = obj.html;
                         break;
                     case "consoleMessage":
