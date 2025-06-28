@@ -3,6 +3,7 @@ package suwayomi.tachidesk.global.impl
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.websocket.WsContext
 import io.javalin.websocket.WsMessageContext
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.eclipse.jetty.websocket.api.CloseStatus
@@ -38,20 +39,20 @@ object WebView : Websocket<String>() {
         }
     }
 
-    @Serializable private data class TypeObject(val type: String, val detail: String)
+    @Serializable private sealed class TypeObject {}
+    @Serializable
+    @SerialName("loadUrl")
+    private data class LoadUrlMessage(val url: String) : TypeObject()
 
     override fun handleRequest(ctx: WsMessageContext) {
         val dr = driver ?: return
         try {
             val event = Json.decodeFromString<TypeObject>(ctx.message())
-            when (event.type) {
-                "loadUrl" -> {
-                    val url = event.detail
+            when (event) {
+                is LoadUrlMessage -> {
+                    val url = event.url
                     dr.loadUrl(url)
                     logger.info { "Loading URL $url" }
-                }
-                else -> {
-                    logger.warn { "Unknown message type ${event.type}" }
                 }
             }
         } catch (e: Exception) {

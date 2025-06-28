@@ -183,7 +183,7 @@
                 messageDiv.textContent = "Loading page...";
                 messageDiv.classList.remove('error');
                 urlInput.value = u;
-                socket.send(JSON.stringify({ type: 'loadUrl', detail: u }));
+                socket.send(JSON.stringify({ type: 'loadUrl', url: u }));
                 frame.srcdoc = "";
             };
 
