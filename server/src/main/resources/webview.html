@@ -70,6 +70,23 @@
             font-style: regular;
             font-weight: bold;
         }
+        main .message:empty {
+            display: none;
+        }
+        main .status {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            max-width: 50%;
+            background: #555;
+            color: white;
+            padding: 2px 4px;
+            font-size: 0.8rem;
+            border-top-right-radius: 3px;
+        }
+        main .status:empty {
+            display: none;
+        }
 
         /* https://css-tricks.com/snippets/css/css-triangle/ */
         .arrow-right {
@@ -96,13 +113,16 @@
     </header>
     <main>
         <div class="message" id="message">Initializing... Please wait</div>
+        <div class="status" id="status"></div>
         <!-- We don't want any JS inside the iframe. Everything is handled by here and on the server -->
         <!-- NOTE: The sandbox directive will block opening popups, alerts, form submissions etc -->
-        <iframe csp="script-src 'none'" sandbox="allow-same-origin">
+        <iframe id="frame" csp="script-src 'none'" sandbox="allow-same-origin">
         </iframe>
     </main>
     <script>
         const messageDiv = document.getElementById('message');
+        const statusDiv = document.getElementById('status');
+        const frame = document.getElementById('frame');
         const browseForm = document.getElementById('browseForm');
         const backButton = document.getElementById('backButton');
         const forwardButton = document.getElementById('forwardButton');
@@ -110,7 +130,8 @@
         const urlInput = document.getElementById('url');
 
         try {
-            const socket = new WebSocket(window.location.href.replace(/^http/,'ws'));
+            const socketUrl = (window.location.origin + window.location.pathname).replace(/^http/,'ws');
+            const socket = new WebSocket(socketUrl);
 
             backButton.disabled = false;
             forwardButton.disabled = false;
@@ -119,11 +140,69 @@
 
             const url = window.decodeURIComponent(window.location.hash.replace(/^#/, ''));
             urlInput.value = url;
-            messageDiv.textContent = "Loading page...";
+
+            const loadUrl = (u) => {
+                messageDiv.textContent = "Loading page...";
+                messageDiv.classList.remove('error');
+                window.location.hash = u;
+                socket.send(JSON.stringify({ type: 'loadUrl', detail: u }));
+            }
 
             browseForm.addEventListener('submit', e => {
                 e.preventDefault();
-                console.log(e);
+                const url = urlInput.value;
+                loadUrl(url);
+                console.log('Navigate to ', url);
+            });
+
+            socket.addEventListener('open', () => {
+                loadUrl(url);
+                console.log('WebSocket connection opened');
+            });
+
+            socket.addEventListener('message', e => {
+                const obj = JSON.parse(e.data);
+                console.log(obj);
+                switch (obj.type) {
+                    case "addressChange":
+                        console.log('Loaded');
+                        messageDiv.textContent = '';
+                        urlInput.value = obj.url;
+                        break;
+                    case "statusChange":
+                        statusDiv.textContent = obj.message;
+                        break;
+                    case "load":
+                        if (obj.error) {
+                            messageDiv.textContent = "Error: " + obj.error;
+                            messageDiv.classList.add('error');
+                        } else {
+                            messageDiv.textContent = "";
+                        }
+                        frame.srcdoc = obj.html;
+                        break;
+                    case "consoleMessage":
+                        const lg = obj.severity == 4 ? console.error : obj.severity == 3 ? console.warn : console.log;
+                        lg(`${obj.source}:${obj.line}:`, obj.message);
+                        break;
+                    default:
+                        console.warn("Unknown event", obj.type)
+                        break;
+                }
+            });
+
+            socket.addEventListener('close', e => {
+                if (e.wasClean) {
+                    console.log(`WebSocket connection closed cleanly, code=${e.code}, reason=${e.reason}`);
+                } else {
+                    console.error('WebSocket connection died');
+                }
+            });
+
+            socket.addEventListener('error', e => {
+                messageDiv.textContent = "Error: " + (e.message || e.reason || e);
+                messageDiv.classList.add('error');
+                console.error('WebSocket error:', e);
             });
         } catch (e) {
             messageDiv.textContent = "Error: " + (e.message || e);

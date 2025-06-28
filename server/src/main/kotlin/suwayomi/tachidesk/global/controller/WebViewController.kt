@@ -12,6 +12,7 @@ import io.javalin.http.HttpStatus
 import io.javalin.websocket.WsConfig
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.withOperation
+import suwayomi.tachidesk.global.impl.WebView
 
 object WebViewController {
     /** returns some static info about the current app build */
@@ -31,9 +32,8 @@ object WebViewController {
             )
 
     fun webviewWS(ws: WsConfig) {
-        // TODO: handle socket
-        // ws.onConnect { ctx -> WebView.addClient(ctx) }
-        // ws.onMessage { ctx -> WebView.handleRequest(ctx) }
-        // ws.onClose { ctx -> WebView.removeClient(ctx) }
+        ws.onConnect { ctx -> WebView.addClient(ctx) }
+        ws.onMessage { ctx -> WebView.handleRequest(ctx) }
+        ws.onClose { ctx -> WebView.removeClient(ctx) }
     }
 }
