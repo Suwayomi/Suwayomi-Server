@@ -6,7 +6,7 @@ import dev.datlag.kcef.KCEFClient
 import dev.datlag.kcef.KCEFResourceRequestHandler
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlin.collections.Map
-import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.cef.CefSettings
@@ -33,25 +33,22 @@ class KcefWebView {
         const val QUERY_CANCEL_FN = "__\$_suwayomiWebQueryCancel"
     }
 
+    @Serializable sealed class Event {}
+
     @Serializable
+    @SerialName("consoleMessage")
     private data class ConsoleEvent(
             val severity: Int,
             val message: String,
             val source: String,
             val line: Int
-    ) {
-        @EncodeDefault val type = "consoleMessage"
-    }
-
+    ) : Event()
     @Serializable
-    private data class AddressEvent(val url: String) {
-        @EncodeDefault val type = "addressChange"
-    }
-
+    @SerialName("addressChange")
+    private data class AddressEvent(val url: String) : Event()
     @Serializable
-    private data class StatusEvent(val message: String) {
-        @EncodeDefault val type = "statusChange"
-    }
+    @SerialName("statusChange")
+    private data class StatusEvent(val message: String) : Event()
 
     private inner class DisplayHandler : CefDisplayHandlerAdapter() {
 
@@ -202,6 +199,7 @@ class KcefWebView {
                     }
                     for (let a in document.querySelectorAll('a[href]')) {
                         a.href = a.href;
+                        a.target = "_blank";
                     }
                     let html = "";
                     const title = document.title;
