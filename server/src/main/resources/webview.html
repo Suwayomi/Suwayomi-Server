@@ -227,11 +227,15 @@
                         }
                         urlInput.value = obj.url;
                         setTitle(obj.title);
+                    } break;
+                    case "render": {
                         const img = new Image();
                         const imgData = new Blob([new Uint8Array(obj.image)], { type: "image/png" });
                         const url = URL.createObjectURL(imgData);
                         img.addEventListener('load', e => {
                             console.log(e);
+                            frame.width = img.width;
+                            frame.height = img.height;
                             ctx.drawImage(img, 0, 0);
                         });
                         img.src = url;

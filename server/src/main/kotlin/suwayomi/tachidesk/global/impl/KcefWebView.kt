@@ -68,10 +68,16 @@ class KcefWebView {
     ) : Event()
 
     @Serializable
+    @SerialName("render")
+    // TODO: page title
+    private data class RenderEvent(
+        val image: ByteArray,
+    ) : Event()
+
+    @Serializable
     @SerialName("load")
     // TODO: page title
     private data class LoadEvent(
-        val image: ByteArray,
         val url: String,
         val status: Int = 0,
         val error: String? = null,
@@ -117,7 +123,7 @@ class KcefWebView {
             httpStatusCode: Int,
         ) {
             logger.info { "Load event: ${frame.name} - ${frame.url}" }
-            if (httpStatusCode > 0) handleLoad(browser, frame, frame.url, httpStatusCode)
+            if (httpStatusCode > 0) handleLoad(frame.url, httpStatusCode)
         }
 
         override fun onLoadError(
@@ -127,7 +133,7 @@ class KcefWebView {
             errorText: String,
             failedUrl: String,
         ) {
-            handleLoad(browser, frame, failedUrl, 0, errorText)
+            handleLoad(failedUrl, 0, errorText)
         }
     }
 
@@ -176,6 +182,12 @@ class KcefWebView {
             if (!success) {
                 throw IllegalStateException("Failed to convert image to PNG")
             }
+
+            val stream = ByteArrayOutputStream()
+            ImageIO.write(renderHandler.myImage, "png", stream)
+
+            val ev: Event = RenderEvent(stream.toByteArray())
+            WebView.notifyAllClients(Json.encodeToString(ev))
         }
     }
 
@@ -283,37 +295,12 @@ class KcefWebView {
     }
 
     private fun handleLoad(
-        browser: CefBrowser,
-        frame: CefFrame,
         url: String,
         status: Int = 0,
         error: String? = null,
     ) {
-        val stream = ByteArrayOutputStream()
-        ImageIO.write(renderHandler.myImage, "png", stream)
-
-        val ev: Event = LoadEvent(stream.toByteArray(), url, status, error)
+        val ev: Event = LoadEvent(url, status, error)
         WebView.notifyAllClients(Json.encodeToString(ev))
-        return
-
-        val js =
-            """
-                (function() {
-                    const observer = new MutationObserver(() => {
-                        window.${QUERY_FN}({
-                            request: JSON.stringify({
-                                type: 'docMutate',
-                                frame: ${Json.encodeToString(frame.name)},
-                                title,
-                            }),
-                            persistent: false,
-                        })
-                    });
-                    observer.observe(document.documentElement, { subtree: true, childList: true, attributes: true, characterData: true });
-                })();
-                """
-        logger.info { "Load finished for URL $url" }
-        frame.executeJavaScript(js, url, 0)
     }
 
     private fun createContext(
