@@ -261,20 +261,40 @@ class KcefWebView {
                             html,${serializedArgs}
                         }),
                         persistent: false,
-                    })
+                    });
 
-                    const observer = new MutationObserver(() => {
-                        const title = document.title;
-                        try {
-                            html = document.documentElement.innerHTML;
-                        } catch (e) {
+                    const computePath = (node) => {
+                        let path = '';
+                        while (node) {
+                            const classes = Array.from(node.classList).map(x => `.${"$"}{x}`).join("");
+                            const id = node.id ? `#${"$"}{node.id}` : "";
+                            const idx = node.parentElement ? Array.from(node.parentElement.children).indexOf(node) : -1;
+                            const idx1 = idx >= 0 ? `:nth-child(${"$"}{idx + 1})` : "";
+                            if (path) path = " > " + path;
+                            path = `${"$"}{node.tagName}${"$"}{id}${"$"}{classes}${"$"}{idx1}` + path;
+                            node = node.parentElement;
                         }
+                        return path;
+                    }
+
+                    const observer = new MutationObserver((changes) => {
+                        // TODO: This could be cleaner, we're recreating the entire parent
+                        // if just one node is added or removed
+                        const toSend = changes.map(change => ({
+                            type: change.type,
+                            target: computePath(change.target),
+                            attributeName: change.attributeName,
+                            attributeNamspace: change.attributeNamespace,
+                            oldValue: change.oldValue,
+                            newValue: change.type === "attributes" ?
+                                change.target.getAttributeNS(change.attributeNamespace, change.attributeName) :
+                                change.type === "characterData" ? change.target.data : change.target.innerHTML,
+                        }));
                         window.${QUERY_FN}({
                             request: JSON.stringify({
-                                type: 'docChange',
+                                type: 'docMutate',
                                 title,
-                                url: ${Json.encodeToString(url)},
-                                html,
+                                changes: toSend,
                             }),
                             persistent: false,
                         })

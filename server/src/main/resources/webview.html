@@ -231,7 +231,7 @@
                         setTitle(obj.title);
                         frame.srcdoc = obj.html;
                         break;
-                    case "docChange":
+                    case "docChange": {
                         if (lastHtml == obj.html) break;
                         // NOTE: we *don't* want to change srcdoc now, because that would be a reload
                         const frameDoc = frame.contentDocument || frame.contentWindow.document;
@@ -241,11 +241,29 @@
                         // everything else seems to either throw or be ignored
                         frameDoc.documentElement.innerHTML = obj.html;
                         lastHtml = obj.html;
-                        break;
-                    case "consoleMessage":
+                    } break;
+                    case "docMutate": {
+                        const frameDoc = frame.contentDocument || frame.contentWindow.document;
+                        for (const change of obj.changes) {
+                            const target = frameDoc.querySelector(change.target);
+                            switch (change.type) {
+                                case "attributes":
+                                    target.setAttributeNS(change.attributeNamespace, change.attributeName, change.newValue);
+                                    break;
+                                case "characterData":
+                                    target.data = change.newValue;
+                                    break;
+                                case "childList":
+                                    target.innerHTML = change.newValue;
+                                    break;
+                            }
+                        }
+                        setTitle(obj.title);
+                    } break;
+                    case "consoleMessage": {
                         const lg = obj.severity == 4 ? console.error : obj.severity == 3 ? console.warn : console.log;
                         lg(`${obj.source}:${obj.line}:`, obj.message);
-                        break;
+                    } break;
                     default:
                         console.warn("Unknown event", obj.type)
                         break;
