@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.cef.CefApp
 import org.cef.network.CefCookie
 import org.cef.network.CefCookieManager
 import org.koin.core.context.startKoin
@@ -218,7 +219,7 @@ fun applicationSetup() {
             module {
                 single<KcefWebViewProvider.InitBrowserHandler> {
                     object : KcefWebViewProvider.InitBrowserHandler {
-                        public override fun init(provider: KcefWebViewProvider) {
+                        override fun init(provider: KcefWebViewProvider) {
                             val networkHelper = Injekt.get<NetworkHelper>()
                             val logger = KotlinLogging.logger {}
                             logger.info { "Start loading cookies" }
@@ -235,7 +236,7 @@ fun applicationSetup() {
                                                     cookie.domain,
                                                     cookie.path,
                                                     cookie.secure,
-                                                    cookie.isHttpOnly(),
+                                                    cookie.isHttpOnly,
                                                     Date(),
                                                     null,
                                                     cookie.maxAge >= 0,

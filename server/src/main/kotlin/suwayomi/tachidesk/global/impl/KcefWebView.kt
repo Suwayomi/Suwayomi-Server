@@ -5,7 +5,6 @@ import dev.datlag.kcef.KCEFBrowser
 import dev.datlag.kcef.KCEFClient
 import eu.kanade.tachiyomi.network.NetworkHelper
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -35,7 +34,6 @@ import java.net.URI
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.Date
-import java.util.concurrent.Executors
 import javax.imageio.ImageIO
 import javax.swing.JPanel
 import kotlin.time.Duration.Companion.milliseconds
@@ -47,7 +45,6 @@ class KcefWebView {
     private var browser: KCEFBrowser? = null
     private var width = 1000
     private var height = 1000
-    private val executor = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 
     companion object {
         private val networkHelper: NetworkHelper by injectLazy()
@@ -100,8 +97,11 @@ class KcefWebView {
             source: String,
             line: Int,
         ): Boolean {
-            val ev: Event = ConsoleEvent(level.ordinal, message, source, line)
-            WebView.notifyAllClients(Json.encodeToString(ev))
+            WebView.notifyAllClients(
+                Json.encodeToString<Event>(
+                    ConsoleEvent(level.ordinal, message, source, line)
+                )
+            )
             logger.debug { "$source:$line: $message" }
             return true
         }
@@ -111,10 +111,13 @@ class KcefWebView {
             frame: CefFrame,
             url: String,
         ) {
-            if (!frame.isMain()) return
+            if (!frame.isMain) return
             this@KcefWebView.browser!!.evaluateJavaScript("return document.title") {
-                val ev: Event = AddressEvent(url, it ?: "")
-                WebView.notifyAllClients(Json.encodeToString(ev))
+                WebView.notifyAllClients(
+                    Json.encodeToString<Event>(
+                        AddressEvent(url, it ?: "")
+                    )
+                )
             }
             flush()
         }
@@ -123,8 +126,11 @@ class KcefWebView {
             browser: CefBrowser,
             value: String,
         ) {
-            val ev: Event = StatusEvent(value)
-            WebView.notifyAllClients(Json.encodeToString(ev))
+            WebView.notifyAllClients(
+                Json.encodeToString<Event>(
+                    StatusEvent(value)
+                )
+            )
         }
     }
 
@@ -135,7 +141,7 @@ class KcefWebView {
             httpStatusCode: Int,
         ) {
             logger.info { "Load event: ${frame.name} - ${frame.url}" }
-            if (httpStatusCode > 0 && frame.isMain()) handleLoad(frame.url, httpStatusCode)
+            if (httpStatusCode > 0 && frame.isMain) handleLoad(frame.url, httpStatusCode)
             flush()
         }
 
@@ -146,7 +152,7 @@ class KcefWebView {
             errorText: String,
             failedUrl: String,
         ) {
-            if (frame.isMain()) handleLoad(failedUrl, 0, errorText)
+            if (frame.isMain) handleLoad(failedUrl, 0, errorText)
         }
     }
 
@@ -171,7 +177,7 @@ class KcefWebView {
                 image = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB_PRE)
             }
 
-            val dst = (image.getRaster().getDataBuffer() as DataBufferInt).getData()
+            val dst = (image.raster.getDataBuffer() as DataBufferInt).getData()
             val src = buffer.order(ByteOrder.LITTLE_ENDIAN).asIntBuffer()
             src.get(dst)
 
@@ -184,8 +190,11 @@ class KcefWebView {
             val stream = ByteArrayOutputStream()
             ImageIO.write(renderHandler.myImage, "png", stream)
 
-            val ev: Event = RenderEvent(stream.toByteArray())
-            WebView.notifyAllClients(Json.encodeToString(ev))
+            WebView.notifyAllClients(
+                Json.encodeToString<Event>(
+                    RenderEvent(stream.toByteArray())
+                )
+            )
         }
     }
 
@@ -227,7 +236,7 @@ class KcefWebView {
         }
     }
 
-    public fun destroy() {
+    fun destroy() {
         flush()
         browser?.close(true)
         browser?.dispose()
@@ -236,7 +245,7 @@ class KcefWebView {
         kcefClient = null
     }
 
-    public fun loadUrl(url: String) {
+    fun loadUrl(url: String) {
         browser?.close(true)
         browser?.dispose()
         browser =
@@ -251,7 +260,7 @@ class KcefWebView {
                 }
     }
 
-    public fun resize(
+    fun resize(
         width: Int,
         height: Int,
     ) {
@@ -523,8 +532,11 @@ class KcefWebView {
     ) {
         browser!!.evaluateJavaScript("return document.title") {
             logger.info { "Load finished with title $it" }
-            val ev: Event = LoadEvent(url, it ?: "", status, error)
-            WebView.notifyAllClients(Json.encodeToString(ev))
+            WebView.notifyAllClients(
+                Json.encodeToString<Event>(
+                    LoadEvent(url, it ?: "", status, error)
+                )
+            )
         }
     }
 }
