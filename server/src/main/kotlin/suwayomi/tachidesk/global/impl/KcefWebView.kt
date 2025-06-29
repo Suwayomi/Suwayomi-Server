@@ -183,17 +183,26 @@ class KcefWebView {
                         const e = document.querySelector(${Json.encodeToString(element)});
                         const ev = new $constructor(${Json.encodeToString(type)}, detail);
                         e.dispatchEvent(ev);
-                        if (typeof detail.inputValueAfter !== 'undefined' && typeof detail.inputValueAfter !== 'null') {
-                            console.log('Setting value', detail.inputValueAfter);
+                        if (typeof detail.inputValueAfter !== 'undefined' && detail.inputValueAfter !== null) {
+                            console.log('Setting value',typeof detail.inputValueAfter, detail.inputValueAfter);
                             e.value = detail.inputValueAfter;
                         }
                     } catch (e) {
                         console.error(e);
+                        // send a doc-change event since we're clearly out of sync
+                        const title = document.title;
                         try {
-                            const html = new XMLSerializer().serializeToString(document.doctype) + document.documentElement.outerHTML;
-                            console.log('Associated HTML:', html);
+                            html = document.documentElement.innerHTML;
                         } catch (e) {
                         }
+                        window.${QUERY_FN}({
+                            request: JSON.stringify({
+                                type: 'docChange',
+                                title,
+                                html,
+                            }),
+                            persistent: false,
+                        })
                     }
                 })();
                 """
