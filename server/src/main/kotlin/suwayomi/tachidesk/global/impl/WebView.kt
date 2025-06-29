@@ -64,6 +64,16 @@ object WebView : Websocket<String>() {
             val charCode: Int? = null,
             val keyCode: Int? = null,
             val which: Int? = null,
+            val clientX: Int? = null,
+            val clientY: Int? = null,
+            val movementX: Int? = null,
+            val movementY: Int? = null,
+            val offsetX: Int? = null,
+            val offsetY: Int? = null,
+            val pageX: Int? = null,
+            val pageY: Int? = null,
+            val screenX: Int? = null,
+            val screenY: Int? = null,
     ) : TypeObject() {
         public fun toJsConstructor(): String {
             return """
@@ -85,6 +95,16 @@ object WebView : Websocket<String>() {
                        charCode: ${Json.encodeToString(charCode)},
                        keyCode: ${Json.encodeToString(keyCode)},
                        which: ${Json.encodeToString(which)},
+                       clientX: ${Json.encodeToString(clientX)},
+                       clientY: ${Json.encodeToString(clientY)},
+                       movementX: ${Json.encodeToString(movementX)},
+                       movementY: ${Json.encodeToString(movementY)},
+                       offsetX: ${Json.encodeToString(offsetX)},
+                       offsetY: ${Json.encodeToString(offsetY)},
+                       pageX: ${Json.encodeToString(pageX)},
+                       pageY: ${Json.encodeToString(pageY)},
+                       screenX: ${Json.encodeToString(screenX)},
+                       screenY: ${Json.encodeToString(screenY)},
                    }
                    """
         }

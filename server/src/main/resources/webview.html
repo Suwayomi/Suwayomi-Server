@@ -339,13 +339,23 @@
                     charCode: e.charCode,
                     keyCode: e.keyCode,
                     which: e.which,
+                    clientX: e.clientX,
+                    clientY: e.clientY,
+                    movementX: e.movementX,
+                    movementY: e.movementY,
+                    offsetX: e.offsetX,
+                    offsetY: e.offsetY,
+                    pageX: e.pageX,
+                    pageY: e.pageY,
+                    screenX: e.screenX,
+                    screenY: e.screenY,
                 }));
             };
 
             const attachEvents = () => {
                 console.log('Attaching event handlers to new document');
                 const frameDoc = frame.contentDocument || frame.contentWindow.document;
-                const events = ["click", "mousedown", "mouseup", "keydown", "keyup", "change", "submit", "focus", "blur"];
+                const events = ["click", "mousedown", "mouseup", "mousemove", "keydown", "keyup", "change", "submit", "focus", "blur"];
                 if (typeof frameDoc.addEventListener != "undefined") {
                     for (const ev of events) {
                         frameDoc.addEventListener(ev, frameEvent, false);

@@ -173,7 +173,7 @@ class KcefWebView {
     public fun event(element: String, type: String, detail: String) {
         val constructor =
                 when (type) {
-                    "click", "mousedown", "mouseup" -> "MouseEvent"
+                    "click", "mousedown", "mouseup", "mousemove" -> "MouseEvent"
                     "keydown", "keyup" -> "KeyboardEvent"
                     "submit" -> "SubmitEvent"
                     "focus", "blur" -> "FocusEvent"
