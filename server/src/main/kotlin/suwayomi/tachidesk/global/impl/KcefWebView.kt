@@ -38,6 +38,8 @@ class KcefWebView {
     private val renderHandler = RenderHandler()
     private var kcefClient: KCEFClient? = null
     private var browser: KCEFBrowser? = null
+    private var width = 1000
+    private var height = 1000
 
     companion object {
         const val QUERY_FN = "__\$_suwayomiWebQuery"
@@ -157,7 +159,7 @@ class KcefWebView {
     private inner class RenderHandler : CefRenderHandlerAdapter() {
         var myImage: BufferedImage? = null
 
-        override fun getViewRect(browser: CefBrowser): Rectangle = Rectangle(0, 0, 1000, 1000)
+        override fun getViewRect(browser: CefBrowser): Rectangle = Rectangle(0, 0, width, height)
 
         override fun onPaint(
             browser: CefBrowser,
@@ -167,6 +169,7 @@ class KcefWebView {
             width: Int,
             height: Int,
         ) {
+            logger.info { "PAINT $width $height" }
             var image = myImage ?: BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB_PRE)
 
             if (image.width != width || image.height != height) {
@@ -233,6 +236,15 @@ class KcefWebView {
 
     public fun loadUrl(url: String) {
         loadUrl(url, mapOf())
+    }
+
+    public fun resize(
+        width: Int,
+        height: Int,
+    ) {
+        this.width = width
+        this.height = height
+        browser?.wasResized(width, height)
     }
 
     public fun event(

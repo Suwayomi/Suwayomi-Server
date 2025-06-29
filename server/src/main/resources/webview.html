@@ -60,6 +60,7 @@
             position: absolute;
             inset: 0;
             width: 100%;
+            height: 100%;
         }
         main .message, main .status {
             position: relative;
@@ -179,7 +180,7 @@
                 messageDiv.textContent = "Loading page...";
                 messageDiv.classList.remove('error');
                 urlInput.value = u;
-                socket.send(JSON.stringify({ type: 'loadUrl', url: u }));
+                socket.send(JSON.stringify({ type: 'loadUrl', url: u, width: frame.clientWidth, height: frame.clientHeight }));
                 ctx.clearRect(0, 0, frame.width, frame.height);
             };
 
@@ -233,7 +234,6 @@
                         const imgData = new Blob([new Uint8Array(obj.image)], { type: "image/png" });
                         const url = URL.createObjectURL(imgData);
                         img.addEventListener('load', e => {
-                            console.log(e);
                             frame.width = img.width;
                             frame.height = img.height;
                             ctx.drawImage(img, 0, 0);
@@ -265,6 +265,11 @@
             });
 
             /// Page events
+
+            const observer = new ResizeObserver(() => {
+                socket.send(JSON.stringify({ type: 'resize', width: frame.clientWidth, height: frame.clientHeight }));
+            });
+            observer.observe(frame);
 
             const frameEvent = (e) => {
                 e.preventDefault();

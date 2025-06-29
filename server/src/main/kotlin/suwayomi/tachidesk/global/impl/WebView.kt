@@ -48,6 +48,15 @@ object WebView : Websocket<String>() {
     @SerialName("loadUrl")
     private data class LoadUrlMessage(
         val url: String,
+        val width: Int,
+        val height: Int,
+    ) : TypeObject()
+
+    @Serializable
+    @SerialName("resize")
+    private data class ResizeMessage(
+        val width: Int,
+        val height: Int,
     ) : TypeObject()
 
     @Serializable
@@ -124,7 +133,12 @@ object WebView : Websocket<String>() {
                 is LoadUrlMessage -> {
                     val url = event.url
                     dr.loadUrl(url)
+                    dr.resize(event.width, event.height)
                     logger.info { "Loading URL $url" }
+                }
+                is ResizeMessage -> {
+                    dr.resize(event.width, event.height)
+                    logger.info { "Resize browser" }
                 }
                 is JsEventMessage -> {
                     val path = event.elementPath
