@@ -20,11 +20,13 @@ import org.cef.handler.CefLoadHandler
 import org.cef.handler.CefLoadHandlerAdapter
 import org.cef.handler.CefMessageRouterHandlerAdapter
 import org.cef.handler.CefRenderHandlerAdapter
+import org.cef.input.CefTouchEvent
 import org.cef.network.CefPostData
 import org.cef.network.CefPostDataElement
 import java.awt.Rectangle
 import java.awt.event.InputEvent
 import java.awt.event.KeyEvent
+import java.awt.event.MouseEvent
 import java.awt.event.MouseWheelEvent
 import java.awt.image.BufferedImage
 import java.awt.image.DataBufferInt
@@ -376,27 +378,71 @@ class KcefWebView {
             browser!!.sendKeyEvent(keyEvent(msg, KeyEvent.KEY_RELEASED, modifier)!!)
             return
         }
-
-        val constructor =
-            when (type) {
-                "click", "mousedown", "mouseup", "mousemove" -> "MouseEvent"
-                "wheel" -> "WheelEvent"
-                "keydown", "keyup" -> "KeyboardEvent"
-                "submit" -> "SubmitEvent"
-                "focus", "blur" -> "FocusEvent"
-                else -> "Event"
-            }
-        val js =
-            """
-                (function() {
-                    const detail = $detail;
-                    const e = document.elementFromPoint($clickX, $clickY)
-                    const ev = new $constructor(${Json.encodeToString(type)}, detail);
-                    e.dispatchEvent(ev);
-                    e.focus();
-                })();
-                """
-        browser!!.executeJavaScript(js, browser!!.url, 0)
+        if (type == "mousedown" || type == "mouseup" || type == "click") {
+            val id =
+                when (type) {
+                    "mousedown" -> MouseEvent.MOUSE_PRESSED
+                    "mouseup" -> MouseEvent.MOUSE_PRESSED
+                    "click" -> MouseEvent.MOUSE_CLICKED
+                    else -> 0
+                }
+            val mouseModifier =
+                when (msg.button ?: 0) {
+                    0 -> MouseEvent.BUTTON1_DOWN_MASK
+                    1 -> MouseEvent.BUTTON2_DOWN_MASK
+                    2 -> MouseEvent.BUTTON3_DOWN_MASK
+                    else -> 0
+                }
+            val button =
+                when (msg.button ?: 0) {
+                    0 -> MouseEvent.BUTTON1
+                    1 -> MouseEvent.BUTTON2
+                    2 -> MouseEvent.BUTTON3
+                    else -> 0
+                }
+            val ev =
+                MouseEvent(
+                    browser!!.uiComponent,
+                    id,
+                    0L,
+                    modifier or mouseModifier,
+                    clickX.toInt(),
+                    clickY.toInt(),
+                    msg.clientX ?: 0,
+                    msg.clientY ?: 0,
+                    1,
+                    true,
+                    button,
+                )
+            browser!!.sendMouseEvent(ev)
+            val evType =
+                when (type) {
+                    "mousedown" -> CefTouchEvent.EventType.PRESSED
+                    "mouseup" -> CefTouchEvent.EventType.RELEASED
+                    else -> CefTouchEvent.EventType.MOVED
+                }
+            val ev2 = CefTouchEvent(0, clickX, clickY, 10.0f, 10.0f, 0.0f, 1.0f, evType, modifier, CefTouchEvent.PointerType.MOUSE)
+            browser!!.sendTouchEvent(ev2)
+            return
+        }
+        if (type == "mousemove") {
+            val ev =
+                MouseEvent(
+                    browser!!.uiComponent,
+                    MouseEvent.MOUSE_MOVED,
+                    0L,
+                    modifier,
+                    clickX.toInt(),
+                    clickY.toInt(),
+                    msg.clientX ?: 0,
+                    msg.clientY ?: 0,
+                    0,
+                    true,
+                    0,
+                )
+            browser!!.sendMouseEvent(ev)
+            return
+        }
     }
 
     public fun canGoBack(): Boolean = browser!!.canGoBack()
