@@ -12,7 +12,9 @@ import java.util.Date
 import kotlin.concurrent.Volatile
 import kotlin.time.Duration.Companion.milliseconds
 
-class KcefCookieManager(private val cookieStore: PersistentCookieStore) : CefCookieManager() {
+class KcefCookieManager(
+    private val cookieStore: PersistentCookieStore,
+) : CefCookieManager() {
     @Volatile
     private var myIsDisposed = false
 
@@ -20,8 +22,8 @@ class KcefCookieManager(private val cookieStore: PersistentCookieStore) : CefCoo
         myIsDisposed = true
     }
 
-    fun HttpCookie.toCefCookie(): CefCookie {
-        return CefCookie(
+    fun HttpCookie.toCefCookie(): CefCookie =
+        CefCookie(
             name,
             value,
             domain,
@@ -33,7 +35,6 @@ class KcefCookieManager(private val cookieStore: PersistentCookieStore) : CefCoo
             maxAge >= 0,
             Date(System.currentTimeMillis() + maxAge),
         )
-    }
 
     fun List<CefCookie>.visit(visitor: CefCookieVisitor?) {
         for ((i, cookie) in withIndex()) {
@@ -44,8 +45,9 @@ class KcefCookieManager(private val cookieStore: PersistentCookieStore) : CefCoo
     }
 
     override fun visitAllCookies(visitor: CefCookieVisitor?): Boolean {
-        if (myIsDisposed)
+        if (myIsDisposed) {
             return false
+        }
 
         cookieStore.cookies
             .map { it.toCefCookie() }
@@ -59,10 +61,12 @@ class KcefCookieManager(private val cookieStore: PersistentCookieStore) : CefCoo
         includeHttpOnly: Boolean,
         visitor: CefCookieVisitor?,
     ): Boolean {
-        if (myIsDisposed || url.isNullOrEmpty())
+        if (myIsDisposed || url.isNullOrEmpty()) {
             return false
+        }
 
-        cookieStore.get(URI(url))
+        cookieStore
+            .get(URI(url))
             .let { if (includeHttpOnly) it.filter { it.isHttpOnly } else it }
             .map { it.toCefCookie() }
             .visit(visitor)
@@ -74,8 +78,9 @@ class KcefCookieManager(private val cookieStore: PersistentCookieStore) : CefCoo
         url: String?,
         cookie: CefCookie?,
     ): Boolean {
-        if (myIsDisposed)
+        if (myIsDisposed) {
             return false
+        }
         cookie ?: return true
 
         cookieStore.add(
@@ -96,16 +101,21 @@ class KcefCookieManager(private val cookieStore: PersistentCookieStore) : CefCoo
         return true
     }
 
-    override fun deleteCookies(url: String?, cookieName: String?): Boolean {
-        if (myIsDisposed)
+    override fun deleteCookies(
+        url: String?,
+        cookieName: String?,
+    ): Boolean {
+        if (myIsDisposed) {
             return false
+        }
         cookieStore.remove(URI("https://" + url!!.removePrefix(".")))
         return true
     }
 
     override fun flushStore(handler: CefCompletionCallback?): Boolean {
-        if (myIsDisposed)
+        if (myIsDisposed) {
             return false
+        }
         return true
     }
 }

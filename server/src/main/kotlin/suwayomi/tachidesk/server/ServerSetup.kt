@@ -27,7 +27,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.cef.CefApp
 import org.cef.network.CefCookie
 import org.cef.network.CefCookieManager
 import org.koin.core.context.startKoin

@@ -99,8 +99,8 @@ class KcefWebView {
         ): Boolean {
             WebView.notifyAllClients(
                 Json.encodeToString<Event>(
-                    ConsoleEvent(level.ordinal, message, source, line)
-                )
+                    ConsoleEvent(level.ordinal, message, source, line),
+                ),
             )
             logger.debug { "$source:$line: $message" }
             return true
@@ -115,8 +115,8 @@ class KcefWebView {
             this@KcefWebView.browser!!.evaluateJavaScript("return document.title") {
                 WebView.notifyAllClients(
                     Json.encodeToString<Event>(
-                        AddressEvent(url, it ?: "")
-                    )
+                        AddressEvent(url, it ?: ""),
+                    ),
                 )
             }
             flush()
@@ -128,8 +128,8 @@ class KcefWebView {
         ) {
             WebView.notifyAllClients(
                 Json.encodeToString<Event>(
-                    StatusEvent(value)
-                )
+                    StatusEvent(value),
+                ),
             )
         }
     }
@@ -192,8 +192,8 @@ class KcefWebView {
 
             WebView.notifyAllClients(
                 Json.encodeToString<Event>(
-                    RenderEvent(stream.toByteArray())
-                )
+                    RenderEvent(stream.toByteArray()),
+                ),
             )
         }
     }
@@ -534,8 +534,8 @@ class KcefWebView {
             logger.info { "Load finished with title $it" }
             WebView.notifyAllClients(
                 Json.encodeToString<Event>(
-                    LoadEvent(url, it ?: "", status, error)
-                )
+                    LoadEvent(url, it ?: "", status, error),
+                ),
             )
         }
     }
