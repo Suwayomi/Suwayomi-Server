@@ -173,6 +173,7 @@ class KcefWebView {
                     "click", "mousedown", "mouseup" -> "MouseEvent"
                     "keydown", "keyup" -> "KeyboardEvent"
                     "submit" -> "SubmitEvent"
+                    "focus", "blur" -> "FocusEvent"
                     else -> "Event"
                 }
         val js =

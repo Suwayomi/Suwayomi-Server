@@ -49,6 +49,10 @@ object WebView : Websocket<String>() {
             val eventType: String,
             val elementPath: String,
             val inputValueAfter: String? = null,
+            val bubbles: Boolean? = null,
+            val cancelable: Boolean? = null,
+            val composed: Boolean? = null,
+            val detail: Int? = null,
             val button: Int? = null,
             val buttons: Int? = null,
             val ctrlKey: Boolean? = null,
@@ -64,7 +68,12 @@ object WebView : Websocket<String>() {
         public fun toJsConstructor(): String {
             return """
                    {
+                       view: window,
                        inputValueAfter: ${Json.encodeToString(inputValueAfter)},
+                       bubbles: ${Json.encodeToString(bubbles)},
+                       cancelable: ${Json.encodeToString(cancelable)},
+                       composed: ${Json.encodeToString(composed)},
+                       detail: ${Json.encodeToString(detail)},
                        button: ${Json.encodeToString(button)},
                        buttons: ${Json.encodeToString(buttons)},
                        ctrlKey: ${Json.encodeToString(ctrlKey)},

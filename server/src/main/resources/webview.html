@@ -311,6 +311,10 @@
                     eventType: e.type,
                     elementPath: path,
                     inputValueAfter: e.target.value,
+                    bubbles: e.bubbles,
+                    cancelable: e.cancelable,
+                    composed: e.composed,
+                    detail: e.detail,
                     button: e.button,
                     buttons: e.buttons,
                     ctrlKey: e.ctrlKey,
@@ -328,7 +332,7 @@
             const attachEvents = () => {
                 console.log('Attaching event handlers to new document');
                 const frameDoc = frame.contentDocument || frame.contentWindow.document;
-                const events = ["click", "mousedown", "mouseup", "keydown", "keyup", "change", "submit"];
+                const events = ["click", "mousedown", "mouseup", "keydown", "keyup", "change", "submit", "focus", "blur"];
                 if (typeof frameDoc.addEventListener != "undefined") {
                     for (const ev of events) {
                         frameDoc.addEventListener(ev, frameEvent, false);
