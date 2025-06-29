@@ -205,6 +205,8 @@
                 console.log('WebSocket connection opened');
             });
 
+            let lastHtml = undefined;
+
             socket.addEventListener('message', e => {
                 const obj = JSON.parse(e.data);
                 console.log(obj);
@@ -225,8 +227,20 @@
                         } else {
                             messageDiv.textContent = "";
                         }
+                        urlInput.value = obj.url;
                         setTitle(obj.title);
                         frame.srcdoc = obj.html;
+                        break;
+                    case "docChange":
+                        if (lastHtml == obj.html) break;
+                        // NOTE: we *don't* want to change srcdoc now, because that would be a reload
+                        const frameDoc = frame.contentDocument || frame.contentWindow.document;
+                        urlInput.value = obj.url;
+                        setTitle(obj.title);
+                        // ugly ass hack, but the only thing that worked from what I found
+                        // everything else seems to either throw or be ignored
+                        frameDoc.documentElement.innerHTML = obj.html;
+                        lastHtml = obj.html;
                         break;
                     case "consoleMessage":
                         const lg = obj.severity == 4 ? console.error : obj.severity == 3 ? console.warn : console.log;
@@ -254,11 +268,8 @@
 
             /// Page events
 
-            const frameClick = (e) => {
-                e.preventDefault();
-                console.log(e);
+            const computePath = (node) => {
                 let path = '';
-                let node = e.target;
                 while (node) {
                     const classes = Array.from(node.classList).map(x => `.${x}`).join("");
                     const id = node.id ? `#${node.id}` : "";
@@ -268,17 +279,48 @@
                     path = `${node.tagName}${id}${classes}${idx1}` + path;
                     node = node.parentElement;
                 }
-                console.log(path)
-                socket.send(JSON.stringify({ type: 'click', elementPath: path, buttons: e.buttons }));
+                return path;
+            }
+
+            const frameEvent = (e) => {
+                if (e.type === 'click')
+                    e.preventDefault();
+                const path = computePath(e.target);
+                console.log(e, path)
+                socket.send(JSON.stringify({
+                    type: 'event',
+                    eventType: e.type,
+                    elementPath: path,
+                    inputValueAfter: e.target.value,
+                    button: e.button,
+                    buttons: e.buttons,
+                    ctrlKey: e.ctrlKey,
+                    shiftKey: e.shiftKey,
+                    altKey: e.altKey,
+                    metaKey: e.metaKey,
+                    key: e.key,
+                    code: e.code,
+                    charCode: e.charCode,
+                    keyCode: e.keyCode,
+                    which: e.which,
+                }));
             };
 
             const attachEvents = () => {
                 console.log('Attaching event handlers to new document');
                 const frameDoc = frame.contentDocument || frame.contentWindow.document;
                 if (typeof frameDoc.addEventListener != "undefined") {
-                    frameDoc.addEventListener("click", frameClick, false);
+                    frameDoc.addEventListener("click", frameEvent, false);
+                    frameDoc.addEventListener("keydown", frameEvent, false);
+                    frameDoc.addEventListener("keyup", frameEvent, false);
+                    frameDoc.addEventListener("change", frameEvent, false);
+                    frameDoc.addEventListener("submit", frameEvent, false);
                 } else if (typeof iframeDoc.attachEvent != "undefined") {
-                    frameDoc.attachEvent("onclick", frameClick);
+                    frameDoc.attachEvent("onclick", frameEvent);
+                    frameDoc.attachEvent("onkeydown", frameEvent);
+                    frameDoc.attachEvent("onkeyup", frameEvent);
+                    frameDoc.attachEvent("onchange", frameEvent);
+                    frameDoc.attachEvent("onsubmit", frameEvent);
                 } else {
                     console.error("Failed to attach event listeners");
                 }

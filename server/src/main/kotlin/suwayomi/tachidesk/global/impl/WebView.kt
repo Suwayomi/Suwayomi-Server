@@ -44,8 +44,42 @@ object WebView : Websocket<String>() {
     @SerialName("loadUrl")
     private data class LoadUrlMessage(val url: String) : TypeObject()
     @Serializable
-    @SerialName("click")
-    private data class ClickMessage(val elementPath: String, val buttons: Int) : TypeObject()
+    @SerialName("event")
+    private data class JsEventMessage(
+            val eventType: String,
+            val elementPath: String,
+            val inputValueAfter: String? = null,
+            val button: Int? = null,
+            val buttons: Int? = null,
+            val ctrlKey: Boolean? = null,
+            val shiftKey: Boolean? = null,
+            val altKey: Boolean? = null,
+            val metaKey: Boolean? = null,
+            val key: String? = null,
+            val code: String? = null,
+            val charCode: Int? = null,
+            val keyCode: Int? = null,
+            val which: Int? = null,
+    ) : TypeObject() {
+        public fun toJsConstructor(): String {
+            return """
+                   {
+                       inputValueAfter: ${Json.encodeToString(inputValueAfter)},
+                       button: ${Json.encodeToString(button)},
+                       buttons: ${Json.encodeToString(buttons)},
+                       ctrlKey: ${Json.encodeToString(ctrlKey)},
+                       shiftKey: ${Json.encodeToString(shiftKey)},
+                       altKey: ${Json.encodeToString(altKey)},
+                       metaKey: ${Json.encodeToString(metaKey)},
+                       key: ${Json.encodeToString(key)},
+                       code: ${Json.encodeToString(code)},
+                       charCode: ${Json.encodeToString(charCode)},
+                       keyCode: ${Json.encodeToString(keyCode)},
+                       which: ${Json.encodeToString(which)},
+                   }
+                   """
+        }
+    }
 
     override fun handleRequest(ctx: WsMessageContext) {
         val dr = driver ?: return
@@ -57,10 +91,11 @@ object WebView : Websocket<String>() {
                     dr.loadUrl(url)
                     logger.info { "Loading URL $url" }
                 }
-                is ClickMessage -> {
+                is JsEventMessage -> {
                     val path = event.elementPath
-                    dr.click(path, event.buttons)
-                    logger.info { "Click on $path" }
+                    val type = event.eventType
+                    dr.event(path, type, event.toJsConstructor())
+                    logger.info { "$type on $path" }
                 }
             }
         } catch (e: Exception) {

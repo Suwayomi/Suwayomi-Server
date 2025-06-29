@@ -167,13 +167,34 @@ class KcefWebView {
         loadUrl(url, mapOf())
     }
 
-    public fun click(element: String, buttons: Int) {
+    public fun event(element: String, type: String, detail: String) {
+        val constructor =
+                when (type) {
+                    "click" -> "MouseEvent"
+                    "keydown", "keyup" -> "KeyboardEvent"
+                    "submit" -> "SubmitEvent"
+                    else -> "Event"
+                }
         val js =
                 """
                 (function() {
-                    const e = document.querySelector(${Json.encodeToString(element)});
-                    const ev = new MouseEvent('click', { buttons: $buttons });
-                    e.dispatchEvent(ev);
+                    try {
+                        const detail = $detail;
+                        const e = document.querySelector(${Json.encodeToString(element)});
+                        const ev = new $constructor(${Json.encodeToString(type)}, detail);
+                        e.dispatchEvent(ev);
+                        if (typeof detail.inputValueAfter !== 'undefined' && typeof detail.inputValueAfter !== 'null') {
+                            console.log('Setting value', detail.inputValueAfter);
+                            e.value = detail.inputValueAfter;
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        try {
+                            const html = new XMLSerializer().serializeToString(document.doctype) + document.documentElement.outerHTML;
+                            console.log('Associated HTML:', html);
+                        } catch (e) {
+                        }
+                    }
                 })();
                 """
         browser!!.executeJavaScript(js, browser!!.url, 0)
@@ -227,10 +248,29 @@ class KcefWebView {
                         request: JSON.stringify({
                             type: ${Json.encodeToString(ev)},
                             title,
+                            url: ${Json.encodeToString(url)},
                             html,${serializedArgs}
                         }),
                         persistent: false,
                     })
+
+                    const observer = new MutationObserver(() => {
+                        const title = document.title;
+                        try {
+                            html = document.documentElement.innerHTML;
+                        } catch (e) {
+                        }
+                        window.${QUERY_FN}({
+                            request: JSON.stringify({
+                                type: 'docChange',
+                                title,
+                                url: ${Json.encodeToString(url)},
+                                html,
+                            }),
+                            persistent: false,
+                        })
+                    });
+                    observer.observe(document.documentElement, { subtree: true, childList: true, attributes: true, characterData: true });
                 })();
                 """
         logger.info { "Load finished for URL $url" }
