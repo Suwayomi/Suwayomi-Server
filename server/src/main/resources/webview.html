@@ -246,7 +246,6 @@
                         if (lastHtml == obj.html) break;
                         // NOTE: we *don't* want to change srcdoc now, because that would be a reload
                         const frameDoc = frame.contentDocument || frame.contentWindow.document;
-                        urlInput.value = obj.url;
                         setTitle(obj.title);
                         // ugly ass hack, but the only thing that worked from what I found
                         // everything else seems to either throw or be ignored
