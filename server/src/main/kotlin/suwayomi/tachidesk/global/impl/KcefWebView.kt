@@ -330,10 +330,8 @@ class KcefWebView {
             }
         if (id == KeyEvent.KEY_TYPED) {
             if (char == KeyEvent.CHAR_UNDEFINED) return null
-            logger.info { "key $char ${msg.key} undefined" }
             return KeyEvent(browser!!.uiComponent, id, 0L, modifier, KeyEvent.VK_UNDEFINED, char, KeyEvent.KEY_LOCATION_UNKNOWN)
         }
-        logger.info { "key $char ${msg.key} $code" }
         return KeyEvent(browser!!.uiComponent, id, 0L, modifier, code, char, KeyEvent.KEY_LOCATION_UNKNOWN)
     }
 

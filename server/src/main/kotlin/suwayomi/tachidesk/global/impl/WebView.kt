@@ -148,7 +148,6 @@ object WebView : Websocket<String>() {
                 is JsEventMessage -> {
                     val type = event.eventType
                     dr.event(event)
-                    logger.info { "event $type" }
                 }
             }
         } catch (e: Exception) {

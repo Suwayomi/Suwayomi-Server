@@ -15,6 +15,16 @@
             display: flex;
             flex-direction: column;
         }
+        body.disconnected::after {
+            content: 'Disconnected, please refresh';
+            position: absolute;
+            inset: 0;
+            background: rgba(150, 0, 0, 0.5);
+            color: white;
+            text-align: center;
+            align-content: center;
+            font-size: 2rem;
+        }
         button[disabled], input[disabled] {
             cursor: not-allowed;
         }
@@ -23,7 +33,7 @@
             color: #fff;
             padding: 8px 32px;
         }
-        header h1 {
+        header h1, header p {
             margin: 0;
             white-space: nowrap;
             overflow: hidden;
@@ -115,6 +125,7 @@
                 <button type="submit" id="goButton" disabled><span class="arrow-right"></span></button>
             </form>
         </nav>
+        <p><i>Note: While focus is on the WebView part, no keybinds, including refresh, will be handled by the browser</i></p>
     </header>
     <main>
         <div class="message" id="message">Initializing... Please wait</div>
@@ -208,7 +219,6 @@
 
             socket.addEventListener('message', e => {
                 const obj = JSON.parse(e.data);
-                console.log(obj);
                 switch (obj.type) {
                     case "addressChange":
                         console.log('Loaded');
@@ -256,6 +266,7 @@
                 } else {
                     console.error('WebSocket connection died');
                 }
+                document.body.classList.add('disconnected');
             });
 
             socket.addEventListener('error', e => {
@@ -276,7 +287,6 @@
                 const rect = frame.getBoundingClientRect();
                 const clickX = e.clientX !== undefined ? e.clientX - rect.left : 0;
                 const clickY = e.clientY !== undefined ? e.clientY - rect.top : 0;
-                console.log(e, clickX, clickY);
                 socket.send(JSON.stringify({
                     type: 'event',
                     eventType: e.type,
