@@ -202,7 +202,6 @@ class KcefWebView {
             val cookies = networkHelper.cookieStore.getCookies()
             for (cookie in cookies) {
                 try {
-                    // TODO: check this URL
                     if (!setCookie(
                             "https://" + cookie.domain,
                             CefCookie(

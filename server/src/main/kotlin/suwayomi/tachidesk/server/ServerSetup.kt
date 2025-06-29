@@ -27,6 +27,8 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.cef.network.CefCookie
+import org.cef.network.CefCookieManager
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -45,6 +47,7 @@ import uy.kohesive.injekt.api.get
 import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
 import xyz.nulldev.androidcompat.androidCompatModule
+import xyz.nulldev.androidcompat.webkit.KcefWebViewProvider
 import xyz.nulldev.ts.config.ApplicationRootDir
 import xyz.nulldev.ts.config.BASE_LOGGER_NAME
 import xyz.nulldev.ts.config.GlobalConfigManager
@@ -56,6 +59,7 @@ import java.io.File
 import java.net.Authenticator
 import java.net.PasswordAuthentication
 import java.security.Security
+import java.util.Date
 import java.util.Locale
 import kotlin.io.path.Path
 import kotlin.io.path.createDirectories
@@ -211,6 +215,45 @@ fun applicationSetup() {
             androidCompatModule(),
             configManagerModule(),
             serverModule(applicationDirs),
+            module {
+                single<KcefWebViewProvider.InitBrowserHandler> {
+                    object : KcefWebViewProvider.InitBrowserHandler {
+                        public override fun init(provider: KcefWebViewProvider) {
+                            val networkHelper = Injekt.get<NetworkHelper>()
+                            val logger = KotlinLogging.logger {}
+                            logger.info { "Start loading cookies" }
+                            CefCookieManager.getGlobalManager().apply {
+                                val cookies = networkHelper.cookieStore.getCookies()
+                                for (cookie in cookies) {
+                                    logger.info { "Loading cookie ${cookie.name} for ${cookie.domain}" }
+                                    try {
+                                        if (!setCookie(
+                                                "https://" + cookie.domain,
+                                                CefCookie(
+                                                    cookie.name,
+                                                    cookie.value,
+                                                    cookie.domain,
+                                                    cookie.path,
+                                                    cookie.secure,
+                                                    cookie.isHttpOnly(),
+                                                    Date(),
+                                                    null,
+                                                    cookie.maxAge >= 0,
+                                                    Date(System.currentTimeMillis() + cookie.maxAge),
+                                                ),
+                                            )
+                                        ) {
+                                            throw Exception()
+                                        }
+                                    } catch (e: Exception) {
+                                        logger.warn(e) { "Loading cookie ${cookie.name} failed" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
         )
     }
 
