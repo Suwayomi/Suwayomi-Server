@@ -58,6 +58,7 @@ class KcefWebView {
     @SerialName("addressChange")
     private data class AddressEvent(
         val url: String,
+        val title: String,
     ) : Event()
 
     @Serializable
@@ -103,8 +104,10 @@ class KcefWebView {
             url: String,
         ) {
             if (!frame.isMain()) return
-            val ev: Event = AddressEvent(url)
-            WebView.notifyAllClients(Json.encodeToString(ev))
+            this@KcefWebView.browser!!.evaluateJavaScript("return document.title") {
+                val ev: Event = AddressEvent(url, it ?: "")
+                WebView.notifyAllClients(Json.encodeToString(ev))
+            }
         }
 
         override fun onStatusMessage(
@@ -458,12 +461,11 @@ class KcefWebView {
         status: Int = 0,
         error: String? = null,
     ) {
-        val title =
-            browser!!.evaluateJavaScript("return document.title") {
-                logger.info { "Load finished with title $it" }
-                val ev: Event = LoadEvent(url, it ?: "", status, error)
-                WebView.notifyAllClients(Json.encodeToString(ev))
-            }
+        browser!!.evaluateJavaScript("return document.title") {
+            logger.info { "Load finished with title $it" }
+            val ev: Event = LoadEvent(url, it ?: "", status, error)
+            WebView.notifyAllClients(Json.encodeToString(ev))
+        }
     }
 
     private fun createContext(
