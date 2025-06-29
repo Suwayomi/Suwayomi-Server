@@ -174,7 +174,6 @@ class KcefWebView {
             width: Int,
             height: Int,
         ) {
-            logger.info { "PAINT $width $height" }
             var image = myImage ?: BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB_PRE)
 
             if (image.width != width || image.height != height) {
@@ -339,7 +338,6 @@ class KcefWebView {
         val type = msg.eventType
         val clickX = msg.clickX
         val clickY = msg.clickY
-        val detail = msg.toJsConstructor()
         val modifier = (
             (if (msg.altKey ?: false) InputEvent.ALT_DOWN_MASK else 0) or
                 (if (msg.ctrlKey ?: false) InputEvent.CTRL_DOWN_MASK else 0) or
