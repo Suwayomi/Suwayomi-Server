@@ -79,14 +79,12 @@ class KcefWebView {
 
     @Serializable
     @SerialName("render")
-    // TODO: page title
     private data class RenderEvent(
         val image: ByteArray,
     ) : Event()
 
     @Serializable
     @SerialName("load")
-    // TODO: page title
     private data class LoadEvent(
         val url: String,
         val title: String,
@@ -247,6 +245,7 @@ class KcefWebView {
                 .createBrowser(
                     url,
                     CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
+                    // NOTE: with a context, we don't seem to be getting any cookies
                 ).apply {
                     // NOTE: Without this, we don't seem to be receiving any events
                     createImmediately()
