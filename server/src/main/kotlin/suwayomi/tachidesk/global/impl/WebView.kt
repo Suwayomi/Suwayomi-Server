@@ -42,7 +42,7 @@ object WebView : Websocket<String>() {
         }
     }
 
-    @Serializable private sealed class TypeObject
+    @Serializable public sealed class TypeObject
 
     @Serializable
     @SerialName("loadUrl")
@@ -61,10 +61,10 @@ object WebView : Websocket<String>() {
 
     @Serializable
     @SerialName("event")
-    private data class JsEventMessage(
+    public data class JsEventMessage(
         val eventType: String,
-        val elementPath: String,
-        val inputValueAfter: String? = null,
+        val clickX: Float,
+        val clickY: Float,
         val bubbles: Boolean? = null,
         val cancelable: Boolean? = null,
         val composed: Boolean? = null,
@@ -90,12 +90,14 @@ object WebView : Websocket<String>() {
         val pageY: Int? = null,
         val screenX: Int? = null,
         val screenY: Int? = null,
+        val deltaX: Float? = null,
+        val deltaY: Float? = null,
+        val deltaZ: Float? = null,
     ) : TypeObject() {
         public fun toJsConstructor(): String =
             """
                    {
                        view: window,
-                       inputValueAfter: ${Json.encodeToString(inputValueAfter)},
                        bubbles: ${Json.encodeToString(bubbles)},
                        cancelable: ${Json.encodeToString(cancelable)},
                        composed: ${Json.encodeToString(composed)},
@@ -121,6 +123,9 @@ object WebView : Websocket<String>() {
                        pageY: ${Json.encodeToString(pageY)},
                        screenX: ${Json.encodeToString(screenX)},
                        screenY: ${Json.encodeToString(screenY)},
+                       deltaX: ${Json.encodeToString(deltaX)},
+                       deltaY: ${Json.encodeToString(deltaY)},
+                       deltaZ: ${Json.encodeToString(deltaZ)},
                    }
                    """
     }
@@ -141,10 +146,9 @@ object WebView : Websocket<String>() {
                     logger.info { "Resize browser" }
                 }
                 is JsEventMessage -> {
-                    val path = event.elementPath
                     val type = event.eventType
-                    dr.event(path, type, event.toJsConstructor())
-                    logger.info { "$type on $path" }
+                    dr.event(event)
+                    logger.info { "event $type" }
                 }
             }
         } catch (e: Exception) {

@@ -119,7 +119,7 @@
     <main>
         <div class="message" id="message">Initializing... Please wait</div>
         <div class="status" id="status"></div>
-        <canvas id="frame"></canvas>
+        <canvas id="frame" tabindex="0"></canvas>
     </main>
     <script>
         const messageDiv = document.getElementById('message');
@@ -274,8 +274,8 @@
             const frameEvent = (e) => {
                 e.preventDefault();
                 const rect = frame.getBoundingClientRect();
-                const clickX = e.clientX - rect.left;
-                const clickY = e.clientY - rect.top;
+                const clickX = e.clientX !== undefined ? e.clientX - rect.left : 0;
+                const clickY = e.clientY !== undefined ? e.clientY - rect.top : 0;
                 console.log(e, clickX, clickY);
                 socket.send(JSON.stringify({
                     type: 'event',
@@ -307,25 +307,22 @@
                     pageY: e.pageY,
                     screenX: e.screenX,
                     screenY: e.screenY,
+                    deltaX: e.deltaX,
+                    deltaY: e.deltaY,
+                    deltaZ: e.deltaZ,
                 }));
+                frame.focus();
             };
 
             const attachEvents = () => {
                 console.log('Attaching event handlers to new document');
-                const frameDoc = frame.contentDocument || frame.contentWindow.document;
-                const events = ["click", "mousedown", "mouseup", "mousemove", "keydown", "keyup", "change", "submit", "focus", "blur"];
-                if (typeof frameDoc.addEventListener != "undefined") {
-                    for (const ev of events) {
-                        frameDoc.addEventListener(ev, frameEvent, false);
-                    }
-                } else if (typeof iframeDoc.attachEvent != "undefined") {
-                    for (const ev of events) {
-                        frameDoc.attachEvent("on" + ev, frameEvent);
-                    }
-                } else {
-                    console.error("Failed to attach event listeners");
+                const events = ["click", "mousedown", "mouseup", "mousemove", "wheel", "keydown", "keyup"];
+                for (const ev of events) {
+                    frame.addEventListener(ev, frameEvent, false);
                 }
             };
+            attachEvents();
+            frame.focus();
         } catch (e) {
             messageDiv.textContent = "Error: " + (e.message || e);
             messageDiv.classList.add('error');
