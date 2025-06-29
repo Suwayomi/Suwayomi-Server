@@ -170,7 +170,7 @@ class KcefWebView {
     public fun event(element: String, type: String, detail: String) {
         val constructor =
                 when (type) {
-                    "click" -> "MouseEvent"
+                    "click", "mousedown", "mouseup" -> "MouseEvent"
                     "keydown", "keyup" -> "KeyboardEvent"
                     "submit" -> "SubmitEvent"
                     else -> "Event"
@@ -247,6 +247,9 @@ class KcefWebView {
                         a.href = a.href;
                         a.target = "";
                     }
+                    const style = document.createElement('style');
+                    style.textContent = "noscript{display:none}";
+                    document.head.appendChild(style);
                     let html = "";
                     const title = document.title;
                     try {
@@ -275,7 +278,7 @@ class KcefWebView {
                             node = node.parentElement;
                         }
                         return path;
-                    }
+                    };
 
                     const observer = new MutationObserver((changes) => {
                         // TODO: This could be cleaner, we're recreating the entire parent

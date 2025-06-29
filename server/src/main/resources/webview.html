@@ -246,6 +246,7 @@
                         const frameDoc = frame.contentDocument || frame.contentWindow.document;
                         for (const change of obj.changes) {
                             const target = frameDoc.querySelector(change.target);
+                            if (!target) continue; // TODO: Re-request HTML?
                             switch (change.type) {
                                 case "attributes":
                                     target.setAttributeNS(change.attributeNamespace, change.attributeName, change.newValue);
@@ -327,18 +328,15 @@
             const attachEvents = () => {
                 console.log('Attaching event handlers to new document');
                 const frameDoc = frame.contentDocument || frame.contentWindow.document;
+                const events = ["click", "mousedown", "mouseup", "keydown", "keyup", "change", "submit"];
                 if (typeof frameDoc.addEventListener != "undefined") {
-                    frameDoc.addEventListener("click", frameEvent, false);
-                    frameDoc.addEventListener("keydown", frameEvent, false);
-                    frameDoc.addEventListener("keyup", frameEvent, false);
-                    frameDoc.addEventListener("change", frameEvent, false);
-                    frameDoc.addEventListener("submit", frameEvent, false);
+                    for (const ev of events) {
+                        frameDoc.addEventListener(ev, frameEvent, false);
+                    }
                 } else if (typeof iframeDoc.attachEvent != "undefined") {
-                    frameDoc.attachEvent("onclick", frameEvent);
-                    frameDoc.attachEvent("onkeydown", frameEvent);
-                    frameDoc.attachEvent("onkeyup", frameEvent);
-                    frameDoc.attachEvent("onchange", frameEvent);
-                    frameDoc.attachEvent("onsubmit", frameEvent);
+                    for (const ev of events) {
+                        frameDoc.attachEvent("on" + ev, frameEvent);
+                    }
                 } else {
                     console.error("Failed to attach event listeners");
                 }
