@@ -61,6 +61,7 @@ class KcefWebView {
         ): Boolean {
             val ev: Event = ConsoleEvent(level.ordinal, message, source, line)
             WebView.notifyAllClients(Json.encodeToString(ev))
+            logger.debug { "$source:$line: $message" }
             return true
         }
 
@@ -69,6 +70,7 @@ class KcefWebView {
                 frame: CefFrame,
                 url: String,
         ) {
+            if (!frame.isMain()) return
             val ev: Event = AddressEvent(url)
             WebView.notifyAllClients(Json.encodeToString(ev))
         }
@@ -88,9 +90,10 @@ class KcefWebView {
                 frame: CefFrame,
                 httpStatusCode: Int,
         ) {
+            logger.info { "Load event: ${frame.name} - ${frame.url}" }
             if (httpStatusCode > 0)
                     handleLoad(
-                            browser,
+                            frame,
                             frame.url,
                             "load",
                             mapOf("status" to httpStatusCode.toString())
@@ -104,7 +107,7 @@ class KcefWebView {
                 errorText: String,
                 failedUrl: String,
         ) {
-            handleLoad(browser, failedUrl, "load", mapOf("error" to errorText))
+            handleLoad(frame, failedUrl, "load", mapOf("error" to errorText))
         }
     }
 
@@ -185,7 +188,6 @@ class KcefWebView {
                         const ev = new $constructor(${Json.encodeToString(type)}, detail);
                         e.dispatchEvent(ev);
                         if (typeof detail.inputValueAfter !== 'undefined' && detail.inputValueAfter !== null) {
-                            console.log('Setting value',typeof detail.inputValueAfter, detail.inputValueAfter);
                             e.value = detail.inputValueAfter;
                         }
                     } catch (e) {
@@ -223,7 +225,7 @@ class KcefWebView {
     }
 
     private fun handleLoad(
-            browser: CefBrowser,
+            frame: CefFrame,
             url: String,
             ev: String,
             args: Map<String, String> = mapOf()
@@ -260,6 +262,7 @@ class KcefWebView {
                     window.${QUERY_FN}({
                         request: JSON.stringify({
                             type: ${Json.encodeToString(ev)},
+                            frame: ${Json.encodeToString(frame.name)},
                             title,
                             url: ${Json.encodeToString(url)},
                             html,${serializedArgs}
@@ -297,6 +300,7 @@ class KcefWebView {
                         window.${QUERY_FN}({
                             request: JSON.stringify({
                                 type: 'docMutate',
+                                frame: ${Json.encodeToString(frame.name)},
                                 title,
                                 changes: toSend,
                             }),
@@ -307,7 +311,7 @@ class KcefWebView {
                 })();
                 """
         logger.info { "Load finished for URL $url" }
-        browser.executeJavaScript(js, url, 0)
+        frame.executeJavaScript(js, url, 0)
     }
 
     private fun createContext(

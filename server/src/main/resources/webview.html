@@ -227,11 +227,19 @@
                         } else {
                             messageDiv.textContent = "";
                         }
-                        urlInput.value = obj.url;
-                        setTitle(obj.title);
-                        frame.srcdoc = obj.html;
+                        if (obj.frame) {
+                            const frameDoc = frame.contentDocument || frame.contentWindow.document;
+                            const f = frameDoc.querySelector(`iframe[name="${obj.frame}"]`);
+                            f.srcdoc = obj.html;
+                        } else {
+                            // main frame
+                            urlInput.value = obj.url;
+                            setTitle(obj.title);
+                            frame.srcdoc = obj.html;
+                        }
                         break;
                     case "docChange": {
+                        // TODO: frame?
                         if (lastHtml == obj.html) break;
                         // NOTE: we *don't* want to change srcdoc now, because that would be a reload
                         const frameDoc = frame.contentDocument || frame.contentWindow.document;
@@ -244,8 +252,10 @@
                     } break;
                     case "docMutate": {
                         const frameDoc = frame.contentDocument || frame.contentWindow.document;
+                        const f1 = obj.frame ? frameDoc.querySelector(`iframe[name="${obj.frame}"]`) : frame;
+                        const f = f1.contentDocument || f1.contentWindow.document;
                         for (const change of obj.changes) {
-                            const target = frameDoc.querySelector(change.target);
+                            const target = f.querySelector(change.target);
                             if (!target) continue; // TODO: Re-request HTML?
                             switch (change.type) {
                                 case "attributes":
@@ -259,7 +269,8 @@
                                     break;
                             }
                         }
-                        setTitle(obj.title);
+                        if (!obj.frame)
+                            setTitle(obj.title);
                     } break;
                     case "consoleMessage": {
                         const lg = obj.severity == 4 ? console.error : obj.severity == 3 ? console.warn : console.log;
