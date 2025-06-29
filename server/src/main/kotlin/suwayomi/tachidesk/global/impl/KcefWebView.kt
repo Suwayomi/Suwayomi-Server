@@ -11,14 +11,11 @@ import kotlinx.serialization.json.Json
 import org.cef.CefSettings
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
-import org.cef.browser.CefMessageRouter
 import org.cef.browser.CefRendering
 import org.cef.browser.CefRequestContext
-import org.cef.callback.CefQueryCallback
 import org.cef.handler.CefDisplayHandlerAdapter
 import org.cef.handler.CefLoadHandler
 import org.cef.handler.CefLoadHandlerAdapter
-import org.cef.handler.CefMessageRouterHandlerAdapter
 import org.cef.handler.CefRenderHandlerAdapter
 import org.cef.input.CefTouchEvent
 import org.cef.network.CefPostData
@@ -45,11 +42,6 @@ class KcefWebView {
     private var browser: KCEFBrowser? = null
     private var width = 1000
     private var height = 1000
-
-    companion object {
-        const val QUERY_FN = "__\$_suwayomiWebQuery"
-        const val QUERY_CANCEL_FN = "__\$_suwayomiWebQueryCancel"
-    }
 
     @Serializable sealed class Event
 
@@ -86,6 +78,7 @@ class KcefWebView {
     // TODO: page title
     private data class LoadEvent(
         val url: String,
+        val title: String,
         val status: Int = 0,
         val error: String? = null,
     ) : Event()
@@ -130,7 +123,7 @@ class KcefWebView {
             httpStatusCode: Int,
         ) {
             logger.info { "Load event: ${frame.name} - ${frame.url}" }
-            if (httpStatusCode > 0) handleLoad(frame.url, httpStatusCode)
+            if (httpStatusCode > 0 && frame.isMain()) handleLoad(frame.url, httpStatusCode)
         }
 
         override fun onLoadError(
@@ -140,22 +133,7 @@ class KcefWebView {
             errorText: String,
             failedUrl: String,
         ) {
-            handleLoad(failedUrl, 0, errorText)
-        }
-    }
-
-    private inner class MessageRouterHandler : CefMessageRouterHandlerAdapter() {
-        override fun onQuery(
-            browser: CefBrowser,
-            frame: CefFrame,
-            queryId: Long,
-            request: String,
-            persistent: Boolean,
-            callback: CefQueryCallback,
-        ): Boolean {
-            // TODO: should we really pass everything to the client?
-            WebView.notifyAllClients(request)
-            return true
+            if (frame.isMain()) handleLoad(failedUrl, 0, errorText)
         }
     }
 
@@ -204,11 +182,6 @@ class KcefWebView {
             KCEF.newClientBlocking().apply {
                 addDisplayHandler(DisplayHandler())
                 addLoadHandler(LoadHandler())
-
-                val config = CefMessageRouter.CefMessageRouterConfig()
-                config.jsQueryFunction = QUERY_FN
-                config.jsCancelFunction = QUERY_CANCEL_FN
-                addMessageRouter(CefMessageRouter.create(config, MessageRouterHandler()))
             }
     }
 
@@ -329,20 +302,37 @@ class KcefWebView {
             }
         if (id == KeyEvent.KEY_TYPED) {
             if (char == KeyEvent.CHAR_UNDEFINED) return null
-            return KeyEvent(browser!!.uiComponent, id, 0L, modifier, KeyEvent.VK_UNDEFINED, char, KeyEvent.KEY_LOCATION_UNKNOWN)
+            return KeyEvent(
+                browser!!.uiComponent,
+                id,
+                0L,
+                modifier,
+                KeyEvent.VK_UNDEFINED,
+                char,
+                KeyEvent.KEY_LOCATION_UNKNOWN,
+            )
         }
-        return KeyEvent(browser!!.uiComponent, id, 0L, modifier, code, char, KeyEvent.KEY_LOCATION_UNKNOWN)
+        return KeyEvent(
+            browser!!.uiComponent,
+            id,
+            0L,
+            modifier,
+            code,
+            char,
+            KeyEvent.KEY_LOCATION_UNKNOWN,
+        )
     }
 
     public fun event(msg: WebView.JsEventMessage) {
         val type = msg.eventType
         val clickX = msg.clickX
         val clickY = msg.clickY
-        val modifier = (
-            (if (msg.altKey ?: false) InputEvent.ALT_DOWN_MASK else 0) or
-                (if (msg.ctrlKey ?: false) InputEvent.CTRL_DOWN_MASK else 0) or
-                (if (msg.shiftKey ?: false) InputEvent.SHIFT_DOWN_MASK else 0)
-        )
+        val modifier =
+            (
+                (if (msg.altKey ?: false) InputEvent.ALT_DOWN_MASK else 0) or
+                    (if (msg.ctrlKey ?: false) InputEvent.CTRL_DOWN_MASK else 0) or
+                    (if (msg.shiftKey ?: false) InputEvent.SHIFT_DOWN_MASK else 0)
+            )
 
         if (type == "wheel") {
             val d = msg.deltaY?.toInt() ?: 1
@@ -365,9 +355,7 @@ class KcefWebView {
         }
         if (type == "keydown") {
             browser!!.sendKeyEvent(keyEvent(msg, KeyEvent.KEY_PRESSED, modifier)!!)
-            keyEvent(msg, KeyEvent.KEY_TYPED, modifier)?.let {
-                browser!!.sendKeyEvent(it)
-            }
+            keyEvent(msg, KeyEvent.KEY_TYPED, modifier)?.let { browser!!.sendKeyEvent(it) }
             return
         }
         if (type == "keyup") {
@@ -417,7 +405,19 @@ class KcefWebView {
                     "mouseup" -> CefTouchEvent.EventType.RELEASED
                     else -> CefTouchEvent.EventType.MOVED
                 }
-            val ev2 = CefTouchEvent(0, clickX, clickY, 10.0f, 10.0f, 0.0f, 1.0f, evType, modifier, CefTouchEvent.PointerType.MOUSE)
+            val ev2 =
+                CefTouchEvent(
+                    0,
+                    clickX,
+                    clickY,
+                    10.0f,
+                    10.0f,
+                    0.0f,
+                    1.0f,
+                    evType,
+                    modifier,
+                    CefTouchEvent.PointerType.MOUSE,
+                )
             browser!!.sendTouchEvent(ev2)
             return
         }
@@ -458,8 +458,12 @@ class KcefWebView {
         status: Int = 0,
         error: String? = null,
     ) {
-        val ev: Event = LoadEvent(url, status, error)
-        WebView.notifyAllClients(Json.encodeToString(ev))
+        val title =
+            browser!!.evaluateJavaScript("return document.title") {
+                logger.info { "Load finished with title $it" }
+                val ev: Event = LoadEvent(url, it ?: "", status, error)
+                WebView.notifyAllClients(Json.encodeToString(ev))
+            }
     }
 
     private fun createContext(
