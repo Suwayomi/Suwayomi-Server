@@ -25,6 +25,9 @@
         }
         header h1 {
             margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         header form {
             display: flex;
@@ -301,7 +304,7 @@
             const computePath = (node) => {
                 let path = '';
                 while (node) {
-                    const classes = Array.from(node.classList).map(x => `.${x}`).join("");
+                    const classes = node.classList ? Array.from(node.classList).map(x => `.${x}`).join("") : "";
                     const id = node.id ? `#${node.id}` : "";
                     const idx = node.parentElement ? Array.from(node.parentElement.children).indexOf(node) : -1;
                     const idx1 = idx >= 0 ? `:nth-child(${idx + 1})` : "";
