@@ -33,50 +33,57 @@ object WebView : Websocket<String>() {
         }
     }
 
-    override fun notifyClient(ctx: WsContext, value: String?) {
+    override fun notifyClient(
+        ctx: WsContext,
+        value: String?,
+    ) {
         if (value != null) {
             ctx.send(value)
         }
     }
 
-    @Serializable private sealed class TypeObject {}
+    @Serializable private sealed class TypeObject
+
     @Serializable
     @SerialName("loadUrl")
-    private data class LoadUrlMessage(val url: String) : TypeObject()
+    private data class LoadUrlMessage(
+        val url: String,
+    ) : TypeObject()
+
     @Serializable
     @SerialName("event")
     private data class JsEventMessage(
-            val eventType: String,
-            val elementPath: String,
-            val inputValueAfter: String? = null,
-            val bubbles: Boolean? = null,
-            val cancelable: Boolean? = null,
-            val composed: Boolean? = null,
-            val detail: Int? = null,
-            val button: Int? = null,
-            val buttons: Int? = null,
-            val ctrlKey: Boolean? = null,
-            val shiftKey: Boolean? = null,
-            val altKey: Boolean? = null,
-            val metaKey: Boolean? = null,
-            val key: String? = null,
-            val code: String? = null,
-            val charCode: Int? = null,
-            val keyCode: Int? = null,
-            val which: Int? = null,
-            val clientX: Int? = null,
-            val clientY: Int? = null,
-            val movementX: Int? = null,
-            val movementY: Int? = null,
-            val offsetX: Int? = null,
-            val offsetY: Int? = null,
-            val pageX: Int? = null,
-            val pageY: Int? = null,
-            val screenX: Int? = null,
-            val screenY: Int? = null,
+        val eventType: String,
+        val elementPath: String,
+        val inputValueAfter: String? = null,
+        val bubbles: Boolean? = null,
+        val cancelable: Boolean? = null,
+        val composed: Boolean? = null,
+        val detail: Int? = null,
+        val button: Int? = null,
+        val buttons: Int? = null,
+        val ctrlKey: Boolean? = null,
+        val shiftKey: Boolean? = null,
+        val altKey: Boolean? = null,
+        val metaKey: Boolean? = null,
+        val key: String? = null,
+        val code: String? = null,
+        val charCode: Int? = null,
+        val keyCode: Int? = null,
+        val which: Int? = null,
+        val clientX: Int? = null,
+        val clientY: Int? = null,
+        val movementX: Int? = null,
+        val movementY: Int? = null,
+        val offsetX: Int? = null,
+        val offsetY: Int? = null,
+        val pageX: Int? = null,
+        val pageY: Int? = null,
+        val screenX: Int? = null,
+        val screenY: Int? = null,
     ) : TypeObject() {
-        public fun toJsConstructor(): String {
-            return """
+        public fun toJsConstructor(): String =
+            """
                    {
                        view: window,
                        inputValueAfter: ${Json.encodeToString(inputValueAfter)},
@@ -107,7 +114,6 @@ object WebView : Websocket<String>() {
                        screenY: ${Json.encodeToString(screenY)},
                    }
                    """
-        }
     }
 
     override fun handleRequest(ctx: WsMessageContext) {

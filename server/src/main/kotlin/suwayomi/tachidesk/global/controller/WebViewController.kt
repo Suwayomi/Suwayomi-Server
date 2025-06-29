@@ -10,26 +10,26 @@ package suwayomi.tachidesk.global.controller
 import io.javalin.http.ContentType
 import io.javalin.http.HttpStatus
 import io.javalin.websocket.WsConfig
+import suwayomi.tachidesk.global.impl.WebView
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.withOperation
-import suwayomi.tachidesk.global.impl.WebView
 
 object WebViewController {
     /** returns some static info about the current app build */
     val webview =
-            handler(
-                    documentWith = {
-                        withOperation {
-                            summary("WebView")
-                            description("Opens and browses WebView")
-                        }
-                    },
-                    behaviorOf = { ctx ->
-                        ctx.contentType(ContentType.TEXT_HTML)
-                        ctx.result(javaClass.getResourceAsStream("/webview.html")!!)
-                    },
-                    withResults = { mime<String>(HttpStatus.OK, "text/html") }
-            )
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("WebView")
+                    description("Opens and browses WebView")
+                }
+            },
+            behaviorOf = { ctx ->
+                ctx.contentType(ContentType.TEXT_HTML)
+                ctx.result(javaClass.getResourceAsStream("/webview.html")!!)
+            },
+            withResults = { mime<String>(HttpStatus.OK, "text/html") },
+        )
 
     fun webviewWS(ws: WsConfig) {
         ws.onConnect { ctx -> WebView.addClient(ctx) }

@@ -5,7 +5,6 @@ import dev.datlag.kcef.KCEFBrowser
 import dev.datlag.kcef.KCEFClient
 import dev.datlag.kcef.KCEFResourceRequestHandler
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlin.collections.Map
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -20,11 +19,23 @@ import org.cef.handler.CefDisplayHandlerAdapter
 import org.cef.handler.CefLoadHandler
 import org.cef.handler.CefLoadHandlerAdapter
 import org.cef.handler.CefMessageRouterHandlerAdapter
+import org.cef.handler.CefRenderHandlerAdapter
 import org.cef.network.CefPostData
 import org.cef.network.CefPostDataElement
+import java.awt.Rectangle
+import java.awt.image.BufferedImage
+import java.awt.image.DataBufferInt
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import javax.imageio.ImageIO
+import javax.swing.JPanel
+import kotlin.collections.Map
 
 class KcefWebView {
     private val logger = KotlinLogging.logger {}
+    private val renderHandler = RenderHandler()
     private var kcefClient: KCEFClient? = null
     private var browser: KCEFBrowser? = null
 
@@ -33,31 +44,46 @@ class KcefWebView {
         const val QUERY_CANCEL_FN = "__\$_suwayomiWebQueryCancel"
     }
 
-    @Serializable sealed class Event {}
+    @Serializable sealed class Event
 
     @Serializable
     @SerialName("consoleMessage")
     private data class ConsoleEvent(
-            val severity: Int,
-            val message: String,
-            val source: String,
-            val line: Int
+        val severity: Int,
+        val message: String,
+        val source: String,
+        val line: Int,
     ) : Event()
+
     @Serializable
     @SerialName("addressChange")
-    private data class AddressEvent(val url: String) : Event()
+    private data class AddressEvent(
+        val url: String,
+    ) : Event()
+
     @Serializable
     @SerialName("statusChange")
-    private data class StatusEvent(val message: String) : Event()
+    private data class StatusEvent(
+        val message: String,
+    ) : Event()
+
+    @Serializable
+    @SerialName("load")
+    // TODO: page title
+    private data class LoadEvent(
+        val image: ByteArray,
+        val url: String,
+        val status: Int = 0,
+        val error: String? = null,
+    ) : Event()
 
     private inner class DisplayHandler : CefDisplayHandlerAdapter() {
-
         override fun onConsoleMessage(
-                browser: CefBrowser,
-                level: CefSettings.LogSeverity,
-                message: String,
-                source: String,
-                line: Int,
+            browser: CefBrowser,
+            level: CefSettings.LogSeverity,
+            message: String,
+            source: String,
+            line: Int,
         ): Boolean {
             val ev: Event = ConsoleEvent(level.ordinal, message, source, line)
             WebView.notifyAllClients(Json.encodeToString(ev))
@@ -66,9 +92,9 @@ class KcefWebView {
         }
 
         override fun onAddressChange(
-                browser: CefBrowser,
-                frame: CefFrame,
-                url: String,
+            browser: CefBrowser,
+            frame: CefFrame,
+            url: String,
         ) {
             if (!frame.isMain()) return
             val ev: Event = AddressEvent(url)
@@ -76,8 +102,8 @@ class KcefWebView {
         }
 
         override fun onStatusMessage(
-                browser: CefBrowser,
-                value: String,
+            browser: CefBrowser,
+            value: String,
         ) {
             val ev: Event = StatusEvent(value)
             WebView.notifyAllClients(Json.encodeToString(ev))
@@ -86,39 +112,33 @@ class KcefWebView {
 
     private inner class LoadHandler : CefLoadHandlerAdapter() {
         override fun onLoadEnd(
-                browser: CefBrowser,
-                frame: CefFrame,
-                httpStatusCode: Int,
+            browser: CefBrowser,
+            frame: CefFrame,
+            httpStatusCode: Int,
         ) {
             logger.info { "Load event: ${frame.name} - ${frame.url}" }
-            if (httpStatusCode > 0)
-                    handleLoad(
-                            frame,
-                            frame.url,
-                            "load",
-                            mapOf("status" to httpStatusCode.toString())
-                    )
+            if (httpStatusCode > 0) handleLoad(browser, frame, frame.url, httpStatusCode)
         }
 
         override fun onLoadError(
-                browser: CefBrowser,
-                frame: CefFrame,
-                errorCode: CefLoadHandler.ErrorCode,
-                errorText: String,
-                failedUrl: String,
+            browser: CefBrowser,
+            frame: CefFrame,
+            errorCode: CefLoadHandler.ErrorCode,
+            errorText: String,
+            failedUrl: String,
         ) {
-            handleLoad(frame, failedUrl, "load", mapOf("error" to errorText))
+            handleLoad(browser, frame, failedUrl, 0, errorText)
         }
     }
 
     private inner class MessageRouterHandler : CefMessageRouterHandlerAdapter() {
         override fun onQuery(
-                browser: CefBrowser,
-                frame: CefFrame,
-                queryId: Long,
-                request: String,
-                persistent: Boolean,
-                callback: CefQueryCallback,
+            browser: CefBrowser,
+            frame: CefFrame,
+            queryId: Long,
+            request: String,
+            persistent: Boolean,
+            callback: CefQueryCallback,
         ): Boolean {
             // TODO: should we really pass everything to the client?
             WebView.notifyAllClients(request)
@@ -126,18 +146,51 @@ class KcefWebView {
         }
     }
 
+    // Loosely based on
+    // https://github.com/JetBrains/jcef/blob/main/java/org/cef/browser/CefBrowserOsr.java
+    private inner class RenderHandler : CefRenderHandlerAdapter() {
+        var myImage: BufferedImage? = null
+
+        override fun getViewRect(browser: CefBrowser): Rectangle = Rectangle(0, 0, 1000, 1000)
+
+        override fun onPaint(
+            browser: CefBrowser,
+            popup: Boolean,
+            dirtyRects: Array<Rectangle>,
+            buffer: ByteBuffer,
+            width: Int,
+            height: Int,
+        ) {
+            var image = myImage ?: BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB_PRE)
+
+            if (image.width != width || image.height != height) {
+                image = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB_PRE)
+            }
+
+            val dst = (image.getRaster().getDataBuffer() as DataBufferInt).getData()
+            val src = buffer.order(ByteOrder.LITTLE_ENDIAN).asIntBuffer()
+            src.get(dst)
+
+            myImage = image
+            val success = ImageIO.write(image, "png", File("/tmp/test.png"))
+            if (!success) {
+                throw IllegalStateException("Failed to convert image to PNG")
+            }
+        }
+    }
+
     init {
         destroy()
         kcefClient =
-                KCEF.newClientBlocking().apply {
-                    addDisplayHandler(DisplayHandler())
-                    addLoadHandler(LoadHandler())
+            KCEF.newClientBlocking().apply {
+                addDisplayHandler(DisplayHandler())
+                addLoadHandler(LoadHandler())
 
-                    val config = CefMessageRouter.CefMessageRouterConfig()
-                    config.jsQueryFunction = QUERY_FN
-                    config.jsCancelFunction = QUERY_CANCEL_FN
-                    addMessageRouter(CefMessageRouter.create(config, MessageRouterHandler()))
-                }
+                val config = CefMessageRouter.CefMessageRouterConfig()
+                config.jsQueryFunction = QUERY_FN
+                config.jsCancelFunction = QUERY_CANCEL_FN
+                addMessageRouter(CefMessageRouter.create(config, MessageRouterHandler()))
+            }
     }
 
     public fun destroy() {
@@ -149,38 +202,43 @@ class KcefWebView {
     }
 
     public fun loadUrl(
-            loadUrl: String,
-            additionalHttpHeaders: Map<String, String>,
+        loadUrl: String,
+        additionalHttpHeaders: Map<String, String>,
     ) {
         browser?.close(true)
         browser?.dispose()
         browser =
-                kcefClient!!.createBrowser(
-                                loadUrl,
-                                CefRendering.OFFSCREEN,
-                                context = createContext(additionalHttpHeaders),
-                        )
-                        .apply {
-                            // NOTE: Without this, we don't seem to be receiving any events
-                            createImmediately()
-                        }
+            kcefClient!!
+                .createBrowser(
+                    loadUrl,
+                    CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
+                    context = createContext(additionalHttpHeaders),
+                ).apply {
+                    // NOTE: Without this, we don't seem to be receiving any events
+                    createImmediately()
+                }
     }
 
     public fun loadUrl(url: String) {
         loadUrl(url, mapOf())
     }
 
-    public fun event(element: String, type: String, detail: String) {
+    public fun event(
+        element: String,
+        type: String,
+        detail: String,
+    ) {
+        return
         val constructor =
-                when (type) {
-                    "click", "mousedown", "mouseup", "mousemove" -> "MouseEvent"
-                    "keydown", "keyup" -> "KeyboardEvent"
-                    "submit" -> "SubmitEvent"
-                    "focus", "blur" -> "FocusEvent"
-                    else -> "Event"
-                }
+            when (type) {
+                "click", "mousedown", "mouseup", "mousemove" -> "MouseEvent"
+                "keydown", "keyup" -> "KeyboardEvent"
+                "submit" -> "SubmitEvent"
+                "focus", "blur" -> "FocusEvent"
+                else -> "Event"
+            }
         val js =
-                """
+            """
                 (function() {
                     try {
                         const detail = $detail;
@@ -225,84 +283,28 @@ class KcefWebView {
     }
 
     private fun handleLoad(
-            frame: CefFrame,
-            url: String,
-            ev: String,
-            args: Map<String, String> = mapOf()
+        browser: CefBrowser,
+        frame: CefFrame,
+        url: String,
+        status: Int = 0,
+        error: String? = null,
     ) {
-        val serializedArgs =
-                args.asIterable().fold("") { str, v ->
-                    str +
-                            "\n        ${Json.encodeToString(v.key)}: ${Json.encodeToString(v.value)},"
-                }
+        val stream = ByteArrayOutputStream()
+        ImageIO.write(renderHandler.myImage, "png", stream)
+
+        val ev: Event = LoadEvent(stream.toByteArray(), url, status, error)
+        WebView.notifyAllClients(Json.encodeToString(ev))
+        return
 
         val js =
-                """
+            """
                 (function() {
-                    // NOTE: reading .src and .href normalizes to qualified URL (with origin)
-                    for (let img of document.querySelectorAll('img')) {
-                        img.src = img.src;
-                    }
-                    for (let link of document.querySelectorAll('link[href]')) {
-                        link.href = link.href;
-                    }
-                    for (let a of document.querySelectorAll('a[href]')) {
-                        a.href = a.href;
-                        a.target = "";
-                    }
-                    const style = document.createElement('style');
-                    style.textContent = "noscript{display:none}";
-                    document.head.appendChild(style);
-                    let html = "";
-                    const title = document.title;
-                    try {
-                        html = new XMLSerializer().serializeToString(document.doctype) + document.documentElement.outerHTML;
-                    } catch (e) {
-                    }
-                    window.${QUERY_FN}({
-                        request: JSON.stringify({
-                            type: ${Json.encodeToString(ev)},
-                            frame: ${Json.encodeToString(frame.name)},
-                            title,
-                            url: ${Json.encodeToString(url)},
-                            html,${serializedArgs}
-                        }),
-                        persistent: false,
-                    });
-
-                    const computePath = (node) => {
-                        let path = '';
-                        while (node) {
-                            const classes = Array.from(node.classList).map(x => `.${"$"}{x}`).join("");
-                            const id = node.id ? `#${"$"}{node.id}` : "";
-                            const idx = node.parentElement ? Array.from(node.parentElement.children).indexOf(node) : -1;
-                            const idx1 = idx >= 0 ? `:nth-child(${"$"}{idx + 1})` : "";
-                            if (path) path = " > " + path;
-                            path = `${"$"}{node.tagName}${"$"}{id}${"$"}{classes}${"$"}{idx1}` + path;
-                            node = node.parentElement;
-                        }
-                        return path;
-                    };
-
-                    const observer = new MutationObserver((changes) => {
-                        // TODO: This could be cleaner, we're recreating the entire parent
-                        // if just one node is added or removed
-                        const toSend = changes.map(change => ({
-                            type: change.type,
-                            target: computePath(change.target),
-                            attributeName: change.attributeName,
-                            attributeNamspace: change.attributeNamespace,
-                            oldValue: change.oldValue,
-                            newValue: change.type === "attributes" ?
-                                change.target.getAttributeNS(change.attributeNamespace, change.attributeName) :
-                                change.type === "characterData" ? change.target.data : change.target.innerHTML,
-                        }));
+                    const observer = new MutationObserver(() => {
                         window.${QUERY_FN}({
                             request: JSON.stringify({
                                 type: 'docMutate',
                                 frame: ${Json.encodeToString(frame.name)},
                                 title,
-                                changes: toSend,
                             }),
                             persistent: false,
                         })
@@ -315,43 +317,43 @@ class KcefWebView {
     }
 
     private fun createContext(
-            additionalHttpHeaders: Map<String, String>? = null,
-            postData: ByteArray? = null,
+        additionalHttpHeaders: Map<String, String>? = null,
+        postData: ByteArray? = null,
     ): CefRequestContext =
-            CefRequestContext.createContext {
-                    browser,
-                    frame,
-                    request,
-                    isNavigation,
-                    isDownload,
-                    requestInitiator,
-                    disableDefaultHandling,
-                ->
-                KCEFResourceRequestHandler.globalHandler(
-                        browser,
-                        frame,
-                        request.apply {
-                            if (!additionalHttpHeaders.isNullOrEmpty()) {
-                                additionalHttpHeaders.forEach {
-                                    setHeaderByName(it.key, it.value, true)
-                                }
-                            }
+        CefRequestContext.createContext {
+            browser,
+            frame,
+            request,
+            isNavigation,
+            isDownload,
+            requestInitiator,
+            disableDefaultHandling,
+            ->
+            KCEFResourceRequestHandler.globalHandler(
+                browser,
+                frame,
+                request.apply {
+                    if (!additionalHttpHeaders.isNullOrEmpty()) {
+                        additionalHttpHeaders.forEach {
+                            setHeaderByName(it.key, it.value, true)
+                        }
+                    }
 
-                            if (postData != null) {
-                                this.postData =
-                                        CefPostData.create().apply {
-                                            addElement(
-                                                    CefPostDataElement.create().apply {
-                                                        setToBytes(postData.size, postData)
-                                                    },
-                                            )
-                                        }
+                    if (postData != null) {
+                        this.postData =
+                            CefPostData.create().apply {
+                                addElement(
+                                    CefPostDataElement.create().apply {
+                                        setToBytes(postData.size, postData)
+                                    },
+                                )
                             }
-                        },
-                        isNavigation,
-                        isDownload,
-                        requestInitiator,
-                        disableDefaultHandling,
-                )
-            }
+                    }
+                },
+                isNavigation,
+                isDownload,
+                requestInitiator,
+                disableDefaultHandling,
+            )
+        }
 }

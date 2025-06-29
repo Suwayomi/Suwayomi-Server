@@ -56,11 +56,10 @@
         main {
             position: relative;
         }
-        iframe {
+        canvas {
             position: absolute;
             inset: 0;
             width: 100%;
-            border: none;
         }
         main .message, main .status {
             position: relative;
@@ -119,15 +118,13 @@
     <main>
         <div class="message" id="message">Initializing... Please wait</div>
         <div class="status" id="status"></div>
-        <!-- We don't want any JS inside the iframe. Everything is handled by here and on the server -->
-        <!-- NOTE: The sandbox directive will block opening popups, alerts, form submissions etc -->
-        <iframe id="frame" csp="script-src 'none'" sandbox="allow-same-origin">
-        </iframe>
+        <canvas id="frame"></canvas>
     </main>
     <script>
         const messageDiv = document.getElementById('message');
         const statusDiv = document.getElementById('status');
         const frame = document.getElementById('frame');
+        const ctx = frame.getContext("2d");
         const browseForm = document.getElementById('browseForm');
         const goButton = document.getElementById('goButton');
         const urlInput = document.getElementById('url');
@@ -176,14 +173,14 @@
                     setHash(u);
                     setTitle();
                     messageDiv.textContent = 'Enter a URL to get started';
-                    frame.srcdoc = "";
+                    ctx.clearRect(0, 0, frame.width, frame.height);
                     return;
                 }
                 messageDiv.textContent = "Loading page...";
                 messageDiv.classList.remove('error');
                 urlInput.value = u;
                 socket.send(JSON.stringify({ type: 'loadUrl', url: u }));
-                frame.srcdoc = "";
+                ctx.clearRect(0, 0, frame.width, frame.height);
             };
 
             /// Form
@@ -208,8 +205,6 @@
                 console.log('WebSocket connection opened');
             });
 
-            let lastHtml = undefined;
-
             socket.addEventListener('message', e => {
                 const obj = JSON.parse(e.data);
                 console.log(obj);
@@ -223,56 +218,23 @@
                     case "statusChange":
                         statusDiv.textContent = obj.message;
                         break;
-                    case "load":
+                    case "load": {
                         if (obj.error) {
                             messageDiv.textContent = "Error: " + obj.error;
                             messageDiv.classList.add('error');
                         } else {
                             messageDiv.textContent = "";
                         }
-                        if (obj.frame) {
-                            const frameDoc = frame.contentDocument || frame.contentWindow.document;
-                            const f = frameDoc.querySelector(`iframe[name="${obj.frame}"]`);
-                            f.srcdoc = obj.html;
-                        } else {
-                            // main frame
-                            urlInput.value = obj.url;
-                            setTitle(obj.title);
-                            frame.srcdoc = obj.html;
-                        }
-                        break;
-                    case "docChange": {
-                        // TODO: frame?
-                        if (lastHtml == obj.html) break;
-                        // NOTE: we *don't* want to change srcdoc now, because that would be a reload
-                        const frameDoc = frame.contentDocument || frame.contentWindow.document;
+                        urlInput.value = obj.url;
                         setTitle(obj.title);
-                        // ugly ass hack, but the only thing that worked from what I found
-                        // everything else seems to either throw or be ignored
-                        frameDoc.documentElement.innerHTML = obj.html;
-                        lastHtml = obj.html;
-                    } break;
-                    case "docMutate": {
-                        const frameDoc = frame.contentDocument || frame.contentWindow.document;
-                        const f1 = obj.frame ? frameDoc.querySelector(`iframe[name="${obj.frame}"]`) : frame;
-                        const f = f1.contentDocument || f1.contentWindow.document;
-                        for (const change of obj.changes) {
-                            const target = f.querySelector(change.target);
-                            if (!target) continue; // TODO: Re-request HTML?
-                            switch (change.type) {
-                                case "attributes":
-                                    target.setAttributeNS(change.attributeNamespace, change.attributeName, change.newValue);
-                                    break;
-                                case "characterData":
-                                    target.data = change.newValue;
-                                    break;
-                                case "childList":
-                                    target.innerHTML = change.newValue;
-                                    break;
-                            }
-                        }
-                        if (!obj.frame)
-                            setTitle(obj.title);
+                        const img = new Image();
+                        const imgData = new Blob([new Uint8Array(obj.image)], { type: "image/png" });
+                        const url = URL.createObjectURL(imgData);
+                        img.addEventListener('load', e => {
+                            console.log(e);
+                            ctx.drawImage(img, 0, 0);
+                        });
+                        img.src = url;
                     } break;
                     case "consoleMessage": {
                         const lg = obj.severity == 4 ? console.error : obj.severity == 3 ? console.warn : console.log;
@@ -300,30 +262,17 @@
 
             /// Page events
 
-            const computePath = (node) => {
-                let path = '';
-                while (node) {
-                    const classes = node.classList ? Array.from(node.classList).map(x => `.${x}`).join("") : "";
-                    const id = node.id ? `#${node.id}` : "";
-                    const idx = node.parentElement ? Array.from(node.parentElement.children).indexOf(node) : -1;
-                    const idx1 = idx >= 0 ? `:nth-child(${idx + 1})` : "";
-                    if (path) path = " > " + path;
-                    path = `${node.tagName}${id}${classes}${idx1}` + path;
-                    node = node.parentElement;
-                }
-                return path;
-            }
-
             const frameEvent = (e) => {
-                if (e.type === 'click')
-                    e.preventDefault();
-                const path = computePath(e.target);
-                console.log(e, path)
+                e.preventDefault();
+                const rect = frame.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+                console.log(e, clickX, clickY);
                 socket.send(JSON.stringify({
                     type: 'event',
                     eventType: e.type,
-                    elementPath: path,
-                    inputValueAfter: e.target.value,
+                    clickX,
+                    clickY,
                     bubbles: e.bubbles,
                     cancelable: e.cancelable,
                     composed: e.composed,
@@ -368,8 +317,6 @@
                     console.error("Failed to attach event listeners");
                 }
             };
-
-            frame.addEventListener('load', attachEvents);
         } catch (e) {
             messageDiv.textContent = "Error: " + (e.message || e);
             messageDiv.classList.add('error');
