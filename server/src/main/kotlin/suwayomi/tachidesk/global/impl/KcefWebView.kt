@@ -3,8 +3,9 @@ package suwayomi.tachidesk.global.impl
 import dev.datlag.kcef.KCEF
 import dev.datlag.kcef.KCEFBrowser
 import dev.datlag.kcef.KCEFClient
-import dev.datlag.kcef.KCEFResourceRequestHandler
+import eu.kanade.tachiyomi.network.NetworkHelper
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -12,14 +13,14 @@ import org.cef.CefSettings
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
 import org.cef.browser.CefRendering
-import org.cef.browser.CefRequestContext
 import org.cef.handler.CefDisplayHandlerAdapter
 import org.cef.handler.CefLoadHandler
 import org.cef.handler.CefLoadHandlerAdapter
 import org.cef.handler.CefRenderHandlerAdapter
 import org.cef.input.CefTouchEvent
-import org.cef.network.CefPostData
-import org.cef.network.CefPostDataElement
+import org.cef.network.CefCookie
+import org.cef.network.CefCookieManager
+import uy.kohesive.injekt.injectLazy
 import java.awt.Rectangle
 import java.awt.event.InputEvent
 import java.awt.event.KeyEvent
@@ -29,11 +30,15 @@ import java.awt.image.BufferedImage
 import java.awt.image.DataBufferInt
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.net.HttpCookie
+import java.net.URI
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.Date
+import java.util.concurrent.Executors
 import javax.imageio.ImageIO
 import javax.swing.JPanel
-import kotlin.collections.Map
+import kotlin.time.Duration.Companion.milliseconds
 
 class KcefWebView {
     private val logger = KotlinLogging.logger {}
@@ -42,6 +47,11 @@ class KcefWebView {
     private var browser: KCEFBrowser? = null
     private var width = 1000
     private var height = 1000
+    private val executor = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+
+    companion object {
+        private val networkHelper: NetworkHelper by injectLazy()
+    }
 
     @Serializable sealed class Event
 
@@ -108,6 +118,7 @@ class KcefWebView {
                 val ev: Event = AddressEvent(url, it ?: "")
                 WebView.notifyAllClients(Json.encodeToString(ev))
             }
+            flush()
         }
 
         override fun onStatusMessage(
@@ -127,6 +138,7 @@ class KcefWebView {
         ) {
             logger.info { "Load event: ${frame.name} - ${frame.url}" }
             if (httpStatusCode > 0 && frame.isMain()) handleLoad(frame.url, httpStatusCode)
+            flush()
         }
 
         override fun onLoadError(
@@ -186,9 +198,40 @@ class KcefWebView {
                 addDisplayHandler(DisplayHandler())
                 addLoadHandler(LoadHandler())
             }
+
+        logger.info { "Start loading cookies" }
+        CefCookieManager.getGlobalManager().apply {
+            val cookies = networkHelper.cookieStore.getCookies()
+            for (cookie in cookies) {
+                try {
+                    // TODO: check this URL
+                    if (!setCookie(
+                            "https://" + cookie.domain,
+                            CefCookie(
+                                cookie.name,
+                                cookie.value,
+                                cookie.domain,
+                                cookie.path,
+                                cookie.secure,
+                                cookie.isHttpOnly(),
+                                Date(),
+                                null,
+                                cookie.maxAge >= 0,
+                                Date(System.currentTimeMillis() + cookie.maxAge),
+                            ),
+                        )
+                    ) {
+                        throw Exception()
+                    }
+                } catch (e: Exception) {
+                    logger.warn(e) { "Loading cookie ${cookie.name} failed" }
+                }
+            }
+        }
     }
 
     public fun destroy() {
+        flush()
         browser?.close(true)
         browser?.dispose()
         browser = null
@@ -196,26 +239,18 @@ class KcefWebView {
         kcefClient = null
     }
 
-    public fun loadUrl(
-        loadUrl: String,
-        additionalHttpHeaders: Map<String, String>,
-    ) {
+    public fun loadUrl(url: String) {
         browser?.close(true)
         browser?.dispose()
         browser =
             kcefClient!!
                 .createBrowser(
-                    loadUrl,
+                    url,
                     CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
-                    context = createContext(additionalHttpHeaders),
                 ).apply {
                     // NOTE: Without this, we don't seem to be receiving any events
                     createImmediately()
                 }
-    }
-
-    public fun loadUrl(url: String) {
-        loadUrl(url, mapOf())
     }
 
     public fun resize(
@@ -225,6 +260,33 @@ class KcefWebView {
         this.width = width
         this.height = height
         browser?.wasResized(width, height)
+    }
+
+    private fun flush() {
+        if (browser == null) return
+        logger.info { "Start cookie flush" }
+        CefCookieManager.getGlobalManager().visitAllCookies { it, _, _, _ ->
+            try {
+                networkHelper.cookieStore.add(
+                    URI("https://" + it.domain.removePrefix(".")),
+                    HttpCookie(it.name, it.value).apply {
+                        path = it.path
+                        domain = it.domain
+                        maxAge =
+                            if (!it.hasExpires) {
+                                -1
+                            } else {
+                                (it.expires.time.milliseconds - System.currentTimeMillis().milliseconds).inWholeSeconds
+                            }
+                        isHttpOnly = it.httponly
+                        secure = it.secure
+                    },
+                )
+            } catch (e: Exception) {
+                logger.warn(e) { "Writing cookie ${it.name} failed" }
+            }
+            return@visitAllCookies true
+        }
     }
 
     private fun keyEvent(
@@ -467,45 +529,4 @@ class KcefWebView {
             WebView.notifyAllClients(Json.encodeToString(ev))
         }
     }
-
-    private fun createContext(
-        additionalHttpHeaders: Map<String, String>? = null,
-        postData: ByteArray? = null,
-    ): CefRequestContext =
-        CefRequestContext.createContext {
-            browser,
-            frame,
-            request,
-            isNavigation,
-            isDownload,
-            requestInitiator,
-            disableDefaultHandling,
-            ->
-            KCEFResourceRequestHandler.globalHandler(
-                browser,
-                frame,
-                request.apply {
-                    if (!additionalHttpHeaders.isNullOrEmpty()) {
-                        additionalHttpHeaders.forEach {
-                            setHeaderByName(it.key, it.value, true)
-                        }
-                    }
-
-                    if (postData != null) {
-                        this.postData =
-                            CefPostData.create().apply {
-                                addElement(
-                                    CefPostDataElement.create().apply {
-                                        setToBytes(postData.size, postData)
-                                    },
-                                )
-                            }
-                    }
-                },
-                isNavigation,
-                isDownload,
-                requestInitiator,
-                disableDefaultHandling,
-            )
-        }
 }
