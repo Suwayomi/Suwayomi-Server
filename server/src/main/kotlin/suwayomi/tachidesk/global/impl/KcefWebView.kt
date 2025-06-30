@@ -421,9 +421,10 @@ class KcefWebView {
         val clickY = msg.clickY
         val modifier =
             (
-                (if (msg.altKey ?: false) InputEvent.ALT_DOWN_MASK else 0) or
-                    (if (msg.ctrlKey ?: false) InputEvent.CTRL_DOWN_MASK else 0) or
-                    (if (msg.shiftKey ?: false) InputEvent.SHIFT_DOWN_MASK else 0)
+                (if (msg.altKey == true) InputEvent.ALT_DOWN_MASK else 0) or
+                    (if (msg.ctrlKey == true) InputEvent.CTRL_DOWN_MASK else 0) or
+                    (if (msg.shiftKey == true) InputEvent.SHIFT_DOWN_MASK else 0) or
+                    (if (msg.metaKey == true) InputEvent.META_DOWN_MASK else 0)
             )
 
         if (type == "wheel") {
