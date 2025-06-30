@@ -19,7 +19,6 @@ import org.cef.handler.CefRenderHandlerAdapter
 import org.cef.input.CefTouchEvent
 import org.cef.network.CefCookie
 import org.cef.network.CefCookieManager
-import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import java.awt.Rectangle
 import java.awt.event.InputEvent
@@ -29,7 +28,6 @@ import java.awt.event.MouseWheelEvent
 import java.awt.image.BufferedImage
 import java.awt.image.DataBufferInt
 import java.io.ByteArrayOutputStream
-import java.io.File
 import java.net.HttpCookie
 import java.net.URI
 import java.nio.ByteBuffer
@@ -49,7 +47,6 @@ class KcefWebView {
 
     companion object {
         private val networkHelper: NetworkHelper by injectLazy()
-        private val applicationDirs: ApplicationDirs by injectLazy()
     }
 
     @Serializable sealed class Event
@@ -184,14 +181,11 @@ class KcefWebView {
             src.get(dst)
 
             myImage = image
-
-            val success = ImageIO.write(image, "png", File(applicationDirs.tempRoot, "/webview.png"))
+            val stream = ByteArrayOutputStream()
+            val success = ImageIO.write(renderHandler.myImage, "png", stream)
             if (!success) {
                 throw IllegalStateException("Failed to convert image to PNG")
             }
-
-            val stream = ByteArrayOutputStream()
-            ImageIO.write(renderHandler.myImage, "png", stream)
 
             WebView.notifyAllClients(
                 Json.encodeToString<Event>(

@@ -153,11 +153,12 @@ class JavaSharedPreferences(
             key: String,
             value: String?,
         ): SharedPreferences.Editor {
-            actions += if (value != null) {
-                Action.Add(key, value)
-            } else {
-                Action.Remove(key)
-            }
+            actions +=
+                if (value != null) {
+                    Action.Add(key, value)
+                } else {
+                    Action.Remove(key)
+                }
             return this
         }
 
@@ -165,11 +166,12 @@ class JavaSharedPreferences(
             key: String,
             values: MutableSet<String>?,
         ): SharedPreferences.Editor {
-            actions += if (values != null) {
-                Action.Add(key, values)
-            } else {
-                Action.Remove(key)
-            }
+            actions +=
+                if (values != null) {
+                    Action.Add(key, values)
+                } else {
+                    Action.Remove(key)
+                }
             return this
         }
 
