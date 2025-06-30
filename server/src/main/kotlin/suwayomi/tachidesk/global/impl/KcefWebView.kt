@@ -360,6 +360,7 @@ class KcefWebView {
                     when (msg.key) {
                         "Alt" -> KeyEvent.VK_ALT
                         "Backspace" -> KeyEvent.VK_BACK_SPACE
+                        "Delete" -> KeyEvent.VK_DELETE
                         "CapsLock" -> KeyEvent.VK_CAPS_LOCK
                         "Control" -> KeyEvent.VK_CONTROL
                         "ArrowDown" -> KeyEvent.VK_DOWN
@@ -395,14 +396,14 @@ class KcefWebView {
                     }
             }
         if (id == KeyEvent.KEY_TYPED) {
-            if (char == KeyEvent.CHAR_UNDEFINED && code == KeyEvent.VK_UNDEFINED) return null
+            if (char == KeyEvent.CHAR_UNDEFINED && code != KeyEvent.VK_ENTER) return null
             return KeyEvent(
                 component,
                 id,
                 0L,
                 modifier,
                 KeyEvent.VK_UNDEFINED,
-                if (char == KeyEvent.CHAR_UNDEFINED) code.toChar() else char,
+                if (code == KeyEvent.VK_ENTER) code.toChar() else char,
                 KeyEvent.KEY_LOCATION_UNKNOWN,
             )
         }
@@ -412,7 +413,7 @@ class KcefWebView {
             0L,
             modifier,
             code,
-            if (char == KeyEvent.CHAR_UNDEFINED) code.toChar() else char,
+            if (code == KeyEvent.VK_ENTER) code.toChar() else char,
             KeyEvent.KEY_LOCATION_STANDARD,
         )
     }
