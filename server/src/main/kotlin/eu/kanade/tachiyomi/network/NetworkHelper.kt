@@ -25,10 +25,10 @@ import okhttp3.OkHttpClient
 import okhttp3.brotli.BrotliInterceptor
 import okhttp3.logging.HttpLoggingInterceptor
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
-import java.io.File
 import java.net.CookieHandler
 import java.net.CookieManager
 import java.net.CookiePolicy
+import java.nio.file.Files
 import java.util.concurrent.TimeUnit
 
 class NetworkHelper(
@@ -79,7 +79,7 @@ class NetworkHelper(
                     .callTimeout(2, TimeUnit.MINUTES)
                     .cache(
                         Cache(
-                            directory = File.createTempFile("tachidesk_network_cache", null),
+                            directory = Files.createTempDirectory("tachidesk_network_cache").toFile(),
                             maxSize = 5L * 1024 * 1024, // 5 MiB
                         ),
                     ).addInterceptor(UncaughtExceptionInterceptor())
