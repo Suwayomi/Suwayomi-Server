@@ -67,11 +67,17 @@
         main {
             position: relative;
         }
-        canvas {
+        canvas, input#inputtrap {
             position: absolute;
             inset: 0;
             width: 100%;
             height: 100%;
+        }
+        input#inputtrap {
+            opacity: 0;
+            padding: 0;
+            margin: 0;
+            border: none;
         }
         main .message, main .status {
             position: relative;
@@ -131,12 +137,14 @@
     <main>
         <div class="message" id="message">Initializing... Please wait</div>
         <div class="status" id="status"></div>
-        <canvas id="frame" tabindex="0"></canvas>
+        <canvas id="frame"></canvas>
+        <input type="text" id="inputtrap"/>
     </main>
     <script>
         const messageDiv = document.getElementById('message');
         const statusDiv = document.getElementById('status');
         const frame = document.getElementById('frame');
+        const frameInput = document.getElementById('inputtrap');
         const ctx = frame.getContext("2d");
         const browseForm = document.getElementById('browseForm');
         const goButton = document.getElementById('goButton');
@@ -285,6 +293,7 @@
             observer.observe(frame);
 
             const frameEvent = (e) => {
+                console.log(e);
                 e.preventDefault();
                 const rect = frame.getBoundingClientRect();
                 const clickX = e.clientX !== undefined ? e.clientX - rect.left : 0;
@@ -304,27 +313,26 @@
                     clientY: e.clientY,
                     deltaY: e.deltaY,
                 }));
-                frame.focus();
+                frameInput.focus();
             };
 
             const attachEvents = () => {
                 console.log('Attaching event handlers to new document');
                 const events = ["click", "mousedown", "mouseup", "mousemove", "wheel", "keydown", "keyup"];
                 for (const ev of events) {
-                    frame.addEventListener(ev, frameEvent, false);
+                    frameInput.addEventListener(ev, frameEvent, false);
                 }
 
                 let touch = undefined;
-                frame.addEventListener('touchstart', e => {
+                frameInput.addEventListener('touchstart', e => {
                     if (e.touches.length === 1) {
                         touch = e.touches[0];
                     }
                 }, false);
-                frame.addEventListener('touchend', e => {
+                frameInput.addEventListener('touchend', e => {
                     touch = undefined;
                 }, false);
-                frame.addEventListener('touchmove', e => {
-                    console.log(e.touches, touch)
+                frameInput.addEventListener('touchmove', e => {
                     if (e.touches.length === 1 && touch !== undefined) {
                         e.preventDefault();
                         let deltaX = touch.pageX - e.touches[0].pageX;
@@ -357,7 +365,7 @@
                 }, false);
             };
             attachEvents();
-            frame.focus();
+            frameInput.focus();
         } catch (e) {
             messageDiv.textContent = "Error: " + (e.message || e);
             messageDiv.classList.add('error');
