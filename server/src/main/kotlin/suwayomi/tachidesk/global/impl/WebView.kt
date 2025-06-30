@@ -73,8 +73,8 @@ object WebView : Websocket<String>() {
         val metaKey: Boolean? = null,
         val key: String? = null,
         val code: String? = null,
-        val clientX: Int? = null,
-        val clientY: Int? = null,
+        val clientX: Float? = null,
+        val clientY: Float? = null,
         val deltaY: Float? = null,
     ) : TypeObject()
 
