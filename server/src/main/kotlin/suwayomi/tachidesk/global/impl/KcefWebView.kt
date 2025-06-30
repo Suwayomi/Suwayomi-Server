@@ -393,14 +393,14 @@ class KcefWebView {
                     }
             }
         if (id == KeyEvent.KEY_TYPED) {
-            if (char == KeyEvent.CHAR_UNDEFINED) return null
+            if (char == KeyEvent.CHAR_UNDEFINED && code == KeyEvent.VK_UNDEFINED) return null
             return KeyEvent(
                 browser!!.uiComponent,
                 id,
                 0L,
                 modifier,
                 KeyEvent.VK_UNDEFINED,
-                char,
+                if (char == KeyEvent.CHAR_UNDEFINED) code.toChar() else char,
                 KeyEvent.KEY_LOCATION_UNKNOWN,
             )
         }
@@ -410,8 +410,8 @@ class KcefWebView {
             0L,
             modifier,
             code,
-            char,
-            KeyEvent.KEY_LOCATION_UNKNOWN,
+            if (char == KeyEvent.CHAR_UNDEFINED) code.toChar() else char,
+            KeyEvent.KEY_LOCATION_STANDARD,
         )
     }
 
