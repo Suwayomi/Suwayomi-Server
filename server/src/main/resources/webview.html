@@ -313,6 +313,48 @@
                 for (const ev of events) {
                     frame.addEventListener(ev, frameEvent, false);
                 }
+
+                let touch = undefined;
+                frame.addEventListener('touchstart', e => {
+                    if (e.touches.length === 1) {
+                        touch = e.touches[0];
+                    }
+                }, false);
+                frame.addEventListener('touchend', e => {
+                    touch = undefined;
+                }, false);
+                frame.addEventListener('touchmove', e => {
+                    console.log(e.touches, touch)
+                    if (e.touches.length === 1 && touch !== undefined) {
+                        e.preventDefault();
+                        let deltaX = touch.pageX - e.touches[0].pageX;
+                        let deltaY = touch.pageY - e.touches[0].pageY;
+                        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                            // assume horizontal scroll
+                            socket.send(JSON.stringify({
+                                type: 'event',
+                                eventType: 'wheel',
+                                clickX: e.touches[0].pageX,
+                                clickY: e.touches[0].pageY,
+                                shiftKey: true,
+                                clientX: e.touches[0].clientX,
+                                clientY: e.touches[0].clientY,
+                                deltaY: deltaX,
+                            }));
+                        } else {
+                            socket.send(JSON.stringify({
+                                type: 'event',
+                                eventType: 'wheel',
+                                clickX: e.touches[0].pageX,
+                                clickY: e.touches[0].pageY,
+                                clientX: e.touches[0].clientX,
+                                clientY: e.touches[0].clientY,
+                                deltaY: deltaY,
+                            }));
+                        }
+                        touch = e.touches[0];
+                    }
+                }, false);
             };
             attachEvents();
             frame.focus();
