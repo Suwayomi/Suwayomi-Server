@@ -29,6 +29,7 @@ import java.awt.event.MouseEvent
 import java.awt.event.MouseWheelEvent
 import java.awt.image.BufferedImage
 import java.awt.image.DataBufferInt
+import java.awt.Component
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -318,6 +319,7 @@ class KcefWebView {
 
     private fun keyEvent(
         msg: WebView.JsEventMessage,
+        component: Component,
         id: Int,
         modifier: Int,
     ): KeyEvent? {
@@ -395,7 +397,7 @@ class KcefWebView {
         if (id == KeyEvent.KEY_TYPED) {
             if (char == KeyEvent.CHAR_UNDEFINED && code == KeyEvent.VK_UNDEFINED) return null
             return KeyEvent(
-                browser!!.uiComponent,
+                component,
                 id,
                 0L,
                 modifier,
@@ -405,7 +407,7 @@ class KcefWebView {
             )
         }
         return KeyEvent(
-            browser!!.uiComponent,
+            component,
             id,
             0L,
             modifier,
@@ -416,6 +418,7 @@ class KcefWebView {
     }
 
     fun event(msg: WebView.JsEventMessage) {
+        val component = browser?.uiComponent ?: return
         val type = msg.eventType
         val clickX = msg.clickX
         val clickY = msg.clickY
@@ -431,7 +434,7 @@ class KcefWebView {
             val d = msg.deltaY?.toInt() ?: 1
             val ev =
                 MouseWheelEvent(
-                    browser!!.uiComponent,
+                    component,
                     0,
                     0L,
                     modifier,
@@ -447,12 +450,12 @@ class KcefWebView {
             return
         }
         if (type == "keydown") {
-            browser!!.sendKeyEvent(keyEvent(msg, KeyEvent.KEY_PRESSED, modifier)!!)
-            keyEvent(msg, KeyEvent.KEY_TYPED, modifier)?.let { browser!!.sendKeyEvent(it) }
+            browser!!.sendKeyEvent(keyEvent(msg, component, KeyEvent.KEY_PRESSED, modifier)!!)
+            keyEvent(msg, component, KeyEvent.KEY_TYPED, modifier)?.let { browser!!.sendKeyEvent(it) }
             return
         }
         if (type == "keyup") {
-            browser!!.sendKeyEvent(keyEvent(msg, KeyEvent.KEY_RELEASED, modifier)!!)
+            browser!!.sendKeyEvent(keyEvent(msg, component, KeyEvent.KEY_RELEASED, modifier)!!)
             return
         }
         if (type == "mousedown" || type == "mouseup" || type == "click") {
@@ -479,7 +482,7 @@ class KcefWebView {
                 }
             val ev =
                 MouseEvent(
-                    browser!!.uiComponent,
+                    component,
                     id,
                     0L,
                     modifier or mouseModifier,
@@ -517,7 +520,7 @@ class KcefWebView {
         if (type == "mousemove") {
             val ev =
                 MouseEvent(
-                    browser!!.uiComponent,
+                    component,
                     MouseEvent.MOUSE_MOVED,
                     0L,
                     modifier,
