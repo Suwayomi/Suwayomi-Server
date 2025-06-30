@@ -18,28 +18,32 @@ import kotlin.time.Duration.Companion.seconds
 class PersistentCookieStore(
     context: Context,
 ) : CookieStore {
-    private val cookieMap = ConcurrentHashMap<String, List<Cookie>>()
+    private val cookieMap = mutableMapOf<String, List<Cookie>>()
     private val prefs = context.getSharedPreferences("cookie_store", Context.MODE_PRIVATE)
 
     private val lock = ReentrantLock()
 
     init {
-        val domains =
-            prefs.all.keys
-                .map { it.substringBeforeLast(".") }
-                .toSet()
-        domains.forEach { domain ->
-            val cookies = prefs.getStringSet(domain, emptySet())
-            if (!cookies.isNullOrEmpty()) {
-                try {
-                    val url = "http://$domain".toHttpUrlOrNull() ?: return@forEach
-                    val nonExpiredCookies =
-                        cookies
-                            .mapNotNull { Cookie.parse(url, it) }
-                            .filter { !it.hasExpired() }
-                    cookieMap[domain] = nonExpiredCookies
-                } catch (e: Exception) {
-                    // Ignore
+        lock.withLock {
+            val domains =
+                prefs.all.keys
+                    .map { it.substringBeforeLast(".") }
+                    .toSet()
+            domains.forEach { domain ->
+                val cookies = prefs.getStringSet(domain, emptySet())
+                if (!cookies.isNullOrEmpty()) {
+                    try {
+                        val url = "http://$domain".toHttpUrlOrNull() ?: return@forEach
+                        val nonExpiredCookies =
+                            cookies
+                                .mapNotNull { Cookie.parse(url, it) }
+                                .filter { !it.hasExpired() }
+                                .distinctBy { it.name }
+                        cookieMap[domain] = nonExpiredCookies
+                        saveToDisk(url.toUrl())
+                    } catch (_: Exception) {
+                        // Ignore
+                    }
                 }
             }
         }
@@ -100,22 +104,33 @@ class PersistentCookieStore(
         val uri = uri ?: URI("http://" + cookie.domain.removePrefix("."))
         val url = uri.toURL()
         lock.withLock {
-            val cookies = cookieMap[url.host]
-            cookieMap[url.host] = cookies.orEmpty() + cookie.toCookie(uri)
+            val cookiesForDomain = cookieMap[url.host].orEmpty().toMutableList()
+            // Find a cookie with the same name. Replace it if found, otherwise add a new one.
+            val pos = cookiesForDomain.indexOfFirst { it.name == cookie.name }
+            if (pos == -1) {
+                cookiesForDomain.add(cookie.toCookie(uri))
+            } else {
+                cookiesForDomain[pos] = cookie.toCookie(uri)
+            }
+            cookieMap[url.host] = cookiesForDomain
             saveToDisk(url)
         }
     }
 
     override fun getCookies(): List<HttpCookie> =
-        cookieMap.values.flatMap {
-            it.map {
-                it.toHttpCookie()
+        lock.withLock {
+            cookieMap.values.flatMap {
+                it.map {
+                    it.toHttpCookie()
+                }
             }
         }
 
     override fun getURIs(): List<URI> =
-        cookieMap.keys().toList().map {
-            URI("http://$it")
+        lock.withLock {
+            cookieMap.keys.toList().map {
+                URI("http://$it")
+            }
         }
 
     override fun remove(
@@ -156,7 +171,11 @@ class PersistentCookieStore(
                 .map(Cookie::toString)
                 .toSet()
 
-        prefs.edit().putStringSet(url.host, newValues).apply()
+        if (newValues.isNotEmpty()) {
+            prefs.edit().remove(url.host).putStringSet(url.host, newValues).apply()
+        } else {
+            prefs.edit().remove(url.host).apply()
+        }
     }
 
     private fun Cookie.hasExpired() = System.currentTimeMillis() >= expiresAt
