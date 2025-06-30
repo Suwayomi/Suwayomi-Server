@@ -8,6 +8,8 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import okhttp3.Cookie
+import okhttp3.HttpUrl
 import org.cef.CefSettings
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
@@ -28,14 +30,11 @@ import java.awt.event.MouseWheelEvent
 import java.awt.image.BufferedImage
 import java.awt.image.DataBufferInt
 import java.io.ByteArrayOutputStream
-import java.net.HttpCookie
-import java.net.URI
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.Date
 import javax.imageio.ImageIO
 import javax.swing.JPanel
-import kotlin.time.Duration.Companion.milliseconds
 
 class KcefWebView {
     private val logger = KotlinLogging.logger {}
@@ -47,6 +46,26 @@ class KcefWebView {
 
     companion object {
         private val networkHelper: NetworkHelper by injectLazy()
+
+        fun Cookie.toCefCookie(): CefCookie {
+            val cookie = this
+            return CefCookie(
+                cookie.name,
+                cookie.value,
+                if (cookie.hostOnly) {
+                    cookie.domain
+                } else {
+                    "." + cookie.domain
+                },
+                cookie.path,
+                cookie.secure,
+                cookie.httpOnly,
+                Date(),
+                null,
+                cookie.expiresAt < 253402300799999L, // okhttp3.internal.http.MAX_DATE
+                Date(cookie.expiresAt),
+            )
+        }
     }
 
     @Serializable sealed class Event
@@ -73,6 +92,7 @@ class KcefWebView {
         val message: String,
     ) : Event()
 
+    @Suppress("ArrayInDataClass")
     @Serializable
     @SerialName("render")
     private data class RenderEvent(
@@ -182,7 +202,7 @@ class KcefWebView {
 
             myImage = image
             val stream = ByteArrayOutputStream()
-            val success = ImageIO.write(renderHandler.myImage, "png", stream)
+            val success = ImageIO.write(myImage, "png", stream)
             if (!success) {
                 throw IllegalStateException("Failed to convert image to PNG")
             }
@@ -205,23 +225,12 @@ class KcefWebView {
 
         logger.info { "Start loading cookies" }
         CefCookieManager.getGlobalManager().apply {
-            val cookies = networkHelper.cookieStore.getCookies()
+            val cookies = networkHelper.cookieStore.getStoredCookies()
             for (cookie in cookies) {
                 try {
                     if (!setCookie(
                             "https://" + cookie.domain,
-                            CefCookie(
-                                cookie.name,
-                                cookie.value,
-                                cookie.domain,
-                                cookie.path,
-                                cookie.secure,
-                                cookie.isHttpOnly(),
-                                Date(),
-                                null,
-                                cookie.maxAge >= 0,
-                                Date(System.currentTimeMillis() + cookie.maxAge),
-                            ),
+                            cookie.toCefCookie(),
                         )
                     ) {
                         throw Exception()
@@ -271,20 +280,34 @@ class KcefWebView {
         logger.info { "Start cookie flush" }
         CefCookieManager.getGlobalManager().visitAllCookies { it, _, _, _ ->
             try {
-                networkHelper.cookieStore.add(
-                    URI("https://" + it.domain.removePrefix(".")),
-                    HttpCookie(it.name, it.value).apply {
-                        path = it.path
-                        domain = it.domain
-                        maxAge =
-                            if (!it.hasExpires) {
-                                -1
-                            } else {
-                                (it.expires.time.milliseconds - System.currentTimeMillis().milliseconds).inWholeSeconds
-                            }
-                        isHttpOnly = it.httponly
-                        secure = it.secure
-                    },
+                networkHelper.cookieStore.addAll(
+                    HttpUrl
+                        .Builder()
+                        .scheme("http")
+                        .host(it.domain.removePrefix("."))
+                        .build(),
+                    listOf(
+                        Cookie
+                            .Builder()
+                            .name(it.name)
+                            .value(it.value)
+                            .path(if (it.path.startsWith('/')) it.path else "/" + it.path)
+                            .domain(it.domain.removePrefix("."))
+                            .apply {
+                                if (it.hasExpires) {
+                                    expiresAt(it.expires.time)
+                                }
+                                if (it.httponly) {
+                                    httpOnly()
+                                }
+                                if (it.secure) {
+                                    secure()
+                                }
+                                if (!it.domain.startsWith('.')) {
+                                    hostOnlyDomain(it.domain.removePrefix("."))
+                                }
+                            }.build(),
+                    ),
                 )
             } catch (e: Exception) {
                 logger.warn(e) { "Writing cookie ${it.name} failed" }
@@ -298,7 +321,7 @@ class KcefWebView {
         id: Int,
         modifier: Int,
     ): KeyEvent? {
-        val char = if (msg.key?.length == 1) msg.key.get(0) else KeyEvent.CHAR_UNDEFINED
+        val char = if (msg.key?.length == 1) msg.key[0] else KeyEvent.CHAR_UNDEFINED
         val code =
             when (char.uppercaseChar()) {
                 in 'A'..'Z', in '0'..'9' -> char.uppercaseChar().code
@@ -392,7 +415,7 @@ class KcefWebView {
         )
     }
 
-    public fun event(msg: WebView.JsEventMessage) {
+    fun event(msg: WebView.JsEventMessage) {
         val type = msg.eventType
         val clickX = msg.clickX
         val clickY = msg.clickY
@@ -510,15 +533,15 @@ class KcefWebView {
         }
     }
 
-    public fun canGoBack(): Boolean = browser!!.canGoBack()
+    fun canGoBack(): Boolean = browser!!.canGoBack()
 
-    public fun goBack() {
+    fun goBack() {
         browser!!.goBack()
     }
 
-    public fun canGoForward(): Boolean = browser!!.canGoForward()
+    fun canGoForward(): Boolean = browser!!.canGoForward()
 
-    public fun goForward() {
+    fun goForward() {
         browser!!.goForward()
     }
 

@@ -107,9 +107,9 @@ class PersistentCookieStore(
             // Find a cookie with the same name. Replace it if found, otherwise add a new one.
             val pos = cookiesForDomain.indexOfFirst { it.name == cookie.name }
             if (pos == -1) {
-                cookiesForDomain.add(cookie.toCookie(uri))
+                cookiesForDomain.add(cookie.toCookie())
             } else {
-                cookiesForDomain[pos] = cookie.toCookie(uri)
+                cookiesForDomain[pos] = cookie.toCookie()
             }
             cookieMap[url.host] = cookiesForDomain
             saveToDisk(url)
@@ -123,6 +123,11 @@ class PersistentCookieStore(
                     it.toHttpCookie()
                 }
             }
+        }
+
+    fun getStoredCookies(): List<Cookie> =
+        lock.withLock {
+            cookieMap.values.flatMap { it }
         }
 
     override fun getURIs(): List<URI> =
@@ -183,37 +188,39 @@ class PersistentCookieStore(
 
     private fun Cookie.hasExpired() = System.currentTimeMillis() >= expiresAt
 
-    private fun HttpCookie.toCookie(uri: URI) =
+    private fun HttpCookie.toCookie() =
         Cookie
             .Builder()
             .name(name)
             .value(value)
-            .domain(uri.toURL().host)
+            .domain(domain.removePrefix("."))
             .path(path ?: "/")
-            .let {
+            .also {
                 if (maxAge != -1L) {
                     it.expiresAt(System.currentTimeMillis() + maxAge.seconds.inWholeMilliseconds)
                 } else {
                     it.expiresAt(Long.MAX_VALUE)
                 }
-            }.let {
                 if (secure) {
                     it.secure()
-                } else {
-                    it
                 }
-            }.let {
                 if (isHttpOnly) {
                     it.httpOnly()
-                } else {
-                    it
+                }
+                if (!domain.startsWith('.')) {
+                    it.hostOnlyDomain(domain.removePrefix("."))
                 }
             }.build()
 
     private fun Cookie.toHttpCookie(): HttpCookie {
         val it = this
         return HttpCookie(it.name, it.value).apply {
-            domain = it.domain
+            domain =
+                if (hostOnly) {
+                    it.domain
+                } else {
+                    "." + it.domain
+                }
             path = it.path
             secure = it.secure
             maxAge =

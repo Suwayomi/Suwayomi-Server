@@ -27,11 +27,11 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.cef.network.CefCookie
 import org.cef.network.CefCookieManager
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
+import suwayomi.tachidesk.global.impl.KcefWebView.Companion.toCefCookie
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
@@ -59,7 +59,6 @@ import java.io.File
 import java.net.Authenticator
 import java.net.PasswordAuthentication
 import java.security.Security
-import java.util.Date
 import java.util.Locale
 import kotlin.io.path.Path
 import kotlin.io.path.createDirectories
@@ -223,24 +222,13 @@ fun applicationSetup() {
                             val logger = KotlinLogging.logger {}
                             logger.info { "Start loading cookies" }
                             CefCookieManager.getGlobalManager().apply {
-                                val cookies = networkHelper.cookieStore.getCookies()
+                                val cookies = networkHelper.cookieStore.getStoredCookies()
                                 for (cookie in cookies) {
                                     logger.info { "Loading cookie ${cookie.name} for ${cookie.domain}" }
                                     try {
                                         if (!setCookie(
                                                 "https://" + cookie.domain,
-                                                CefCookie(
-                                                    cookie.name,
-                                                    cookie.value,
-                                                    cookie.domain,
-                                                    cookie.path,
-                                                    cookie.secure,
-                                                    cookie.isHttpOnly,
-                                                    Date(),
-                                                    null,
-                                                    cookie.maxAge >= 0,
-                                                    Date(System.currentTimeMillis() + cookie.maxAge),
-                                                ),
+                                                cookie.toCefCookie(),
                                             )
                                         ) {
                                             throw Exception()
