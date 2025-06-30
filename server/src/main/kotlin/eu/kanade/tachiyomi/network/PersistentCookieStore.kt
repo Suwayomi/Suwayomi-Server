@@ -37,8 +37,8 @@ class PersistentCookieStore(
                             cookies
                                 .mapNotNull { Cookie.parse(url, it) }
                                 .filter { !it.hasExpired() }
-                                .distinctBy { it.name }
                                 .groupBy { it.domain }
+                                .mapValues { it.value.distinctBy { it.name } }
                         nonExpiredCookies.forEach { (domain, cookies) ->
                             cookieMap[domain] = cookies
                             domainsToSave.add(domain)
