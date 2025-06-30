@@ -138,7 +138,7 @@
         <div class="message" id="message">Initializing... Please wait</div>
         <div class="status" id="status"></div>
         <canvas id="frame"></canvas>
-        <input type="text" id="inputtrap"/>
+        <input type="text" id="inputtrap" autocomplete="off"/>
     </main>
     <script>
         const messageDiv = document.getElementById('message');
@@ -293,7 +293,8 @@
             observer.observe(frame);
 
             const frameEvent = (e) => {
-                console.log(e);
+                // Chrome Android bug, see below
+                if (e.key === "Unidentified") return;
                 e.preventDefault();
                 const rect = frame.getBoundingClientRect();
                 const clickX = e.clientX !== undefined ? e.clientX - rect.left : 0;
@@ -337,6 +338,7 @@
                         e.preventDefault();
                         let deltaX = touch.pageX - e.touches[0].pageX;
                         let deltaY = touch.pageY - e.touches[0].pageY;
+                        console.log(deltaX, deltaY)
                         if (Math.abs(deltaX) > Math.abs(deltaY)) {
                             // assume horizontal scroll
                             socket.send(JSON.stringify({
@@ -362,6 +364,30 @@
                         }
                         touch = e.touches[0];
                     }
+                }, false);
+                // known bug on Chrome Android:
+                // https://stackoverflow.com/questions/36753548/keycode-on-android-is-always-229
+                // on other browsers, the preventDefault above works so we don't get this event
+                frameInput.addEventListener('input', e => {
+                    e.preventDefault();
+                    socket.send(JSON.stringify({
+                        type: 'event',
+                        eventType: 'keydown',
+                        clickX: 0,
+                        clickY: 0,
+                        key: e.data,
+                    }));
+                    socket.send(JSON.stringify({
+                        type: 'event',
+                        eventType: 'keyup',
+                        clickX: 0,
+                        clickY: 0,
+                        key: e.data,
+                    }));
+                    e.target.value = '';
+                });
+                frameInput.addEventListener('contextmenu', e => {
+                    e.preventDefault();
                 }, false);
             };
             attachEvents();

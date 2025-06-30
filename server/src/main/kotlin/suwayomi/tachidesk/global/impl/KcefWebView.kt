@@ -22,6 +22,7 @@ import org.cef.input.CefTouchEvent
 import org.cef.network.CefCookie
 import org.cef.network.CefCookieManager
 import uy.kohesive.injekt.injectLazy
+import java.awt.Component
 import java.awt.Rectangle
 import java.awt.event.InputEvent
 import java.awt.event.KeyEvent
@@ -29,7 +30,6 @@ import java.awt.event.MouseEvent
 import java.awt.event.MouseWheelEvent
 import java.awt.image.BufferedImage
 import java.awt.image.DataBufferInt
-import java.awt.Component
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
