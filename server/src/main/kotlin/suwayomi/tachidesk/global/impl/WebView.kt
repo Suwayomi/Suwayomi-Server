@@ -18,7 +18,8 @@ object WebView : Websocket<String>() {
             // TODO: allow multiple concurrent accesses?
             clients.forEach { it.value.closeSession(CloseStatus(1001, "Other client connected")) }
             clients.clear()
-        } else {
+        }
+        if (driver == null) {
             driver = KcefWebView()
         }
         super.addClient(ctx)
