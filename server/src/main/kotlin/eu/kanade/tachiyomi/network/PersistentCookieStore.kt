@@ -9,7 +9,6 @@ import java.net.CookieStore
 import java.net.HttpCookie
 import java.net.URI
 import java.net.URL
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -172,7 +171,11 @@ class PersistentCookieStore(
                 .toSet()
 
         if (newValues.isNotEmpty()) {
-            prefs.edit().remove(url.host).putStringSet(url.host, newValues).apply()
+            prefs
+                .edit()
+                .remove(url.host)
+                .putStringSet(url.host, newValues)
+                .apply()
         } else {
             prefs.edit().remove(url.host).apply()
         }
