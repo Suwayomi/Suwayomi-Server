@@ -82,6 +82,7 @@ import org.cef.network.CefPostData
 import org.cef.network.CefPostDataElement
 import org.cef.network.CefRequest
 import org.cef.network.CefResponse
+import org.koin.mp.KoinPlatformTools
 import java.io.BufferedWriter
 import java.io.File
 import java.io.IOException
@@ -110,6 +111,12 @@ class KcefWebViewProvider(
         const val TAG = "KcefWebViewProvider"
         const val QUERY_FN = "__\$_suwayomiQuery"
         const val QUERY_CANCEL_FN = "__\$_suwayomiQueryCancel"
+
+        private val initHandler: InitBrowserHandler by KoinPlatformTools.defaultContext().get().inject()
+    }
+
+    public interface InitBrowserHandler {
+        public fun init(provider: KcefWebViewProvider): Unit
     }
 
     private class CefWebResourceRequest(
@@ -451,6 +458,7 @@ class KcefWebViewProvider(
                 config.jsCancelFunction = QUERY_CANCEL_FN
                 addMessageRouter(CefMessageRouter.create(config, MessageRouterHandler()))
             }
+        initHandler.init(this)
     }
 
     // Deprecated - should never be called
