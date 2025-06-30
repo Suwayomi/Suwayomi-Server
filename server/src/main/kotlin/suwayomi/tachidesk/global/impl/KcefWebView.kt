@@ -297,6 +297,8 @@ class KcefWebView {
                             .apply {
                                 if (it.hasExpires) {
                                     expiresAt(it.expires.time)
+                                } else {
+                                    expiresAt(Long.MAX_VALUE)
                                 }
                                 if (it.httponly) {
                                     httpOnly()
