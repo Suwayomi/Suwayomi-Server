@@ -15,7 +15,6 @@ import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.withOperation
 
 object WebViewController {
-    /** returns some static info about the current app build */
     val webview =
         handler(
             documentWith = {
