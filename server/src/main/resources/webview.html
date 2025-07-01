@@ -40,9 +40,21 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+        header nav {
+            display: flex;
+            flex-wrap: wrap;
+            column-gap: 20px;
+            align-items: center;
+        }
         header form {
             display: flex;
             gap: 5px;
+            flex: auto 1 1;
+            min-width: 400px;
+        }
+        header label {
+            flex: auto 0 0;
+            cursor: pointer;
         }
         header button {
             all: unset;
@@ -131,6 +143,7 @@
                 <input type="text" id="url" name="url" placeholder="Enter URL..." disabled/>
                 <button type="submit" id="goButton" disabled><span class="arrow-right"></span></button>
             </form>
+            <label><input type="checkbox" id="reverseScroll" disabled/> Reverse Scrolling</label>
         </nav>
         <p><i>Note: While focus is on the WebView part, no keybinds, including refresh, will be handled by the browser</i></p>
     </header>
@@ -150,6 +163,7 @@
         const goButton = document.getElementById('goButton');
         const urlInput = document.getElementById('url');
         const titleDiv = document.getElementById('title');
+        const reverseToggle = document.getElementById('reverseScroll');
 
         try {
             const socketUrl = (window.location.origin + window.location.pathname).replace(/^http/,'ws');
@@ -157,6 +171,8 @@
 
             urlInput.disabled = false;
             goButton.disabled = false;
+            reverseToggle.disabled = false;
+            reverseToggle.checked = window.localStorage.getItem('suwayomi_mouse_reverse_scroll') === "true";
 
             let url = '';
             try {
@@ -217,6 +233,10 @@
                 const url = urlInput.value;
                 loadUrl(url);
                 console.log('Navigate to', url);
+            });
+
+            reverseToggle.addEventListener('change', e => {
+                window.localStorage.setItem('suwayomi_mouse_reverse_scroll', e.target.checked ? "true" : "false");
             });
 
             /// Server events
@@ -312,7 +332,7 @@
                     key: e.key,
                     clientX: e.clientX,
                     clientY: e.clientY,
-                    deltaY: e.deltaY,
+                    deltaY: reverseToggle.checked && typeof e.deltaY === 'number' ? -e.deltaY : e.deltaY,
                 }));
                 frameInput.focus();
             };
