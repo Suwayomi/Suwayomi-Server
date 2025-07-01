@@ -2,7 +2,7 @@
 <resources>
     <string name="opds_linktitle_search_catalog">カタログ検索</string>
     <string name="manga_status_unknown">不明</string>
-    <string name="opds_linktitle_stream_pages">ページを表示 (Streaming)</string>
+    <string name="opds_linktitle_stream_pages">ページを表示 (ストリーミング)</string>
     <string name="opds_linktitle_next_page">次のページ</string>
     <string name="opds_search_shortname">Suwayomi OPDS検索</string>
     <string name="opds_feeds_genres_entry_content">ジャンルタグでマンガをブラウズする</string>
@@ -41,11 +41,25 @@
     <string name="opds_feeds_all_manga_title">すべてのマンガ</string>
     <string name="opds_feeds_search_results">検索結果</string>
     <string name="opds_feeds_sources_title">ソース</string>
-    <string name="opds_linktitle_catalog_root">カタログルート</string>
+    <string name="opds_linktitle_catalog_root">カタログトップ</string>
     <string name="opds_facet_filter_unread_only">未読のみ</string>
     <string name="opds_chapter_status_error">⚠️</string>
     <string name="opds_linktitle_current_page">現在のページ</string>
     <string name="opds_chapter_status_unread">⭕</string>
     <string name="opds_feeds_language_specific_title">言語: %1$s</string>
     <string name="opds_feeds_languages_entry_content">コンテンツの言語でマンガを閲覧</string>
+    <string name="opds_facet_sort_oldest_first">古い順</string>
+    <string name="opds_facet_sort_newest_first">新しい順</string>
+    <string name="opds_facet_sort_date_asc">日付昇順</string>
+    <string name="opds_facet_sort_date_desc">日付降順</string>
+    <string name="opds_facet_filter_read_only">既読のみ</string>
+    <string name="opds_linktitle_view_chapter_details">詳細を表示・ページ取得</string>
+    <string name="opds_linktitle_self_feed">現在のページ</string>
+    <string name="opds_chapter_details_scanlator">| 翻訳 %1$s</string>
+    <string name="opds_chapter_details_progress">| 読書進捗: %1$d / %2$d</string>
+    <string name="manga_status_ongoing">連載中</string>
+    <string name="manga_status_completed">完結済み</string>
+    <string name="manga_status_licensed">正式版</string>
+    <string name="manga_status_publishing_finished">連載終了</string>
+    <string name="manga_status_cancelled">打ち切り</string>
 </resources>
