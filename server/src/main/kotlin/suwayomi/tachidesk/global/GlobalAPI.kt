@@ -10,8 +10,10 @@ package suwayomi.tachidesk.global
 import io.javalin.apibuilder.ApiBuilder.get
 import io.javalin.apibuilder.ApiBuilder.patch
 import io.javalin.apibuilder.ApiBuilder.path
+import io.javalin.apibuilder.ApiBuilder.ws
 import suwayomi.tachidesk.global.controller.GlobalMetaController
 import suwayomi.tachidesk.global.controller.SettingsController
+import suwayomi.tachidesk.global.controller.WebViewController
 
 object GlobalAPI {
     fun defineEndpoints() {
@@ -22,6 +24,10 @@ object GlobalAPI {
         path("settings") {
             get("about", SettingsController.about)
             get("check-update", SettingsController.checkUpdate)
+        }
+        path("webview") {
+            get("", WebViewController.webview)
+            ws("", WebViewController::webviewWS)
         }
     }
 }

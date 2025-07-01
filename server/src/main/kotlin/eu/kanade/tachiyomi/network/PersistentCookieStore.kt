@@ -8,8 +8,6 @@ import okio.withLock
 import java.net.CookieStore
 import java.net.HttpCookie
 import java.net.URI
-import java.net.URL
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -18,30 +16,40 @@ import kotlin.time.Duration.Companion.seconds
 class PersistentCookieStore(
     context: Context,
 ) : CookieStore {
-    private val cookieMap = ConcurrentHashMap<String, List<Cookie>>()
+    private val cookieMap = mutableMapOf<String, List<Cookie>>()
     private val prefs = context.getSharedPreferences("cookie_store", Context.MODE_PRIVATE)
 
     private val lock = ReentrantLock()
 
     init {
-        val domains =
-            prefs.all.keys
-                .map { it.substringBeforeLast(".") }
-                .toSet()
-        domains.forEach { domain ->
-            val cookies = prefs.getStringSet(domain, emptySet())
-            if (!cookies.isNullOrEmpty()) {
-                try {
-                    val url = "http://$domain".toHttpUrlOrNull() ?: return@forEach
-                    val nonExpiredCookies =
-                        cookies
-                            .mapNotNull { Cookie.parse(url, it) }
-                            .filter { !it.hasExpired() }
-                    cookieMap[domain] = nonExpiredCookies
-                } catch (e: Exception) {
-                    // Ignore
+        lock.withLock {
+            val domains =
+                prefs.all.keys
+                    .map { it.substringBeforeLast(".") }
+                    .toSet()
+            val domainsToSave = mutableSetOf<String>()
+            domains.forEach { domain ->
+                val cookies = prefs.getStringSet(domain, emptySet())
+                if (!cookies.isNullOrEmpty()) {
+                    try {
+                        val url = "http://$domain".toHttpUrlOrNull() ?: return@forEach
+                        val nonExpiredCookies =
+                            cookies
+                                .mapNotNull { Cookie.parse(url, it) }
+                                .filter { !it.hasExpired() }
+                                .groupBy { it.domain }
+                                .mapValues { it.value.distinctBy { it.name } }
+                        nonExpiredCookies.forEach { (domain, cookies) ->
+                            cookieMap[domain] = cookies
+                            domainsToSave.add(domain)
+                        }
+                        domainsToSave.add(domain)
+                    } catch (_: Exception) {
+                        // Ignore
+                    }
                 }
             }
+            saveToDisk(domainsToSave)
         }
     }
 
@@ -50,9 +58,10 @@ class PersistentCookieStore(
         cookies: List<Cookie>,
     ) {
         lock.withLock {
+            val domainsToSave = mutableSetOf<String>()
             // Append or replace the cookies for this domain.
-            val cookiesForDomain = cookieMap[url.host].orEmpty().toMutableList()
             for (cookie in cookies) {
+                val cookiesForDomain = cookieMap[cookie.domain].orEmpty().toMutableList()
                 // Find a cookie with the same name. Replace it if found, otherwise add a new one.
                 val pos = cookiesForDomain.indexOfFirst { it.name == cookie.name }
                 if (pos == -1) {
@@ -60,10 +69,11 @@ class PersistentCookieStore(
                 } else {
                     cookiesForDomain[pos] = cookie
                 }
+                cookieMap[cookie.domain] = cookiesForDomain
+                domainsToSave.add(cookie.domain)
             }
-            cookieMap[url.host] = cookiesForDomain
 
-            saveToDisk(url.toUrl())
+            saveToDisk(domainsToSave.toSet())
         }
     }
 
@@ -85,48 +95,66 @@ class PersistentCookieStore(
 
     override fun get(uri: URI): List<HttpCookie> {
         val url = uri.toURL()
-        return get(url.host).map {
+        return get(url.toHttpUrlOrNull()!!).map {
             it.toHttpCookie()
         }
     }
 
-    fun get(url: HttpUrl): List<Cookie> = get(url.host)
+    fun get(url: HttpUrl): List<Cookie> =
+        lock.withLock {
+            cookieMap.entries
+                .filter {
+                    url.host.endsWith(it.key)
+                }.flatMap { it.value }
+        }
 
     override fun add(
         uri: URI?,
         cookie: HttpCookie,
     ) {
-        @Suppress("NAME_SHADOWING")
-        val uri = uri ?: URI("http://" + cookie.domain.removePrefix("."))
-        val url = uri.toURL()
         lock.withLock {
-            val cookies = cookieMap[url.host]
-            cookieMap[url.host] = cookies.orEmpty() + cookie.toCookie(uri)
-            saveToDisk(url)
+            val cookie = cookie.toCookie()
+            val cookiesForDomain = cookieMap[cookie.domain].orEmpty().toMutableList()
+            // Find a cookie with the same name. Replace it if found, otherwise add a new one.
+            val pos = cookiesForDomain.indexOfFirst { it.name == cookie.name }
+            if (pos == -1) {
+                cookiesForDomain.add(cookie)
+            } else {
+                cookiesForDomain[pos] = cookie
+            }
+            cookieMap[cookie.domain] = cookiesForDomain
+            saveToDisk(setOf(cookie.domain))
         }
     }
 
     override fun getCookies(): List<HttpCookie> =
-        cookieMap.values.flatMap {
-            it.map {
-                it.toHttpCookie()
+        lock.withLock {
+            cookieMap.values.flatMap {
+                it.map {
+                    it.toHttpCookie()
+                }
             }
         }
 
+    fun getStoredCookies(): List<Cookie> =
+        lock.withLock {
+            cookieMap.values.flatMap { it }
+        }
+
     override fun getURIs(): List<URI> =
-        cookieMap.keys().toList().map {
-            URI("http://$it")
+        lock.withLock {
+            cookieMap.keys.toList().map {
+                URI("http://$it")
+            }
         }
 
     override fun remove(
         uri: URI?,
         cookie: HttpCookie,
-    ): Boolean {
-        @Suppress("NAME_SHADOWING")
-        val uri = uri ?: URI("http://" + cookie.domain.removePrefix("."))
-        val url = uri.toURL()
-        return lock.withLock {
-            val cookies = cookieMap[url.host].orEmpty()
+    ): Boolean =
+        lock.withLock {
+            val cookie = cookie.toCookie()
+            val cookies = cookieMap[cookie.domain].orEmpty()
             val index =
                 cookies.indexOfFirst {
                     it.name == cookie.name &&
@@ -135,63 +163,73 @@ class PersistentCookieStore(
             if (index >= 0) {
                 val newList = cookies.toMutableList()
                 newList.removeAt(index)
-                cookieMap[url.host] = newList.toList()
-                saveToDisk(url)
+                cookieMap[cookie.domain] = newList.toList()
+                saveToDisk(setOf(cookie.domain))
                 true
             } else {
                 false
             }
         }
-    }
 
-    private fun get(url: String): List<Cookie> = cookieMap[url].orEmpty().filter { !it.hasExpired() }
-
-    private fun saveToDisk(url: URL) {
+    private fun saveToDisk(domains: Set<String>) {
         // Get cookies to be stored in disk
-        val newValues =
-            cookieMap[url.host]
-                .orEmpty()
-                .asSequence()
-                .filter { it.persistent && !it.hasExpired() }
-                .map(Cookie::toString)
-                .toSet()
-
-        prefs.edit().putStringSet(url.host, newValues).apply()
+        prefs
+            .edit()
+            .apply {
+                domains.forEach { domain ->
+                    val newValues =
+                        cookieMap[domain]
+                            .orEmpty()
+                            .onEach { println(it) }
+                            .asSequence()
+                            .filter { it.persistent && !it.hasExpired() }
+                            .map(Cookie::toString)
+                            .toSet()
+                    if (newValues.isNotEmpty()) {
+                        remove(domain)
+                        putStringSet(domain, newValues)
+                    } else {
+                        remove(domain)
+                    }
+                }
+            }.apply()
     }
 
     private fun Cookie.hasExpired() = System.currentTimeMillis() >= expiresAt
 
-    private fun HttpCookie.toCookie(uri: URI) =
+    private fun HttpCookie.toCookie() =
         Cookie
             .Builder()
             .name(name)
             .value(value)
-            .domain(uri.toURL().host)
+            .domain(domain.removePrefix("."))
             .path(path ?: "/")
-            .let {
+            .also {
                 if (maxAge != -1L) {
                     it.expiresAt(System.currentTimeMillis() + maxAge.seconds.inWholeMilliseconds)
                 } else {
                     it.expiresAt(Long.MAX_VALUE)
                 }
-            }.let {
                 if (secure) {
                     it.secure()
-                } else {
-                    it
                 }
-            }.let {
                 if (isHttpOnly) {
                     it.httpOnly()
-                } else {
-                    it
+                }
+                if (!domain.startsWith('.')) {
+                    it.hostOnlyDomain(domain.removePrefix("."))
                 }
             }.build()
 
     private fun Cookie.toHttpCookie(): HttpCookie {
         val it = this
         return HttpCookie(it.name, it.value).apply {
-            domain = it.domain
+            domain =
+                if (hostOnly) {
+                    it.domain
+                } else {
+                    "." + it.domain
+                }
             path = it.path
             secure = it.secure
             maxAge =

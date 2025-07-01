@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+    <title>Suwayomi Webview</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+        body.disconnected::after {
+            content: 'Disconnected, please refresh';
+            position: absolute;
+            inset: 0;
+            background: rgba(150, 0, 0, 0.5);
+            color: white;
+            text-align: center;
+            align-content: center;
+            font-size: 2rem;
+        }
+        button[disabled], input[disabled] {
+            cursor: not-allowed;
+        }
+        header {
+            background-color: rgb(12, 16, 33);
+            color: #fff;
+            padding: 8px 32px;
+        }
+        header h1, header p {
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        header nav {
+            display: flex;
+            flex-wrap: wrap;
+            column-gap: 20px;
+            align-items: center;
+        }
+        header form {
+            display: flex;
+            gap: 5px;
+            flex: auto 1 1;
+            min-width: 400px;
+        }
+        header label {
+            flex: auto 0 0;
+            cursor: pointer;
+        }
+        header button {
+            all: unset;
+            padding: 8px;
+            border-radius: 50%;
+            min-width: 1em;
+            line-height: 1;
+            text-align: center;
+        }
+        header button:not([disabled]) {
+            cursor: pointer;
+        }
+        header button:not([disabled]):hover {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+        header input {
+            flex: 100% 1 1;
+        }
+        main, iframe {
+            height: 100%;
+        }
+        main {
+            position: relative;
+        }
+        canvas, input#inputtrap {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+        input#inputtrap {
+            opacity: 0;
+            padding: 0;
+            margin: 0;
+            border: none;
+        }
+        main .message, main .status {
+            position: relative;
+            z-index: 1;
+        }
+        main .message {
+            padding: 8px;
+            max-width: 1100px;
+            margin: auto;
+            font-style: italic;
+        }
+        main .message.error {
+            color: red;
+            font-style: regular;
+            font-weight: bold;
+        }
+        main .message:empty {
+            display: none;
+        }
+        main .status {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            max-width: 50%;
+            background: #555;
+            color: white;
+            padding: 2px 4px;
+            font-size: 0.8rem;
+            border-top-right-radius: 3px;
+        }
+        main .status:empty {
+            display: none;
+        }
+
+        /* https://css-tricks.com/snippets/css/css-triangle/ */
+        .arrow-right {
+            display: inline-block;
+            width: 0;
+            height: 0;
+            border-top: 9px solid transparent;
+            border-bottom: 9px solid transparent;
+            border-left: 9px solid currentcolor;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1 id="title">Suwayomi: WebView</h1>
+        <nav>
+            <form id="browseForm">
+                <input type="text" id="url" name="url" placeholder="Enter URL..." disabled/>
+                <button type="submit" id="goButton" disabled><span class="arrow-right"></span></button>
+            </form>
+            <label><input type="checkbox" id="reverseScroll" disabled/> Reverse Scrolling</label>
+        </nav>
+        <p><i>Note: While focus is on the WebView part, no keybinds, including refresh, will be handled by the browser</i></p>
+    </header>
+    <main>
+        <div class="message" id="message">Initializing... Please wait</div>
+        <div class="status" id="status"></div>
+        <canvas id="frame"></canvas>
+        <input type="text" id="inputtrap" autocomplete="off"/>
+    </main>
+    <script>
+        const messageDiv = document.getElementById('message');
+        const statusDiv = document.getElementById('status');
+        const frame = document.getElementById('frame');
+        const frameInput = document.getElementById('inputtrap');
+        const ctx = frame.getContext("2d");
+        const browseForm = document.getElementById('browseForm');
+        const goButton = document.getElementById('goButton');
+        const urlInput = document.getElementById('url');
+        const titleDiv = document.getElementById('title');
+        const reverseToggle = document.getElementById('reverseScroll');
+
+        try {
+            const socketUrl = (window.location.origin + window.location.pathname).replace(/^http/,'ws');
+            const socket = new WebSocket(socketUrl);
+
+            urlInput.disabled = false;
+            goButton.disabled = false;
+            reverseToggle.disabled = false;
+            reverseToggle.checked = window.localStorage.getItem('suwayomi_mouse_reverse_scroll') === "true";
+
+            let url = '';
+            try {
+                url = window.decodeURIComponent(window.location.hash.replace(/^#/, ''));
+            } catch (e) {
+                console.error(e);
+            }
+
+            /// Helpers
+
+            const setHash = (u) => {
+                let current = '';
+                try {
+                    current = window.decodeURIComponent(window.location.hash.replace(/^#/, ''));
+                } catch (e) {
+                    console.error(e);
+                }
+                if (current != u)
+                    history.pushState(null, null, window.location.origin + window.location.pathname + '#' + window.encodeURIComponent(u));
+            };
+
+            const setTitle = (title) => {
+                if (!title) {
+                    document.title = "Suwayomi Webview";
+                    titleDiv.textContent = "Suwayomi Webview";
+                } else {
+                    document.title = "Suwayomi: " + title;
+                    titleDiv.textContent = "Suwayomi: " + title;
+                }
+            }
+
+            const loadUrl = (u) => {
+                if (!u) {
+                    urlInput.value = u;
+                    setHash(u);
+                    setTitle();
+                    messageDiv.textContent = 'Enter a URL to get started';
+                    ctx.clearRect(0, 0, frame.width, frame.height);
+                    return;
+                }
+                messageDiv.textContent = "Loading page...";
+                messageDiv.classList.remove('error');
+                urlInput.value = u;
+                socket.send(JSON.stringify({ type: 'loadUrl', url: u, width: frame.clientWidth, height: frame.clientHeight }));
+                ctx.clearRect(0, 0, frame.width, frame.height);
+            };
+
+            /// Form
+
+            window.addEventListener('hashchange', e => {
+                const url = window.decodeURIComponent(window.location.hash.replace(/^#/, ''));
+                loadUrl(url);
+                console.log('Navigate to', url);
+            });
+
+            browseForm.addEventListener('submit', e => {
+                e.preventDefault();
+                const url = urlInput.value;
+                loadUrl(url);
+                console.log('Navigate to', url);
+            });
+
+            reverseToggle.addEventListener('change', e => {
+                window.localStorage.setItem('suwayomi_mouse_reverse_scroll', e.target.checked ? "true" : "false");
+            });
+
+            /// Server events
+
+            socket.addEventListener('open', () => {
+                loadUrl(url);
+                console.log('WebSocket connection opened');
+            });
+
+            socket.addEventListener('message', e => {
+                const obj = JSON.parse(e.data);
+                switch (obj.type) {
+                    case "addressChange":
+                        console.log('Loaded');
+                        messageDiv.textContent = '';
+                        urlInput.value = obj.url;
+                        setHash(obj.url);
+                        setTitle(obj.title);
+                        break;
+                    case "statusChange":
+                        statusDiv.textContent = obj.message;
+                        break;
+                    case "load": {
+                        if (obj.error) {
+                            messageDiv.textContent = "Error: " + obj.error;
+                            messageDiv.classList.add('error');
+                        } else {
+                            messageDiv.textContent = "";
+                        }
+                        urlInput.value = obj.url;
+                        setTitle(obj.title);
+                    } break;
+                    case "render": {
+                        const img = new Image();
+                        const imgData = new Blob([new Uint8Array(obj.image)], { type: "image/png" });
+                        const url = URL.createObjectURL(imgData);
+                        img.addEventListener('load', e => {
+                            frame.width = img.width;
+                            frame.height = img.height;
+                            ctx.drawImage(img, 0, 0);
+                        });
+                        img.src = url;
+                    } break;
+                    case "consoleMessage": {
+                        const lg = obj.severity == 4 ? console.error : obj.severity == 3 ? console.warn : console.log;
+                        lg(`${obj.source}:${obj.line}:`, obj.message);
+                    } break;
+                    default:
+                        console.warn("Unknown event", obj.type)
+                        break;
+                }
+            });
+
+            socket.addEventListener('close', e => {
+                if (e.wasClean) {
+                    console.log(`WebSocket connection closed cleanly, code=${e.code}, reason=${e.reason}`);
+                } else {
+                    console.error('WebSocket connection died');
+                }
+                document.body.classList.add('disconnected');
+            });
+
+            socket.addEventListener('error', e => {
+                messageDiv.textContent = "Error: " + (e.message || e.reason || e);
+                messageDiv.classList.add('error');
+                console.error('WebSocket error:', e);
+            });
+
+            /// Page events
+
+            const observer = new ResizeObserver(() => {
+                socket.send(JSON.stringify({ type: 'resize', width: frame.clientWidth, height: frame.clientHeight }));
+            });
+            observer.observe(frame);
+
+            const frameEvent = (e) => {
+                // Chrome Android bug, see below
+                if (e.key === "Unidentified") return;
+                e.preventDefault();
+                const rect = frame.getBoundingClientRect();
+                const clickX = e.clientX !== undefined ? e.clientX - rect.left : 0;
+                const clickY = e.clientY !== undefined ? e.clientY - rect.top : 0;
+                socket.send(JSON.stringify({
+                    type: 'event',
+                    eventType: e.type,
+                    clickX,
+                    clickY,
+                    button: e.button,
+                    ctrlKey: e.ctrlKey,
+                    shiftKey: e.shiftKey,
+                    altKey: e.altKey,
+                    metaKey: e.metaKey,
+                    key: e.key,
+                    clientX: e.clientX,
+                    clientY: e.clientY,
+                    deltaY: reverseToggle.checked && typeof e.deltaY === 'number' ? -e.deltaY : e.deltaY,
+                }));
+                frameInput.focus();
+            };
+
+            const attachEvents = () => {
+                console.log('Attaching event handlers to new document');
+                const events = ["click", "mousedown", "mouseup", "mousemove", "wheel", "keydown", "keyup"];
+                for (const ev of events) {
+                    frameInput.addEventListener(ev, frameEvent, false);
+                }
+
+                let touch = undefined;
+                frameInput.addEventListener('touchstart', e => {
+                    if (e.touches.length === 1) {
+                        touch = e.touches[0];
+                    }
+                }, false);
+                frameInput.addEventListener('touchend', e => {
+                    touch = undefined;
+                }, false);
+                frameInput.addEventListener('touchmove', e => {
+                    if (e.touches.length === 1 && touch !== undefined) {
+                        e.preventDefault();
+                        let deltaX = touch.pageX - e.touches[0].pageX;
+                        let deltaY = touch.pageY - e.touches[0].pageY;
+                        console.log(deltaX, deltaY)
+                        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                            // assume horizontal scroll
+                            socket.send(JSON.stringify({
+                                type: 'event',
+                                eventType: 'wheel',
+                                clickX: e.touches[0].pageX,
+                                clickY: e.touches[0].pageY,
+                                shiftKey: true,
+                                clientX: e.touches[0].clientX,
+                                clientY: e.touches[0].clientY,
+                                deltaY: deltaX,
+                            }));
+                        } else {
+                            socket.send(JSON.stringify({
+                                type: 'event',
+                                eventType: 'wheel',
+                                clickX: e.touches[0].pageX,
+                                clickY: e.touches[0].pageY,
+                                clientX: e.touches[0].clientX,
+                                clientY: e.touches[0].clientY,
+                                deltaY: deltaY,
+                            }));
+                        }
+                        touch = e.touches[0];
+                    }
+                }, false);
+                // known bug on Chrome Android:
+                // https://stackoverflow.com/questions/36753548/keycode-on-android-is-always-229
+                // on other browsers, the preventDefault above works so we don't get this event
+                frameInput.addEventListener('input', e => {
+                    e.preventDefault();
+                    socket.send(JSON.stringify({
+                        type: 'event',
+                        eventType: 'keydown',
+                        clickX: 0,
+                        clickY: 0,
+                        key: e.data,
+                    }));
+                    socket.send(JSON.stringify({
+                        type: 'event',
+                        eventType: 'keyup',
+                        clickX: 0,
+                        clickY: 0,
+                        key: e.data,
+                    }));
+                    e.target.value = '';
+                });
+                frameInput.addEventListener('contextmenu', e => {
+                    e.preventDefault();
+                }, false);
+            };
+            attachEvents();
+            frameInput.focus();
+        } catch (e) {
+            messageDiv.textContent = "Error: " + (e.message || e);
+            messageDiv.classList.add('error');
+            console.error(e);
+        }
+    </script>
+</body>
+</html>
