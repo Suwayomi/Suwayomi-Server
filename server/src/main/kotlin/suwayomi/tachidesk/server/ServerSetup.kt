@@ -224,7 +224,6 @@ fun applicationSetup() {
                             CefCookieManager.getGlobalManager().apply {
                                 val cookies = networkHelper.cookieStore.getStoredCookies()
                                 for (cookie in cookies) {
-                                    logger.info { "Loading cookie ${cookie.name} for ${cookie.domain}" }
                                     try {
                                         if (!setCookie(
                                                 "https://" + cookie.domain,
