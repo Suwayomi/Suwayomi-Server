@@ -409,7 +409,7 @@ fun applicationSetup() {
                 settings { windowlessRenderingEnabled = true }
                 appHandler(
                     KCEF.AppHandler(
-                        arrayOf("--disable-gpu", "--off-screen-rendering-enabled"),
+                        arrayOf("--disable-gpu", "--off-screen-rendering-enabled", "--disable-dev-shm-usage"),
                     ),
                 )
 
