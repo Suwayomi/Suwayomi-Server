@@ -180,7 +180,6 @@ class PersistentCookieStore(
                     val newValues =
                         cookieMap[domain]
                             .orEmpty()
-                            .onEach { println(it) }
                             .asSequence()
                             .filter { it.persistent && !it.hasExpired() }
                             .map(Cookie::toString)
