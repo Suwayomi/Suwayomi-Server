@@ -291,9 +291,10 @@ fun applicationSetup() {
                     // ignore, likely already migrated
                 }
                 try {
-                    val username = StringConfigAdapter.toType(
-                        config.getString("${serverConf.moduleName}.${ServerConfig::basicAuthUsername.name}"),
-                    )
+                    val username =
+                        StringConfigAdapter.toType(
+                            config.getString("${serverConf.moduleName}.${ServerConfig::basicAuthUsername.name}"),
+                        )
                     updatedConfig =
                         updatedConfig.withValue(
                             "${serverConf.moduleName}.${ServerConfig::authUsername.name}",
@@ -303,9 +304,10 @@ fun applicationSetup() {
                     // ignore, likely already migrated
                 }
                 try {
-                    val password = StringConfigAdapter.toType(
-                        config.getString("${serverConf.moduleName}.${ServerConfig::basicAuthPassword.name}"),
-                    )
+                    val password =
+                        StringConfigAdapter.toType(
+                            config.getString("${serverConf.moduleName}.${ServerConfig::basicAuthPassword.name}"),
+                        )
                     updatedConfig =
                         updatedConfig.withValue(
                             "${serverConf.moduleName}.${ServerConfig::authPassword.name}",

@@ -66,10 +66,13 @@ interface Settings : Node {
     val authMode: AuthMode?
     val authUsername: String?
     val authPassword: String?
+
     @GraphQLDeprecated("Removed - prefer authMode")
     val basicAuthEnabled: Boolean?
+
     @GraphQLDeprecated("Removed - prefer authUsername")
     val basicAuthUsername: String?
+
     @GraphQLDeprecated("Removed - prefer authPassword")
     val basicAuthPassword: String?
 
