@@ -11,6 +11,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.path
 import io.javalin.http.HandlerType
+import io.javalin.http.HttpStatus
 import io.javalin.http.RedirectResponse
 import io.javalin.http.UnauthorizedResponse
 import io.javalin.http.staticfiles.Location
@@ -139,7 +140,7 @@ object JavalinSetup {
                 // Furthermore, default session timeout appears to be 30m
                 ctx.header("Location", redirect)
                 ctx.sessionAttribute("logged-in", username)
-                throw RedirectResponse()
+                throw RedirectResponse(HttpStatus.SEE_OTHER)
             }
 
             var page = String(this::class.java.getResourceAsStream("/static/login.html")!!.readAllBytes(), StandardCharsets.UTF_8)
@@ -177,7 +178,7 @@ object JavalinSetup {
             if (serverConfig.cookieAuthEnabled.value && !cookieValid()) {
                 val url = "/login.html?redirect=" + URLEncoder.encode(ctx.fullUrl(), StandardCharsets.UTF_8)
                 ctx.header("Location", url)
-                throw RedirectResponse()
+                throw RedirectResponse(HttpStatus.SEE_OTHER)
             }
 
             if (serverConfig.basicAuthEnabled.value && !credentialsValid()) {
