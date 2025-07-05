@@ -170,6 +170,10 @@ object JavalinSetup {
                 return username == serverConfig.basicAuthUsername.value
             }
 
+            if (serverConfig.cookieAuthEnabled.value && !cookieValid() && ctx.path().startsWith("/api")) {
+                throw UnauthorizedResponse()
+            }
+
             if (serverConfig.cookieAuthEnabled.value && !cookieValid()) {
                 val url = "/login.html?redirect=" + URLEncoder.encode(ctx.fullUrl(), StandardCharsets.UTF_8)
                 ctx.header("Location", url)
