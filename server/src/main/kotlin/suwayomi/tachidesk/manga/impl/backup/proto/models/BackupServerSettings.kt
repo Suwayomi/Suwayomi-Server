@@ -47,7 +47,7 @@ data class BackupServerSettings(
     @ProtoNumber(28) override var updateMangas: Boolean,
     // Authentication
     @ProtoNumber(56) override var authMode: AuthMode,
-    @ProtoNumber(29) override var basicAuthEnabled: Boolean,
+    @ProtoNumber(29) override var basicAuthEnabled: Boolean?,
     @ProtoNumber(30) override var authUsername: String,
     @ProtoNumber(31) override var authPassword: String,
     // deprecated

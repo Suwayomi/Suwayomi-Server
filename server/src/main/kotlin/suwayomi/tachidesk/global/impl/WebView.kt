@@ -43,7 +43,8 @@ object WebView : Websocket<String>() {
         }
     }
 
-    @Serializable public sealed class TypeObject
+    @Serializable
+    sealed class TypeObject
 
     @Serializable
     @SerialName("loadUrl")
@@ -62,7 +63,7 @@ object WebView : Websocket<String>() {
 
     @Serializable
     @SerialName("event")
-    public data class JsEventMessage(
+    data class JsEventMessage(
         val eventType: String,
         val clickX: Float,
         val clickY: Float,
@@ -94,7 +95,6 @@ object WebView : Websocket<String>() {
                     logger.info { "Resize browser" }
                 }
                 is JsEventMessage -> {
-                    val type = event.eventType
                     dr.event(event)
                 }
             }
