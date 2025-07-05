@@ -63,10 +63,10 @@ interface Settings : Node {
     val updateMangas: Boolean?
 
     // Authentication
+    val authMode: AuthMode?
     val basicAuthEnabled: Boolean?
     val basicAuthUsername: String?
     val basicAuthPassword: String?
-    val cookieAuthEnabled: Boolean?
 
     // misc
     val debugLogsEnabled: Boolean?
@@ -145,10 +145,10 @@ data class PartialSettingsType(
     override val globalUpdateInterval: Double?,
     override val updateMangas: Boolean?,
     // Authentication
+    override val authMode: AuthMode?,
     override val basicAuthEnabled: Boolean?,
     override val basicAuthUsername: String?,
     override val basicAuthPassword: String?,
-    override val cookieAuthEnabled: Boolean?,
     // misc
     override val debugLogsEnabled: Boolean?,
     @GraphQLDeprecated("Removed - does not do anything")
@@ -221,10 +221,10 @@ class SettingsType(
     override val globalUpdateInterval: Double,
     override val updateMangas: Boolean,
     // Authentication
+    override val authMode: AuthMode,
     override val basicAuthEnabled: Boolean,
     override val basicAuthUsername: String,
     override val basicAuthPassword: String,
-    override val cookieAuthEnabled: Boolean,
     // misc
     override val debugLogsEnabled: Boolean,
     @GraphQLDeprecated("Removed - does not do anything")
@@ -292,10 +292,10 @@ class SettingsType(
         config.globalUpdateInterval.value,
         config.updateMangas.value,
         // Authentication
+        config.authMode.value,
         config.basicAuthEnabled.value,
         config.basicAuthUsername.value,
         config.basicAuthPassword.value,
-        config.cookieAuthEnabled.value,
         // misc
         config.debugLogsEnabled.value,
         false,

@@ -35,6 +35,7 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
+import suwayomi.tachidesk.graphql.types.AuthMode
 import kotlin.time.Duration.Companion.days
 
 object JavalinSetup {
@@ -167,6 +168,8 @@ object JavalinSetup {
                 return@beforeMatched
             }
 
+            val authMode = serverConfig.authMode.value ?: AuthMode.NONE
+
             fun credentialsValid(): Boolean {
                 val basicAuthCredentials = ctx.basicAuthCredentials() ?: return false
                 val (username, password) = basicAuthCredentials
@@ -179,17 +182,17 @@ object JavalinSetup {
                 return username == serverConfig.basicAuthUsername.value
             }
 
-            if (serverConfig.cookieAuthEnabled.value && !cookieValid() && ctx.path().startsWith("/api")) {
+            if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid() && ctx.path().startsWith("/api")) {
                 throw UnauthorizedResponse()
             }
 
-            if (serverConfig.cookieAuthEnabled.value && !cookieValid()) {
+            if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid()) {
                 val url = "/login.html?redirect=" + URLEncoder.encode(ctx.fullUrl(), StandardCharsets.UTF_8)
                 ctx.header("Location", url)
                 throw RedirectResponse(HttpStatus.SEE_OTHER)
             }
 
-            if (serverConfig.basicAuthEnabled.value && !credentialsValid()) {
+            if (authMode == AuthMode.BASIC_AUTH && !credentialsValid()) {
                 ctx.header("WWW-Authenticate", "Basic")
                 throw UnauthorizedResponse()
             }

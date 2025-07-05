@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import org.jetbrains.exposed.sql.SortOrder
+import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIInterface
@@ -139,10 +140,10 @@ class ServerConfig(
     val updateMangas: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
 
     // Authentication
+    val authMode: MutableStateFlow<AuthMode> by OverrideConfigValue(EnumConfigAdapter(AuthMode::class.java))
     val basicAuthEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val basicAuthUsername: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
     val basicAuthPassword: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
-    val cookieAuthEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
 
     // misc
     val debugLogsEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)

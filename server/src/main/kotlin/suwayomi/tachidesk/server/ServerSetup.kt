@@ -10,6 +10,7 @@ package suwayomi.tachidesk.server
 import android.os.Looper
 import ch.qos.logback.classic.Level
 import com.typesafe.config.ConfigRenderOptions
+import com.typesafe.config.ConfigValueFactory
 import dev.datlag.kcef.KCEF
 import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.createAppModule
@@ -42,6 +43,8 @@ import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
 import suwayomi.tachidesk.server.util.SystemTray
+import suwayomi.tachidesk.server.BooleanConfigAdapter
+import suwayomi.tachidesk.graphql.types.AuthMode
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import xyz.nulldev.androidcompat.AndroidCompat
@@ -268,7 +271,15 @@ fun applicationSetup() {
             }
         } else {
             // make sure the user config file is up-to-date
-            GlobalConfigManager.updateUserConfig()
+            GlobalConfigManager.updateUserConfig { config ->
+                var updatedConfig = this
+                val serverConf = ServerConfig({ config })
+                val basicAuthEnabled = BooleanConfigAdapter.toType(config.getString("${serverConf.moduleName}.${ServerConfig::basicAuthEnabled.name}"))
+                if (basicAuthEnabled) {
+                    updatedConfig = updatedConfig.withValue("${serverConf.moduleName}.${ServerConfig::authMode.name}", ConfigValueFactory.fromAnyRef(AuthMode.BASIC_AUTH.name))
+                }
+                updatedConfig
+            }
         }
     } catch (e: Exception) {
         logger.error(e) { "Exception while creating initial server.conf" }
