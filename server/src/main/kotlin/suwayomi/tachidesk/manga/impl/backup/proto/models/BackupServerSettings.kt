@@ -50,7 +50,7 @@ data class BackupServerSettings(
     @ProtoNumber(29) override var basicAuthEnabled: Boolean,
     @ProtoNumber(30) override var authUsername: String,
     @ProtoNumber(31) override var authPassword: String,
-    // deprecated, not serialized
+    // deprecated
     @ProtoNumber(99991) override var basicAuthUsername: String?,
     @ProtoNumber(99992) override var basicAuthPassword: String?,
     // misc
