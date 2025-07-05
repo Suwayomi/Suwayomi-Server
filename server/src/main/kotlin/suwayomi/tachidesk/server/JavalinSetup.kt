@@ -25,12 +25,15 @@ import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
 import suwayomi.tachidesk.manga.MangaAPI
 import suwayomi.tachidesk.opds.OpdsAPI
+import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
+import kotlin.time.Duration.Companion.days
 
 object JavalinSetup {
     private val logger = KotlinLogging.logger {}
@@ -112,6 +115,15 @@ object JavalinSetup {
                 }
             }
 
+        app.get("/login.html") { ctx ->
+            var page = String(this::class.java.getResourceAsStream("/static/login.html")!!.readAllBytes(), StandardCharsets.UTF_8)
+            page = page.replace("[VERSION]", BuildConfig.VERSION).replace("[ERROR]", "")
+            ctx.header("content-type", "text/html")
+            val httpCacheSeconds = 1.days.inWholeSeconds
+            ctx.header("cache-control", "max-age=$httpCacheSeconds")
+            ctx.result(page)
+        }
+
         app.beforeMatched { ctx ->
             val isWebManifest = listOf("site.webmanifest", "manifest.json", "login.html").any { ctx.path().endsWith(it) }
             val isPreFlight = ctx.method() == HandlerType.OPTIONS
@@ -128,9 +140,7 @@ object JavalinSetup {
                     password == serverConfig.basicAuthPassword.value
             }
 
-            fun cookieValid(): Boolean {
-                return false
-            }
+            fun cookieValid(): Boolean = false
 
             if (serverConfig.cookieAuthEnabled.value && !cookieValid()) {
                 ctx.header("Location", "/login.html")
