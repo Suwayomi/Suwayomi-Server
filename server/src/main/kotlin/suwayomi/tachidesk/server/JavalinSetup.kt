@@ -30,6 +30,7 @@ import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
+import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
@@ -127,14 +128,16 @@ object JavalinSetup {
         app.post("/login.html") { ctx ->
             val username = ctx.formParam("user")
             val password = ctx.formParam("pass")
-            val isValid = username == serverConfig.basicAuthUsername.value &&
+            val isValid =
+                username == serverConfig.basicAuthUsername.value &&
                     password == serverConfig.basicAuthPassword.value
 
             if (isValid) {
+                val redirect = ctx.queryParam("redirect") ?: "/"
                 // NOTE: We currently have no session handler attached.
                 // Thus, all sessions are stored in memory and not persisted.
                 // Furthermore, default session timeout appears to be 30m
-                ctx.header("Location", "/")
+                ctx.header("Location", redirect)
                 ctx.sessionAttribute("logged-in", username)
                 throw RedirectResponse()
             }
@@ -168,7 +171,8 @@ object JavalinSetup {
             }
 
             if (serverConfig.cookieAuthEnabled.value && !cookieValid()) {
-                ctx.header("Location", "/login.html")
+                val url = "/login.html?redirect=" + URLEncoder.encode(ctx.fullUrl(), StandardCharsets.UTF_8)
+                ctx.header("Location", url)
                 throw RedirectResponse()
             }
 
