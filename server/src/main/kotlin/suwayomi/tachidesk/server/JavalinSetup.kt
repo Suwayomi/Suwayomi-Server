@@ -124,6 +124,28 @@ object JavalinSetup {
             ctx.result(page)
         }
 
+        app.post("/login.html") { ctx ->
+            val username = ctx.formParam("user")
+            val password = ctx.formParam("pass")
+            val isValid = username == serverConfig.basicAuthUsername.value &&
+                    password == serverConfig.basicAuthPassword.value
+
+            if (isValid) {
+                // NOTE: We currently have no session handler attached.
+                // Thus, all sessions are stored in memory and not persisted.
+                // Furthermore, default session timeout appears to be 30m
+                ctx.header("Location", "/")
+                ctx.sessionAttribute("logged-in", username)
+                throw RedirectResponse()
+            }
+
+            var page = String(this::class.java.getResourceAsStream("/static/login.html")!!.readAllBytes(), StandardCharsets.UTF_8)
+            page = page.replace("[VERSION]", BuildConfig.VERSION).replace("[ERROR]", "Invalid username or password")
+            ctx.header("content-type", "text/html")
+            ctx.req().session.invalidate()
+            ctx.result(page)
+        }
+
         app.beforeMatched { ctx ->
             val isWebManifest = listOf("site.webmanifest", "manifest.json", "login.html").any { ctx.path().endsWith(it) }
             val isPreFlight = ctx.method() == HandlerType.OPTIONS
@@ -140,7 +162,10 @@ object JavalinSetup {
                     password == serverConfig.basicAuthPassword.value
             }
 
-            fun cookieValid(): Boolean = false
+            fun cookieValid(): Boolean {
+                val username = ctx.sessionAttribute<String>("logged-in") ?: return false
+                return username == serverConfig.basicAuthUsername.value
+            }
 
             if (serverConfig.cookieAuthEnabled.value && !cookieValid()) {
                 ctx.header("Location", "/login.html")
