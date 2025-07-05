@@ -143,7 +143,7 @@ object JavalinSetup {
                 throw RedirectResponse(HttpStatus.SEE_OTHER)
             }
 
-            var page = String(this::class.java.getResourceAsStream("/static/login.html")!!.readAllBytes(), StandardCharsets.UTF_8)
+            var page = this::class.java.getResourceAsStream("/static/login.html")!!.use { it.readAllBytes() }.toString(Charsets.UTF_8)
             page = page.replace("[VERSION]", BuildConfig.VERSION).replace("[ERROR]", "Invalid username or password")
             ctx.header("content-type", "text/html")
             ctx.req().session.invalidate()
