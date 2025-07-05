@@ -51,8 +51,8 @@ data class BackupServerSettings(
     @ProtoNumber(30) override var authUsername: String,
     @ProtoNumber(31) override var authPassword: String,
     // deprecated, not serialized
-    override var basicAuthUsername: String,
-    override var basicAuthPassword: String,
+    @ProtoNumber(99991) override var basicAuthUsername: String?,
+    @ProtoNumber(99992) override var basicAuthPassword: String?,
     // misc
     @ProtoNumber(32) override var debugLogsEnabled: Boolean,
     @ProtoNumber(33) override var gqlDebugLogsEnabled: Boolean,
