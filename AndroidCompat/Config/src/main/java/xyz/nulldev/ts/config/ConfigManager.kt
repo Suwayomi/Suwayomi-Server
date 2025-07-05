@@ -168,6 +168,7 @@ open class ConfigManager {
             }
 
         userConfigFile.writeText(newUserConfigDoc.render())
+        getUserConfig().entrySet().forEach { internalConfig = internalConfig.withValue(it.key, it.value) }
     }
 }
 
