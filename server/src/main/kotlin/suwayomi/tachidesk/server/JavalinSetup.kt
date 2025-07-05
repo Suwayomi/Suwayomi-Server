@@ -118,7 +118,11 @@ object JavalinSetup {
             }
 
         app.get("/login.html") { ctx ->
-            var page = this::class.java.getResourceAsStream("/static/login.html")!!.use { it.readAllBytes() }.toString(Charsets.UTF_8)
+            var page =
+                this::class.java
+                    .getResourceAsStream("/static/login.html")!!
+                    .use { it.readAllBytes() }
+                    .toString(Charsets.UTF_8)
             page = page.replace("[VERSION]", BuildConfig.VERSION).replace("[ERROR]", "")
             ctx.header("content-type", "text/html")
             val httpCacheSeconds = 1.days.inWholeSeconds
@@ -143,7 +147,11 @@ object JavalinSetup {
                 throw RedirectResponse(HttpStatus.SEE_OTHER)
             }
 
-            var page = this::class.java.getResourceAsStream("/static/login.html")!!.use { it.readAllBytes() }.toString(Charsets.UTF_8)
+            var page =
+                this::class.java
+                    .getResourceAsStream("/static/login.html")!!
+                    .use { it.readAllBytes() }
+                    .toString(Charsets.UTF_8)
             page = page.replace("[VERSION]", BuildConfig.VERSION).replace("[ERROR]", "Invalid username or password")
             ctx.header("content-type", "text/html")
             ctx.req().session.invalidate()
