@@ -530,9 +530,10 @@ object ProtoBackupImport : ProtoBackupBase() {
         SettingsMutation().updateSettings(
             backupServerSettings.copy(
                 // legacy settings cannot overwrite new settings
-                basicAuthEnabled = backupServerSettings.basicAuthEnabled.takeIf {
-                    serverConfig.authMode.value == AuthMode.NONE
-                },
+                basicAuthEnabled =
+                    backupServerSettings.basicAuthEnabled.takeIf {
+                        serverConfig.authMode.value == AuthMode.NONE
+                    },
             ),
         )
     }
