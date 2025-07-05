@@ -11,6 +11,8 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.path
 import io.javalin.http.HandlerType
+import io.javalin.http.HttpStatus
+import io.javalin.http.RedirectResponse
 import io.javalin.http.UnauthorizedResponse
 import io.javalin.http.staticfiles.Location
 import kotlinx.coroutines.CoroutineScope
@@ -22,14 +24,19 @@ import kotlinx.coroutines.runBlocking
 import org.eclipse.jetty.server.ServerConnector
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
+import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.manga.MangaAPI
 import suwayomi.tachidesk.opds.OpdsAPI
+import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
+import kotlin.time.Duration.Companion.days
 
 object JavalinSetup {
     private val logger = KotlinLogging.logger {}
@@ -111,8 +118,49 @@ object JavalinSetup {
                 }
             }
 
+        app.get("/login.html") { ctx ->
+            var page =
+                this::class.java
+                    .getResourceAsStream("/static/login.html")!!
+                    .use { it.readAllBytes() }
+                    .toString(Charsets.UTF_8)
+            page = page.replace("[VERSION]", BuildConfig.VERSION).replace("[ERROR]", "")
+            ctx.header("content-type", "text/html")
+            val httpCacheSeconds = 1.days.inWholeSeconds
+            ctx.header("cache-control", "max-age=$httpCacheSeconds")
+            ctx.result(page)
+        }
+
+        app.post("/login.html") { ctx ->
+            val username = ctx.formParam("user")
+            val password = ctx.formParam("pass")
+            val isValid =
+                username == serverConfig.authUsername.value &&
+                    password == serverConfig.authPassword.value
+
+            if (isValid) {
+                val redirect = ctx.queryParam("redirect") ?: "/"
+                // NOTE: We currently have no session handler attached.
+                // Thus, all sessions are stored in memory and not persisted.
+                // Furthermore, default session timeout appears to be 30m
+                ctx.header("Location", redirect)
+                ctx.sessionAttribute("logged-in", username)
+                throw RedirectResponse(HttpStatus.SEE_OTHER)
+            }
+
+            var page =
+                this::class.java
+                    .getResourceAsStream("/static/login.html")!!
+                    .use { it.readAllBytes() }
+                    .toString(Charsets.UTF_8)
+            page = page.replace("[VERSION]", BuildConfig.VERSION).replace("[ERROR]", "Invalid username or password")
+            ctx.header("content-type", "text/html")
+            ctx.req().session.invalidate()
+            ctx.result(page)
+        }
+
         app.beforeMatched { ctx ->
-            val isWebManifest = listOf("site.webmanifest", "manifest.json").any { ctx.path().endsWith(it) }
+            val isWebManifest = listOf("site.webmanifest", "manifest.json", "login.html").any { ctx.path().endsWith(it) }
             val isPreFlight = ctx.method() == HandlerType.OPTIONS
 
             val requiresAuthentication = !isPreFlight && !isWebManifest
@@ -120,14 +168,31 @@ object JavalinSetup {
                 return@beforeMatched
             }
 
+            val authMode = serverConfig.authMode.value ?: AuthMode.NONE
+
             fun credentialsValid(): Boolean {
                 val basicAuthCredentials = ctx.basicAuthCredentials() ?: return false
                 val (username, password) = basicAuthCredentials
-                return username == serverConfig.basicAuthUsername.value &&
-                    password == serverConfig.basicAuthPassword.value
+                return username == serverConfig.authUsername.value &&
+                    password == serverConfig.authPassword.value
             }
 
-            if (serverConfig.basicAuthEnabled.value && !credentialsValid()) {
+            fun cookieValid(): Boolean {
+                val username = ctx.sessionAttribute<String>("logged-in") ?: return false
+                return username == serverConfig.authUsername.value
+            }
+
+            if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid() && ctx.path().startsWith("/api")) {
+                throw UnauthorizedResponse()
+            }
+
+            if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid()) {
+                val url = "/login.html?redirect=" + URLEncoder.encode(ctx.fullUrl(), StandardCharsets.UTF_8)
+                ctx.header("Location", url)
+                throw RedirectResponse(HttpStatus.SEE_OTHER)
+            }
+
+            if (authMode == AuthMode.BASIC_AUTH && !credentialsValid()) {
                 ctx.header("WWW-Authenticate", "Basic")
                 throw UnauthorizedResponse()
             }

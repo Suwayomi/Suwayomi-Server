@@ -9,7 +9,9 @@ package suwayomi.tachidesk.server
 
 import android.os.Looper
 import ch.qos.logback.classic.Level
+import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigRenderOptions
+import com.typesafe.config.ConfigValueFactory
 import dev.datlag.kcef.KCEF
 import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.createAppModule
@@ -32,12 +34,14 @@ import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import suwayomi.tachidesk.global.impl.KcefWebView.Companion.toCefCookie
+import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.Updater
 import suwayomi.tachidesk.manga.impl.util.lang.renameTo
+import suwayomi.tachidesk.server.BooleanConfigAdapter
 import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
@@ -268,7 +272,52 @@ fun applicationSetup() {
             }
         } else {
             // make sure the user config file is up-to-date
-            GlobalConfigManager.updateUserConfig()
+            GlobalConfigManager.updateUserConfig { config ->
+                var updatedConfig = this
+                val serverConf = ServerConfig({ config })
+                try {
+                    val basicAuthEnabled =
+                        BooleanConfigAdapter.toType(
+                            config.getString("${serverConf.moduleName}.${ServerConfig::basicAuthEnabled.name}"),
+                        )
+                    if (basicAuthEnabled) {
+                        updatedConfig =
+                            updatedConfig.withValue(
+                                "${serverConf.moduleName}.${ServerConfig::authMode.name}",
+                                ConfigValueFactory.fromAnyRef(AuthMode.BASIC_AUTH.name),
+                            )
+                    }
+                } catch (_: ConfigException) {
+                    // ignore, likely already migrated
+                }
+                try {
+                    val username =
+                        StringConfigAdapter.toType(
+                            config.getString("${serverConf.moduleName}.${ServerConfig::basicAuthUsername.name}"),
+                        )
+                    updatedConfig =
+                        updatedConfig.withValue(
+                            "${serverConf.moduleName}.${ServerConfig::authUsername.name}",
+                            ConfigValueFactory.fromAnyRef(username),
+                        )
+                } catch (_: ConfigException) {
+                    // ignore, likely already migrated
+                }
+                try {
+                    val password =
+                        StringConfigAdapter.toType(
+                            config.getString("${serverConf.moduleName}.${ServerConfig::basicAuthPassword.name}"),
+                        )
+                    updatedConfig =
+                        updatedConfig.withValue(
+                            "${serverConf.moduleName}.${ServerConfig::authPassword.name}",
+                            ConfigValueFactory.fromAnyRef(password),
+                        )
+                } catch (_: ConfigException) {
+                    // ignore, likely already migrated
+                }
+                updatedConfig
+            }
         }
     } catch (e: Exception) {
         logger.error(e) { "Exception while creating initial server.conf" }

@@ -32,6 +32,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.global.impl.GlobalMeta
 import suwayomi.tachidesk.graphql.mutations.SettingsMutation
+import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.graphql.types.toStatus
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.Category.modifyCategoriesMetas
@@ -57,6 +58,7 @@ import suwayomi.tachidesk.manga.model.dataclass.TrackRecordDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.database.dbTransaction
+import suwayomi.tachidesk.server.serverConfig
 import java.io.InputStream
 import java.util.Date
 import java.util.Timer
@@ -525,7 +527,15 @@ object ProtoBackupImport : ProtoBackupBase() {
             return
         }
 
-        SettingsMutation().updateSettings(backupServerSettings)
+        SettingsMutation().updateSettings(
+            backupServerSettings.copy(
+                // legacy settings cannot overwrite new settings
+                basicAuthEnabled =
+                    backupServerSettings.basicAuthEnabled.takeIf {
+                        serverConfig.authMode.value == AuthMode.NONE
+                    },
+            ),
+        )
     }
 
     private fun TrackRecordDataClass.forComparison() = this.copy(id = 0, mangaId = 0)

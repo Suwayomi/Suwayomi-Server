@@ -419,9 +419,12 @@ object ProtoBackupExport : ProtoBackupBase() {
             globalUpdateInterval = serverConfig.globalUpdateInterval.value,
             updateMangas = serverConfig.updateMangas.value,
             // Authentication
-            basicAuthEnabled = serverConfig.basicAuthEnabled.value,
-            basicAuthUsername = serverConfig.basicAuthUsername.value,
-            basicAuthPassword = serverConfig.basicAuthPassword.value,
+            authMode = serverConfig.authMode.value,
+            authUsername = serverConfig.authUsername.value,
+            authPassword = serverConfig.authPassword.value,
+            basicAuthEnabled = false,
+            basicAuthUsername = null,
+            basicAuthPassword = null,
             // misc
             debugLogsEnabled = serverConfig.debugLogsEnabled.value,
             gqlDebugLogsEnabled = false, // deprecated
