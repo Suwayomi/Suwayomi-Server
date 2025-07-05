@@ -420,6 +420,8 @@ object ProtoBackupExport : ProtoBackupBase() {
             updateMangas = serverConfig.updateMangas.value,
             // Authentication
             authMode = serverConfig.authMode.value,
+            authUsername = serverConfig.authUsername.value,
+            authPassword = serverConfig.authPassword.value,
             basicAuthEnabled = serverConfig.basicAuthEnabled.value,
             basicAuthUsername = serverConfig.basicAuthUsername.value,
             basicAuthPassword = serverConfig.basicAuthPassword.value,

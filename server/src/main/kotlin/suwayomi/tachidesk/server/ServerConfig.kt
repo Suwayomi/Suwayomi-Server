@@ -177,13 +177,19 @@ class ServerConfig(
 
     // Authentication
     val authMode: MutableStateFlow<AuthMode> by OverrideConfigValue(EnumConfigAdapter(AuthMode::class.java))
+    val authUsername: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+    val authPassword: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
     val basicAuthEnabled: MutableStateFlow<Boolean> by MigratedConfigValue({
         authMode.value == AuthMode.BASIC_AUTH
     }) {
         authMode.value = if (it) AuthMode.BASIC_AUTH else AuthMode.NONE
     }
-    val basicAuthUsername: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
-    val basicAuthPassword: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+    val basicAuthUsername: MutableStateFlow<String> by MigratedConfigValue({ authUsername.value }) {
+        authUsername.value = it
+    }
+    val basicAuthPassword: MutableStateFlow<String> by MigratedConfigValue({ authPassword.value }) {
+        authPassword.value = it
+    }
 
     // misc
     val debugLogsEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)

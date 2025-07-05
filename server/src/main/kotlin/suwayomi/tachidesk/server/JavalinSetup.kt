@@ -135,8 +135,8 @@ object JavalinSetup {
             val username = ctx.formParam("user")
             val password = ctx.formParam("pass")
             val isValid =
-                username == serverConfig.basicAuthUsername.value &&
-                    password == serverConfig.basicAuthPassword.value
+                username == serverConfig.authUsername.value &&
+                    password == serverConfig.authPassword.value
 
             if (isValid) {
                 val redirect = ctx.queryParam("redirect") ?: "/"
@@ -173,13 +173,13 @@ object JavalinSetup {
             fun credentialsValid(): Boolean {
                 val basicAuthCredentials = ctx.basicAuthCredentials() ?: return false
                 val (username, password) = basicAuthCredentials
-                return username == serverConfig.basicAuthUsername.value &&
-                    password == serverConfig.basicAuthPassword.value
+                return username == serverConfig.authUsername.value &&
+                    password == serverConfig.authPassword.value
             }
 
             fun cookieValid(): Boolean {
                 val username = ctx.sessionAttribute<String>("logged-in") ?: return false
-                return username == serverConfig.basicAuthUsername.value
+                return username == serverConfig.authUsername.value
             }
 
             if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid() && ctx.path().startsWith("/api")) {

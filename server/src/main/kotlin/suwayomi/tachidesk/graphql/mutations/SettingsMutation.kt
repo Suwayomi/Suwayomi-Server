@@ -156,6 +156,8 @@ class SettingsMutation {
 
         // Authentication
         updateSetting(settings.authMode, serverConfig.authMode)
+        updateSetting(settings.authUsername, serverConfig.authUsername)
+        updateSetting(settings.authPassword, serverConfig.authPassword)
         updateSetting(settings.basicAuthEnabled, serverConfig.basicAuthEnabled)
         updateSetting(settings.basicAuthUsername, serverConfig.basicAuthUsername)
         updateSetting(settings.basicAuthPassword, serverConfig.basicAuthPassword)
