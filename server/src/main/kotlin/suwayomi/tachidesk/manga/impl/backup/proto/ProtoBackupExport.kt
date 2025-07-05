@@ -422,7 +422,7 @@ object ProtoBackupExport : ProtoBackupBase() {
             authMode = serverConfig.authMode.value,
             authUsername = serverConfig.authUsername.value,
             authPassword = serverConfig.authPassword.value,
-            basicAuthEnabled = null,
+            basicAuthEnabled = false,
             basicAuthUsername = null,
             basicAuthPassword = null,
             // misc
