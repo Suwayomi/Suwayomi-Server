@@ -33,18 +33,18 @@ import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import suwayomi.tachidesk.global.impl.KcefWebView.Companion.toCefCookie
+import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.Updater
 import suwayomi.tachidesk.manga.impl.util.lang.renameTo
+import suwayomi.tachidesk.server.BooleanConfigAdapter
 import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
 import suwayomi.tachidesk.server.util.SystemTray
-import suwayomi.tachidesk.server.BooleanConfigAdapter
-import suwayomi.tachidesk.graphql.types.AuthMode
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import xyz.nulldev.androidcompat.AndroidCompat
@@ -274,9 +274,16 @@ fun applicationSetup() {
             GlobalConfigManager.updateUserConfig { config ->
                 var updatedConfig = this
                 val serverConf = ServerConfig({ config })
-                val basicAuthEnabled = BooleanConfigAdapter.toType(config.getString("${serverConf.moduleName}.${ServerConfig::basicAuthEnabled.name}"))
+                val basicAuthEnabled =
+                    BooleanConfigAdapter.toType(
+                        config.getString("${serverConf.moduleName}.${ServerConfig::basicAuthEnabled.name}"),
+                    )
                 if (basicAuthEnabled) {
-                    updatedConfig = updatedConfig.withValue("${serverConf.moduleName}.${ServerConfig::authMode.name}", ConfigValueFactory.fromAnyRef(AuthMode.BASIC_AUTH.name))
+                    updatedConfig =
+                        updatedConfig.withValue(
+                            "${serverConf.moduleName}.${ServerConfig::authMode.name}",
+                            ConfigValueFactory.fromAnyRef(AuthMode.BASIC_AUTH.name),
+                        )
                 }
                 updatedConfig
             }

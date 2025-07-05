@@ -24,6 +24,7 @@ import kotlinx.coroutines.runBlocking
 import org.eclipse.jetty.server.ServerConnector
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
+import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.manga.MangaAPI
 import suwayomi.tachidesk.opds.OpdsAPI
 import suwayomi.tachidesk.server.generated.BuildConfig
@@ -35,7 +36,6 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
-import suwayomi.tachidesk.graphql.types.AuthMode
 import kotlin.time.Duration.Companion.days
 
 object JavalinSetup {

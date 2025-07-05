@@ -90,6 +90,42 @@ class ServerConfig(
                 .map { configAdapter.toType(it) }
     }
 
+    open inner class MigratedConfigValue<T>(
+        private val readMigrated: () -> Any,
+        private val setMigrated: (T) -> Unit,
+    ) {
+        private var flow: MutableStateFlow<T>? = null
+
+        open fun getValueFromConfig(
+            thisRef: ServerConfig,
+            property: KProperty<*>,
+        ): Any = readMigrated()
+
+        operator fun getValue(
+            thisRef: ServerConfig,
+            property: KProperty<*>,
+        ): MutableStateFlow<T> {
+            if (flow != null) {
+                return flow!!
+            }
+
+            @Suppress("UNCHECKED_CAST")
+            val value = getValueFromConfig(thisRef, property) as T
+
+            val stateFlow = MutableStateFlow(value)
+            flow = stateFlow
+
+            stateFlow
+                .drop(1)
+                .distinctUntilChanged()
+                .filter { it != getValueFromConfig(thisRef, property) }
+                .onEach(setMigrated)
+                .launchIn(mutableConfigValueScope)
+
+            return stateFlow
+        }
+    }
+
     val ip: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
     val port: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
 
@@ -141,7 +177,11 @@ class ServerConfig(
 
     // Authentication
     val authMode: MutableStateFlow<AuthMode> by OverrideConfigValue(EnumConfigAdapter(AuthMode::class.java))
-    val basicAuthEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
+    val basicAuthEnabled: MutableStateFlow<Boolean> by MigratedConfigValue({
+        authMode.value == AuthMode.BASIC_AUTH
+    }) {
+        authMode.value = if (it) AuthMode.BASIC_AUTH else AuthMode.NONE
+    }
     val basicAuthUsername: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
     val basicAuthPassword: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
 

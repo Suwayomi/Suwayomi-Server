@@ -64,6 +64,8 @@ interface Settings : Node {
 
     // Authentication
     val authMode: AuthMode?
+
+    @GraphQLDeprecated("Removed - prefer authMode")
     val basicAuthEnabled: Boolean?
     val basicAuthUsername: String?
     val basicAuthPassword: String?
@@ -146,6 +148,7 @@ data class PartialSettingsType(
     override val updateMangas: Boolean?,
     // Authentication
     override val authMode: AuthMode?,
+    @GraphQLDeprecated("Removed - prefer authMode")
     override val basicAuthEnabled: Boolean?,
     override val basicAuthUsername: String?,
     override val basicAuthPassword: String?,
@@ -222,6 +225,7 @@ class SettingsType(
     override val updateMangas: Boolean,
     // Authentication
     override val authMode: AuthMode,
+    @GraphQLDeprecated("Removed - prefer authMode")
     override val basicAuthEnabled: Boolean,
     override val basicAuthUsername: String,
     override val basicAuthPassword: String,
