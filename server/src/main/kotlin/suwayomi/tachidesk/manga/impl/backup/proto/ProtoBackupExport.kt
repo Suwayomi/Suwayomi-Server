@@ -422,6 +422,7 @@ object ProtoBackupExport : ProtoBackupBase() {
             basicAuthEnabled = serverConfig.basicAuthEnabled.value,
             basicAuthUsername = serverConfig.basicAuthUsername.value,
             basicAuthPassword = serverConfig.basicAuthPassword.value,
+            cookieAuthEnabled = serverConfig.cookieAuthEnabled.value,
             // misc
             debugLogsEnabled = serverConfig.debugLogsEnabled.value,
             gqlDebugLogsEnabled = false, // deprecated

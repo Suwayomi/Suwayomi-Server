@@ -158,6 +158,7 @@ class SettingsMutation {
         updateSetting(settings.basicAuthEnabled, serverConfig.basicAuthEnabled)
         updateSetting(settings.basicAuthUsername, serverConfig.basicAuthUsername)
         updateSetting(settings.basicAuthPassword, serverConfig.basicAuthPassword)
+        updateSetting(settings.cookieAuthEnabled, serverConfig.cookieAuthEnabled)
 
         // misc
         updateSetting(settings.debugLogsEnabled, serverConfig.debugLogsEnabled)

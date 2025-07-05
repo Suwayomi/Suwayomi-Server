@@ -11,6 +11,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.path
 import io.javalin.http.HandlerType
+import io.javalin.http.RedirectResponse
 import io.javalin.http.UnauthorizedResponse
 import io.javalin.http.staticfiles.Location
 import kotlinx.coroutines.CoroutineScope
@@ -112,7 +113,7 @@ object JavalinSetup {
             }
 
         app.beforeMatched { ctx ->
-            val isWebManifest = listOf("site.webmanifest", "manifest.json").any { ctx.path().endsWith(it) }
+            val isWebManifest = listOf("site.webmanifest", "manifest.json", "login.html").any { ctx.path().endsWith(it) }
             val isPreFlight = ctx.method() == HandlerType.OPTIONS
 
             val requiresAuthentication = !isPreFlight && !isWebManifest
@@ -125,6 +126,15 @@ object JavalinSetup {
                 val (username, password) = basicAuthCredentials
                 return username == serverConfig.basicAuthUsername.value &&
                     password == serverConfig.basicAuthPassword.value
+            }
+
+            fun cookieValid(): Boolean {
+                return false
+            }
+
+            if (serverConfig.cookieAuthEnabled.value && !cookieValid()) {
+                ctx.header("Location", "/login.html")
+                throw RedirectResponse()
             }
 
             if (serverConfig.basicAuthEnabled.value && !credentialsValid()) {
