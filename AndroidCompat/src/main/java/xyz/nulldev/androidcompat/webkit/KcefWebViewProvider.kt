@@ -53,7 +53,6 @@ import android.webkit.WebViewRenderProcessClient
 import dev.datlag.kcef.KCEF
 import dev.datlag.kcef.KCEFBrowser
 import dev.datlag.kcef.KCEFClient
-import dev.datlag.kcef.KCEFResourceRequestHandler
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -62,7 +61,6 @@ import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
 import org.cef.browser.CefMessageRouter
 import org.cef.browser.CefRendering
-import org.cef.browser.CefRequestContext
 import org.cef.callback.CefCallback
 import org.cef.callback.CefQueryCallback
 import org.cef.handler.CefDisplayHandlerAdapter
@@ -101,6 +99,7 @@ class KcefWebViewProvider(
     private var chromeClient = WebChromeClient()
     private val mappings: MutableList<FunctionMapping> = mutableListOf()
     private val urlHttpMapping: MutableMap<String, String> = mutableMapOf()
+    private var initialRequestData: InitialRequestData? = null
 
     private var kcefClient: KCEFClient? = null
     private var browser: KCEFBrowser? = null
@@ -117,6 +116,33 @@ class KcefWebViewProvider(
 
     public interface InitBrowserHandler {
         public fun init(provider: KcefWebViewProvider): Unit
+    }
+
+    private data class InitialRequestData(
+        private val additionalHttpHeaders: Map<String, String>? = null,
+        private val myPostData: ByteArray? = null,
+    ) {
+        fun apply(request: CefRequest?) {
+            request?.apply {
+                Log.v(TAG, "Initial request: applying headers and post data")
+                if (!additionalHttpHeaders.isNullOrEmpty()) {
+                    additionalHttpHeaders.forEach {
+                        setHeaderByName(it.key, it.value, true)
+                    }
+                }
+
+                if (myPostData != null) {
+                    this.postData =
+                        CefPostData.create().apply {
+                            addElement(
+                                CefPostDataElement.create().apply {
+                                    setToBytes(myPostData.size, myPostData)
+                                },
+                            )
+                        }
+                }
+            }
+        }
     }
 
     private class CefWebResourceRequest(
@@ -375,6 +401,8 @@ class KcefWebViewProvider(
             frame: CefFrame?,
             request: CefRequest,
         ): Boolean {
+            initialRequestData?.apply(request)
+            initialRequestData = null
             request.setHeaderByName("user-agent", settings.userAgentString, true)
 
             // TODO: we should be calling this on the handler, since CEF calls us on its IO thread
@@ -528,12 +556,12 @@ class KcefWebViewProvider(
         browser?.close(true)
         browser?.dispose()
         chromeClient.onProgressChanged(view, 0)
+        initialRequestData = InitialRequestData(additionalHttpHeaders = additionalHttpHeaders)
         browser =
             kcefClient!!
                 .createBrowser(
                     loadUrl,
                     CefRendering.OFFSCREEN,
-                    context = createContext(additionalHttpHeaders),
                 ).apply {
                     // NOTE: Without this, we don't seem to be receiving any events
                     createImmediately()
@@ -552,12 +580,12 @@ class KcefWebViewProvider(
         browser?.close(true)
         browser?.dispose()
         chromeClient.onProgressChanged(view, 0)
+        initialRequestData = InitialRequestData(myPostData = postData)
         browser =
             kcefClient!!
                 .createBrowser(
                     url,
                     CefRendering.OFFSCREEN,
-                    context = createContext(postData = postData),
                 ).apply {
                     // NOTE: Without this, we don't seem to be receiving any events
                     createImmediately()
@@ -1067,45 +1095,4 @@ class KcefWebViewProvider(
 
         override fun computeScroll(): Unit = throw RuntimeException("Stub!")
     }
-
-    private fun createContext(
-        additionalHttpHeaders: Map<String, String>? = null,
-        postData: ByteArray? = null,
-    ): CefRequestContext =
-        CefRequestContext.createContext {
-            browser,
-            frame,
-            request,
-            isNavigation,
-            isDownload,
-            requestInitiator,
-            disableDefaultHandling,
-            ->
-            KCEFResourceRequestHandler.globalHandler(
-                browser,
-                frame,
-                request.apply {
-                    if (!additionalHttpHeaders.isNullOrEmpty()) {
-                        additionalHttpHeaders.forEach {
-                            setHeaderByName(it.key, it.value, true)
-                        }
-                    }
-
-                    if (postData != null) {
-                        this.postData =
-                            CefPostData.create().apply {
-                                addElement(
-                                    CefPostDataElement.create().apply {
-                                        setToBytes(postData.size, postData)
-                                    },
-                                )
-                            }
-                    }
-                },
-                isNavigation,
-                isDownload,
-                requestInitiator,
-                disableDefaultHandling,
-            )
-        }
 }

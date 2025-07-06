@@ -18,9 +18,13 @@ import org.cef.handler.CefDisplayHandlerAdapter
 import org.cef.handler.CefLoadHandler
 import org.cef.handler.CefLoadHandlerAdapter
 import org.cef.handler.CefRenderHandlerAdapter
+import org.cef.handler.CefRequestHandlerAdapter
+import org.cef.handler.CefResourceRequestHandler
 import org.cef.input.CefTouchEvent
+import org.cef.misc.BoolRef
 import org.cef.network.CefCookie
 import org.cef.network.CefCookieManager
+import org.cef.network.CefRequest
 import uy.kohesive.injekt.injectLazy
 import java.awt.Component
 import java.awt.Rectangle
@@ -176,6 +180,21 @@ class KcefWebView {
         }
     }
 
+    private inner class RequestHandler : CefRequestHandlerAdapter() {
+        override fun getResourceRequestHandler(
+            browser: CefBrowser,
+            frame: CefFrame,
+            request: CefRequest,
+            isNavigation: Boolean,
+            isDownload: Boolean,
+            requestInitiator: String,
+            disableDefaultHandling: BoolRef,
+        ): CefResourceRequestHandler? {
+            logger.info { "Load resource: ${frame.name} - ${request.url}" }
+            return null
+        }
+    }
+
     // Loosely based on
     // https://github.com/JetBrains/jcef/blob/main/java/org/cef/browser/CefBrowserOsr.java
     private inner class RenderHandler : CefRenderHandlerAdapter() {
@@ -222,6 +241,7 @@ class KcefWebView {
             KCEF.newClientBlocking().apply {
                 addDisplayHandler(DisplayHandler())
                 addLoadHandler(LoadHandler())
+                addRequestHandler(RequestHandler())
             }
 
         logger.info { "Start loading cookies" }
