@@ -163,9 +163,7 @@ open class ConfigManager {
             }.forEach { newUserConfigDoc = newUserConfigDoc.withValue(it.key, it.value) }
 
         newUserConfigDoc =
-            newUserConfigDoc.let {
-                migrate(it, internalConfig)
-            }
+            migrate(newUserConfigDoc, internalConfig)
 
         userConfigFile.writeText(newUserConfigDoc.render())
         getUserConfig().entrySet().forEach { internalConfig = internalConfig.withValue(it.key, it.value) }

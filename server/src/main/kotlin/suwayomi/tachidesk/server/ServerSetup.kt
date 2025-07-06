@@ -9,9 +9,12 @@ package suwayomi.tachidesk.server
 
 import android.os.Looper
 import ch.qos.logback.classic.Level
+import com.typesafe.config.Config
 import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigRenderOptions
+import com.typesafe.config.ConfigValue
 import com.typesafe.config.ConfigValueFactory
+import com.typesafe.config.parser.ConfigDocument
 import dev.datlag.kcef.KCEF
 import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.createAppModule
@@ -129,6 +132,29 @@ fun setupLogLevelUpdating(
         },
         ignoreInitialValue = false,
     )
+}
+
+fun <T : Any> migrateConfig(
+    configDocument: ConfigDocument,
+    config: Config,
+    configKey: String,
+    toConfigKey: String,
+    toType: (ConfigValue) -> T?,
+): ConfigDocument {
+    try {
+        val configValue = config.getValue(configKey)
+        val typedValue = toType(configValue)
+        if (typedValue != null) {
+            return configDocument.withValue(
+                toConfigKey,
+                ConfigValueFactory.fromAnyRef(typedValue),
+            )
+        }
+    } catch (_: ConfigException) {
+        // ignore, likely already migrated
+    }
+
+    return configDocument
 }
 
 fun serverModule(applicationDirs: ApplicationDirs): Module =
@@ -274,48 +300,36 @@ fun applicationSetup() {
             // make sure the user config file is up-to-date
             GlobalConfigManager.updateUserConfig { config ->
                 var updatedConfig = this
-                val serverConf = ServerConfig({ config })
-                try {
-                    val basicAuthEnabled =
-                        BooleanConfigAdapter.toType(
-                            config.getString("${serverConf.moduleName}.${ServerConfig::basicAuthEnabled.name}"),
-                        )
-                    if (basicAuthEnabled) {
-                        updatedConfig =
-                            updatedConfig.withValue(
-                                "${serverConf.moduleName}.${ServerConfig::authMode.name}",
-                                ConfigValueFactory.fromAnyRef(AuthMode.BASIC_AUTH.name),
-                            )
-                    }
-                } catch (_: ConfigException) {
-                    // ignore, likely already migrated
-                }
-                try {
-                    val username =
-                        StringConfigAdapter.toType(
-                            config.getString("${serverConf.moduleName}.${ServerConfig::basicAuthUsername.name}"),
-                        )
-                    updatedConfig =
-                        updatedConfig.withValue(
-                            "${serverConf.moduleName}.${ServerConfig::authUsername.name}",
-                            ConfigValueFactory.fromAnyRef(username),
-                        )
-                } catch (_: ConfigException) {
-                    // ignore, likely already migrated
-                }
-                try {
-                    val password =
-                        StringConfigAdapter.toType(
-                            config.getString("${serverConf.moduleName}.${ServerConfig::basicAuthPassword.name}"),
-                        )
-                    updatedConfig =
-                        updatedConfig.withValue(
-                            "${serverConf.moduleName}.${ServerConfig::authPassword.name}",
-                            ConfigValueFactory.fromAnyRef(password),
-                        )
-                } catch (_: ConfigException) {
-                    // ignore, likely already migrated
-                }
+                updatedConfig =
+                    migrateConfig(
+                        updatedConfig,
+                        config,
+                        "server.basicAuthEnabled",
+                        "server.authMode",
+                        toType = {
+                            if (it.unwrapped() as? Boolean == true) {
+                                AuthMode.BASIC_AUTH.name
+                            } else {
+                                null
+                            }
+                        },
+                    )
+                updatedConfig =
+                    migrateConfig(
+                        updatedConfig,
+                        config,
+                        "server.basicAuthUsername",
+                        "server.authUsername",
+                        toType = { it.unwrapped() as? String },
+                    )
+                updatedConfig =
+                    migrateConfig(
+                        updatedConfig,
+                        config,
+                        "server.basicAuthPassword",
+                        "server.authPassword",
+                        toType = { it.unwrapped() as? String },
+                    )
                 updatedConfig
             }
         }
