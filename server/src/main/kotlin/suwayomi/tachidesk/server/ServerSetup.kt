@@ -405,7 +405,10 @@ fun applicationSetup() {
                     }
                 }
                 download { github() }
-                settings { windowlessRenderingEnabled = true }
+                settings {
+                    windowlessRenderingEnabled = true
+                    cachePath = (Path(applicationDirs.dataRoot) / "cache/kcef").toString()
+                }
                 appHandler(
                     KCEF.AppHandler(
                         arrayOf("--disable-gpu", "--off-screen-rendering-enabled", "--disable-dev-shm-usage"),
