@@ -9,7 +9,12 @@ package suwayomi.tachidesk.server
 
 import android.os.Looper
 import ch.qos.logback.classic.Level
+import com.typesafe.config.Config
+import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigRenderOptions
+import com.typesafe.config.ConfigValue
+import com.typesafe.config.ConfigValueFactory
+import com.typesafe.config.parser.ConfigDocument
 import dev.datlag.kcef.KCEF
 import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.createAppModule
@@ -32,12 +37,14 @@ import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import suwayomi.tachidesk.global.impl.KcefWebView.Companion.toCefCookie
+import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.Updater
 import suwayomi.tachidesk.manga.impl.util.lang.renameTo
+import suwayomi.tachidesk.server.BooleanConfigAdapter
 import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
@@ -125,6 +132,29 @@ fun setupLogLevelUpdating(
         },
         ignoreInitialValue = false,
     )
+}
+
+fun <T : Any> migrateConfig(
+    configDocument: ConfigDocument,
+    config: Config,
+    configKey: String,
+    toConfigKey: String,
+    toType: (ConfigValue) -> T?,
+): ConfigDocument {
+    try {
+        val configValue = config.getValue(configKey)
+        val typedValue = toType(configValue)
+        if (typedValue != null) {
+            return configDocument.withValue(
+                toConfigKey,
+                ConfigValueFactory.fromAnyRef(typedValue),
+            )
+        }
+    } catch (_: ConfigException) {
+        // ignore, likely already migrated
+    }
+
+    return configDocument
 }
 
 fun serverModule(applicationDirs: ApplicationDirs): Module =
@@ -268,7 +298,40 @@ fun applicationSetup() {
             }
         } else {
             // make sure the user config file is up-to-date
-            GlobalConfigManager.updateUserConfig()
+            GlobalConfigManager.updateUserConfig { config ->
+                var updatedConfig = this
+                updatedConfig =
+                    migrateConfig(
+                        updatedConfig,
+                        config,
+                        "server.basicAuthEnabled",
+                        "server.authMode",
+                        toType = {
+                            if (it.unwrapped() as? Boolean == true) {
+                                AuthMode.BASIC_AUTH.name
+                            } else {
+                                null
+                            }
+                        },
+                    )
+                updatedConfig =
+                    migrateConfig(
+                        updatedConfig,
+                        config,
+                        "server.basicAuthUsername",
+                        "server.authUsername",
+                        toType = { it.unwrapped() as? String },
+                    )
+                updatedConfig =
+                    migrateConfig(
+                        updatedConfig,
+                        config,
+                        "server.basicAuthPassword",
+                        "server.authPassword",
+                        toType = { it.unwrapped() as? String },
+                    )
+                updatedConfig
+            }
         }
     } catch (e: Exception) {
         logger.error(e) { "Exception while creating initial server.conf" }

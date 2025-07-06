@@ -138,7 +138,7 @@ open class ConfigManager {
      *  - adds missing settings
      *  - removes outdated settings
      */
-    fun updateUserConfig() {
+    fun updateUserConfig(migrate: ConfigDocument.(Config) -> ConfigDocument) {
         val serverConfig = ConfigFactory.parseResources("server-reference.conf")
         val userConfig = getUserConfig()
 
@@ -162,7 +162,11 @@ open class ConfigManager {
                 )
             }.forEach { newUserConfigDoc = newUserConfigDoc.withValue(it.key, it.value) }
 
+        newUserConfigDoc =
+            migrate(newUserConfigDoc, internalConfig)
+
         userConfigFile.writeText(newUserConfigDoc.render())
+        getUserConfig().entrySet().forEach { internalConfig = internalConfig.withValue(it.key, it.value) }
     }
 }
 
