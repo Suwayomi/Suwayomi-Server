@@ -142,8 +142,9 @@ open class ConfigManager {
         val serverConfig = ConfigFactory.parseResources("server-reference.conf")
         val userConfig = getUserConfig()
 
+        // NOTE: if more than 1 dot is included, that's a nested setting, which we need to filter out here
         val hasMissingSettings = serverConfig.entrySet().any { !userConfig.hasPath(it.key) }
-        val hasOutdatedSettings = userConfig.entrySet().any { !serverConfig.hasPath(it.key) }
+        val hasOutdatedSettings = userConfig.entrySet().any { !serverConfig.hasPath(it.key) && it.key.count { c -> c == '.' } <= 1 }
         val isUserConfigOutdated = hasMissingSettings || hasOutdatedSettings
         if (!isUserConfigOutdated) {
             return
@@ -159,7 +160,7 @@ open class ConfigManager {
             .filter {
                 serverConfig.hasPath(
                     it.key,
-                )
+                ) || it.key.count { c -> c == '.' } > 1
             }.forEach { newUserConfigDoc = newUserConfigDoc.withValue(it.key, it.value) }
 
         newUserConfigDoc =
