@@ -82,7 +82,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
         val image = images[index]
         val imageFileType = image.getExtension()
 
-        return Pair(getImageInputStream(image).buffered(), "image/$imageFileType")
+        return Pair(getImageInputStream(image).buffered(), MimeUtils.guessMimeTypeFromExtension(imageFileType) ?: "image/$imageFileType")
     }
 
     fun getImageCount(): Int = getImageFiles().filter { it.getName() != COMIC_INFO_FILE }.size
