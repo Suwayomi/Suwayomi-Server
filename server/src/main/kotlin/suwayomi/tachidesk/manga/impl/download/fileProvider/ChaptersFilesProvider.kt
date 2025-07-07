@@ -109,8 +109,8 @@ abstract class ChaptersFilesProvider<Type : FileType>(
         } catch (e: IOException) {
             logger.warn(e) { "Conversion aborted" }
             throw e
-        }.use { outStream ->
-            writer.setOutput(outStream)
+        }.use { o ->
+            writer.setOutput(o)
 
             val inImage =
                 ImageIO.read(getImageInputStream(image)) ?: run {

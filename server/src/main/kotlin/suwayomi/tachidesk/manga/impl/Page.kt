@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.coroutines.flow.StateFlow
+import libcore.net.MimeUtils
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
@@ -23,8 +24,11 @@ import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
+import javax.imageio.ImageIO
 
 object Page {
     /**
@@ -116,9 +120,29 @@ object Page {
         val cacheSaveDir = getChapterCachePath(mangaId, chapterId)
 
         // Note: don't care about invalidating cache because OS cache is not permanent
-        return getImageResponse(cacheSaveDir, fileName) {
-            source.getImage(tachiyomiPage)
+        val image =
+            getImageResponse(cacheSaveDir, fileName) {
+                source.getImage(tachiyomiPage)
+            }
+        val imageExtension = MimeUtils.guessExtensionFromMimeType(image.second) ?: image.second.removePrefix("image/")
+
+        val targetExtension =
+            (if (format != imageExtension) format else null)
+                ?: return image
+
+        val outStream = ByteArrayOutputStream()
+        val writers = ImageIO.getImageWritersBySuffix(targetExtension)
+        val writer = writers.next()
+        ImageIO.createImageOutputStream(outStream).use { o ->
+            writer.setOutput(o)
+
+            val inImage =
+                ImageIO.read(image.first) ?: throw NoSuchElementException("No conversion to $targetExtension possible")
+            writer.write(inImage)
         }
+        writer.dispose()
+        val inStream = ByteArrayInputStream(outStream.toByteArray())
+        return Pair(inStream.buffered(), MimeUtils.guessMimeTypeFromExtension(targetExtension) ?: "image/$targetExtension")
     }
 
     /** converts 0 to "001" */
