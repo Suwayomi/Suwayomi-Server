@@ -58,7 +58,12 @@ class SystemPropertyOverrideDelegate(
             "Boolean" -> combined.toBoolean()
             "Double" -> combined.toDouble()
             "List" -> ConfigFactory.parseString("internal=" + combined).getStringList("internal").orEmpty()
-            "Map" -> ConfigFactory.parseString("internal=" + combined).getObject("internal").unwrapped().mapValues { it.value.toString() }
+            "Map" ->
+                ConfigFactory
+                    .parseString("internal=" + combined)
+                    .getObject("internal")
+                    .unwrapped()
+                    .mapValues { it.value.toString() }
             // add more types as needed
             else -> combined // covers String
         } as T

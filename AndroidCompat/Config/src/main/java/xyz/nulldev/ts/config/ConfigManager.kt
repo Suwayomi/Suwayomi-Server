@@ -160,7 +160,8 @@ open class ConfigManager {
             .filter {
                 serverConfig.hasPath(
                     it.key,
-                ) || it.key.count { c -> c == '.' } > 1
+                ) ||
+                    it.key.count { c -> c == '.' } > 1
             }.forEach { newUserConfigDoc = newUserConfigDoc.withValue(it.key, it.value) }
 
         newUserConfigDoc =
