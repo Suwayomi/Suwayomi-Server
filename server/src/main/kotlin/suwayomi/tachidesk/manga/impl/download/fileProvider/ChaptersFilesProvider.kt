@@ -209,7 +209,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                             logger.debug { "Skipping conversion of $it since no conversion specified" }
                             return@forEach
                         }
-                    if (imageType == targetMime) return@forEach // nothing to do
+                    if (imageType == targetMime || targetMime == "none") return@forEach // nothing to do
                     logger.debug { "Converting $it to $targetMime" }
                     val targetExtension = MimeUtils.guessExtensionFromMimeType(targetMime) ?: targetMime.removePrefix("image/")
 
