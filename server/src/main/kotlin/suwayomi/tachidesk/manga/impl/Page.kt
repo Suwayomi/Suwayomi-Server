@@ -66,7 +66,7 @@ object Page {
 
         try {
             if (chapterEntry[ChapterTable.isDownloaded]) {
-                return ChapterDownloadHelper.getImage(mangaId, chapterId, index, format)
+                return convertImageResponse(ChapterDownloadHelper.getImage(mangaId, chapterId, index), format)
             }
         } catch (_: Exception) {
             // ignore and fetch again
@@ -95,12 +95,15 @@ object Page {
             // is of archive format
             if (LocalSource.pageCache.containsKey(chapterEntry[ChapterTable.url])) {
                 val pageStream = LocalSource.pageCache[chapterEntry[ChapterTable.url]]!![index]
-                return pageStream() to (ImageUtil.findImageType { pageStream() }?.mime ?: "image/jpeg")
+                return convertImageResponse(pageStream() to (ImageUtil.findImageType { pageStream() }?.mime ?: "image/jpeg"), format)
             }
 
             // is of directory format
             val imageFile = File(tachiyomiPage.imageUrl!!)
-            return imageFile.inputStream() to (ImageUtil.findImageType { imageFile.inputStream() }?.mime ?: "image/jpeg")
+            return convertImageResponse(
+                imageFile.inputStream() to (ImageUtil.findImageType { imageFile.inputStream() }?.mime ?: "image/jpeg"),
+                format,
+            )
         }
 
         val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
@@ -120,10 +123,18 @@ object Page {
         val cacheSaveDir = getChapterCachePath(mangaId, chapterId)
 
         // Note: don't care about invalidating cache because OS cache is not permanent
-        val image =
+        return convertImageResponse(
             getImageResponse(cacheSaveDir, fileName) {
                 source.getImage(tachiyomiPage)
-            }
+            },
+            format,
+        )
+    }
+
+    private suspend fun convertImageResponse(
+        image: Pair<InputStream, String>,
+        format: String? = null,
+    ): Pair<InputStream, String> {
         val imageExtension = MimeUtils.guessExtensionFromMimeType(image.second) ?: image.second.removePrefix("image/")
 
         val targetExtension =
