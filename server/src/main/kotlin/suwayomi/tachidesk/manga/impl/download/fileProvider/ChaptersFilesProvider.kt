@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.manga.impl.download.fileProvider
 
 import eu.kanade.tachiyomi.source.local.metadata.COMIC_INFO_FILE
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -8,6 +9,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
+import libcore.net.MimeUtils
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.selectAll
@@ -22,7 +24,9 @@ import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.io.File
+import java.io.IOException
 import java.io.InputStream
+import javax.imageio.ImageIO
 
 sealed class FileType {
     data class RegularFile(
@@ -61,6 +65,8 @@ abstract class ChaptersFilesProvider<Type : FileType>(
     val mangaId: Int,
     val chapterId: Int,
 ) : DownloadedFilesProvider {
+    protected val logger = KotlinLogging.logger {}
+
     protected abstract fun getImageFiles(): List<Type>
 
     protected abstract fun getImageInputStream(image: Type): InputStream
@@ -166,6 +172,8 @@ abstract class ChaptersFilesProvider<Type : FileType>(
             },
         )
 
+        maybeConvertChapterImages(downloadCacheFolder)
+
         handleSuccessfulDownload()
 
         transaction {
@@ -185,4 +193,47 @@ abstract class ChaptersFilesProvider<Type : FileType>(
     abstract override fun delete(): Boolean
 
     abstract fun getAsArchiveStream(): Pair<InputStream, Long>
+
+    private suspend fun maybeConvertChapterImages(chapterCacheFolder: File) {
+        // TODO: from config
+        if (chapterCacheFolder.isDirectory) {
+            chapterCacheFolder
+                .listFiles()
+                .orEmpty()
+                .filter { it.name != COMIC_INFO_FILE }
+                .forEach {
+                    logger.debug { "Converting $it" }
+                    val imageType = MimeUtils.guessMimeTypeFromExtension(it.extension) ?: return@forEach
+                    val outFile = File(it.parentFile, it.nameWithoutExtension + ".jpg")
+
+                    val writers = ImageIO.getImageWritersByMIMEType("image/jpeg")
+                    val writer =
+                        try {
+                            writers.next()
+                        } catch (_: NoSuchElementException) {
+                            return@forEach
+                        }
+                    val success =
+                        try {
+                            ImageIO.createImageOutputStream(outFile)
+                        } catch (e: IOException) {
+                            logger.warn(e) { "Conversion aborted" }
+                            return@forEach
+                        }.use { outStream ->
+                            writer.setOutput(outStream)
+
+                            val inImage = ImageIO.read(it) ?: return@use false
+                            writer.write(inImage)
+                            return@use true
+                        }
+                    writer.dispose()
+                    if (success) {
+                        it.delete()
+                    } else {
+                        logger.warn { "Conversion aborted: No reader for image $it" }
+                        outFile.delete()
+                    }
+                }
+        }
+    }
 }
