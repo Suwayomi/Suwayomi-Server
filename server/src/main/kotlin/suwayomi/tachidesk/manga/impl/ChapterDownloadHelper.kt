@@ -20,7 +20,8 @@ object ChapterDownloadHelper {
         mangaId: Int,
         chapterId: Int,
         index: Int,
-    ): Pair<InputStream, String> = provider(mangaId, chapterId).getImage().execute(index)
+        format: String? = null,
+    ): Pair<InputStream, String> = provider(mangaId, chapterId).getImage().execute(index, format)
 
     fun getImageCount(
         mangaId: Int,

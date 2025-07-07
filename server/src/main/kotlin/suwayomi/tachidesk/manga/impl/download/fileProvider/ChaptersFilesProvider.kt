@@ -24,6 +24,8 @@ import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.serverConfig
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -72,7 +74,10 @@ abstract class ChaptersFilesProvider<Type : FileType>(
 
     protected abstract fun getImageInputStream(image: Type): InputStream
 
-    fun getImageImpl(index: Int): Pair<InputStream, String> {
+    fun getImageImpl(
+        index: Int,
+        convert: String? = null,
+    ): Pair<InputStream, String> {
         val images = getImageFiles().filter { it.getName() != COMIC_INFO_FILE }.sortedBy { it.getName() }
 
         if (images.isEmpty()) {
@@ -82,12 +87,47 @@ abstract class ChaptersFilesProvider<Type : FileType>(
         val image = images[index]
         val imageFileType = image.getExtension()
 
-        return Pair(getImageInputStream(image).buffered(), MimeUtils.guessMimeTypeFromExtension(imageFileType) ?: "image/$imageFileType")
+        val targetExtension =
+            (if (convert != imageFileType) convert else null)
+                ?: return Pair(
+                    getImageInputStream(image).buffered(),
+                    MimeUtils.guessMimeTypeFromExtension(imageFileType) ?: "image/$imageFileType",
+                )
+        logger.debug { "Converting image $index to $targetExtension" }
+
+        val outStream = ByteArrayOutputStream()
+        val writers = ImageIO.getImageWritersBySuffix(targetExtension)
+        val writer =
+            try {
+                writers.next()
+            } catch (e: NoSuchElementException) {
+                logger.warn { "Conversion aborted: No reader for target format $targetExtension" }
+                throw e
+            }
+        try {
+            ImageIO.createImageOutputStream(outStream)
+        } catch (e: IOException) {
+            logger.warn(e) { "Conversion aborted" }
+            throw e
+        }.use { outStream ->
+            writer.setOutput(outStream)
+
+            val inImage =
+                ImageIO.read(getImageInputStream(image)) ?: run {
+                    logger.warn { "Conversion aborted: No reader for image $index" }
+                    throw NoSuchElementException("No conversion possible")
+                }
+            writer.write(inImage)
+            logger.debug { "Conversion done" }
+        }
+        writer.dispose()
+        val inStream = ByteArrayInputStream(outStream.toByteArray())
+        return Pair(inStream.buffered(), MimeUtils.guessMimeTypeFromExtension(targetExtension) ?: "image/$targetExtension")
     }
 
     fun getImageCount(): Int = getImageFiles().filter { it.getName() != COMIC_INFO_FILE }.size
 
-    override fun getImage(): RetrieveFile1Args<Int> = RetrieveFile1Args(::getImageImpl)
+    override fun getImage(): RetrieveFile2Args<Int, String?> = RetrieveFile2Args(::getImageImpl)
 
     /**
      * Extract the existing download to the base download folder (see [getChapterDownloadPath])
