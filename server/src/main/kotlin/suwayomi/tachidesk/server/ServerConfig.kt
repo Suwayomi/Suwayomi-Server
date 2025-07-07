@@ -90,6 +90,20 @@ class ServerConfig(
                 .map { configAdapter.toType(it) }
     }
 
+    inner class OverrideConfigMap<T>(
+        private val keyAdapter: ConfigAdapter<out Any>,
+        private val valueAdapter: ConfigAdapter<out Any>,
+    ) : OverrideConfigValue<T>(valueAdapter) {
+        override fun getValueFromConfig(
+            thisRef: ServerConfig,
+            property: KProperty<*>,
+        ): Any =
+            overridableConfig
+                .getValue<ServerConfig, Map<String, String>>(thisRef, property)
+                .mapKeys { keyAdapter.toType(it.key) }
+                .mapValues { valueAdapter.toType(it.value) }
+    }
+
     open inner class MigratedConfigValue<T>(
         private val readMigrated: () -> Any,
         private val setMigrated: (T) -> Unit,
@@ -153,6 +167,7 @@ class ServerConfig(
     val excludeEntryWithUnreadChapters: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
     val autoDownloadNewChaptersLimit: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
     val autoDownloadIgnoreReUploads: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
+    val downloadConversions: MutableStateFlow<Map<String, String>> by OverrideConfigMap(StringConfigAdapter, StringConfigAdapter)
 
     // extensions
     val extensionRepos: MutableStateFlow<List<String>> by OverrideConfigValues(StringConfigAdapter)

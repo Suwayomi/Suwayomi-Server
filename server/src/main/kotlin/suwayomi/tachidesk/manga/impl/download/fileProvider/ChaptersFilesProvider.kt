@@ -23,6 +23,7 @@ import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.server.serverConfig
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -195,22 +196,31 @@ abstract class ChaptersFilesProvider<Type : FileType>(
     abstract fun getAsArchiveStream(): Pair<InputStream, Long>
 
     private suspend fun maybeConvertChapterImages(chapterCacheFolder: File) {
-        // TODO: from config
         if (chapterCacheFolder.isDirectory) {
+            val conv = serverConfig.downloadConversions.value
             chapterCacheFolder
                 .listFiles()
                 .orEmpty()
                 .filter { it.name != COMIC_INFO_FILE }
                 .forEach {
-                    logger.debug { "Converting $it" }
                     val imageType = MimeUtils.guessMimeTypeFromExtension(it.extension) ?: return@forEach
-                    val outFile = File(it.parentFile, it.nameWithoutExtension + ".jpg")
+                    val targetMime =
+                        conv.getOrDefault(imageType, null) ?: conv.getOrDefault("default", null) ?: run {
+                            logger.debug { "Skipping conversion of $it since no conversion specified" }
+                            return@forEach
+                        }
+                    if (imageType == targetMime) return@forEach // nothing to do
+                    logger.debug { "Converting $it to $targetMime" }
+                    val targetExtension = MimeUtils.guessExtensionFromMimeType(targetMime) ?: targetMime.removePrefix("image/")
 
-                    val writers = ImageIO.getImageWritersByMIMEType("image/jpeg")
+                    val outFile = File(it.parentFile, it.nameWithoutExtension + "." + targetExtension)
+
+                    val writers = ImageIO.getImageWritersByMIMEType(targetMime)
                     val writer =
                         try {
                             writers.next()
                         } catch (_: NoSuchElementException) {
+                            logger.warn { "Conversion aborted: No reader for target format $targetMime" }
                             return@forEach
                         }
                     val success =

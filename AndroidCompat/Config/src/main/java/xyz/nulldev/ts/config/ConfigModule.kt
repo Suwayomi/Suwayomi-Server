@@ -46,7 +46,7 @@ class SystemPropertyOverrideDelegate(
         val combined =
             System.getProperty(
                 "$CONFIG_PREFIX.$moduleName.${property.name}",
-                if (T::class.simpleName == "List") {
+                if (T::class.simpleName == "List" || T::class.simpleName == "Map") {
                     ConfigValueFactory.fromAnyRef(configValue).render()
                 } else {
                     configValue.toString()
@@ -58,6 +58,7 @@ class SystemPropertyOverrideDelegate(
             "Boolean" -> combined.toBoolean()
             "Double" -> combined.toDouble()
             "List" -> ConfigFactory.parseString("internal=" + combined).getStringList("internal").orEmpty()
+            "Map" -> ConfigFactory.parseString("internal=" + combined).getObject("internal").unwrapped().mapValues { it.value.toString() }
             // add more types as needed
             else -> combined // covers String
         } as T
