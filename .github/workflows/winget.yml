@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: vedantmgoyal2009/winget-releaser@v2
         with:
-          identifier: Suwayomi.Tachidesk-Server
+          identifier: Suwayomi.Suwayomi-Server
           installers-regex: '.*x64.msi$'
           token: ${{ secrets.WINGET_PUBLISH_PAT }}
           version: ${{ inputs.version || github.ref_name }}
