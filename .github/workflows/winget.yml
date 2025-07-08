@@ -1,8 +1,5 @@
 name: Publish to WinGet
 on:
-  push:
-    tags:
-      - "v*.*.*"
   workflow_dispatch:
     inputs:
       version:
@@ -19,3 +16,4 @@ jobs:
           installers-regex: '.*x64.msi$'
           token: ${{ secrets.WINGET_PUBLISH_PAT }}
           version: ${{ inputs.version || github.ref_name }}
+          release-tag: ${{ inputs.version || github.ref_name  }}
