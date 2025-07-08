@@ -4,6 +4,10 @@ on:
     tags:
       - "v*.*.*"
   workflow_dispatch:
+    inputs:
+      version:
+        description: Version
+        required: false
 
 jobs:
   publish:
@@ -14,4 +18,4 @@ jobs:
           identifier: Suwayomi.Tachidesk-Server
           installers-regex: '.*x64.msi$'
           token: ${{ secrets.WINGET_PUBLISH_PAT }}
-          version: ${{ github.ref_name }}
+          version: ${{ inputs.version || github.ref_name }}
