@@ -1,9 +1,10 @@
 name: Publish to WinGet
 on:
-  workflow_run:
-    workflows: ["CI Publish"]
-    types:
-      - completed
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
 jobs:
   publish:
     runs-on: windows-latest # action can only be run on windows
@@ -13,3 +14,4 @@ jobs:
           identifier: Suwayomi.Tachidesk-Server
           installers-regex: '.*x64.msi$'
           token: ${{ secrets.WINGET_PUBLISH_PAT }}
+          version: ${{ github.ref_name }}
