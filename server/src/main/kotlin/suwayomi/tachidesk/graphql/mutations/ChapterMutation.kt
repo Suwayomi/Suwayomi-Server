@@ -226,7 +226,14 @@ class ChapterMutation {
     data class FetchChapterPagesInput(
         val clientMutationId: String? = null,
         val chapterId: Int,
-    )
+        val format: String? = null,
+    ) {
+        fun toParams(): Map<String, String> = buildMap {
+            if (!format.isNullOrBlank()) {
+                put("format", format)
+            }
+        }
+    }
 
     data class FetchChapterPagesPayload(
         val clientMutationId: String?,
@@ -236,16 +243,32 @@ class ChapterMutation {
 
     fun fetchChapterPages(input: FetchChapterPagesInput): CompletableFuture<DataFetcherResult<FetchChapterPagesPayload?>> {
         val (clientMutationId, chapterId) = input
+        val paramsMap = input.toParams()
 
         return future {
             asDataFetcherResult {
                 val chapter = getChapterDownloadReadyById(chapterId)
 
+                val params = buildString {
+                    if (paramsMap.isNotEmpty()) {
+                        append("?")
+                        paramsMap.entries.forEach { entry ->
+                            if (length > 1) {
+                                append("&")
+                            }
+                            append(entry.key)
+                            append("=")
+                            append(entry.value)
+                        }
+                    }
+                }
+
+
                 FetchChapterPagesPayload(
                     clientMutationId = clientMutationId,
                     pages =
                         List(chapter.pageCount) { index ->
-                            "/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}/page/$index"
+                            "/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}/page/${index}${params}"
                         },
                     chapter = ChapterType(chapter),
                 )
