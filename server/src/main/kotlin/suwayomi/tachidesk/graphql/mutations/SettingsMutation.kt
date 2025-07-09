@@ -218,7 +218,12 @@ class SettingsMutation {
         val (clientMutationId) = input
 
         GlobalConfigManager.resetUserConfig()
-        val defaultServerConfig = ServerConfig({ GlobalConfigManager.config.getConfig(SERVER_CONFIG_MODULE_NAME) })
+        val defaultServerConfig =
+            ServerConfig {
+                GlobalConfigManager.config.getConfig(
+                    SERVER_CONFIG_MODULE_NAME,
+                )
+            }
 
         val settings = SettingsType(defaultServerConfig)
         updateSettings(settings)
