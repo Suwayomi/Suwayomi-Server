@@ -228,11 +228,12 @@ class ChapterMutation {
         val chapterId: Int,
         val format: String? = null,
     ) {
-        fun toParams(): Map<String, String> = buildMap {
-            if (!format.isNullOrBlank()) {
-                put("format", format)
+        fun toParams(): Map<String, String> =
+            buildMap {
+                if (!format.isNullOrBlank()) {
+                    put("format", format)
+                }
             }
-        }
     }
 
     data class FetchChapterPagesPayload(
@@ -249,26 +250,26 @@ class ChapterMutation {
             asDataFetcherResult {
                 val chapter = getChapterDownloadReadyById(chapterId)
 
-                val params = buildString {
-                    if (paramsMap.isNotEmpty()) {
-                        append("?")
-                        paramsMap.entries.forEach { entry ->
-                            if (length > 1) {
-                                append("&")
+                val params =
+                    buildString {
+                        if (paramsMap.isNotEmpty()) {
+                            append("?")
+                            paramsMap.entries.forEach { entry ->
+                                if (length > 1) {
+                                    append("&")
+                                }
+                                append(entry.key)
+                                append("=")
+                                append(entry.value)
                             }
-                            append(entry.key)
-                            append("=")
-                            append(entry.value)
                         }
                     }
-                }
-
 
                 FetchChapterPagesPayload(
                     clientMutationId = clientMutationId,
                     pages =
                         List(chapter.pageCount) { index ->
-                            "/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}/page/${index}${params}"
+                            "/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}/page/${index}$params"
                         },
                     chapter = ChapterType(chapter),
                 )
