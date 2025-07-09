@@ -10,14 +10,11 @@ package xyz.nulldev.ts.config
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigFactory
-import com.typesafe.config.ConfigValueFactory
 import io.github.config4k.ClassContainer
 import io.github.config4k.TypeReference
 import io.github.config4k.getValue
-import io.github.config4k.toConfig
 import io.github.config4k.readers.SelectReader
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import io.github.config4k.toConfig
 import kotlin.reflect.KProperty
 
 /**
@@ -53,13 +50,18 @@ class SystemPropertyOverrideDelegate(
         val combined =
             System.getProperty(
                 "$CONFIG_PREFIX.$moduleName.${property.name}",
-                configValue!!.toConfig("internal").root().render().removePrefix("internal="),
+                configValue!!
+                    .toConfig("internal")
+                    .root()
+                    .render()
+                    .removePrefix("internal="),
             )
-        val combinedConfig = try {
-            ConfigFactory.parseString(combined)
-        } catch (_: ConfigException) {
-            ConfigFactory.parseString("internal=$combined")
-        }
+        val combinedConfig =
+            try {
+                ConfigFactory.parseString(combined)
+            } catch (_: ConfigException) {
+                ConfigFactory.parseString("internal=$combined")
+            }
 
         val genericType = object : TypeReference<T>() {}.genericType()
         val clazz = ClassContainer(T::class, genericType)
