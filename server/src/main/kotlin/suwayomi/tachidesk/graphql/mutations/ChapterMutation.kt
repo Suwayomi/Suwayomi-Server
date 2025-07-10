@@ -16,6 +16,7 @@ import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyById
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.future
+import java.net.URLEncoder
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
 
@@ -260,7 +261,7 @@ class ChapterMutation {
                                 }
                                 append(entry.key)
                                 append("=")
-                                append(entry.value)
+                                append(URLEncoder.encode(entry.value, Charsets.UTF_8))
                             }
                         }
                     }

@@ -151,7 +151,7 @@ class KitsuApi(
         withIOContext {
             val jsonObject =
                 buildJsonObject {
-                    put("params", "query=${URLEncoder.encode(query, StandardCharsets.UTF_8.name())}$ALGOLIA_FILTER")
+                    put("params", "query=${URLEncoder.encode(query, Charsets.UTF_8)}$ALGOLIA_FILTER")
                 }
 
             with(json) {
