@@ -59,6 +59,8 @@ sealed class FileType {
         }
 }
 
+data class ConversionType(val target: String, val compression: Float? = null)
+
 /*
 * Base class for downloaded chapter files provider, example: Folder, Archive
 */
@@ -205,10 +207,10 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                 .forEach {
                     val imageType = MimeUtils.guessMimeTypeFromExtension(it.extension) ?: return@forEach
                     val targetMime =
-                        conv.getOrDefault(imageType, null) ?: conv.getOrDefault("default", null) ?: run {
+                        (conv.getOrDefault(imageType, null) ?: conv.getOrDefault("default", null) ?: run {
                             logger.debug { "Skipping conversion of $it since no conversion specified" }
                             return@forEach
-                        }
+                        }).target
                     if (imageType == targetMime || targetMime == "none") return@forEach // nothing to do
                     logger.debug { "Converting $it to $targetMime" }
                     val targetExtension = MimeUtils.guessExtensionFromMimeType(targetMime) ?: targetMime.removePrefix("image/")
