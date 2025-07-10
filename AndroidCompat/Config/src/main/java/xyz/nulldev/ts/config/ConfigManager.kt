@@ -10,11 +10,11 @@ package xyz.nulldev.ts.config
 import ch.qos.logback.classic.Level
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
+import com.typesafe.config.ConfigObject
 import com.typesafe.config.ConfigValue
 import com.typesafe.config.ConfigValueFactory
 import com.typesafe.config.parser.ConfigDocument
 import com.typesafe.config.parser.ConfigDocumentFactory
-import com.typesafe.config.ConfigObject
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -144,7 +144,11 @@ open class ConfigManager {
         val userConfig = getUserConfig()
 
         // NOTE: if more than 1 dot is included, that's a nested setting, which we need to filter out here
-        val refKeys = serverConfig.root().entries.flatMap { (it.value as? ConfigObject)?.entries?.map { e -> "${it.key}.${e.key}" } ?: listOf() }
+        val refKeys =
+            serverConfig.root().entries.flatMap {
+                (it.value as? ConfigObject)?.entries?.map { e -> "${it.key}.${e.key}" }
+                    ?: listOf()
+            }
         val hasMissingSettings = refKeys.any { !userConfig.hasPath(it) }
         val hasOutdatedSettings = userConfig.entrySet().any { !refKeys.contains(it.key) && it.key.count { c -> c == '.' } <= 1 }
         val isUserConfigOutdated = hasMissingSettings || hasOutdatedSettings

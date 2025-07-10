@@ -27,9 +27,9 @@ import suwayomi.tachidesk.server.serverConfig
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
+import javax.imageio.IIOImage
 import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
-import javax.imageio.IIOImage
 
 sealed class FileType {
     data class RegularFile(
@@ -61,7 +61,10 @@ sealed class FileType {
         }
 }
 
-data class ConversionType(val target: String, val compressionLevel: Float? = null)
+data class ConversionType(
+    val target: String,
+    val compressionLevel: Float? = null,
+)
 
 /*
 * Base class for downloaded chapter files provider, example: Folder, Archive
