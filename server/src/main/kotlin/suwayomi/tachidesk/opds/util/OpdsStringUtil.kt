@@ -2,7 +2,6 @@ package suwayomi.tachidesk.opds.util
 
 import suwayomi.tachidesk.server.serverConfig
 import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 import java.text.Normalizer
 
 /**

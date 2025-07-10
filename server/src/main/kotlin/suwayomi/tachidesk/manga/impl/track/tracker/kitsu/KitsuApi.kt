@@ -29,7 +29,6 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
 import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 
 class KitsuApi(
     private val client: OkHttpClient,
