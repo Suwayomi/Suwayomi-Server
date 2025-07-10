@@ -28,6 +28,8 @@ import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import javax.imageio.ImageIO
+import javax.imageio.ImageWriteParam
+import javax.imageio.IIOImage
 
 sealed class FileType {
     data class RegularFile(
@@ -59,7 +61,7 @@ sealed class FileType {
         }
 }
 
-data class ConversionType(val target: String, val compression: Float? = null)
+data class ConversionType(val target: String, val compressionLevel: Float? = null)
 
 /*
 * Base class for downloaded chapter files provider, example: Folder, Archive
@@ -206,11 +208,12 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                 .filter { it.name != COMIC_INFO_FILE }
                 .forEach {
                     val imageType = MimeUtils.guessMimeTypeFromExtension(it.extension) ?: return@forEach
-                    val targetMime =
-                        (conv.getOrDefault(imageType, null) ?: conv.getOrDefault("default", null) ?: run {
+                    val targetConversion =
+                        conv.getOrDefault(imageType, null) ?: conv.getOrDefault("default", null) ?: run {
                             logger.debug { "Skipping conversion of $it since no conversion specified" }
                             return@forEach
-                        }).target
+                        }
+                    val targetMime = targetConversion.target
                     if (imageType == targetMime || targetMime == "none") return@forEach // nothing to do
                     logger.debug { "Converting $it to $targetMime" }
                     val targetExtension = MimeUtils.guessExtensionFromMimeType(targetMime) ?: targetMime.removePrefix("image/")
@@ -225,6 +228,11 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                             logger.warn { "Conversion aborted: No reader for target format $targetMime" }
                             return@forEach
                         }
+                    val writerParams = writer.defaultWriteParam
+                    targetConversion.compressionLevel?.let {
+                        writerParams.compressionMode = ImageWriteParam.MODE_EXPLICIT
+                        writerParams.compressionQuality = it
+                    }
                     val success =
                         try {
                             ImageIO.createImageOutputStream(outFile)
@@ -235,7 +243,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                             writer.setOutput(outStream)
 
                             val inImage = ImageIO.read(it) ?: return@use false
-                            writer.write(inImage)
+                            writer.write(null, IIOImage(inImage, null, null), writerParams)
                             return@use true
                         }
                     writer.dispose()
