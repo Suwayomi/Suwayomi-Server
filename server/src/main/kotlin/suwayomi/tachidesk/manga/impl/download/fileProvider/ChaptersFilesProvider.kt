@@ -24,6 +24,7 @@ import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.util.ConversionUtil
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -245,7 +246,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                         }.use { outStream ->
                             writer.setOutput(outStream)
 
-                            val inImage = ImageIO.read(it) ?: return@use false
+                            val inImage = ConversionUtil.readImage(it) ?: return@use false
                             writer.write(null, IIOImage(inImage, null, null), writerParams)
                             return@use true
                         }

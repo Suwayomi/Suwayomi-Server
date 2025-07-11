@@ -24,6 +24,7 @@ import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
+import suwayomi.tachidesk.util.ConversionUtil
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -148,7 +149,8 @@ object Page {
             writer.setOutput(o)
 
             val inImage =
-                ImageIO.read(image.first) ?: throw NoSuchElementException("No conversion to $targetExtension possible")
+                ConversionUtil.readImage(image.first, image.second)
+                    ?: throw NoSuchElementException("No conversion to $targetExtension possible")
             writer.write(inImage)
         }
         writer.dispose()
