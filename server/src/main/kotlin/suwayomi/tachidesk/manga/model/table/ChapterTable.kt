@@ -17,7 +17,7 @@ import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.columns.truncatingVarchar
 
 object ChapterTable : IntIdTable() {
-    val url = varchar("url", 2048)
+    val url = varchar("url", 4096)
     val name = truncatingVarchar("name", 512)
     val date_upload = long("date_upload").default(0)
     val chapter_number = float("chapter_number").default(-1f)
@@ -32,7 +32,7 @@ object ChapterTable : IntIdTable() {
     val sourceOrder = integer("source_order")
 
     /** the real url of a chapter used for the "open in WebView" feature */
-    val realUrl = varchar("real_url", 2048).nullable()
+    val realUrl = varchar("real_url", 4096).nullable()
 
     val isDownloaded = bool("is_downloaded").default(false)
 

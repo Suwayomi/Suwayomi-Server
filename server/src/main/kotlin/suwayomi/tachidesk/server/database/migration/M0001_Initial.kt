@@ -21,7 +21,7 @@ class M0001_Initial : AddTableMigration() {
             varchar("apk_name", 1024)
             // default is the local source icon from tachiyomi
             @Suppress("ktlint:standard:max-line-length")
-            varchar("icon_url", 2048)
+            varchar("icon_url", 4096)
                 .default(
                     "https://raw.githubusercontent.com/tachiyomiorg/tachiyomi/64ba127e7d43b1d7e6d58a6f5c9b2bd5fe0543f7/app/src/main/res/mipmap-xxxhdpi/ic_local_source.webp",
                 )
@@ -55,7 +55,7 @@ class M0001_Initial : AddTableMigration() {
 
     private class MangaTable : IntIdTable() {
         init {
-            varchar("url", 2048)
+            varchar("url", 4096)
             varchar("title", 512)
             bool("initialized").default(false)
 
@@ -66,7 +66,7 @@ class M0001_Initial : AddTableMigration() {
 
             // val status = enumeration("status", MangaStatus::class).default(MangaStatus.UNKNOWN)
             integer("status").default(SManga.UNKNOWN)
-            varchar("thumbnail_url", 2048).nullable()
+            varchar("thumbnail_url", 4096).nullable()
 
             bool("in_library").default(false)
             bool("default_category").default(true)
@@ -80,7 +80,7 @@ class M0001_Initial : AddTableMigration() {
         mangaTable: MangaTable,
     ) : IntIdTable() {
         init {
-            varchar("url", 2048)
+            varchar("url", 4096)
             varchar("name", 512)
             long("date_upload").default(0)
             float("chapter_number").default(-1f)
@@ -100,8 +100,8 @@ class M0001_Initial : AddTableMigration() {
     ) : IntIdTable() {
         init {
             integer("index")
-            varchar("url", 2048)
-            varchar("imageUrl", 2048).nullable()
+            varchar("url", 4096)
+            varchar("imageUrl", 4096).nullable()
             reference("chapter", chapterTable)
         }
     }

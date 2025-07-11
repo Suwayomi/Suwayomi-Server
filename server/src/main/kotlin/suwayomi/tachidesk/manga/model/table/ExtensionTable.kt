@@ -16,7 +16,7 @@ object ExtensionTable : IntIdTable() {
     // default is the local source icon from tachiyomi
     @Suppress("ktlint:standard:max-line-length")
     val iconUrl =
-        varchar("icon_url", 2048)
+        varchar("icon_url", 4096)
             .default(
                 "https://raw.githubusercontent.com/tachiyomiorg/tachiyomi/64ba127e7d43b1d7e6d58a6f5c9b2bd5fe0543f7/app/src/main/res/mipmap-xxxhdpi/ic_local_source.webp",
             )
