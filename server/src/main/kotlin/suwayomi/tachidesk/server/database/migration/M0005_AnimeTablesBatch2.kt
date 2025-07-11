@@ -16,7 +16,7 @@ import org.jetbrains.exposed.sql.Table
 @Suppress("ClassName", "unused")
 class M0005_AnimeTablesBatch2 : AddTableMigration() {
     private class AnimeTable : IntIdTable() {
-        val url = varchar("url", 2048)
+        val url = varchar("url", 4096)
         val title = varchar("title", 512)
         val initialized = bool("initialized").default(false)
 
@@ -27,7 +27,7 @@ class M0005_AnimeTablesBatch2 : AddTableMigration() {
 
         //    val status = enumeration("status", MangaStatus::class).default(MangaStatus.UNKNOWN)
         val status = integer("status").default(0)
-        val thumbnail_url = varchar("thumbnail_url", 2048).nullable()
+        val thumbnail_url = varchar("thumbnail_url", 4096).nullable()
 
         val inLibrary = bool("in_library").default(false)
         val defaultCategory = bool("default_category").default(true)

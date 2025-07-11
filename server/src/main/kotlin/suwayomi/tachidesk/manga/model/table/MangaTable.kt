@@ -19,7 +19,7 @@ import suwayomi.tachidesk.manga.model.table.MangaStatus.Companion
 import suwayomi.tachidesk.manga.model.table.columns.truncatingVarchar
 
 object MangaTable : IntIdTable() {
-    val url = varchar("url", 2048)
+    val url = varchar("url", 4096)
     val title = truncatingVarchar("title", 512)
     val initialized = bool("initialized").default(false)
 
@@ -29,7 +29,7 @@ object MangaTable : IntIdTable() {
     val genre = truncatingVarchar("genre", Integer.MAX_VALUE).nullable()
 
     val status = integer("status").default(SManga.UNKNOWN)
-    val thumbnail_url = varchar("thumbnail_url", 2048).nullable()
+    val thumbnail_url = varchar("thumbnail_url", 4096).nullable()
     val thumbnailUrlLastFetched = long("thumbnail_url_last_fetched").default(0)
 
     val inLibrary = bool("in_library").default(false)
@@ -39,7 +39,7 @@ object MangaTable : IntIdTable() {
     val sourceReference = long("source")
 
     /** the real url of a manga used for the "open in WebView" feature */
-    val realUrl = varchar("real_url", 2048).nullable()
+    val realUrl = varchar("real_url", 4096).nullable()
 
     val lastFetchedAt = long("last_fetched_at").default(0)
     val chaptersLastFetchedAt = long("chapters_last_fetched_at").default(0)

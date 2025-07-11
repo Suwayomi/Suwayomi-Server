@@ -19,7 +19,7 @@ class M0006_AnimeTablesBatch3 : AddTableMigration() {
     private class AnimeTable : IntIdTable()
 
     private class EpisodeTable : IntIdTable() {
-        val url = varchar("url", 2048)
+        val url = varchar("url", 4096)
         val name = varchar("name", 512)
         val date_upload = long("date_upload").default(0)
         val episode_number = float("episode_number").default(-1f)
