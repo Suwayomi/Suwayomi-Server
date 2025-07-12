@@ -8,6 +8,7 @@ package suwayomi.tachidesk.server
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import com.typesafe.config.Config
+import io.github.config4k.getValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -38,39 +39,29 @@ const val SERVER_CONFIG_MODULE_NAME = "server"
 
 class ServerConfig(
     getConfig: () -> Config,
-    val moduleName: String = SERVER_CONFIG_MODULE_NAME,
 ) : SystemPropertyOverridableConfigModule(
         getConfig,
-        moduleName,
+        SERVER_CONFIG_MODULE_NAME,
     ) {
-    open inner class OverrideConfigValue<T>(
-        private val configAdapter: ConfigAdapter<out Any>,
-    ) {
-        private var flow: MutableStateFlow<T>? = null
+    open inner class OverrideConfigValue {
+        var flow: MutableStateFlow<Any>? = null
 
-        open fun getValueFromConfig(
+        inline operator fun <reified T : MutableStateFlow<R>, reified R> getValue(
             thisRef: ServerConfig,
             property: KProperty<*>,
-        ): Any = configAdapter.toType(overridableConfig.getValue<ServerConfig, String>(thisRef, property))
-
-        operator fun getValue(
-            thisRef: ServerConfig,
-            property: KProperty<*>,
-        ): MutableStateFlow<T> {
+        ): T {
             if (flow != null) {
-                return flow!!
+                return flow as T
             }
 
+            val stateFlow = overridableConfig.getValue<ServerConfig, T>(thisRef, property)
             @Suppress("UNCHECKED_CAST")
-            val value = getValueFromConfig(thisRef, property) as T
-
-            val stateFlow = MutableStateFlow(value)
-            flow = stateFlow
+            flow = stateFlow as MutableStateFlow<Any>
 
             stateFlow
                 .drop(1)
                 .distinctUntilChanged()
-                .filter { it != getValueFromConfig(thisRef, property) }
+                .filter { it != thisRef.overridableConfig.getConfig().getValue<ServerConfig, R>(thisRef, property) }
                 .onEach { GlobalConfigManager.updateValue("$moduleName.${property.name}", it as Any) }
                 .launchIn(mutableConfigValueScope)
 
@@ -78,28 +69,11 @@ class ServerConfig(
         }
     }
 
-    inner class OverrideConfigValues<T>(
-        private val configAdapter: ConfigAdapter<out Any>,
-    ) : OverrideConfigValue<T>(configAdapter) {
-        override fun getValueFromConfig(
-            thisRef: ServerConfig,
-            property: KProperty<*>,
-        ): Any =
-            overridableConfig
-                .getValue<ServerConfig, List<String>>(thisRef, property)
-                .map { configAdapter.toType(it) }
-    }
-
     open inner class MigratedConfigValue<T>(
-        private val readMigrated: () -> Any,
+        private val readMigrated: () -> T,
         private val setMigrated: (T) -> Unit,
     ) {
         private var flow: MutableStateFlow<T>? = null
-
-        open fun getValueFromConfig(
-            thisRef: ServerConfig,
-            property: KProperty<*>,
-        ): Any = readMigrated()
 
         operator fun getValue(
             thisRef: ServerConfig,
@@ -109,8 +83,7 @@ class ServerConfig(
                 return flow!!
             }
 
-            @Suppress("UNCHECKED_CAST")
-            val value = getValueFromConfig(thisRef, property) as T
+            val value = readMigrated()
 
             val stateFlow = MutableStateFlow(value)
             flow = stateFlow
@@ -118,7 +91,7 @@ class ServerConfig(
             stateFlow
                 .drop(1)
                 .distinctUntilChanged()
-                .filter { it != getValueFromConfig(thisRef, property) }
+                .filter { it != readMigrated() }
                 .onEach(setMigrated)
                 .launchIn(mutableConfigValueScope)
 
@@ -126,51 +99,57 @@ class ServerConfig(
         }
     }
 
-    val ip: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
-    val port: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
+    val ip: MutableStateFlow<String> by OverrideConfigValue()
+    val port: MutableStateFlow<Int> by OverrideConfigValue()
 
     // proxy
-    val socksProxyEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val socksProxyVersion: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
-    val socksProxyHost: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
-    val socksProxyPort: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
-    val socksProxyUsername: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
-    val socksProxyPassword: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+    val socksProxyEnabled: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val socksProxyVersion: MutableStateFlow<Int> by OverrideConfigValue()
+    val socksProxyHost: MutableStateFlow<String> by OverrideConfigValue()
+    val socksProxyPort: MutableStateFlow<String> by OverrideConfigValue()
+    val socksProxyUsername: MutableStateFlow<String> by OverrideConfigValue()
+    val socksProxyPassword: MutableStateFlow<String> by OverrideConfigValue()
 
     // webUI
-    val webUIEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val webUIFlavor: MutableStateFlow<WebUIFlavor> by OverrideConfigValue(EnumConfigAdapter(WebUIFlavor::class.java))
-    val initialOpenInBrowserEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val webUIInterface: MutableStateFlow<WebUIInterface> by OverrideConfigValue(EnumConfigAdapter(WebUIInterface::class.java))
-    val electronPath: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
-    val webUIChannel: MutableStateFlow<WebUIChannel> by OverrideConfigValue(EnumConfigAdapter(WebUIChannel::class.java))
-    val webUIUpdateCheckInterval: MutableStateFlow<Double> by OverrideConfigValue(DoubleConfigAdapter)
+    val webUIEnabled: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val webUIFlavor: MutableStateFlow<WebUIFlavor> by OverrideConfigValue()
+    val initialOpenInBrowserEnabled: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val webUIInterface: MutableStateFlow<WebUIInterface> by OverrideConfigValue()
+    val electronPath: MutableStateFlow<String> by OverrideConfigValue()
+    val webUIChannel: MutableStateFlow<WebUIChannel> by OverrideConfigValue()
+    val webUIUpdateCheckInterval: MutableStateFlow<Double> by OverrideConfigValue()
 
     // downloader
-    val downloadAsCbz: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val downloadsPath: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
-    val autoDownloadNewChapters: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val excludeEntryWithUnreadChapters: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val autoDownloadNewChaptersLimit: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
-    val autoDownloadIgnoreReUploads: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
+    val downloadAsCbz: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val downloadsPath: MutableStateFlow<String> by OverrideConfigValue()
+    val autoDownloadNewChapters: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val excludeEntryWithUnreadChapters: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val autoDownloadNewChaptersLimit: MutableStateFlow<Int> by OverrideConfigValue()
+    val autoDownloadIgnoreReUploads: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val downloadConversions: MutableStateFlow<Map<String, DownloadConversion>> by OverrideConfigValue()
+
+    data class DownloadConversion(
+        val target: String,
+        val compressionLevel: Float? = null,
+    )
 
     // extensions
-    val extensionRepos: MutableStateFlow<List<String>> by OverrideConfigValues(StringConfigAdapter)
+    val extensionRepos: MutableStateFlow<List<String>> by OverrideConfigValue()
 
     // requests
-    val maxSourcesInParallel: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
+    val maxSourcesInParallel: MutableStateFlow<Int> by OverrideConfigValue()
 
     // updater
-    val excludeUnreadChapters: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val excludeNotStarted: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val excludeCompleted: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val globalUpdateInterval: MutableStateFlow<Double> by OverrideConfigValue(DoubleConfigAdapter)
-    val updateMangas: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
+    val excludeUnreadChapters: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val excludeNotStarted: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val excludeCompleted: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val globalUpdateInterval: MutableStateFlow<Double> by OverrideConfigValue()
+    val updateMangas: MutableStateFlow<Boolean> by OverrideConfigValue()
 
     // Authentication
-    val authMode: MutableStateFlow<AuthMode> by OverrideConfigValue(EnumConfigAdapter(AuthMode::class.java))
-    val authUsername: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
-    val authPassword: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+    val authMode: MutableStateFlow<AuthMode> by OverrideConfigValue()
+    val authUsername: MutableStateFlow<String> by OverrideConfigValue()
+    val authPassword: MutableStateFlow<String> by OverrideConfigValue()
     val basicAuthEnabled: MutableStateFlow<Boolean> by MigratedConfigValue({
         authMode.value == AuthMode.BASIC_AUTH
     }) {
@@ -184,37 +163,37 @@ class ServerConfig(
     }
 
     // misc
-    val debugLogsEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val systemTrayEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val maxLogFiles: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
-    val maxLogFileSize: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
-    val maxLogFolderSize: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+    val debugLogsEnabled: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val systemTrayEnabled: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val maxLogFiles: MutableStateFlow<Int> by OverrideConfigValue()
+    val maxLogFileSize: MutableStateFlow<String> by OverrideConfigValue()
+    val maxLogFolderSize: MutableStateFlow<String> by OverrideConfigValue()
 
     // backup
-    val backupPath: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
-    val backupTime: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
-    val backupInterval: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
-    val backupTTL: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
+    val backupPath: MutableStateFlow<String> by OverrideConfigValue()
+    val backupTime: MutableStateFlow<String> by OverrideConfigValue()
+    val backupInterval: MutableStateFlow<Int> by OverrideConfigValue()
+    val backupTTL: MutableStateFlow<Int> by OverrideConfigValue()
 
     // local source
-    val localSourcePath: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
+    val localSourcePath: MutableStateFlow<String> by OverrideConfigValue()
 
     // cloudflare bypass
-    val flareSolverrEnabled: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val flareSolverrUrl: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
-    val flareSolverrTimeout: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
-    val flareSolverrSessionName: MutableStateFlow<String> by OverrideConfigValue(StringConfigAdapter)
-    val flareSolverrSessionTtl: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
-    val flareSolverrAsResponseFallback: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
+    val flareSolverrEnabled: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val flareSolverrUrl: MutableStateFlow<String> by OverrideConfigValue()
+    val flareSolverrTimeout: MutableStateFlow<Int> by OverrideConfigValue()
+    val flareSolverrSessionName: MutableStateFlow<String> by OverrideConfigValue()
+    val flareSolverrSessionTtl: MutableStateFlow<Int> by OverrideConfigValue()
+    val flareSolverrAsResponseFallback: MutableStateFlow<Boolean> by OverrideConfigValue()
 
     // opds settings
-    val opdsUseBinaryFileSizes: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val opdsItemsPerPage: MutableStateFlow<Int> by OverrideConfigValue(IntConfigAdapter)
-    val opdsEnablePageReadProgress: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val opdsMarkAsReadOnDownload: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val opdsShowOnlyUnreadChapters: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val opdsShowOnlyDownloadedChapters: MutableStateFlow<Boolean> by OverrideConfigValue(BooleanConfigAdapter)
-    val opdsChapterSortOrder: MutableStateFlow<SortOrder> by OverrideConfigValue(EnumConfigAdapter(SortOrder::class.java))
+    val opdsUseBinaryFileSizes: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val opdsItemsPerPage: MutableStateFlow<Int> by OverrideConfigValue()
+    val opdsEnablePageReadProgress: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val opdsMarkAsReadOnDownload: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val opdsShowOnlyUnreadChapters: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val opdsShowOnlyDownloadedChapters: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val opdsChapterSortOrder: MutableStateFlow<SortOrder> by OverrideConfigValue()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun <T> subscribeTo(
@@ -259,6 +238,11 @@ class ServerConfig(
     }
 
     companion object {
-        fun register(getConfig: () -> Config) = ServerConfig({ getConfig().getConfig(SERVER_CONFIG_MODULE_NAME) })
+        fun register(getConfig: () -> Config) =
+            ServerConfig {
+                getConfig().getConfig(
+                    SERVER_CONFIG_MODULE_NAME,
+                )
+            }
     }
 }

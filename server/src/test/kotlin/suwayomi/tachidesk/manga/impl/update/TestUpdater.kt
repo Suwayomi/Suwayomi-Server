@@ -31,6 +31,10 @@ class TestUpdater : IUpdater {
         TODO("Not yet implemented")
     }
 
+    override fun deleteLastAutomatedUpdateTimestamp() {
+        TODO("Not yet implemented")
+    }
+
     override fun addCategoriesToUpdateQueue(
         categories: List<CategoryDataClass>,
         clear: Boolean?,

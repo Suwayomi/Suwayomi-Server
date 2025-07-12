@@ -48,6 +48,7 @@ interface Settings : Node {
     val autoDownloadAheadLimit: Int?
     val autoDownloadNewChaptersLimit: Int?
     val autoDownloadIgnoreReUploads: Boolean?
+    val downloadConversions: List<SettingsDownloadConversion>?
 
     // extension
     val extensionRepos: List<String>?
@@ -113,6 +114,18 @@ interface Settings : Node {
     val opdsChapterSortOrder: SortOrder?
 }
 
+interface SettingsDownloadConversion {
+    val mimeType: String
+    val target: String
+    val compressionLevel: Float?
+}
+
+class SettingsDownloadConversionType(
+    override val mimeType: String,
+    override val target: String,
+    override val compressionLevel: Float?,
+) : SettingsDownloadConversion
+
 data class PartialSettingsType(
     override val ip: String?,
     override val port: Int?,
@@ -142,6 +155,7 @@ data class PartialSettingsType(
     override val autoDownloadAheadLimit: Int?,
     override val autoDownloadNewChaptersLimit: Int?,
     override val autoDownloadIgnoreReUploads: Boolean?,
+    override val downloadConversions: List<SettingsDownloadConversionType>?,
     // extension
     override val extensionRepos: List<String>?,
     // requests
@@ -222,7 +236,8 @@ class SettingsType(
     )
     override val autoDownloadAheadLimit: Int,
     override val autoDownloadNewChaptersLimit: Int,
-    override val autoDownloadIgnoreReUploads: Boolean?,
+    override val autoDownloadIgnoreReUploads: Boolean,
+    override val downloadConversions: List<SettingsDownloadConversionType>,
     // extension
     override val extensionRepos: List<String>,
     // requests
@@ -299,6 +314,13 @@ class SettingsType(
         config.autoDownloadNewChaptersLimit.value, // deprecated
         config.autoDownloadNewChaptersLimit.value,
         config.autoDownloadIgnoreReUploads.value,
+        config.downloadConversions.value.map {
+            SettingsDownloadConversionType(
+                it.key,
+                it.value.target,
+                it.value.compressionLevel,
+            )
+        },
         // extension
         config.extensionRepos.value,
         // requests

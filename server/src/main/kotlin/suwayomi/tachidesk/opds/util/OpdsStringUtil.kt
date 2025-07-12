@@ -2,7 +2,6 @@ package suwayomi.tachidesk.opds.util
 
 import suwayomi.tachidesk.server.serverConfig
 import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 import java.text.Normalizer
 
 /**
@@ -15,7 +14,7 @@ object OpdsStringUtil {
      * Encodes a string to be used in OPDS URLs.
      * @return The URL-encoded string
      */
-    fun String.encodeForOpdsURL(): String = URLEncoder.encode(this, StandardCharsets.UTF_8.toString())
+    fun String.encodeForOpdsURL(): String = URLEncoder.encode(this, Charsets.UTF_8)
 
     /**
      * Converts a string into a URL-friendly slug.

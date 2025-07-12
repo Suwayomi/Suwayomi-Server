@@ -33,7 +33,6 @@ import suwayomi.tachidesk.server.util.WebInterfaceManager
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
 import kotlin.time.Duration.Companion.days
@@ -168,7 +167,7 @@ object JavalinSetup {
                 return@beforeMatched
             }
 
-            val authMode = serverConfig.authMode.value ?: AuthMode.NONE
+            val authMode = serverConfig.authMode.value
 
             fun credentialsValid(): Boolean {
                 val basicAuthCredentials = ctx.basicAuthCredentials() ?: return false
@@ -187,7 +186,7 @@ object JavalinSetup {
             }
 
             if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid()) {
-                val url = "/login.html?redirect=" + URLEncoder.encode(ctx.fullUrl(), StandardCharsets.UTF_8)
+                val url = "/login.html?redirect=" + URLEncoder.encode(ctx.fullUrl(), Charsets.UTF_8)
                 ctx.header("Location", url)
                 throw RedirectResponse(HttpStatus.SEE_OTHER)
             }
