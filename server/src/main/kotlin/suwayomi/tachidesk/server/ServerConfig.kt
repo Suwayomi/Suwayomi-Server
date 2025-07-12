@@ -127,11 +127,11 @@ class ServerConfig(
     val autoDownloadNewChaptersLimit: MutableStateFlow<Int> by OverrideConfigValue()
     val autoDownloadIgnoreReUploads: MutableStateFlow<Boolean> by OverrideConfigValue()
     val downloadConversions: MutableStateFlow<Map<String, DownloadConversion>> by OverrideConfigValue()
+
     data class DownloadConversion(
         val target: String,
         val compressionLevel: Float? = null,
     )
-
 
     // extensions
     val extensionRepos: MutableStateFlow<List<String>> by OverrideConfigValue()

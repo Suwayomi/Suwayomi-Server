@@ -13,7 +13,6 @@ import com.typesafe.config.Config
 import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigRenderOptions
 import com.typesafe.config.ConfigValue
-import com.typesafe.config.ConfigValueFactory
 import com.typesafe.config.parser.ConfigDocument
 import dev.datlag.kcef.KCEF
 import eu.kanade.tachiyomi.App

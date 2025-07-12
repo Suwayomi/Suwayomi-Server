@@ -409,13 +409,14 @@ object ProtoBackupExport : ProtoBackupBase() {
             autoDownloadAheadLimit = 0, // deprecated
             autoDownloadNewChaptersLimit = serverConfig.autoDownloadNewChaptersLimit.value,
             autoDownloadIgnoreReUploads = serverConfig.autoDownloadIgnoreReUploads.value,
-            downloadConversions = serverConfig.downloadConversions.value.map {
-                BackupSettingsDownloadConversionType(
-                    it.key,
-                    it.value.target,
-                    it.value.compressionLevel,
-                )
-            },
+            downloadConversions =
+                serverConfig.downloadConversions.value.map {
+                    BackupSettingsDownloadConversionType(
+                        it.key,
+                        it.value.target,
+                        it.value.compressionLevel,
+                    )
+                },
             // extension
             extensionRepos = serverConfig.extensionRepos.value,
             // requests

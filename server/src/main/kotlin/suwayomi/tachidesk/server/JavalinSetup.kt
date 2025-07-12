@@ -33,7 +33,6 @@ import suwayomi.tachidesk.server.util.WebInterfaceManager
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 import java.net.URLEncoder
-import java.nio.file.Files
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
 import kotlin.time.Duration.Companion.days

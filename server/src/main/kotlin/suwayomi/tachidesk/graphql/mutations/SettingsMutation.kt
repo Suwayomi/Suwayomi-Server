@@ -154,10 +154,11 @@ class SettingsMutation {
         updateSetting(settings.autoDownloadIgnoreReUploads, serverConfig.autoDownloadIgnoreReUploads)
         updateSetting(settings.downloadConversions, serverConfig.downloadConversions) { list ->
             list.associate {
-                it.mimeType to ServerConfig.DownloadConversion(
-                    target = it.target,
-                    compressionLevel = it.compressionLevel,
-                )
+                it.mimeType to
+                    ServerConfig.DownloadConversion(
+                        target = it.target,
+                        compressionLevel = it.compressionLevel,
+                    )
             }
         }
 

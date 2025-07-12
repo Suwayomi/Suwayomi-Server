@@ -123,7 +123,7 @@ interface SettingsDownloadConversion {
 class SettingsDownloadConversionType(
     override val mimeType: String,
     override val target: String,
-    override val compressionLevel: Float?
+    override val compressionLevel: Float?,
 ) : SettingsDownloadConversion
 
 data class PartialSettingsType(
@@ -318,7 +318,7 @@ class SettingsType(
             SettingsDownloadConversionType(
                 it.key,
                 it.value.target,
-                it.value.compressionLevel
+                it.value.compressionLevel,
             )
         },
         // extension
