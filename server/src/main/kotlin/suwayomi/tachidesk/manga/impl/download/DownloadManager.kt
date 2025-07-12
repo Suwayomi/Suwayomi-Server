@@ -31,7 +31,6 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
-import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Error
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Queued
 import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
@@ -205,20 +204,20 @@ object DownloadManager {
 
     fun getStatus(): DownloadStatus =
         DownloadStatus(
-            if (downloadQueue.none { it.state == Downloading }) {
-                Status.Stopped
-            } else {
+            if (downloaders.values.any { it.isActive }) {
                 Status.Started
+            } else {
+                Status.Stopped
             },
             downloadQueue.toList(),
         )
 
     private fun getDownloadUpdates(addInitial: Boolean = false): DownloadUpdates =
         DownloadUpdates(
-            if (downloadQueue.none { it.state == Downloading }) {
-                Status.Stopped
-            } else {
+            if (downloaders.values.any { it.isActive }) {
                 Status.Started
+            } else {
+                Status.Stopped
             },
             downloadUpdates.toList(),
             if (addInitial) downloadQueue.toList() else null,
