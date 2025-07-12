@@ -62,11 +62,6 @@ sealed class FileType {
         }
 }
 
-data class ConversionType(
-    val target: String,
-    val compressionLevel: Float? = null,
-)
-
 /*
 * Base class for downloaded chapter files provider, example: Folder, Archive
 */
@@ -203,7 +198,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
 
     abstract fun getAsArchiveStream(): Pair<InputStream, Long>
 
-    private suspend fun maybeConvertChapterImages(chapterCacheFolder: File) {
+    private fun maybeConvertChapterImages(chapterCacheFolder: File) {
         if (chapterCacheFolder.isDirectory) {
             val conv = serverConfig.downloadConversions.value
             chapterCacheFolder
@@ -213,9 +208,11 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                 .forEach {
                     val imageType = MimeUtils.guessMimeTypeFromExtension(it.extension) ?: return@forEach
                     val targetConversion =
-                        conv.getOrDefault(imageType, null) ?: conv.getOrDefault("default", null) ?: run {
-                            logger.debug { "Skipping conversion of $it since no conversion specified" }
-                            return@forEach
+                        conv.getOrElse(imageType) {
+                            conv.getOrElse("default") {
+                                logger.debug { "Skipping conversion of $it since no conversion specified" }
+                                return@forEach
+                            }
                         }
                     val targetMime = targetConversion.target
                     if (imageType == targetMime || targetMime == "none") return@forEach // nothing to do

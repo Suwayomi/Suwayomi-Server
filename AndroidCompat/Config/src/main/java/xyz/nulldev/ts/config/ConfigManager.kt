@@ -12,9 +12,9 @@ import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import com.typesafe.config.ConfigObject
 import com.typesafe.config.ConfigValue
-import com.typesafe.config.ConfigValueFactory
 import com.typesafe.config.parser.ConfigDocument
 import com.typesafe.config.parser.ConfigDocumentFactory
+import io.github.config4k.toConfig
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -114,7 +114,7 @@ open class ConfigManager {
     ) {
         mutex.withLock {
             val actualValue = if (value is Enum<*>) value.name else value
-            val configValue = ConfigValueFactory.fromAnyRef(actualValue)
+            val configValue = actualValue.toConfig("internal").getValue("internal")
 
             updateUserConfigFile(path, configValue)
             internalConfig = internalConfig.withValue(path, configValue)

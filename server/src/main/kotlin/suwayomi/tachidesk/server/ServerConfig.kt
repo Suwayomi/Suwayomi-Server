@@ -29,7 +29,6 @@ import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIInterface
-import suwayomi.tachidesk.manga.impl.download.fileProvider.ConversionType
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.SystemPropertyOverridableConfigModule
 import kotlin.reflect.KProperty
@@ -127,7 +126,12 @@ class ServerConfig(
     val excludeEntryWithUnreadChapters: MutableStateFlow<Boolean> by OverrideConfigValue()
     val autoDownloadNewChaptersLimit: MutableStateFlow<Int> by OverrideConfigValue()
     val autoDownloadIgnoreReUploads: MutableStateFlow<Boolean> by OverrideConfigValue()
-    val downloadConversions: MutableStateFlow<Map<String, ConversionType>> by OverrideConfigValue()
+    val downloadConversions: MutableStateFlow<Map<String, DownloadConversion>> by OverrideConfigValue()
+    data class DownloadConversion(
+        val target: String,
+        val compressionLevel: Float? = null,
+    )
+
 
     // extensions
     val extensionRepos: MutableStateFlow<List<String>> by OverrideConfigValue()

@@ -21,6 +21,7 @@ import eu.kanade.tachiyomi.createAppModule
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.local.LocalSource
 import io.github.config4k.registerCustomType
+import io.github.config4k.toConfig
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.json.JavalinJackson
 import io.javalin.json.JsonMapper
@@ -148,7 +149,7 @@ fun <T : Any> migrateConfig(
         if (typedValue != null) {
             return configDocument.withValue(
                 toConfigKey,
-                ConfigValueFactory.fromAnyRef(typedValue),
+                typedValue.toConfig("internal").getValue("internal"),
             )
         }
     } catch (_: ConfigException) {

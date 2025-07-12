@@ -37,6 +37,7 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupHistory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupServerSettings
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupServerSettings.BackupSettingsDownloadConversionType
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSource
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupTracking
 import suwayomi.tachidesk.manga.impl.track.Track
@@ -408,6 +409,13 @@ object ProtoBackupExport : ProtoBackupBase() {
             autoDownloadAheadLimit = 0, // deprecated
             autoDownloadNewChaptersLimit = serverConfig.autoDownloadNewChaptersLimit.value,
             autoDownloadIgnoreReUploads = serverConfig.autoDownloadIgnoreReUploads.value,
+            downloadConversions = serverConfig.downloadConversions.value.map {
+                BackupSettingsDownloadConversionType(
+                    it.key,
+                    it.value.target,
+                    it.value.compressionLevel,
+                )
+            },
             // extension
             extensionRepos = serverConfig.extensionRepos.value,
             // requests

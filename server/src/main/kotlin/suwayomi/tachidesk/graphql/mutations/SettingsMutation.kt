@@ -111,6 +111,18 @@ class SettingsMutation {
         configSetting.value = newSetting
     }
 
+    private fun <SettingType : Any, RealSettingType : Any> updateSetting(
+        newSetting: RealSettingType?,
+        configSetting: MutableStateFlow<SettingType>,
+        mapper: (RealSettingType) -> SettingType,
+    ) {
+        if (newSetting == null) {
+            return
+        }
+
+        configSetting.value = mapper(newSetting)
+    }
+
     @GraphQLIgnore
     fun updateSettings(settings: Settings) {
         updateSetting(settings.ip, serverConfig.ip)
@@ -140,6 +152,14 @@ class SettingsMutation {
         updateSetting(settings.autoDownloadAheadLimit, serverConfig.autoDownloadNewChaptersLimit) // deprecated
         updateSetting(settings.autoDownloadNewChaptersLimit, serverConfig.autoDownloadNewChaptersLimit)
         updateSetting(settings.autoDownloadIgnoreReUploads, serverConfig.autoDownloadIgnoreReUploads)
+        updateSetting(settings.downloadConversions, serverConfig.downloadConversions) { list ->
+            list.associate {
+                it.mimeType to ServerConfig.DownloadConversion(
+                    target = it.target,
+                    compressionLevel = it.compressionLevel,
+                )
+            }
+        }
 
         // extension
         updateSetting(settings.extensionRepos, serverConfig.extensionRepos)
