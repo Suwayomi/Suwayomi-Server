@@ -245,6 +245,7 @@ make_deb_package() {
 
 # https://linuxconfig.org/building-a-hello-world-appimage-on-linux
 make_appimage() {
+  local APPIMAGE_TOOLNAME="appimagetool-x86_64.AppImage" 
   mkdir "$RELEASE_NAME/bin/"
   cp "$JAR" "$RELEASE_NAME/bin/Suwayomi-Server.jar"
 
@@ -253,9 +254,9 @@ make_appimage() {
   cp "scripts/resources/appimage/AppRun" "$RELEASE_NAME/AppRun"
   chmod +x "$RELEASE_NAME/AppRun"
 
-  curl -L $APPIMAGE_URL -o appimagetool-x86_64.AppImage
-  chmod +x appimagetool-x86_64.AppImage
-  ARCH=x86_64 ./appimagetool-x86_64.AppImage "$RELEASE_NAME" "$RELEASE_NAME.AppImage"
+  curl -L $APPIMAGE_URL -o $APPIMAGE_TOOLNAME
+  chmod +x $APPIMAGE_TOOLNAME
+  ARCH=x86_64 ./$APPIMAGE_TOOLNAME "$RELEASE_NAME" "$RELEASE"
 }
 
 make_windows_bundle() {
