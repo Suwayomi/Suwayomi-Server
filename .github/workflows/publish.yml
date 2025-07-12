@@ -114,15 +114,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - debian-all
-          - linux-assets
-          - linux-x64
-          - macOS-x64
-          - macOS-arm64
-          - windows-x64
+        include:
+          - name: debian-all
+            jre: linux-x64
+          - name: appimage
+            jre: linux-x64
+          - name: linux-assets
+            jre: linux-assets
+          - name: linux-x64
+            jre: linux-x64
+          - name: macOS-x64
+            jre: macOS-x64
+          - name: macOS-arm64
+            jre: macOS-arm64
+          - name: windows-x64
+            jre: windows-x64
+        name: [debian-all, appimage, linux-assets, linux-x64, macOS-x64, macOS-arm64, windows-x64]
 
-    name: Make ${{ matrix.os }} release
+    name: Make ${{ matrix.name }} release
     needs: [build, jlink]
     runs-on: ubuntu-latest
     steps:
@@ -134,9 +143,9 @@ jobs:
 
       - name: Download JRE
         uses: actions/download-artifact@v4
-        if: matrix.os != 'linux-assets' && matrix.os != 'debian-all'
+        if: matrix.name != 'linux-assets' && matrix.name != 'debian-all'
         with:
-          name: ${{ matrix.os }}-jre
+          name: ${{ matrix.jre }}-jre
           path: jre
 
       - name: Download icons
@@ -150,16 +159,16 @@ jobs:
         with:
           name: scripts
 
-      - name: Make ${{ matrix.os }} release
+      - name: Make ${{ matrix.name }} release
         run: |
           mkdir upload/
           tar -xvpf scripts.tar.gz
-          scripts/bundler.sh -o upload/ ${{ matrix.os }}
+          scripts/bundler.sh -o upload/ ${{ matrix.name }}
 
-      - name: Upload ${{ matrix.os }} files
+      - name: Upload ${{ matrix.name }} files
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}
+          name: ${{ matrix.name }}
           path: upload/*
           if-no-files-found: error
 
@@ -175,6 +184,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: debian-all
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: appimage
           path: release
       - uses: actions/download-artifact@v4
         with:
