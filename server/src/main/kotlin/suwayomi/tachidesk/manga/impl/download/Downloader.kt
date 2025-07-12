@@ -171,8 +171,11 @@ class Downloader(
             } catch (e: Exception) {
                 downloadLogger.warn(e) { "failed due to" }
                 download.tries++
-                download.state = Error
-                notifier(false, DownloadUpdate(ERROR, download))
+                download.state = Queued
+                if (download.tries >= MAX_RETRIES) {
+                    download.state = Error
+                    notifier(false, DownloadUpdate(ERROR, download))
+                }
             }
         }
     }
