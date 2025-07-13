@@ -146,8 +146,7 @@ open class ConfigManager {
         // NOTE: if more than 1 dot is included, that's a nested setting, which we need to filter out here
         val refKeys =
             serverConfig.root().entries.flatMap {
-                (it.value as? ConfigObject)?.entries?.map { e -> "${it.key}.${e.key}" }
-                    ?: listOf()
+                (it.value as? ConfigObject)?.entries?.map { e -> "${it.key}.${e.key}" }.orEmpty()
             }
         val hasMissingSettings = refKeys.any { !userConfig.hasPath(it) }
         val hasOutdatedSettings = userConfig.entrySet().any { !refKeys.contains(it.key) && it.key.count { c -> c == '.' } <= 1 }

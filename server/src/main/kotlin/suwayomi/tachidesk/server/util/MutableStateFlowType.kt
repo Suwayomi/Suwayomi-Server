@@ -7,7 +7,6 @@ import io.github.config4k.readers.SelectReader
 import io.github.config4k.toConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import nl.adaptivity.xmlutil.core.impl.multiplatform.name
 
 class MutableStateFlowType : CustomType {
     override fun parse(
@@ -27,9 +26,9 @@ class MutableStateFlowType : CustomType {
     }
 
     override fun testParse(clazz: ClassContainer): Boolean =
-        clazz.mapperClass.name == "kotlinx.coroutines.flow.MutableStateFlow" ||
-            clazz.mapperClass.name == "kotlinx.coroutines.flow.StateFlow" ||
-            clazz.mapperClass.name == "kotlinx.coroutines.flow.StateFlowImpl"
+        clazz.mapperClass.qualifiedName == "kotlinx.coroutines.flow.MutableStateFlow" ||
+            clazz.mapperClass.qualifiedName == "kotlinx.coroutines.flow.StateFlow" ||
+            clazz.mapperClass.qualifiedName == "kotlinx.coroutines.flow.StateFlowImpl"
 
     override fun testToConfig(obj: Any): Boolean = (obj as? StateFlow<*>)?.value != null
 
