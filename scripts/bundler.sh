@@ -254,6 +254,8 @@ make_appimage() {
   cp "scripts/resources/appimage/AppRun" "$RELEASE_NAME/AppRun"
   chmod +x "$RELEASE_NAME/AppRun"
 
+  sudo apt update
+  sudo apt install libfuse2
   curl -L $APPIMAGE_URL -o $APPIMAGE_TOOLNAME
   chmod +x $APPIMAGE_TOOLNAME
   ARCH=x86_64 ./$APPIMAGE_TOOLNAME "$RELEASE_NAME" "$RELEASE"
