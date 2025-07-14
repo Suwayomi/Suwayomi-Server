@@ -138,7 +138,6 @@ twelvemonkeys-imageio-webp = { module = "com.twelvemonkeys.imageio:imageio-webp"
 
 imageio-webp = "com.github.usefulness:webp-imageio:0.10.2"
 
-
 # Testing
 mockk = "io.mockk:mockk:1.14.4"
 
