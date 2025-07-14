@@ -136,7 +136,7 @@ twelvemonkeys-imageio-metadata = { module = "com.twelvemonkeys.imageio:imageio-m
 twelvemonkeys-imageio-jpeg = { module = "com.twelvemonkeys.imageio:imageio-jpeg", version.ref = "twelvemonkeys" }
 twelvemonkeys-imageio-webp = { module = "com.twelvemonkeys.imageio:imageio-webp", version.ref = "twelvemonkeys" }
 
-sejda-webp = "com.github.usefulness:webp-imageio:0.10.2"
+imageio-webp = "com.github.usefulness:webp-imageio:0.10.2"
 
 # Testing
 mockk = "io.mockk:mockk:1.14.4"

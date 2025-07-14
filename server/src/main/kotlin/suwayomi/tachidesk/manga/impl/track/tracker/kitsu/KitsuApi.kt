@@ -29,7 +29,6 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
 import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 
 class KitsuApi(
     private val client: OkHttpClient,
@@ -151,7 +150,7 @@ class KitsuApi(
         withIOContext {
             val jsonObject =
                 buildJsonObject {
-                    put("params", "query=${URLEncoder.encode(query, StandardCharsets.UTF_8.name())}$ALGOLIA_FILTER")
+                    put("params", "query=${URLEncoder.encode(query, Charsets.UTF_8)}$ALGOLIA_FILTER")
                 }
 
             with(json) {

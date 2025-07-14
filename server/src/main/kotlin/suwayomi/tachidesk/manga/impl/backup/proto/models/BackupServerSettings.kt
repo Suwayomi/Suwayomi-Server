@@ -5,6 +5,7 @@ import kotlinx.serialization.protobuf.ProtoNumber
 import org.jetbrains.exposed.sql.SortOrder
 import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.graphql.types.Settings
+import suwayomi.tachidesk.graphql.types.SettingsDownloadConversion
 import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIInterface
@@ -35,6 +36,7 @@ data class BackupServerSettings(
     @ProtoNumber(19) override var autoDownloadAheadLimit: Int,
     @ProtoNumber(20) override var autoDownloadNewChaptersLimit: Int,
     @ProtoNumber(21) override var autoDownloadIgnoreReUploads: Boolean,
+    @ProtoNumber(57) override val downloadConversions: List<BackupSettingsDownloadConversionType>?,
     // extension
     @ProtoNumber(22) override var extensionRepos: List<String>,
     // requests
@@ -82,4 +84,11 @@ data class BackupServerSettings(
     @ProtoNumber(53) override var opdsShowOnlyUnreadChapters: Boolean,
     @ProtoNumber(54) override var opdsShowOnlyDownloadedChapters: Boolean,
     @ProtoNumber(55) override var opdsChapterSortOrder: SortOrder,
-) : Settings
+) : Settings {
+    @Serializable
+    class BackupSettingsDownloadConversionType(
+        @ProtoNumber(1) override val mimeType: String,
+        @ProtoNumber(2) override val target: String,
+        @ProtoNumber(3) override val compressionLevel: Float?,
+    ) : SettingsDownloadConversion
+}

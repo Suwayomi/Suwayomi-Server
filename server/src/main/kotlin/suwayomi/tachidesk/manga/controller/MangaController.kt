@@ -403,6 +403,7 @@ object MangaController {
             pathParam<Int>("chapterIndex"),
             pathParam<Int>("index"),
             queryParam<Boolean?>("updateProgress"),
+            queryParam<String?>("format"),
             documentWith = {
                 withOperation {
                     summary("Get a chapter page")
@@ -411,9 +412,9 @@ object MangaController {
                     )
                 }
             },
-            behaviorOf = { ctx, mangaId, chapterIndex, index, updateProgress ->
+            behaviorOf = { ctx, mangaId, chapterIndex, index, updateProgress, format ->
                 ctx.future {
-                    future { Page.getPageImage(mangaId, chapterIndex, index, null) }
+                    future { Page.getPageImage(mangaId, chapterIndex, index, format, null) }
                         .thenApply {
                             ctx.header("content-type", it.second)
                             val httpCacheSeconds = 1.days.inWholeSeconds
