@@ -48,6 +48,19 @@ main() {
       make_deb_package
       move_release_to_output_dir
       ;;
+    appimage)
+      # https://github.com/adoptium/temurin21-binaries/releases/
+      JRE_RELEASE="jdk-21.0.7+6"
+      JRE="OpenJDK21U-jre_x64_linux_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
+      JRE_DIR="$JRE_RELEASE-jre"
+      JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
+      setup_jre
+
+      RELEASE="$RELEASE_NAME.AppImage"
+      APPIMAGE_URL="https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+      make_appimage
+      move_release_to_output_dir
+      ;;
     linux-assets)
       RELEASE="$RELEASE_NAME.tar.gz"
       copy_linux_package_assets_to "$RELEASE_NAME/"
@@ -228,6 +241,22 @@ make_deb_package() {
 
   local deb="suwayomi-server_$RELEASE_VERSION-1_all.deb"
   mv "$RELEASE_NAME/$deb" "$RELEASE"
+}
+
+# https://linuxconfig.org/building-a-hello-world-appimage-on-linux
+make_appimage() {
+  local APPIMAGE_TOOLNAME="appimagetool-x86_64.AppImage" 
+  mkdir "$RELEASE_NAME/bin/"
+  cp "$JAR" "$RELEASE_NAME/bin/Suwayomi-Server.jar"
+
+  cp "scripts/resources/pkg/suwayomi-server.desktop" "$RELEASE_NAME/suwayomi-server.desktop"
+  cp "server/src/main/resources/icon/faviconlogo.png" "$RELEASE_NAME/suwayomi-server.png"
+  cp "scripts/resources/appimage/AppRun" "$RELEASE_NAME/AppRun"
+  chmod +x "$RELEASE_NAME/AppRun"
+
+  curl -L $APPIMAGE_URL -o $APPIMAGE_TOOLNAME
+  chmod +x $APPIMAGE_TOOLNAME
+  ARCH=x86_64 ./$APPIMAGE_TOOLNAME "$RELEASE_NAME" "$RELEASE"
 }
 
 make_windows_bundle() {
