@@ -168,12 +168,14 @@ object DownloadManager {
         downloads: List<DownloadUpdate> = emptyList(),
         gqlEmit: Boolean = false,
     ) {
-        downloadUpdates.removeAll { update ->
-            downloads.any { download ->
-                download.downloadChapter.chapter.id ==
-                    update.downloadChapter.chapter.id
+        val outdatedUpdates =
+            downloadUpdates.filter { update ->
+                downloads.any { download ->
+                    download.downloadChapter.chapter.id ==
+                        update.downloadChapter.chapter.id
+                }
             }
-        }
+        downloadUpdates.removeAll(outdatedUpdates)
         downloadUpdates.addAll(downloads)
 
         // There is a problem where too many immediate updates can cause the client to lag out (e.g., in case it has to
