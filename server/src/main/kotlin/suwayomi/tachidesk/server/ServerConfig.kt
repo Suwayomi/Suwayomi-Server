@@ -32,6 +32,7 @@ import suwayomi.tachidesk.graphql.types.WebUIInterface
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.SystemPropertyOverridableConfigModule
 import kotlin.reflect.KProperty
+import kotlin.time.Duration
 
 val mutableConfigValueScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -63,6 +64,33 @@ class ServerConfig(
                 .distinctUntilChanged()
                 .filter { it != thisRef.overridableConfig.getConfig().getValue<ServerConfig, R>(thisRef, property) }
                 .onEach { GlobalConfigManager.updateValue("$moduleName.${property.name}", it as Any) }
+                .launchIn(mutableConfigValueScope)
+
+            return stateFlow
+        }
+    }
+
+    open inner class MappedConfigValue<T>(
+        val parseValue: (String) -> T,
+    ) {
+        var flow: MutableStateFlow<T>? = null
+
+        inline operator fun getValue(
+            thisRef: ServerConfig,
+            property: KProperty<*>,
+        ): MutableStateFlow<T> {
+            if (flow != null) {
+                return flow!!
+            }
+
+            val stateFlow = MutableStateFlow(parseValue(overridableConfig.getValue<ServerConfig, String>(thisRef, property)))
+            flow = stateFlow
+
+            stateFlow
+                .drop(1)
+                .distinctUntilChanged()
+                .filter { it != thisRef.overridableConfig.getConfig().getValue<ServerConfig, String>(thisRef, property) }
+                .onEach { GlobalConfigManager.updateValue("$moduleName.${property.name}", (it as T).toString() as Any) }
                 .launchIn(mutableConfigValueScope)
 
             return stateFlow
@@ -151,6 +179,12 @@ class ServerConfig(
     val authUsername: MutableStateFlow<String> by OverrideConfigValue()
     val authPassword: MutableStateFlow<String> by OverrideConfigValue()
     val jwtAudience: MutableStateFlow<String> by OverrideConfigValue()
+    val jwtTokenExpiry: MutableStateFlow<Duration> by MappedConfigValue<Duration> {
+        Duration.parse(it)
+    }
+    val jwtRefreshExpiry: MutableStateFlow<Duration> by MappedConfigValue<Duration> {
+        Duration.parse(it)
+    }
     val basicAuthEnabled: MutableStateFlow<Boolean> by MigratedConfigValue({
         authMode.value == AuthMode.BASIC_AUTH
     }) {

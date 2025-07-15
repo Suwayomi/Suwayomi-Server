@@ -16,8 +16,6 @@ import java.time.Instant
 import javax.crypto.spec.SecretKeySpec
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
-import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.hours
 
 object Jwt {
     private val preferenceStore =
@@ -25,8 +23,8 @@ object Jwt {
     private val logger = KotlinLogging.logger {}
 
     private const val ALGORITHM = "HmacSHA256"
-    private val accessTokenExpiry = 1.hours
-    private val refreshTokenExpiry = 60.days
+    private val accessTokenExpiry get() = serverConfig.jwtTokenExpiry.value
+    private val refreshTokenExpiry get() = serverConfig.jwtRefreshExpiry.value
     private const val ISSUER = "suwayomi-server"
     private val AUDIENCE get() = serverConfig.jwtAudience.value
 
@@ -35,12 +33,13 @@ object Jwt {
     @OptIn(ExperimentalEncodingApi::class)
     fun generateSecret(): String {
         val byteString = preferenceStore.getString(PREF_KEY, "")
-        val decodedKeyBytes = try {
-            Base64.Default.decode(byteString)
-        } catch (e: IllegalArgumentException) {
-            logger.warn(e) { "Invalid key specified, regenerating" }
-            null
-        }
+        val decodedKeyBytes =
+            try {
+                Base64.Default.decode(byteString)
+            } catch (e: IllegalArgumentException) {
+                logger.warn(e) { "Invalid key specified, regenerating" }
+                null
+            }
 
         val keyBytes =
             if (decodedKeyBytes?.size == 32) {
