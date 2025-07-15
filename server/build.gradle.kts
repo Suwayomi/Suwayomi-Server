@@ -221,4 +221,8 @@ tasks {
                 )
         }
     }
+
+    runKtlintCheckOverMainSourceSet {
+        dependsOn(generateJte)
+    }
 }
