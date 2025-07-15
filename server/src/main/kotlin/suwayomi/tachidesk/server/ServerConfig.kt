@@ -150,6 +150,7 @@ class ServerConfig(
     val authMode: MutableStateFlow<AuthMode> by OverrideConfigValue()
     val authUsername: MutableStateFlow<String> by OverrideConfigValue()
     val authPassword: MutableStateFlow<String> by OverrideConfigValue()
+    val jwtAudience: MutableStateFlow<String> by OverrideConfigValue()
     val basicAuthEnabled: MutableStateFlow<Boolean> by MigratedConfigValue({
         authMode.value == AuthMode.BASIC_AUTH
     }) {

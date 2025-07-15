@@ -13,6 +13,7 @@ import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
+import suwayomi.tachidesk.server.serverConfig
 
 object Jwt {
     private val logger = KotlinLogging.logger {}
@@ -21,7 +22,7 @@ object Jwt {
     private val accessTokenExpiry = 1.hours
     private val refreshTokenExpiry = 60.days
     private const val ISSUER = "suwayomi-server"
-    private const val AUDIENCE = "" // todo audience
+    private val AUDIENCE get() = serverConfig.jwtAudience.value
 
     @OptIn(ExperimentalEncodingApi::class)
     fun generateSecret(): String {
@@ -56,6 +57,9 @@ object Jwt {
         require(jwt.getClaim("token_type").asString() == "refresh") {
             "Cannot use access token to refresh"
         }
+        require(jwt.audience.single() == AUDIENCE) {
+            "Token intended for different audience ${jwt.audience}"
+        }
         return createAccessToken()
     }
 
@@ -65,6 +69,9 @@ object Jwt {
 
             require(decodedJWT.getClaim("token_type").asString() == "access") {
                 "Cannot use refresh token to access"
+            }
+            require(decodedJWT.audience.single() == AUDIENCE) {
+                "Token intended for different audience ${decodedJWT.audience}"
             }
 
             return UserType.Admin(1)
