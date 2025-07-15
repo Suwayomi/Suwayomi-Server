@@ -1,11 +1,16 @@
 package suwayomi.tachidesk.global.impl.util
 
+import android.app.Application
+import android.content.Context
 import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.exceptions.JWTVerificationException
 import io.github.oshai.kotlinlogging.KotlinLogging
+import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.user.UserType
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import java.security.SecureRandom
 import java.time.Instant
 import javax.crypto.spec.SecretKeySpec
@@ -13,9 +18,10 @@ import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
-import suwayomi.tachidesk.server.serverConfig
 
 object Jwt {
+    private val preferenceStore =
+        Injekt.get<Application>().getSharedPreferences("jwt", Context.MODE_PRIVATE)
     private val logger = KotlinLogging.logger {}
 
     private const val ALGORITHM = "HmacSHA256"
@@ -24,10 +30,22 @@ object Jwt {
     private const val ISSUER = "suwayomi-server"
     private val AUDIENCE get() = serverConfig.jwtAudience.value
 
+    private const val PREF_KEY = "jwt_key"
+
     @OptIn(ExperimentalEncodingApi::class)
     fun generateSecret(): String {
-        val keyBytes = ByteArray(32)
-        SecureRandom().nextBytes(keyBytes)
+        val byteString = preferenceStore.getString(PREF_KEY, "")
+        val decodedKeyBytes = Base64.Default.decode(byteString)
+
+        val keyBytes =
+            if (decodedKeyBytes.size == 32) {
+                decodedKeyBytes
+            } else {
+                val k = ByteArray(32)
+                SecureRandom().nextBytes(k)
+                preferenceStore.edit().putString(PREF_KEY, Base64.Default.encode(k)).apply()
+                k
+            }
 
         val secretKey = SecretKeySpec(keyBytes, ALGORITHM)
 
