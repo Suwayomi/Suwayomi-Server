@@ -101,6 +101,8 @@ dependencies {
     implementation(libs.cron4j)
 
     implementation(libs.cronUtils)
+
+    compileOnly(libs.kte)
 }
 
 jte {

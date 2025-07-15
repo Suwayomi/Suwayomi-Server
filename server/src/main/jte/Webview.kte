@@ -1,12 +1,12 @@
 @import suwayomi.tachidesk.i18n.MR
 
-@param java.util.Locale locale
+@param locale: java.util.Locale
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
-    <title>${MR.strings.INSTANCE.getWebview_label_title().localized(locale)}</title>
+    <title>${MR.strings.webview_label_title.localized(locale)}</title>
     <style>
         * {
             box-sizing: border-box;
@@ -24,7 +24,7 @@
             letter-spacing: 0em;
         }
         body.disconnected::after {
-            content: "${MR.strings.INSTANCE.getWebview_label_disconnected().localized(locale)}";
+            content: "${MR.strings.webview_label_disconnected.localized(locale)}";
             position: absolute;
             inset: 0;
             background: rgba(150, 0, 0, 0.5);
@@ -145,18 +145,18 @@
 </head>
 <body>
     <header>
-        <h1 id="title">${MR.strings.INSTANCE.getWebview_label_title().localized(locale)}</h1>
+        <h1 id="title">${MR.strings.webview_label_title.localized(locale)}</h1>
         <nav>
             <form id="browseForm">
-                <input type="text" id="url" name="url" placeholder="${MR.strings.INSTANCE.getWebview_placeholder_url().localized(locale)}" disabled/>
+                <input type="text" id="url" name="url" placeholder="${MR.strings.webview_placeholder_url.localized(locale)}" disabled/>
                 <button type="submit" id="goButton" disabled><span class="arrow-right"></span></button>
             </form>
-            <label><input type="checkbox" id="reverseScroll" disabled/> ${MR.strings.INSTANCE.getWebview_label_reversescroll().localized(locale)}</label>
+            <label><input type="checkbox" id="reverseScroll" disabled/> ${MR.strings.webview_label_reversescroll.localized(locale)}</label>
         </nav>
-      <p><i>${MR.strings.INSTANCE.getWebview_label_bindingshint().localized(locale)}</i></p>
+      <p><i>${MR.strings.webview_label_bindingshint.localized(locale)}</i></p>
     </header>
     <main>
-        <div class="message" id="message">${MR.strings.INSTANCE.getWebview_label_init().localized(locale)}</div>
+        <div class="message" id="message">${MR.strings.webview_label_init.localized(locale)}</div>
         <div class="status" id="status"></div>
         <canvas id="frame"></canvas>
         <input type="text" id="inputtrap" autocomplete="off"/>
@@ -218,11 +218,11 @@
                     urlInput.value = u;
                     setHash(u);
                     setTitle();
-                    messageDiv.textContent = "${MR.strings.INSTANCE.getWebview_label_getstarted().localized(locale)}";
+                    messageDiv.textContent = "${MR.strings.webview_label_getstarted.localized(locale)}";
                     ctx.clearRect(0, 0, frame.width, frame.height);
                     return;
                 }
-                messageDiv.textContent = "${MR.strings.INSTANCE.getWebview_label_loading().localized(locale)}";
+                messageDiv.textContent = "${MR.strings.webview_label_loading.localized(locale)}";
                 messageDiv.classList.remove('error');
                 urlInput.value = u;
                 socket.send(JSON.stringify({ type: 'loadUrl', url: u, width: frame.clientWidth, height: frame.clientHeight }));
@@ -270,7 +270,7 @@
                         break;
                     case "load": {
                         if (obj.error) {
-                            messageDiv.textContent = "${MR.strings.INSTANCE.getLabel_error().localized(locale)}: " + obj.error;
+                            messageDiv.textContent = "${MR.strings.label_error.localized(locale)}: " + obj.error;
                             messageDiv.classList.add('error');
                         } else {
                             messageDiv.textContent = "";
@@ -309,7 +309,7 @@
             });
 
             socket.addEventListener('error', e => {
-                messageDiv.textContent = "${MR.strings.INSTANCE.getLabel_error().localized(locale)}: " + (e.message || e.reason || e);
+                messageDiv.textContent = "${MR.strings.label_error.localized(locale)}: " + (e.message || e.reason || e);
                 messageDiv.classList.add('error');
                 console.error('WebSocket error:', e);
             });
@@ -422,7 +422,7 @@
             attachEvents();
             frameInput.focus();
         } catch (e) {
-            messageDiv.textContent = "${MR.strings.INSTANCE.getLabel_error().localized(locale)}: " + (e.message || e);
+            messageDiv.textContent = "${MR.strings.label_error.localized(locale)}: " + (e.message || e);
             messageDiv.classList.add('error');
             console.error(e);
         }

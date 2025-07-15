@@ -55,6 +55,7 @@ jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", ver
 jackson-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
 jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations", version.ref = "jackson" }
 jte = { module = "gg.jte:jte", version.ref = "jte" }
+kte = { module = "gg.jte:jte-kotlin", version.ref = "jte" }
 
 # GraphQL
 graphql-kotlin-server = { module = "com.expediagroup:graphql-kotlin-server", version.ref = "graphqlkotlin" }
