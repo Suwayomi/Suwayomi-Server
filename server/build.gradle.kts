@@ -25,6 +25,11 @@ plugins {
             .get()
             .pluginId,
     )
+    id(
+        libs.plugins.jte
+            .get()
+            .pluginId,
+    )
 }
 
 dependencies {
@@ -96,6 +101,10 @@ dependencies {
     implementation(libs.cron4j)
 
     implementation(libs.cronUtils)
+}
+
+jte {
+    generate()
 }
 
 application {

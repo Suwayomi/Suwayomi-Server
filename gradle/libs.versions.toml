@@ -4,6 +4,7 @@ coroutines = "1.10.2"
 serialization = "1.9.0"
 okhttp = "5.1.0" # Major version is locked by Tachiyomi extensions
 javalin = "6.7.0"
+jte = "3.2.1"
 jackson = "2.18.3" # jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
 exposed = "0.61.0"
 dex2jar = "v64" # Stuck until https://github.com/ThexXTURBOXx/dex2jar/issues/27 is fixed
@@ -49,9 +50,11 @@ okio = "com.squareup.okio:okio:3.15.0"
 # Javalin api
 javalin-core = { module = "io.javalin:javalin", version.ref = "javalin" }
 javalin-openapi = { module = "io.javalin:javalin-openapi", version.ref = "javalin" }
+javalin-rendering = { module = "io.javalin:javalin-rendering", version.ref = "javalin" }
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
 jackson-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
 jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations", version.ref = "jackson" }
+jte = { module = "gg.jte:jte", version.ref = "jte" }
 
 # GraphQL
 graphql-kotlin-server = { module = "com.expediagroup:graphql-kotlin-server", version.ref = "graphqlkotlin" }
@@ -177,6 +180,9 @@ shadowjar = { id = "com.github.johnrengelman.shadow", version = "8.1.1"}
 # Moko
 moko = { id = "dev.icerock.mobile.multiplatform-resources", version.ref = "moko" }
 
+# JTE
+jte = { id = "gg.jte.gradle", version.ref = "jte" }
+
 [bundles]
 shared = [
     "kotlin-stdlib-jdk8",
@@ -216,6 +222,8 @@ okhttp = [
 javalin = [
     "javalin-core",
     #"javalin-openapi",
+    "javalin-rendering",
+    "jte",
 ]
 jackson = [
     "jackson-databind",

@@ -1,8 +1,12 @@
+@import suwayomi.tachidesk.i18n.MR
+
+@param java.util.Locale locale
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
-    <title>[i18n.title]</title>
+    <title>${MR.strings.INSTANCE.getWebview_label_title().localized(locale)}</title>
     <style>
         * {
             box-sizing: border-box;
@@ -20,7 +24,7 @@
             letter-spacing: 0em;
         }
         body.disconnected::after {
-            content: "[i18n.disconnected]";
+            content: "${MR.strings.INSTANCE.getWebview_label_disconnected().localized(locale)}";
             position: absolute;
             inset: 0;
             background: rgba(150, 0, 0, 0.5);
@@ -141,18 +145,18 @@
 </head>
 <body>
     <header>
-        <h1 id="title">[i18n.title]</h1>
+        <h1 id="title">${MR.strings.INSTANCE.getWebview_label_title().localized(locale)}</h1>
         <nav>
             <form id="browseForm">
-                <input type="text" id="url" name="url" placeholder="[i18n.url.placeholder]" disabled/>
+                <input type="text" id="url" name="url" placeholder="${MR.strings.INSTANCE.getWebview_placeholder_url().localized(locale)}" disabled/>
                 <button type="submit" id="goButton" disabled><span class="arrow-right"></span></button>
             </form>
-            <label><input type="checkbox" id="reverseScroll" disabled/> [i18n.reverse_scroll]</label>
+            <label><input type="checkbox" id="reverseScroll" disabled/> ${MR.strings.INSTANCE.getWebview_label_reversescroll().localized(locale)}</label>
         </nav>
-        <p><i>[i18n.bindings_note]</i></p>
+      <p><i>${MR.strings.INSTANCE.getWebview_label_bindingshint().localized(locale)}</i></p>
     </header>
     <main>
-        <div class="message" id="message">[i18n.init]</div>
+        <div class="message" id="message">${MR.strings.INSTANCE.getWebview_label_init().localized(locale)}</div>
         <div class="status" id="status"></div>
         <canvas id="frame"></canvas>
         <input type="text" id="inputtrap" autocomplete="off"/>
@@ -214,11 +218,11 @@
                     urlInput.value = u;
                     setHash(u);
                     setTitle();
-                    messageDiv.textContent = "[i18n.get_started]";
+                    messageDiv.textContent = "${MR.strings.INSTANCE.getWebview_label_getstarted().localized(locale)}";
                     ctx.clearRect(0, 0, frame.width, frame.height);
                     return;
                 }
-                messageDiv.textContent = "[i18n.loading]";
+                messageDiv.textContent = "${MR.strings.INSTANCE.getWebview_label_loading().localized(locale)}";
                 messageDiv.classList.remove('error');
                 urlInput.value = u;
                 socket.send(JSON.stringify({ type: 'loadUrl', url: u, width: frame.clientWidth, height: frame.clientHeight }));
@@ -266,7 +270,7 @@
                         break;
                     case "load": {
                         if (obj.error) {
-                            messageDiv.textContent = "[i18n.error]: " + obj.error;
+                            messageDiv.textContent = "${MR.strings.INSTANCE.getLabel_error().localized(locale)}: " + obj.error;
                             messageDiv.classList.add('error');
                         } else {
                             messageDiv.textContent = "";
@@ -287,7 +291,7 @@
                     } break;
                     case "consoleMessage": {
                         const lg = obj.severity == 4 ? console.error : obj.severity == 3 ? console.warn : console.log;
-                        lg(`${obj.source}:${obj.line}:`, obj.message);
+                        lg(obj.source + ':' + obj.line + ':', obj.message);
                     } break;
                     default:
                         console.warn("Unknown event", obj.type)
@@ -297,7 +301,7 @@
 
             socket.addEventListener('close', e => {
                 if (e.wasClean) {
-                    console.log(`WebSocket connection closed cleanly, code=${e.code}, reason=${e.reason}`);
+                    console.log(`WebSocket connection closed cleanly, code=` + e.code + `, reason=` + e.reason);
                 } else {
                     console.error('WebSocket connection died');
                 }
@@ -305,7 +309,7 @@
             });
 
             socket.addEventListener('error', e => {
-                messageDiv.textContent = "[i18n.error]: " + (e.message || e.reason || e);
+                messageDiv.textContent = "${MR.strings.INSTANCE.getLabel_error().localized(locale)}: " + (e.message || e.reason || e);
                 messageDiv.classList.add('error');
                 console.error('WebSocket error:', e);
             });
@@ -418,7 +422,7 @@
             attachEvents();
             frameInput.focus();
         } catch (e) {
-            messageDiv.textContent = "[i18n.error]: " + (e.message || e);
+            messageDiv.textContent = "${MR.strings.INSTANCE.getLabel_error().localized(locale)}: " + (e.message || e);
             messageDiv.classList.add('error');
             console.error(e);
         }

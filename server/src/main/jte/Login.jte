@@ -1,8 +1,14 @@
+@import suwayomi.tachidesk.i18n.MR
+@import suwayomi.tachidesk.server.generated.BuildConfig
+
+@param java.util.Locale locale
+@param java.lang.String error
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>[i18n.title]</title>
+    <title>${MR.strings.INSTANCE.getLogin_label_title().localized(locale)}</title>
     <style>
         * {
             box-sizing: border-box;
@@ -143,22 +149,22 @@
         <h1>Suwayomi</h1>
     </header>
     <main>
-        <div class="error">[ERROR]</div>
+        <div class="error">${error}</div>
         <form method="POST">
             <h2>Login</h2>
             <div class="controls">
-                <label for="user">[i18n.username]:</label>
-                <input type="text" name="user" id="user" required placeholder="[i18n.placeholder.username]"/>
-                <label for="pass">[i18n.password]:</label>
-                <input type="password" name="pass" id="pass" required placeholder="[i18n.placeholder.password]"/>
+                <label for="user">${MR.strings.INSTANCE.getLogin_label_username().localized(locale)}:</label>
+                    <input type="text" name="user" id="user" required placeholder="${MR.strings.INSTANCE.getLogin_placeholder_username().localized(locale)}"/>
+                    <label for="pass">${MR.strings.INSTANCE.getLogin_label_password().localized(locale)}:</label>
+                    <input type="password" name="pass" id="pass" required placeholder="${MR.strings.INSTANCE.getLogin_placeholder_password().localized(locale)}"/>
             </div>
             <div class="submit">
-                <button type="submit">[i18n.login_button]</button>
+                <button type="submit">${MR.strings.INSTANCE.getLogin_label_login().localized(locale)}</button>
             </div>
         </form>
     </main>
     <footer>
-        <p>Suwayomi: [i18n.version]</p>
+        <p>Suwayomi: ${MR.strings.INSTANCE.getLabel_version().localized(locale, BuildConfig.VERSION)}</p>
     </footer>
 </body>
 </html>
