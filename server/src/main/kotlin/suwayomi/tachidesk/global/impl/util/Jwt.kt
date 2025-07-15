@@ -20,7 +20,7 @@ object Jwt {
     private const val ALGORITHM = "HmacSHA256"
     private val accessTokenExpiry = 1.hours
     private val refreshTokenExpiry = 60.days
-    private const val ISSUER = "tachidesk"
+    private const val ISSUER = "suwayomi-server"
     private const val AUDIENCE = "" // todo audience
 
     @OptIn(ExperimentalEncodingApi::class)
