@@ -35,10 +35,15 @@ object Jwt {
     @OptIn(ExperimentalEncodingApi::class)
     fun generateSecret(): String {
         val byteString = preferenceStore.getString(PREF_KEY, "")
-        val decodedKeyBytes = Base64.Default.decode(byteString)
+        val decodedKeyBytes = try {
+            Base64.Default.decode(byteString)
+        } catch (e: IllegalArgumentException) {
+            logger.warn(e) { "Invalid key specified, regenerating" }
+            null
+        }
 
         val keyBytes =
-            if (decodedKeyBytes.size == 32) {
+            if (decodedKeyBytes?.size == 32) {
                 decodedKeyBytes
             } else {
                 val k = ByteArray(32)
