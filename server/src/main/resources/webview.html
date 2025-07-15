@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
-    <title>Suwayomi Webview</title>
+    <title>[i18n.title]</title>
     <style>
         * {
             box-sizing: border-box;
@@ -20,7 +20,7 @@
             letter-spacing: 0em;
         }
         body.disconnected::after {
-            content: 'Disconnected, please refresh';
+            content: "[i18n.disconnected]";
             position: absolute;
             inset: 0;
             background: rgba(150, 0, 0, 0.5);
@@ -141,18 +141,18 @@
 </head>
 <body>
     <header>
-        <h1 id="title">Suwayomi: WebView</h1>
+        <h1 id="title">[i18n.title]</h1>
         <nav>
             <form id="browseForm">
-                <input type="text" id="url" name="url" placeholder="Enter URL..." disabled/>
+                <input type="text" id="url" name="url" placeholder="[i18n.url.placeholder]" disabled/>
                 <button type="submit" id="goButton" disabled><span class="arrow-right"></span></button>
             </form>
-            <label><input type="checkbox" id="reverseScroll" disabled/> Reverse Scrolling</label>
+            <label><input type="checkbox" id="reverseScroll" disabled/> [i18n.reverse_scroll]</label>
         </nav>
-        <p><i>Note: While focus is on the WebView part, no keybinds, including refresh, will be handled by the browser</i></p>
+        <p><i>[i18n.bindings_note]</i></p>
     </header>
     <main>
-        <div class="message" id="message">Initializing... Please wait</div>
+        <div class="message" id="message">[i18n.init]</div>
         <div class="status" id="status"></div>
         <canvas id="frame"></canvas>
         <input type="text" id="inputtrap" autocomplete="off"/>
@@ -168,6 +168,7 @@
         const urlInput = document.getElementById('url');
         const titleDiv = document.getElementById('title');
         const reverseToggle = document.getElementById('reverseScroll');
+        const origTitle = document.title;
 
         try {
             const socketUrl = (window.location.origin + window.location.pathname).replace(/^http/,'ws');
@@ -200,8 +201,8 @@
 
             const setTitle = (title) => {
                 if (!title) {
-                    document.title = "Suwayomi Webview";
-                    titleDiv.textContent = "Suwayomi Webview";
+                    document.title = origTitle;
+                    titleDiv.textContent = origTitle;
                 } else {
                     document.title = "Suwayomi: " + title;
                     titleDiv.textContent = "Suwayomi: " + title;
@@ -213,11 +214,11 @@
                     urlInput.value = u;
                     setHash(u);
                     setTitle();
-                    messageDiv.textContent = 'Enter a URL to get started';
+                    messageDiv.textContent = "[i18n.get_started]";
                     ctx.clearRect(0, 0, frame.width, frame.height);
                     return;
                 }
-                messageDiv.textContent = "Loading page...";
+                messageDiv.textContent = "[i18n.loading]";
                 messageDiv.classList.remove('error');
                 urlInput.value = u;
                 socket.send(JSON.stringify({ type: 'loadUrl', url: u, width: frame.clientWidth, height: frame.clientHeight }));
@@ -265,7 +266,7 @@
                         break;
                     case "load": {
                         if (obj.error) {
-                            messageDiv.textContent = "Error: " + obj.error;
+                            messageDiv.textContent = "[i18n.error]: " + obj.error;
                             messageDiv.classList.add('error');
                         } else {
                             messageDiv.textContent = "";
@@ -304,7 +305,7 @@
             });
 
             socket.addEventListener('error', e => {
-                messageDiv.textContent = "Error: " + (e.message || e.reason || e);
+                messageDiv.textContent = "[i18n.error]: " + (e.message || e.reason || e);
                 messageDiv.classList.add('error');
                 console.error('WebSocket error:', e);
             });
@@ -417,7 +418,7 @@
             attachEvents();
             frameInput.focus();
         } catch (e) {
-            messageDiv.textContent = "Error: " + (e.message || e);
+            messageDiv.textContent = "[i18n.error]: " + (e.message || e);
             messageDiv.classList.add('error');
             console.error(e);
         }

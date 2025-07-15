@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Suwayomi Login</title>
+    <title>[i18n.title]</title>
     <style>
         * {
             box-sizing: border-box;
@@ -147,18 +147,18 @@
         <form method="POST">
             <h2>Login</h2>
             <div class="controls">
-                <label for="user">Username:</label>
-                <input type="text" name="user" id="user" required placeholder="Type username..."/>
-                <label for="pass">Password:</label>
-                <input type="password" name="pass" id="pass" required placeholder="Secret..."/>
+                <label for="user">[i18n.username]:</label>
+                <input type="text" name="user" id="user" required placeholder="[i18n.placeholder.username]"/>
+                <label for="pass">[i18n.password]:</label>
+                <input type="password" name="pass" id="pass" required placeholder="[i18n.placeholder.password]"/>
             </div>
             <div class="submit">
-                <button type="submit">Log In</button>
+                <button type="submit">[i18n.login_button]</button>
             </div>
         </form>
     </main>
     <footer>
-        <p>Suwayomi: Version [VERSION]</p>
+        <p>Suwayomi: [i18n.version]</p>
     </footer>
 </body>
 </html>
