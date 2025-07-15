@@ -89,7 +89,7 @@ class ServerConfig(
             stateFlow
                 .drop(1)
                 .distinctUntilChanged()
-                .filter { it != thisRef.overridableConfig.getConfig().getValue<ServerConfig, String>(thisRef, property) }
+                .filter { it != parseValue(thisRef.overridableConfig.getConfig().getValue<ServerConfig, String>(thisRef, property)) }
                 .onEach { GlobalConfigManager.updateValue("$moduleName.${property.name}", (it as T).toString() as Any) }
                 .launchIn(mutableConfigValueScope)
 
