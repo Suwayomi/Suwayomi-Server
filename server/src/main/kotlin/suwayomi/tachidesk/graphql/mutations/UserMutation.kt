@@ -51,16 +51,14 @@ class UserMutation {
     data class RefreshTokenPayload(
         val clientMutationId: String?,
         val accessToken: String,
-        val refreshToken: String,
     )
 
     fun refreshToken(input: RefreshTokenInput): RefreshTokenPayload {
-        val jwt = Jwt.refreshJwt(input.refreshToken)
+        val accessToken = Jwt.refreshJwt(input.refreshToken)
 
         return RefreshTokenPayload(
             clientMutationId = input.clientMutationId,
-            accessToken = jwt.accessToken,
-            refreshToken = jwt.refreshToken,
+            accessToken = accessToken,
         )
     }
 }

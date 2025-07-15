@@ -51,12 +51,12 @@ object Jwt {
         )
     }
 
-    fun refreshJwt(refreshToken: String): JwtTokens {
+    fun refreshJwt(refreshToken: String): String {
         val jwt = verifier.verify(refreshToken)
         require(jwt.getClaim("token_type").asString() == "refresh") {
             "Cannot use access token to refresh"
         }
-        return generateJwt()
+        return createAccessToken()
     }
 
     fun verifyJwt(jwt: String): UserType {
