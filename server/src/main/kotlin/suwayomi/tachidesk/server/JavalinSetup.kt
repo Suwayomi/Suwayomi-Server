@@ -7,6 +7,8 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import gg.jte.ContentType
+import gg.jte.TemplateEngine
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.path
@@ -15,6 +17,7 @@ import io.javalin.http.HttpStatus
 import io.javalin.http.RedirectResponse
 import io.javalin.http.UnauthorizedResponse
 import io.javalin.http.staticfiles.Location
+import io.javalin.rendering.template.JavalinJte
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,14 +28,15 @@ import org.eclipse.jetty.server.ServerConnector
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
 import suwayomi.tachidesk.graphql.types.AuthMode
+import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.MangaAPI
 import suwayomi.tachidesk.opds.OpdsAPI
-import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 import java.net.URLEncoder
+import java.util.Locale
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
 import kotlin.time.Duration.Companion.days
@@ -49,6 +53,8 @@ object JavalinSetup {
     fun javalinSetup() {
         val app =
             Javalin.create { config ->
+                val templateEngine = TemplateEngine.createPrecompiled(ContentType.Html)
+                config.fileRenderer(JavalinJte(templateEngine))
                 if (serverConfig.webUIEnabled.value) {
                     val serveWebUI = {
                         config.spaRoot.addFile("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
@@ -118,16 +124,17 @@ object JavalinSetup {
             }
 
         app.get("/login.html") { ctx ->
-            var page =
-                this::class.java
-                    .getResourceAsStream("/static/login.html")!!
-                    .use { it.readAllBytes() }
-                    .toString(Charsets.UTF_8)
-            page = page.replace("[VERSION]", BuildConfig.VERSION).replace("[ERROR]", "")
+            val locale: Locale = LocalizationHelper.ctxToLocale(ctx)
             ctx.header("content-type", "text/html")
             val httpCacheSeconds = 1.days.inWholeSeconds
             ctx.header("cache-control", "max-age=$httpCacheSeconds")
-            ctx.result(page)
+            ctx.render(
+                "Login.jte",
+                mapOf(
+                    "locale" to locale,
+                    "error" to "",
+                ),
+            )
         }
 
         app.post("/login.html") { ctx ->
@@ -147,15 +154,16 @@ object JavalinSetup {
                 throw RedirectResponse(HttpStatus.SEE_OTHER)
             }
 
-            var page =
-                this::class.java
-                    .getResourceAsStream("/static/login.html")!!
-                    .use { it.readAllBytes() }
-                    .toString(Charsets.UTF_8)
-            page = page.replace("[VERSION]", BuildConfig.VERSION).replace("[ERROR]", "Invalid username or password")
+            val locale: Locale = LocalizationHelper.ctxToLocale(ctx)
             ctx.header("content-type", "text/html")
             ctx.req().session.invalidate()
-            ctx.result(page)
+            ctx.render(
+                "Login.jte",
+                mapOf(
+                    "locale" to locale,
+                    "error" to "Invalid username or password",
+                ),
+            )
         }
 
         app.beforeMatched { ctx ->

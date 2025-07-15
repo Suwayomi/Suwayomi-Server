@@ -11,21 +11,31 @@ import io.javalin.http.ContentType
 import io.javalin.http.HttpStatus
 import io.javalin.websocket.WsConfig
 import suwayomi.tachidesk.global.impl.WebView
+import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.server.util.handler
+import suwayomi.tachidesk.server.util.queryParam
 import suwayomi.tachidesk.server.util.withOperation
+import java.util.Locale
 
 object WebViewController {
     val webview =
         handler(
+            queryParam<String?>("lang"),
             documentWith = {
                 withOperation {
                     summary("WebView")
                     description("Opens and browses WebView")
                 }
             },
-            behaviorOf = { ctx ->
+            behaviorOf = { ctx, lang ->
+                val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.contentType(ContentType.TEXT_HTML)
-                ctx.result(javaClass.getResourceAsStream("/webview.html")!!)
+                ctx.render(
+                    "Webview.jte",
+                    mapOf(
+                        "locale" to locale,
+                    ),
+                )
             },
             withResults = { mime<String>(HttpStatus.OK, "text/html") },
         )
