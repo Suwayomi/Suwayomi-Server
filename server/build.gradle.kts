@@ -225,6 +225,6 @@ tasks {
     }
 
     runKtlintCheckOverMainSourceSet {
-        dependsOn(generateJte)
+        shouldRunAfter(generateJte)
     }
 }
