@@ -4,6 +4,7 @@ enum class AuthMode {
     NONE,
     BASIC_AUTH,
     SIMPLE_LOGIN,
+    UI_LOGIN,
     // TODO: ACCOUNT for #623
     ;
 

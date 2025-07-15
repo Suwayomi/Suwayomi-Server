@@ -42,6 +42,7 @@ import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
+import java.net.URLEncoder
 import java.util.Locale
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
@@ -195,8 +196,23 @@ object JavalinSetup {
                 return username == serverConfig.authUsername.value
             }
 
+            if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid() && ctx.path().startsWith("/api")) {
+                throw UnauthorizedResponse()
+            }
+
+            if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid()) {
+                val url = "/login.html?redirect=" + URLEncoder.encode(ctx.fullUrl(), Charsets.UTF_8)
+                ctx.header("Location", url)
+                throw RedirectResponse(HttpStatus.SEE_OTHER)
+            }
+
+            if (authMode == AuthMode.BASIC_AUTH && !credentialsValid()) {
+                ctx.header("WWW-Authenticate", "Basic")
+                throw UnauthorizedResponse()
+            }
+
             val user =
-                if (serverConfig.authMode.value == AuthMode.SIMPLE_LOGIN) {
+                if (serverConfig.authMode.value == AuthMode.UI_LOGIN) {
                     val authentication = ctx.header(Header.AUTHORIZATION)
                     if (authentication.isNullOrBlank()) {
                         val token = ctx.queryParam("token")
@@ -212,11 +228,6 @@ object JavalinSetup {
                     UserType.Admin(1)
                 }
             ctx.setAttribute(Attribute.TachideskUser, user)
-
-            if (authMode == AuthMode.BASIC_AUTH && !credentialsValid()) {
-                ctx.header("WWW-Authenticate", "Basic")
-                throw UnauthorizedResponse()
-            }
         }
 
         app.events { event ->
@@ -230,7 +241,7 @@ object JavalinSetup {
         app.wsBefore {
             it.onConnect { ctx ->
                 val user =
-                    if (serverConfig.authMode.value == AuthMode.SIMPLE_LOGIN) {
+                    if (serverConfig.authMode.value == AuthMode.UI_LOGIN) {
                         val authentication = ctx.header(Header.AUTHORIZATION)
                         if (authentication.isNullOrBlank()) {
                             val token = ctx.queryParam("token")
