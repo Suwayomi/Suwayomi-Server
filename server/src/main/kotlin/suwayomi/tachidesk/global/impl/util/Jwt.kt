@@ -56,7 +56,7 @@ object Jwt {
         return Base64.encode(secretKey.encoded)
     }
 
-    private val algorithm: Algorithm = Algorithm.HMAC256(generateSecret()) // todo store secret
+    private val algorithm: Algorithm = Algorithm.HMAC256(generateSecret())
     private val verifier: JWTVerifier = JWT.require(algorithm).build()
 
     class JwtTokens(
