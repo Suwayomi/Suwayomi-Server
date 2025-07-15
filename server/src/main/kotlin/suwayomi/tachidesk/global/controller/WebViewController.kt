@@ -12,6 +12,9 @@ import io.javalin.http.HttpStatus
 import io.javalin.websocket.WsConfig
 import suwayomi.tachidesk.global.impl.WebView
 import suwayomi.tachidesk.i18n.LocalizationHelper
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.queryParam
 import suwayomi.tachidesk.server.util.withOperation
@@ -28,6 +31,7 @@ object WebViewController {
                 }
             },
             behaviorOf = { ctx, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.contentType(ContentType.TEXT_HTML)
                 ctx.render(
