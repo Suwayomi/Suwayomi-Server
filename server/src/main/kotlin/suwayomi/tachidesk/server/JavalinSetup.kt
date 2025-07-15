@@ -7,6 +7,8 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import gg.jte.ContentType
+import gg.jte.TemplateEngine
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.path
@@ -38,8 +40,6 @@ import java.util.Locale
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
 import kotlin.time.Duration.Companion.days
-import gg.jte.TemplateEngine
-import gg.jte.ContentType
 
 object JavalinSetup {
     private val logger = KotlinLogging.logger {}
@@ -53,7 +53,7 @@ object JavalinSetup {
     fun javalinSetup() {
         val app =
             Javalin.create { config ->
-                val templateEngine = TemplateEngine.createPrecompiled(ContentType.Html);
+                val templateEngine = TemplateEngine.createPrecompiled(ContentType.Html)
                 config.fileRenderer(JavalinJte(templateEngine))
                 if (serverConfig.webUIEnabled.value) {
                     val serveWebUI = {
