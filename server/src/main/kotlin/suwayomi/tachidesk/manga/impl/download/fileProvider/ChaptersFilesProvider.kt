@@ -26,7 +26,6 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.ConversionUtil
 import java.io.File
-import java.io.IOException
 import java.io.InputStream
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
