@@ -245,10 +245,9 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                             }
                         } catch (e: Exception) {
                             logger.warn(e) { "Conversion aborted" }
-                            return@forEach
-                        } finally {
-                            writer.dispose()
+                            false
                         }
+                    writer.dispose()
                     if (success) {
                         it.delete()
                     } else {
