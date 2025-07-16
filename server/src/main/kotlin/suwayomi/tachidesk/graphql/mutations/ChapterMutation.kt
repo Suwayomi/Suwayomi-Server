@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import graphql.execution.DataFetcherResult
+import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
@@ -9,13 +10,17 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.asDataFetcherResult
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyById
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import java.net.URLEncoder
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
@@ -96,8 +101,12 @@ class ChapterMutation {
         }
     }
 
-    fun updateChapter(input: UpdateChapterInput): DataFetcherResult<UpdateChapterPayload?> =
+    fun updateChapter(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateChapterInput,
+    ): DataFetcherResult<UpdateChapterPayload?> =
         asDataFetcherResult {
+            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val (clientMutationId, id, patch) = input
 
             updateChapters(listOf(id), patch)
@@ -113,8 +122,12 @@ class ChapterMutation {
             )
         }
 
-    fun updateChapters(input: UpdateChaptersInput): DataFetcherResult<UpdateChaptersPayload?> =
+    fun updateChapters(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateChaptersInput,
+    ): DataFetcherResult<UpdateChaptersPayload?> =
         asDataFetcherResult {
+            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val (clientMutationId, ids, patch) = input
 
             updateChapters(ids, patch)
@@ -140,7 +153,11 @@ class ChapterMutation {
         val chapters: List<ChapterType>,
     )
 
-    fun fetchChapters(input: FetchChaptersInput): CompletableFuture<DataFetcherResult<FetchChaptersPayload?>> {
+    fun fetchChapters(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: FetchChaptersInput,
+    ): CompletableFuture<DataFetcherResult<FetchChaptersPayload?>> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, mangaId) = input
 
         return future {
@@ -174,8 +191,12 @@ class ChapterMutation {
         val meta: ChapterMetaType,
     )
 
-    fun setChapterMeta(input: SetChapterMetaInput): DataFetcherResult<SetChapterMetaPayload?> =
+    fun setChapterMeta(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: SetChapterMetaInput,
+    ): DataFetcherResult<SetChapterMetaPayload?> =
         asDataFetcherResult {
+            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val (clientMutationId, meta) = input
 
             Chapter.modifyChapterMeta(meta.chapterId, meta.key, meta.value)
@@ -195,8 +216,12 @@ class ChapterMutation {
         val chapter: ChapterType,
     )
 
-    fun deleteChapterMeta(input: DeleteChapterMetaInput): DataFetcherResult<DeleteChapterMetaPayload?> =
+    fun deleteChapterMeta(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: DeleteChapterMetaInput,
+    ): DataFetcherResult<DeleteChapterMetaPayload?> =
         asDataFetcherResult {
+            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val (clientMutationId, chapterId, key) = input
 
             val (meta, chapter) =
@@ -243,7 +268,11 @@ class ChapterMutation {
         val chapter: ChapterType,
     )
 
-    fun fetchChapterPages(input: FetchChapterPagesInput): CompletableFuture<DataFetcherResult<FetchChapterPagesPayload?>> {
+    fun fetchChapterPages(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: FetchChapterPagesInput,
+    ): CompletableFuture<DataFetcherResult<FetchChapterPagesPayload?>> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, chapterId) = input
         val paramsMap = input.toParams()
 
