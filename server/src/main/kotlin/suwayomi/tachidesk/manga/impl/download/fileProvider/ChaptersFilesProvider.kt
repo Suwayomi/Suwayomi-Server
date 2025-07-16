@@ -236,18 +236,20 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                     }
                     val success =
                         try {
-                            ImageIO.createImageOutputStream(outFile)
-                        } catch (e: IOException) {
+                            ImageIO.createImageOutputStream(outFile).use { outStream ->
+                                writer.setOutput(outStream)
+
+                                val inImage = ConversionUtil.readImage(it) ?: return@use false
+                                writer.write(null, IIOImage(inImage, null, null), writerParams)
+
+                                return@use true
+                            }
+                        } catch (e: Exception) {
                             logger.warn(e) { "Conversion aborted" }
                             return@forEach
-                        }.use { outStream ->
-                            writer.setOutput(outStream)
-
-                            val inImage = ConversionUtil.readImage(it) ?: return@use false
-                            writer.write(null, IIOImage(inImage, null, null), writerParams)
-                            return@use true
+                        } finally {
+                            writer.dispose()
                         }
-                    writer.dispose()
                     if (success) {
                         it.delete()
                     } else {
