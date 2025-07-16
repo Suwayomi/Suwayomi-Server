@@ -70,33 +70,6 @@ class ServerConfig(
         }
     }
 
-    open inner class MappedConfigValue<T>(
-        val parseValue: (String) -> T,
-    ) {
-        var flow: MutableStateFlow<T>? = null
-
-        inline operator fun getValue(
-            thisRef: ServerConfig,
-            property: KProperty<*>,
-        ): MutableStateFlow<T> {
-            if (flow != null) {
-                return flow!!
-            }
-
-            val stateFlow = MutableStateFlow(parseValue(overridableConfig.getValue<ServerConfig, String>(thisRef, property)))
-            flow = stateFlow
-
-            stateFlow
-                .drop(1)
-                .distinctUntilChanged()
-                .filter { it != parseValue(thisRef.overridableConfig.getConfig().getValue<ServerConfig, String>(thisRef, property)) }
-                .onEach { GlobalConfigManager.updateValue("$moduleName.${property.name}", (it as T).toString() as Any) }
-                .launchIn(mutableConfigValueScope)
-
-            return stateFlow
-        }
-    }
-
     open inner class MigratedConfigValue<T>(
         private val readMigrated: () -> T,
         private val setMigrated: (T) -> Unit,
@@ -179,12 +152,8 @@ class ServerConfig(
     val authUsername: MutableStateFlow<String> by OverrideConfigValue()
     val authPassword: MutableStateFlow<String> by OverrideConfigValue()
     val jwtAudience: MutableStateFlow<String> by OverrideConfigValue()
-    val jwtTokenExpiry: MutableStateFlow<Duration> by MappedConfigValue<Duration> {
-        Duration.parse(it)
-    }
-    val jwtRefreshExpiry: MutableStateFlow<Duration> by MappedConfigValue<Duration> {
-        Duration.parse(it)
-    }
+    val jwtTokenExpiry: MutableStateFlow<Duration> by OverrideConfigValue()
+    val jwtRefreshExpiry: MutableStateFlow<Duration> by OverrideConfigValue()
     val basicAuthEnabled: MutableStateFlow<Boolean> by MigratedConfigValue({
         authMode.value == AuthMode.BASIC_AUTH
     }) {
