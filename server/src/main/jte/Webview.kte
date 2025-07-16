@@ -173,12 +173,14 @@
         const titleDiv = document.getElementById('title');
         const reverseToggle = document.getElementById('reverseScroll');
         const origTitle = document.title;
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
 
         try {
-            // TODO: We should probably transport the token in a better way
-            // https://portswigger.net/kb/issues/00500700_session-token-in-url
-            const socketUrl = (window.location.origin + window.location.pathname + window.location.search).replace(/^http/,'ws');
-            const socket = new WebSocket(socketUrl);
+            const socketUrl = (window.location.origin + window.location.pathname).replace(/^http/,'ws');
+            // we pass the token as the subprotocol, which is widely considered the best solution to passing tokens
+            // browsers don't support setting custom headers for WebSockets...
+            const socket = new WebSocket(socketUrl, [token]);
 
             urlInput.disabled = false;
             goButton.disabled = false;

@@ -242,7 +242,7 @@ object JavalinSetup {
             it.onConnect { ctx ->
                 val user =
                     if (serverConfig.authMode.value == AuthMode.UI_LOGIN) {
-                        val authentication = ctx.header(Header.AUTHORIZATION)
+                        val authentication = ctx.header(Header.AUTHORIZATION) ?: ctx.header("Sec-WebSocket-Protocol")
                         if (authentication.isNullOrBlank()) {
                             val token = ctx.queryParam("token")
                             if (token.isNullOrBlank()) {
