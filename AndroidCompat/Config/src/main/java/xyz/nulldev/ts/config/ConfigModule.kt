@@ -52,7 +52,7 @@ class SystemPropertyOverrideDelegate(
             return configValue
         }
 
-        val combinedConfig =
+        val systemPropertyConfig =
             try {
                 ConfigFactory.parseString("internal=$systemProperty")
             } catch (_: ConfigException) {
@@ -64,7 +64,7 @@ class SystemPropertyOverrideDelegate(
         val reader = SelectReader.getReader(clazz)
         val path = property.name
 
-        val result = reader(combinedConfig, "internal")
+        val result = reader(systemPropertyConfig, "internal")
         return try {
             result as T
         } catch (e: Exception) {
