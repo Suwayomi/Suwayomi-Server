@@ -27,6 +27,7 @@ object DownloadController {
     /** Download queue stats */
     fun downloadsWS(ws: WsConfig) {
         ws.onConnect { ctx ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
             DownloadManager.addClient(ctx)
             DownloadManager.notifyClient(ctx)
         }

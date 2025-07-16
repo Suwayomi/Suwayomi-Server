@@ -45,8 +45,15 @@ object WebViewController {
         )
 
     fun webviewWS(ws: WsConfig) {
-        ws.onConnect { ctx -> WebView.addClient(ctx) }
-        ws.onMessage { ctx -> WebView.handleRequest(ctx) }
-        ws.onClose { ctx -> WebView.removeClient(ctx) }
+        ws.onConnect { ctx ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
+            WebView.addClient(ctx)
+        }
+        ws.onMessage { ctx ->
+            WebView.handleRequest(ctx)
+        }
+        ws.onClose { ctx ->
+            WebView.removeClient(ctx)
+        }
     }
 }

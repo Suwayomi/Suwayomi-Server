@@ -175,7 +175,9 @@
         const origTitle = document.title;
 
         try {
-            const socketUrl = (window.location.origin + window.location.pathname).replace(/^http/,'ws');
+            // TODO: We should probably transport the token in a better way
+            // https://portswigger.net/kb/issues/00500700_session-token-in-url
+            const socketUrl = (window.location.origin + window.location.pathname + window.location.search).replace(/^http/,'ws');
             const socket = new WebSocket(socketUrl);
 
             urlInput.disabled = false;

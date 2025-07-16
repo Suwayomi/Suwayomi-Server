@@ -101,6 +101,7 @@ object UpdateController {
 
     fun categoryUpdateWS(ws: WsConfig) {
         ws.onConnect { ctx ->
+            ctx.getAttribute(Attribute.TachideskUser).requireUser()
             UpdaterSocket.addClient(ctx)
         }
         ws.onMessage { ctx ->
