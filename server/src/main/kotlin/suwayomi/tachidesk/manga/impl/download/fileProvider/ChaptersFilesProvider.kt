@@ -241,7 +241,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                                 val inImage = ConversionUtil.readImage(it) ?: return@use false
                                 writer.write(null, IIOImage(inImage, null, null), writerParams)
 
-                                return@use true
+                                true
                             }
                         } catch (e: Exception) {
                             logger.warn(e) { "Conversion aborted" }
