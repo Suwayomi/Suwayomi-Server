@@ -244,14 +244,13 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                                 true
                             }
                         } catch (e: Exception) {
-                            logger.warn(e) { "Conversion aborted" }
+                            logger.warn(e) { "Conversion aborted: for image $it" }
                             false
                         }
                     writer.dispose()
                     if (success) {
                         it.delete()
                     } else {
-                        logger.warn { "Conversion aborted: No reader for image $it" }
                         outFile.delete()
                     }
                 }
