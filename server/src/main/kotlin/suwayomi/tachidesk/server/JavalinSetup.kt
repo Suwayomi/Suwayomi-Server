@@ -12,12 +12,15 @@ import gg.jte.TemplateEngine
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.path
+import io.javalin.http.Context
 import io.javalin.http.HandlerType
+import io.javalin.http.Header
 import io.javalin.http.HttpStatus
 import io.javalin.http.RedirectResponse
 import io.javalin.http.UnauthorizedResponse
 import io.javalin.http.staticfiles.Location
 import io.javalin.rendering.template.JavalinJte
+import io.javalin.websocket.WsContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -26,11 +29,15 @@ import kotlinx.coroutines.future.future
 import kotlinx.coroutines.runBlocking
 import org.eclipse.jetty.server.ServerConnector
 import suwayomi.tachidesk.global.GlobalAPI
+import suwayomi.tachidesk.global.impl.util.Jwt
 import suwayomi.tachidesk.graphql.GraphQL
 import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.MangaAPI
 import suwayomi.tachidesk.opds.OpdsAPI
+import suwayomi.tachidesk.server.user.ForbiddenException
+import suwayomi.tachidesk.server.user.UnauthorizedException
+import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import uy.kohesive.injekt.injectLazy
@@ -203,6 +210,24 @@ object JavalinSetup {
                 ctx.header("WWW-Authenticate", "Basic")
                 throw UnauthorizedResponse()
             }
+
+            val user =
+                if (serverConfig.authMode.value == AuthMode.UI_LOGIN) {
+                    val authentication = ctx.header(Header.AUTHORIZATION) ?: ctx.cookie("suwayomi-server-token")
+                    if (authentication.isNullOrBlank()) {
+                        val token = ctx.queryParam("token")
+                        if (token.isNullOrBlank()) {
+                            UserType.Visitor
+                        } else {
+                            Jwt.verifyJwt(token)
+                        }
+                    } else {
+                        Jwt.verifyJwt(authentication.substringAfter("Bearer "))
+                    }
+                } else {
+                    UserType.Admin(1)
+                }
+            ctx.setAttribute(Attribute.TachideskUser, user)
         }
 
         app.events { event ->
@@ -210,6 +235,29 @@ object JavalinSetup {
                 if (serverConfig.initialOpenInBrowserEnabled.value) {
                     Browser.openInBrowser()
                 }
+            }
+        }
+
+        app.wsBefore {
+            it.onConnect { ctx ->
+                val user =
+                    if (serverConfig.authMode.value == AuthMode.UI_LOGIN) {
+                        val authentication =
+                            ctx.header(Header.AUTHORIZATION) ?: ctx.cookie("suwayomi-server-token") ?: ctx.header("Sec-WebSocket-Protocol")
+                        if (authentication.isNullOrBlank()) {
+                            val token = ctx.queryParam("token")
+                            if (token.isNullOrBlank()) {
+                                UserType.Visitor
+                            } else {
+                                Jwt.verifyJwt(token)
+                            }
+                        } else {
+                            Jwt.verifyJwt(authentication.substringAfter("Bearer "))
+                        }
+                    } else {
+                        UserType.Admin(1)
+                    }
+                ctx.setAttribute(Attribute.TachideskUser, user)
             }
         }
 
@@ -240,6 +288,18 @@ object JavalinSetup {
             ctx.result(e.message ?: "Bad Request")
         }
 
+        app.exception(UnauthorizedException::class.java) { e, ctx ->
+            logger.error(e) { "UnauthorizedException while handling the request" }
+            ctx.status(HttpStatus.UNAUTHORIZED)
+            ctx.result(e.message ?: "Unauthorized")
+        }
+
+        app.exception(ForbiddenException::class.java) { e, ctx ->
+            logger.error(e) { "ForbiddenException while handling the request" }
+            ctx.status(HttpStatus.FORBIDDEN)
+            ctx.result(e.message ?: "Forbidden")
+        }
+
         app.start()
     }
 
@@ -258,4 +318,28 @@ object JavalinSetup {
     //         )
     //     }
     // }
+
+    sealed class Attribute<T : Any>(
+        val name: String,
+    ) {
+        data object TachideskUser : Attribute<UserType>("user")
+    }
+
+    private fun <T : Any> Context.setAttribute(
+        attribute: Attribute<T>,
+        value: T,
+    ) {
+        attribute(attribute.name, value)
+    }
+
+    private fun <T : Any> WsContext.setAttribute(
+        attribute: Attribute<T>,
+        value: T,
+    ) {
+        attribute(attribute.name, value)
+    }
+
+    fun <T : Any> Context.getAttribute(attribute: Attribute<T>): T = attribute(attribute.name)!!
+
+    fun <T : Any> WsContext.getAttribute(attribute: Attribute<T>): T = attribute(attribute.name)!!
 }

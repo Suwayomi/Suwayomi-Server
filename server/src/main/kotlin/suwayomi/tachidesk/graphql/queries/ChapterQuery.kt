@@ -30,6 +30,7 @@ import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompare
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
@@ -43,6 +44,9 @@ import suwayomi.tachidesk.graphql.types.ChapterNodeList
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -197,6 +201,7 @@ class ChapterQuery {
     }
 
     fun chapters(
+        dataFetchingEnvironment: DataFetchingEnvironment,
         condition: ChapterCondition? = null,
         filter: ChapterFilter? = null,
         @GraphQLDeprecated(
@@ -216,6 +221,7 @@ class ChapterQuery {
         last: Int? = null,
         offset: Int? = null,
     ): ChapterNodeList {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val queryResults =
             transaction {
                 val res = ChapterTable.selectAll()
