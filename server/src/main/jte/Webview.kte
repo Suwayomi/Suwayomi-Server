@@ -162,16 +162,6 @@
         <input type="text" id="inputtrap" autocomplete="off"/>
     </main>
     <script>
-        function getCookie(name) {
-            const cookieArr = document.cookie.split(";");
-            for (let i = 0; i < cookieArr.length; i++) {
-                const cookiePair = cookieArr[i].split("=");
-                if (name == cookiePair[0].trim())
-                    return decodeURIComponent(cookiePair[1]);
-            }
-            return null;
-        }
-
         const messageDiv = document.getElementById('message');
         const statusDiv = document.getElementById('status');
         const frame = document.getElementById('frame');
@@ -184,7 +174,7 @@
         const reverseToggle = document.getElementById('reverseScroll');
         const origTitle = document.title;
         const params = new URLSearchParams(window.location.search);
-        const token = params.get('token') || getCookie('suwayomi-server-token');
+        const token = params.get('token');
 
         try {
             const socketUrl = (window.location.origin + window.location.pathname).replace(/^http/,'ws');
