@@ -213,7 +213,7 @@ object JavalinSetup {
 
             val user =
                 if (serverConfig.authMode.value == AuthMode.UI_LOGIN) {
-                    val authentication = ctx.header(Header.AUTHORIZATION)
+                    val authentication = ctx.header(Header.AUTHORIZATION) ?: ctx.cookie("suwayomi-server-token")
                     if (authentication.isNullOrBlank()) {
                         val token = ctx.queryParam("token")
                         if (token.isNullOrBlank()) {
