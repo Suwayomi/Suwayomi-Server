@@ -91,15 +91,12 @@ object Page {
             )
         progressFlow?.invoke(tachiyomiPage.progress)
 
-        // we treat Local source differently
         if (mangaEntry[MangaTable.sourceReference] == LocalSource.ID) {
-            // is of archive format
             if (LocalSource.pageCache.containsKey(chapterEntry[ChapterTable.url])) {
                 val pageStream = LocalSource.pageCache[chapterEntry[ChapterTable.url]]!![index]
                 return convertImageResponse(pageStream() to (ImageUtil.findImageType { pageStream() }?.mime ?: "image/jpeg"), format)
             }
 
-            // is of directory format
             val imageFile = File(tachiyomiPage.imageUrl!!)
             return convertImageResponse(
                 imageFile.inputStream() to (ImageUtil.findImageType { imageFile.inputStream() }?.mime ?: "image/jpeg"),
@@ -112,11 +109,14 @@ object Page {
 
         if (pageEntry[PageTable.imageUrl] == null) {
             val trueImageUrl = getTrueImageUrl(tachiyomiPage, source)
-            transaction {
-                PageTable.update({ (PageTable.chapter eq chapterId) and (PageTable.index eq index) }) {
-                    it[imageUrl] = trueImageUrl
+            if (trueImageUrl.length <= 2048) {
+                transaction {
+                    PageTable.update({ (PageTable.chapter eq chapterId) and (PageTable.index eq index) }) {
+                        it[imageUrl] = trueImageUrl
+                    }
                 }
             }
+            tachiyomiPage.imageUrl = trueImageUrl
         }
 
         val fileName = getPageName(index, chapterEntry[ChapterTable.pageCount])
