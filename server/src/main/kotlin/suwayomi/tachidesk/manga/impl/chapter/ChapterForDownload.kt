@@ -195,7 +195,6 @@ private class ChapterForDownload(
 
         updatePageCount(pageList.size)
 
-        // chapter was updated
         chapterEntry = freshChapterEntry(chapterId, chapterIndex, mangaId)
     }
 

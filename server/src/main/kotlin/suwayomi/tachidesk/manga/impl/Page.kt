@@ -91,15 +91,12 @@ object Page {
             )
         progressFlow?.invoke(tachiyomiPage.progress)
 
-        // we treat Local source differently
         if (mangaEntry[MangaTable.sourceReference] == LocalSource.ID) {
-            // is of archive format
             if (LocalSource.pageCache.containsKey(chapterEntry[ChapterTable.url])) {
                 val pageStream = LocalSource.pageCache[chapterEntry[ChapterTable.url]]!![index]
                 return convertImageResponse(pageStream() to (ImageUtil.findImageType { pageStream() }?.mime ?: "image/jpeg"), format)
             }
 
-            // is of directory format
             val imageFile = File(tachiyomiPage.imageUrl!!)
             return convertImageResponse(
                 imageFile.inputStream() to (ImageUtil.findImageType { imageFile.inputStream() }?.mime ?: "image/jpeg"),
