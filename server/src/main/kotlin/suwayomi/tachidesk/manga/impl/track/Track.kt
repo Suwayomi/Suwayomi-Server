@@ -176,11 +176,11 @@ object Track {
                                 (TrackRecordTable.remoteId eq remoteId)
                         }.first()
                         .toTrack()
-                        .apply {
-                            this.manga_id = mangaId
-                            this.private = private
-                        }
+            }.apply {
+                this.manga_id = mangaId
+                this.private = private
             }
+
         val tracker = TrackerManager.getTracker(trackerId)!!
 
         val chapter = queryMaxReadChapter(mangaId)
