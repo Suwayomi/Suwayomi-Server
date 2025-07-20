@@ -117,13 +117,13 @@ interface Settings : Node {
 interface SettingsDownloadConversion {
     val mimeType: String
     val target: String
-    val compressionLevel: Float?
+    val compressionLevel: Double?
 }
 
 class SettingsDownloadConversionType(
     override val mimeType: String,
     override val target: String,
-    override val compressionLevel: Float?,
+    override val compressionLevel: Double?,
 ) : SettingsDownloadConversion
 
 data class PartialSettingsType(

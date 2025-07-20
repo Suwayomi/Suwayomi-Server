@@ -231,7 +231,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                     val writerParams = writer.defaultWriteParam
                     targetConversion.compressionLevel?.let {
                         writerParams.compressionMode = ImageWriteParam.MODE_EXPLICIT
-                        writerParams.compressionQuality = it
+                        writerParams.compressionQuality = it.toFloat()
                     }
                     val success =
                         try {

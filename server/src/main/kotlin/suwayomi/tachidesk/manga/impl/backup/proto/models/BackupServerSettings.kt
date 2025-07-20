@@ -89,6 +89,6 @@ data class BackupServerSettings(
     class BackupSettingsDownloadConversionType(
         @ProtoNumber(1) override val mimeType: String,
         @ProtoNumber(2) override val target: String,
-        @ProtoNumber(3) override val compressionLevel: Float?,
+        @ProtoNumber(3) override val compressionLevel: Double?,
     ) : SettingsDownloadConversion
 }
