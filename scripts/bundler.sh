@@ -57,7 +57,6 @@ main() {
       setup_jre
 
       RELEASE="$RELEASE_NAME.AppImage"
-      APPIMAGE_URL="https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
       make_appimage
       move_release_to_output_dir
       ;;
@@ -245,7 +244,8 @@ make_deb_package() {
 
 # https://linuxconfig.org/building-a-hello-world-appimage-on-linux
 make_appimage() {
-  local APPIMAGE_TOOLNAME="appimagetool-x86_64.AppImage" 
+  local APPIMAGE_URL="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+  local APPIMAGE_TOOLNAME="appimagetool-x86_64.AppImage"
   mkdir "$RELEASE_NAME/bin/"
   cp "$JAR" "$RELEASE_NAME/bin/Suwayomi-Server.jar"
 
