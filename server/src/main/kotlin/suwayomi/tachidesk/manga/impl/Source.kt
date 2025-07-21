@@ -142,6 +142,10 @@ object Source {
         val screen = preferenceScreenMap[sourceId]!!
         val pref = screen.preferences[position]
 
+        if (!pref.isEnabled) {
+            return
+        }
+
         val newValue = getValue(pref)
 
         pref.saveNewValue(newValue)
