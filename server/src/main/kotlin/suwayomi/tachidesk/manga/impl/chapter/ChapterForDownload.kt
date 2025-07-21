@@ -183,11 +183,12 @@ private class ChapterForDownload(
                 this[PageTable.index] = page.index
                 this[PageTable.url] = page.url
                 // Only store imageUrl if it's not too long to prevent database constraint violations
-                this[PageTable.imageUrl] = if (page.imageUrl != null && page.imageUrl!!.length <= 2048) {
-                    page.imageUrl
-                } else {
-                    null
-                }
+                this[PageTable.imageUrl] =
+                    if (page.imageUrl != null && page.imageUrl!!.length <= 2048) {
+                        page.imageUrl
+                    } else {
+                        null
+                    }
                 this[PageTable.chapter] = chapterId
             }
         }
