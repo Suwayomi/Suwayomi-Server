@@ -48,6 +48,7 @@ interface Settings : Node {
     val autoDownloadAheadLimit: Int?
     val autoDownloadNewChaptersLimit: Int?
     val autoDownloadIgnoreReUploads: Boolean?
+    val downloadConversions: List<SettingsDownloadConversion>?
 
     // extension
     val extensionRepos: List<String>?
@@ -63,8 +64,17 @@ interface Settings : Node {
     val updateMangas: Boolean?
 
     // Authentication
+    val authMode: AuthMode?
+    val authUsername: String?
+    val authPassword: String?
+
+    @GraphQLDeprecated("Removed - prefer authMode")
     val basicAuthEnabled: Boolean?
+
+    @GraphQLDeprecated("Removed - prefer authUsername")
     val basicAuthUsername: String?
+
+    @GraphQLDeprecated("Removed - prefer authPassword")
     val basicAuthPassword: String?
 
     // misc
@@ -104,6 +114,18 @@ interface Settings : Node {
     val opdsChapterSortOrder: SortOrder?
 }
 
+interface SettingsDownloadConversion {
+    val mimeType: String
+    val target: String
+    val compressionLevel: Double?
+}
+
+class SettingsDownloadConversionType(
+    override val mimeType: String,
+    override val target: String,
+    override val compressionLevel: Double?,
+) : SettingsDownloadConversion
+
 data class PartialSettingsType(
     override val ip: String?,
     override val port: Int?,
@@ -133,6 +155,7 @@ data class PartialSettingsType(
     override val autoDownloadAheadLimit: Int?,
     override val autoDownloadNewChaptersLimit: Int?,
     override val autoDownloadIgnoreReUploads: Boolean?,
+    override val downloadConversions: List<SettingsDownloadConversionType>?,
     // extension
     override val extensionRepos: List<String>?,
     // requests
@@ -144,8 +167,14 @@ data class PartialSettingsType(
     override val globalUpdateInterval: Double?,
     override val updateMangas: Boolean?,
     // Authentication
+    override val authMode: AuthMode?,
+    override val authUsername: String?,
+    override val authPassword: String?,
+    @GraphQLDeprecated("Removed - prefer authMode")
     override val basicAuthEnabled: Boolean?,
+    @GraphQLDeprecated("Removed - prefer authUsername")
     override val basicAuthUsername: String?,
+    @GraphQLDeprecated("Removed - prefer authPassword")
     override val basicAuthPassword: String?,
     // misc
     override val debugLogsEnabled: Boolean?,
@@ -207,7 +236,8 @@ class SettingsType(
     )
     override val autoDownloadAheadLimit: Int,
     override val autoDownloadNewChaptersLimit: Int,
-    override val autoDownloadIgnoreReUploads: Boolean?,
+    override val autoDownloadIgnoreReUploads: Boolean,
+    override val downloadConversions: List<SettingsDownloadConversionType>,
     // extension
     override val extensionRepos: List<String>,
     // requests
@@ -219,8 +249,14 @@ class SettingsType(
     override val globalUpdateInterval: Double,
     override val updateMangas: Boolean,
     // Authentication
+    override val authMode: AuthMode,
+    override val authUsername: String,
+    override val authPassword: String,
+    @GraphQLDeprecated("Removed - prefer authMode")
     override val basicAuthEnabled: Boolean,
+    @GraphQLDeprecated("Removed - prefer authUsername")
     override val basicAuthUsername: String,
+    @GraphQLDeprecated("Removed - prefer authPassword")
     override val basicAuthPassword: String,
     // misc
     override val debugLogsEnabled: Boolean,
@@ -278,6 +314,13 @@ class SettingsType(
         config.autoDownloadNewChaptersLimit.value, // deprecated
         config.autoDownloadNewChaptersLimit.value,
         config.autoDownloadIgnoreReUploads.value,
+        config.downloadConversions.value.map {
+            SettingsDownloadConversionType(
+                it.key,
+                it.value.target,
+                it.value.compressionLevel,
+            )
+        },
         // extension
         config.extensionRepos.value,
         // requests
@@ -289,6 +332,9 @@ class SettingsType(
         config.globalUpdateInterval.value,
         config.updateMangas.value,
         // Authentication
+        config.authMode.value,
+        config.authUsername.value,
+        config.authPassword.value,
         config.basicAuthEnabled.value,
         config.basicAuthUsername.value,
         config.basicAuthPassword.value,

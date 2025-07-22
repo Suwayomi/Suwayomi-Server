@@ -31,7 +31,6 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
-import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Error
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Queued
 import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
@@ -147,7 +146,7 @@ object DownloadManager {
     init {
         scope.launch {
             notifyFlow.sample(1.seconds).collect {
-                notifyAllClients(immediate = true)
+                notifyAllClients(immediate = true, gqlEmit = true)
             }
         }
     }
@@ -167,18 +166,39 @@ object DownloadManager {
     private fun notifyAllClients(
         immediate: Boolean = false,
         downloads: List<DownloadUpdate> = emptyList(),
+        gqlEmit: Boolean = false,
     ) {
+        val outdatedUpdates =
+            downloadUpdates.filter { update ->
+                downloads.any { download ->
+                    download.downloadChapter.chapter.id ==
+                        update.downloadChapter.chapter.id
+                }
+            }
+        downloadUpdates.removeAll(outdatedUpdates)
         downloadUpdates.addAll(downloads)
 
-        if (immediate) {
-            val status = getStatus()
+        // There is a problem where too many immediate updates can cause the client to lag out (e.g., in case it has to
+        // update the queue in the cache based on the updates).
+        // This happens in case e.g., a source is broken and all its downloads error out basically immediately.
+        // With each errored out download, a new one starts, which causes an immediate notification to the clients.
+        // While the immediate notification functionality is no longer needed for the latest graphql download subscription,
+        // it is still required for the deprecated version as well as the rest api subscription.
+        if (gqlEmit) {
             val updates = getDownloadUpdates()
 
             downloadUpdates.clear()
 
             scope.launch {
-                statusFlow.emit(status)
                 updatesFlow.emit(updates)
+            }
+        }
+
+        if (immediate) {
+            val status = getStatus()
+
+            scope.launch {
+                statusFlow.emit(status)
                 sendStatusToAllClients(status)
             }
 
@@ -192,20 +212,20 @@ object DownloadManager {
 
     fun getStatus(): DownloadStatus =
         DownloadStatus(
-            if (downloadQueue.none { it.state == Downloading }) {
-                Status.Stopped
-            } else {
+            if (downloaders.values.any { it.isActive }) {
                 Status.Started
+            } else {
+                Status.Stopped
             },
             downloadQueue.toList(),
         )
 
     private fun getDownloadUpdates(addInitial: Boolean = false): DownloadUpdates =
         DownloadUpdates(
-            if (downloadQueue.none { it.state == Downloading }) {
-                Status.Stopped
-            } else {
+            if (downloaders.values.any { it.isActive }) {
                 Status.Started
+            } else {
+                Status.Stopped
             },
             downloadUpdates.toList(),
             if (addInitial) downloadQueue.toList() else null,

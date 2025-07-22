@@ -25,6 +25,11 @@ plugins {
             .get()
             .pluginId,
     )
+    id(
+        libs.plugins.jte
+            .get()
+            .pluginId,
+    )
 }
 
 dependencies {
@@ -43,7 +48,6 @@ dependencies {
     // GraphQL
     implementation(libs.graphql.kotlin.server)
     implementation(libs.graphql.kotlin.scheme)
-    implementation(libs.graphql.java.core)
     implementation(libs.graphql.java.scalars)
 
     // Exposed ORM
@@ -97,6 +101,12 @@ dependencies {
     implementation(libs.cron4j)
 
     implementation(libs.cronUtils)
+
+    compileOnly(libs.kte)
+}
+
+jte {
+    generate()
 }
 
 application {
@@ -212,5 +222,9 @@ tasks {
                     "-Dsuwayomi.tachidesk.config.server.electronPath=/usr/bin/electron",
                 )
         }
+    }
+
+    runKtlintCheckOverMainSourceSet {
+        mustRunAfter(generateJte)
     }
 }

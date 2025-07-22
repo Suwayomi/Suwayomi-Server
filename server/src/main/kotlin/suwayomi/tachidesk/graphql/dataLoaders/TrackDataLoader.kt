@@ -22,7 +22,9 @@ import suwayomi.tachidesk.graphql.types.TrackStatusType
 import suwayomi.tachidesk.graphql.types.TrackerType
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrack
+import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrackSearch
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
+import suwayomi.tachidesk.manga.model.table.TrackSearchTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 
 class TrackerDataLoader : KotlinDataLoader<Int, TrackerType> {
@@ -116,7 +118,30 @@ class DisplayScoreForTrackRecordDataLoader : KotlinDataLoader<Int, String> {
                             .toList()
                             .map { it.toTrack() }
                             .associateBy { it.id!! }
-                            .mapValues { TrackerManager.getTracker(it.value.sync_id)?.displayScore(it.value) }
+                            .mapValues { TrackerManager.getTracker(it.value.tracker_id)?.displayScore(it.value) }
+
+                    ids.map { trackRecords[it] }
+                }
+            }
+        }
+}
+
+class DisplayScoreForTrackSearchDataLoader : KotlinDataLoader<Int, String> {
+    override val dataLoaderName = "DisplayScoreForTrackSearchDataLoader"
+
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, String> =
+        DataLoaderFactory.newDataLoader<Int, String> { ids ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val trackRecords =
+                        TrackSearchTable
+                            .selectAll()
+                            .where { TrackSearchTable.id inList ids }
+                            .toList()
+                            .map { it.toTrackSearch() }
+                            .associateBy { it.id!! }
+                            .mapValues { TrackerManager.getTracker(it.value.tracker_id)?.displayScore(it.value) }
 
                     ids.map { trackRecords[it] }
                 }

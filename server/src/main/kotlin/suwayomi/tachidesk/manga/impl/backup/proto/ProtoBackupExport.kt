@@ -34,8 +34,10 @@ import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupHistory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupServerSettings
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupServerSettings.BackupSettingsDownloadConversionType
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSource
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupTracking
 import suwayomi.tachidesk.manga.impl.track.Track
@@ -53,8 +55,8 @@ import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.InputStream
-import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.seconds
 
 object ProtoBackupExport : ProtoBackupBase() {
     private val logger = KotlinLogging.logger { }
@@ -222,7 +224,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                     genre = mangaRow[MangaTable.genre]?.split(", ") ?: emptyList(),
                     status = MangaStatus.valueOf(mangaRow[MangaTable.status]).value,
                     thumbnailUrl = mangaRow[MangaTable.thumbnail_url],
-                    dateAdded = TimeUnit.SECONDS.toMillis(mangaRow[MangaTable.inLibraryAt]),
+                    dateAdded = mangaRow[MangaTable.inLibraryAt].seconds.inWholeMilliseconds,
                     viewer = 0, // not supported in Tachidesk
                     updateStrategy = UpdateStrategy.valueOf(mangaRow[MangaTable.updateStrategy]),
                 )
@@ -233,7 +235,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                 backupManga.meta = Manga.getMangaMetaMap(mangaId)
             }
 
-            if (flags.includeChapters) {
+            if (flags.includeChapters || flags.includeHistory) {
                 val chapters =
                     transaction {
                         ChapterTable
@@ -244,27 +246,42 @@ object ProtoBackupExport : ProtoBackupBase() {
                                 ChapterTable.toDataClass(it)
                             }
                     }
-                val chapterToMeta = Chapter.getChaptersMetaMaps(chapters.map { it.id })
+                if (flags.includeChapters) {
+                    val chapterToMeta = Chapter.getChaptersMetaMaps(chapters.map { it.id })
 
-                backupManga.chapters =
-                    chapters.map {
-                        BackupChapter(
-                            it.url,
-                            it.name,
-                            it.scanlator,
-                            it.read,
-                            it.bookmarked,
-                            it.lastPageRead,
-                            TimeUnit.SECONDS.toMillis(it.fetchedAt),
-                            it.uploadDate,
-                            it.chapterNumber,
-                            chapters.size - it.index,
-                        ).apply {
-                            if (flags.includeClientData) {
-                                this.meta = chapterToMeta[it.id] ?: emptyMap()
+                    backupManga.chapters =
+                        chapters.map {
+                            BackupChapter(
+                                it.url,
+                                it.name,
+                                it.scanlator,
+                                it.read,
+                                it.bookmarked,
+                                it.lastPageRead,
+                                it.fetchedAt.seconds.inWholeMilliseconds,
+                                it.uploadDate,
+                                it.chapterNumber,
+                                chapters.size - it.index,
+                            ).apply {
+                                if (flags.includeClientData) {
+                                    this.meta = chapterToMeta[it.id] ?: emptyMap()
+                                }
                             }
                         }
-                    }
+                }
+                if (flags.includeHistory) {
+                    backupManga.history =
+                        chapters.mapNotNull {
+                            if (it.lastReadAt > 0) {
+                                BackupHistory(
+                                    url = it.url,
+                                    lastRead = it.lastReadAt.seconds.inWholeMilliseconds,
+                                )
+                            } else {
+                                null
+                            }
+                        }
+                }
             }
 
             if (flags.includeCategories) {
@@ -290,6 +307,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                                 startedReadingDate = it.record.startDate,
                                 finishedReadingDate = it.record.finishDate,
                                 trackingUrl = it.record.remoteUrl,
+                                private = it.record.private,
                             )
                         }
                     }
@@ -391,6 +409,14 @@ object ProtoBackupExport : ProtoBackupBase() {
             autoDownloadAheadLimit = 0, // deprecated
             autoDownloadNewChaptersLimit = serverConfig.autoDownloadNewChaptersLimit.value,
             autoDownloadIgnoreReUploads = serverConfig.autoDownloadIgnoreReUploads.value,
+            downloadConversions =
+                serverConfig.downloadConversions.value.map {
+                    BackupSettingsDownloadConversionType(
+                        it.key,
+                        it.value.target,
+                        it.value.compressionLevel,
+                    )
+                },
             // extension
             extensionRepos = serverConfig.extensionRepos.value,
             // requests
@@ -402,9 +428,12 @@ object ProtoBackupExport : ProtoBackupBase() {
             globalUpdateInterval = serverConfig.globalUpdateInterval.value,
             updateMangas = serverConfig.updateMangas.value,
             // Authentication
-            basicAuthEnabled = serverConfig.basicAuthEnabled.value,
-            basicAuthUsername = serverConfig.basicAuthUsername.value,
-            basicAuthPassword = serverConfig.basicAuthPassword.value,
+            authMode = serverConfig.authMode.value,
+            authUsername = serverConfig.authUsername.value,
+            authPassword = serverConfig.authPassword.value,
+            basicAuthEnabled = false,
+            basicAuthUsername = null,
+            basicAuthPassword = null,
             // misc
             debugLogsEnabled = serverConfig.debugLogsEnabled.value,
             gqlDebugLogsEnabled = false, // deprecated

@@ -2,8 +2,6 @@ package suwayomi.tachidesk.manga.impl.backup.proto.models
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
-import suwayomi.tachidesk.manga.impl.backup.models.Track
-import suwayomi.tachidesk.manga.impl.backup.models.TrackImpl
 
 @Serializable
 data class BackupTracking(
@@ -26,45 +24,6 @@ data class BackupTracking(
     @ProtoNumber(10) var startedReadingDate: Long = 0,
     // finishedReadingDate is called endReadTime in 1.x
     @ProtoNumber(11) var finishedReadingDate: Long = 0,
+    @ProtoNumber(12) var private: Boolean = false,
     @ProtoNumber(100) var mediaId: Long = 0,
-) {
-    fun getTrackingImpl(): TrackImpl =
-        TrackImpl().apply {
-            sync_id = this@BackupTracking.syncId
-            media_id =
-                if (this@BackupTracking.mediaIdInt != 0) {
-                    this@BackupTracking.mediaIdInt.toLong()
-                } else {
-                    this@BackupTracking.mediaId
-                }
-            library_id = this@BackupTracking.libraryId
-            title = this@BackupTracking.title
-            // convert from float to int because of 1.x types
-            last_chapter_read = this@BackupTracking.lastChapterRead.toInt()
-            total_chapters = this@BackupTracking.totalChapters
-            score = this@BackupTracking.score
-            status = this@BackupTracking.status
-            started_reading_date = this@BackupTracking.startedReadingDate
-            finished_reading_date = this@BackupTracking.finishedReadingDate
-            tracking_url = this@BackupTracking.trackingUrl
-        }
-
-    companion object {
-        fun copyFrom(track: Track): BackupTracking =
-            BackupTracking(
-                syncId = track.sync_id,
-                mediaId = track.media_id,
-                // forced not null so its compatible with 1.x backup system
-                libraryId = track.library_id!!,
-                title = track.title,
-                // convert to float for 1.x
-                lastChapterRead = track.last_chapter_read.toFloat(),
-                totalChapters = track.total_chapters,
-                score = track.score,
-                status = track.status,
-                startedReadingDate = track.started_reading_date,
-                finishedReadingDate = track.finished_reading_date,
-                trackingUrl = track.tracking_url,
-            )
-    }
-}
+)

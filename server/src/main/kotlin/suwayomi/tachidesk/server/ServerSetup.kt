@@ -9,12 +9,18 @@ package suwayomi.tachidesk.server
 
 import android.os.Looper
 import ch.qos.logback.classic.Level
+import com.typesafe.config.Config
+import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigRenderOptions
+import com.typesafe.config.ConfigValue
+import com.typesafe.config.parser.ConfigDocument
 import dev.datlag.kcef.KCEF
 import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.createAppModule
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.local.LocalSource
+import io.github.config4k.registerCustomType
+import io.github.config4k.toConfig
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.json.JavalinJackson
 import io.javalin.json.JsonMapper
@@ -27,9 +33,12 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.cef.network.CefCookieManager
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
+import suwayomi.tachidesk.global.impl.KcefWebView.Companion.toCefCookie
+import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
@@ -39,12 +48,14 @@ import suwayomi.tachidesk.manga.impl.util.lang.renameTo
 import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
+import suwayomi.tachidesk.server.util.MutableStateFlowType
 import suwayomi.tachidesk.server.util.SystemTray
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
 import xyz.nulldev.androidcompat.androidCompatModule
+import xyz.nulldev.androidcompat.webkit.KcefWebViewProvider
 import xyz.nulldev.ts.config.ApplicationRootDir
 import xyz.nulldev.ts.config.BASE_LOGGER_NAME
 import xyz.nulldev.ts.config.GlobalConfigManager
@@ -69,16 +80,21 @@ class ApplicationDirs(
     val tempRoot: String = "${System.getProperty("java.io.tmpdir")}/Tachidesk",
 ) {
     val extensionsRoot = "$dataRoot/extensions"
-    val downloadsRoot get() = serverConfig.downloadsPath.value.ifBlank { "$dataRoot/downloads" }
-    val localMangaRoot get() = serverConfig.localSourcePath.value.ifBlank { "$dataRoot/local" }
+    val downloadsRoot
+        get() = serverConfig.downloadsPath.value.ifBlank { "$dataRoot/downloads" }
+    val localMangaRoot
+        get() = serverConfig.localSourcePath.value.ifBlank { "$dataRoot/local" }
     val webUIRoot = "$dataRoot/webUI"
-    val automatedBackupRoot get() = serverConfig.backupPath.value.ifBlank { "$dataRoot/backups" }
+    val automatedBackupRoot
+        get() = serverConfig.backupPath.value.ifBlank { "$dataRoot/backups" }
 
     val tempThumbnailCacheRoot = "$tempRoot/thumbnails"
     val tempMangaCacheRoot = "$tempRoot/manga-cache"
 
-    val thumbnailDownloadsRoot get() = "$downloadsRoot/thumbnails"
-    val mangaDownloadsRoot get() = "$downloadsRoot/mangas"
+    val thumbnailDownloadsRoot
+        get() = "$downloadsRoot/thumbnails"
+    val mangaDownloadsRoot
+        get() = "$downloadsRoot/mangas"
 }
 
 @Suppress("DEPRECATION")
@@ -108,9 +124,38 @@ fun setupLogLevelUpdating(
     loggerNames: List<String>,
     defaultLevel: Level = Level.INFO,
 ) {
-    serverConfig.subscribeTo(configFlow, { debugLogsEnabled ->
-        loggerNames.forEach { loggerName -> setLogLevelFor(loggerName, if (debugLogsEnabled) Level.DEBUG else defaultLevel) }
-    }, ignoreInitialValue = false)
+    serverConfig.subscribeTo(
+        configFlow,
+        { debugLogsEnabled ->
+            loggerNames.forEach { loggerName ->
+                setLogLevelFor(loggerName, if (debugLogsEnabled) Level.DEBUG else defaultLevel)
+            }
+        },
+        ignoreInitialValue = false,
+    )
+}
+
+fun <T : Any> migrateConfig(
+    configDocument: ConfigDocument,
+    config: Config,
+    configKey: String,
+    toConfigKey: String,
+    toType: (ConfigValue) -> T?,
+): ConfigDocument {
+    try {
+        val configValue = config.getValue(configKey)
+        val typedValue = toType(configValue)
+        if (typedValue != null) {
+            return configDocument.withValue(
+                toConfigKey,
+                typedValue.toConfig("internal").getValue("internal"),
+            )
+        }
+    } catch (_: ConfigException) {
+        // ignore, likely already migrated
+    }
+
+    return configDocument
 }
 
 fun serverModule(applicationDirs: ApplicationDirs): Module =
@@ -123,13 +168,14 @@ fun serverModule(applicationDirs: ApplicationDirs): Module =
 @OptIn(DelicateCoroutinesApi::class)
 fun applicationSetup() {
     Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
-        KotlinLogging.logger { }.error(throwable) { "unhandled exception" }
+        KotlinLogging.logger {}.error(throwable) { "unhandled exception" }
     }
 
     val mainLoop = LooperThread()
     mainLoop.start()
 
     // register Tachidesk's config which is dubbed "ServerConfig"
+    registerCustomType(MutableStateFlowType())
     GlobalConfigManager.registerModule(
         ServerConfig.register { GlobalConfigManager.config },
     )
@@ -169,7 +215,10 @@ fun applicationSetup() {
             GlobalConfigManager.config
                 .root()
                 .render(ConfigRenderOptions.concise().setFormatted(true))
-                .replace(Regex("(\"basicAuth(?:Username|Password)\"\\s:\\s)(?!\"\")\".*\""), "$1\"******\"")
+                .replace(
+                    Regex("(\"(?:basicAuth|auth)(?:Username|Password)\"\\s:\\s)(?!\"\")\".*\""),
+                    "$1\"******\"",
+                )
     }
 
     logger.debug { "Data Root directory is set to: ${applicationDirs.dataRoot}" }
@@ -187,9 +236,7 @@ fun applicationSetup() {
         applicationDirs.tempThumbnailCacheRoot,
         applicationDirs.downloadsRoot,
         applicationDirs.localMangaRoot,
-    ).forEach {
-        File(it).mkdirs()
-    }
+    ).forEach { File(it).mkdirs() }
 
     // initialize Koin modules
     val app = App()
@@ -199,6 +246,33 @@ fun applicationSetup() {
             androidCompatModule(),
             configManagerModule(),
             serverModule(applicationDirs),
+            module {
+                single<KcefWebViewProvider.InitBrowserHandler> {
+                    object : KcefWebViewProvider.InitBrowserHandler {
+                        override fun init(provider: KcefWebViewProvider) {
+                            val networkHelper = Injekt.get<NetworkHelper>()
+                            val logger = KotlinLogging.logger {}
+                            logger.info { "Start loading cookies" }
+                            CefCookieManager.getGlobalManager().apply {
+                                val cookies = networkHelper.cookieStore.getStoredCookies()
+                                for (cookie in cookies) {
+                                    try {
+                                        if (!setCookie(
+                                                "https://" + cookie.domain,
+                                                cookie.toCefCookie(),
+                                            )
+                                        ) {
+                                            throw Exception()
+                                        }
+                                    } catch (e: Exception) {
+                                        logger.warn(e) { "Loading cookie ${cookie.name} failed" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
         )
     }
 
@@ -214,22 +288,52 @@ fun applicationSetup() {
     Injekt
         .get<NetworkHelper>()
         .userAgentFlow
-        .onEach {
-            System.setProperty("http.agent", it)
-        }.launchIn(GlobalScope)
+        .onEach { System.setProperty("http.agent", it) }
+        .launchIn(GlobalScope)
 
     // create or update conf file if doesn't exist
     try {
         val dataConfFile = File("${applicationDirs.dataRoot}/server.conf")
         if (!dataConfFile.exists()) {
             JavalinSetup::class.java.getResourceAsStream("/server-reference.conf").use { input ->
-                dataConfFile.outputStream().use { output ->
-                    input.copyTo(output)
-                }
+                dataConfFile.outputStream().use { output -> input.copyTo(output) }
             }
         } else {
             // make sure the user config file is up-to-date
-            GlobalConfigManager.updateUserConfig()
+            GlobalConfigManager.updateUserConfig { config ->
+                var updatedConfig = this
+                updatedConfig =
+                    migrateConfig(
+                        updatedConfig,
+                        config,
+                        "server.basicAuthEnabled",
+                        "server.authMode",
+                        toType = {
+                            if (it.unwrapped() as? Boolean == true) {
+                                AuthMode.BASIC_AUTH.name
+                            } else {
+                                null
+                            }
+                        },
+                    )
+                updatedConfig =
+                    migrateConfig(
+                        updatedConfig,
+                        config,
+                        "server.basicAuthUsername",
+                        "server.authUsername",
+                        toType = { it.unwrapped() as? String },
+                    )
+                updatedConfig =
+                    migrateConfig(
+                        updatedConfig,
+                        config,
+                        "server.basicAuthPassword",
+                        "server.authPassword",
+                        toType = { it.unwrapped() as? String },
+                    )
+                updatedConfig
+            }
         }
     } catch (e: Exception) {
         logger.error(e) { "Exception while creating initial server.conf" }
@@ -240,39 +344,45 @@ fun applicationSetup() {
         val localSourceIconFile = File("${applicationDirs.extensionsRoot}/icon/localSource.png")
         if (!localSourceIconFile.exists()) {
             JavalinSetup::class.java.getResourceAsStream("/icon/localSource.png").use { input ->
-                localSourceIconFile.outputStream().use { output ->
-                    input.copyTo(output)
-                }
+                localSourceIconFile.outputStream().use { output -> input.copyTo(output) }
             }
         }
     } catch (e: Exception) {
         logger.error(e) { "Exception while copying Local source's icon" }
     }
 
-    // fixes #119 , ref: https://github.com/Suwayomi/Suwayomi-Server/issues/119#issuecomment-894681292 , source Id calculation depends on String.lowercase()
+    // fixes #119 , ref:
+    // https://github.com/Suwayomi/Suwayomi-Server/issues/119#issuecomment-894681292 , source Id
+    // calculation depends on String.lowercase()
     Locale.setDefault(Locale.ENGLISH)
 
     // Initialize the localization service
     LocalizationHelper.initialize()
-    logger.debug { "Localization service initialized. Supported languages: ${LocalizationHelper.getSupportedLocales()}" }
+    logger.debug {
+        "Localization service initialized. Supported languages: ${LocalizationHelper.getSupportedLocales()}"
+    }
 
     databaseUp()
 
     LocalSource.register()
 
     // create system tray
-    serverConfig.subscribeTo(serverConfig.systemTrayEnabled, { systemTrayEnabled ->
-        try {
-            if (systemTrayEnabled) {
-                SystemTray.create()
-            } else {
-                SystemTray.remove()
+    serverConfig.subscribeTo(
+        serverConfig.systemTrayEnabled,
+        { systemTrayEnabled ->
+            try {
+                if (systemTrayEnabled) {
+                    SystemTray.create()
+                } else {
+                    SystemTray.remove()
+                }
+            } catch (e: Throwable) {
+                // cover both java.lang.Exception and java.lang.Error
+                logger.error(e) { "Failed to create/remove SystemTray due to" }
             }
-        } catch (e: Throwable) {
-            // cover both java.lang.Exception and java.lang.Error
-            logger.error(e) { "Failed to create/remove SystemTray due to" }
-        }
-    }, ignoreInitialValue = false)
+        },
+        ignoreInitialValue = false,
+    )
 
     runMigrations(applicationDirs)
 
@@ -311,7 +421,10 @@ fun applicationSetup() {
                     object : Authenticator() {
                         override fun getPasswordAuthentication(): PasswordAuthentication? {
                             if (requestingProtocol.startsWith("SOCKS", ignoreCase = true)) {
-                                return PasswordAuthentication(proxyUsername, proxyPassword.toCharArray())
+                                return PasswordAuthentication(
+                                    proxyUsername,
+                                    proxyPassword.toCharArray(),
+                                )
                             }
 
                             return null
@@ -357,13 +470,21 @@ fun applicationSetup() {
                     }
                 }
                 download { github() }
+                settings {
+                    windowlessRenderingEnabled = true
+                    cachePath = (Path(applicationDirs.dataRoot) / "cache/kcef").toString()
+                }
+                appHandler(
+                    KCEF.AppHandler(
+                        arrayOf("--disable-gpu", "--off-screen-rendering-enabled", "--disable-dev-shm-usage"),
+                    ),
+                )
+
                 val kcefDir = Path(applicationDirs.dataRoot) / "bin/kcef"
                 kcefDir.createDirectories()
                 installDir(kcefDir.toFile())
             },
-            onError = {
-                it?.printStackTrace()
-            },
+            onError = { it?.printStackTrace() },
         )
     }
 }

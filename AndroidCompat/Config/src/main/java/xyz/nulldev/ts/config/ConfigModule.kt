@@ -8,9 +8,12 @@ package xyz.nulldev.ts.config
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import com.typesafe.config.Config
+import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigFactory
-import com.typesafe.config.ConfigValueFactory
+import io.github.config4k.ClassContainer
+import io.github.config4k.TypeReference
 import io.github.config4k.getValue
+import io.github.config4k.readers.SelectReader
 import kotlin.reflect.KProperty
 
 /**
@@ -26,7 +29,7 @@ abstract class ConfigModule(
  */
 abstract class SystemPropertyOverridableConfigModule(
     getConfig: () -> Config,
-    moduleName: String,
+    val moduleName: String,
 ) : ConfigModule(getConfig) {
     val overridableConfig = SystemPropertyOverrideDelegate(getConfig, moduleName)
 }
@@ -41,25 +44,33 @@ class SystemPropertyOverrideDelegate(
         property: KProperty<*>,
     ): T {
         val config = getConfig()
-        val configValue: T = config.getValue(thisRef, property)
 
-        val combined =
-            System.getProperty(
-                "$CONFIG_PREFIX.$moduleName.${property.name}",
-                if (T::class.simpleName == "List") {
-                    ConfigValueFactory.fromAnyRef(configValue).render()
-                } else {
-                    configValue.toString()
-                },
-            )
+        val systemProperty =
+            System.getProperty("$CONFIG_PREFIX.$moduleName.${property.name}")
+        if (systemProperty == null) {
+            val configValue: T = config.getValue(thisRef, property)
+            return configValue
+        }
 
-        return when (T::class.simpleName) {
-            "Int" -> combined.toInt()
-            "Boolean" -> combined.toBoolean()
-            "Double" -> combined.toDouble()
-            "List" -> ConfigFactory.parseString("internal=" + combined).getStringList("internal").orEmpty()
-            // add more types as needed
-            else -> combined // covers String
-        } as T
+        val systemPropertyConfig =
+            try {
+                ConfigFactory.parseString("internal=$systemProperty")
+            } catch (_: ConfigException) {
+                ConfigFactory.parseMap(mapOf("internal" to systemProperty))
+            }
+
+        val genericType = object : TypeReference<T>() {}.genericType()
+        val clazz = ClassContainer(T::class, genericType)
+        val reader = SelectReader.getReader(clazz)
+        val path = property.name
+
+        val result = reader(systemPropertyConfig, "internal")
+        return try {
+            result as T
+        } catch (e: Exception) {
+            throw result
+                ?.let { e }
+                ?: ConfigException.BadPath(path, "take a look at your config")
+        }
     }
 }

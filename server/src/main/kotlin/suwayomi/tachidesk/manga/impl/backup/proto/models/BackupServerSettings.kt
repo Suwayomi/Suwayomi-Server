@@ -3,7 +3,9 @@ package suwayomi.tachidesk.manga.impl.backup.proto.models
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
 import org.jetbrains.exposed.sql.SortOrder
+import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.graphql.types.Settings
+import suwayomi.tachidesk.graphql.types.SettingsDownloadConversion
 import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIInterface
@@ -34,6 +36,7 @@ data class BackupServerSettings(
     @ProtoNumber(19) override var autoDownloadAheadLimit: Int,
     @ProtoNumber(20) override var autoDownloadNewChaptersLimit: Int,
     @ProtoNumber(21) override var autoDownloadIgnoreReUploads: Boolean,
+    @ProtoNumber(57) override val downloadConversions: List<BackupSettingsDownloadConversionType>?,
     // extension
     @ProtoNumber(22) override var extensionRepos: List<String>,
     // requests
@@ -45,9 +48,13 @@ data class BackupServerSettings(
     @ProtoNumber(27) override var globalUpdateInterval: Double,
     @ProtoNumber(28) override var updateMangas: Boolean,
     // Authentication
-    @ProtoNumber(29) override var basicAuthEnabled: Boolean,
-    @ProtoNumber(30) override var basicAuthUsername: String,
-    @ProtoNumber(31) override var basicAuthPassword: String,
+    @ProtoNumber(56) override var authMode: AuthMode,
+    @ProtoNumber(29) override var basicAuthEnabled: Boolean?,
+    @ProtoNumber(30) override var authUsername: String,
+    @ProtoNumber(31) override var authPassword: String,
+    // deprecated
+    @ProtoNumber(99991) override var basicAuthUsername: String?,
+    @ProtoNumber(99992) override var basicAuthPassword: String?,
     // misc
     @ProtoNumber(32) override var debugLogsEnabled: Boolean,
     @ProtoNumber(33) override var gqlDebugLogsEnabled: Boolean,
@@ -77,4 +84,11 @@ data class BackupServerSettings(
     @ProtoNumber(53) override var opdsShowOnlyUnreadChapters: Boolean,
     @ProtoNumber(54) override var opdsShowOnlyDownloadedChapters: Boolean,
     @ProtoNumber(55) override var opdsChapterSortOrder: SortOrder,
-) : Settings
+) : Settings {
+    @Serializable
+    class BackupSettingsDownloadConversionType(
+        @ProtoNumber(1) override val mimeType: String,
+        @ProtoNumber(2) override val target: String,
+        @ProtoNumber(3) override val compressionLevel: Double?,
+    ) : SettingsDownloadConversion
+}

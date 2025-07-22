@@ -11,6 +11,7 @@ plugins {
     alias(libs.plugins.download)
     alias(libs.plugins.kotlin.multiplatform) apply false
     alias(libs.plugins.moko) apply false
+    alias(libs.plugins.jte) apply false
 }
 
 allprojects {

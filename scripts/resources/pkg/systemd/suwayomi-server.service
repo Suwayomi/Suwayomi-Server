@@ -10,7 +10,7 @@ Group=suwayomi-server
 SyslogIdentifier=suwayomi-server
 
 EnvironmentFile=/etc/suwayomi/server.conf
-ExecStart=/usr/bin/java $JAVA_ARGS -Dsuwayomi.tachidesk.config.server.rootDir="${TACHIDESK_ROOT_DIR}" -jar /usr/share/java/suwayomi-server/bin/Suwayomi-Server.jar
+ExecStart=/usr/bin/suwayomi-server $JAVA_ARGS -Dsuwayomi.tachidesk.config.server.rootDir="${TACHIDESK_ROOT_DIR}"
 Restart=on-failure
 
 ProtectSystem=full

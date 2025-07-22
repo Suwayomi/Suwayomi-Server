@@ -80,4 +80,23 @@
     <string name="manga_status_publishing_finished">Publishing Finished</string>
     <string name="manga_status_cancelled">Cancelled</string>
     <string name="manga_status_on_hiatus">On Hiatus</string>
+
+    <string name="label_error">Error</string>
+    <string name="label_version">Version <xliff:g id="version" example="v2.0.1833">%1$s</xliff:g></string>
+
+    <string name="webview_label_title">Suwayomi WebView</string>
+    <string name="webview_label_disconnected">Disconnected, please refresh</string>
+    <string name="webview_label_reversescroll">Reverse Scrolling</string>
+    <string name="webview_label_bindingshint">Note: While focus is on the WebView part, no keybinds, including refresh, will be handled by the browser.</string>
+    <string name="webview_label_init">Initializing... Please wait</string>
+    <string name="webview_label_getstarted">Enter a URL to get started</string>
+    <string name="webview_label_loading">Loading page...</string>
+    <string name="webview_placeholder_url">Enter URL...</string>
+
+    <string name="login_label_title">Suwayomi Login</string>
+    <string name="login_label_username">Username</string>
+    <string name="login_label_password">Password</string>
+    <string name="login_label_login">Log In</string>
+    <string name="login_placeholder_username">Type username...</string>
+    <string name="login_placeholder_password">Secret...</string>
 </resources>
