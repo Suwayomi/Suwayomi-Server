@@ -56,7 +56,7 @@ class SystemPropertyOverrideDelegate(
             try {
                 ConfigFactory.parseString("internal=$systemProperty")
             } catch (_: ConfigException) {
-                ConfigFactory.parseString("internal=\"$systemProperty\"")
+                ConfigFactory.parseMap(mapOf("internal" to systemProperty))
             }
 
         val genericType = object : TypeReference<T>() {}.genericType()
