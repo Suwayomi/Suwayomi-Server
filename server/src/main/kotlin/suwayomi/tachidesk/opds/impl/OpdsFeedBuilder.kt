@@ -400,7 +400,7 @@ object OpdsFeedBuilder {
                 }
                 addChapterSortAndFilterFacets(
                     this,
-                    "$baseUrl/manga/$mangaId",
+                    "$baseUrl/manga/$mangaId/chapters",
                     actualSortParamForLinks,
                     currentFilter,
                     locale,
