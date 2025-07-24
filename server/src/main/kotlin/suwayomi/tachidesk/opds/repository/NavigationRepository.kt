@@ -3,12 +3,14 @@ package suwayomi.tachidesk.opds.repository
 import dev.icerock.moko.resources.StringResource
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.alias
+import org.jetbrains.exposed.sql.count
+import org.jetbrains.exposed.sql.countDistinct
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
-import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -138,6 +140,7 @@ object NavigationRepository {
                             id = it[SourceTable.id].value,
                             name = it[SourceTable.name],
                             iconUrl = it[ExtensionTable.apkName].let { apkName -> Extension.getExtensionIconUrl(apkName) },
+                            mangaCount = null,
                         )
                     }
             Pair(sources, totalCount)
@@ -145,12 +148,13 @@ object NavigationRepository {
 
     fun getLibrarySources(pageNum: Int): Pair<List<OpdsSourceNavEntry>, Long> =
         transaction {
+            val mangaCount = MangaTable.id.countDistinct().alias("manga_count")
+
             val query =
                 SourceTable
-                    .join(MangaTable, JoinType.INNER) { MangaTable.sourceReference eq SourceTable.id }
-                    .join(ChapterTable, JoinType.INNER) { ChapterTable.manga eq MangaTable.id }
+                    .join(MangaTable, JoinType.INNER, SourceTable.id, MangaTable.sourceReference)
                     .join(ExtensionTable, JoinType.LEFT, onColumn = SourceTable.extension, otherColumn = ExtensionTable.id)
-                    .select(SourceTable.id, SourceTable.name, ExtensionTable.apkName)
+                    .select(SourceTable.id, SourceTable.name, ExtensionTable.apkName, mangaCount)
                     .where { MangaTable.inLibrary eq true }
                     .groupBy(SourceTable.id, SourceTable.name, ExtensionTable.apkName)
                     .orderBy(SourceTable.name to SortOrder.ASC)
@@ -165,6 +169,7 @@ object NavigationRepository {
                             id = it[SourceTable.id].value,
                             name = it[SourceTable.name],
                             iconUrl = it[ExtensionTable.apkName].let { apkName -> Extension.getExtensionIconUrl(apkName) },
+                            mangaCount = it[mangaCount],
                         )
                     }
             Pair(sources, totalCount)
@@ -172,12 +177,13 @@ object NavigationRepository {
 
     fun getCategories(pageNum: Int): Pair<List<OpdsCategoryNavEntry>, Long> =
         transaction {
+            val mangaCount = MangaTable.id.countDistinct().alias("manga_count")
+
             val query =
                 CategoryTable
                     .join(CategoryMangaTable, JoinType.INNER, CategoryTable.id, CategoryMangaTable.category)
                     .join(MangaTable, JoinType.INNER, CategoryMangaTable.manga, MangaTable.id)
-                    .join(ChapterTable, JoinType.INNER, MangaTable.id, ChapterTable.manga)
-                    .select(CategoryTable.id, CategoryTable.name)
+                    .select(CategoryTable.id, CategoryTable.name, mangaCount)
                     .where { MangaTable.inLibrary eq true }
                     .groupBy(CategoryTable.id, CategoryTable.name)
                     .orderBy(CategoryTable.order to SortOrder.ASC)
@@ -191,6 +197,7 @@ object NavigationRepository {
                         OpdsCategoryNavEntry(
                             id = it[CategoryTable.id].value,
                             name = it[CategoryTable.name],
+                            mangaCount = it[mangaCount],
                         )
                     }
             Pair(categories, totalCount)
@@ -201,25 +208,26 @@ object NavigationRepository {
         locale: Locale,
     ): Pair<List<OpdsGenreNavEntry>, Long> =
         transaction {
-            val genres =
+            val allGenres =
                 MangaTable
-                    .join(ChapterTable, JoinType.INNER, MangaTable.id, ChapterTable.manga)
                     .select(MangaTable.genre)
                     .where { MangaTable.inLibrary eq true }
                     .mapNotNull { it[MangaTable.genre] }
                     .flatMap { it.split(",").map(String::trim).filterNot(String::isBlank) }
-                    .distinct()
-                    .sorted()
 
-            val totalCount = genres.size.toLong()
+            val genreCounts = allGenres.groupingBy { it }.eachCount()
+            val distinctGenres = genreCounts.keys.sorted()
+
+            val totalCount = distinctGenres.size.toLong()
             val fromIndex = ((pageNum - 1) * opdsItemsPerPageBounded)
-            val toIndex = minOf(fromIndex + opdsItemsPerPageBounded, genres.size)
+            val toIndex = minOf(fromIndex + opdsItemsPerPageBounded, distinctGenres.size)
             val paginatedGenres =
-                (if (fromIndex < genres.size) genres.subList(fromIndex, toIndex) else emptyList())
+                (if (fromIndex < distinctGenres.size) distinctGenres.subList(fromIndex, toIndex) else emptyList())
                     .map { genreName ->
                         OpdsGenreNavEntry(
                             id = genreName.encodeForOpdsURL(),
                             title = genreName,
+                            mangaCount = genreCounts[genreName]?.toLong() ?: 0L,
                         )
                     }
             Pair(paginatedGenres, totalCount)
@@ -237,33 +245,44 @@ object NavigationRepository {
                 MangaStatus.ON_HIATUS to MR.strings.manga_status_on_hiatus,
             )
 
+        val statusCounts =
+            transaction {
+                MangaTable
+                    .select(MangaTable.status, MangaTable.id.count())
+                    .where { MangaTable.inLibrary eq true }
+                    .groupBy(MangaTable.status)
+                    .associate { it[MangaTable.status] to it[MangaTable.id.count()] }
+            }
+
         return MangaStatus.entries
             .map { mangaStatus ->
                 val titleRes = statusStringResources[mangaStatus] ?: MR.strings.manga_status_unknown
                 OpdsStatusNavEntry(
                     id = mangaStatus.value,
                     title = titleRes.localized(locale),
+                    mangaCount = statusCounts[mangaStatus.value] ?: 0L,
                 )
             }.sortedBy { it.id }
     }
 
     fun getContentLanguages(uiLocale: Locale): List<OpdsLanguageNavEntry> =
         transaction {
+            val mangaCount = MangaTable.id.countDistinct().alias("manga_count")
             SourceTable
                 .join(MangaTable, JoinType.INNER, SourceTable.id, MangaTable.sourceReference)
-                .join(ChapterTable, JoinType.INNER, MangaTable.id, ChapterTable.manga)
-                .select(SourceTable.lang)
+                .select(SourceTable.lang, mangaCount)
                 .where { MangaTable.inLibrary eq true }
                 .groupBy(SourceTable.lang)
-                .map { it[SourceTable.lang] }
-                .sorted()
-                .map { langCode ->
+                .orderBy(SourceTable.lang to SortOrder.ASC)
+                .map {
+                    val langCode = it[SourceTable.lang]
                     OpdsLanguageNavEntry(
                         id = langCode,
                         title =
-                            Locale.forLanguageTag(langCode).getDisplayName(uiLocale).replaceFirstChar {
-                                if (it.isLowerCase()) it.titlecase(uiLocale) else it.toString()
+                            Locale.forLanguageTag(langCode).getDisplayName(uiLocale).replaceFirstChar { char ->
+                                if (char.isLowerCase()) char.titlecase(uiLocale) else char.toString()
                             },
+                        mangaCount = it[mangaCount],
                     )
                 }
         }
