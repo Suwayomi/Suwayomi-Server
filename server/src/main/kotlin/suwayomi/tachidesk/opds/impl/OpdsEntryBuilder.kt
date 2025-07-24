@@ -24,6 +24,28 @@ import java.util.Locale
 object OpdsEntryBuilder {
     private fun currentFormattedTime() = OpdsDateUtil.formatCurrentInstantForOpds()
 
+    private fun addFacet(
+        feedBuilder: FeedBuilderInternal,
+        href: String,
+        titleKey: StringResource,
+        group: String,
+        isActive: Boolean,
+        count: Long?,
+        locale: Locale,
+    ) {
+        feedBuilder.links.add(
+            OpdsLinkXml(
+                OpdsConstants.LINK_REL_FACET,
+                href,
+                OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
+                titleKey.localized(locale),
+                facetGroup = group,
+                activeFacet = isActive,
+                thrCount = count?.toInt(),
+            ),
+        )
+    }
+
     fun mangaAcqEntryToEntry(
         entry: OpdsMangaAcqEntry,
         baseUrl: String,
@@ -225,11 +247,12 @@ object OpdsEntryBuilder {
         currentSort: String,
         currentFilter: String,
         locale: Locale,
+        filterCounts: Map<String, Long>? = null,
     ) {
         val sortGroup = MR.strings.opds_facetgroup_sort_order.localized(locale)
         val filterGroup = MR.strings.opds_facetgroup_read_status.localized(locale)
 
-        val addFacet = { href: String, titleKey: StringResource, group: String, isActive: Boolean ->
+        val addSortFacet = { href: String, titleKey: StringResource, group: String, isActive: Boolean ->
             feedBuilder.links.add(
                 OpdsLinkXml(
                     OpdsConstants.LINK_REL_FACET,
@@ -242,25 +265,25 @@ object OpdsEntryBuilder {
             )
         }
 
-        addFacet(
+        addSortFacet(
             "$baseUrl?sort=number_asc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
             MR.strings.opds_facet_sort_oldest_first,
             sortGroup,
             currentSort == "number_asc",
         )
-        addFacet(
+        addSortFacet(
             "$baseUrl?sort=number_desc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
             MR.strings.opds_facet_sort_newest_first,
             sortGroup,
             currentSort == "number_desc",
         )
-        addFacet(
+        addSortFacet(
             "$baseUrl?sort=date_asc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
             MR.strings.opds_facet_sort_date_asc,
             sortGroup,
             currentSort == "date_asc",
         )
-        addFacet(
+        addSortFacet(
             "$baseUrl?sort=date_desc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
             MR.strings.opds_facet_sort_date_desc,
             sortGroup,
@@ -268,22 +291,31 @@ object OpdsEntryBuilder {
         )
 
         addFacet(
+            feedBuilder,
             "$baseUrl?filter=all&sort=$currentSort&lang=${locale.toLanguageTag()}",
             MR.strings.opds_facet_filter_all_chapters,
             filterGroup,
             currentFilter == "all",
+            filterCounts?.get("all"),
+            locale,
         )
         addFacet(
+            feedBuilder,
             "$baseUrl?filter=unread&sort=$currentSort&lang=${locale.toLanguageTag()}",
             MR.strings.opds_facet_filter_unread_only,
             filterGroup,
             currentFilter == "unread",
+            filterCounts?.get("unread"),
+            locale,
         )
         addFacet(
+            feedBuilder,
             "$baseUrl?filter=read&sort=$currentSort&lang=${locale.toLanguageTag()}",
             MR.strings.opds_facet_filter_read_only,
             filterGroup,
             currentFilter == "read",
+            filterCounts?.get("read"),
+            locale,
         )
     }
 
@@ -293,11 +325,12 @@ object OpdsEntryBuilder {
         currentSort: String,
         currentFilter: String,
         locale: Locale,
+        filterCounts: Map<String, Long>? = null,
     ) {
         val sortGroup = MR.strings.opds_facetgroup_sort_order.localized(locale)
         val filterGroup = MR.strings.opds_facetgroup_filter_content.localized(locale)
 
-        val addFacet = { href: String, titleKey: StringResource, group: String, isActive: Boolean ->
+        val addSortFacet = { href: String, titleKey: StringResource, group: String, isActive: Boolean ->
             feedBuilder.links.add(
                 OpdsLinkXml(
                     OpdsConstants.LINK_REL_FACET,
@@ -311,37 +344,37 @@ object OpdsEntryBuilder {
         }
 
         // Sorting Facets
-        addFacet(
+        addSortFacet(
             "$baseUrl?sort=alpha_asc&filter=$currentFilter",
             MR.strings.opds_facet_sort_alpha_asc,
             sortGroup,
             currentSort == "alpha_asc",
         )
-        addFacet(
+        addSortFacet(
             "$baseUrl?sort=alpha_desc&filter=$currentFilter",
             MR.strings.opds_facet_sort_alpha_desc,
             sortGroup,
             currentSort == "alpha_desc",
         )
-        addFacet(
+        addSortFacet(
             "$baseUrl?sort=last_read_desc&filter=$currentFilter",
             MR.strings.opds_facet_sort_last_read_desc,
             sortGroup,
             currentSort == "last_read_desc",
         )
-        addFacet(
+        addSortFacet(
             "$baseUrl?sort=latest_chapter_desc&filter=$currentFilter",
             MR.strings.opds_facet_sort_latest_chapter_desc,
             sortGroup,
             currentSort == "latest_chapter_desc",
         )
-        addFacet(
+        addSortFacet(
             "$baseUrl?sort=date_added_desc&filter=$currentFilter",
             MR.strings.opds_facet_sort_date_added_desc,
             sortGroup,
             currentSort == "date_added_desc",
         )
-        addFacet(
+        addSortFacet(
             "$baseUrl?sort=unread_desc&filter=$currentFilter",
             MR.strings.opds_facet_sort_unread_desc,
             sortGroup,
@@ -349,25 +382,50 @@ object OpdsEntryBuilder {
         )
 
         // Filtering Facets
-        addFacet("$baseUrl?filter=all&sort=$currentSort", MR.strings.opds_facet_filter_all, filterGroup, currentFilter == "all")
         addFacet(
+            feedBuilder,
+            "$baseUrl?filter=all&sort=$currentSort",
+            MR.strings.opds_facet_filter_all,
+            filterGroup,
+            currentFilter == "all",
+            filterCounts?.get("all"),
+            locale,
+        )
+        addFacet(
+            feedBuilder,
             "$baseUrl?filter=unread&sort=$currentSort",
             MR.strings.opds_facet_filter_unread_only,
             filterGroup,
             currentFilter == "unread",
+            filterCounts?.get("unread"),
+            locale,
         )
         addFacet(
+            feedBuilder,
             "$baseUrl?filter=downloaded&sort=$currentSort",
             MR.strings.opds_facet_filter_downloaded,
             filterGroup,
             currentFilter == "downloaded",
+            filterCounts?.get("downloaded"),
+            locale,
         )
-        addFacet("$baseUrl?filter=ongoing&sort=$currentSort", MR.strings.opds_facet_filter_ongoing, filterGroup, currentFilter == "ongoing")
         addFacet(
+            feedBuilder,
+            "$baseUrl?filter=ongoing&sort=$currentSort",
+            MR.strings.opds_facet_filter_ongoing,
+            filterGroup,
+            currentFilter == "ongoing",
+            filterCounts?.get("ongoing"),
+            locale,
+        )
+        addFacet(
+            feedBuilder,
             "$baseUrl?filter=completed&sort=$currentSort",
             MR.strings.opds_facet_filter_completed,
             filterGroup,
             currentFilter == "completed",
+            filterCounts?.get("completed"),
+            locale,
         )
     }
 }

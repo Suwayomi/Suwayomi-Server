@@ -8,6 +8,7 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -158,5 +159,19 @@ object ChapterRepository {
                         )
                     }
             Pair(items, totalCount)
+        }
+
+    fun getChapterFilterCounts(mangaId: Int): Map<String, Long> =
+        transaction {
+            val baseQuery = ChapterTable.select(ChapterTable.id).where { ChapterTable.manga eq mangaId }
+            val readCount = baseQuery.copy().andWhere { ChapterTable.isRead eq true }.count()
+            val unreadCount = baseQuery.copy().andWhere { ChapterTable.isRead eq false }.count()
+            val allCount = baseQuery.copy().count()
+
+            mapOf(
+                "read" to readCount,
+                "unread" to unreadCount,
+                "all" to allCount,
+            )
         }
 }

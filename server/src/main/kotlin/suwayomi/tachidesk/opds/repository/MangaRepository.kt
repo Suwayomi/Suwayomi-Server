@@ -337,4 +337,31 @@ object MangaRepository {
             else -> query.orderBy(MangaTable.title to SortOrder.ASC) // Default sort
         }
     }
+
+    fun getLibraryFilterCounts(): Map<String, Long> =
+        transaction {
+            val unreadCountExpr = Case().When(ChapterTable.isRead eq false, intLiteral(1)).Else(intLiteral(0)).sum()
+            val downloadedCountExpr = Case().When(ChapterTable.isDownloaded eq true, intLiteral(1)).Else(intLiteral(0)).sum()
+
+            val baseQuery =
+                MangaTable
+                    .join(ChapterTable, JoinType.LEFT, MangaTable.id, ChapterTable.manga)
+                    .select(MangaTable.id)
+                    .where { MangaTable.inLibrary eq true }
+                    .groupBy(MangaTable.id)
+
+            val unreadCount = baseQuery.copy().having { unreadCountExpr greater 0 }.count()
+            val downloadedCount = baseQuery.copy().having { downloadedCountExpr greater 0 }.count()
+
+            val statusBaseQuery = MangaTable.select(MangaTable.id).where { MangaTable.inLibrary eq true }
+            val ongoingCount = statusBaseQuery.copy().andWhere { MangaTable.status eq MangaStatus.ONGOING.value }.count()
+            val completedCount = statusBaseQuery.copy().andWhere { MangaTable.status eq MangaStatus.COMPLETED.value }.count()
+
+            mapOf(
+                "unread" to unreadCount,
+                "downloaded" to downloadedCount,
+                "ongoing" to ongoingCount,
+                "completed" to completedCount,
+            )
+        }
 }
