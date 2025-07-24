@@ -9,6 +9,7 @@ package suwayomi.tachidesk.manga.impl
 
 import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.Page
+import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.coroutines.flow.StateFlow
 import libcore.net.MimeUtils
@@ -86,8 +87,8 @@ object Page {
         val tachiyomiPage =
             Page(
                 pageEntry[PageTable.index],
-                pageEntry[PageTable.url],
-                pageEntry[PageTable.imageUrl],
+                pageEntry[PageTable.url] ?: "",
+                if (pageEntry[PageTable.imageUrl].isNullOrBlank()) null else pageEntry[PageTable.imageUrl],
             )
         progressFlow?.invoke(tachiyomiPage.progress)
 
@@ -110,16 +111,48 @@ object Page {
         val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
         source as HttpSource
 
-        if (pageEntry[PageTable.imageUrl] == null) {
-            val trueImageUrl = getTrueImageUrl(tachiyomiPage, source)
-            if (trueImageUrl.length <= 2048) {
-                transaction {
-                    PageTable.update({ (PageTable.chapter eq chapterId) and (PageTable.index eq index) }) {
-                        it[imageUrl] = trueImageUrl
+        if (pageEntry[PageTable.imageUrl].isNullOrBlank()) {
+            try {
+                val trueImageUrl = getTrueImageUrl(tachiyomiPage, source)
+                if (trueImageUrl.length <= 2048) {
+                    transaction {
+                        PageTable.update({ (PageTable.chapter eq chapterId) and (PageTable.index eq index) }) {
+                            it[imageUrl] = trueImageUrl
+                        }
                     }
                 }
+                tachiyomiPage.imageUrl = trueImageUrl
+            } catch (e: IllegalArgumentException) {
+                // URL resolution failed - try to re-fetch page list to get original base64 data
+                try {
+                    val originalPageList = refetchPageListFromSource(mangaId, chapterId)
+                    val originalPage = originalPageList.find { it.index == index }
+
+                    if (originalPage?.imageUrl != null) {
+                        if (originalPage.imageUrl!!.startsWith("data:")) {
+                            // This is base64 image data, handle it directly
+                            return convertImageResponse(
+                                handleBase64ImageData(originalPage.imageUrl!!),
+                                format,
+                            )
+                        } else if (originalPage.imageUrl!!.startsWith("http")) {
+                            // This is a regular URL, extract the clean URL part (before any # metadata)
+                            val cleanImageUrl = originalPage.imageUrl!!.split("#")[0]
+
+                            // Create a new page with the clean URL and fetch the image directly
+                            val cleanPage =
+                                eu.kanade.tachiyomi.source.model
+                                    .Page(originalPage.index, cleanImageUrl, cleanImageUrl)
+                            val response = source.getImage(cleanPage)
+                            val mimeType = response.headers["content-type"] ?: "image/webp"
+                            return convertImageResponse(response.body.byteStream() to mimeType, format)
+                        }
+                    }
+                } catch (fetchError: Exception) {
+                    // Ignore fetch error and fall through to original error
+                }
+                throw Exception("Failed to resolve image URL for page $index: ${e.message}", e)
             }
-            tachiyomiPage.imageUrl = trueImageUrl
         }
 
         val fileName = getPageName(index, chapterEntry[ChapterTable.pageCount])
@@ -166,4 +199,54 @@ object Page {
         index: Int,
         pageCount: Int,
     ): String = String.format("%0${pageCount.toString().length.coerceAtLeast(3)}d", index + 1)
+
+    /**
+     * Re-fetch the page list from the source to get original data (including base64 imageUrl)
+     */
+    private suspend fun refetchPageListFromSource(
+        mangaId: Int,
+        chapterId: Int,
+    ): List<eu.kanade.tachiyomi.source.model.Page> {
+        val chapterEntry =
+            transaction {
+                ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first()
+            }
+        val mangaEntry =
+            transaction {
+                MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
+            }
+
+        val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference]) as HttpSource
+
+        val sChapter =
+            eu.kanade.tachiyomi.source.model.SChapter.create().apply {
+                url = chapterEntry[ChapterTable.url]
+                name = chapterEntry[ChapterTable.name]
+                scanlator = chapterEntry[ChapterTable.scanlator]
+                chapter_number = chapterEntry[ChapterTable.chapter_number]
+                date_upload = chapterEntry[ChapterTable.date_upload]
+            }
+
+        return source.getPageList(sChapter)
+    }
+
+    /**
+     * Handle base64 encoded image data directly
+     */
+    private fun handleBase64ImageData(base64Data: String): Pair<InputStream, String> {
+        // Parse data URL format: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD...
+        val parts = base64Data.split(",")
+        if (parts.size != 2 || !parts[0].startsWith("data:")) {
+            throw IllegalArgumentException("Invalid base64 data URL format")
+        }
+
+        val mimeType = parts[0].substringAfter("data:").substringBefore(";")
+        val base64Content = parts[1]
+
+        val imageBytes =
+            java.util.Base64
+                .getDecoder()
+                .decode(base64Content)
+        return ByteArrayInputStream(imageBytes) to mimeType
+    }
 }
