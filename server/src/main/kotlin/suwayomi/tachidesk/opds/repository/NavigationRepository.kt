@@ -32,12 +32,6 @@ object NavigationRepository {
 
     private val rootSectionDetails: Map<String, Triple<String, StringResource, StringResource>> =
         mapOf(
-            "library" to
-                Triple(
-                    OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
-                    MR.strings.opds_feeds_library_title,
-                    MR.strings.opds_feeds_library_entry_content,
-                ),
             "explore" to
                 Triple(
                     OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
@@ -98,16 +92,31 @@ object NavigationRepository {
                 ),
         )
 
-    fun getRootNavigationItems(locale: Locale): List<OpdsRootNavEntry> =
-        rootSectionDetails.map { (id, details) ->
-            val (linkType, titleRes, descriptionRes) = details
-            OpdsRootNavEntry(
-                id = id,
-                title = titleRes.localized(locale),
-                description = descriptionRes.localized(locale),
-                linkType = linkType,
-            )
-        }
+    fun getRootNavigationItems(locale: Locale): List<OpdsRootNavEntry> {
+        val libraryItems =
+            librarySectionDetails.map { (id, details) ->
+                val (linkType, titleRes, descriptionRes) = details
+                OpdsRootNavEntry(
+                    id = "library/$id",
+                    title = titleRes.localized(locale),
+                    description = descriptionRes.localized(locale),
+                    linkType = linkType,
+                )
+            }
+
+        val otherRootItems =
+            rootSectionDetails.map { (id, details) ->
+                val (linkType, titleRes, descriptionRes) = details
+                OpdsRootNavEntry(
+                    id = id,
+                    title = titleRes.localized(locale),
+                    description = descriptionRes.localized(locale),
+                    linkType = linkType,
+                )
+            }
+
+        return libraryItems + otherRootItems
+    }
 
     fun getLibraryNavigationItems(locale: Locale): List<OpdsRootNavEntry> =
         librarySectionDetails.map { (id, details) ->
@@ -120,6 +129,7 @@ object NavigationRepository {
             )
         }
 
+    // ... (El resto del archivo permanece sin cambios)
     fun getExploreSources(pageNum: Int): Pair<List<OpdsSourceNavEntry>, Long> =
         transaction {
             val query =

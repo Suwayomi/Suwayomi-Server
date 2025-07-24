@@ -59,43 +59,6 @@ object OpdsFeedBuilder {
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
 
-    fun getLibraryFeed(
-        baseUrl: String,
-        locale: Locale,
-    ): String {
-        val navItems = NavigationRepository.getLibraryNavigationItems(locale)
-        val builder =
-            FeedBuilderInternal(
-                baseUrl,
-                "library",
-                MR.strings.opds_feeds_library_title.localized(locale),
-                locale,
-                OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
-                null,
-            )
-        builder.totalResults = navItems.size.toLong()
-        builder.entries.addAll(
-            navItems.map { item ->
-                OpdsEntryXml(
-                    id = "urn:suwayomi:navigation:library:${item.id}",
-                    title = item.title,
-                    updated = currentFormattedTime(),
-                    link =
-                        listOf(
-                            OpdsLinkXml(
-                                rel = OpdsConstants.LINK_REL_SUBSECTION,
-                                href = "$baseUrl/library/${item.id}?lang=${locale.toLanguageTag()}",
-                                type = item.linkType,
-                                title = item.title,
-                            ),
-                        ),
-                    content = OpdsContentXml(type = "text", value = item.description),
-                )
-            },
-        )
-        return OpdsXmlUtil.serializeFeedToString(builder.build())
-    }
-
     fun getHistoryFeed(
         baseUrl: String,
         pageNum: Int,

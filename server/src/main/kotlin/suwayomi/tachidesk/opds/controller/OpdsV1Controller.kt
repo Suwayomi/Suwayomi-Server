@@ -36,23 +36,6 @@ object OpdsV1Controller {
 
     // --- Main Navigation Feeds ---
 
-    // Library Navigation Feed
-    val libraryFeed =
-        handler(
-            queryParam<String?>("lang"),
-            documentWith = {
-                withOperation {
-                    summary("OPDS Library Navigation Feed")
-                    description("Navigation feed for accessing library content.")
-                }
-            },
-            behaviorOf = { ctx, lang ->
-                val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
-                ctx.contentType(OPDS_MIME).result(OpdsFeedBuilder.getLibraryFeed(BASE_URL, locale))
-            },
-            withResults = { httpCode(HttpStatus.OK) },
-        )
-
     // History Acquisition Feed
     val historyFeed =
         handler(

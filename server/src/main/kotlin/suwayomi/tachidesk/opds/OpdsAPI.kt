@@ -15,9 +15,6 @@ object OpdsAPI {
 
             // --- Main Navigation Feeds ---
 
-            // Library Navigation Feed
-            get("library", OpdsV1Controller.libraryFeed)
-
             // Explore Navigation Feed
             get("explore", OpdsV1Controller.exploreSourcesFeed)
 
