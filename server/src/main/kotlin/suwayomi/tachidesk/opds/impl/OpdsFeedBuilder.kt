@@ -122,31 +122,45 @@ object OpdsFeedBuilder {
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
 
-    fun getMangasFeed(
+    fun getSeriesFeed(
         criteria: OpdsSearchCriteria?,
         baseUrl: String,
         pageNum: Int,
+        sort: String?,
+        filter: String?,
         locale: Locale,
     ): String {
+        val currentSort = sort ?: "alpha_asc"
+        val currentFilter = filter ?: "all"
+
         val (mangaEntries, total) =
-            if (criteria !=
-                null
-            ) {
+            if (criteria != null) {
                 MangaRepository.findMangaByCriteria(criteria)
             } else {
-                MangaRepository.getAllManga(pageNum)
+                MangaRepository.getAllManga(pageNum, currentSort, currentFilter)
             }
+
         val title =
-            if (criteria !=
-                null
-            ) {
+            if (criteria != null) {
                 MR.strings.opds_feeds_search_results.localized(locale)
             } else {
                 MR.strings.opds_feeds_all_series_in_library_title.localized(locale)
             }
 
-        val builder = FeedBuilderInternal(baseUrl, "library/mangas", title, locale, OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION, pageNum)
+        val feedUrl = "library/series"
+        val builder =
+            FeedBuilderInternal(
+                baseUrl,
+                feedUrl,
+                title,
+                locale,
+                OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
+                pageNum,
+                currentSort = currentSort,
+                currentFilter = currentFilter,
+            )
         builder.totalResults = total
+        OpdsEntryBuilder.addLibraryMangaSortAndFilterFacets(builder, "$baseUrl/$feedUrl", currentSort, currentFilter, locale)
         builder.entries.addAll(mangaEntries.map { OpdsEntryBuilder.mangaAcqEntryToEntry(it, baseUrl, locale) })
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
@@ -236,19 +250,18 @@ object OpdsFeedBuilder {
         val sourceNavEntry = NavigationRepository.getExploreSources(1).first.find { it.id == sourceId }
         val sourceNameOrId = sourceNavEntry?.name ?: sourceId.toString()
         val titleRes =
-            if (sort ==
-                "latest"
-            ) {
+            if (sort == "latest") {
                 MR.strings.opds_feeds_source_specific_latest_title
             } else {
                 MR.strings.opds_feeds_source_specific_popular_title
             }
         val feedTitle = titleRes.localized(locale, sourceNameOrId)
 
+        val feedUrl = "source/$sourceId"
         val builder =
             FeedBuilderInternal(
                 baseUrl,
-                "source/$sourceId",
+                feedUrl,
                 feedTitle,
                 locale,
                 OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
@@ -266,7 +279,7 @@ object OpdsFeedBuilder {
                 ).toLong()
             }
         builder.icon = sourceNavEntry?.iconUrl
-        OpdsEntryBuilder.addSourceSortFacets(builder, "$baseUrl/source/$sourceId", sort, locale)
+        OpdsEntryBuilder.addSourceSortFacets(builder, "$baseUrl/$feedUrl", sort, locale)
         builder.entries.addAll(mangaEntries.map { OpdsEntryBuilder.mangaAcqEntryToEntry(it, baseUrl, locale) })
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
@@ -275,24 +288,32 @@ object OpdsFeedBuilder {
         sourceId: Long,
         baseUrl: String,
         pageNum: Int,
+        sort: String?,
+        filter: String?,
         locale: Locale,
     ): String {
-        val (mangaEntries, total) = MangaRepository.getLibraryMangaBySource(sourceId, pageNum)
+        val currentSort = sort ?: "alpha_asc"
+        val currentFilter = filter ?: "all"
+        val (mangaEntries, total) = MangaRepository.getLibraryMangaBySource(sourceId, pageNum, currentSort, currentFilter)
         val sourceNavEntry = NavigationRepository.getLibrarySources(1).first.find { it.id == sourceId }
         val sourceNameOrId = sourceNavEntry?.name ?: sourceId.toString()
         val feedTitle = MR.strings.opds_feeds_library_source_specific_title.localized(locale, sourceNameOrId)
 
+        val feedUrl = "library/source/$sourceId"
         val builder =
             FeedBuilderInternal(
                 baseUrl,
-                "library/source/$sourceId",
+                feedUrl,
                 feedTitle,
                 locale,
                 OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                 pageNum,
+                currentSort = currentSort,
+                currentFilter = currentFilter,
             )
         builder.totalResults = total
         builder.icon = sourceNavEntry?.iconUrl
+        OpdsEntryBuilder.addLibraryMangaSortAndFilterFacets(builder, "$baseUrl/$feedUrl", currentSort, currentFilter, locale)
         builder.entries.addAll(mangaEntries.map { OpdsEntryBuilder.mangaAcqEntryToEntry(it, baseUrl, locale) })
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
@@ -473,14 +494,29 @@ object OpdsFeedBuilder {
         categoryId: Int,
         baseUrl: String,
         pageNum: Int,
+        sort: String?,
+        filter: String?,
         locale: Locale,
     ): String {
-        val (mangaEntries, total) = MangaRepository.getMangaByCategory(categoryId, pageNum)
+        val currentSort = sort ?: "alpha_asc"
+        val currentFilter = filter ?: "all"
+        val (mangaEntries, total) = MangaRepository.getMangaByCategory(categoryId, pageNum, currentSort, currentFilter)
         val categoryNavEntry = NavigationRepository.getCategories(1).first.find { it.id == categoryId }
         val feedTitle = MR.strings.opds_feeds_category_specific_title.localized(locale, categoryNavEntry?.name ?: categoryId.toString())
+        val feedUrl = "category/$categoryId"
         val builder =
-            FeedBuilderInternal(baseUrl, "category/$categoryId", feedTitle, locale, OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION, pageNum)
+            FeedBuilderInternal(
+                baseUrl,
+                feedUrl,
+                feedTitle,
+                locale,
+                OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
+                pageNum,
+                currentSort = currentSort,
+                currentFilter = currentFilter,
+            )
         builder.totalResults = total
+        OpdsEntryBuilder.addLibraryMangaSortAndFilterFacets(builder, "$baseUrl/$feedUrl", currentSort, currentFilter, locale)
         builder.entries.addAll(mangaEntries.map { OpdsEntryBuilder.mangaAcqEntryToEntry(it, baseUrl, locale) })
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
@@ -489,20 +525,28 @@ object OpdsFeedBuilder {
         genre: String,
         baseUrl: String,
         pageNum: Int,
+        sort: String?,
+        filter: String?,
         locale: Locale,
     ): String {
-        val (mangaEntries, total) = MangaRepository.getMangaByGenre(genre, pageNum)
+        val currentSort = sort ?: "alpha_asc"
+        val currentFilter = filter ?: "all"
+        val (mangaEntries, total) = MangaRepository.getMangaByGenre(genre, pageNum, currentSort, currentFilter)
         val feedTitle = MR.strings.opds_feeds_genre_specific_title.localized(locale, genre)
+        val feedUrl = "genre/${genre.encodeForOpdsURL()}"
         val builder =
             FeedBuilderInternal(
                 baseUrl,
-                "genre/${genre.encodeForOpdsURL()}",
+                feedUrl,
                 feedTitle,
                 locale,
                 OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                 pageNum,
+                currentSort = currentSort,
+                currentFilter = currentFilter,
             )
         builder.totalResults = total
+        OpdsEntryBuilder.addLibraryMangaSortAndFilterFacets(builder, "$baseUrl/$feedUrl", currentSort, currentFilter, locale)
         builder.entries.addAll(mangaEntries.map { OpdsEntryBuilder.mangaAcqEntryToEntry(it, baseUrl, locale) })
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
@@ -511,15 +555,30 @@ object OpdsFeedBuilder {
         statusDbId: Long,
         baseUrl: String,
         pageNum: Int,
+        sort: String?,
+        filter: String?,
         locale: Locale,
     ): String {
+        val currentSort = sort ?: "alpha_asc"
+        val currentFilter = filter ?: "all"
         val statusNavEntry = NavigationRepository.getStatuses(locale).find { it.id == statusDbId.toInt() }
         val statusName = statusNavEntry?.title ?: statusDbId.toString()
-        val (mangaEntries, total) = MangaRepository.getMangaByStatus(statusDbId.toInt(), pageNum)
+        val (mangaEntries, total) = MangaRepository.getMangaByStatus(statusDbId.toInt(), pageNum, currentSort, currentFilter)
         val feedTitle = MR.strings.opds_feeds_status_specific_title.localized(locale, statusName)
+        val feedUrl = "status/$statusDbId"
         val builder =
-            FeedBuilderInternal(baseUrl, "status/$statusDbId", feedTitle, locale, OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION, pageNum)
+            FeedBuilderInternal(
+                baseUrl,
+                feedUrl,
+                feedTitle,
+                locale,
+                OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
+                pageNum,
+                currentSort = currentSort,
+                currentFilter = currentFilter,
+            )
         builder.totalResults = total
+        OpdsEntryBuilder.addLibraryMangaSortAndFilterFacets(builder, "$baseUrl/$feedUrl", currentSort, currentFilter, locale)
         builder.entries.addAll(mangaEntries.map { OpdsEntryBuilder.mangaAcqEntryToEntry(it, baseUrl, locale) })
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
@@ -528,26 +587,34 @@ object OpdsFeedBuilder {
         contentLangCode: String,
         baseUrl: String,
         pageNum: Int,
+        sort: String?,
+        filter: String?,
         uiLocale: Locale,
     ): String {
-        val (mangaEntries, total) = MangaRepository.getMangaByContentLanguage(contentLangCode, pageNum)
+        val currentSort = sort ?: "alpha_asc"
+        val currentFilter = filter ?: "all"
+        val (mangaEntries, total) = MangaRepository.getMangaByContentLanguage(contentLangCode, pageNum, currentSort, currentFilter)
         val contentLanguageDisplayName = Locale.forLanguageTag(contentLangCode).getDisplayName(uiLocale)
         val feedTitle = MR.strings.opds_feeds_language_specific_title.localized(uiLocale, contentLanguageDisplayName)
+        val feedUrl = "language/$contentLangCode"
         val builder =
             FeedBuilderInternal(
                 baseUrl,
-                "language/$contentLangCode",
+                feedUrl,
                 feedTitle,
                 uiLocale,
                 OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                 pageNum,
+                currentSort = currentSort,
+                currentFilter = currentFilter,
             )
         builder.totalResults = total
+        OpdsEntryBuilder.addLibraryMangaSortAndFilterFacets(builder, "$baseUrl/$feedUrl", currentSort, currentFilter, uiLocale)
         builder.entries.addAll(mangaEntries.map { OpdsEntryBuilder.mangaAcqEntryToEntry(it, baseUrl, uiLocale) })
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
 
-    fun getMangaFeed(
+    fun getSeriesChaptersFeed(
         mangaId: Int,
         baseUrl: String,
         pageNum: Int,
@@ -559,7 +626,7 @@ object OpdsFeedBuilder {
             MangaRepository.getMangaDetails(mangaId)
                 ?: return buildNotFoundFeed(
                     baseUrl,
-                    "manga/$mangaId/chapters",
+                    "series/$mangaId/chapters",
                     MR.strings.opds_error_manga_not_found.localized(locale, mangaId),
                     locale,
                 )
@@ -586,10 +653,11 @@ object OpdsFeedBuilder {
                 val suffix = if (currentSortOrder == SortOrder.ASC) "asc" else "desc"
                 "${prefix}_$suffix"
             }
+        val feedUrl = "series/$mangaId/chapters"
         val builder =
             FeedBuilderInternal(
                 baseUrl,
-                "manga/$mangaId/chapters",
+                feedUrl,
                 MR.strings.opds_feeds_manga_chapters.localized(locale, mangaDetails.title),
                 locale,
                 OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
@@ -605,7 +673,7 @@ object OpdsFeedBuilder {
         }
         OpdsEntryBuilder.addChapterSortAndFilterFacets(
             builder,
-            "$baseUrl/manga/$mangaId/chapters",
+            "$baseUrl/$feedUrl",
             actualSortParamForLinks,
             currentFilter,
             locale,
@@ -628,7 +696,7 @@ object OpdsFeedBuilder {
             MangaRepository.getMangaDetails(mangaId)
                 ?: return buildNotFoundFeed(
                     baseUrl,
-                    "manga/$mangaId/chapter/$chapterSourceOrder/metadata",
+                    "series/$mangaId/chapter/$chapterSourceOrder/metadata",
                     MR.strings.opds_error_manga_not_found.localized(locale, mangaId),
                     locale,
                 )
@@ -636,14 +704,14 @@ object OpdsFeedBuilder {
             ChapterRepository.getChapterDetailsForMetadataFeed(mangaId, chapterSourceOrder)
                 ?: return buildNotFoundFeed(
                     baseUrl,
-                    "manga/$mangaId/chapter/$chapterSourceOrder/metadata",
+                    "series/$mangaId/chapter/$chapterSourceOrder/metadata",
                     MR.strings.opds_error_chapter_not_found.localized(locale, chapterSourceOrder),
                     locale,
                 )
         val builder =
             FeedBuilderInternal(
                 baseUrl,
-                "manga/$mangaId/chapter/${chapterMetadata.sourceOrder}/metadata",
+                "series/$mangaId/chapter/${chapterMetadata.sourceOrder}/metadata",
                 MR.strings.opds_feeds_chapter_details.localized(locale, mangaDetails.title, chapterMetadata.name),
                 locale,
                 OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
