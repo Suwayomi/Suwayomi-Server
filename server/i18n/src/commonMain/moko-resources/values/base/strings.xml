@@ -7,9 +7,6 @@
     <string name="opds_feeds_manga_chapters">%1$s Chapters</string>
     <string name="opds_feeds_chapter_details">%1$s | %2$s | Details</string>
 
-    <string name="opds_feeds_library_title">Library</string>
-    <string name="opds_feeds_library_entry_content">Browse all series in your library</string>
-
     <string name="opds_feeds_explore_title">Explore</string>
     <string name="opds_feeds_explore_entry_content">Explore new series from your sources</string>
 
