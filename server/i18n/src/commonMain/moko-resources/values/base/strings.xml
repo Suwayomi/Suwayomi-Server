@@ -1,31 +1,43 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <resources>
     <string name="opds_search_shortname">Suwayomi OPDS Search</string>
-    <string name="opds_search_description">Search manga in the catalog</string>
+    <string name="opds_search_description">Search series in the catalog</string>
 
     <string name="opds_feeds_root">Suwayomi OPDS Catalog</string>
     <string name="opds_feeds_manga_chapters">%1$s Chapters</string>
     <string name="opds_feeds_chapter_details">%1$s | %2$s | Details</string>
 
-    <string name="opds_feeds_all_manga_title">All Manga</string>
-    <string name="opds_feeds_all_manga_entry_content">Browse all manga in your library</string>
+    <string name="opds_feeds_library_title">Library</string>
+    <string name="opds_feeds_library_entry_content">Browse all series saved in your library</string>
+
+    <string name="opds_feeds_explore_title">Explore</string>
+    <string name="opds_feeds_explore_entry_content">Explore new series from your sources</string>
+
+    <string name="opds_feeds_history_title">History</string>
+    <string name="opds_feeds_history_entry_content">Recently read chapters</string>
+
+    <string name="opds_feeds_all_series_in_library_title">All Series</string>
+    <string name="opds_feeds_all_series_in_library_entry_content">Browse all series saved in your library</string>
 
     <string name="opds_feeds_search_results">Search Results</string>
 
-    <string name="opds_feeds_sources_title">Sources</string>
-    <string name="opds_feeds_sources_entry_content">Browse manga by source</string>
+    <string name="opds_feeds_sources_title">All Sources</string>
+    <string name="opds_feeds_sources_entry_content">Browse series by source</string>
+
+    <string name="opds_feeds_library_sources_title">Sources</string>
+    <string name="opds_feeds_library_sources_entry_content">Browse series in your library filtered by source</string>
 
     <string name="opds_feeds_categories_title">Categories</string>
-    <string name="opds_feeds_categories_entry_content">Browse manga organized by categories</string>
+    <string name="opds_feeds_categories_entry_content">Browse series organized by categories</string>
 
     <string name="opds_feeds_genres_title">Genres</string>
-    <string name="opds_feeds_genres_entry_content">Browse manga by genre tags</string>
+    <string name="opds_feeds_genres_entry_content">Browse series by genre tags</string>
 
     <string name="opds_feeds_status_title">Status</string>
-    <string name="opds_feeds_status_entry_content">Browse manga by publication status</string>
+    <string name="opds_feeds_status_entry_content">Browse series by publication status</string>
 
     <string name="opds_feeds_languages_title">Languages</string>
-    <string name="opds_feeds_languages_entry_content">Browse manga by content language</string>
+    <string name="opds_feeds_languages_entry_content">Browse series by content language</string>
 
     <string name="opds_feeds_library_updates_title">Library Update History</string>
     <string name="opds_feeds_library_updates_entry_content">Recently updated chapters from your library</string>
@@ -35,8 +47,11 @@
     <string name="opds_feeds_status_specific_title">Status: %1$s</string>
     <string name="opds_feeds_language_specific_title">Language: %1$s</string>
     <string name="opds_feeds_source_specific_title">Source: %1$s</string>
-    
-    <string name="opds_error_manga_not_found">Manga with ID %1$d not found</string>
+    <string name="opds_feeds_library_source_specific_title">Library - Source: %1$s</string>
+    <string name="opds_feeds_source_specific_popular_title">Source: %1$s - Popular</string>
+    <string name="opds_feeds_source_specific_latest_title">Source: %1$s - Latest</string>
+
+    <string name="opds_error_manga_not_found">Series with ID %1$d not found</string>
     <string name="opds_error_chapter_not_found">Chapter with index %1$d not found</string>
 
     <string name="opds_facetgroup_sort_order">Sort Order</string>
@@ -46,6 +61,8 @@
     <string name="opds_facet_sort_newest_first">Newest First</string>
     <string name="opds_facet_sort_date_asc">Date ascending</string>
     <string name="opds_facet_sort_date_desc">Date descending</string>
+    <string name="opds_facet_sort_popular">Popular</string>
+    <string name="opds_facet_sort_latest">Latest</string>
 
     <string name="opds_facet_filter_all_chapters">All Chapters</string>
     <string name="opds_facet_filter_unread_only">Unread Only</string>
