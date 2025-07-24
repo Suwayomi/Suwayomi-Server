@@ -1,21 +1,29 @@
 package suwayomi.tachidesk.opds.repository
 
 import eu.kanade.tachiyomi.source.model.MangasPage
+import org.jetbrains.exposed.sql.Case
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
+import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.intLiteral
 import org.jetbrains.exposed.sql.lowerCase
+import org.jetbrains.exposed.sql.max
 import org.jetbrains.exposed.sql.or
+import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.MangaList.insertOrUpdate
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.opds.dto.OpdsMangaAcqEntry
@@ -39,16 +47,24 @@ object MangaRepository {
             inLibrary = this[MangaTable.inLibrary],
         )
 
-    fun getAllManga(pageNum: Int): Pair<List<OpdsMangaAcqEntry>, Long> =
+    fun getAllManga(
+        pageNum: Int,
+        sort: String?,
+        filter: String?,
+    ): Pair<List<OpdsMangaAcqEntry>, Long> =
         transaction {
+            val unreadCountExpr = Case().When(ChapterTable.isRead eq false, intLiteral(1)).Else(intLiteral(0)).sum()
+            val unreadCount = unreadCountExpr.alias("unread_count")
+
             val query =
                 MangaTable
-                    .join(ChapterTable, JoinType.INNER, MangaTable.id, ChapterTable.manga)
                     .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
-                    .select(MangaTable.columns + SourceTable.lang)
+                    .join(ChapterTable, JoinType.LEFT, MangaTable.id, ChapterTable.manga)
+                    .select(MangaTable.columns + SourceTable.lang + unreadCount)
                     .where { MangaTable.inLibrary eq true }
                     .groupBy(MangaTable.id, SourceTable.lang)
-                    .orderBy(MangaTable.title to SortOrder.ASC)
+
+            applyMangaLibrarySortAndFilter(query, sort, filter)
 
             val totalCount = query.count()
             val mangas =
@@ -83,7 +99,6 @@ object MangaRepository {
 
             val query =
                 MangaTable
-                    .join(ChapterTable, JoinType.INNER, MangaTable.id, ChapterTable.manga)
                     .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
                     .select(MangaTable.columns + SourceTable.lang)
                     .where(finalCondition)
@@ -143,16 +158,22 @@ object MangaRepository {
     fun getLibraryMangaBySource(
         sourceId: Long,
         pageNum: Int,
+        sort: String?,
+        filter: String?,
     ): Pair<List<OpdsMangaAcqEntry>, Long> =
         transaction {
+            val unreadCountExpr = Case().When(ChapterTable.isRead eq false, intLiteral(1)).Else(intLiteral(0)).sum()
+            val unreadCount = unreadCountExpr.alias("unread_count")
+
             val query =
                 MangaTable
-                    .join(ChapterTable, JoinType.INNER, MangaTable.id, ChapterTable.manga)
                     .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
-                    .select(MangaTable.columns + SourceTable.lang)
+                    .join(ChapterTable, JoinType.LEFT, MangaTable.id, ChapterTable.manga)
+                    .select(MangaTable.columns + SourceTable.lang + unreadCount)
                     .where { (MangaTable.sourceReference eq sourceId) and (MangaTable.inLibrary eq true) }
                     .groupBy(MangaTable.id, SourceTable.lang)
-                    .orderBy(MangaTable.title to SortOrder.ASC)
+
+            applyMangaLibrarySortAndFilter(query, sort, filter)
 
             val totalCount = query.count()
             val mangas =
@@ -166,17 +187,23 @@ object MangaRepository {
     fun getMangaByCategory(
         categoryId: Int,
         pageNum: Int,
+        sort: String?,
+        filter: String?,
     ): Pair<List<OpdsMangaAcqEntry>, Long> =
         transaction {
+            val unreadCountExpr = Case().When(ChapterTable.isRead eq false, intLiteral(1)).Else(intLiteral(0)).sum()
+            val unreadCount = unreadCountExpr.alias("unread_count")
+
             val query =
                 MangaTable
                     .join(CategoryMangaTable, JoinType.INNER, MangaTable.id, CategoryMangaTable.manga)
-                    .join(ChapterTable, JoinType.INNER, MangaTable.id, ChapterTable.manga)
                     .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
-                    .select(MangaTable.columns + SourceTable.lang)
+                    .join(ChapterTable, JoinType.LEFT, MangaTable.id, ChapterTable.manga)
+                    .select(MangaTable.columns + SourceTable.lang + unreadCount)
                     .where { CategoryMangaTable.category eq categoryId }
                     .groupBy(MangaTable.id, SourceTable.lang)
-                    .orderBy(MangaTable.title to SortOrder.ASC)
+
+            applyMangaLibrarySortAndFilter(query, sort, filter)
 
             val totalCount = query.count()
             val mangas =
@@ -190,14 +217,19 @@ object MangaRepository {
     fun getMangaByGenre(
         genre: String,
         pageNum: Int,
+        sort: String?,
+        filter: String?,
     ): Pair<List<OpdsMangaAcqEntry>, Long> =
         transaction {
             val genreTrimmed = genre.trim()
+            val unreadCountExpr = Case().When(ChapterTable.isRead eq false, intLiteral(1)).Else(intLiteral(0)).sum()
+            val unreadCount = unreadCountExpr.alias("unread_count")
+
             val query =
                 MangaTable
-                    .join(ChapterTable, JoinType.INNER, MangaTable.id, ChapterTable.manga)
                     .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
-                    .select(MangaTable.columns + SourceTable.lang)
+                    .join(ChapterTable, JoinType.LEFT, MangaTable.id, ChapterTable.manga)
+                    .select(MangaTable.columns + SourceTable.lang + unreadCount)
                     .where {
                         (
                             (MangaTable.genre like "%, $genreTrimmed, %") or
@@ -206,7 +238,8 @@ object MangaRepository {
                                 (MangaTable.genre eq genreTrimmed)
                         ) and (MangaTable.inLibrary eq true)
                     }.groupBy(MangaTable.id, SourceTable.lang)
-                    .orderBy(MangaTable.title to SortOrder.ASC)
+
+            applyMangaLibrarySortAndFilter(query, sort, filter)
 
             val totalCount = query.count()
             val mangas =
@@ -220,16 +253,22 @@ object MangaRepository {
     fun getMangaByStatus(
         statusId: Int,
         pageNum: Int,
+        sort: String?,
+        filter: String?,
     ): Pair<List<OpdsMangaAcqEntry>, Long> =
         transaction {
+            val unreadCountExpr = Case().When(ChapterTable.isRead eq false, intLiteral(1)).Else(intLiteral(0)).sum()
+            val unreadCount = unreadCountExpr.alias("unread_count")
+
             val query =
                 MangaTable
-                    .join(ChapterTable, JoinType.INNER, MangaTable.id, ChapterTable.manga)
                     .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
-                    .select(MangaTable.columns + SourceTable.lang)
-                    .where { MangaTable.status eq statusId }
+                    .join(ChapterTable, JoinType.LEFT, MangaTable.id, ChapterTable.manga)
+                    .select(MangaTable.columns + SourceTable.lang + unreadCount)
+                    .where { (MangaTable.status eq statusId) and (MangaTable.inLibrary eq true) }
                     .groupBy(MangaTable.id, SourceTable.lang)
-                    .orderBy(MangaTable.title to SortOrder.ASC)
+
+            applyMangaLibrarySortAndFilter(query, sort, filter)
 
             val totalCount = query.count()
             val mangas =
@@ -243,16 +282,22 @@ object MangaRepository {
     fun getMangaByContentLanguage(
         langCode: String,
         pageNum: Int,
+        sort: String?,
+        filter: String?,
     ): Pair<List<OpdsMangaAcqEntry>, Long> =
         transaction {
+            val unreadCountExpr = Case().When(ChapterTable.isRead eq false, intLiteral(1)).Else(intLiteral(0)).sum()
+            val unreadCount = unreadCountExpr.alias("unread_count")
+
             val query =
                 MangaTable
                     .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
-                    .join(ChapterTable, JoinType.INNER, MangaTable.id, ChapterTable.manga)
-                    .select(MangaTable.columns + SourceTable.lang)
+                    .join(ChapterTable, JoinType.LEFT, MangaTable.id, ChapterTable.manga)
+                    .select(MangaTable.columns + SourceTable.lang + unreadCount)
                     .where { (SourceTable.lang eq langCode) and (MangaTable.inLibrary eq true) }
                     .groupBy(MangaTable.id, SourceTable.lang)
-                    .orderBy(MangaTable.title to SortOrder.ASC)
+
+            applyMangaLibrarySortAndFilter(query, sort, filter)
 
             val totalCount = query.count()
             val mangas =
@@ -262,4 +307,34 @@ object MangaRepository {
                     .map { it.toOpdsMangaAcqEntry() }
             Pair(mangas, totalCount)
         }
+
+    private fun applyMangaLibrarySortAndFilter(
+        query: Query,
+        sort: String?,
+        filter: String?,
+    ) {
+        val unreadCountExpr = Case().When(ChapterTable.isRead eq false, intLiteral(1)).Else(intLiteral(0)).sum()
+        val downloadedCountExpr = Case().When(ChapterTable.isDownloaded eq true, intLiteral(1)).Else(intLiteral(0)).sum()
+        val lastReadAtExpr = ChapterTable.lastReadAt.max()
+        val latestChapterDateExpr = ChapterTable.date_upload.max()
+
+        // Apply filtering using HAVING clause for aggregate functions
+        when (filter) {
+            "unread" -> query.having { unreadCountExpr greater 0 }
+            "downloaded" -> query.having { downloadedCountExpr greater 0 }
+            "ongoing" -> query.andWhere { MangaTable.status eq MangaStatus.ONGOING.value }
+            "completed" -> query.andWhere { MangaTable.status eq MangaStatus.COMPLETED.value }
+        }
+
+        // Apply sorting
+        when (sort) {
+            "alpha_asc" -> query.orderBy(MangaTable.title to SortOrder.ASC)
+            "alpha_desc" -> query.orderBy(MangaTable.title to SortOrder.DESC)
+            "last_read_desc" -> query.orderBy(lastReadAtExpr to SortOrder.DESC_NULLS_LAST)
+            "latest_chapter_desc" -> query.orderBy(latestChapterDateExpr to SortOrder.DESC_NULLS_LAST)
+            "date_added_desc" -> query.orderBy(MangaTable.inLibraryAt to SortOrder.DESC)
+            "unread_desc" -> query.orderBy(unreadCountExpr to SortOrder.DESC)
+            else -> query.orderBy(MangaTable.title to SortOrder.ASC) // Default sort
+        }
+    }
 }

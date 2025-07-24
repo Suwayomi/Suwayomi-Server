@@ -8,7 +8,7 @@
     <string name="opds_feeds_chapter_details">%1$s | %2$s | Details</string>
 
     <string name="opds_feeds_library_title">Library</string>
-    <string name="opds_feeds_library_entry_content">Browse all series saved in your library</string>
+    <string name="opds_feeds_library_entry_content">Browse all series in your library</string>
 
     <string name="opds_feeds_explore_title">Explore</string>
     <string name="opds_feeds_explore_entry_content">Explore new series from your sources</string>
@@ -56,6 +56,8 @@
 
     <string name="opds_facetgroup_sort_order">Sort Order</string>
     <string name="opds_facetgroup_read_status">Read Status</string>
+    <string name="opds_facetgroup_filter_status">Filter by Status</string>
+    <string name="opds_facetgroup_filter_content">Filter by Content</string>
 
     <string name="opds_facet_sort_oldest_first">Oldest First</string>
     <string name="opds_facet_sort_newest_first">Newest First</string>
@@ -63,10 +65,20 @@
     <string name="opds_facet_sort_date_desc">Date descending</string>
     <string name="opds_facet_sort_popular">Popular</string>
     <string name="opds_facet_sort_latest">Latest</string>
+    <string name="opds_facet_sort_alpha_asc">Alphabetical A-Z</string>
+    <string name="opds_facet_sort_alpha_desc">Alphabetical Z-A</string>
+    <string name="opds_facet_sort_last_read_desc">Last Read</string>
+    <string name="opds_facet_sort_latest_chapter_desc">Latest Chapter</string>
+    <string name="opds_facet_sort_date_added_desc">Date Added</string>
+    <string name="opds_facet_sort_unread_desc">Unread chapters</string>
 
+    <string name="opds_facet_filter_all">All</string>
     <string name="opds_facet_filter_all_chapters">All Chapters</string>
-    <string name="opds_facet_filter_unread_only">Unread Only</string>
-    <string name="opds_facet_filter_read_only">Read Only</string>
+    <string name="opds_facet_filter_unread_only">Unread</string>
+    <string name="opds_facet_filter_read_only">Read</string>
+    <string name="opds_facet_filter_downloaded">Downloaded</string>
+    <string name="opds_facet_filter_ongoing">Ongoing</string>
+    <string name="opds_facet_filter_completed">Completed</string>
 
     <string name="opds_linktitle_view_chapter_details">View Chapter Details &amp; Get Pages</string>
     <string name="opds_linktitle_download_cbz">Download CBZ</string>

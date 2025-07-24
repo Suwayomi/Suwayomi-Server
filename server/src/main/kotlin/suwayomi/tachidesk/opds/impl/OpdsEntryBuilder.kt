@@ -50,7 +50,7 @@ object OpdsEntryBuilder {
                 listOfNotNull(
                     OpdsLinkXml(
                         OpdsConstants.LINK_REL_SUBSECTION,
-                        "$baseUrl/manga/${entry.id}/chapters?lang=${locale.toLanguageTag()}",
+                        "$baseUrl/series/${entry.id}/chapters?lang=${locale.toLanguageTag()}",
                         OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                         entry.title,
                     ),
@@ -102,7 +102,7 @@ object OpdsEntryBuilder {
                 listOf(
                     OpdsLinkXml(
                         rel = OpdsConstants.LINK_REL_SUBSECTION,
-                        href = "$baseUrl/manga/${manga.id}/chapter/${chapter.sourceOrder}/metadata?lang=${locale.toLanguageTag()}",
+                        href = "$baseUrl/series/${manga.id}/chapter/${chapter.sourceOrder}/metadata?lang=${locale.toLanguageTag()}",
                         type = OpdsConstants.TYPE_ATOM_XML_ENTRY_PROFILE_OPDS,
                         title = MR.strings.opds_linktitle_view_chapter_details.localized(locale),
                     ),
@@ -197,7 +197,7 @@ object OpdsEntryBuilder {
 
     fun addSourceSortFacets(
         feedBuilder: FeedBuilderInternal,
-        baseSourceUrl: String,
+        baseUrl: String,
         currentSort: String,
         locale: Locale,
     ) {
@@ -215,13 +215,13 @@ object OpdsEntryBuilder {
             )
         }
 
-        addFacet("$baseSourceUrl?sort=popular&lang=${locale.toLanguageTag()}", MR.strings.opds_facet_sort_popular, currentSort == "popular")
-        addFacet("$baseSourceUrl?sort=latest&lang=${locale.toLanguageTag()}", MR.strings.opds_facet_sort_latest, currentSort == "latest")
+        addFacet("$baseUrl?sort=popular&lang=${locale.toLanguageTag()}", MR.strings.opds_facet_sort_popular, currentSort == "popular")
+        addFacet("$baseUrl?sort=latest&lang=${locale.toLanguageTag()}", MR.strings.opds_facet_sort_latest, currentSort == "latest")
     }
 
     fun addChapterSortAndFilterFacets(
         feedBuilder: FeedBuilderInternal,
-        baseMangaUrl: String,
+        baseUrl: String,
         currentSort: String,
         currentFilter: String,
         locale: Locale,
@@ -243,47 +243,131 @@ object OpdsEntryBuilder {
         }
 
         addFacet(
-            "$baseMangaUrl?sort=number_asc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
+            "$baseUrl?sort=number_asc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
             MR.strings.opds_facet_sort_oldest_first,
             sortGroup,
             currentSort == "number_asc",
         )
         addFacet(
-            "$baseMangaUrl?sort=number_desc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
+            "$baseUrl?sort=number_desc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
             MR.strings.opds_facet_sort_newest_first,
             sortGroup,
             currentSort == "number_desc",
         )
         addFacet(
-            "$baseMangaUrl?sort=date_asc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
+            "$baseUrl?sort=date_asc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
             MR.strings.opds_facet_sort_date_asc,
             sortGroup,
             currentSort == "date_asc",
         )
         addFacet(
-            "$baseMangaUrl?sort=date_desc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
+            "$baseUrl?sort=date_desc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
             MR.strings.opds_facet_sort_date_desc,
             sortGroup,
             currentSort == "date_desc",
         )
 
         addFacet(
-            "$baseMangaUrl?filter=all&sort=$currentSort&lang=${locale.toLanguageTag()}",
+            "$baseUrl?filter=all&sort=$currentSort&lang=${locale.toLanguageTag()}",
             MR.strings.opds_facet_filter_all_chapters,
             filterGroup,
             currentFilter == "all",
         )
         addFacet(
-            "$baseMangaUrl?filter=unread&sort=$currentSort&lang=${locale.toLanguageTag()}",
+            "$baseUrl?filter=unread&sort=$currentSort&lang=${locale.toLanguageTag()}",
             MR.strings.opds_facet_filter_unread_only,
             filterGroup,
             currentFilter == "unread",
         )
         addFacet(
-            "$baseMangaUrl?filter=read&sort=$currentSort&lang=${locale.toLanguageTag()}",
+            "$baseUrl?filter=read&sort=$currentSort&lang=${locale.toLanguageTag()}",
             MR.strings.opds_facet_filter_read_only,
             filterGroup,
             currentFilter == "read",
+        )
+    }
+
+    fun addLibraryMangaSortAndFilterFacets(
+        feedBuilder: FeedBuilderInternal,
+        baseUrl: String,
+        currentSort: String,
+        currentFilter: String,
+        locale: Locale,
+    ) {
+        val sortGroup = MR.strings.opds_facetgroup_sort_order.localized(locale)
+        val filterGroup = MR.strings.opds_facetgroup_filter_content.localized(locale)
+
+        val addFacet = { href: String, titleKey: StringResource, group: String, isActive: Boolean ->
+            feedBuilder.links.add(
+                OpdsLinkXml(
+                    OpdsConstants.LINK_REL_FACET,
+                    href,
+                    OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
+                    titleKey.localized(locale),
+                    facetGroup = group,
+                    activeFacet = isActive,
+                ),
+            )
+        }
+
+        // Sorting Facets
+        addFacet(
+            "$baseUrl?sort=alpha_asc&filter=$currentFilter",
+            MR.strings.opds_facet_sort_alpha_asc,
+            sortGroup,
+            currentSort == "alpha_asc",
+        )
+        addFacet(
+            "$baseUrl?sort=alpha_desc&filter=$currentFilter",
+            MR.strings.opds_facet_sort_alpha_desc,
+            sortGroup,
+            currentSort == "alpha_desc",
+        )
+        addFacet(
+            "$baseUrl?sort=last_read_desc&filter=$currentFilter",
+            MR.strings.opds_facet_sort_last_read_desc,
+            sortGroup,
+            currentSort == "last_read_desc",
+        )
+        addFacet(
+            "$baseUrl?sort=latest_chapter_desc&filter=$currentFilter",
+            MR.strings.opds_facet_sort_latest_chapter_desc,
+            sortGroup,
+            currentSort == "latest_chapter_desc",
+        )
+        addFacet(
+            "$baseUrl?sort=date_added_desc&filter=$currentFilter",
+            MR.strings.opds_facet_sort_date_added_desc,
+            sortGroup,
+            currentSort == "date_added_desc",
+        )
+        addFacet(
+            "$baseUrl?sort=unread_desc&filter=$currentFilter",
+            MR.strings.opds_facet_sort_unread_desc,
+            sortGroup,
+            currentSort == "unread_desc",
+        )
+
+        // Filtering Facets
+        addFacet("$baseUrl?filter=all&sort=$currentSort", MR.strings.opds_facet_filter_all, filterGroup, currentFilter == "all")
+        addFacet(
+            "$baseUrl?filter=unread&sort=$currentSort",
+            MR.strings.opds_facet_filter_unread_only,
+            filterGroup,
+            currentFilter == "unread",
+        )
+        addFacet(
+            "$baseUrl?filter=downloaded&sort=$currentSort",
+            MR.strings.opds_facet_filter_downloaded,
+            filterGroup,
+            currentFilter == "downloaded",
+        )
+        addFacet("$baseUrl?filter=ongoing&sort=$currentSort", MR.strings.opds_facet_filter_ongoing, filterGroup, currentFilter == "ongoing")
+        addFacet(
+            "$baseUrl?filter=completed&sort=$currentSort",
+            MR.strings.opds_facet_filter_completed,
+            filterGroup,
+            currentFilter == "completed",
         )
     }
 }

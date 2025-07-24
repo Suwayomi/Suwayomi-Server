@@ -58,7 +58,7 @@ object NavigationRepository {
 
     val librarySectionDetails: Map<String, Triple<String, StringResource, StringResource>> =
         mapOf(
-            "mangas" to
+            "series" to
                 Triple(
                     OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                     MR.strings.opds_feeds_all_series_in_library_title,
