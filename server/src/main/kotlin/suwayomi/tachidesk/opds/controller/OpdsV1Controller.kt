@@ -29,17 +29,52 @@ object OpdsV1Controller {
             },
             behaviorOf = { ctx, lang ->
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
+                ctx.contentType(OPDS_MIME).result(OpdsFeedBuilder.getRootFeed(BASE_URL, locale))
+            },
+            withResults = { httpCode(HttpStatus.OK) },
+        )
+
+    // --- Main Navigation Feeds ---
+
+    // Library Navigation Feed
+    val libraryFeed =
+        handler(
+            queryParam<String?>("lang"),
+            documentWith = {
+                withOperation {
+                    summary("OPDS Library Navigation Feed")
+                    description("Navigation feed for accessing library content.")
+                }
+            },
+            behaviorOf = { ctx, lang ->
+                val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
+                ctx.contentType(OPDS_MIME).result(OpdsFeedBuilder.getLibraryFeed(BASE_URL, locale))
+            },
+            withResults = { httpCode(HttpStatus.OK) },
+        )
+
+    // History Acquisition Feed
+    val historyFeed =
+        handler(
+            queryParam<Int?>("pageNumber"),
+            queryParam<String?>("lang"),
+            documentWith = {
+                withOperation {
+                    summary("OPDS History Feed")
+                    description("Acquisition feed listing recently read chapters.")
+                }
+            },
+            behaviorOf = { ctx, pageNumber, lang ->
+                val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getRootFeed(BASE_URL, locale)
+                        OpdsFeedBuilder.getHistoryFeed(BASE_URL, pageNumber ?: 1, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
                 }
             },
-            withResults = {
-                httpCode(HttpStatus.OK)
-            },
+            withResults = { httpCode(HttpStatus.OK) },
         )
 
     // OPDS Search Description Feed
@@ -54,7 +89,6 @@ object OpdsV1Controller {
             },
             behaviorOf = { ctx, lang ->
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
-
                 ctx.contentType("application/opensearchdescription+xml").result(
                     """
                     <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/"
@@ -63,21 +97,17 @@ object OpdsV1Controller {
                         <Description>${MR.strings.opds_search_description.localized(locale)}</Description>
                         <InputEncoding>UTF-8</InputEncoding>
                         <OutputEncoding>UTF-8</OutputEncoding>
-                        <Url type="${OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION}" 
-                            rel="results" 
-                            template="$BASE_URL/mangas?query={searchTerms}&lang=${locale.toLanguageTag()}"/>
+                        <Url type="${OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION}"
+                            rel="results"
+                            template="$BASE_URL/library/mangas?query={searchTerms}&lang=${locale.toLanguageTag()}"/>
                     </OpenSearchDescription>
                     """.trimIndent(),
                 )
             },
-            withResults = {
-                httpCode(HttpStatus.OK)
-            },
+            withResults = { httpCode(HttpStatus.OK) },
         )
 
-    // --- Main Navigation & Broad Acquisition Feeds ---
-
-    // All Mangas / Search Results Feed
+    // All Mangas in Library / Search Results Feed
     val mangasFeed =
         handler(
             queryParam<Int?>("pageNumber"),
@@ -87,17 +117,19 @@ object OpdsV1Controller {
             queryParam<String?>("lang"),
             documentWith = {
                 withOperation {
-                    summary("OPDS Mangas Feed")
+                    summary("OPDS Mangas in Library Feed")
                     description(
-                        "Provides a list of manga entries. Can be paginated and supports search via query parameters " +
-                            "(query, author, title). If search parameters are present, it acts as a search results feed.",
+                        "Provides a list of manga entries from the library. Can be paginated and supports search via query parameters.",
                     )
                 }
             },
             behaviorOf = { ctx, pageNumber, query, author, title, lang ->
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 val opdsSearchCriteria =
-                    if (query != null || author != null || title != null) {
+                    if (query != null ||
+                        author != null ||
+                        title != null
+                    ) {
                         OpdsSearchCriteria(query, author, title)
                     } else {
                         null
@@ -112,38 +144,58 @@ object OpdsV1Controller {
                     }
                 }
             },
-            withResults = {
-                httpCode(HttpStatus.OK)
-            },
+            withResults = { httpCode(HttpStatus.OK) },
         )
 
-    // Sources Navigation Feed
-    val sourcesFeed =
+    // Explore -> All Sources Navigation Feed
+    val exploreSourcesFeed =
         handler(
             queryParam<Int?>("pageNumber"),
             queryParam<String?>("lang"),
             documentWith = {
                 withOperation {
-                    summary("OPDS Sources Navigation Feed")
-                    description("Navigation feed listing available manga sources. Each entry links to a feed for a specific source.")
+                    summary("OPDS All Sources Navigation Feed")
+                    description("Navigation feed listing all available manga sources.")
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getSourcesFeed(BASE_URL, pageNumber ?: 1, locale)
+                        OpdsFeedBuilder.getExploreSourcesFeed(BASE_URL, pageNumber ?: 1, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
                 }
             },
-            withResults = {
-                httpCode(HttpStatus.OK)
-            },
+            withResults = { httpCode(HttpStatus.OK) },
         )
 
-    // Categories Navigation Feed
+    // Library -> Sources Navigation Feed
+    val librarySourcesFeed =
+        handler(
+            queryParam<Int?>("pageNumber"),
+            queryParam<String?>("lang"),
+            documentWith = {
+                withOperation {
+                    summary("OPDS Library Sources Navigation Feed")
+                    description("Navigation feed listing sources for manga currently in the library.")
+                }
+            },
+            behaviorOf = { ctx, pageNumber, lang ->
+                val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
+                ctx.future {
+                    future {
+                        OpdsFeedBuilder.getLibrarySourcesFeed(BASE_URL, pageNumber ?: 1, locale)
+                    }.thenApply { xml ->
+                        ctx.contentType(OPDS_MIME).result(xml)
+                    }
+                }
+            },
+            withResults = { httpCode(HttpStatus.OK) },
+        )
+
+    // Library -> Categories Navigation Feed
     val categoriesFeed =
         handler(
             queryParam<Int?>("pageNumber"),
@@ -151,7 +203,7 @@ object OpdsV1Controller {
             documentWith = {
                 withOperation {
                     summary("OPDS Categories Navigation Feed")
-                    description("Navigation feed listing available manga categories. Each entry links to a feed for a specific category.")
+                    description("Navigation feed listing available manga categories for the library.")
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
@@ -164,12 +216,10 @@ object OpdsV1Controller {
                     }
                 }
             },
-            withResults = {
-                httpCode(HttpStatus.OK)
-            },
+            withResults = { httpCode(HttpStatus.OK) },
         )
 
-    // Genres Navigation Feed
+    // Library -> Genres Navigation Feed
     val genresFeed =
         handler(
             queryParam<Int?>("pageNumber"),
@@ -177,7 +227,7 @@ object OpdsV1Controller {
             documentWith = {
                 withOperation {
                     summary("OPDS Genres Navigation Feed")
-                    description("Navigation feed listing available manga genres. Each entry links to a feed for a specific genre.")
+                    description("Navigation feed listing available manga genres in the library.")
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
@@ -190,12 +240,10 @@ object OpdsV1Controller {
                     }
                 }
             },
-            withResults = {
-                httpCode(HttpStatus.OK)
-            },
+            withResults = { httpCode(HttpStatus.OK) },
         )
 
-    // Status Navigation Feed
+    // Library -> Status Navigation Feed
     val statusFeed =
         handler(
             queryParam<Int?>("pageNumber"),
@@ -203,38 +251,30 @@ object OpdsV1Controller {
             documentWith = {
                 withOperation {
                     summary("OPDS Status Navigation Feed")
-                    description(
-                        "Navigation feed listing manga publication statuses. Each entry links to a feed for manga with a specific status.",
-                    )
+                    description("Navigation feed listing manga publication statuses for the library.")
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        // Ignoramos pageNumber aquí, siempre usamos 1
                         OpdsFeedBuilder.getStatusFeed(BASE_URL, 1, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
                 }
             },
-            withResults = {
-                httpCode(HttpStatus.OK)
-            },
+            withResults = { httpCode(HttpStatus.OK) },
         )
 
-    // Content Languages Navigation Feed
+    // Library -> Content Languages Navigation Feed
     val languagesFeed =
         handler(
             queryParam<String?>("lang"),
             documentWith = {
                 withOperation {
                     summary("OPDS Content Languages Navigation Feed")
-                    description(
-                        "Navigation feed listing available content languages for manga. " +
-                            "Each entry links to a feed for manga in a specific content language.",
-                    )
+                    description("Navigation feed listing available content languages for manga in the library.")
                 }
             },
             behaviorOf = { ctx, lang ->
@@ -247,9 +287,7 @@ object OpdsV1Controller {
                     }
                 }
             },
-            withResults = {
-                httpCode(HttpStatus.OK)
-            },
+            withResults = { httpCode(HttpStatus.OK) },
         )
 
     // Library Updates Acquisition Feed
@@ -260,7 +298,7 @@ object OpdsV1Controller {
             documentWith = {
                 withOperation {
                     summary("OPDS Library Updates Feed")
-                    description("Acquisition feed listing recent chapter updates for manga in the library. Supports pagination.")
+                    description("Acquisition feed listing recent chapter updates for manga in the library.")
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
@@ -273,30 +311,55 @@ object OpdsV1Controller {
                     }
                 }
             },
+            withResults = { httpCode(HttpStatus.OK) },
+        )
+
+    // Explore -> Source-Specific Manga Acquisition Feed
+    val exploreSourceFeed =
+        handler(
+            pathParam<Long>("sourceId"),
+            queryParam<Int?>("pageNumber"),
+            queryParam<String?>("sort"),
+            queryParam<String?>("lang"),
+            documentWith = {
+                withOperation {
+                    summary("OPDS Source Specific Manga Feed (Explore)")
+                    description("Acquisition feed listing all manga from a specific source.")
+                }
+            },
+            behaviorOf = { ctx, sourceId, pageNumber, sort, lang ->
+                val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
+                ctx.future {
+                    future {
+                        OpdsFeedBuilder.getExploreSourceFeed(sourceId, BASE_URL, pageNumber ?: 1, sort ?: "popular", locale)
+                    }.thenApply { xml ->
+                        ctx.contentType(OPDS_MIME).result(xml)
+                    }
+                }
+            },
             withResults = {
                 httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
             },
         )
 
-    // --- Filtered Acquisition Feeds ---
-
-    // Source-Specific Manga Acquisition Feed
-    val sourceFeed =
+    // Library -> Source-Specific Manga Acquisition Feed
+    val librarySourceFeed =
         handler(
             pathParam<Long>("sourceId"),
             queryParam<Int?>("pageNumber"),
             queryParam<String?>("lang"),
             documentWith = {
                 withOperation {
-                    summary("OPDS Source Specific Manga Feed")
-                    description("Acquisition feed listing manga from a specific source. Supports pagination.")
+                    summary("OPDS Library Source Specific Manga Feed")
+                    description("Acquisition feed listing manga from the library belonging to a specific source.")
                 }
             },
             behaviorOf = { ctx, sourceId, pageNumber, lang ->
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getSourceFeed(sourceId, BASE_URL, pageNumber ?: 1, locale)
+                        OpdsFeedBuilder.getLibrarySourceFeed(sourceId, BASE_URL, pageNumber ?: 1, locale)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -317,7 +380,7 @@ object OpdsV1Controller {
             documentWith = {
                 withOperation {
                     summary("OPDS Category Specific Manga Feed")
-                    description("Acquisition feed listing manga belonging to a specific category. Supports pagination.")
+                    description("Acquisition feed listing manga belonging to a specific category.")
                 }
             },
             behaviorOf = { ctx, categoryId, pageNumber, lang ->
@@ -345,7 +408,7 @@ object OpdsV1Controller {
             documentWith = {
                 withOperation {
                     summary("OPDS Genre Specific Manga Feed")
-                    description("Acquisition feed listing manga belonging to a specific genre. Supports pagination.")
+                    description("Acquisition feed listing manga belonging to a specific genre.")
                 }
             },
             behaviorOf = { ctx, genre, pageNumber, lang ->
@@ -373,7 +436,7 @@ object OpdsV1Controller {
             documentWith = {
                 withOperation {
                     summary("OPDS Status Specific Manga Feed")
-                    description("Acquisition feed listing manga with a specific publication status. Supports pagination.")
+                    description("Acquisition feed listing manga with a specific publication status.")
                 }
             },
             behaviorOf = { ctx, statusId, pageNumber, lang ->
@@ -401,7 +464,7 @@ object OpdsV1Controller {
             documentWith = {
                 withOperation {
                     summary("OPDS Content Language Specific Manga Feed")
-                    description("Acquisition feed listing manga of a specific content language. Supports pagination.")
+                    description("Acquisition feed listing manga of a specific content language.")
                 }
             },
             behaviorOf = { ctx, contentLangCodePath, pageNumber, uiLangParam ->
@@ -420,8 +483,6 @@ object OpdsV1Controller {
             },
         )
 
-    // --- Item-Specific Acquisition Feeds ---
-
     // Manga Chapters Acquisition Feed
     val mangaFeed =
         handler(
@@ -433,10 +494,7 @@ object OpdsV1Controller {
             documentWith = {
                 withOperation {
                     summary("OPDS Manga Chapters Feed")
-                    description(
-                        "Acquisition feed listing chapters for a specific manga. Supports pagination, sorting, and filtering. " +
-                            "Facets for sorting and filtering are provided.",
-                    )
+                    description("Acquisition feed listing chapters for a specific manga. Supports pagination, sorting, and filtering.")
                 }
             },
             behaviorOf = { ctx, mangaId, pageNumber, sort, filter, lang ->
@@ -464,10 +522,7 @@ object OpdsV1Controller {
             documentWith = {
                 withOperation {
                     summary("OPDS Chapter Details Feed")
-                    description(
-                        "Acquisition feed providing detailed metadata for a specific chapter, " +
-                            "including download and streaming links if available.",
-                    )
+                    description("Acquisition feed providing detailed metadata for a specific chapter.")
                 }
             },
             behaviorOf = { ctx, mangaId, chapterIndex, lang ->

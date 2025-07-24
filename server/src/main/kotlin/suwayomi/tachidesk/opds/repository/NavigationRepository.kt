@@ -28,20 +28,47 @@ object NavigationRepository {
     private val opdsItemsPerPageBounded: Int
         get() = serverConfig.opdsItemsPerPage.value.coerceIn(10, 5000)
 
-    // Mapping of section IDs to their StringResources for title and description
     private val rootSectionDetails: Map<String, Triple<String, StringResource, StringResource>> =
+        mapOf(
+            "library" to
+                Triple(
+                    OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
+                    MR.strings.opds_feeds_library_title,
+                    MR.strings.opds_feeds_library_entry_content,
+                ),
+            "explore" to
+                Triple(
+                    OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
+                    MR.strings.opds_feeds_explore_title,
+                    MR.strings.opds_feeds_explore_entry_content,
+                ),
+            "library-updates" to
+                Triple(
+                    OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
+                    MR.strings.opds_feeds_library_updates_title,
+                    MR.strings.opds_feeds_library_updates_entry_content,
+                ),
+            "history" to
+                Triple(
+                    OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
+                    MR.strings.opds_feeds_history_title,
+                    MR.strings.opds_feeds_history_entry_content,
+                ),
+        )
+
+    val librarySectionDetails: Map<String, Triple<String, StringResource, StringResource>> =
         mapOf(
             "mangas" to
                 Triple(
                     OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
-                    MR.strings.opds_feeds_all_manga_title,
-                    MR.strings.opds_feeds_all_manga_entry_content,
+                    MR.strings.opds_feeds_all_series_in_library_title,
+                    MR.strings.opds_feeds_all_series_in_library_entry_content,
                 ),
             "sources" to
                 Triple(
                     OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
-                    MR.strings.opds_feeds_sources_title,
-                    MR.strings.opds_feeds_sources_entry_content,
+                    MR.strings.opds_feeds_library_sources_title,
+                    MR.strings.opds_feeds_library_sources_entry_content,
                 ),
             "categories" to
                 Triple(
@@ -67,12 +94,6 @@ object NavigationRepository {
                     MR.strings.opds_feeds_languages_title,
                     MR.strings.opds_feeds_languages_entry_content,
                 ),
-            "library-updates" to
-                Triple(
-                    OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
-                    MR.strings.opds_feeds_library_updates_title,
-                    MR.strings.opds_feeds_library_updates_entry_content,
-                ),
         )
 
     fun getRootNavigationItems(locale: Locale): List<OpdsRootNavEntry> =
@@ -86,7 +107,43 @@ object NavigationRepository {
             )
         }
 
-    fun getSources(pageNum: Int): Pair<List<OpdsSourceNavEntry>, Long> =
+    fun getLibraryNavigationItems(locale: Locale): List<OpdsRootNavEntry> =
+        librarySectionDetails.map { (id, details) ->
+            val (linkType, titleRes, descriptionRes) = details
+            OpdsRootNavEntry(
+                id = id,
+                title = titleRes.localized(locale),
+                description = descriptionRes.localized(locale),
+                linkType = linkType,
+            )
+        }
+
+    fun getExploreSources(pageNum: Int): Pair<List<OpdsSourceNavEntry>, Long> =
+        transaction {
+            val query =
+                SourceTable
+                    .join(ExtensionTable, JoinType.LEFT, onColumn = SourceTable.extension, otherColumn = ExtensionTable.id)
+                    .select(SourceTable.id, SourceTable.name, ExtensionTable.apkName)
+                    .where { ExtensionTable.isInstalled eq true }
+                    .groupBy(SourceTable.id, SourceTable.name, ExtensionTable.apkName)
+                    .orderBy(SourceTable.name to SortOrder.ASC)
+
+            val totalCount = query.count()
+            val sources =
+                query
+                    .limit(opdsItemsPerPageBounded)
+                    .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
+                    .map {
+                        OpdsSourceNavEntry(
+                            id = it[SourceTable.id].value,
+                            name = it[SourceTable.name],
+                            iconUrl = it[ExtensionTable.apkName].let { apkName -> Extension.getExtensionIconUrl(apkName) },
+                        )
+                    }
+            Pair(sources, totalCount)
+        }
+
+    fun getLibrarySources(pageNum: Int): Pair<List<OpdsSourceNavEntry>, Long> =
         transaction {
             val query =
                 SourceTable
@@ -94,6 +151,7 @@ object NavigationRepository {
                     .join(ChapterTable, JoinType.INNER) { ChapterTable.manga eq MangaTable.id }
                     .join(ExtensionTable, JoinType.LEFT, onColumn = SourceTable.extension, otherColumn = ExtensionTable.id)
                     .select(SourceTable.id, SourceTable.name, ExtensionTable.apkName)
+                    .where { MangaTable.inLibrary eq true }
                     .groupBy(SourceTable.id, SourceTable.name, ExtensionTable.apkName)
                     .orderBy(SourceTable.name to SortOrder.ASC)
 
@@ -120,6 +178,7 @@ object NavigationRepository {
                     .join(MangaTable, JoinType.INNER, CategoryMangaTable.manga, MangaTable.id)
                     .join(ChapterTable, JoinType.INNER, MangaTable.id, ChapterTable.manga)
                     .select(CategoryTable.id, CategoryTable.name)
+                    .where { MangaTable.inLibrary eq true }
                     .groupBy(CategoryTable.id, CategoryTable.name)
                     .orderBy(CategoryTable.order to SortOrder.ASC)
 
@@ -146,6 +205,7 @@ object NavigationRepository {
                 MangaTable
                     .join(ChapterTable, JoinType.INNER, MangaTable.id, ChapterTable.manga)
                     .select(MangaTable.genre)
+                    .where { MangaTable.inLibrary eq true }
                     .mapNotNull { it[MangaTable.genre] }
                     .flatMap { it.split(",").map(String::trim).filterNot(String::isBlank) }
                     .distinct()
@@ -166,7 +226,6 @@ object NavigationRepository {
         }
 
     fun getStatuses(locale: Locale): List<OpdsStatusNavEntry> {
-        // Mapping of MangaStatus to its StringResources
         val statusStringResources: Map<MangaStatus, StringResource> =
             mapOf(
                 MangaStatus.UNKNOWN to MR.strings.manga_status_unknown,
@@ -194,6 +253,7 @@ object NavigationRepository {
                 .join(MangaTable, JoinType.INNER, SourceTable.id, MangaTable.sourceReference)
                 .join(ChapterTable, JoinType.INNER, MangaTable.id, ChapterTable.manga)
                 .select(SourceTable.lang)
+                .where { MangaTable.inLibrary eq true }
                 .groupBy(SourceTable.lang)
                 .map { it[SourceTable.lang] }
                 .sorted()

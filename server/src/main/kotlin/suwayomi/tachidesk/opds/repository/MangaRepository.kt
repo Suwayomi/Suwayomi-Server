@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.opds.repository
 
+import eu.kanade.tachiyomi.source.model.MangasPage
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.ResultRow
@@ -10,6 +11,8 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.manga.impl.MangaList.insertOrUpdate
+import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -111,7 +114,33 @@ object MangaRepository {
                 }
         }
 
-    fun getMangaBySource(
+    suspend fun getMangaBySource(
+        sourceId: Long,
+        pageNum: Int,
+        sort: String,
+    ): Pair<List<OpdsMangaAcqEntry>, Boolean> {
+        val source = GetCatalogueSource.getCatalogueSourceOrStub(sourceId)
+        val mangasPage: MangasPage =
+            if (sort == "latest" && source.supportsLatest) {
+                source.getLatestUpdates(pageNum)
+            } else {
+                source.getPopularManga(pageNum)
+            }
+
+        val mangaIds = mangasPage.insertOrUpdate(sourceId)
+        val mangaEntries =
+            transaction {
+                MangaTable
+                    .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
+                    .select(MangaTable.columns + SourceTable.lang)
+                    .where { MangaTable.id inList mangaIds }
+                    .map { it.toOpdsMangaAcqEntry() }
+            }.sortedBy { manga -> mangaIds.indexOf(manga.id) }
+
+        return Pair(mangaEntries, mangasPage.hasNextPage)
+    }
+
+    fun getLibraryMangaBySource(
         sourceId: Long,
         pageNum: Int,
     ): Pair<List<OpdsMangaAcqEntry>, Long> =
@@ -121,7 +150,7 @@ object MangaRepository {
                     .join(ChapterTable, JoinType.INNER, MangaTable.id, ChapterTable.manga)
                     .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
                     .select(MangaTable.columns + SourceTable.lang)
-                    .where { MangaTable.sourceReference eq sourceId }
+                    .where { (MangaTable.sourceReference eq sourceId) and (MangaTable.inLibrary eq true) }
                     .groupBy(MangaTable.id, SourceTable.lang)
                     .orderBy(MangaTable.title to SortOrder.ASC)
 
@@ -221,7 +250,7 @@ object MangaRepository {
                     .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
                     .join(ChapterTable, JoinType.INNER, MangaTable.id, ChapterTable.manga)
                     .select(MangaTable.columns + SourceTable.lang)
-                    .where { SourceTable.lang eq langCode }
+                    .where { (SourceTable.lang eq langCode) and (MangaTable.inLibrary eq true) }
                     .groupBy(MangaTable.id, SourceTable.lang)
                     .orderBy(MangaTable.title to SortOrder.ASC)
 

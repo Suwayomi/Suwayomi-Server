@@ -6,6 +6,7 @@ import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
@@ -14,6 +15,7 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.opds.dto.OpdsChapterListAcqEntry
 import suwayomi.tachidesk.opds.dto.OpdsChapterMetadataAcqEntry
+import suwayomi.tachidesk.opds.dto.OpdsHistoryAcqEntry
 import suwayomi.tachidesk.opds.dto.OpdsLibraryUpdateAcqEntry
 import suwayomi.tachidesk.server.serverConfig
 
@@ -49,7 +51,6 @@ object ChapterRepository {
             when (filter) {
                 "unread" -> conditions.add(ChapterTable.isRead eq false)
                 "read" -> conditions.add(ChapterTable.isRead eq true)
-                // "all" -> no additional condition
             }
             if (serverConfig.opdsShowOnlyDownloadedChapters.value) {
                 conditions.add(ChapterTable.isDownloaded eq true)
@@ -117,7 +118,38 @@ object ChapterRepository {
                     .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
                     .map {
                         OpdsLibraryUpdateAcqEntry(
-                            chapter = it.toOpdsChapterListAcqEntry(), // This will work if ChapterTable columns do not collide
+                            chapter = it.toOpdsChapterListAcqEntry(),
+                            mangaTitle = it[MangaTable.title],
+                            mangaAuthor = it[MangaTable.author],
+                            mangaId = it[MangaTable.id].value,
+                            mangaSourceLang = it[SourceTable.lang],
+                            mangaThumbnailUrl = it[MangaTable.thumbnail_url],
+                        )
+                    }
+            Pair(items, totalCount)
+        }
+
+    fun getHistory(pageNum: Int): Pair<List<OpdsHistoryAcqEntry>, Long> =
+        transaction {
+            val query =
+                ChapterTable
+                    .join(MangaTable, JoinType.INNER, ChapterTable.manga, MangaTable.id)
+                    .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
+                    .select(
+                        ChapterTable.columns + MangaTable.title + MangaTable.author + MangaTable.thumbnail_url + MangaTable.id +
+                            SourceTable.lang,
+                    ).where { ChapterTable.lastReadAt greater 0L }
+
+            val totalCount = query.count()
+
+            val items =
+                query
+                    .orderBy(ChapterTable.lastReadAt to SortOrder.DESC)
+                    .limit(opdsItemsPerPageBounded)
+                    .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
+                    .map {
+                        OpdsHistoryAcqEntry(
+                            chapter = it.toOpdsChapterListAcqEntry(),
                             mangaTitle = it[MangaTable.title],
                             mangaAuthor = it[MangaTable.author],
                             mangaId = it[MangaTable.id].value,
