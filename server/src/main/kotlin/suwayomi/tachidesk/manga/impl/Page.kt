@@ -112,14 +112,11 @@ object Page {
 
         if (pageEntry[PageTable.imageUrl] == null) {
             val trueImageUrl = getTrueImageUrl(tachiyomiPage, source)
-            if (trueImageUrl.length <= 2048) {
-                transaction {
-                    PageTable.update({ (PageTable.chapter eq chapterId) and (PageTable.index eq index) }) {
-                        it[imageUrl] = trueImageUrl
-                    }
+            transaction {
+                PageTable.update({ (PageTable.chapter eq chapterId) and (PageTable.index eq index) }) {
+                    it[imageUrl] = trueImageUrl
                 }
             }
-            tachiyomiPage.imageUrl = trueImageUrl
         }
 
         val fileName = getPageName(index, chapterEntry[ChapterTable.pageCount])
