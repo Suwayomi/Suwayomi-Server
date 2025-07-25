@@ -205,30 +205,34 @@ abstract class ChaptersFilesProvider<Type : FileType>(
             return
         }
 
-        chapterCacheFolder
-            .listFiles()
-            .orEmpty()
-            .filter { it.name != COMIC_INFO_FILE }
-            .forEach { page ->
-                val imageType = MimeUtils.guessMimeTypeFromExtension(page.extension) ?: return@forEach
+        val pages =
+            chapterCacheFolder
+                .listFiles()
+                .orEmpty()
+                .filter { it.name != COMIC_INFO_FILE }
 
-                val defaultConversion = conversions["default"]
-                val conversion = conversions[imageType]
-                val targetConversion = conversion ?: defaultConversion
+        val pagesByMimeType =
+            pages
+                .groupBy { MimeUtils.guessMimeTypeFromExtension(it.extension) }
+                .mapValues { it.value.map { it.nameWithoutExtension } }
 
-                if (targetConversion == null) {
-                    logger.debug { "Skipping conversion of $page since no conversion specified" }
-                    return@forEach
-                }
+        logger.debug { "maybeConvertPages: pagesByMimeType= $pagesByMimeType; conversions= $conversions" }
 
-                val (targetMime) = targetConversion
-                val requiresConversion = imageType != targetMime && targetMime != "none"
-                if (!requiresConversion) {
-                    return@forEach
-                }
+        pages.forEach { page ->
+            val imageType = MimeUtils.guessMimeTypeFromExtension(page.extension) ?: return@forEach
 
-                convertPage(page, targetConversion)
+            val defaultConversion = conversions["default"]
+            val conversion = conversions[imageType]
+            val targetConversion = conversion ?: defaultConversion ?: return@forEach
+
+            val (targetMime) = targetConversion
+            val requiresConversion = imageType != targetMime && targetMime != "none"
+            if (!requiresConversion) {
+                return@forEach
             }
+
+            convertPage(page, targetConversion)
+        }
     }
 
     private fun convertPage(
@@ -236,8 +240,6 @@ abstract class ChaptersFilesProvider<Type : FileType>(
         conversion: ServerConfig.DownloadConversion,
     ) {
         val (targetMime, compressionLevel) = conversion
-
-        logger.debug { "Converting $page to $targetMime" }
 
         val targetExtension =
             MimeUtils.guessExtensionFromMimeType(targetMime) ?: targetMime.removePrefix("image/")
