@@ -22,6 +22,7 @@ import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompare
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
@@ -39,14 +40,20 @@ import suwayomi.tachidesk.graphql.types.TrackerType
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
 import suwayomi.tachidesk.manga.model.table.insertAll
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class TrackQuery {
     fun tracker(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Int,
-    ): CompletableFuture<TrackerType> = dataFetchingEnvironment.getValueFromDataLoader<Int, TrackerType>("TrackerDataLoader", id)
+    ): CompletableFuture<TrackerType> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, TrackerType>("TrackerDataLoader", id)
+    }
 
     enum class TrackerOrderBy {
         ID,
@@ -115,6 +122,7 @@ class TrackQuery {
     )
 
     fun trackers(
+        dataFetchingEnvironment: DataFetchingEnvironment,
         condition: TrackerCondition? = null,
         @GraphQLDeprecated(
             "Replaced with order",
@@ -133,6 +141,7 @@ class TrackQuery {
         last: Int? = null,
         offset: Int? = null,
     ): TrackerNodeList {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (queryResults, resultsAsType) =
             run {
                 var res = TrackerManager.services.map { TrackerType(it) }
@@ -240,8 +249,10 @@ class TrackQuery {
     fun trackRecord(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Int,
-    ): CompletableFuture<TrackRecordType> =
-        dataFetchingEnvironment.getValueFromDataLoader<Int, TrackRecordType>("TrackRecordDataLoader", id)
+    ): CompletableFuture<TrackRecordType> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, TrackRecordType>("TrackRecordDataLoader", id)
+    }
 
     enum class TrackRecordOrderBy(
         override val column: Column<*>,
@@ -389,6 +400,7 @@ class TrackQuery {
     }
 
     fun trackRecords(
+        dataFetchingEnvironment: DataFetchingEnvironment,
         condition: TrackRecordCondition? = null,
         filter: TrackRecordFilter? = null,
         @GraphQLDeprecated(
@@ -408,6 +420,7 @@ class TrackQuery {
         last: Int? = null,
         offset: Int? = null,
     ): TrackRecordNodeList {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val queryResults =
             transaction {
                 val res = TrackRecordTable.selectAll()
@@ -490,8 +503,12 @@ class TrackQuery {
         val trackSearches: List<TrackSearchType>,
     )
 
-    fun searchTracker(input: SearchTrackerInput): CompletableFuture<SearchTrackerPayload> =
+    fun searchTracker(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: SearchTrackerInput,
+    ): CompletableFuture<SearchTrackerPayload> =
         future {
+            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val tracker =
                 requireNotNull(TrackerManager.getTracker(input.trackerId)) {
                     "Tracker not found"

@@ -102,6 +102,8 @@ dependencies {
 
     implementation(libs.cronUtils)
 
+    implementation(libs.jwt)
+
     compileOnly(libs.kte)
 }
 

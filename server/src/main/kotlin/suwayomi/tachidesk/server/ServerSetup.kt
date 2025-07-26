@@ -48,6 +48,7 @@ import suwayomi.tachidesk.manga.impl.util.lang.renameTo
 import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
+import suwayomi.tachidesk.server.util.DurationType
 import suwayomi.tachidesk.server.util.MutableStateFlowType
 import suwayomi.tachidesk.server.util.SystemTray
 import uy.kohesive.injekt.Injekt
@@ -176,6 +177,7 @@ fun applicationSetup() {
 
     // register Tachidesk's config which is dubbed "ServerConfig"
     registerCustomType(MutableStateFlowType())
+    registerCustomType(DurationType())
     GlobalConfigManager.registerModule(
         ServerConfig.register { GlobalConfigManager.config },
     )

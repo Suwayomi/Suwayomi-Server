@@ -6,7 +6,10 @@ import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.opds.constants.OpdsConstants
 import suwayomi.tachidesk.opds.dto.OpdsSearchCriteria
 import suwayomi.tachidesk.opds.impl.OpdsFeedBuilder
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.queryParam
@@ -28,6 +31,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -53,6 +57,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
 
                 ctx.contentType("application/opensearchdescription+xml").result(
@@ -95,6 +100,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, query, author, title, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 val opdsSearchCriteria =
                     if (query != null || author != null || title != null) {
@@ -129,6 +135,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -155,6 +162,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -181,6 +189,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -209,6 +218,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -238,6 +248,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -264,6 +275,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -293,6 +305,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, sourceId, pageNumber, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -321,6 +334,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, categoryId, pageNumber, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -349,6 +363,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, genre, pageNumber, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -377,6 +392,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, statusId, pageNumber, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -405,6 +421,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, contentLangCodePath, pageNumber, uiLangParam ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val uiLocale: Locale = LocalizationHelper.ctxToLocale(ctx, uiLangParam)
                 ctx.future {
                     future {
@@ -440,6 +457,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, mangaId, pageNumber, sort, filter, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -471,6 +489,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, mangaId, chapterIndex, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
