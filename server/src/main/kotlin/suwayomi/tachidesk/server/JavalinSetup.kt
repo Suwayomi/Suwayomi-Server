@@ -14,7 +14,6 @@ import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.path
 import io.javalin.http.Context
 import io.javalin.http.HandlerType
-import io.javalin.http.Header
 import io.javalin.http.HttpStatus
 import io.javalin.http.RedirectResponse
 import io.javalin.http.UnauthorizedResponse
@@ -29,7 +28,6 @@ import kotlinx.coroutines.future.future
 import kotlinx.coroutines.runBlocking
 import org.eclipse.jetty.server.ServerConnector
 import suwayomi.tachidesk.global.GlobalAPI
-import suwayomi.tachidesk.global.impl.util.Jwt
 import suwayomi.tachidesk.graphql.GraphQL
 import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.i18n.LocalizationHelper
@@ -38,6 +36,8 @@ import suwayomi.tachidesk.opds.OpdsAPI
 import suwayomi.tachidesk.server.user.ForbiddenException
 import suwayomi.tachidesk.server.user.UnauthorizedException
 import suwayomi.tachidesk.server.user.UserType
+import suwayomi.tachidesk.server.user.getUserFromContext
+import suwayomi.tachidesk.server.user.getUserFromWsContext
 import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import uy.kohesive.injekt.injectLazy
@@ -211,23 +211,7 @@ object JavalinSetup {
                 throw UnauthorizedResponse()
             }
 
-            val user =
-                if (serverConfig.authMode.value == AuthMode.UI_LOGIN) {
-                    val authentication = ctx.header(Header.AUTHORIZATION) ?: ctx.cookie("suwayomi-server-token")
-                    if (authentication.isNullOrBlank()) {
-                        val token = ctx.queryParam("token")
-                        if (token.isNullOrBlank()) {
-                            UserType.Visitor
-                        } else {
-                            Jwt.verifyJwt(token)
-                        }
-                    } else {
-                        Jwt.verifyJwt(authentication.substringAfter("Bearer "))
-                    }
-                } else {
-                    UserType.Admin(1)
-                }
-            ctx.setAttribute(Attribute.TachideskUser, user)
+            ctx.setAttribute(Attribute.TachideskUser, getUserFromContext(ctx))
         }
 
         app.events { event ->
@@ -240,24 +224,7 @@ object JavalinSetup {
 
         app.wsBefore {
             it.onConnect { ctx ->
-                val user =
-                    if (serverConfig.authMode.value == AuthMode.UI_LOGIN) {
-                        val authentication =
-                            ctx.header(Header.AUTHORIZATION) ?: ctx.cookie("suwayomi-server-token") ?: ctx.header("Sec-WebSocket-Protocol")
-                        if (authentication.isNullOrBlank()) {
-                            val token = ctx.queryParam("token")
-                            if (token.isNullOrBlank()) {
-                                UserType.Visitor
-                            } else {
-                                Jwt.verifyJwt(token)
-                            }
-                        } else {
-                            Jwt.verifyJwt(authentication.substringAfter("Bearer "))
-                        }
-                    } else {
-                        UserType.Admin(1)
-                    }
-                ctx.setAttribute(Attribute.TachideskUser, user)
+                ctx.setAttribute(Attribute.TachideskUser, getUserFromWsContext(ctx))
             }
         }
 
