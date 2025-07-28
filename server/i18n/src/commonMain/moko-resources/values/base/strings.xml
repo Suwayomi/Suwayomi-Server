@@ -99,6 +99,11 @@
     <string name="opds_chapter_details_scanlator"> | By %1$s</string>
     <string name="opds_chapter_details_progress"> | Progress: %1$d of %2$d</string>
 
+    <string name="opds_manga_summary_status">Status: %1$s</string>
+    <string name="opds_manga_summary_source">Source: %1$s</string>
+    <string name="opds_manga_summary_language">Language: %1$s</string>
+    <string name="opds_linktitle_view_on_web">View on web</string>
+
     <string name="manga_status_unknown">Unknown</string>
     <string name="manga_status_ongoing">Ongoing</string>
     <string name="manga_status_completed">Completed</string>

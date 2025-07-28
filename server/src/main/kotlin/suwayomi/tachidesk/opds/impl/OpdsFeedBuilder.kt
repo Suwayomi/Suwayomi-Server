@@ -155,10 +155,16 @@ object OpdsFeedBuilder {
                         listOf(
                             OpdsLinkXml(
                                 OpdsConstants.LINK_REL_SUBSECTION,
-                                "$baseUrl/source/${entry.id}?lang=${locale.toLanguageTag()}",
+                                "$baseUrl/source/${entry.id}?sort=popular&lang=${locale.toLanguageTag()}",
                                 OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
-                                entry.name,
+//                                MR.strings.opds_facet_sort_popular.localized(locale),
                             ),
+//                            OpdsLinkXml(
+//                                OpdsConstants.LINK_REL_SORT_NEW,
+//                                "$baseUrl/source/${entry.id}?sort=latest&lang=${locale.toLanguageTag()}",
+//                                OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
+//                                MR.strings.opds_facet_sort_latest.localized(locale),
+//                            ),
                         ),
                 )
             },

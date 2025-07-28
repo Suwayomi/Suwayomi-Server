@@ -94,6 +94,7 @@ object ChapterRepository {
                 sourceOrder = chapterDataClass.index,
                 downloaded = chapterDataClass.downloaded,
                 pageCount = chapterDataClass.pageCount,
+                url = chapterDataClass.realUrl,
             )
         } catch (e: Exception) {
             null

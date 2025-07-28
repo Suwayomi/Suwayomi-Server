@@ -12,4 +12,5 @@ data class OpdsChapterMetadataAcqEntry(
     val sourceOrder: Int,
     val downloaded: Boolean,
     val pageCount: Int,
+    val url: String?,
 )

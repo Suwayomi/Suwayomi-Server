@@ -6,6 +6,7 @@ import kotlinx.coroutines.withContext
 import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
+import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.opds.constants.OpdsConstants
 import suwayomi.tachidesk.opds.dto.OpdsChapterListAcqEntry
 import suwayomi.tachidesk.opds.dto.OpdsChapterMetadataAcqEntry
@@ -13,6 +14,7 @@ import suwayomi.tachidesk.opds.dto.OpdsMangaAcqEntry
 import suwayomi.tachidesk.opds.dto.OpdsMangaDetails
 import suwayomi.tachidesk.opds.model.OpdsAuthorXml
 import suwayomi.tachidesk.opds.model.OpdsCategoryXml
+import suwayomi.tachidesk.opds.model.OpdsContentXml
 import suwayomi.tachidesk.opds.model.OpdsEntryXml
 import suwayomi.tachidesk.opds.model.OpdsLinkXml
 import suwayomi.tachidesk.opds.model.OpdsSummaryXml
@@ -23,6 +25,32 @@ import java.util.Locale
 
 object OpdsEntryBuilder {
     private fun currentFormattedTime() = OpdsDateUtil.formatCurrentInstantForOpds()
+
+    /**
+     * Builds an intelligent and concise summary for manga entries.
+     */
+    private fun buildMangaSummary(
+        entry: OpdsMangaAcqEntry,
+        locale: Locale,
+    ): String {
+        val summaryParts = mutableListOf<String>()
+
+        val statusKey =
+            when (MangaStatus.valueOf(entry.status)) {
+                MangaStatus.ONGOING -> MR.strings.manga_status_ongoing
+                MangaStatus.COMPLETED -> MR.strings.manga_status_completed
+                MangaStatus.LICENSED -> MR.strings.manga_status_licensed
+                MangaStatus.PUBLISHING_FINISHED -> MR.strings.manga_status_publishing_finished
+                MangaStatus.CANCELLED -> MR.strings.manga_status_cancelled
+                MangaStatus.ON_HIATUS -> MR.strings.manga_status_on_hiatus
+                else -> MR.strings.manga_status_unknown
+            }
+        summaryParts.add(MR.strings.opds_manga_summary_status.localized(locale, statusKey.localized(locale)))
+        summaryParts.add(MR.strings.opds_manga_summary_source.localized(locale, entry.sourceName))
+        summaryParts.add(MR.strings.opds_manga_summary_language.localized(locale, entry.sourceLang))
+
+        return summaryParts.joinToString(" | ")
+    }
 
     private fun addFacet(
         feedBuilder: FeedBuilderInternal,
@@ -46,6 +74,9 @@ object OpdsEntryBuilder {
         )
     }
 
+    /**
+     * Converts a manga acquisition entry to OPDS XML entry.
+     */
     fun mangaAcqEntryToEntry(
         entry: OpdsMangaAcqEntry,
         baseUrl: String,
@@ -54,10 +85,43 @@ object OpdsEntryBuilder {
         val displayThumbnailUrl = entry.thumbnailUrl?.let { proxyThumbnailUrl(entry.id) }
         val categoryScheme = if (entry.inLibrary) "$baseUrl/library/genres" else "$baseUrl/genres"
 
+        val links = mutableListOf<OpdsLinkXml>()
+
+        // Link to chapters list
+        links.add(
+            OpdsLinkXml(
+                OpdsConstants.LINK_REL_SUBSECTION,
+                "$baseUrl/series/${entry.id}/chapters?lang=${locale.toLanguageTag()}",
+                OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
+                entry.title,
+            ),
+        )
+
+        // Add link to the web version of the manga if url is available
+        entry.url?.let {
+            links.add(
+                OpdsLinkXml(
+                    OpdsConstants.LINK_REL_ALTERNATE,
+                    it,
+                    "text/html",
+                    MR.strings.opds_linktitle_view_on_web.localized(locale),
+                ),
+            )
+        }
+
+        // Image links
+        displayThumbnailUrl?.let {
+            links.add(OpdsLinkXml(OpdsConstants.LINK_REL_IMAGE, it, OpdsConstants.TYPE_IMAGE_JPEG))
+            links.add(OpdsLinkXml(OpdsConstants.LINK_REL_IMAGE_THUMBNAIL, it, OpdsConstants.TYPE_IMAGE_JPEG))
+        }
+
+        // Build summary
+        val summaryText = buildMangaSummary(entry, locale)
+
         return OpdsEntryXml(
             id = "urn:suwayomi:manga:${entry.id}",
             title = entry.title,
-            updated = currentFormattedTime(),
+            updated = OpdsDateUtil.formatEpochMillisForOpds(entry.lastFetchedAt * 1000),
             authors = entry.author?.let { listOf(OpdsAuthorXml(name = it)) },
             categories =
                 entry.genres.filter { it.isNotBlank() }.map { genre ->
@@ -67,18 +131,11 @@ object OpdsEntryBuilder {
                         scheme = categoryScheme,
                     )
                 },
-            summary = entry.description?.let { OpdsSummaryXml(value = it) },
-            link =
-                listOfNotNull(
-                    OpdsLinkXml(
-                        OpdsConstants.LINK_REL_SUBSECTION,
-                        "$baseUrl/series/${entry.id}/chapters?lang=${locale.toLanguageTag()}",
-                        OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
-                        entry.title,
-                    ),
-                    displayThumbnailUrl?.let { OpdsLinkXml(OpdsConstants.LINK_REL_IMAGE, it, OpdsConstants.TYPE_IMAGE_JPEG) },
-                    displayThumbnailUrl?.let { OpdsLinkXml(OpdsConstants.LINK_REL_IMAGE_THUMBNAIL, it, OpdsConstants.TYPE_IMAGE_JPEG) },
-                ),
+            summary = OpdsSummaryXml(value = summaryText),
+            content = entry.description?.let { OpdsContentXml(type = "text", value = it) },
+            link = links,
+            // identifier = entry.url?.let { "urn:suwayomi:manga:source:${entry.url.hashCode()}" },
+            publisher = entry.sourceName,
             language = entry.sourceLang,
         )
     }
@@ -160,6 +217,17 @@ object OpdsEntryBuilder {
 
         val links = mutableListOf<OpdsLinkXml>()
         var cbzFileSize: Long? = null
+
+        chapter.url?.let {
+            links.add(
+                OpdsLinkXml(
+                    OpdsConstants.LINK_REL_ALTERNATE,
+                    it,
+                    "text/html",
+                    MR.strings.opds_linktitle_view_on_web.localized(locale),
+                ),
+            )
+        }
 
         if (chapter.downloaded) {
             val cbzStreamPair =
