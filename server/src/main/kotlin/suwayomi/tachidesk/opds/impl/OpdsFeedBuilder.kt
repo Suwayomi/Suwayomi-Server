@@ -1,6 +1,8 @@
 package suwayomi.tachidesk.opds.impl
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.sql.SortOrder
 import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
@@ -60,7 +62,7 @@ object OpdsFeedBuilder {
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
 
-    fun getHistoryFeed(
+    suspend fun getHistoryFeed(
         baseUrl: String,
         pageNum: Int,
         locale: Locale,
@@ -76,13 +78,15 @@ object OpdsFeedBuilder {
                 pageNum,
             )
         builder.totalResults = total
-        builder.entries.addAll(
-            historyItems.map { item ->
-                val mangaDetails =
-                    OpdsMangaDetails(item.mangaId, item.mangaTitle, item.mangaThumbnailUrl, item.mangaAuthor)
-                OpdsEntryBuilder.createChapterListEntry(item.chapter, mangaDetails, baseUrl, true, locale)
-            },
-        )
+        val entries =
+            withContext(Dispatchers.IO) {
+                historyItems.map { item ->
+                    val mangaDetails =
+                        OpdsMangaDetails(item.mangaId, item.mangaTitle, item.mangaThumbnailUrl, item.mangaAuthor)
+                    OpdsEntryBuilder.createChapterListEntry(item.chapter, mangaDetails, baseUrl, true, locale)
+                }
+            }
+        builder.entries.addAll(entries)
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
 
@@ -442,7 +446,7 @@ object OpdsFeedBuilder {
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
 
-    fun getLibraryUpdatesFeed(
+    suspend fun getLibraryUpdatesFeed(
         baseUrl: String,
         pageNum: Int,
         locale: Locale,
@@ -458,12 +462,14 @@ object OpdsFeedBuilder {
                 pageNum,
             )
         builder.totalResults = total
-        builder.entries.addAll(
-            updateItems.map { item ->
-                val mangaDetails = OpdsMangaDetails(item.mangaId, item.mangaTitle, item.mangaThumbnailUrl, item.mangaAuthor)
-                OpdsEntryBuilder.createChapterListEntry(item.chapter, mangaDetails, baseUrl, true, locale)
-            },
-        )
+        val entries =
+            withContext(Dispatchers.IO) {
+                updateItems.map { item ->
+                    val mangaDetails = OpdsMangaDetails(item.mangaId, item.mangaTitle, item.mangaThumbnailUrl, item.mangaAuthor)
+                    OpdsEntryBuilder.createChapterListEntry(item.chapter, mangaDetails, baseUrl, true, locale)
+                }
+            }
+        builder.entries.addAll(entries)
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
 
@@ -693,11 +699,13 @@ object OpdsFeedBuilder {
             locale,
             filterCounts,
         )
-        builder.entries.addAll(
-            chapterEntries.map { chapter ->
-                OpdsEntryBuilder.createChapterListEntry(chapter, mangaDetails, baseUrl, false, locale)
-            },
-        )
+        val entries =
+            withContext(Dispatchers.IO) {
+                chapterEntries.map { chapter ->
+                    OpdsEntryBuilder.createChapterListEntry(chapter, mangaDetails, baseUrl, false, locale)
+                }
+            }
+        builder.entries.addAll(entries)
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
 

@@ -34,6 +34,7 @@ object ChapterRepository {
             scanlator = this[ChapterTable.scanlator],
             read = this[ChapterTable.isRead],
             lastPageRead = this[ChapterTable.lastPageRead],
+            lastReadAt = this[ChapterTable.lastReadAt],
             sourceOrder = this[ChapterTable.sourceOrder],
             pageCount = this[ChapterTable.pageCount],
         )
