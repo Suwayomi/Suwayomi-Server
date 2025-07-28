@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.opds.impl
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.sql.SortOrder
 import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
@@ -30,7 +31,7 @@ object OpdsFeedBuilder {
         val builder =
             FeedBuilderInternal(
                 baseUrl,
-                "root",
+                "", // Root path is empty
                 MR.strings.opds_feeds_root.localized(locale),
                 locale,
                 OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
@@ -601,7 +602,7 @@ object OpdsFeedBuilder {
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
 
-    fun getSeriesChaptersFeed(
+    suspend fun getSeriesChaptersFeed(
         mangaId: Int,
         baseUrl: String,
         pageNum: Int,
@@ -626,7 +627,7 @@ object OpdsFeedBuilder {
                 else -> ChapterTable.sourceOrder to (serverConfig.opdsChapterSortOrder.value ?: SortOrder.ASC)
             }
         val currentFilter = filterParam?.lowercase() ?: if (serverConfig.opdsShowOnlyUnreadChapters.value) "unread" else "all"
-        val (chapterEntries, totalChapters) =
+        var (chapterEntries, totalChapters) =
             ChapterRepository.getChaptersForManga(
                 mangaId,
                 pageNum,
@@ -634,6 +635,31 @@ object OpdsFeedBuilder {
                 currentSortOrder,
                 currentFilter,
             )
+
+        if (chapterEntries.isEmpty() && totalChapters == 0L) {
+            try {
+                // Chapters are not in the database, fetch them from the source.
+                suwayomi.tachidesk.manga.impl.Chapter
+                    .fetchChapterList(mangaId)
+
+                // Re-query the database to get the now-populated, sorted, and paginated list.
+                val (refetchedChapters, refetchedTotal) =
+                    ChapterRepository.getChaptersForManga(
+                        mangaId,
+                        pageNum,
+                        sortColumn,
+                        currentSortOrder,
+                        currentFilter,
+                    )
+                chapterEntries = refetchedChapters
+                totalChapters = refetchedTotal
+            } catch (e: Exception) {
+                // Log the exception, but don't crash the feed generation.
+                // It will correctly return an empty feed.
+                KotlinLogging.logger { }.error(e) { "Failed to fetch chapters online for mangaId: $mangaId" }
+            }
+        }
+
         val actualSortParamForLinks =
             sortParam ?: run {
                 val prefix = if (sortColumn == ChapterTable.sourceOrder) "number" else "date"
