@@ -13,8 +13,8 @@ import libcore.net.MimeUtils
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Page
+import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.util.createComicInfoFile
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
@@ -113,7 +113,12 @@ abstract class ChaptersFilesProvider<Type : FileType>(
             }
         val pageCount = download.chapter.pageCount
 
-        val doesUnrecognizedDownloadExist = existingDownloadPageCount >= pageCount
+        check(pageCount > 0) { "pageCount must be greater than 0 - ChapterForDownload#getChapterDownloadReady not called" }
+        check(existingDownloadPageCount == 0 || existingDownloadPageCount == pageCount) {
+            "existingDownloadPageCount must be 0 or equal to pageCount - ChapterForDownload#getChapterDownloadReady not called"
+        }
+
+        val doesUnrecognizedDownloadExist = existingDownloadPageCount == pageCount
         if (doesUnrecognizedDownloadExist) {
             download.progress = 1f
             step(download, false)
@@ -184,17 +189,14 @@ abstract class ChaptersFilesProvider<Type : FileType>(
 
         handleSuccessfulDownload()
 
-        transaction {
-            ChapterTable.update({ ChapterTable.id eq chapterId }) {
-                it[ChapterTable.pageCount] = getImageCount()
-            }
-        }
-
         File(cacheChapterDir).deleteRecursively()
 
         return true
     }
 
+    /**
+     * This function should never be called without calling [getChapterDownloadReady] beforehand.
+     */
     override fun download(): FileDownload3Args<DownloadChapter, CoroutineScope, suspend (DownloadChapter?, Boolean) -> Unit> =
         FileDownload3Args(::downloadImpl)
 

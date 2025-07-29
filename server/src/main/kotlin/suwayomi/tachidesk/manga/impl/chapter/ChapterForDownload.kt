@@ -99,7 +99,7 @@ private class ChapterForDownload(
         if (!doPageCountsMatch) {
             log.debug { "use page count of downloaded chapter" }
 
-            updatePageCount(ChapterDownloadHelper.getImageCount(mangaId, chapterId))
+            updatePageCount(downloadPageCount)
         }
 
         return asDataClass()
