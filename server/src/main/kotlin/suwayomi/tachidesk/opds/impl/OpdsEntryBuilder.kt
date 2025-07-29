@@ -12,29 +12,38 @@ import suwayomi.tachidesk.opds.dto.OpdsChapterListAcqEntry
 import suwayomi.tachidesk.opds.dto.OpdsChapterMetadataAcqEntry
 import suwayomi.tachidesk.opds.dto.OpdsMangaAcqEntry
 import suwayomi.tachidesk.opds.dto.OpdsMangaDetails
+import suwayomi.tachidesk.opds.dto.OpdsMangaFilter
+import suwayomi.tachidesk.opds.dto.PrimaryFilterType
 import suwayomi.tachidesk.opds.model.OpdsAuthorXml
 import suwayomi.tachidesk.opds.model.OpdsCategoryXml
 import suwayomi.tachidesk.opds.model.OpdsContentXml
 import suwayomi.tachidesk.opds.model.OpdsEntryXml
 import suwayomi.tachidesk.opds.model.OpdsLinkXml
 import suwayomi.tachidesk.opds.model.OpdsSummaryXml
+import suwayomi.tachidesk.opds.repository.MangaRepository
+import suwayomi.tachidesk.opds.repository.NavigationRepository
 import suwayomi.tachidesk.opds.util.OpdsDateUtil
 import suwayomi.tachidesk.opds.util.OpdsStringUtil.formatFileSizeForOpds
 import suwayomi.tachidesk.server.serverConfig
 import java.util.Locale
 
+/**
+ * A builder class responsible for creating OPDS Entry XML objects from data transfer objects.
+ */
 object OpdsEntryBuilder {
     private fun currentFormattedTime() = OpdsDateUtil.formatCurrentInstantForOpds()
 
     /**
-     * Builds an intelligent and concise summary for manga entries.
+     * Builds a concise summary for a manga entry, including status, source, and language.
+     * @param entry The manga data object.
+     * @param locale The locale for localization.
+     * @return A formatted summary string.
      */
     private fun buildMangaSummary(
         entry: OpdsMangaAcqEntry,
         locale: Locale,
     ): String {
         val summaryParts = mutableListOf<String>()
-
         val statusKey =
             when (MangaStatus.valueOf(entry.status)) {
                 MangaStatus.ONGOING -> MR.strings.manga_status_ongoing
@@ -48,25 +57,32 @@ object OpdsEntryBuilder {
         summaryParts.add(MR.strings.opds_manga_summary_status.localized(locale, statusKey.localized(locale)))
         summaryParts.add(MR.strings.opds_manga_summary_source.localized(locale, entry.sourceName))
         summaryParts.add(MR.strings.opds_manga_summary_language.localized(locale, entry.sourceLang))
-
         return summaryParts.joinToString(" | ")
     }
 
+    /**
+     * Adds a facet link to the feed builder.
+     * @param feedBuilder The feed builder to add the link to.
+     * @param href The URL for the facet link.
+     * @param title The title of the facet.
+     * @param group The group this facet belongs to.
+     * @param isActive Whether this facet is currently active.
+     * @param count The number of items in this facet.
+     */
     private fun addFacet(
         feedBuilder: FeedBuilderInternal,
         href: String,
-        titleKey: StringResource,
+        title: String,
         group: String,
         isActive: Boolean,
         count: Long?,
-        locale: Locale,
     ) {
         feedBuilder.links.add(
             OpdsLinkXml(
                 OpdsConstants.LINK_REL_FACET,
                 href,
                 OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
-                titleKey.localized(locale),
+                title,
                 facetGroup = group,
                 activeFacet = isActive,
                 thrCount = count?.toInt(),
@@ -75,7 +91,11 @@ object OpdsEntryBuilder {
     }
 
     /**
-     * Converts a manga acquisition entry to OPDS XML entry.
+     * Converts a manga data object into a full OPDS acquisition entry.
+     * @param entry The manga data object.
+     * @param baseUrl The base URL for constructing links.
+     * @param locale The locale for localization.
+     * @return An [OpdsEntryXml] object representing the manga.
      */
     fun mangaAcqEntryToEntry(
         entry: OpdsMangaAcqEntry,
@@ -86,8 +106,6 @@ object OpdsEntryBuilder {
         val categoryScheme = if (entry.inLibrary) "$baseUrl/library/genres" else "$baseUrl/genres"
 
         val links = mutableListOf<OpdsLinkXml>()
-
-        // Link to chapters list
         links.add(
             OpdsLinkXml(
                 OpdsConstants.LINK_REL_SUBSECTION,
@@ -96,8 +114,6 @@ object OpdsEntryBuilder {
                 entry.title,
             ),
         )
-
-        // Add link to the web version of the manga if url is available
         entry.url?.let {
             links.add(
                 OpdsLinkXml(
@@ -108,16 +124,12 @@ object OpdsEntryBuilder {
                 ),
             )
         }
-
-        // Image links
         displayThumbnailUrl?.let {
             links.add(OpdsLinkXml(OpdsConstants.LINK_REL_IMAGE, it, OpdsConstants.TYPE_IMAGE_JPEG))
             links.add(OpdsLinkXml(OpdsConstants.LINK_REL_IMAGE_THUMBNAIL, it, OpdsConstants.TYPE_IMAGE_JPEG))
         }
 
-        // Build summary
         val summaryText = buildMangaSummary(entry, locale)
-
         return OpdsEntryXml(
             id = "urn:suwayomi:manga:${entry.id}",
             title = entry.title,
@@ -134,12 +146,20 @@ object OpdsEntryBuilder {
             summary = OpdsSummaryXml(value = summaryText),
             content = entry.description?.let { OpdsContentXml(type = "text", value = it) },
             link = links,
-            // identifier = entry.url?.let { "urn:suwayomi:manga:source:${entry.url.hashCode()}" },
             publisher = entry.sourceName,
             language = entry.sourceLang,
         )
     }
 
+    /**
+     * Creates an OPDS entry for a chapter, including acquisition and streaming links.
+     * @param chapter The chapter data object.
+     * @param manga The parent manga's details.
+     * @param baseUrl The base URL for constructing links.
+     * @param addMangaTitle Whether to prepend the manga title to the entry title.
+     * @param locale The locale for localization.
+     * @return An [OpdsEntryXml] object for the chapter.
+     */
     suspend fun createChapterListEntry(
         chapter: OpdsChapterListAcqEntry,
         manga: OpdsMangaDetails,
@@ -155,7 +175,6 @@ object OpdsEntryBuilder {
             }
         val titlePrefix = statusKey.localized(locale)
         val entryTitle = titlePrefix + (if (addMangaTitle) " ${manga.title}:" else "") + " ${chapter.name}"
-
         val details =
             buildString {
                 append(MR.strings.opds_chapter_details_base.localized(locale, manga.title, chapter.name))
@@ -166,12 +185,9 @@ object OpdsEntryBuilder {
                     append(MR.strings.opds_chapter_details_progress.localized(locale, chapter.lastPageRead, chapter.pageCount))
                 }
             }
-
         val links = mutableListOf<OpdsLinkXml>()
         var cbzFileSize: Long? = null
-
         if (chapter.pageCount > 0) {
-            // 1. Direct Streaming Link (OPDS-PSE)
             links.add(
                 OpdsLinkXml(
                     rel = OpdsConstants.LINK_REL_PSE_STREAM,
@@ -185,8 +201,6 @@ object OpdsEntryBuilder {
                     pseLastReadDate = chapter.lastReadAt.takeIf { it > 0 }?.let { OpdsDateUtil.formatEpochMillisForOpds(it * 1000) },
                 ),
             )
-
-            // 2. Direct Acquisition Link (CBZ Download)
             val cbzStreamPair =
                 withContext(Dispatchers.IO) {
                     runCatching { ChapterDownloadHelper.getArchiveStreamWithSize(manga.id, chapter.id) }.getOrNull()
@@ -202,8 +216,6 @@ object OpdsEntryBuilder {
                     ),
                 )
             }
-
-            // 3. Direct Cover Link (first page)
             links.add(
                 OpdsLinkXml(
                     rel = OpdsConstants.LINK_REL_IMAGE,
@@ -213,17 +225,16 @@ object OpdsEntryBuilder {
                 ),
             )
         } else {
-            // Link to metadata feed to obtain missing information
+            // Link to metadata feed to obtain missing information if page count is unknown.
             links.add(
                 OpdsLinkXml(
-                    rel = OpdsConstants.LINK_REL_SUBSECTION, // Correct for navigating to detailed view
+                    rel = OpdsConstants.LINK_REL_SUBSECTION,
                     href = "$baseUrl/series/${manga.id}/chapter/${chapter.sourceOrder}/metadata?lang=${locale.toLanguageTag()}",
                     type = OpdsConstants.TYPE_ATOM_XML_ENTRY_PROFILE_OPDS,
                     title = MR.strings.opds_linktitle_view_chapter_details.localized(locale),
                 ),
             )
         }
-
         return OpdsEntryXml(
             id = "urn:suwayomi:chapter:${chapter.id}",
             title = entryTitle,
@@ -240,6 +251,14 @@ object OpdsEntryBuilder {
         )
     }
 
+    /**
+     * Creates an OPDS entry for a chapter's metadata, used when page count is not initially available.
+     * @param chapter The chapter metadata object.
+     * @param manga The parent manga's details.
+     * @param baseUrl The base URL for constructing links.
+     * @param locale The locale for localization.
+     * @return An [OpdsEntryXml] object for the chapter's metadata.
+     */
     suspend fun createChapterMetadataEntry(
         chapter: OpdsChapterMetadataAcqEntry,
         manga: OpdsMangaDetails,
@@ -255,7 +274,6 @@ object OpdsEntryBuilder {
             }
         val titlePrefix = statusKey.localized(locale)
         val entryTitle = "$titlePrefix ${chapter.name}"
-
         val details =
             buildString {
                 append(MR.strings.opds_chapter_details_base.localized(locale, manga.title, chapter.name))
@@ -265,10 +283,8 @@ object OpdsEntryBuilder {
                 val pageCountDisplay = chapter.pageCount.takeIf { it > 0 } ?: "?"
                 append(MR.strings.opds_chapter_details_progress.localized(locale, chapter.lastPageRead, pageCountDisplay))
             }
-
         val links = mutableListOf<OpdsLinkXml>()
         var cbzFileSize: Long? = null
-
         chapter.url?.let {
             links.add(
                 OpdsLinkXml(
@@ -279,7 +295,6 @@ object OpdsEntryBuilder {
                 ),
             )
         }
-
         if (chapter.downloaded) {
             val cbzStreamPair =
                 withContext(
@@ -297,15 +312,15 @@ object OpdsEntryBuilder {
                 )
             }
         }
-
         if (chapter.pageCount > 0) {
             links.add(
                 OpdsLinkXml(
-                    OpdsConstants.LINK_REL_PSE_STREAM,
-                    "/api/v1/manga/${manga.id}/chapter/${chapter.sourceOrder}/page/{pageNumber}" +
-                        "?updateProgress=${serverConfig.opdsEnablePageReadProgress.value}",
-                    OpdsConstants.TYPE_IMAGE_JPEG,
-                    MR.strings.opds_linktitle_stream_pages.localized(locale),
+                    rel = OpdsConstants.LINK_REL_PSE_STREAM,
+                    href =
+                        "/api/v1/manga/${manga.id}/chapter/${chapter.sourceOrder}/page/{pageNumber}" +
+                            "?updateProgress=${serverConfig.opdsEnablePageReadProgress.value}",
+                    type = OpdsConstants.TYPE_IMAGE_JPEG,
+                    title = MR.strings.opds_linktitle_stream_pages.localized(locale),
                     pseCount = chapter.pageCount,
                     pseLastRead = chapter.lastPageRead.takeIf { it > 0 },
                     pseLastReadDate = chapter.lastReadAt.takeIf { it > 0 }?.let { OpdsDateUtil.formatEpochMillisForOpds(it * 1000) },
@@ -313,14 +328,13 @@ object OpdsEntryBuilder {
             )
             links.add(
                 OpdsLinkXml(
-                    OpdsConstants.LINK_REL_IMAGE,
-                    "/api/v1/manga/${manga.id}/chapter/${chapter.sourceOrder}/page/0",
-                    OpdsConstants.TYPE_IMAGE_JPEG,
-                    MR.strings.opds_linktitle_chapter_cover.localized(locale),
+                    rel = OpdsConstants.LINK_REL_IMAGE,
+                    href = "/api/v1/manga/${manga.id}/chapter/${chapter.sourceOrder}/page/0",
+                    type = OpdsConstants.TYPE_IMAGE_JPEG,
+                    title = MR.strings.opds_linktitle_chapter_cover.localized(locale),
                 ),
             )
         }
-
         return OpdsEntryXml(
             id = "urn:suwayomi:chapter:${chapter.id}:metadata",
             title = entryTitle,
@@ -337,6 +351,9 @@ object OpdsEntryBuilder {
         )
     }
 
+    /**
+     * Adds sorting facet links for an 'Explore Source' feed.
+     */
     fun addSourceSortFacets(
         feedBuilder: FeedBuilderInternal,
         baseUrl: String,
@@ -356,11 +373,13 @@ object OpdsEntryBuilder {
                 ),
             )
         }
-
         addFacet("$baseUrl?sort=popular&lang=${locale.toLanguageTag()}", MR.strings.opds_facet_sort_popular, currentSort == "popular")
         addFacet("$baseUrl?sort=latest&lang=${locale.toLanguageTag()}", MR.strings.opds_facet_sort_latest, currentSort == "latest")
     }
 
+    /**
+     * Adds sorting and filtering facet links for a chapter feed.
+     */
     fun addChapterSortAndFilterFacets(
         feedBuilder: FeedBuilderInternal,
         baseUrl: String,
@@ -370,7 +389,7 @@ object OpdsEntryBuilder {
         filterCounts: Map<String, Long>? = null,
     ) {
         val sortGroup = MR.strings.opds_facetgroup_sort_order.localized(locale)
-        val filterGroup = MR.strings.opds_facetgroup_read_status.localized(locale)
+        val filterGroup = MR.strings.opds_facetgroup_filter_read_status.localized(locale)
 
         val addSortFacet = { href: String, titleKey: StringResource, group: String, isActive: Boolean ->
             feedBuilder.links.add(
@@ -413,139 +432,252 @@ object OpdsEntryBuilder {
         addFacet(
             feedBuilder,
             "$baseUrl?filter=all&sort=$currentSort&lang=${locale.toLanguageTag()}",
-            MR.strings.opds_facet_filter_all_chapters,
+            MR.strings.opds_facet_filter_all_chapters.localized(locale),
             filterGroup,
             currentFilter == "all",
             filterCounts?.get("all"),
-            locale,
         )
         addFacet(
             feedBuilder,
             "$baseUrl?filter=unread&sort=$currentSort&lang=${locale.toLanguageTag()}",
-            MR.strings.opds_facet_filter_unread_only,
+            MR.strings.opds_facet_filter_unread_only.localized(locale),
             filterGroup,
             currentFilter == "unread",
             filterCounts?.get("unread"),
-            locale,
         )
         addFacet(
             feedBuilder,
             "$baseUrl?filter=read&sort=$currentSort&lang=${locale.toLanguageTag()}",
-            MR.strings.opds_facet_filter_read_only,
+            MR.strings.opds_facet_filter_read_only.localized(locale),
             filterGroup,
             currentFilter == "read",
             filterCounts?.get("read"),
-            locale,
         )
     }
 
-    fun addLibraryMangaSortAndFilterFacets(
+    /**
+     * Adds a comprehensive set of facet links for library feeds, covering sorting, content filtering,
+     * and cross-filtering by source, category, status, language, and genre.
+     */
+    fun addLibraryFacets(
         feedBuilder: FeedBuilderInternal,
         baseUrl: String,
-        currentSort: String,
-        currentFilter: String,
+        activeFilters: OpdsMangaFilter,
         locale: Locale,
-        filterCounts: Map<String, Long>? = null,
     ) {
+        val currentSort = activeFilters.sort ?: "alpha_asc"
+        val currentFilter = activeFilters.filter ?: "all"
+
         val sortGroup = MR.strings.opds_facetgroup_sort_order.localized(locale)
         val filterGroup = MR.strings.opds_facetgroup_filter_content.localized(locale)
+        val filterCounts = MangaRepository.getLibraryFilterCounts()
 
-        val addSortFacet = { href: String, titleKey: StringResource, group: String, isActive: Boolean ->
-            feedBuilder.links.add(
-                OpdsLinkXml(
-                    OpdsConstants.LINK_REL_FACET,
-                    href,
-                    OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
-                    titleKey.localized(locale),
-                    facetGroup = group,
-                    activeFacet = isActive,
-                ),
-            )
+        val buildUrl = { newFilters: OpdsMangaFilter, newSort: String, newFilter: String ->
+            val crossFilterParams = newFilters.toCrossFilterQueryParameters()
+            val sortParam = "sort=$newSort"
+            val filterParam = "filter=$newFilter"
+            val langParam = "lang=${locale.toLanguageTag()}"
+            val allParams = listOfNotNull(crossFilterParams, sortParam, filterParam, langParam).filter { it.isNotEmpty() }
+            "$baseUrl/library/series?${allParams.joinToString("&")}"
         }
 
-        // Sorting Facets
-        addSortFacet(
-            "$baseUrl?sort=alpha_asc&filter=$currentFilter",
-            MR.strings.opds_facet_sort_alpha_asc,
+        // --- Sort Facets ---
+        addFacet(
+            feedBuilder,
+            buildUrl(activeFilters, "alpha_asc", currentFilter),
+            MR.strings.opds_facet_sort_alpha_asc.localized(locale),
             sortGroup,
             currentSort == "alpha_asc",
+            null,
         )
-        addSortFacet(
-            "$baseUrl?sort=alpha_desc&filter=$currentFilter",
-            MR.strings.opds_facet_sort_alpha_desc,
+        addFacet(
+            feedBuilder,
+            buildUrl(activeFilters, "alpha_desc", currentFilter),
+            MR.strings.opds_facet_sort_alpha_desc.localized(locale),
             sortGroup,
             currentSort == "alpha_desc",
+            null,
         )
-        addSortFacet(
-            "$baseUrl?sort=last_read_desc&filter=$currentFilter",
-            MR.strings.opds_facet_sort_last_read_desc,
+        addFacet(
+            feedBuilder,
+            buildUrl(activeFilters, "last_read_desc", currentFilter),
+            MR.strings.opds_facet_sort_last_read_desc.localized(locale),
             sortGroup,
             currentSort == "last_read_desc",
+            null,
         )
-        addSortFacet(
-            "$baseUrl?sort=latest_chapter_desc&filter=$currentFilter",
-            MR.strings.opds_facet_sort_latest_chapter_desc,
+        addFacet(
+            feedBuilder,
+            buildUrl(activeFilters, "latest_chapter_desc", currentFilter),
+            MR.strings.opds_facet_sort_latest_chapter_desc.localized(locale),
             sortGroup,
             currentSort == "latest_chapter_desc",
+            null,
         )
-        addSortFacet(
-            "$baseUrl?sort=date_added_desc&filter=$currentFilter",
-            MR.strings.opds_facet_sort_date_added_desc,
+        addFacet(
+            feedBuilder,
+            buildUrl(activeFilters, "date_added_desc", currentFilter),
+            MR.strings.opds_facet_sort_date_added_desc.localized(locale),
             sortGroup,
             currentSort == "date_added_desc",
+            null,
         )
-        addSortFacet(
-            "$baseUrl?sort=unread_desc&filter=$currentFilter",
-            MR.strings.opds_facet_sort_unread_desc,
+        addFacet(
+            feedBuilder,
+            buildUrl(activeFilters, "unread_desc", currentFilter),
+            MR.strings.opds_facet_sort_unread_desc.localized(locale),
             sortGroup,
             currentSort == "unread_desc",
+            null,
         )
 
-        // Filtering Facets
+        // --- Filter Facets ---
         addFacet(
             feedBuilder,
-            "$baseUrl?filter=all&sort=$currentSort",
-            MR.strings.opds_facet_filter_all,
+            buildUrl(activeFilters, currentSort, "all"),
+            MR.strings.opds_facet_filter_all.localized(locale),
             filterGroup,
             currentFilter == "all",
-            filterCounts?.get("all"),
-            locale,
+            null,
         )
         addFacet(
             feedBuilder,
-            "$baseUrl?filter=unread&sort=$currentSort",
-            MR.strings.opds_facet_filter_unread_only,
+            buildUrl(activeFilters, currentSort, "unread"),
+            MR.strings.opds_facet_filter_unread_only.localized(locale),
             filterGroup,
             currentFilter == "unread",
-            filterCounts?.get("unread"),
-            locale,
+            filterCounts["unread"],
         )
         addFacet(
             feedBuilder,
-            "$baseUrl?filter=downloaded&sort=$currentSort",
-            MR.strings.opds_facet_filter_downloaded,
+            buildUrl(activeFilters, currentSort, "downloaded"),
+            MR.strings.opds_facet_filter_downloaded.localized(locale),
             filterGroup,
             currentFilter == "downloaded",
-            filterCounts?.get("downloaded"),
-            locale,
+            filterCounts["downloaded"],
         )
         addFacet(
             feedBuilder,
-            "$baseUrl?filter=ongoing&sort=$currentSort",
-            MR.strings.opds_facet_filter_ongoing,
+            buildUrl(activeFilters, currentSort, "ongoing"),
+            MR.strings.opds_facet_filter_ongoing.localized(locale),
             filterGroup,
             currentFilter == "ongoing",
-            filterCounts?.get("ongoing"),
-            locale,
+            filterCounts["ongoing"],
         )
         addFacet(
             feedBuilder,
-            "$baseUrl?filter=completed&sort=$currentSort",
-            MR.strings.opds_facet_filter_completed,
+            buildUrl(activeFilters, currentSort, "completed"),
+            MR.strings.opds_facet_filter_completed.localized(locale),
             filterGroup,
             currentFilter == "completed",
-            filterCounts?.get("completed"),
-            locale,
+            filterCounts["completed"],
         )
+
+        // --- Cross-Filter Facets ---
+        if (activeFilters.primaryFilter != PrimaryFilterType.SOURCE) {
+            val sources = NavigationRepository.getLibrarySources(1).first
+            addFacet(
+                feedBuilder,
+                buildUrl(activeFilters.without("source_id"), currentSort, currentFilter),
+                MR.strings.opds_facet_all_sources.localized(locale),
+                MR.strings.opds_facetgroup_filter_source.localized(locale),
+                activeFilters.sourceId == null,
+                null,
+            )
+            sources.forEach {
+                addFacet(
+                    feedBuilder,
+                    buildUrl(activeFilters.with("source_id", it.id.toString()), currentSort, currentFilter),
+                    it.name,
+                    MR.strings.opds_facetgroup_filter_source.localized(locale),
+                    activeFilters.sourceId == it.id,
+                    it.mangaCount,
+                )
+            }
+        }
+        if (activeFilters.primaryFilter != PrimaryFilterType.CATEGORY) {
+            val categories = NavigationRepository.getCategories(1).first
+            addFacet(
+                feedBuilder,
+                buildUrl(activeFilters.without("category_id"), currentSort, currentFilter),
+                MR.strings.opds_facet_all_categories.localized(locale),
+                MR.strings.opds_facetgroup_filter_category.localized(locale),
+                activeFilters.categoryId == null,
+                null,
+            )
+            categories.forEach {
+                addFacet(
+                    feedBuilder,
+                    buildUrl(activeFilters.with("category_id", it.id.toString()), currentSort, currentFilter),
+                    it.name,
+                    MR.strings.opds_facetgroup_filter_category.localized(locale),
+                    activeFilters.categoryId == it.id,
+                    it.mangaCount,
+                )
+            }
+        }
+        if (activeFilters.primaryFilter != PrimaryFilterType.STATUS) {
+            val statuses = NavigationRepository.getStatuses(locale)
+            addFacet(
+                feedBuilder,
+                buildUrl(activeFilters.without("status_id"), currentSort, currentFilter),
+                MR.strings.opds_facet_all_statuses.localized(locale),
+                MR.strings.opds_facetgroup_filter_status.localized(locale),
+                activeFilters.statusId == null,
+                null,
+            )
+            statuses.forEach {
+                addFacet(
+                    feedBuilder,
+                    buildUrl(activeFilters.with("status_id", it.id.toString()), currentSort, currentFilter),
+                    it.title,
+                    MR.strings.opds_facetgroup_filter_status.localized(locale),
+                    activeFilters.statusId == it.id,
+                    it.mangaCount,
+                )
+            }
+        }
+        if (activeFilters.primaryFilter != PrimaryFilterType.LANGUAGE) {
+            val languages = NavigationRepository.getContentLanguages(locale)
+            addFacet(
+                feedBuilder,
+                buildUrl(activeFilters.without("lang_code"), currentSort, currentFilter),
+                MR.strings.opds_facet_all_languages.localized(locale),
+                MR.strings.opds_facetgroup_filter_language.localized(locale),
+                activeFilters.langCode == null,
+                null,
+            )
+            languages.forEach {
+                addFacet(
+                    feedBuilder,
+                    buildUrl(activeFilters.with("lang_code", it.id), currentSort, currentFilter),
+                    it.title,
+                    MR.strings.opds_facetgroup_filter_language.localized(locale),
+                    activeFilters.langCode == it.id,
+                    it.mangaCount,
+                )
+            }
+        }
+        if (activeFilters.primaryFilter != PrimaryFilterType.GENRE) {
+            val genres = NavigationRepository.getGenres(1, locale).first
+            addFacet(
+                feedBuilder,
+                buildUrl(activeFilters.without("genre"), currentSort, currentFilter),
+                MR.strings.opds_facet_all_genres.localized(locale),
+                MR.strings.opds_facetgroup_filter_genre.localized(locale),
+                activeFilters.genre == null,
+                null,
+            )
+            genres.forEach {
+                addFacet(
+                    feedBuilder,
+                    buildUrl(activeFilters.with("genre", it.id), currentSort, currentFilter),
+                    it.title,
+                    MR.strings.opds_facetgroup_filter_genre.localized(locale),
+                    activeFilters.genre == it.id,
+                    it.mangaCount,
+                )
+            }
+        }
     }
 }

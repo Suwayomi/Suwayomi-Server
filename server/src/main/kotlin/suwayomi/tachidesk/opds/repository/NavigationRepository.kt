@@ -78,7 +78,7 @@ object NavigationRepository {
                     MR.strings.opds_feeds_genres_title,
                     MR.strings.opds_feeds_genres_entry_content,
                 ),
-            "status" to
+            "statuses" to
                 Triple(
                     OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
                     MR.strings.opds_feeds_status_title,

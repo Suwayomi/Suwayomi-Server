@@ -44,7 +44,7 @@ object OpdsAPI {
                 get("genres", OpdsV1Controller.genresFeed)
 
                 // Library Status Navigation Feed
-                get("status", OpdsV1Controller.statusFeed)
+                get("statuses", OpdsV1Controller.statusesFeed)
 
                 // Library Content Languages Navigation Feed
                 get("languages", OpdsV1Controller.languagesFeed)
