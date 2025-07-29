@@ -48,6 +48,11 @@ main() {
       make_deb_package
       move_release_to_output_dir
       ;;
+    redhat-x64)
+      RELEASE="$RELEASE_NAME.rpm"
+      make_rpm_package
+      move_release_to_output_dir
+      ;;
     appimage)
       # https://github.com/adoptium/temurin21-binaries/releases/
       JRE_RELEASE="jdk-21.0.8+9"
@@ -240,6 +245,39 @@ make_deb_package() {
 
   local deb="suwayomi-server_$RELEASE_VERSION-1_all.deb"
   mv "$RELEASE_NAME/$deb" "$RELEASE"
+}
+
+# https://www.redhat.com/en/blog/create-rpm-package
+# https://rpm-packaging-guide.github.io/#preparing-software-for-packaging
+make_rpm_package() {
+  #behind $RELEASE_VERSION is hyphen "-"
+  local source_dir="suwayomi-server-$RELEASE_VERSION"
+  #behind $RELEASE_VERSION is underscore "_"
+  local upstream_source="suwayomi-server_$RELEASE_VERSION.orig.tar.gz"
+
+  mkdir "$RELEASE_NAME/$source_dir/"
+  mkdir -p $RELEASE_NAME/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
+
+  mv "$RELEASE_NAME/Suwayomi-Launcher.jar" "$RELEASE_NAME/$source_dir/Suwayomi-Launcher.jar"
+  cp "$JAR" "$RELEASE_NAME/$source_dir/Suwayomi-Server.jar"
+  copy_linux_package_assets_to "$RELEASE_NAME/$source_dir/"
+  # rpmbuild sees all *.so files as arch-dependent
+  cp "scripts/resources/catch_abort.so" "$RELEASE_NAME/$source_dir/"
+  tar -I "gzip" -C "$RELEASE_NAME/" -cvf "$upstream_source" "$source_dir"
+  mv "$upstream_source" "$RELEASE_NAME/SOURCES/$upstream_source" 
+
+  cp "scripts/resources/rpm/suwayomi-server.spec" "$RELEASE_NAME/SPECS/suwayomi-server.spec"
+  sed -i "s/\$pkgver/$RELEASE_VERSION/" "$RELEASE_NAME/SPECS/suwayomi-server.spec"
+  sed -i "s/\$pkgrel/1/"                "$RELEASE_NAME/SPECS/suwayomi-server.spec"
+
+  sudo dnf update
+  sudo dnf install rpmdevtools
+  cd "$RELEASE_NAME/"
+  rpmbuild --define "_topdir `pwd`" -bb SPECS/suwayomi-server.spec
+  cd -
+
+  local rpm="suwayomi-server-$RELEASE_VERSION-1.x86_64.rpm"
+  mv "$RELEASE_NAME/RPMS/x86_64/$rpm" "$RELEASE"
 }
 
 # https://linuxconfig.org/building-a-hello-world-appimage-on-linux
