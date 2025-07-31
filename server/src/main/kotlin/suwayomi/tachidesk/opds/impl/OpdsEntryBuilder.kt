@@ -185,56 +185,7 @@ object OpdsEntryBuilder {
                     append(MR.strings.opds_chapter_details_progress.localized(locale, chapter.lastPageRead, chapter.pageCount))
                 }
             }
-        val links = mutableListOf<OpdsLinkXml>()
-        var cbzFileSize: Long? = null
-        if (chapter.pageCount > 0) {
-            links.add(
-                OpdsLinkXml(
-                    rel = OpdsConstants.LINK_REL_PSE_STREAM,
-                    href =
-                        "/api/v1/manga/${manga.id}/chapter/${chapter.sourceOrder}/page/{pageNumber}" +
-                            "?updateProgress=${serverConfig.opdsEnablePageReadProgress.value}",
-                    type = OpdsConstants.TYPE_IMAGE_JPEG,
-                    title = MR.strings.opds_linktitle_stream_pages.localized(locale),
-                    pseCount = chapter.pageCount,
-                    pseLastRead = chapter.lastPageRead.takeIf { it > 0 },
-                    pseLastReadDate = chapter.lastReadAt.takeIf { it > 0 }?.let { OpdsDateUtil.formatEpochMillisForOpds(it * 1000) },
-                ),
-            )
-            val cbzStreamPair =
-                withContext(Dispatchers.IO) {
-                    runCatching { ChapterDownloadHelper.getArchiveStreamWithSize(manga.id, chapter.id) }.getOrNull()
-                }
-            cbzFileSize = cbzStreamPair?.second
-            cbzStreamPair?.let {
-                links.add(
-                    OpdsLinkXml(
-                        OpdsConstants.LINK_REL_ACQUISITION_OPEN_ACCESS,
-                        "/api/v1/chapter/${chapter.id}/download?markAsRead=${serverConfig.opdsMarkAsReadOnDownload.value}",
-                        OpdsConstants.TYPE_CBZ,
-                        MR.strings.opds_linktitle_download_cbz.localized(locale),
-                    ),
-                )
-            }
-            links.add(
-                OpdsLinkXml(
-                    rel = OpdsConstants.LINK_REL_IMAGE,
-                    href = "/api/v1/manga/${manga.id}/chapter/${chapter.sourceOrder}/page/0",
-                    type = OpdsConstants.TYPE_IMAGE_JPEG,
-                    title = MR.strings.opds_linktitle_chapter_cover.localized(locale),
-                ),
-            )
-        } else {
-            // Link to metadata feed to obtain missing information if page count is unknown.
-            links.add(
-                OpdsLinkXml(
-                    rel = OpdsConstants.LINK_REL_SUBSECTION,
-                    href = "$baseUrl/series/${manga.id}/chapter/${chapter.sourceOrder}/metadata?lang=${locale.toLanguageTag()}",
-                    type = OpdsConstants.TYPE_ATOM_XML_ENTRY_PROFILE_OPDS,
-                    title = MR.strings.opds_linktitle_view_chapter_details.localized(locale),
-                ),
-            )
-        }
+
         return OpdsEntryXml(
             id = "urn:suwayomi:chapter:${chapter.id}",
             title = entryTitle,
@@ -245,9 +196,15 @@ object OpdsEntryBuilder {
                     chapter.scanlator?.takeIf { it.isNotBlank() }?.let { OpdsAuthorXml(name = it) },
                 ),
             summary = OpdsSummaryXml(value = details),
-            link = links,
-            extent = cbzFileSize?.let { formatFileSizeForOpds(it) },
-            format = if (cbzFileSize != null) "CBZ" else null,
+            link =
+                listOf(
+                    OpdsLinkXml(
+                        rel = OpdsConstants.LINK_REL_SUBSECTION,
+                        href = "$baseUrl/series/${manga.id}/chapter/${chapter.sourceOrder}/metadata?lang=${locale.toLanguageTag()}",
+                        type = OpdsConstants.TYPE_ATOM_XML_ENTRY_PROFILE_OPDS,
+                        title = MR.strings.opds_linktitle_view_chapter_details.localized(locale),
+                    ),
+                ),
         )
     }
 
