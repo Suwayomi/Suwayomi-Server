@@ -275,10 +275,11 @@ class ChapterMutation {
                             it[lastReadAt] = remoteProgress.timestamp
                         }
                     }
-                    chapter = chapter.copy(
-                        lastPageRead = remoteProgress.pageRead,
-                        lastReadAt = remoteProgress.timestamp,
-                    )
+                    chapter =
+                        chapter.copy(
+                            lastPageRead = remoteProgress.pageRead,
+                            lastReadAt = remoteProgress.timestamp,
+                        )
                 }
             }
 
