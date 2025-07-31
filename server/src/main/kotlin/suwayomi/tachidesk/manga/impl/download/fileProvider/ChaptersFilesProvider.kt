@@ -16,8 +16,10 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
+import suwayomi.tachidesk.manga.impl.util.KoreaderHelper
 import suwayomi.tachidesk.manga.impl.util.createComicInfoFile
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
+import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -43,20 +45,20 @@ sealed class FileType {
 
     fun getName(): String =
         when (this) {
-            is FileType.RegularFile -> {
+            is RegularFile -> {
                 this.file.name
             }
-            is FileType.ZipFile -> {
+            is ZipFile -> {
                 this.entry.name
             }
         }
 
     fun getExtension(): String =
         when (this) {
-            is FileType.RegularFile -> {
+            is RegularFile -> {
                 this.file.extension
             }
-            is FileType.ZipFile -> {
+            is ZipFile -> {
                 this.entry.name.substringAfterLast(".")
             }
         }
@@ -188,6 +190,25 @@ abstract class ChaptersFilesProvider<Type : FileType>(
         maybeConvertPages(downloadCacheFolder)
 
         handleSuccessfulDownload()
+
+        // Calculate and save Koreader hash for CBZ files
+        val chapterFile = File(getChapterCbzPath(mangaId, chapterId))
+        if (chapterFile.exists()) {
+            val koreaderHash = KoreaderHelper.hashContents(chapterFile)
+            if (koreaderHash != null) {
+                transaction {
+                    ChapterTable.update({ ChapterTable.id eq chapterId }) {
+                        it[ChapterTable.koreaderHash] = koreaderHash
+                    }
+                }
+            }
+        }
+
+        transaction {
+            ChapterTable.update({ ChapterTable.id eq chapterId }) {
+                it[ChapterTable.pageCount] = getImageCount()
+            }
+        }
 
         File(cacheChapterDir).deleteRecursively()
 

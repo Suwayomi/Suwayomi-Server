@@ -195,6 +195,15 @@ class ServerConfig(
     val opdsShowOnlyDownloadedChapters: MutableStateFlow<Boolean> by OverrideConfigValue()
     val opdsChapterSortOrder: MutableStateFlow<SortOrder> by OverrideConfigValue()
 
+    // koreader sync
+    val koreaderSyncEnabled: MutableStateFlow<Boolean> by OverrideConfigValue()
+    val koreaderSyncServerUrl: MutableStateFlow<String> by OverrideConfigValue()
+    val koreaderSyncUsername: MutableStateFlow<String> by OverrideConfigValue()
+    val koreaderSyncUserkey: MutableStateFlow<String> by OverrideConfigValue()
+    val koreaderSyncDeviceId: MutableStateFlow<String> by OverrideConfigValue()
+    val koreaderSyncChecksumMethod: MutableStateFlow<String> by OverrideConfigValue()
+    val koreaderSyncStrategy: MutableStateFlow<String> by OverrideConfigValue()
+
     @OptIn(ExperimentalCoroutinesApi::class)
     fun <T> subscribeTo(
         flow: Flow<T>,

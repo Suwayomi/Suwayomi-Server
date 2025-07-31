@@ -3,9 +3,13 @@ package suwayomi.tachidesk.opds.impl
 import dev.icerock.moko.resources.StringResource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
+import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
+import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.opds.constants.OpdsConstants
 import suwayomi.tachidesk.opds.dto.OpdsChapterListAcqEntry
@@ -167,10 +171,50 @@ object OpdsEntryBuilder {
         addMangaTitle: Boolean,
         locale: Locale,
     ): OpdsEntryXml {
+        // Sync progress with KOSync before building the entry
+        var finalLastPageRead = chapter.lastPageRead
+        var finalLastReadAt = chapter.lastReadAt
+
+        val remoteProgress = KoreaderSyncService.pullProgress(chapter.id)
+
+        // Compare timestamps to choose the most recent progress
+        if (remoteProgress != null) {
+            val localTimestamp = finalLastReadAt * 1000L // to ms
+            val remoteTimestamp = remoteProgress.timestamp * 1000L // to ms
+
+            val chosenProgress =
+                when (serverConfig.koreaderSyncStrategy.value) {
+                    "SUWAYOMI" -> chapter.lastPageRead to localTimestamp
+                    "KOSYNC" -> remoteProgress.pageRead to remoteTimestamp
+                    "LATEST" ->
+                        if (remoteTimestamp >
+                            localTimestamp
+                        ) {
+                            remoteProgress.pageRead to remoteTimestamp
+                        } else {
+                            chapter.lastPageRead to localTimestamp
+                        }
+                    else -> chapter.lastPageRead to localTimestamp // Default to local
+                }
+
+            finalLastPageRead = chosenProgress.first
+            finalLastReadAt = chosenProgress.second / 1000L // back to seconds
+
+            // If the chosen progress is different from local, update local DB silently
+            if (finalLastPageRead != chapter.lastPageRead || finalLastReadAt != chapter.lastReadAt) {
+                transaction {
+                    ChapterTable.update({ ChapterTable.id eq chapter.id }) {
+                        it[lastPageRead] = finalLastPageRead
+                        it[lastReadAt] = finalLastReadAt
+                    }
+                }
+            }
+        }
+
         val statusKey =
             when {
                 chapter.read -> MR.strings.opds_chapter_status_read
-                chapter.lastPageRead > 0 -> MR.strings.opds_chapter_status_in_progress
+                finalLastPageRead > 0 -> MR.strings.opds_chapter_status_in_progress
                 else -> MR.strings.opds_chapter_status_unread
             }
         val titlePrefix = statusKey.localized(locale)
@@ -182,10 +226,9 @@ object OpdsEntryBuilder {
                     append(MR.strings.opds_chapter_details_scanlator.localized(locale, it))
                 }
                 if (chapter.pageCount > 0) {
-                    append(MR.strings.opds_chapter_details_progress.localized(locale, chapter.lastPageRead, chapter.pageCount))
+                    append(MR.strings.opds_chapter_details_progress.localized(locale, finalLastPageRead, chapter.pageCount))
                 }
             }
-
         return OpdsEntryXml(
             id = "urn:suwayomi:chapter:${chapter.id}",
             title = entryTitle,
@@ -222,11 +265,51 @@ object OpdsEntryBuilder {
         baseUrl: String,
         locale: Locale,
     ): OpdsEntryXml {
+        // Sync progress with KOSync before building the entry
+        var finalLastPageRead = chapter.lastPageRead
+        var finalLastReadAt = chapter.lastReadAt
+
+        val remoteProgress = KoreaderSyncService.pullProgress(chapter.id)
+
+        // Compare timestamps to choose the most recent progress
+        if (remoteProgress != null) {
+            val localTimestamp = finalLastReadAt * 1000L // to ms
+            val remoteTimestamp = remoteProgress.timestamp * 1000L // to ms
+
+            val chosenProgress =
+                when (serverConfig.koreaderSyncStrategy.value) {
+                    "SUWAYOMI" -> chapter.lastPageRead to localTimestamp
+                    "KOSYNC" -> remoteProgress.pageRead to remoteTimestamp
+                    "LATEST" ->
+                        if (remoteTimestamp >
+                            localTimestamp
+                        ) {
+                            remoteProgress.pageRead to remoteTimestamp
+                        } else {
+                            chapter.lastPageRead to localTimestamp
+                        }
+                    else -> chapter.lastPageRead to localTimestamp // Default to local
+                }
+
+            finalLastPageRead = chosenProgress.first
+            finalLastReadAt = chosenProgress.second / 1000L // back to seconds
+
+            // If the chosen progress is different from local, update local DB silently
+            if (finalLastPageRead != chapter.lastPageRead || finalLastReadAt != chapter.lastReadAt) {
+                transaction {
+                    ChapterTable.update({ ChapterTable.id eq chapter.id }) {
+                        it[lastPageRead] = finalLastPageRead
+                        it[lastReadAt] = finalLastReadAt
+                    }
+                }
+            }
+        }
+
         val statusKey =
             when {
                 chapter.downloaded -> MR.strings.opds_chapter_status_downloaded
                 chapter.read -> MR.strings.opds_chapter_status_read
-                chapter.lastPageRead > 0 -> MR.strings.opds_chapter_status_in_progress
+                finalLastPageRead > 0 -> MR.strings.opds_chapter_status_in_progress
                 else -> MR.strings.opds_chapter_status_unread
             }
         val titlePrefix = statusKey.localized(locale)
@@ -238,7 +321,7 @@ object OpdsEntryBuilder {
                     append(MR.strings.opds_chapter_details_scanlator.localized(locale, it))
                 }
                 val pageCountDisplay = chapter.pageCount.takeIf { it > 0 } ?: "?"
-                append(MR.strings.opds_chapter_details_progress.localized(locale, chapter.lastPageRead, pageCountDisplay))
+                append(MR.strings.opds_chapter_details_progress.localized(locale, finalLastPageRead, pageCountDisplay))
             }
         val links = mutableListOf<OpdsLinkXml>()
         var cbzFileSize: Long? = null
@@ -279,8 +362,8 @@ object OpdsEntryBuilder {
                     type = OpdsConstants.TYPE_IMAGE_JPEG,
                     title = MR.strings.opds_linktitle_stream_pages.localized(locale),
                     pseCount = chapter.pageCount,
-                    pseLastRead = chapter.lastPageRead.takeIf { it > 0 },
-                    pseLastReadDate = chapter.lastReadAt.takeIf { it > 0 }?.let { OpdsDateUtil.formatEpochMillisForOpds(it * 1000) },
+                    pseLastRead = finalLastPageRead.takeIf { it > 0 },
+                    pseLastReadDate = finalLastReadAt.takeIf { it > 0 }?.let { OpdsDateUtil.formatEpochMillisForOpds(it * 1000) },
                 ),
             )
             links.add(

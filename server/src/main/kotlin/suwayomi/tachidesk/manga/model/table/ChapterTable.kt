@@ -39,6 +39,8 @@ object ChapterTable : IntIdTable() {
     val pageCount = integer("page_count").default(-1)
 
     val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
+
+    val koreaderHash = varchar("koreader_hash", 32).nullable()
 }
 
 fun ChapterTable.toDataClass(

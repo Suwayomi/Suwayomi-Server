@@ -1,6 +1,8 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import graphql.execution.DataFetcherResult
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
@@ -8,14 +10,17 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyById
+import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.serverConfig
 import java.net.URLEncoder
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
@@ -68,8 +73,10 @@ class ChapterMutation {
                     ChapterTable
                         .select(ChapterTable.id, ChapterTable.pageCount)
                         .where { ChapterTable.id inList ids }
-                        .groupBy { it[ChapterTable.id].value }
-                        .mapValues { it.value.firstOrNull()?.let { it[ChapterTable.pageCount] } }
+                        .associateBy(
+                            { it[ChapterTable.id].value },
+                            { it[ChapterTable.pageCount] },
+                        )
                 } else {
                     emptyMap()
                 }
@@ -91,6 +98,15 @@ class ChapterMutation {
                         }
                     }
                     execute(this@transaction)
+                }
+            }
+        }
+
+        // Sync with KoreaderSync when progress is updated
+        if (patch.lastPageRead != null || patch.isRead == true) {
+            GlobalScope.launch {
+                ids.forEach { chapterId ->
+                    KoreaderSyncService.pushProgress(chapterId)
                 }
             }
         }
@@ -248,9 +264,25 @@ class ChapterMutation {
         val paramsMap = input.toParams()
 
         return future {
-            asDataFetcherResult {
-                val chapter = getChapterDownloadReadyById(chapterId)
+            var chapter = getChapterDownloadReadyById(chapterId)
 
+            if (serverConfig.koreaderSyncEnabled.value) {
+                val remoteProgress = KoreaderSyncService.pullProgress(chapter.id)
+                if (remoteProgress != null) {
+                    transaction {
+                        ChapterTable.update({ ChapterTable.id eq chapter.id }) {
+                            it[lastPageRead] = remoteProgress.pageRead
+                            it[lastReadAt] = remoteProgress.timestamp
+                        }
+                    }
+                    chapter = chapter.copy(
+                        lastPageRead = remoteProgress.pageRead,
+                        lastReadAt = remoteProgress.timestamp,
+                    )
+                }
+            }
+
+            asDataFetcherResult {
                 val params =
                     buildString {
                         if (paramsMap.isNotEmpty()) {
