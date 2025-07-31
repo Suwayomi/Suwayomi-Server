@@ -463,6 +463,14 @@ object ProtoBackupExport : ProtoBackupBase() {
             opdsShowOnlyUnreadChapters = serverConfig.opdsShowOnlyUnreadChapters.value,
             opdsShowOnlyDownloadedChapters = serverConfig.opdsShowOnlyDownloadedChapters.value,
             opdsChapterSortOrder = serverConfig.opdsChapterSortOrder.value,
+            // koreader sync
+            koreaderSyncEnabled = serverConfig.koreaderSyncEnabled.value,
+            koreaderSyncServerUrl = serverConfig.koreaderSyncServerUrl.value,
+            koreaderSyncUsername = serverConfig.koreaderSyncUsername.value,
+            koreaderSyncUserkey = serverConfig.koreaderSyncUserkey.value,
+            koreaderSyncDeviceId = serverConfig.koreaderSyncDeviceId.value,
+            koreaderSyncChecksumMethod = serverConfig.koreaderSyncChecksumMethod.value,
+            koreaderSyncStrategy = serverConfig.koreaderSyncStrategy.value,
         )
     }
 }

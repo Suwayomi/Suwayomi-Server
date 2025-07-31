@@ -215,6 +215,15 @@ class SettingsMutation {
         updateSetting(settings.opdsShowOnlyUnreadChapters, serverConfig.opdsShowOnlyUnreadChapters)
         updateSetting(settings.opdsShowOnlyDownloadedChapters, serverConfig.opdsShowOnlyDownloadedChapters)
         updateSetting(settings.opdsChapterSortOrder, serverConfig.opdsChapterSortOrder)
+
+        // koreader sync
+        updateSetting(settings.koreaderSyncEnabled, serverConfig.koreaderSyncEnabled)
+        updateSetting(settings.koreaderSyncServerUrl, serverConfig.koreaderSyncServerUrl)
+        updateSetting(settings.koreaderSyncUsername, serverConfig.koreaderSyncUsername)
+        updateSetting(settings.koreaderSyncUserkey, serverConfig.koreaderSyncUserkey)
+        updateSetting(settings.koreaderSyncDeviceId, serverConfig.koreaderSyncDeviceId)
+        updateSetting(settings.koreaderSyncChecksumMethod, serverConfig.koreaderSyncChecksumMethod)
+        updateSetting(settings.koreaderSyncStrategy, serverConfig.koreaderSyncStrategy)
     }
 
     fun setSettings(input: SetSettingsInput): SetSettingsPayload {

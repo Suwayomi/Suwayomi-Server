@@ -15,6 +15,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.KoSyncConnectPayload
 import suwayomi.tachidesk.graphql.types.KoSyncStatusPayload
+import suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy
 import suwayomi.tachidesk.manga.impl.util.KoreaderHelper
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -298,8 +299,8 @@ object KoreaderSyncService {
     }
 
     suspend fun pullProgress(chapterId: Int): RemoteProgress? {
-        val strategy = serverConfig.koreaderSyncStrategy.value.uppercase()
-        if (!serverConfig.koreaderSyncEnabled.value || strategy == "SUWAYOMI") return null
+        val strategy = serverConfig.koreaderSyncStrategy.value
+        if (!serverConfig.koreaderSyncEnabled.value || strategy == KoreaderSyncStrategy.SUWAYOMI) return null
 
         val userkey = serverConfig.koreaderSyncUserkey.value
         if (userkey.isBlank()) return null
@@ -328,21 +329,22 @@ object KoreaderSyncService {
                     val timestamp = progressResponse.timestamp
 
                     if (pageRead != null && timestamp != null) {
-                        if (strategy == "KOSYNC") {
-                            return RemoteProgress(pageRead, timestamp)
-                        }
-
-                        val localTimestamp =
-                            transaction {
-                                ChapterTable
-                                    .select(ChapterTable.lastReadAt)
-                                    .where { ChapterTable.id eq chapterId }
-                                    .firstOrNull()
-                                    ?.get(ChapterTable.lastReadAt) ?: 0L
+                        when (strategy) {
+                            KoreaderSyncStrategy.KOSYNC -> return RemoteProgress(pageRead, timestamp)
+                            KoreaderSyncStrategy.LATEST -> {
+                                val localTimestamp =
+                                    transaction {
+                                        ChapterTable
+                                            .select(ChapterTable.lastReadAt)
+                                            .where { ChapterTable.id eq chapterId }
+                                            .firstOrNull()
+                                            ?.get(ChapterTable.lastReadAt) ?: 0L
+                                    }
+                                if (timestamp > localTimestamp) {
+                                    return RemoteProgress(pageRead, timestamp)
+                                }
                             }
-
-                        if (timestamp > localTimestamp) {
-                            return RemoteProgress(pageRead, timestamp)
+                            KoreaderSyncStrategy.SUWAYOMI -> {} // Already handled at the start of the function
                         }
                     }
                 } else {

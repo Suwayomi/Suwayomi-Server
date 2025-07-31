@@ -231,28 +231,9 @@ object OpdsEntryBuilder {
 
         val remoteProgress = KoreaderSyncService.pullProgress(chapter.id)
 
-        // Compare timestamps to choose the most recent progress
         if (remoteProgress != null) {
-            val localTimestamp = finalLastReadAt * 1000L // to ms
-            val remoteTimestamp = remoteProgress.timestamp * 1000L // to ms
-
-            val chosenProgress =
-                when (serverConfig.koreaderSyncStrategy.value) {
-                    "SUWAYOMI" -> chapter.lastPageRead to localTimestamp
-                    "KOSYNC" -> remoteProgress.pageRead to remoteTimestamp
-                    "LATEST" ->
-                        if (remoteTimestamp >
-                            localTimestamp
-                        ) {
-                            remoteProgress.pageRead to remoteTimestamp
-                        } else {
-                            chapter.lastPageRead to localTimestamp
-                        }
-                    else -> chapter.lastPageRead to localTimestamp // Default to local
-                }
-
-            finalLastPageRead = chosenProgress.first
-            finalLastReadAt = chosenProgress.second / 1000L // back to seconds
+            finalLastPageRead = remoteProgress.pageRead
+            finalLastReadAt = remoteProgress.timestamp
 
             // If the chosen progress is different from local, update local DB silently
             if (finalLastPageRead != chapter.lastPageRead || finalLastReadAt != chapter.lastReadAt) {
