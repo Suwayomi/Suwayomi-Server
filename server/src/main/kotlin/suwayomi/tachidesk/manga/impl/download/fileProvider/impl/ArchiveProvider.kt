@@ -10,6 +10,7 @@ import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.FileType
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
+import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.getMangaDownloadDir
 import suwayomi.tachidesk.manga.impl.util.storage.FileDeletionHelper
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -37,13 +38,13 @@ class ArchiveProvider(
 
     override fun extractExistingDownload() {
         val outputFile = File(getChapterCbzPath(mangaId, chapterId))
-        val chapterCacheFolder = File(getChapterCachePath(mangaId, chapterId))
+        val chapterDownloadFolder = File(getChapterDownloadPath(mangaId, chapterId))
 
         if (!outputFile.exists()) {
             return
         }
 
-        extractCbzFile(outputFile, chapterCacheFolder)
+        extractCbzFile(outputFile, chapterDownloadFolder)
     }
 
     override suspend fun handleSuccessfulDownload() {
