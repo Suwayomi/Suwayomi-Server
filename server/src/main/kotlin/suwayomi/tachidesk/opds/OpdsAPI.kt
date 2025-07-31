@@ -13,65 +13,81 @@ object OpdsAPI {
             // OPDS Search Description Feed
             get("search", OpdsV1Controller.searchFeed)
 
-            // Complete feed for crawlers
-            // get("complete", OpdsV1Controller.completeFeed)
+            // --- Main Navigation Feeds ---
 
-            // --- Main Navigation & Broad Acquisition Feeds ---
+            // Explore Navigation Feed
+            get("explore", OpdsV1Controller.exploreSourcesFeed)
 
-            // All Mangas / Search Results Feed (Acquisition)
-            get("mangas", OpdsV1Controller.mangasFeed)
-
-            // Sources Navigation Feed
-            get("sources", OpdsV1Controller.sourcesFeed)
-
-            // Categories Navigation Feed
-            get("categories", OpdsV1Controller.categoriesFeed)
-
-            // Genres Navigation Feed
-            get("genres", OpdsV1Controller.genresFeed)
-
-            // Status Navigation Feed
-            get("status", OpdsV1Controller.statusFeed)
-
-            // Content Languages Navigation Feed
-            get("languages", OpdsV1Controller.languagesFeed)
+            // Reading History Acquisition Feed
+            get("history", OpdsV1Controller.historyFeed)
 
             // Library Updates Acquisition Feed
             get("library-updates", OpdsV1Controller.libraryUpdatesFeed)
 
-            // --- Filtered & Item-Specific Acquisition Feeds ---
+            // --- Library-Specific Feeds ---
+            path("library") {
+                // All Series in Library / Search Results Feed (Acquisition)
+                get("series", OpdsV1Controller.seriesFeed)
 
-            // Manga Chapters Acquisition Feed
-            path("manga/{mangaId}/chapters") {
-                get(OpdsV1Controller.mangaFeed)
+                // Library Sources Navigation Feed
+                get("sources", OpdsV1Controller.librarySourcesFeed)
+
+                // Library Source-Specific Series Acquisition Feed
+                path("source/{sourceId}") {
+                    get(OpdsV1Controller.librarySourceFeed)
+                }
+
+                // Library Categories Navigation Feed
+                get("categories", OpdsV1Controller.categoriesFeed)
+
+                // Library Genres Navigation Feed
+                get("genres", OpdsV1Controller.genresFeed)
+
+                // Library Status Navigation Feed
+                get("statuses", OpdsV1Controller.statusesFeed)
+
+                // Library Content Languages Navigation Feed
+                get("languages", OpdsV1Controller.languagesFeed)
+            }
+
+            // --- Explore-Specific Feeds ---
+
+            // All Sources Navigation Feed (Explore)
+            get("sources", OpdsV1Controller.exploreSourcesFeed)
+
+            // Source-Specific Series Acquisition Feed (Explore)
+            path("source/{sourceId}") {
+                get(OpdsV1Controller.exploreSourceFeed)
+            }
+
+            // --- Item-Specific Feeds (Apply to both Library and Explore contexts) ---
+
+            // Series Chapters Acquisition Feed
+            path("series/{seriesId}/chapters") {
+                get(OpdsV1Controller.seriesChaptersFeed)
             }
 
             // Chapter Metadata Acquisition Feed
-            path("manga/{mangaId}/chapter/{chapterIndex}/metadata") {
+            path("series/{seriesId}/chapter/{chapterIndex}/metadata") {
                 get(OpdsV1Controller.chapterMetadataFeed)
             }
 
-            // Source-Specific Manga Acquisition Feed
-            path("source/{sourceId}") {
-                get(OpdsV1Controller.sourceFeed)
-            }
-
-            // Category-Specific Manga Acquisition Feed
+            // Category-Specific Series Acquisition Feed (Library)
             path("category/{categoryId}") {
                 get(OpdsV1Controller.categoryFeed)
             }
 
-            // Genre-Specific Manga Acquisition Feed
+            // Genre-Specific Series Acquisition Feed (Library)
             path("genre/{genre}") {
                 get(OpdsV1Controller.genreFeed)
             }
 
-            // Status-Specific Manga Acquisition Feed
+            // Status-Specific Series Acquisition Feed (Library)
             path("status/{statusId}") {
                 get(OpdsV1Controller.statusMangaFeed)
             }
 
-            // Language-Specific Manga Acquisition Feed
+            // Language-Specific Series Acquisition Feed (Library)
             path("language/{langCode}") {
                 get(OpdsV1Controller.languageFeed)
             }
