@@ -1,10 +1,13 @@
 package suwayomi.tachidesk.manga.impl.download.fileProvider.impl
 
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.FileType.RegularFile
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.storage.FileDeletionHelper
+import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import java.io.BufferedOutputStream
@@ -61,6 +64,13 @@ class FolderProvider(
         }
 
         val chapterDirDeleted = chapterDir.deleteRecursively()
+        if (chapterDirDeleted) {
+            transaction {
+                ChapterTable.update({ ChapterTable.id eq chapterId }) {
+                    it[koreaderHash] = null
+                }
+            }
+        }
         FileDeletionHelper.cleanupParentFoldersFor(chapterDir, applicationDirs.mangaDownloadsRoot)
         return chapterDirDeleted
     }

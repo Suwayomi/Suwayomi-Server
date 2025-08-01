@@ -431,33 +431,46 @@ object Chapter {
         isBookmarked: Boolean?,
         markPrevRead: Boolean?,
         lastPageRead: Int?,
-    ) {
-        transaction {
-            if (listOf(isRead, isBookmarked, lastPageRead).any { it != null }) {
-                ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }) { update ->
-                    isRead?.also {
-                        update[ChapterTable.isRead] = it
-                    }
-                    isBookmarked?.also {
-                        update[ChapterTable.isBookmarked] = it
-                    }
-                    lastPageRead?.also {
-                        update[ChapterTable.lastPageRead] = it
-                        update[lastReadAt] = Instant.now().epochSecond
-                    }
-                }
-            }
+    ): Int {
+        val chapterId =
+            transaction {
+                val chapter =
+                    ChapterTable
+                        .selectAll()
+                        .where { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }
+                        .first()
 
-            markPrevRead?.let {
-                ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder less chapterIndex) }) {
-                    it[ChapterTable.isRead] = markPrevRead
+                val chapterIdValue = chapter[ChapterTable.id].value
+
+                if (listOf(isRead, isBookmarked, lastPageRead).any { it != null }) {
+                    ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }) { update ->
+                        isRead?.also {
+                            update[ChapterTable.isRead] = it
+                        }
+                        isBookmarked?.also {
+                            update[ChapterTable.isBookmarked] = it
+                        }
+                        lastPageRead?.also {
+                            update[ChapterTable.lastPageRead] = it
+                            update[lastReadAt] = Instant.now().epochSecond
+                        }
+                    }
                 }
+
+                markPrevRead?.let {
+                    ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder less chapterIndex) }) {
+                        it[ChapterTable.isRead] = markPrevRead
+                    }
+                }
+
+                chapterIdValue
             }
-        }
 
         if (isRead == true || markPrevRead == true) {
             Track.asyncTrackChapter(setOf(mangaId))
         }
+
+        return chapterId
     }
 
     @Serializable
@@ -733,7 +746,7 @@ object Chapter {
         mangaId: Int,
         chapterIndex: Int,
         pageNo: Int,
-    ) {
+    ): Int {
         val chapterData =
             transaction {
                 ChapterTable
@@ -756,5 +769,7 @@ object Chapter {
             isBookmarked = null,
             markPrevRead = null,
         )
+
+        return chapterData.id
     }
 }
