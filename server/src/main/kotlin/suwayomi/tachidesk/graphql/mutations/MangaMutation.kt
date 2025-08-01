@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import graphql.execution.DataFetcherResult
+import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
@@ -8,6 +9,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.asDataFetcherResult
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.MangaMetaType
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.impl.Library
@@ -16,7 +18,10 @@ import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import uy.kohesive.injekt.injectLazy
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
@@ -90,7 +95,11 @@ class MangaMutation {
         }
     }
 
-    fun updateManga(input: UpdateMangaInput): CompletableFuture<DataFetcherResult<UpdateMangaPayload?>> {
+    fun updateManga(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateMangaInput,
+    ): CompletableFuture<DataFetcherResult<UpdateMangaPayload?>> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, id, patch) = input
 
         return future {
@@ -110,7 +119,11 @@ class MangaMutation {
         }
     }
 
-    fun updateMangas(input: UpdateMangasInput): CompletableFuture<DataFetcherResult<UpdateMangasPayload?>> {
+    fun updateMangas(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateMangasInput,
+    ): CompletableFuture<DataFetcherResult<UpdateMangasPayload?>> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, ids, patch) = input
 
         return future {
@@ -140,7 +153,11 @@ class MangaMutation {
         val manga: MangaType,
     )
 
-    fun fetchManga(input: FetchMangaInput): CompletableFuture<DataFetcherResult<FetchMangaPayload?>> {
+    fun fetchManga(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: FetchMangaInput,
+    ): CompletableFuture<DataFetcherResult<FetchMangaPayload?>> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, id) = input
 
         return future {
@@ -169,7 +186,11 @@ class MangaMutation {
         val meta: MangaMetaType,
     )
 
-    fun setMangaMeta(input: SetMangaMetaInput): DataFetcherResult<SetMangaMetaPayload?> {
+    fun setMangaMeta(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: SetMangaMetaInput,
+    ): DataFetcherResult<SetMangaMetaPayload?> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, meta) = input
 
         return asDataFetcherResult {
@@ -191,7 +212,11 @@ class MangaMutation {
         val manga: MangaType,
     )
 
-    fun deleteMangaMeta(input: DeleteMangaMetaInput): DataFetcherResult<DeleteMangaMetaPayload?> {
+    fun deleteMangaMeta(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: DeleteMangaMetaInput,
+    ): DataFetcherResult<DeleteMangaMetaPayload?> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, mangaId, key) = input
 
         return asDataFetcherResult {
