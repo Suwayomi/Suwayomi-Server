@@ -1,9 +1,11 @@
 package android.graphics;
 
+import android.annotation.ColorInt;
+import android.annotation.ColorLong;
 import android.annotation.NonNull;
-import android.util.Log;
+import android.graphics.Path;
+import android.graphics.RectF;
 import java.awt.BasicStroke;
-import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
@@ -13,7 +15,6 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
-import javax.imageio.ImageIO;
 
 public final class Canvas {
     private BufferedImage canvasImage;
@@ -162,6 +163,18 @@ public final class Canvas {
         bounds.right = r.x + r.width;
         bounds.bottom = r.y + r.height;
         return r.width != 0 && r.height != 0;
+    }
+
+    public void drawColor(@ColorInt int colorInt) {
+        java.awt.Color color = Color.valueOf(colorInt).toJavaColor();
+        canvas.setColor(color);
+        canvas.fillRect(0, 0, canvasImage.getWidth(), canvasImage.getHeight());
+    }
+
+    public void drawColor(@ColorLong long colorLong) {
+        java.awt.Color color = Color.valueOf(colorLong).toJavaColor();
+        canvas.setColor(color);
+        canvas.fillRect(0, 0, canvasImage.getWidth(), canvasImage.getHeight());
     }
 
     private void applyPaint(Paint paint) {
