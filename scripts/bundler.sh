@@ -30,7 +30,7 @@ main() {
   RELEASE_NAME="$(echo "${JAR%.*}" | xargs basename)-$OS"
   RELEASE_VERSION=$(echo "$JAR" | grep -oP "v\K[0-9]+\.[0-9]+\.[0-9]+")
   #RELEASE_REVISION_NUMBER="$(tmp="${JAR%.*}" && echo "${tmp##*-}" | tr -d r)"
-  local electron_version="v28.1.3"
+  local electron_version="v37.2.5"
 
   # clean temporary directory on function return
   trap "rm -rf $RELEASE_NAME/" RETURN
@@ -50,14 +50,13 @@ main() {
       ;;
     appimage)
       # https://github.com/adoptium/temurin21-binaries/releases/
-      JRE_RELEASE="jdk-21.0.7+6"
+      JRE_RELEASE="jdk-21.0.8+9"
       JRE="OpenJDK21U-jre_x64_linux_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
       JRE_DIR="$JRE_RELEASE-jre"
       JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
       setup_jre
 
       RELEASE="$RELEASE_NAME.AppImage"
-      APPIMAGE_URL="https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
       make_appimage
       move_release_to_output_dir
       ;;
@@ -69,7 +68,7 @@ main() {
       ;;
     linux-x64)
       # https://github.com/adoptium/temurin21-binaries/releases/
-      JRE_RELEASE="jdk-21.0.7+6"
+      JRE_RELEASE="jdk-21.0.8+9"
       JRE="OpenJDK21U-jre_x64_linux_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
       JRE_DIR="$JRE_RELEASE-jre"
       JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
@@ -85,7 +84,7 @@ main() {
       ;;
     macOS-x64)
       # https://github.com/adoptium/temurin21-binaries/releases/
-      JRE_RELEASE="jdk-21.0.7+6"
+      JRE_RELEASE="jdk-21.0.8+9"
       JRE="OpenJDK21U-jre_x64_mac_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
       JRE_DIR="$JRE_RELEASE-jre"
       JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
@@ -101,7 +100,7 @@ main() {
       ;;
     macOS-arm64)
       # https://github.com/adoptium/temurin21-binaries/releases/
-      JRE_RELEASE="jdk-21.0.7+6"
+      JRE_RELEASE="jdk-21.0.8+9"
       JRE="OpenJDK21U-jre_aarch64_mac_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
       JRE_DIR="$JRE_RELEASE-jre"
       JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
@@ -117,7 +116,7 @@ main() {
       ;;
     windows-x64)
       # https://github.com/adoptium/temurin21-binaries/releases/
-      JRE_RELEASE="jdk-21.0.7+6"
+      JRE_RELEASE="jdk-21.0.8+9"
       JRE="OpenJDK21U-jre_x64_windows_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').zip"
       JRE_DIR="$JRE_RELEASE-jre"
       JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
@@ -245,7 +244,8 @@ make_deb_package() {
 
 # https://linuxconfig.org/building-a-hello-world-appimage-on-linux
 make_appimage() {
-  local APPIMAGE_TOOLNAME="appimagetool-x86_64.AppImage" 
+  local APPIMAGE_URL="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+  local APPIMAGE_TOOLNAME="appimagetool-x86_64.AppImage"
   mkdir "$RELEASE_NAME/bin/"
   cp "$JAR" "$RELEASE_NAME/bin/Suwayomi-Server.jar"
 

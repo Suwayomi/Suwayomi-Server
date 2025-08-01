@@ -1,6 +1,186 @@
-# Server: v2.0.1727 + WevUI: v1.5.1
+# Server: v2.1.1867 + WebUI: v20250703.01 (r2643)
+
 ## TL;DR
-- 
+- Implement WebView using KCEF
+- Improve cookie handling, share cookies between WebView and Extensions
+- Add image conversion on download
+- Add simple login menu
+- Support history in backups
+- Backup Suwayomi-specific data
+- Add OPDS Chapter Filtering/Ordering
+- Add OPDS internationalization
+- Add Java alternatives to deb package
+- Add AppImage bundle for Linux
+- Improve extension apk to jar conversion
+- Fix data insertion when authors and artists are too long
+- Fix multiple issues with extension settings
+- Fix too long page urls causing issues
+- Support extension author notes and other image manipulation
+- Sync tracking backend with Mihon
+- Add private tracking
+- Fix PWA's when auth is enabled
+- Prevent duplicated chapter pages
+- Ignore hidden folders/archives for Local Source chapter list
+- Improve Downloads Handling
+- Improve library update and auto backup scheduling
+
+## Suwayomi-Server Changelog
+- ([r1866](https://github.com/Suwayomi/Suwayomi-Server/commit/8e8883ba37026bf0576390eda23dd0639c94d2b9)) Update electron ([#1556](https://github.com/Suwayomi/Suwayomi-Server/pull/1556) by @Syer10)
+- ([r1865](https://github.com/Suwayomi/Suwayomi-Server/commit/02c4398e48c95c23f61d13f9619e88a67caa88e5)) Fix handling of too long page image urls migration ([#1552](https://github.com/Suwayomi/Suwayomi-Server/pull/1552) by @schroda)
+- ([r1864](https://github.com/Suwayomi/Suwayomi-Server/commit/ad7a8dd7dc70ba86f52b5ed74af4e91f8dca3187)) Fix/page download conversion reduce logs ([#1545](https://github.com/Suwayomi/Suwayomi-Server/pull/1545) by @schroda)
+- ([r1863](https://github.com/Suwayomi/Suwayomi-Server/commit/e3338211d6b071d4512e5dbcbc480cda8666c915)) Handle too long page image urls ([#1544](https://github.com/Suwayomi/Suwayomi-Server/pull/1544) by @schroda)
+- ([r1862](https://github.com/Suwayomi/Suwayomi-Server/commit/7cab4b92296c3d8fcf1a46d34c73b54d5e443b60)) Simplify secondary config parse ([#1540](https://github.com/Suwayomi/Suwayomi-Server/pull/1540) by @Syer10)
+- ([r1861](https://github.com/Suwayomi/Suwayomi-Server/commit/ac5f1a0d93565c273dde40467af6605ab4b52c1e)) Add enabled preference setting ([#1539](https://github.com/Suwayomi/Suwayomi-Server/pull/1539) by @Syer10)
+- ([r1860](https://github.com/Suwayomi/Suwayomi-Server/commit/798b9d0c98c2261860af627452305e8fd901a76d)) Fix cookies when domain is null ([#1538](https://github.com/Suwayomi/Suwayomi-Server/pull/1538) by @Syer10)
+- ([r1859](https://github.com/Suwayomi/Suwayomi-Server/commit/3ff29aa38a447f3eba93bf72c090fab3b774509f)) snowmtl extension error fix: dynamic retrieval ([#1531](https://github.com/Suwayomi/Suwayomi-Server/pull/1531) by @Chiru-Dey)
+- ([r1858](https://github.com/Suwayomi/Suwayomi-Server/commit/f8c2b9ffb051d3ca996e25b80e696e9281a3e3e6)) Update dependency adoptium/temurin21-binaries to jdk-21.0.8+9 ([#1529](https://github.com/Suwayomi/Suwayomi-Server/pull/1529) by @renovate[bot])
+- ([r1857](https://github.com/Suwayomi/Suwayomi-Server/commit/888bb8897a58d98ed8dab76dfab8cf352a4d5c9f)) Update AppImageTool download location (by @Syer10)
+- ([r1856](https://github.com/Suwayomi/Suwayomi-Server/commit/192136e66ce2c8192f62d3aa7d8cbdeaf54c954f)) Change "download conversion compression level" type to Double ([#1535](https://github.com/Suwayomi/Suwayomi-Server/pull/1535) by @schroda)
+- ([r1855](https://github.com/Suwayomi/Suwayomi-Server/commit/5057a57f7f3a0b52766168cbafe1b22809ea1b24)) Properly bind track privately ([#1534](https://github.com/Suwayomi/Suwayomi-Server/pull/1534) by @schroda)
+- ([r1854](https://github.com/Suwayomi/Suwayomi-Server/commit/d81a4e0b7fc8ee97f45b63f05f73a922b2235f4b)) Update dependency io.mockk:mockk to v1.14.5 ([#1527](https://github.com/Suwayomi/Suwayomi-Server/pull/1527) by @renovate[bot])
+- ([r1853](https://github.com/Suwayomi/Suwayomi-Server/commit/c63a06730fdb33209d685db640398ddc54bc5523)) Fix downloads on errors when converting image ([#1526](https://github.com/Suwayomi/Suwayomi-Server/pull/1526) by @Syer10)
+- ([r1852](https://github.com/Suwayomi/Suwayomi-Server/commit/bef326d2d76d9740be5a896b65b07e3d0d807ad3)) Fix paths in system properties ([#1528](https://github.com/Suwayomi/Suwayomi-Server/pull/1528) by @Syer10)
+- ([r1851](https://github.com/Suwayomi/Suwayomi-Server/commit/b8e85422f01caf50259ed2ba1e857ccb2f7f65df)) Update polyglot to v24.2.2 ([#1523](https://github.com/Suwayomi/Suwayomi-Server/pull/1523) by @renovate[bot])
+- ([r1850](https://github.com/Suwayomi/Suwayomi-Server/commit/d050bfdc68b36f54959accba3bdf55f676cab0eb)) Localize WebView and Login pages ([#1522](https://github.com/Suwayomi/Suwayomi-Server/pull/1522) by @cpiber, @Syer10)
+- ([r1849](https://github.com/Suwayomi/Suwayomi-Server/commit/3bac176bf6420520b101730273a738af2cd5d071)) Prevent UnsupportedOperationException in DownloadManager ([#1521](https://github.com/Suwayomi/Suwayomi-Server/pull/1521) by @schroda)
+- ([r1848](https://github.com/Suwayomi/Suwayomi-Server/commit/7c506a42aecd122dd7fdb44a6559b39b0c6e878b)) Install libfuse2 when creating AppImage (by @Syer10)
+- ([r1847](https://github.com/Suwayomi/Suwayomi-Server/commit/2c436e2027b7f5bcd3a47d87491bb445245c8dd6)) Add AppImage bundle ([#1519](https://github.com/Suwayomi/Suwayomi-Server/pull/1519) by @KamaleiZestri, @Syer10)
+- ([r1846](https://github.com/Suwayomi/Suwayomi-Server/commit/df0078b7251e9e33580b16467ac9646034fbd4bc)) [#1496] Image conversion ([#1505](https://github.com/Suwayomi/Suwayomi-Server/pull/1505) by @cpiber, @Syer10)
+- ([r1845](https://github.com/Suwayomi/Suwayomi-Server/commit/09c950a890fc1c9855f2c4c18d118ab4db64977c)) Fix/gql download subscription errors spamming emits ([#1518](https://github.com/Suwayomi/Suwayomi-Server/pull/1518) by @schroda)
+- ([r1844](https://github.com/Suwayomi/Suwayomi-Server/commit/e7e76ed68d79a15b5ad58d4e6203fb2cb122715b)) Prevent duplicated meta entries in database ([#1517](https://github.com/Suwayomi/Suwayomi-Server/pull/1517) by @schroda)
+- ([r1843](https://github.com/Suwayomi/Suwayomi-Server/commit/06c1eeb995e1690dc36bde657eded644c19e1658)) Add missing transaction context to manga category update ([#1516](https://github.com/Suwayomi/Suwayomi-Server/pull/1516) by @schroda)
+- ([r1842](https://github.com/Suwayomi/Suwayomi-Server/commit/d545d852c5946735486358cb3cbccdf96b0ec11b)) Update dependency com.android.tools.build:apksig to v8.11.1 ([#1511](https://github.com/Suwayomi/Suwayomi-Server/pull/1511) by @renovate[bot])
+- ([r1841](https://github.com/Suwayomi/Suwayomi-Server/commit/3486e8dcf3576f4a93fac0bd0fdef8181c9b43aa)) Update dependency com.typesafe:config to v1.4.4 ([#1509](https://github.com/Suwayomi/Suwayomi-Server/pull/1509) by @renovate[bot])
+- ([r1840](https://github.com/Suwayomi/Suwayomi-Server/commit/1956b700fc4449aaf3e5f28fa2a51d700af70531)) Update dependency com.github.usefulness:webp-imageio to v0.10.2 ([#1507](https://github.com/Suwayomi/Suwayomi-Server/pull/1507) by @renovate[bot])
+- ([r1839](https://github.com/Suwayomi/Suwayomi-Server/commit/64ad9af344871d8177dbf19dd41bf47d5e9f0849)) Update okhttp monorepo to v5.1.0 ([#1506](https://github.com/Suwayomi/Suwayomi-Server/pull/1506) by @renovate[bot])
+- ([r1838](https://github.com/Suwayomi/Suwayomi-Server/commit/55fec0b82c2e9771c7a06f1df3366b3a0f820ff1)) Update plugin ktlint to v13 ([#1504](https://github.com/Suwayomi/Suwayomi-Server/pull/1504) by @renovate[bot])
+- ([r1837](https://github.com/Suwayomi/Suwayomi-Server/commit/8323ef5f4180f0bb9040757c216f98b4116e50c8)) [skip ci] Winget now uses Suwayomi.Suwayomi-Server (by @Syer10)
+- ([r1836](https://github.com/Suwayomi/Suwayomi-Server/commit/8dbab23de71bc0b58f4dcc8402664801573cd4af)) [skip ci] Manual release only (by @Syer10)
+- ([r1835](https://github.com/Suwayomi/Suwayomi-Server/commit/825d2326132e9604bbae936a47448501d4366542)) [skip ci] Manually input version (by @Syer10)
+- ([r1834](https://github.com/Suwayomi/Suwayomi-Server/commit/d797a0350256ea87fc6e76ecf53a1ac1490318b7)) Modify Winget (by @Syer10)
+- ([r1833](https://github.com/Suwayomi/Suwayomi-Server/commit/0ef6d745149a400747c06da7e611802c660ce185)) Add auth to log protection ([#1501](https://github.com/Suwayomi/Suwayomi-Server/pull/1501) by @Syer10)
+- ([r1832](https://github.com/Suwayomi/Suwayomi-Server/commit/6234e897a87c53fc817a72aba256a54f69cb4ece)) [#1497] WebView: Localstorage ([#1500](https://github.com/Suwayomi/Suwayomi-Server/pull/1500) by @cpiber)
+- ([r1831](https://github.com/Suwayomi/Suwayomi-Server/commit/fe121f59b0371ad09ff0ad3dae90c90ea7e313f9)) Update okhttp monorepo to v5.0.0 ([#1493](https://github.com/Suwayomi/Suwayomi-Server/pull/1493) by @renovate[bot])
+- ([r1830](https://github.com/Suwayomi/Suwayomi-Server/commit/90cf5fcdec537679cb423fe9217b58ce6b82378f)) Update dependency com.squareup.okio:okio to v3.15.0 ([#1488](https://github.com/Suwayomi/Suwayomi-Server/pull/1488) by @renovate[bot])
+- ([r1829](https://github.com/Suwayomi/Suwayomi-Server/commit/8b5782a5b6d88c7063b640c584e1a4c74520b4ae)) Update dependency gradle to v8.14.3 ([#1494](https://github.com/Suwayomi/Suwayomi-Server/pull/1494) by @renovate[bot])
+- ([r1828](https://github.com/Suwayomi/Suwayomi-Server/commit/68a131dbebac221e192b994e10ed7836781cbd1f)) [#1349] Basic Cookie Authentication ([#1498](https://github.com/Suwayomi/Suwayomi-Server/pull/1498) by @cpiber, @Syer10)
+- ([r1827](https://github.com/Suwayomi/Suwayomi-Server/commit/1411c02e181131736dbf39d2d8280a38318b2305)) [skip ci] Update CONTRIBUTING.md (by @Syer10)
+- ([r1826](https://github.com/Suwayomi/Suwayomi-Server/commit/81fe3f0108883a445a55e769bcd841c54ee70f7d)) Stop dumping cookies in the console ([#1490](https://github.com/Suwayomi/Suwayomi-Server/pull/1490) by @cpiber)
+- ([r1825](https://github.com/Suwayomi/Suwayomi-Server/commit/c15cf23168bd4aafe0969a7038a160d6c8d93e87)) Kcef: Disable SHM ([#1489](https://github.com/Suwayomi/Suwayomi-Server/pull/1489) by @cpiber)
+- ([r1824](https://github.com/Suwayomi/Suwayomi-Server/commit/a79dc580a55c636ac250b5903a327192f6b03c4b)) Browser Webview ([#1486](https://github.com/Suwayomi/Suwayomi-Server/pull/1486) by @cpiber, @Syer10)
+- ([r1823](https://github.com/Suwayomi/Suwayomi-Server/commit/8a62c6295d59272c1e90d453639f8137af773f01)) Update moko to v0.25.0 ([#1487](https://github.com/Suwayomi/Suwayomi-Server/pull/1487) by @renovate[bot])
+- ([r1822](https://github.com/Suwayomi/Suwayomi-Server/commit/88e77e1547ca27c1a0a104818ef6d6ecf8e2e162)) Update okhttp monorepo to v5.0.0-alpha.17 ([#1485](https://github.com/Suwayomi/Suwayomi-Server/pull/1485) by @renovate[bot])
+- ([r1821](https://github.com/Suwayomi/Suwayomi-Server/commit/534619bc1a37280c22f3d026d27e4e1423ba7193)) Weblate translations ([#1484](https://github.com/Suwayomi/Suwayomi-Server/pull/1484) by @weblate, @9811pc, @yutthaphon, @Syer10, @UnknownSkyrimPasserby)
+- ([r1820](https://github.com/Suwayomi/Suwayomi-Server/commit/ae904753f784f61e25dc06c013497ee1c7b43701)) systemd: use startup script, X server ([#1482](https://github.com/Suwayomi/Suwayomi-Server/pull/1482) by @cpiber)
+- ([r1819](https://github.com/Suwayomi/Suwayomi-Server/commit/8c4a2cb529640a5e6880bbf6ef4c57a8ec44a6a8)) Add chapter lastReadAt to backups as BackupHistory ([#1477](https://github.com/Suwayomi/Suwayomi-Server/pull/1477) by @Syer10)
+- ([r1818](https://github.com/Suwayomi/Suwayomi-Server/commit/16d4893480e2632e096859033dcbb9516443231d)) Update dependency com.squareup.okio:okio to v3.14.0 ([#1483](https://github.com/Suwayomi/Suwayomi-Server/pull/1483) by @renovate[bot])
+- ([r1817](https://github.com/Suwayomi/Suwayomi-Server/commit/a7446e2f4cfdc7e608080c95b02990dedb004880)) Update dependency com.github.usefulness:webp-imageio to v0.10.1 ([#1480](https://github.com/Suwayomi/Suwayomi-Server/pull/1480) by @renovate[bot])
+- ([r1816](https://github.com/Suwayomi/Suwayomi-Server/commit/9dcae193a909e3c3755a627e871bf159296f11b0)) Update serialization to v1.9.0 ([#1479](https://github.com/Suwayomi/Suwayomi-Server/pull/1479) by @renovate[bot])
+- ([r1815](https://github.com/Suwayomi/Suwayomi-Server/commit/36fac0f3f476aa8752ab286ec0a8896f04f9ab30)) Update dependency com.android.tools.build:apksig to v8.11.0 ([#1473](https://github.com/Suwayomi/Suwayomi-Server/pull/1473) by @renovate[bot])
+- ([r1814](https://github.com/Suwayomi/Suwayomi-Server/commit/24a4c176c079b39b3d946e44180f578453d52048)) Update plugin buildconfig to v5.6.7 ([#1469](https://github.com/Suwayomi/Suwayomi-Server/pull/1469) by @renovate[bot])
+- ([r1813](https://github.com/Suwayomi/Suwayomi-Server/commit/9c7f50e91e591ed6addb5b73f100d19784817c80)) Update kotlin monorepo to v2.2.0 ([#1466](https://github.com/Suwayomi/Suwayomi-Server/pull/1466) by @renovate[bot])
+- ([r1812](https://github.com/Suwayomi/Suwayomi-Server/commit/e52bc255f360ad26631c5bc1efb6518c78ecec98)) Update dependency org.jsoup:jsoup to v1.21.1 ([#1465](https://github.com/Suwayomi/Suwayomi-Server/pull/1465) by @renovate[bot])
+- ([r1811](https://github.com/Suwayomi/Suwayomi-Server/commit/ae4c9887d889da7aded204f268eebc637b7e9741)) Translations update from Hosted Weblate ([#1471](https://github.com/Suwayomi/Suwayomi-Server/pull/1471) by @weblate, @yutthaphon, @UnknownSkyrimPasserby, @Syer10, @Syer10)
+- ([r1810](https://github.com/Suwayomi/Suwayomi-Server/commit/52201e248886a7b1e3fe02c90d0cfc20de5ebeb0)) Add private to trackrecords filter ([#1468](https://github.com/Suwayomi/Suwayomi-Server/pull/1468) by @Syer10)
+- ([r1809](https://github.com/Suwayomi/Suwayomi-Server/commit/c3e2b0e002a1a86b2bec37d6749692c204465d11)) Update dependency io.mockk:mockk to v1.14.4 ([#1464](https://github.com/Suwayomi/Suwayomi-Server/pull/1464) by @renovate[bot])
+- ([r1808](https://github.com/Suwayomi/Suwayomi-Server/commit/709915bf59e6136140c5cb1be0985250230b4e97)) Update dependency io.javalin:javalin to v6.7.0 ([#1460](https://github.com/Suwayomi/Suwayomi-Server/pull/1460) by @renovate[bot])
+- ([r1807](https://github.com/Suwayomi/Suwayomi-Server/commit/9d7ec6fd60ff359ae71ef6ed35c1139958428cde)) Update dependency io.mockk:mockk to v1.14.3 ([#1462](https://github.com/Suwayomi/Suwayomi-Server/pull/1462) by @renovate[bot])
+- ([r1806](https://github.com/Suwayomi/Suwayomi-Server/commit/ee9de376a3d23e71004449af881f7831ed0ae873)) Fix new private parameter in tracking backup ([#1463](https://github.com/Suwayomi/Suwayomi-Server/pull/1463) by @Syer10)
+- ([r1805](https://github.com/Suwayomi/Suwayomi-Server/commit/b54dc6f9678feecd35032413c4ee2d45c4798fa6)) Fix Tracking DisplayScore ([#1461](https://github.com/Suwayomi/Suwayomi-Server/pull/1461) by @Syer10)
+- ([r1804](https://github.com/Suwayomi/Suwayomi-Server/commit/abea85d8318c2e4360eb7634436d54887eeb3c6e)) Update Tracking Backend ([#1457](https://github.com/Suwayomi/Suwayomi-Server/pull/1457) by @Syer10)
+- ([r1803](https://github.com/Suwayomi/Suwayomi-Server/commit/972137c035484c1112b6a6d3f146734b2fa5ffe9)) Paint: Support Typeface ([#1459](https://github.com/Suwayomi/Suwayomi-Server/pull/1459) by @cpiber)
+- ([r1802](https://github.com/Suwayomi/Suwayomi-Server/commit/1cdef5e0ee564f956827c001bd579999b100514e)) Use Kotlin AppDirs ([#1453](https://github.com/Suwayomi/Suwayomi-Server/pull/1453) by @Syer10)
+- ([r1801](https://github.com/Suwayomi/Suwayomi-Server/commit/bd7ea64b021992716f1a6e775ae79cfa51cbaf79)) Add an abort handler and preload it on Linux ([#1456](https://github.com/Suwayomi/Suwayomi-Server/pull/1456) by @cpiber)
+- ([r1800](https://github.com/Suwayomi/Suwayomi-Server/commit/20c850c10b52d24f1ab12d7ea09bbc69e184f112)) Implement Bitmap.copy, text layouting ([#1455](https://github.com/Suwayomi/Suwayomi-Server/pull/1455) by @cpiber)
+- ([r1799](https://github.com/Suwayomi/Suwayomi-Server/commit/0b021e6c42024d15a9311fd70861b79f18339cf2)) Increase WebView compatibility ([#1451](https://github.com/Suwayomi/Suwayomi-Server/pull/1451) by @cpiber)
+- ([r1798](https://github.com/Suwayomi/Suwayomi-Server/commit/0d109cdd4f3fd23769c15bac3934922c27305b18)) Update graphqlkotlin to v8.8.1 ([#1450](https://github.com/Suwayomi/Suwayomi-Server/pull/1450) by @renovate[bot], @Syer10)
+- ([r1797](https://github.com/Suwayomi/Suwayomi-Server/commit/1dab9e1a7d7c6c6a934e2daabd7dfa926c64813c)) Fix database migration (by @Syer10)
+- ([r1796](https://github.com/Suwayomi/Suwayomi-Server/commit/593b01819d2aba80c55dd6db6efff739449b8a21)) Update locales (by @Syer10)
+- ([r1795](https://github.com/Suwayomi/Suwayomi-Server/commit/029aa9c01b34334564341abd1eb7565e507c2e51)) Update plugin buildconfig to v5.6.6 ([#1449](https://github.com/Suwayomi/Suwayomi-Server/pull/1449) by @renovate[bot])
+- ([r1794](https://github.com/Suwayomi/Suwayomi-Server/commit/149b549d8d27d9731a0b82b8c5e3bb1c5c6f160c)) Handle chapter marked as downloaded without downloaded files ([#1448](https://github.com/Suwayomi/Suwayomi-Server/pull/1448) by @schroda)
+- ([r1793](https://github.com/Suwayomi/Suwayomi-Server/commit/786635010ec274493f7b7c5795d8b989dd60f6df)) Update dependency com.squareup.okio:okio to v3.13.0 ([#1447](https://github.com/Suwayomi/Suwayomi-Server/pull/1447) by @renovate[bot])
+- ([r1792](https://github.com/Suwayomi/Suwayomi-Server/commit/d7fe170067cb9ef457fa988a1384977727655b17)) Weblate translations ([#1445](https://github.com/Suwayomi/Suwayomi-Server/pull/1445) by @weblate, @cpiber, @TamilNeram)
+- ([r1791](https://github.com/Suwayomi/Suwayomi-Server/commit/e3d4be9a5afb74211fac06c989b136f513239898)) Update dependency org.bouncycastle:bcprov-jdk18on to v1.81 ([#1443](https://github.com/Suwayomi/Suwayomi-Server/pull/1443) by @renovate[bot])
+- ([r1790](https://github.com/Suwayomi/Suwayomi-Server/commit/4086a737276dd01c0b66081c34f2fd3f8a81b099)) Feature/backup suwayomi data ([#1430](https://github.com/Suwayomi/Suwayomi-Server/pull/1430) by @schroda)
+- ([r1789](https://github.com/Suwayomi/Suwayomi-Server/commit/483e3a760f5fb2b05595cfcf5cf053fa8037cfab)) Increase chapter scanlator column max length ([#1425](https://github.com/Suwayomi/Suwayomi-Server/pull/1425) by @schroda)
+- ([r1788](https://github.com/Suwayomi/Suwayomi-Server/commit/2757f881dc8a8c462032f79924b3f08e4fa1d829)) Update plugin ktlint to v12.3.0 ([#1403](https://github.com/Suwayomi/Suwayomi-Server/pull/1403) by @renovate[bot])
+- ([r1787](https://github.com/Suwayomi/Suwayomi-Server/commit/e2aff0ece723a5cd860f4c27450967632b3c7bef)) Update dependency com.pinterest.ktlint:ktlint-cli to v1.6.0 ([#1402](https://github.com/Suwayomi/Suwayomi-Server/pull/1402) by @renovate[bot])
+- ([r1786](https://github.com/Suwayomi/Suwayomi-Server/commit/327526330ff440116a5aefb6a931724681beaf0c)) [skip ci] Update README.md (by @Syer10)
+- ([r1785](https://github.com/Suwayomi/Suwayomi-Server/commit/ea976a4d0f38f788a91c139e70076505f965e3de)) Update dependency io.insert-koin:koin-core to v4.1.0 ([#1442](https://github.com/Suwayomi/Suwayomi-Server/pull/1442) by @renovate[bot])
+- ([r1784](https://github.com/Suwayomi/Suwayomi-Server/commit/728ada5e70e711885d7a7b99a489373ae701bebb)) Update okhttp monorepo to v5.0.0-alpha.16 ([#1441](https://github.com/Suwayomi/Suwayomi-Server/pull/1441) by @renovate[bot])
+- ([r1783](https://github.com/Suwayomi/Suwayomi-Server/commit/c091ac4d6771b430ca81c1fee541238d87023eb2)) Update xmlserialization to v0.91.1 ([#1400](https://github.com/Suwayomi/Suwayomi-Server/pull/1400) by @renovate[bot])
+- ([r1782](https://github.com/Suwayomi/Suwayomi-Server/commit/ee4c852f1b4b6eba9ee4bac6140f5aaf5691fcb8)) Always update manga thumbnail on fetch ([#1429](https://github.com/Suwayomi/Suwayomi-Server/pull/1429) by @schroda)
+- ([r1781](https://github.com/Suwayomi/Suwayomi-Server/commit/1a5d334f6c8e2b63a1b84d948cd63648c682692a)) Delete thumbnails during backup import ([#1428](https://github.com/Suwayomi/Suwayomi-Server/pull/1428) by @schroda)
+- ([r1780](https://github.com/Suwayomi/Suwayomi-Server/commit/7d72ff3514679ff811acae44f075e07e8745f13d)) Fix extracting "startDate" ([#1427](https://github.com/Suwayomi/Suwayomi-Server/pull/1427) by @schroda)
+- ([r1779](https://github.com/Suwayomi/Suwayomi-Server/commit/e224e91100d9fa9848362f73f3e0d248cfe36332)) Dequeue downloads of removed chapters ([#1426](https://github.com/Suwayomi/Suwayomi-Server/pull/1426) by @schroda)
+- ([r1778](https://github.com/Suwayomi/Suwayomi-Server/commit/7c5edd1b73219d2622acee9ce1ac1362daa34c16)) Realign chapter number recognition with mihon ([#1424](https://github.com/Suwayomi/Suwayomi-Server/pull/1424) by @schroda)
+- ([r1777](https://github.com/Suwayomi/Suwayomi-Server/commit/2621415f7c3f79a154337a943da66e5285d2bd9e)) Weblate translations ([#1422](https://github.com/Suwayomi/Suwayomi-Server/pull/1422) by @weblate, @dejavui, @Syer10, @Zereef, @marimo-nekomimi)
+- ([r1776](https://github.com/Suwayomi/Suwayomi-Server/commit/a3184c46b690eafe14e97bfdec02fcec928fddd6)) Update dependency com.android.tools.build:apksig to v8.10.1 ([#1419](https://github.com/Suwayomi/Suwayomi-Server/pull/1419) by @renovate[bot])
+- ([r1775](https://github.com/Suwayomi/Suwayomi-Server/commit/1575ffa6aea83c77973282b1cf17e21f860cbc71)) Migrate config renovate.json ([#1420](https://github.com/Suwayomi/Suwayomi-Server/pull/1420) by @renovate[bot])
+- ([r1774](https://github.com/Suwayomi/Suwayomi-Server/commit/ee27da3de63ebefef568390664475df160f1366e)) Update dependency com.github.Suwayomi:exposed-migrations to v3.8.0 ([#1421](https://github.com/Suwayomi/Suwayomi-Server/pull/1421) by @renovate[bot])
+- ([r1773](https://github.com/Suwayomi/Suwayomi-Server/commit/83a7224f2df6722e1517a2fbfc0b014dd460c5d5)) Update exposed to v0.61.0 ([#1291](https://github.com/Suwayomi/Suwayomi-Server/pull/1291) by @renovate[bot])
+- ([r1772](https://github.com/Suwayomi/Suwayomi-Server/commit/ecea2ecdf51dfef73f9f41764602232b201e726b)) Fix/initial scheduling of global update ([#1416](https://github.com/Suwayomi/Suwayomi-Server/pull/1416) by @schroda)
+- ([r1771](https://github.com/Suwayomi/Suwayomi-Server/commit/f04060b31b342121dfd87d59d79a46dcd5a2f899)) Update graphqlkotlin to v8.8.0 ([#1365](https://github.com/Suwayomi/Suwayomi-Server/pull/1365) by @renovate[bot])
+- ([r1770](https://github.com/Suwayomi/Suwayomi-Server/commit/d411d1966a5c57a4f1efd11f0112fda4d0b3279f)) Update dependency com.graphql-java:graphql-java to v22.4 ([#1401](https://github.com/Suwayomi/Suwayomi-Server/pull/1401) by @renovate[bot])
+- ([r1769](https://github.com/Suwayomi/Suwayomi-Server/commit/507bf071040f93dac22ee4d3508afa217811f9a5)) implement `setSummaryOn` and `setSummaryOff` in `TwoStatePreference` ([#1431](https://github.com/Suwayomi/Suwayomi-Server/pull/1431) by @AwkwardPeak7)
+- ([r1768](https://github.com/Suwayomi/Suwayomi-Server/commit/09061a38bcef76a0c64319f4ed2a2d28b5ba7de1)) Negation missing in SystemProperties ([#1433](https://github.com/Suwayomi/Suwayomi-Server/pull/1433) by @cpiber)
+- ([r1767](https://github.com/Suwayomi/Suwayomi-Server/commit/611a7db2e1403a654040431c83d03c57ef59e4ea)) Update dependency gradle to v8.14.2 ([#1435](https://github.com/Suwayomi/Suwayomi-Server/pull/1435) by @renovate[bot])
+- ([r1766](https://github.com/Suwayomi/Suwayomi-Server/commit/a5cf428ce57e3b8e869a1af64a216886f48134d5)) doc: Add Neko integration instructions ([#1440](https://github.com/Suwayomi/Suwayomi-Server/pull/1440) by @D-Brox, @Syer10)
+- ([r1765](https://github.com/Suwayomi/Suwayomi-Server/commit/31f06a2d434e7328ea9db335d733ec029e1833e4)) Update dependency com.squareup.okio:okio to v3.12.0 ([#1418](https://github.com/Suwayomi/Suwayomi-Server/pull/1418) by @renovate[bot])
+- ([r1764](https://github.com/Suwayomi/Suwayomi-Server/commit/1d7a60b630a8f4401ceaad641d5b49b2230b2a86)) Automatically truncate required varchar columns ([#1423](https://github.com/Suwayomi/Suwayomi-Server/pull/1423) by @schroda)
+- ([r1763](https://github.com/Suwayomi/Suwayomi-Server/commit/a2fadbe5131521d0254bdfb20a4f4842a4517faf)) Implement WebView via Playwright ([#1434](https://github.com/Suwayomi/Suwayomi-Server/pull/1434) by @cpiber, @Syer10)
+- ([r1762](https://github.com/Suwayomi/Suwayomi-Server/commit/dee61e191c0175c6dae6346f58293e0225df8b1a)) [ci skip] Add Translation into to README (by @Syer10)
+- ([r1761](https://github.com/Suwayomi/Suwayomi-Server/commit/32b6461c6a94f68f4c61b18d10b1587c4563f85e)) Update dependency io.javalin:javalin to v6.6.0 ([#1364](https://github.com/Suwayomi/Suwayomi-Server/pull/1364) by @renovate[bot])
+- ([r1760](https://github.com/Suwayomi/Suwayomi-Server/commit/93fff42693f69870bacfc7d892d0324a2f2bd118)) Update dependency gradle to v8.14.1 ([#1398](https://github.com/Suwayomi/Suwayomi-Server/pull/1398) by @renovate[bot])
+- ([r1759](https://github.com/Suwayomi/Suwayomi-Server/commit/61f429896cfda55d414e73e8f85b64c3fdd6c957)) feat(opds): implement full internationalization and refactor feed gen… ([#1405](https://github.com/Suwayomi/Suwayomi-Server/pull/1405) by @zeedif, @Syer10)
+- ([r1758](https://github.com/Suwayomi/Suwayomi-Server/commit/a9e03837a37c192a877541f9dd8d1a1a2104ce9e)) Exclude web manifest file from requiring authentication ([#1414](https://github.com/Suwayomi/Suwayomi-Server/pull/1414) by @schroda)
+- ([r1757](https://github.com/Suwayomi/Suwayomi-Server/commit/89421946afbe9718dd3e8c6b20f17308d5fbe873)) Properly deschedule active tasks ([#1413](https://github.com/Suwayomi/Suwayomi-Server/pull/1413) by @schroda)
+- ([r1756](https://github.com/Suwayomi/Suwayomi-Server/commit/218af8ea54865505ce1876cf4a7bd4e855c167fe)) Update Gradle Wrapper Validation ([#1412](https://github.com/Suwayomi/Suwayomi-Server/pull/1412) by @Syer10)
+- ([r1755](https://github.com/Suwayomi/Suwayomi-Server/commit/d0f79ca473ea8bd7b37535c54476d852ec6ca9fc)) Fix: Validate zipEntry directories during extension asset decompression ([#1407](https://github.com/Suwayomi/Suwayomi-Server/pull/1407) by @EdgeAtZero)
+- ([r1754](https://github.com/Suwayomi/Suwayomi-Server/commit/ec870759cfd252b08abee21d82a563457e748146)) Add highest numbered chapter function in MangaType ([#1397](https://github.com/Suwayomi/Suwayomi-Server/pull/1397) by @Syer10)
+- ([r1753](https://github.com/Suwayomi/Suwayomi-Server/commit/0405a535c76af432a124004ffcebe55f15770d2d)) Feat: Adds OPDS Chapter Filtering/Ordering ([#1392](https://github.com/Suwayomi/Suwayomi-Server/pull/1392) by @shirishsaxena)
+- ([r1752](https://github.com/Suwayomi/Suwayomi-Server/commit/814e4ba744212203d35decad9e85f97b2a0576ff)) Update kotlin monorepo to v2.1.21 ([#1383](https://github.com/Suwayomi/Suwayomi-Server/pull/1383) by @renovate[bot])
+- ([r1751](https://github.com/Suwayomi/Suwayomi-Server/commit/5621c1ab587ab6d2e8d10e050ef5c946b21675d8)) Update dependency com.android.tools.build:apksig to v8.10.0 ([#1376](https://github.com/Suwayomi/Suwayomi-Server/pull/1376) by @renovate[bot])
+- ([r1750](https://github.com/Suwayomi/Suwayomi-Server/commit/f1fd8bc446e0ae5bd4d3bfd3d7945f0199eeb6c3)) Update dependency io.mockk:mockk to v1.14.2 ([#1371](https://github.com/Suwayomi/Suwayomi-Server/pull/1371) by @renovate[bot])
+- ([r1749](https://github.com/Suwayomi/Suwayomi-Server/commit/60fdd6cda974950f901aa124344265e586fec671)) Update dependency org.jsoup:jsoup to v1.20.1 ([#1369](https://github.com/Suwayomi/Suwayomi-Server/pull/1369) by @renovate[bot])
+- ([r1748](https://github.com/Suwayomi/Suwayomi-Server/commit/3332363a106a3f716197b25aee384ae23b0bd060)) Update plugin buildconfig to v5.6.5 ([#1368](https://github.com/Suwayomi/Suwayomi-Server/pull/1368) by @renovate[bot])
+- ([r1747](https://github.com/Suwayomi/Suwayomi-Server/commit/538bd3f126a5f89aa10a0775f8c894c443dae59f)) Improve Downloads Handling ([#1387](https://github.com/Suwayomi/Suwayomi-Server/pull/1387) by @Syer10)
+- ([r1746](https://github.com/Suwayomi/Suwayomi-Server/commit/336f9858942008227e4aded1b9d50fe20bdb8e44)) Fix Downloaded pages with no cached pages from source ([#1386](https://github.com/Suwayomi/Suwayomi-Server/pull/1386) by @Syer10)
+- ([r1745](https://github.com/Suwayomi/Suwayomi-Server/commit/ba6687355eace1055c2634bf99a94f4dffa53f10)) Ignore hidden folders/archives for Local Source chapter list ([#1377](https://github.com/Suwayomi/Suwayomi-Server/pull/1377) by @BrutuZ)
+- ([r1744](https://github.com/Suwayomi/Suwayomi-Server/commit/983980d8dae26ac65d00bc15ca74c583a396ffcd)) Add Alternatives to deb package ([#1375](https://github.com/Suwayomi/Suwayomi-Server/pull/1375) by @Syer10)
+- ([r1743](https://github.com/Suwayomi/Suwayomi-Server/commit/82d4a401fd388f75dd9ffa3c54ec7adce00b314b)) Update dependency gradle to v8.14 ([#1363](https://github.com/Suwayomi/Suwayomi-Server/pull/1363) by @renovate[bot])
+- ([r1742](https://github.com/Suwayomi/Suwayomi-Server/commit/76e9f42734ed80d01a5867ad21750a81382fbef7)) Update dependency com.squareup.okio:okio to v3.11.0 ([#1362](https://github.com/Suwayomi/Suwayomi-Server/pull/1362) by @renovate[bot])
+- ([r1741](https://github.com/Suwayomi/Suwayomi-Server/commit/0c0035370adc11f7ea620c7593c5b8e23bf6117e)) Update polyglot to v24.2.1 ([#1360](https://github.com/Suwayomi/Suwayomi-Server/pull/1360) by @renovate[bot])
+- ([r1740](https://github.com/Suwayomi/Suwayomi-Server/commit/a3ac136b3b682cef3dde432f997c70e45163ec0c)) Update dependency adoptium/temurin21-binaries to jdk-21.0.7+6 ([#1359](https://github.com/Suwayomi/Suwayomi-Server/pull/1359) by @renovate[bot])
+- ([r1739](https://github.com/Suwayomi/Suwayomi-Server/commit/ed1509b54fa7764b9cde9e03497996c34b21f0d5)) Update dependency io.mockk:mockk to v1.14.0 ([#1341](https://github.com/Suwayomi/Suwayomi-Server/pull/1341) by @renovate[bot])
+- ([r1738](https://github.com/Suwayomi/Suwayomi-Server/commit/1d0dcd097cee4dd547f52ff0c5837e6ea6bfc33d)) Update kotlinx-coroutines monorepo to v1.10.2 ([#1337](https://github.com/Suwayomi/Suwayomi-Server/pull/1337) by @renovate[bot])
+- ([r1737](https://github.com/Suwayomi/Suwayomi-Server/commit/785c0469acad1377c4c5dba41fe004b7678a3d9a)) Fix/m0045 prevent duplicated chapter pages migration ([#1361](https://github.com/Suwayomi/Suwayomi-Server/pull/1361) by @schroda)
+- ([r1736](https://github.com/Suwayomi/Suwayomi-Server/commit/7594ae5fa51f0466bbe41f07ed7ce4788cf8f8f0)) Update xmlserialization to v0.91.0 ([#1331](https://github.com/Suwayomi/Suwayomi-Server/pull/1331) by @renovate[bot])
+- ([r1735](https://github.com/Suwayomi/Suwayomi-Server/commit/6b4e08fdd196206b21eb3ede7a47d0565d37875a)) Update serialization to v1.8.1 ([#1330](https://github.com/Suwayomi/Suwayomi-Server/pull/1330) by @renovate[bot])
+- ([r1734](https://github.com/Suwayomi/Suwayomi-Server/commit/65435341f33cb9078e8f2035e5aa83b814fe9f0d)) Update dependency io.github.oshai:kotlin-logging-jvm to v7.0.7 ([#1329](https://github.com/Suwayomi/Suwayomi-Server/pull/1329) by @renovate[bot])
+- ([r1733](https://github.com/Suwayomi/Suwayomi-Server/commit/9bc9f963b7df1e8168f84179bc1c9e1544fb16a3)) Update dependency io.insert-koin:koin-core to v4.0.4 ([#1326](https://github.com/Suwayomi/Suwayomi-Server/pull/1326) by @renovate[bot])
+- ([r1732](https://github.com/Suwayomi/Suwayomi-Server/commit/a27501371f0c88af430152f5523ecf2c1819b523)) Update plugin buildconfig to v5.6.3 ([#1322](https://github.com/Suwayomi/Suwayomi-Server/pull/1322) by @renovate[bot])
+- ([r1731](https://github.com/Suwayomi/Suwayomi-Server/commit/9fafebc8e78b4ed8cbd333eb803fda1a69dfccf7)) Update dependency com.android.tools.build:apksig to v8.9.2 ([#1321](https://github.com/Suwayomi/Suwayomi-Server/pull/1321) by @renovate[bot])
+- ([r1730](https://github.com/Suwayomi/Suwayomi-Server/commit/59d2151c920863175383c9f576fa4a126f5b09ad)) Prevent duplicated chapter pages ([#1353](https://github.com/Suwayomi/Suwayomi-Server/pull/1353) by @schroda)
+- ([r1729](https://github.com/Suwayomi/Suwayomi-Server/commit/1cc2a05f90ca4f5e6649009f8032eb706aa9525a)) [ci skip] Update outdated install instructions in README ([#1356](https://github.com/Suwayomi/Suwayomi-Server/pull/1356) by @schroda)
+- ([r1728](https://github.com/Suwayomi/Suwayomi-Server/commit/8aea6f54737f6ee286c60e42fad236e99f9894aa)) [ci skip] Update feature list in README ([#1355](https://github.com/Suwayomi/Suwayomi-Server/pull/1355) by @schroda)
+
+Contributors:
+@Syer10, @schroda, @Chiru-Dey, @renovate[bot], @cpiber, @KamaleiZestri, @weblate, @9811pc, @yutthaphon, @UnknownSkyrimPasserby, @TamilNeram, @dejavui, @Zereef, @marimo-nekomimi, @AwkwardPeak7, @D-Brox, @zeedif, @EdgeAtZero, @shirishsaxena, @BrutuZ
+
+
+## [Suwayomi-WebUI Changelog](https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#v2025070301-r2643)
+
+# Server: v2.0.1727 + WebUI: v1.5.1
+## TL;DR
+- Update to Java 21
+- Add OPDS API
+- More Tracking!
+- Changing Version Scheme
+- Fix MSI Installer
+- Optimized Backup Import
+- Improve JS Support
+- Optimize included JRE
 
 ## Suwayomi-Server Changelog
 - ([r1726](https://github.com/Suwayomi/Suwayomi-Server/commit/1d5323a477528649f81fa4bd2e1e9e4a28da6402)) [skip ci] Add link to discord in issue templates ([#1347](https://github.com/Suwayomi/Suwayomi-Server/pull/1347) by @schroda)
@@ -202,7 +382,7 @@ Contributors:
 ## [Suwayomi-WebUI Changelog](https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#v151-r2467)
 
 
-# Server: v1.1.1 + WevUI: v1.1.0
+# Server: v1.1.1 + WebUI: v1.1.0
 ## TL;DR
 - WebUI update bugfixes
 
@@ -210,7 +390,7 @@ Contributors:
 - ([r1534](https://github.com/Suwayomi/Suwayomi-Server/commit/d9cb54b28593e4df87522090f03a6e5b9c7d9fa2)) Compare webUI version with bundled webUI version ([#969](https://github.com/Suwayomi/Suwayomi-Server/pull/969) by @schroda)
 - ([r1533](https://github.com/Suwayomi/Suwayomi-Server/commit/f738a162d3cd4582612d4986b3d3887e1c309bdd)) Support for "STABLEPREVIEW" webUI version ([#970](https://github.com/Suwayomi/Suwayomi-Server/pull/970) by @schroda)
 
-# Server: v1.1.0 + WevUI: v1.1.0
+# Server: v1.1.0 + WebUI: v1.1.0
 ## TL;DR
 - Update Manga Info in browse
 - Full Tracking support
@@ -257,7 +437,7 @@ Contributors:
 
 ## [Suwayomi-WebUI Changelog](https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#v110-r1689)
 
-# Server: v1.0.0 + WevUI: r1409
+# Server: v1.0.0 + WebUI: r1409
 ## TL;DR
 - GraphQL API
 - Rename to Suwayomi

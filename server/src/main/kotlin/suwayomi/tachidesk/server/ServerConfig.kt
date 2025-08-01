@@ -131,7 +131,7 @@ class ServerConfig(
 
     data class DownloadConversion(
         val target: String,
-        val compressionLevel: Float? = null,
+        val compressionLevel: Double? = null,
     )
 
     // extensions

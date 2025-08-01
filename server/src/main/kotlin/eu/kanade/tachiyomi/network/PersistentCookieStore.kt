@@ -113,7 +113,7 @@ class PersistentCookieStore(
         cookie: HttpCookie,
     ) {
         lock.withLock {
-            val cookie = cookie.toCookie()
+            val cookie = cookie.toCookie(uri?.host) ?: return@withLock
             val cookiesForDomain = cookieMap[cookie.domain].orEmpty().toMutableList()
             // Find a cookie with the same name. Replace it if found, otherwise add a new one.
             val pos = cookiesForDomain.indexOfFirst { it.name == cookie.name }
@@ -153,7 +153,7 @@ class PersistentCookieStore(
         cookie: HttpCookie,
     ): Boolean =
         lock.withLock {
-            val cookie = cookie.toCookie()
+            val cookie = cookie.toCookie(uri?.host) ?: return@withLock false
             val cookies = cookieMap[cookie.domain].orEmpty()
             val index =
                 cookies.indexOfFirst {
@@ -196,12 +196,12 @@ class PersistentCookieStore(
 
     private fun Cookie.hasExpired() = System.currentTimeMillis() >= expiresAt
 
-    private fun HttpCookie.toCookie() =
-        Cookie
+    private fun HttpCookie.toCookie(urlDomain: String?): Cookie? {
+        return Cookie
             .Builder()
             .name(name)
             .value(value)
-            .domain(domain.removePrefix("."))
+            .domain((domain ?: urlDomain ?: return null).removePrefix("."))
             .path(path ?: "/")
             .also {
                 if (maxAge != -1L) {
@@ -215,10 +215,11 @@ class PersistentCookieStore(
                 if (isHttpOnly) {
                     it.httpOnly()
                 }
-                if (!domain.startsWith('.')) {
+                if (domain != null && !domain.startsWith('.')) {
                     it.hostOnlyDomain(domain.removePrefix("."))
                 }
             }.build()
+    }
 
     private fun Cookie.toHttpCookie(): HttpCookie {
         val it = this

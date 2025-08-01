@@ -2,6 +2,7 @@ package suwayomi.tachidesk.manga.impl
 
 import kotlinx.coroutines.CoroutineScope
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
 import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.ArchiveProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.FolderProvider
@@ -32,6 +33,9 @@ object ChapterDownloadHelper {
         chapterId: Int,
     ): Boolean = provider(mangaId, chapterId).delete()
 
+    /**
+     * This function should never be called without calling [getChapterDownloadReady] beforehand.
+     */
     suspend fun download(
         mangaId: Int,
         chapterId: Int,

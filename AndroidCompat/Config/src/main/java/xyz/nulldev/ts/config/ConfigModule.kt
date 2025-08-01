@@ -14,7 +14,6 @@ import io.github.config4k.ClassContainer
 import io.github.config4k.TypeReference
 import io.github.config4k.getValue
 import io.github.config4k.readers.SelectReader
-import io.github.config4k.toConfig
 import kotlin.reflect.KProperty
 
 /**
@@ -45,22 +44,19 @@ class SystemPropertyOverrideDelegate(
         property: KProperty<*>,
     ): T {
         val config = getConfig()
-        val configValue: T = config.getValue(thisRef, property)
 
-        val combined =
-            System.getProperty(
-                "$CONFIG_PREFIX.$moduleName.${property.name}",
-                configValue!!
-                    .toConfig("internal")
-                    .root()
-                    .render()
-                    .removePrefix("internal="),
-            )
-        val combinedConfig =
+        val systemProperty =
+            System.getProperty("$CONFIG_PREFIX.$moduleName.${property.name}")
+        if (systemProperty == null) {
+            val configValue: T = config.getValue(thisRef, property)
+            return configValue
+        }
+
+        val systemPropertyConfig =
             try {
-                ConfigFactory.parseString(combined)
+                ConfigFactory.parseString("internal=$systemProperty")
             } catch (_: ConfigException) {
-                ConfigFactory.parseString("internal=$combined")
+                ConfigFactory.parseMap(mapOf("internal" to systemProperty))
             }
 
         val genericType = object : TypeReference<T>() {}.genericType()
@@ -68,7 +64,7 @@ class SystemPropertyOverrideDelegate(
         val reader = SelectReader.getReader(clazz)
         val path = property.name
 
-        val result = reader(combinedConfig, "internal")
+        val result = reader(systemPropertyConfig, "internal")
         return try {
             result as T
         } catch (e: Exception) {
