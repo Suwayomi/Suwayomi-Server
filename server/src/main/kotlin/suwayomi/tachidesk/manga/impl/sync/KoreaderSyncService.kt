@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.manga.impl.sync
 
 import eu.kanade.tachiyomi.network.NetworkHelper
+import eu.kanade.tachiyomi.network.await
 import eu.kanade.tachiyomi.util.lang.Hash
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.json.JsonMapper
@@ -21,7 +22,6 @@ import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
-import xyz.nulldev.ts.config.GlobalConfigManager
 import java.io.File
 import java.util.UUID
 
@@ -83,7 +83,7 @@ object KoreaderSyncService {
                     .replace("-", "")
                     .uppercase()
             logger.info { "[KOSYNC] Generated new KOSync Device ID: $deviceId" }
-            GlobalConfigManager.updateValue("server.koreaderSyncDeviceId", deviceId)
+            serverConfig.koreaderSyncDeviceId.value = deviceId
         }
         return deviceId
     }
@@ -145,7 +145,7 @@ object KoreaderSyncService {
             }
 
         return try {
-            network.client.newCall(request).execute().use { response ->
+            network.client.newCall(request).await().use { response ->
                 if (response.isSuccessful) {
                     AuthResult(true, "Registration successful.")
                 } else {
@@ -179,7 +179,7 @@ object KoreaderSyncService {
             }
 
         return try {
-            network.client.newCall(request).execute().use { response ->
+            network.client.newCall(request).await().use { response ->
                 if (response.isSuccessful) {
                     AuthResult(true)
                 } else {
@@ -201,8 +201,8 @@ object KoreaderSyncService {
         val authResult = authorize(username, userkey)
 
         if (authResult.success) {
-            GlobalConfigManager.updateValue("server.koreaderSyncUsername", username)
-            GlobalConfigManager.updateValue("server.koreaderSyncUserkey", userkey)
+            serverConfig.koreaderSyncUsername.value = username
+            serverConfig.koreaderSyncUserkey.value = userkey
             return KoSyncConnectPayload(true, "Login successful.", username)
         }
 
@@ -210,8 +210,8 @@ object KoreaderSyncService {
             logger.info { "[KOSYNC CONNECT] Authorization failed, attempting to register new user." }
             val registerResult = register(username, userkey)
             return if (registerResult.success) {
-                GlobalConfigManager.updateValue("server.koreaderSyncUsername", username)
-                GlobalConfigManager.updateValue("server.koreaderSyncUserkey", userkey)
+                serverConfig.koreaderSyncUsername.value = username
+                serverConfig.koreaderSyncUserkey.value = userkey
                 KoSyncConnectPayload(true, "Registration successful.", username)
             } else {
                 KoSyncConnectPayload(false, registerResult.message ?: "Registration failed.", null)
@@ -222,8 +222,8 @@ object KoreaderSyncService {
     }
 
     suspend fun logout() {
-        GlobalConfigManager.updateValue("server.koreaderSyncUsername", "")
-        GlobalConfigManager.updateValue("server.koreaderSyncUserkey", "")
+        serverConfig.koreaderSyncUsername.value = ""
+        serverConfig.koreaderSyncUserkey.value = ""
     }
 
     suspend fun getStatus(): KoSyncStatusPayload {
@@ -286,7 +286,7 @@ object KoreaderSyncService {
                     addHeader("x-auth-key", userkey)
                 }
 
-            network.client.newCall(request).execute().use { response ->
+            network.client.newCall(request).await().use { response ->
                 if (!response.isSuccessful) {
                     logger.warn { "[KOSYNC PUSH] Failed for chapterId=$chapterId: ${response.code}" }
                 } else {
@@ -319,7 +319,7 @@ object KoreaderSyncService {
                     addHeader("x-auth-key", userkey)
                 }
 
-            network.client.newCall(request).execute().use { response ->
+            network.client.newCall(request).await().use { response ->
                 if (response.isSuccessful) {
                     val body = response.body.string()
                     if (body.isBlank() || body == "{}") return null

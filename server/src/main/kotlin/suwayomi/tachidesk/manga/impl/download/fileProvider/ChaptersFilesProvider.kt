@@ -13,6 +13,7 @@ import libcore.net.MimeUtils
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
@@ -201,12 +202,6 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                         it[ChapterTable.koreaderHash] = koreaderHash
                     }
                 }
-            }
-        }
-
-        transaction {
-            ChapterTable.update({ ChapterTable.id eq chapterId }) {
-                it[ChapterTable.pageCount] = getImageCount()
             }
         }
 
