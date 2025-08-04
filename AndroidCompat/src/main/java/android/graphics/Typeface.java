@@ -30,9 +30,15 @@ import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.text.AttributedString;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.stream.Stream;
+import java.util.stream.Collectors;
 import android.annotation.NonNull;
 
 
@@ -65,6 +71,7 @@ public class Typeface {
     public static final String DEFAULT_FAMILY = "sans-serif";
 
     private final Font mFont;
+    private final List<Font> mFallbackFonts;
 
     /** Returns the typeface's weight value */
     public int getWeight() {
@@ -271,6 +278,73 @@ public class Typeface {
 
     public Typeface(Font fnt) {
         mFont = fnt;
+        mFallbackFonts = Collections.emptyList();
+    }
+
+    public Typeface(Font fnt, List<Font> fallbackFonts) {
+        mFont = fnt;
+        mFallbackFonts = fallbackFonts;
+    }
+
+    public Map<TextAttribute, Object> getAttributes() {
+        return (Map<TextAttribute, Object>) mFont.getAttributes();
+    }
+
+    public Typeface deriveFont(Map<TextAttribute, Object> attributes) {
+        Font mainFont = mFont.deriveFont(attributes);
+        List<Font> fallbacks = mFallbackFonts.stream().map(font -> font.deriveFont(attributes))
+            .collect(Collectors.toList());
+        return new Typeface(mainFont, fallbacks);
+    }
+
+    public Typeface deriveFont(float size) {
+        Font mainFont = mFont.deriveFont(size);
+        List<Font> fallbacks = mFallbackFonts.stream().map(font -> font.deriveFont(size))
+            .collect(Collectors.toList());
+        return new Typeface(mainFont, fallbacks);
+    }
+
+    public Typeface deriveFont(int style, float size) {
+        Font mainFont = mFont.deriveFont(style, size);
+        List<Font> fallbacks = mFallbackFonts.stream().map(font -> font.deriveFont(style, size))
+            .collect(Collectors.toList());
+        return new Typeface(mainFont, fallbacks);
+    }
+
+    public AttributedString createWithFallback(String text) {
+        AttributedString result = new AttributedString(text);
+
+        int textLength = text.length();
+        result.addAttribute(TextAttribute.FONT, mFont, 0, textLength);
+
+        int i = 0;
+        while (true) {
+            int until = mFont.canDisplayUpTo(result.getIterator(), i, textLength);
+            if (until == -1) break;
+
+            boolean found = false;
+            // find a fallback font from `until`
+            for (int j = 0; j < mFallbackFonts.size(); ++j) {
+                int fallbackUntil = mFallbackFonts.get(j).canDisplayUpTo(result.getIterator(), until, textLength);
+                Log.v(TAG, String.format("Font %s: %d [%d]", mFallbackFonts.get(j).getName(), fallbackUntil, until));
+                if (fallbackUntil == -1 || fallbackUntil > until) {
+                    // use this and advance
+                    int end = fallbackUntil >= 0 ? fallbackUntil : textLength;
+                    result.addAttribute(TextAttribute.FONT, mFallbackFonts.get(j), until, end);
+                    Log.v(TAG, String.format("Fallback: from %d to %d using %s", until, end, mFallbackFonts.get(j).getName()));
+                    i = end;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (found) continue;
+
+            Log.w(TAG, String.format("No fallback font found at %d, skipping", until));
+            i = until + 1;
+        }
+
+        return result;
     }
 
     public static Typeface createFromFile(@Nullable File file) {
@@ -316,8 +390,26 @@ public class Typeface {
         return mFont.hashCode();
     }
 
+    private static Font loadFontAsset(String font) {
+        try (InputStream defaultNormalStream = ClassLoader.getSystemClassLoader().getResourceAsStream("font/" + font)) {
+            return Font.createFont(Font.TRUETYPE_FONT, defaultNormalStream).deriveFont(12.0f);
+        } catch (Exception ex) {
+            Log.e(TAG, "Failed to load " + font, ex);
+            return null;
+        }
+    }
+
+    private static Typeface withFallback(Font baseFallback, String mainFont, String... fonts) {
+        Font main = loadFontAsset(mainFont);
+        if (main == null) main = new Font(null, 0, 12);
+        List<Font> fallbacks = Stream.concat(Arrays.stream(fonts).map(Typeface::loadFontAsset).filter(f -> f != null), Stream.of(baseFallback))
+            .collect(Collectors.toList());
+        Log.v(TAG, String.format("Loaded font %s with %d fallback fonts", main.getName(), fallbacks.size()));
+        return new Typeface(main, fallbacks);
+    }
+
     static {
-        DEFAULT = new Typeface(new Font(null, 0, 12));
+        DEFAULT = withFallback(new Font(null, 0, 12), "NotoSans/NotoSans-VariableFont_wdth,wght.ttf",  "NotoSans/NotoSansSymbols2-Regular.ttf", "NotoSans/NotoEmoji-VariableFont_wght.ttf");
         DEFAULT_BOLD = new Typeface(new Font(null, Font.BOLD, 12));
         SANS_SERIF = new Typeface(new Font(Font.SANS_SERIF, 0, 12));
         SERIF = new Typeface(new Font(Font.SERIF, 0, 12));
