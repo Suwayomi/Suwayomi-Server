@@ -410,10 +410,10 @@ public class Typeface {
 
     static {
         DEFAULT = withFallback(new Font(null, 0, 12), "NotoSans/NotoSans-VariableFont_wdth,wght.ttf",  "NotoSans/NotoSansSymbols2-Regular.ttf", "NotoSans/NotoEmoji-VariableFont_wght.ttf");
-        DEFAULT_BOLD = new Typeface(new Font(null, Font.BOLD, 12));
-        SANS_SERIF = new Typeface(new Font(Font.SANS_SERIF, 0, 12));
-        SERIF = new Typeface(new Font(Font.SERIF, 0, 12));
-        MONOSPACE = new Typeface(new Font(Font.MONOSPACED, 0, 12));
+        DEFAULT_BOLD = DEFAULT.deriveFont(Font.BOLD);
+        SANS_SERIF = DEFAULT;
+        SERIF = withFallback(new Font(Font.SERIF, 0, 12), "NotoSans/NotoSerif-VariableFont_wdth,wght.ttf",  "NotoSans/NotoSansSymbols2-Regular.ttf", "NotoSans/NotoEmoji-VariableFont_wght.ttf");
+        MONOSPACE = withFallback(new Font(Font.MONOSPACED, 0, 12), "NotoSans/NotoSansMono-VariableFont_wdth,wght.ttf",  "NotoSans/NotoSansSymbols2-Regular.ttf", "NotoSans/NotoEmoji-VariableFont_wght.ttf");
     }
 }
 
