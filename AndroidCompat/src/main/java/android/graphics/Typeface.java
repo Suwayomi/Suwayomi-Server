@@ -325,9 +325,12 @@ public class Typeface {
             boolean found = false;
             // find a fallback font from `until`
             for (int j = 0; j < mFallbackFonts.size(); ++j) {
-                int fallbackUntil = mFallbackFonts.get(j).canDisplayUpTo(result.getIterator(), until, textLength);
-                Log.v(TAG, String.format("Font %s: %d [%d]", mFallbackFonts.get(j).getName(), fallbackUntil, until));
-                if (fallbackUntil == -1 || fallbackUntil > until) {
+                int fallbackUntil = until;
+                for (; fallbackUntil < textLength; ++fallbackUntil) {
+                    if (mFont.canDisplay(text.charAt(fallbackUntil)) || !mFallbackFonts.get(j).canDisplay(text.charAt(fallbackUntil)))
+                        break;
+                }
+                if (fallbackUntil > until) {
                     // use this and advance
                     int end = fallbackUntil >= 0 ? fallbackUntil : textLength;
                     result.addAttribute(TextAttribute.FONT, mFallbackFonts.get(j), until, end);
