@@ -39,7 +39,7 @@ object LocalizationHelper {
         return if (headerLang == null || headerLang.isEmpty()) {
             Locale.getDefault()
         } else {
-            Locale.lookup(Locale.LanguageRange.parse(headerLang), supportedLocales)
+            Locale.lookup(Locale.LanguageRange.parse(headerLang), supportedLocales) ?: Locale.getDefault()
         }
     }
 }
