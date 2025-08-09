@@ -1,12 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="opds_feeds_search_results">Kết quả tìm kiếm</string>
-    <string name="opds_feeds_all_manga_entry_content">Duyệt tất cả manga trong thư viện của bạn</string>
-    <string name="opds_feeds_all_manga_title">Tất cả Manga</string>
     <string name="opds_search_description">Tìm kiếm manga trong danh mục</string>
     <string name="opds_feeds_chapter_details">%1$s | %2$s | Chi tiết</string>
     <string name="opds_feeds_categories_title">Danh mục</string>
-    <string name="opds_feeds_sources_entry_content">Duyệt manga theo nguồn</string>
     <string name="opds_feeds_categories_entry_content">Duyệt manga được sắp xếp theo danh mục</string>
     <string name="opds_feeds_genres_title">Thể loại</string>
     <string name="opds_feeds_root">Suwayomi OPDS Danh mục</string>
@@ -32,7 +28,6 @@
     <string name="opds_error_manga_not_found">Manga có ID %1$d không tìm thấy</string>
     <string name="opds_error_chapter_not_found">Chương có chỉ mục %1$d không tìm thấy</string>
     <string name="opds_facetgroup_sort_order">Thứ tự sắp xếp</string>
-    <string name="opds_facetgroup_read_status">Đọc trạng thái</string>
     <string name="opds_facet_sort_oldest_first">Cũ nhất trước</string>
     <string name="opds_facet_sort_newest_first">Mới nhất trước</string>
     <string name="opds_facet_sort_date_asc">Ngày tăng dần</string>
@@ -40,14 +35,12 @@
     <string name="opds_facet_filter_read_only">Chỉ đọc</string>
     <string name="opds_linktitle_stream_pages">Xem trang (Trực tuyến)</string>
     <string name="opds_linktitle_chapter_cover">Bìa chương</string>
-    <string name="opds_linktitle_current_page">Trang hiện tại</string>
     <string name="opds_linktitle_catalog_root">Danh mục gốc</string>
     <string name="opds_linktitle_search_catalog">Tìm kiếm danh mục</string>
     <string name="opds_linktitle_previous_page">Trang trước</string>
     <string name="opds_linktitle_next_page">Trang tiếp theo</string>
     <string name="opds_chapter_status_downloaded">⬇️</string>
     <string name="opds_chapter_status_read">✅</string>
-    <string name="opds_chapter_status_unknown">❔</string>
     <string name="opds_chapter_status_unread">⭕</string>
     <string name="opds_chapter_details_scanlator">| Bởi %1$s</string>
     <string name="opds_chapter_details_progress">| Tiến triển: %1$d of %2$d</string>
@@ -60,6 +53,5 @@
     <string name="opds_linktitle_view_chapter_details">Xem Chi Tiết Chương &amp; Nhận Trang</string>
     <string name="opds_facet_filter_all_chapters">Tất cả các chương</string>
     <string name="opds_chapter_status_in_progress">⌛</string>
-    <string name="opds_chapter_status_error">⚠️</string>
     <string name="opds_chapter_details_base">%1$s | %2$s</string>
 </resources>
