@@ -12,6 +12,9 @@ import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.formParam
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
@@ -28,6 +31,7 @@ object CategoryController {
                 }
             },
             behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.json(Category.getCategoryList())
             },
             withResults = {
@@ -46,6 +50,7 @@ object CategoryController {
                 }
             },
             behaviorOf = { ctx, name ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 if (Category.createCategory(name) != -1) {
                     ctx.status(200)
                 } else {
@@ -73,6 +78,7 @@ object CategoryController {
                 }
             },
             behaviorOf = { ctx, categoryId, name, isDefault, includeInUpdate, includeInDownload ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 Category.updateCategory(categoryId, name, isDefault, includeInUpdate, includeInDownload)
                 ctx.status(200)
             },
@@ -92,6 +98,7 @@ object CategoryController {
                 }
             },
             behaviorOf = { ctx, categoryId ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 Category.removeCategory(categoryId)
                 ctx.status(200)
             },
@@ -111,6 +118,7 @@ object CategoryController {
                 }
             },
             behaviorOf = { ctx, categoryId ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.json(CategoryManga.getCategoryMangaList(categoryId))
             },
             withResults = {
@@ -130,6 +138,7 @@ object CategoryController {
                 }
             },
             behaviorOf = { ctx, from, to ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 Category.reorderCategory(from, to)
                 ctx.status(200)
             },
@@ -151,6 +160,7 @@ object CategoryController {
                 }
             },
             behaviorOf = { ctx, categoryId, key, value ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 Category.modifyMeta(categoryId, key, value)
                 ctx.status(200)
             },

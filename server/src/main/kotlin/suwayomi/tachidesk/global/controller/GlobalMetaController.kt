@@ -9,6 +9,9 @@ package suwayomi.tachidesk.global.controller
 
 import io.javalin.http.HttpStatus
 import suwayomi.tachidesk.global.impl.GlobalMeta
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.formParam
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.withOperation
@@ -24,6 +27,7 @@ object GlobalMetaController {
                 }
             },
             behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.json(GlobalMeta.getMetaMap())
                 ctx.status(200)
             },
@@ -44,6 +48,7 @@ object GlobalMetaController {
                 }
             },
             behaviorOf = { ctx, key, value ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 GlobalMeta.modifyMeta(key, value)
                 ctx.status(200)
             },
