@@ -3,8 +3,6 @@
     <string name="opds_search_description">Pesquisar mangá no catálogo</string>
     <string name="opds_feeds_manga_chapters">%1$s Capítulos</string>
     <string name="opds_feeds_chapter_details">%1$s | %2$s | Detalhes</string>
-    <string name="opds_feeds_all_manga_title">Todos os Mangás</string>
-    <string name="opds_feeds_search_results">Resultados da pesquisa</string>
     <string name="opds_feeds_categories_title">Categorias</string>
     <string name="opds_feeds_genres_title">Gêneros</string>
     <string name="opds_feeds_languages_title">Idiomas</string>
@@ -13,8 +11,6 @@
     <string name="opds_feeds_source_specific_title">Fonte: %1$s</string>
     <string name="opds_feeds_sources_title">Fontes</string>
     <string name="opds_feeds_genre_specific_title">Gênero: %1$s</string>
-    <string name="opds_feeds_all_manga_entry_content">Explorar todos mangás na sua biblioteca</string>
-    <string name="opds_feeds_sources_entry_content">Explorar mangás por fonte</string>
     <string name="opds_feeds_categories_entry_content">Explorar mangás organizados por categorias</string>
     <string name="opds_feeds_genres_entry_content">Explorar mangás por marcadores de gênero</string>
     <string name="opds_feeds_status_title">Status</string>
@@ -28,7 +24,6 @@
     <string name="opds_error_manga_not_found">Manga com ID %1$d não encontrado</string>
     <string name="opds_error_chapter_not_found">Capítulo com índice %1$d não encontrado</string>
     <string name="opds_facetgroup_sort_order">Ordenar por</string>
-    <string name="opds_facetgroup_read_status">Status de leitura</string>
     <string name="opds_facet_sort_oldest_first">O mais velho primeiro</string>
     <string name="opds_facet_sort_newest_first">O mais novo primeiro</string>
     <string name="opds_facet_sort_date_asc">Data ascendente</string>
@@ -40,7 +35,6 @@
     <string name="opds_linktitle_view_chapter_details">Ver detalhes do capítulo &amp; Obter Páginas</string>
     <string name="opds_linktitle_stream_pages">Ver Páginas (Streaming)</string>
     <string name="opds_linktitle_chapter_cover">Capa do capítulo</string>
-    <string name="opds_linktitle_current_page">Página atual</string>
     <string name="opds_linktitle_catalog_root">Raiz do catálogo</string>
     <string name="opds_linktitle_search_catalog">Pesquisar no catálogo</string>
     <string name="opds_linktitle_previous_page">Página anterior</string>
@@ -49,8 +43,6 @@
     <string name="opds_linktitle_self_feed">Feed atual</string>
     <string name="opds_chapter_status_read">✅</string>
     <string name="opds_chapter_status_in_progress">⌛</string>
-    <string name="opds_chapter_status_error">⚠️</string>
-    <string name="opds_chapter_status_unknown">❔</string>
     <string name="opds_chapter_status_unread">⭕</string>
     <string name="opds_chapter_details_base">%1$s | %2$s</string>
     <string name="opds_chapter_details_progress">| Progresso: %1$d de %2$d</string>
