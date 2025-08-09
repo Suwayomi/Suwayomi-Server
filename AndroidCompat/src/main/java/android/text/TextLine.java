@@ -27,6 +27,8 @@ import android.text.Layout.Directions;
 import android.text.Layout.TabStops;
 import java.awt.RenderingHints;
 import java.awt.font.FontRenderContext;
+import java.awt.font.TextMeasurer;
+import java.text.AttributedString;
 
 
 public class TextLine {
@@ -149,7 +151,9 @@ public class TextLine {
     public float metrics(FontMetricsInt fmi, @Nullable RectF drawBounds, boolean returnDrawWidth,
             @Nullable LineInfo lineInfo) {
         FontRenderContext frc = new FontRenderContext(null, RenderingHints.VALUE_TEXT_ANTIALIAS_DEFAULT, RenderingHints.VALUE_FRACTIONALMETRICS_DEFAULT);
-        return (float) mPaint.getFont().getStringBounds(mText.toString(), mStart, mStart + mLen, frc).getWidth();
+        AttributedString text = mPaint.getTypeface().createWithFallback(mText.toString());
+        TextMeasurer tm = new TextMeasurer(text.getIterator(), frc);
+        return (float) tm.getLayout(mStart, mStart + mLen).getBounds().getWidth();
     }
 
     public float measure(@IntRange(from = 0) int offset, boolean trailing,

@@ -10,9 +10,11 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Shape;
+import java.awt.font.TextAttribute;
 import java.awt.font.GlyphVector;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
+import java.text.AttributedString;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,13 +46,16 @@ public final class Canvas {
         drawText(new String(text, index, count), x, y, paint);
     }
 
-    public void drawText(@NonNull String text, float x, float y, @NonNull Paint paint) {
+    public void drawText(@NonNull String str, float x, float y, @NonNull Paint paint) {
         applyPaint(paint);
-        GlyphVector glyphVector = paint.getFont().createGlyphVector(canvas.getFontRenderContext(), text);
+        AttributedString text = paint.getTypeface().createWithFallback(str);
+        canvas.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
+        // TODO: fix with fallback fonts
+        GlyphVector glyphVector = paint.getTypeface().getFont().createGlyphVector(canvas.getFontRenderContext(), text.getIterator());
         Shape textShape = glyphVector.getOutline();
         switch (paint.getStyle()) {
             case Paint.Style.FILL:
-                canvas.drawString(text, x, y);
+                canvas.drawString(text.getIterator(), x, y);
                 break;
             case Paint.Style.STROKE:
                 save();
@@ -178,7 +183,7 @@ public final class Canvas {
     }
 
     private void applyPaint(Paint paint) {
-        canvas.setFont(paint.getFont());
+        canvas.setFont(paint.getTypeface().getFont());
         java.awt.Color color = Color.valueOf(paint.getColorLong()).toJavaColor();
         canvas.setColor(color);
         canvas.setStroke(new BasicStroke(paint.getStrokeWidth(), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));

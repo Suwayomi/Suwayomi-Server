@@ -65,9 +65,9 @@ public class Paint {
     @ColorLong private long mShadowLayerColor;
 
     private int             mFlags;
-    private Font            mFont = new Font(null);
     private Style           mStyle = Style.FILL;
     private float           mStrokeWidth = 1.0f;
+    private Typeface        mTypeface = Typeface.DEFAULT;
 
     private static final Object sCacheLock = new Object();
 
@@ -278,10 +278,10 @@ public class Paint {
         mShadowLayerDy = 0.0f;
         mShadowLayerColor = Color.pack(0);
 
-        setFlags(ANTI_ALIAS_FLAG);
-        mFont = new Font(null);
         mStyle = Style.FILL;
         mStrokeWidth = 1.0f;
+        mTypeface = Typeface.DEFAULT;
+        setFlags(ANTI_ALIAS_FLAG);
     }
 
     public void set(Paint src) {
@@ -314,9 +314,9 @@ public class Paint {
         mShadowLayerColor = paint.mShadowLayerColor;
 
         mFlags = paint.mFlags;
-        mFont = paint.mFont;
         mStyle = paint.mStyle;
         mStrokeWidth = paint.mStrokeWidth;
+        mTypeface = paint.mTypeface;
     }
 
     /** @hide */
@@ -368,13 +368,13 @@ public class Paint {
             fontAttributes.put(TextAttribute.WEIGHT, TextAttribute.WEIGHT_REGULAR);
         }
 
-        Map<TextAttribute, Object> atts = (Map<TextAttribute, Object>) mFont.getAttributes();
+        Map<TextAttribute, Object> atts = mTypeface.getAttributes();
         Object weight = atts.getOrDefault(TextAttribute.WEIGHT, null);
         if (weight instanceof Float) {
             fontAttributes.put(TextAttribute.WEIGHT, weight);
         }
 
-        mFont = mFont.deriveFont(fontAttributes);
+        mTypeface = mTypeface.deriveFont(fontAttributes);
     }
 
     public int getHinting() {
@@ -605,14 +605,14 @@ public class Paint {
     }
 
     public Typeface getTypeface() {
-        return new Typeface(mFont);
+        return mTypeface;
     }
 
     public Typeface setTypeface(Typeface typeface) {
         Map<TextAttribute, Object> fontAttributes = new HashMap<TextAttribute, Object>();
         fontAttributes.put(TextAttribute.WEIGHT, typeface.getJavaWeight());
-        mFont = typeface.getFont()
-            .deriveFont(mFont.getStyle(), mFont.getSize())
+        mTypeface = typeface
+            .deriveFont(mTypeface.getFont().getStyle(), mTypeface.getFont().getSize())
             .deriveFont(fontAttributes);
         setFlags(mFlags);
         return typeface;
@@ -693,16 +693,12 @@ public class Paint {
         throw new RuntimeException("Stub!");
     }
 
-    public Font getFont() {
-        return mFont;
-    }
-
     public float getTextSize() {
-        return mFont.getSize2D();
+        return mTypeface.getFont().getSize2D();
     }
 
     public void setTextSize(float textSize) {
-        mFont = mFont.deriveFont(textSize);
+        mTypeface = mTypeface.deriveFont(textSize);
     }
 
     public float getTextScaleX() {
@@ -836,7 +832,7 @@ public class Paint {
 
     public float getFontMetrics(FontMetrics metrics) {
         java.awt.Canvas c = new java.awt.Canvas();
-        java.awt.FontMetrics m = c.getFontMetrics(mFont);
+        java.awt.FontMetrics m = c.getFontMetrics(mTypeface.getFont());
         metrics.top = m.getMaxDescent();
         metrics.ascent = m.getAscent();
         metrics.descent = m.getDescent();
