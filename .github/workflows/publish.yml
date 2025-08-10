@@ -136,26 +136,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Jar
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: jar
           path: server/build
 
       - name: Download JRE
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         if: matrix.name != 'linux-assets' && matrix.name != 'debian-all'
         with:
           name: ${{ matrix.jre }}-jre
           path: jre
 
       - name: Download icons
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: icon
           path: server/src/main/resources/icon
 
       - name: Download scripts.tar.gz
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: scripts
 
@@ -177,35 +177,35 @@ jobs:
     needs: bundle
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: jar
           path: release
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: debian-all
           path: release
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: appimage
           path: release
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: linux-assets
           path: release
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: linux-x64
           path: release
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: macOS-x64
           path: release
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: macOS-arm64
           path: release
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: windows-x64
           path: release
