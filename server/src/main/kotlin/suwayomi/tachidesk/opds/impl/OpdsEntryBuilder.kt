@@ -229,18 +229,20 @@ object OpdsEntryBuilder {
         var finalLastPageRead = chapter.lastPageRead
         var finalLastReadAt = chapter.lastReadAt
 
-        val remoteProgress = KoreaderSyncService.pullProgress(chapter.id)
+        val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id)
 
-        if (remoteProgress != null) {
-            finalLastPageRead = remoteProgress.pageRead
-            finalLastReadAt = remoteProgress.timestamp
+        if (syncResult != null) {
+            if (syncResult.shouldUpdate || syncResult.isConflict) {
+                finalLastPageRead = syncResult.pageRead
+                finalLastReadAt = syncResult.timestamp
 
-            // If the chosen progress is different from local, update local DB silently
-            if (finalLastPageRead != chapter.lastPageRead || finalLastReadAt != chapter.lastReadAt) {
-                transaction {
-                    ChapterTable.update({ ChapterTable.id eq chapter.id }) {
-                        it[lastPageRead] = finalLastPageRead
-                        it[lastReadAt] = finalLastReadAt
+                // If the chosen progress is different from local, update local DB silently
+                if (finalLastPageRead != chapter.lastPageRead || finalLastReadAt != chapter.lastReadAt) {
+                    transaction {
+                        ChapterTable.update({ ChapterTable.id eq chapter.id }) {
+                            it[lastPageRead] = finalLastPageRead
+                            it[lastReadAt] = finalLastReadAt
+                        }
                     }
                 }
             }

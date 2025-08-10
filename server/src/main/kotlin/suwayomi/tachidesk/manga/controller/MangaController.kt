@@ -12,6 +12,8 @@ import io.javalin.http.HttpStatus
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
@@ -23,6 +25,7 @@ import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.util.formParam
 import suwayomi.tachidesk.server.util.handler
@@ -318,8 +321,29 @@ object MangaController {
             },
             behaviorOf = { ctx, mangaId, chapterIndex ->
                 ctx.future {
-                    future { getChapterDownloadReadyByIndex(chapterIndex, mangaId) }
-                        .thenApply { ctx.json(it) }
+                    future {
+                        var chapter = getChapterDownloadReadyByIndex(chapterIndex, mangaId)
+                        val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id)
+
+                        if (syncResult != null) {
+                            if (syncResult.shouldUpdate) {
+                                // Update DB for SILENT and RECEIVE
+                                transaction {
+                                    ChapterTable.update({ ChapterTable.id eq chapter.id }) {
+                                        it[lastPageRead] = syncResult.pageRead
+                                        it[lastReadAt] = syncResult.timestamp
+                                    }
+                                }
+                            }
+                            // For PROMPT, SILENT, and RECEIVE, return the remote progress
+                            chapter =
+                                chapter.copy(
+                                    lastPageRead = syncResult.pageRead,
+                                    lastReadAt = syncResult.timestamp,
+                                )
+                        }
+                        chapter
+                    }.thenApply { ctx.json(it) }
                 }
             },
             withResults = {

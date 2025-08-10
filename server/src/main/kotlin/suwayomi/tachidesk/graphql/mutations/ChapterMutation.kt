@@ -20,7 +20,6 @@ import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.future
-import suwayomi.tachidesk.server.serverConfig
 import java.net.URLEncoder
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
@@ -265,22 +264,24 @@ class ChapterMutation {
 
         return future {
             var chapter = getChapterDownloadReadyById(chapterId)
+            val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id)
 
-            if (serverConfig.koreaderSyncEnabled.value) {
-                val remoteProgress = KoreaderSyncService.pullProgress(chapter.id)
-                if (remoteProgress != null) {
+            if (syncResult != null) {
+                if (syncResult.shouldUpdate) {
+                    // Update DB for SILENT and RECEIVE
                     transaction {
                         ChapterTable.update({ ChapterTable.id eq chapter.id }) {
-                            it[lastPageRead] = remoteProgress.pageRead
-                            it[lastReadAt] = remoteProgress.timestamp
+                            it[lastPageRead] = syncResult.pageRead
+                            it[lastReadAt] = syncResult.timestamp
                         }
                     }
-                    chapter =
-                        chapter.copy(
-                            lastPageRead = remoteProgress.pageRead,
-                            lastReadAt = remoteProgress.timestamp,
-                        )
                 }
+                // For PROMPT, SILENT, and RECEIVE, return the remote progress
+                chapter =
+                    chapter.copy(
+                        lastPageRead = syncResult.pageRead,
+                        lastReadAt = syncResult.timestamp,
+                    )
             }
 
             asDataFetcherResult {

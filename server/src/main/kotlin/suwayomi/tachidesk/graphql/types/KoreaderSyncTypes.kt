@@ -6,9 +6,11 @@ enum class KoreaderSyncChecksumMethod {
 }
 
 enum class KoreaderSyncStrategy {
-    LATEST,
-    SUWAYOMI,
-    KOSYNC,
+    PROMPT, // Ask on conflict
+    SILENT, // Always use latest
+    SEND, // Send changes only
+    RECEIVE, // Receive changes only
+    DISABLE,
 }
 
 data class KoSyncStatusPayload(

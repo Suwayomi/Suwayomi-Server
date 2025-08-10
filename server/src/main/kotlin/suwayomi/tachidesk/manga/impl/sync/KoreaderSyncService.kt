@@ -12,18 +12,25 @@ import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.KoSyncConnectPayload
 import suwayomi.tachidesk.graphql.types.KoSyncStatusPayload
+import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy
+import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.util.KoreaderHelper
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.util.UUID
+import kotlin.math.abs
 
 object KoreaderSyncService {
     private val logger = KotlinLogging.logger {}
@@ -51,9 +58,11 @@ object KoreaderSyncService {
     )
 
     @Serializable
-    data class RemoteProgress(
+    data class SyncResult(
         val pageRead: Int,
         val timestamp: Long, // Unix timestamp in seconds
+        val shouldUpdate: Boolean = false,
+        val isConflict: Boolean = false,
     )
 
     private data class AuthResult(
@@ -101,23 +110,40 @@ object KoreaderSyncService {
                 return@transaction existingHash
             }
 
-            logger.info { "[KOSYNC HASH] No hash for chapterId=$chapterId. Generating from CBZ." }
+            val checksumMethod = serverConfig.koreaderSyncChecksumMethod.value
+            val newHash =
+                when (checksumMethod) {
+                    KoreaderSyncChecksumMethod.BINARY -> {
+                        logger.info { "[KOSYNC HASH] No hash for chapterId=$chapterId. Generating from CBZ content." }
+                        val mangaId =
+                            ChapterTable
+                                .select(ChapterTable.manga)
+                                .where { ChapterTable.id eq chapterId }
+                                .firstOrNull()
+                                ?.get(ChapterTable.manga)
+                                ?.value ?: return@transaction null
+                        val cbzFile = File(getChapterCbzPath(mangaId, chapterId))
+                        if (!cbzFile.exists()) {
+                            logger.info { "[KOSYNC HASH] Could not generate hash for chapterId=$chapterId. CBZ not found." }
+                            return@transaction null
+                        }
+                        KoreaderHelper.hashContents(cbzFile)
+                    }
+                    KoreaderSyncChecksumMethod.FILENAME -> {
+                        logger.info { "[KOSYNC HASH] No hash for chapterId=$chapterId. Generating from filename." }
+                        (ChapterTable innerJoin MangaTable)
+                            .select(ChapterTable.name, MangaTable.title)
+                            .where { ChapterTable.id eq chapterId }
+                            .firstOrNull()
+                            ?.let {
+                                val chapterName = it[ChapterTable.name]
+                                val mangaTitle = it[MangaTable.title]
+                                val baseFilename = "$mangaTitle - $chapterName".split('.').dropLast(1).joinToString(".")
+                                Hash.md5(baseFilename)
+                            }
+                    }
+                }
 
-            val mangaId =
-                ChapterTable
-                    .select(ChapterTable.manga)
-                    .where { ChapterTable.id eq chapterId }
-                    .firstOrNull()
-                    ?.get(ChapterTable.manga)
-                    ?.value ?: return@transaction null
-
-            val cbzFile = File(getChapterCbzPath(mangaId, chapterId))
-            if (!cbzFile.exists()) {
-                logger.info { "[KOSYNC HASH] Could not generate hash for chapterId=$chapterId. CBZ not found." }
-                return@transaction null
-            }
-
-            val newHash = KoreaderHelper.hashContents(cbzFile)
             if (newHash != null) {
                 ChapterTable.update({ ChapterTable.id eq chapterId }) {
                     it[koreaderHash] = newHash
@@ -203,6 +229,7 @@ object KoreaderSyncService {
         if (authResult.success) {
             serverConfig.koreaderSyncUsername.value = username
             serverConfig.koreaderSyncUserkey.value = userkey
+            serverConfig.koreaderSyncStrategy.value = KoreaderSyncStrategy.PROMPT
             return KoSyncConnectPayload(true, "Login successful.", username)
         }
 
@@ -212,6 +239,7 @@ object KoreaderSyncService {
             return if (registerResult.success) {
                 serverConfig.koreaderSyncUsername.value = username
                 serverConfig.koreaderSyncUserkey.value = userkey
+                serverConfig.koreaderSyncStrategy.value = KoreaderSyncStrategy.PROMPT
                 KoSyncConnectPayload(true, "Registration successful.", username)
             } else {
                 KoSyncConnectPayload(false, registerResult.message ?: "Registration failed.", null)
@@ -237,9 +265,13 @@ object KoreaderSyncService {
     }
 
     suspend fun pushProgress(chapterId: Int) {
-        if (!serverConfig.koreaderSyncEnabled.value) return
+        val strategy = serverConfig.koreaderSyncStrategy.value
+        if (strategy == KoreaderSyncStrategy.DISABLE || strategy == KoreaderSyncStrategy.RECEIVE) return
+
+        val username = serverConfig.koreaderSyncUsername.value
         val userkey = serverConfig.koreaderSyncUserkey.value
-        if (userkey.isBlank()) return
+        if (username.isBlank() || userkey.isBlank()) return
+
         logger.info { "[KOSYNC PUSH] Init." }
 
         val chapterHash = getOrGenerateChapterHash(chapterId)
@@ -282,7 +314,7 @@ object KoreaderSyncService {
             val request =
                 buildRequest("${serverConfig.koreaderSyncServerUrl.value.removeSuffix("/")}/syncs/progress") {
                     put(requestBody.toRequestBody("application/json".toMediaType()))
-                    addHeader("x-auth-user", serverConfig.koreaderSyncUsername.value)
+                    addHeader("x-auth-user", username)
                     addHeader("x-auth-key", userkey)
                 }
 
@@ -298,12 +330,13 @@ object KoreaderSyncService {
         }
     }
 
-    suspend fun pullProgress(chapterId: Int): RemoteProgress? {
+    suspend fun checkAndPullProgress(chapterId: Int): SyncResult? {
         val strategy = serverConfig.koreaderSyncStrategy.value
-        if (!serverConfig.koreaderSyncEnabled.value || strategy == KoreaderSyncStrategy.SUWAYOMI) return null
+        if (strategy == KoreaderSyncStrategy.DISABLE || strategy == KoreaderSyncStrategy.SEND) return null
 
+        val username = serverConfig.koreaderSyncUsername.value
         val userkey = serverConfig.koreaderSyncUserkey.value
-        if (userkey.isBlank()) return null
+        if (username.isBlank() || userkey.isBlank()) return null
 
         val chapterHash = getOrGenerateChapterHash(chapterId)
         if (chapterHash.isNullOrBlank()) {
@@ -315,7 +348,7 @@ object KoreaderSyncService {
             val request =
                 buildRequest("${serverConfig.koreaderSyncServerUrl.value.removeSuffix("/")}/syncs/progress/$chapterHash") {
                     get()
-                    addHeader("x-auth-user", serverConfig.koreaderSyncUsername.value)
+                    addHeader("x-auth-user", username)
                     addHeader("x-auth-key", userkey)
                 }
 
@@ -328,23 +361,55 @@ object KoreaderSyncService {
                     val pageRead = progressResponse.progress?.toIntOrNull()?.minus(1)
                     val timestamp = progressResponse.timestamp
 
-                    if (pageRead != null && timestamp != null) {
-                        when (strategy) {
-                            KoreaderSyncStrategy.KOSYNC -> return RemoteProgress(pageRead, timestamp)
-                            KoreaderSyncStrategy.LATEST -> {
-                                val localTimestamp =
-                                    transaction {
-                                        ChapterTable
-                                            .select(ChapterTable.lastReadAt)
-                                            .where { ChapterTable.id eq chapterId }
-                                            .firstOrNull()
-                                            ?.get(ChapterTable.lastReadAt) ?: 0L
+                    val localProgress =
+                        transaction {
+                            ChapterTable
+                                .select(ChapterTable.lastReadAt, ChapterTable.lastPageRead, ChapterTable.pageCount)
+                                .where { ChapterTable.id eq chapterId }
+                                .firstOrNull()
+                                ?.let {
+                                    object {
+                                        val lastReadAt = it[ChapterTable.lastReadAt]
+                                        val lastPageRead = it[ChapterTable.lastPageRead]
+                                        val pageCount = it[ChapterTable.pageCount]
                                     }
-                                if (timestamp > localTimestamp) {
-                                    return RemoteProgress(pageRead, timestamp)
+                                }
+                        }
+
+                    if (pageRead != null && timestamp != null) {
+                        // Ignore XPath progress for now as we only support paginated files
+                        if (progressResponse.progress?.startsWith("/") == true) {
+                            return null
+                        }
+
+                        val localPercentage =
+                            if (localProgress?.pageCount ?: 0 >
+                                0
+                            ) {
+                                (localProgress!!.lastPageRead + 1).toFloat() / localProgress.pageCount
+                            } else {
+                                0f
+                            }
+                        val percentageDifference = abs(localPercentage - (progressResponse.percentage ?: 0f))
+
+                        // Progress is within tolerance, no sync needed
+                        if (percentageDifference < serverConfig.koreaderSyncPercentageTolerance.value) {
+                            return null
+                        }
+
+                        when (strategy) {
+                            KoreaderSyncStrategy.RECEIVE -> {
+                                return SyncResult(pageRead, timestamp, shouldUpdate = true)
+                            }
+                            KoreaderSyncStrategy.SILENT -> {
+                                if (timestamp > (localProgress?.lastReadAt ?: 0L)) {
+                                    return SyncResult(pageRead, timestamp, shouldUpdate = true)
                                 }
                             }
-                            KoreaderSyncStrategy.SUWAYOMI -> {} // Already handled at the start of the function
+                            KoreaderSyncStrategy.PROMPT -> {
+                                return SyncResult(pageRead, timestamp, isConflict = true)
+                            }
+                            else -> {} // SEND and DISABLE already handled at the start of the function
                         }
                     }
                 } else {

@@ -114,13 +114,13 @@ interface Settings : Node {
     val opdsChapterSortOrder: SortOrder?
 
     // koreader sync
-    val koreaderSyncEnabled: Boolean?
     val koreaderSyncServerUrl: String?
     val koreaderSyncUsername: String?
     val koreaderSyncUserkey: String?
     val koreaderSyncDeviceId: String?
     val koreaderSyncChecksumMethod: KoreaderSyncChecksumMethod?
     val koreaderSyncStrategy: KoreaderSyncStrategy?
+    val koreaderSyncPercentageTolerance: Double?
 }
 
 interface SettingsDownloadConversion {
@@ -216,13 +216,13 @@ data class PartialSettingsType(
     override val opdsShowOnlyDownloadedChapters: Boolean?,
     override val opdsChapterSortOrder: SortOrder?,
     // koreader sync
-    override val koreaderSyncEnabled: Boolean?,
     override val koreaderSyncServerUrl: String?,
     override val koreaderSyncUsername: String?,
     override val koreaderSyncUserkey: String?,
     override val koreaderSyncDeviceId: String?,
     override val koreaderSyncChecksumMethod: KoreaderSyncChecksumMethod?,
     override val koreaderSyncStrategy: KoreaderSyncStrategy?,
+    override val koreaderSyncPercentageTolerance: Double?,
 ) : Settings
 
 class SettingsType(
@@ -306,13 +306,13 @@ class SettingsType(
     override val opdsShowOnlyDownloadedChapters: Boolean,
     override val opdsChapterSortOrder: SortOrder,
     // koreader sync
-    override val koreaderSyncEnabled: Boolean,
     override val koreaderSyncServerUrl: String,
     override val koreaderSyncUsername: String,
     override val koreaderSyncUserkey: String,
     override val koreaderSyncDeviceId: String,
     override val koreaderSyncChecksumMethod: KoreaderSyncChecksumMethod,
     override val koreaderSyncStrategy: KoreaderSyncStrategy,
+    override val koreaderSyncPercentageTolerance: Double,
 ) : Settings {
     constructor(config: ServerConfig = serverConfig) : this(
         config.ip.value,
@@ -393,12 +393,12 @@ class SettingsType(
         config.opdsShowOnlyDownloadedChapters.value,
         config.opdsChapterSortOrder.value,
         // koreader sync
-        config.koreaderSyncEnabled.value,
         config.koreaderSyncServerUrl.value,
         config.koreaderSyncUsername.value,
         config.koreaderSyncUserkey.value,
         config.koreaderSyncDeviceId.value,
         config.koreaderSyncChecksumMethod.value,
         config.koreaderSyncStrategy.value,
+        config.koreaderSyncPercentageTolerance.value,
     )
 }
