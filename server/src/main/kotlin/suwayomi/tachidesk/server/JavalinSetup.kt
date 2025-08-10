@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.future.future
 import kotlinx.coroutines.runBlocking
 import org.eclipse.jetty.server.ServerConnector
+import org.eclipse.jetty.server.session.SessionHandler
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
 import suwayomi.tachidesk.graphql.types.AuthMode
@@ -40,6 +41,7 @@ import java.util.Locale
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
 import kotlin.time.Duration.Companion.days
+import xyz.nulldev.ts.config.GlobalConfigManager
 
 object JavalinSetup {
     private val logger = KotlinLogging.logger {}
@@ -73,6 +75,17 @@ object JavalinSetup {
                 }
 
                 var connectorAdded = false
+                // Configure Jetty session cookie: 0 = default behavior, >0 = persistent Max-Age in minutes
+                config.jetty.modifyServletContextHandler { context ->
+                    val sessionHandler = context.sessionHandler ?: SessionHandler()
+                    sessionHandler.sessionCookieConfig.apply {
+                        val cookieMaxAgeMinutes: Int = serverConfig.sessionCookieMaxAgeMinutes.value
+                        if (cookieMaxAgeMinutes > 0) maxAge = (cookieMaxAgeMinutes * 60)
+                        isHttpOnly = true
+                        // Keep defaults for name/path; JSESSIONID and "/" are used by default
+                    }
+                    context.sessionHandler = sessionHandler
+                }
                 config.jetty.modifyServer { server ->
                     if (!connectorAdded) {
                         val connector =
@@ -102,7 +115,6 @@ object JavalinSetup {
                         connectorAdded = true
                     }
                 }
-
                 config.bundledPlugins.enableCors { cors ->
                     cors.addRule {
                         it.allowCredentials = true
@@ -146,11 +158,12 @@ object JavalinSetup {
 
             if (isValid) {
                 val redirect = ctx.queryParam("redirect") ?: "/"
-                // NOTE: We currently have no session handler attached.
-                // Thus, all sessions are stored in memory and not persisted.
-                // Furthermore, default session timeout appears to be 30m
+                // NOTE: We currently have no session persistence configured.
+                // Sessions are in-memory; server-side inactivity timeout is extended below.
                 ctx.header("Location", redirect)
                 ctx.sessionAttribute("logged-in", username)
+                // Extend server-side session inactivity timeout from ~30 minutes to 30 days
+                ctx.req().session.maxInactiveInterval = 30.days.inWholeSeconds.toInt()
                 throw RedirectResponse(HttpStatus.SEE_OTHER)
             }
 
