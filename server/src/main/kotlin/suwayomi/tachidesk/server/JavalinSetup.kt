@@ -75,20 +75,12 @@ object JavalinSetup {
                 }
 
                 var connectorAdded = false
-                // Configure Jetty session cookie. If optional server.sessionCookieMaxAgeMinutes is present,
-                // set persistent cookie max-age accordingly; otherwise, leave Jetty defaults.
+                // Configure Jetty session cookie: 0 = default behavior, >0 = persistent Max-Age in minutes
                 config.jetty.modifyServletContextHandler { context ->
                     val sessionHandler = context.sessionHandler ?: SessionHandler()
                     sessionHandler.sessionCookieConfig.apply {
-                        val cookieMaxAgeMinutes: Int? = try {
-                            val cfg = GlobalConfigManager.config
-                            if (cfg.hasPath("server.sessionCookieMaxAgeMinutes")) cfg.getInt("server.sessionCookieMaxAgeMinutes") else null
-                        } catch (_: Exception) {
-                            null
-                        }
-                        if (cookieMaxAgeMinutes != null) {
-                            maxAge = (cookieMaxAgeMinutes * 60)
-                        }
+                        val cookieMaxAgeMinutes: Int = serverConfig.sessionCookieMaxAgeMinutes.value
+                        if (cookieMaxAgeMinutes > 0) maxAge = (cookieMaxAgeMinutes * 60)
                         isHttpOnly = true
                         // Keep defaults for name/path; JSESSIONID and "/" are used by default
                     }
