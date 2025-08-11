@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - name: Clone repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Validate Gradle Wrapper
         uses: gradle/actions/wrapper-validation@v4
@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Checkout pull request
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           path: master
