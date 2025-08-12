@@ -22,4 +22,5 @@ data class SourceDataClass(
     val isNsfw: Boolean,
     /** A nicer version of [name] */
     val displayName: String,
+    val baseUrl: String?,
 )
