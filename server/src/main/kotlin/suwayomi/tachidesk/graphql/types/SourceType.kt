@@ -11,6 +11,7 @@ import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.model.FilterList
+import eu.kanade.tachiyomi.source.online.HttpSource
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.selectAll
@@ -44,6 +45,7 @@ class SourceType(
     val isConfigurable: Boolean,
     val isNsfw: Boolean,
     val displayName: String,
+    val baseUrl: String?,
 ) : Node {
     constructor(source: SourceDataClass) : this(
         id = source.id.toLong(),
@@ -54,6 +56,7 @@ class SourceType(
         isConfigurable = source.isConfigurable,
         isNsfw = source.isNsfw,
         displayName = source.displayName,
+        baseUrl = source.baseUrl,
     )
 
     constructor(row: ResultRow, sourceExtension: ResultRow, catalogueSource: CatalogueSource) : this(
@@ -65,6 +68,7 @@ class SourceType(
         isConfigurable = catalogueSource is ConfigurableSource,
         isNsfw = row[SourceTable.isNsfw],
         displayName = catalogueSource.toString(),
+        baseUrl = catalogueSource.runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> =
