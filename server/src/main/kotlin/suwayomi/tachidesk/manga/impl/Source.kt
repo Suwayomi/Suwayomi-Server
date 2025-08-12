@@ -50,7 +50,7 @@ object Source {
                     isConfigurable = catalogueSource is ConfigurableSource,
                     isNsfw = it[SourceTable.isNsfw],
                     displayName = catalogueSource.toString(),
-                    baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull()
+                    baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
                 )
             }
         }
@@ -66,9 +66,10 @@ object Source {
                 id = sourceId.toString(),
                 name = source[SourceTable.name],
                 lang = source[SourceTable.lang],
-                iconUrl = getExtensionIconUrl(
-                    extension[ExtensionTable.apkName],
-                ),
+                iconUrl =
+                    getExtensionIconUrl(
+                        extension[ExtensionTable.apkName],
+                    ),
                 supportsLatest = catalogueSource.supportsLatest,
                 isConfigurable = catalogueSource is ConfigurableSource,
                 isNsfw = source[SourceTable.isNsfw],
