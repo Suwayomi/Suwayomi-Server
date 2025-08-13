@@ -99,8 +99,8 @@
     <string name="opds_linktitle_stream_pages_continue">Continue Reading Online</string>
     <string name="opds_linktitle_stream_pages_start_local">Read Online (Local Progress)</string>
     <string name="opds_linktitle_stream_pages_continue_local">Continue Reading Online (Local Progress)</string>
-    <string name="opds_linktitle_stream_pages_start_synced">Read Online (Synced from %1$s)</string>
-    <string name="opds_linktitle_stream_pages_continue_synced">Continue Reading Online (Synced from %1$s)</string>
+    <string name="opds_linktitle_stream_pages_start_remote">Read Online (Synced from %1$s)</string>
+    <string name="opds_linktitle_stream_pages_continue_remote">Continue Reading Online (Synced from %1$s)</string>
     <string name="opds_linktitle_download_cbz">Download CBZ</string>
     <string name="opds_linktitle_chapter_cover">Chapter Cover</string>
     <string name="opds_linktitle_view_chapter_details">View Chapter Details &amp; Get Pages</string>

@@ -292,9 +292,9 @@ object OpdsEntryBuilder {
                     if (localLastPageRead >
                         0
                     ) {
-                        MR.strings.opds_linktitle_continue_pages_local
+                        MR.strings.opds_linktitle_stream_pages_continue_local
                     } else {
-                        MR.strings.opds_linktitle_start_pages_local
+                        MR.strings.opds_linktitle_stream_pages_start_local
                     }
                 links.add(
                     OpdsLinkXml(
@@ -312,9 +312,9 @@ object OpdsEntryBuilder {
                     if (remoteLastPageRead >
                         0
                     ) {
-                        MR.strings.opds_linktitle_continue_pages_remote
+                        MR.strings.opds_linktitle_stream_pages_continue_remote
                     } else {
-                        MR.strings.opds_linktitle_start_pages_remote
+                        MR.strings.opds_linktitle_stream_pages_start_remote
                     }
                 links.add(
                     OpdsLinkXml(
@@ -333,9 +333,9 @@ object OpdsEntryBuilder {
                     if (finalLastPageRead >
                         0
                     ) {
-                        MR.strings.opds_linktitle_continue_pages
+                        MR.strings.opds_linktitle_stream_pages_continue
                     } else {
-                        MR.strings.opds_linktitle_start_pages
+                        MR.strings.opds_linktitle_stream_pages_start
                     }
                 links.add(
                     OpdsLinkXml(
