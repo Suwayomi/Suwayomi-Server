@@ -3,13 +3,10 @@ package suwayomi.tachidesk.opds.impl
 import dev.icerock.moko.resources.StringResource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
-import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.opds.constants.OpdsConstants
 import suwayomi.tachidesk.opds.dto.OpdsChapterListAcqEntry
@@ -225,28 +222,17 @@ object OpdsEntryBuilder {
         baseUrl: String,
         locale: Locale,
     ): OpdsEntryXml {
-        // Sync progress with KOSync before building the entry
-        var finalLastPageRead = chapter.lastPageRead
-        var finalLastReadAt = chapter.lastReadAt
-
+        // Check remote progress before building the entry
         val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id)
 
-        if (syncResult != null) {
-            if (syncResult.shouldUpdate || syncResult.isConflict) {
-                finalLastPageRead = syncResult.pageRead
-                finalLastReadAt = syncResult.timestamp
+        val localLastPageRead = chapter.lastPageRead
+        val remoteLastPageRead = syncResult?.pageRead
+        val remoteLastReadAt = syncResult?.timestamp
 
-                // If the chosen progress is different from local, update local DB silently
-                if (finalLastPageRead != chapter.lastPageRead || finalLastReadAt != chapter.lastReadAt) {
-                    transaction {
-                        ChapterTable.update({ ChapterTable.id eq chapter.id }) {
-                            it[lastPageRead] = finalLastPageRead
-                            it[lastReadAt] = finalLastReadAt
-                        }
-                    }
-                }
-            }
-        }
+        val showConflict = syncResult?.isConflict == true && remoteLastPageRead != null && localLastPageRead != remoteLastPageRead
+
+        val finalLastPageRead = if (syncResult?.shouldUpdate == true) remoteLastPageRead ?: localLastPageRead else localLastPageRead
+        val finalLastReadAt = if (syncResult?.shouldUpdate == true) remoteLastReadAt ?: chapter.lastReadAt else chapter.lastReadAt
 
         val statusKey =
             when {
@@ -296,19 +282,73 @@ object OpdsEntryBuilder {
             }
         }
         if (chapter.pageCount > 0) {
-            links.add(
-                OpdsLinkXml(
-                    rel = OpdsConstants.LINK_REL_PSE_STREAM,
-                    href =
-                        "/api/v1/manga/${manga.id}/chapter/${chapter.sourceOrder}/page/{pageNumber}" +
-                            "?updateProgress=${serverConfig.opdsEnablePageReadProgress.value}",
-                    type = OpdsConstants.TYPE_IMAGE_JPEG,
-                    title = MR.strings.opds_linktitle_stream_pages.localized(locale),
-                    pseCount = chapter.pageCount,
-                    pseLastRead = finalLastPageRead.takeIf { it > 0 },
-                    pseLastReadDate = finalLastReadAt.takeIf { it > 0 }?.let { OpdsDateUtil.formatEpochMillisForOpds(it * 1000) },
-                ),
-            )
+            val basePageHref =
+                "/api/v1/manga/${manga.id}/chapter/${chapter.sourceOrder}/page/{pageNumber}" +
+                    "?updateProgress=${serverConfig.opdsEnablePageReadProgress.value}"
+
+            if (showConflict) {
+                // Option 1: Local progress
+                val localTitleRes =
+                    if (localLastPageRead >
+                        0
+                    ) {
+                        MR.strings.opds_linktitle_continue_pages_local
+                    } else {
+                        MR.strings.opds_linktitle_start_pages_local
+                    }
+                links.add(
+                    OpdsLinkXml(
+                        rel = OpdsConstants.LINK_REL_PSE_STREAM,
+                        href = basePageHref,
+                        type = OpdsConstants.TYPE_IMAGE_JPEG,
+                        title = localTitleRes.localized(locale),
+                        pseCount = chapter.pageCount,
+                        pseLastRead = localLastPageRead.takeIf { it >= 0 },
+                        pseLastReadDate = chapter.lastReadAt.takeIf { it > 0 }?.let { OpdsDateUtil.formatEpochMillisForOpds(it * 1000) },
+                    ),
+                )
+                // Option 2: Remote progress
+                val remoteTitleRes =
+                    if (remoteLastPageRead >
+                        0
+                    ) {
+                        MR.strings.opds_linktitle_continue_pages_remote
+                    } else {
+                        MR.strings.opds_linktitle_start_pages_remote
+                    }
+                links.add(
+                    OpdsLinkXml(
+                        rel = OpdsConstants.LINK_REL_PSE_STREAM,
+                        href = basePageHref,
+                        type = OpdsConstants.TYPE_IMAGE_JPEG,
+                        title = remoteTitleRes.localized(locale, syncResult.device),
+                        pseCount = chapter.pageCount,
+                        pseLastRead = remoteLastPageRead,
+                        pseLastReadDate = remoteLastReadAt?.takeIf { it > 0 }?.let { OpdsDateUtil.formatEpochMillisForOpds(it * 1000) },
+                    ),
+                )
+            } else {
+                // Normal behavior: single progress link
+                val titleRes =
+                    if (finalLastPageRead >
+                        0
+                    ) {
+                        MR.strings.opds_linktitle_continue_pages
+                    } else {
+                        MR.strings.opds_linktitle_start_pages
+                    }
+                links.add(
+                    OpdsLinkXml(
+                        rel = OpdsConstants.LINK_REL_PSE_STREAM,
+                        href = basePageHref,
+                        type = OpdsConstants.TYPE_IMAGE_JPEG,
+                        title = titleRes.localized(locale),
+                        pseCount = chapter.pageCount,
+                        pseLastRead = finalLastPageRead.takeIf { it > 0 },
+                        pseLastReadDate = finalLastReadAt.takeIf { it > 0 }?.let { OpdsDateUtil.formatEpochMillisForOpds(it * 1000) },
+                    ),
+                )
+            }
             links.add(
                 OpdsLinkXml(
                     rel = OpdsConstants.LINK_REL_IMAGE,

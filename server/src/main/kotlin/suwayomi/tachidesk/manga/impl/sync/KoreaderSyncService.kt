@@ -57,6 +57,7 @@ object KoreaderSyncService {
     data class SyncResult(
         val pageRead: Int,
         val timestamp: Long, // Unix timestamp in seconds
+        val device: String,
         val shouldUpdate: Boolean = false,
         val isConflict: Boolean = false,
     )
@@ -225,7 +226,6 @@ object KoreaderSyncService {
         if (authResult.success) {
             serverConfig.koreaderSyncUsername.value = username
             serverConfig.koreaderSyncUserkey.value = userkey
-            serverConfig.koreaderSyncStrategy.value = KoreaderSyncStrategy.PROMPT
             return KoSyncConnectPayload(true, "Login successful.", username)
         }
 
@@ -235,7 +235,6 @@ object KoreaderSyncService {
             return if (registerResult.success) {
                 serverConfig.koreaderSyncUsername.value = username
                 serverConfig.koreaderSyncUserkey.value = userkey
-                serverConfig.koreaderSyncStrategy.value = KoreaderSyncStrategy.PROMPT
                 KoSyncConnectPayload(true, "Registration successful.", username)
             } else {
                 KoSyncConnectPayload(false, registerResult.message ?: "Registration failed.", null)
@@ -262,7 +261,7 @@ object KoreaderSyncService {
 
     suspend fun pushProgress(chapterId: Int) {
         val strategy = serverConfig.koreaderSyncStrategy.value
-        if (strategy == KoreaderSyncStrategy.DISABLE || strategy == KoreaderSyncStrategy.RECEIVE) return
+        if (strategy == KoreaderSyncStrategy.DISABLED || strategy == KoreaderSyncStrategy.RECEIVE) return
 
         val username = serverConfig.koreaderSyncUsername.value
         val userkey = serverConfig.koreaderSyncUserkey.value
@@ -328,7 +327,7 @@ object KoreaderSyncService {
 
     suspend fun checkAndPullProgress(chapterId: Int): SyncResult? {
         val strategy = serverConfig.koreaderSyncStrategy.value
-        if (strategy == KoreaderSyncStrategy.DISABLE || strategy == KoreaderSyncStrategy.SEND) return null
+        if (strategy == KoreaderSyncStrategy.DISABLED || strategy == KoreaderSyncStrategy.SEND) return null
 
         val username = serverConfig.koreaderSyncUsername.value
         val userkey = serverConfig.koreaderSyncUserkey.value
@@ -356,6 +355,7 @@ object KoreaderSyncService {
                     val progressResponse = json.decodeFromString(KoreaderProgressResponse.serializer(), body)
                     val pageRead = progressResponse.progress?.toIntOrNull()?.minus(1)
                     val timestamp = progressResponse.timestamp
+                    val device = progressResponse.device ?: "KOReader"
 
                     val localProgress =
                         transaction {
@@ -395,17 +395,17 @@ object KoreaderSyncService {
 
                         when (strategy) {
                             KoreaderSyncStrategy.RECEIVE -> {
-                                return SyncResult(pageRead, timestamp, shouldUpdate = true)
+                                return SyncResult(pageRead, timestamp, device, shouldUpdate = true)
                             }
                             KoreaderSyncStrategy.SILENT -> {
                                 if (timestamp > (localProgress?.lastReadAt ?: 0L)) {
-                                    return SyncResult(pageRead, timestamp, shouldUpdate = true)
+                                    return SyncResult(pageRead, timestamp, device, shouldUpdate = true)
                                 }
                             }
                             KoreaderSyncStrategy.PROMPT -> {
-                                return SyncResult(pageRead, timestamp, isConflict = true)
+                                return SyncResult(pageRead, timestamp, device, isConflict = true)
                             }
-                            else -> {} // SEND and DISABLE already handled at the start of the function
+                            else -> {} // SEND and DISABLED already handled at the start of the function
                         }
                     }
                 } else {

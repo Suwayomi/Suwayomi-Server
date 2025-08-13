@@ -10,7 +10,7 @@ enum class KoreaderSyncStrategy {
     SILENT, // Always use latest
     SEND, // Send changes only
     RECEIVE, // Receive changes only
-    DISABLE,
+    DISABLED,
 }
 
 data class KoSyncStatusPayload(

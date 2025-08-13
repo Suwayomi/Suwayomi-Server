@@ -14,6 +14,7 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
+import suwayomi.tachidesk.graphql.types.SyncConflictInfoType
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyById
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
@@ -256,6 +257,7 @@ class ChapterMutation {
         val clientMutationId: String?,
         val pages: List<String>,
         val chapter: ChapterType,
+        val syncConflict: SyncConflictInfoType?,
     )
 
     fun fetchChapterPages(input: FetchChapterPagesInput): CompletableFuture<DataFetcherResult<FetchChapterPagesPayload?>> {
@@ -263,28 +265,37 @@ class ChapterMutation {
         val paramsMap = input.toParams()
 
         return future {
-            var chapter = getChapterDownloadReadyById(chapterId)
-            val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id)
+            asDataFetcherResult {
+                var chapter = getChapterDownloadReadyById(chapterId)
+                val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id)
+                var syncConflictInfo: SyncConflictInfoType? = null
 
-            if (syncResult != null) {
-                if (syncResult.shouldUpdate) {
-                    // Update DB for SILENT and RECEIVE
-                    transaction {
-                        ChapterTable.update({ ChapterTable.id eq chapter.id }) {
-                            it[lastPageRead] = syncResult.pageRead
-                            it[lastReadAt] = syncResult.timestamp
+                if (syncResult != null) {
+                    if (syncResult.isConflict) {
+                        syncConflictInfo =
+                            SyncConflictInfoType(
+                                deviceName = syncResult.device,
+                                remotePage = syncResult.pageRead,
+                            )
+                    }
+
+                    if (syncResult.shouldUpdate) {
+                        // Update DB for SILENT and RECEIVE
+                        transaction {
+                            ChapterTable.update({ ChapterTable.id eq chapter.id }) {
+                                it[lastPageRead] = syncResult.pageRead
+                                it[lastReadAt] = syncResult.timestamp
+                            }
                         }
                     }
+                    // For PROMPT, SILENT, and RECEIVE, return the remote progress
+                    chapter =
+                        chapter.copy(
+                            lastPageRead = if (syncResult.shouldUpdate) syncResult.pageRead else chapter.lastPageRead,
+                            lastReadAt = if (syncResult.shouldUpdate) syncResult.timestamp else chapter.lastReadAt,
+                        )
                 }
-                // For PROMPT, SILENT, and RECEIVE, return the remote progress
-                chapter =
-                    chapter.copy(
-                        lastPageRead = syncResult.pageRead,
-                        lastReadAt = syncResult.timestamp,
-                    )
-            }
 
-            asDataFetcherResult {
                 val params =
                     buildString {
                         if (paramsMap.isNotEmpty()) {
@@ -307,6 +318,7 @@ class ChapterMutation {
                             "/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}/page/${index}$params"
                         },
                     chapter = ChapterType(chapter),
+                    syncConflict = syncConflictInfo,
                 )
             }
         }
