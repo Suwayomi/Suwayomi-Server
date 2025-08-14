@@ -26,6 +26,8 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import org.jetbrains.exposed.sql.SortOrder
 import suwayomi.tachidesk.graphql.types.AuthMode
+import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
+import suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy
 import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIInterface
@@ -194,6 +196,15 @@ class ServerConfig(
     val opdsShowOnlyUnreadChapters: MutableStateFlow<Boolean> by OverrideConfigValue()
     val opdsShowOnlyDownloadedChapters: MutableStateFlow<Boolean> by OverrideConfigValue()
     val opdsChapterSortOrder: MutableStateFlow<SortOrder> by OverrideConfigValue()
+
+    // koreader sync
+    val koreaderSyncServerUrl: MutableStateFlow<String> by OverrideConfigValue()
+    val koreaderSyncUsername: MutableStateFlow<String> by OverrideConfigValue()
+    val koreaderSyncUserkey: MutableStateFlow<String> by OverrideConfigValue()
+    val koreaderSyncDeviceId: MutableStateFlow<String> by OverrideConfigValue()
+    val koreaderSyncChecksumMethod: MutableStateFlow<KoreaderSyncChecksumMethod> by OverrideConfigValue()
+    val koreaderSyncStrategy: MutableStateFlow<KoreaderSyncStrategy> by OverrideConfigValue()
+    val koreaderSyncPercentageTolerance: MutableStateFlow<Double> by OverrideConfigValue()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun <T> subscribeTo(

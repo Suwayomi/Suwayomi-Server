@@ -19,6 +19,11 @@ import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import java.util.concurrent.CompletableFuture
 
+data class SyncConflictInfoType(
+    val deviceName: String,
+    val remotePage: Int,
+)
+
 class ChapterType(
     val id: Int,
     val url: String,

@@ -4,6 +4,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
 import org.jetbrains.exposed.sql.SortOrder
 import suwayomi.tachidesk.graphql.types.AuthMode
+import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
+import suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy
 import suwayomi.tachidesk.graphql.types.Settings
 import suwayomi.tachidesk.graphql.types.SettingsDownloadConversion
 import suwayomi.tachidesk.graphql.types.WebUIChannel
@@ -84,6 +86,14 @@ data class BackupServerSettings(
     @ProtoNumber(53) override var opdsShowOnlyUnreadChapters: Boolean,
     @ProtoNumber(54) override var opdsShowOnlyDownloadedChapters: Boolean,
     @ProtoNumber(55) override var opdsChapterSortOrder: SortOrder,
+    // koreader sync
+    @ProtoNumber(59) override var koreaderSyncServerUrl: String,
+    @ProtoNumber(60) override var koreaderSyncUsername: String,
+    @ProtoNumber(61) override var koreaderSyncUserkey: String,
+    @ProtoNumber(62) override var koreaderSyncDeviceId: String,
+    @ProtoNumber(63) override var koreaderSyncChecksumMethod: KoreaderSyncChecksumMethod,
+    @ProtoNumber(64) override var koreaderSyncStrategy: KoreaderSyncStrategy,
+    @ProtoNumber(65) override var koreaderSyncPercentageTolerance: Double,
 ) : Settings {
     @Serializable
     class BackupSettingsDownloadConversionType(
