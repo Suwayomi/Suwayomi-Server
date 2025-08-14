@@ -1,6 +1,8 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import suwayomi.tachidesk.graphql.types.KoSyncConnectPayload
+import suwayomi.tachidesk.graphql.types.LogoutKoSyncAccountPayload
+import suwayomi.tachidesk.graphql.types.SettingsType
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
@@ -14,21 +16,28 @@ class KoreaderSyncMutation {
 
     fun connectKoSyncAccount(input: ConnectKoSyncAccountInput): CompletableFuture<KoSyncConnectPayload> =
         future {
-            KoreaderSyncService.connect(input.username, input.password)
+            val result = KoreaderSyncService.connect(input.username, input.password)
+
+            KoSyncConnectPayload(
+                clientMutationId = input.clientMutationId,
+                success = result.success,
+                message = result.message,
+                username = result.username,
+                settings = SettingsType(),
+            )
         }
 
     data class LogoutKoSyncAccountInput(
         val clientMutationId: String? = null,
     )
 
-    data class LogoutKoSyncAccountPayload(
-        val clientMutationId: String?,
-        val success: Boolean,
-    )
-
     fun logoutKoSyncAccount(input: LogoutKoSyncAccountInput): CompletableFuture<LogoutKoSyncAccountPayload> =
         future {
             KoreaderSyncService.logout()
-            LogoutKoSyncAccountPayload(input.clientMutationId, true)
+            LogoutKoSyncAccountPayload(
+                clientMutationId = input.clientMutationId,
+                success = true,
+                settings = SettingsType(),
+            )
         }
 }
