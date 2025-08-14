@@ -14,7 +14,6 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import suwayomi.tachidesk.graphql.types.KoSyncConnectPayload
 import suwayomi.tachidesk.graphql.types.KoSyncStatusPayload
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy
@@ -60,6 +59,12 @@ object KoreaderSyncService {
         val device: String,
         val shouldUpdate: Boolean = false,
         val isConflict: Boolean = false,
+    )
+
+    data class ConnectResult(
+        val success: Boolean,
+        val message: String? = null,
+        val username: String? = null,
     )
 
     private data class AuthResult(
@@ -219,14 +224,14 @@ object KoreaderSyncService {
     suspend fun connect(
         username: String,
         password: String,
-    ): KoSyncConnectPayload {
+    ): ConnectResult {
         val userkey = Hash.md5(password)
         val authResult = authorize(username, userkey)
 
         if (authResult.success) {
             serverConfig.koreaderSyncUsername.value = username
             serverConfig.koreaderSyncUserkey.value = userkey
-            return KoSyncConnectPayload(true, "Login successful.", username)
+            return ConnectResult(true, "Login successful.", username)
         }
 
         if (authResult.isUserNotFoundError) {
@@ -235,13 +240,13 @@ object KoreaderSyncService {
             return if (registerResult.success) {
                 serverConfig.koreaderSyncUsername.value = username
                 serverConfig.koreaderSyncUserkey.value = userkey
-                KoSyncConnectPayload(true, "Registration successful.", username)
+                ConnectResult(true, "Registration successful.", username)
             } else {
-                KoSyncConnectPayload(false, registerResult.message ?: "Registration failed.", null)
+                ConnectResult(false, registerResult.message ?: "Registration failed.", null)
             }
         }
 
-        return KoSyncConnectPayload(false, authResult.message ?: "Authentication failed.", null)
+        return ConnectResult(false, authResult.message ?: "Authentication failed.", null)
     }
 
     suspend fun logout() {
