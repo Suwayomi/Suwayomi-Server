@@ -217,10 +217,10 @@
     <div class="copydialog" id="copydialog">
         <div class="copydialog__inner">
             <div class="copydialog__title">
-                <h2>Copy</h2>
-                <button type="button" class="close" id="copyclose" title="Close">&times;</button>
+                <h2>${MR.strings.webview_label_copy.localized(locale)}</h2>
+                <button type="button" class="close" id="copyclose" title="${MR.strings.label_close.localized(locale)}">&times;</button>
             </div>
-            <p>Automatic clipboard copy failed, please use the input below to manually copy the value.</p>
+            <p>${MR.strings.webview_label_copy_description.localized(locale)}</p>
             <input type="text" id="copyinput" disabled readonly/>
         </div>
     </div>

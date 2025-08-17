@@ -591,14 +591,20 @@ class KcefWebView {
     fun copy() {
         val frame = browser?.focusedFrame ?: return
         frame.copy()
-        val clip = try { Toolkit.getDefaultToolkit().getSystemClipboard() } catch (e: HeadlessException) {
-            logger.warn(e) { "Failed to get clipboard" }
-            return
-        }
-        val text = try { clip.getData(DataFlavor.stringFlavor) as String } catch (e: Exception) {
-            logger.warn(e) { "Failed to get clipboard contents" }
-            return
-        }
+        val clip =
+            try {
+                Toolkit.getDefaultToolkit().getSystemClipboard()
+            } catch (e: HeadlessException) {
+                logger.warn(e) { "Failed to get clipboard" }
+                return
+            }
+        val text =
+            try {
+                clip.getData(DataFlavor.stringFlavor) as String
+            } catch (e: Exception) {
+                logger.warn(e) { "Failed to get clipboard contents" }
+                return
+            }
         WebView.notifyAllClients(
             Json.encodeToString<Event>(
                 CopyEvent(text),

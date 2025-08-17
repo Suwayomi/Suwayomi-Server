@@ -87,7 +87,7 @@ object WebView : Websocket<String>() {
 
     @Serializable
     @SerialName("copy")
-    class JsCopyMessage() : TypeObject()
+    class JsCopyMessage : TypeObject()
 
     override fun handleRequest(ctx: WsMessageContext) {
         val dr = driver ?: return
