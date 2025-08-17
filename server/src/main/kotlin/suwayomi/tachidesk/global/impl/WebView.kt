@@ -85,6 +85,10 @@ object WebView : Websocket<String>() {
         val data: String,
     ) : TypeObject()
 
+    @Serializable
+    @SerialName("copy")
+    class JsCopyMessage() : TypeObject()
+
     override fun handleRequest(ctx: WsMessageContext) {
         val dr = driver ?: return
         try {
@@ -105,6 +109,9 @@ object WebView : Websocket<String>() {
                 }
                 is JsPasteMessage -> {
                     dr.paste(event.data)
+                }
+                is JsCopyMessage -> {
+                    dr.copy()
                 }
             }
         } catch (e: Exception) {

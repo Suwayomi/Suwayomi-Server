@@ -27,7 +27,10 @@ import org.cef.network.CefCookieManager
 import org.cef.network.CefRequest
 import uy.kohesive.injekt.injectLazy
 import java.awt.Component
+import java.awt.HeadlessException
 import java.awt.Rectangle
+import java.awt.Toolkit
+import java.awt.datatransfer.DataFlavor
 import java.awt.event.InputEvent
 import java.awt.event.KeyEvent
 import java.awt.event.MouseEvent
@@ -111,6 +114,12 @@ class KcefWebView {
         val title: String,
         val status: Int = 0,
         val error: String? = null,
+    ) : Event()
+
+    @Serializable
+    @SerialName("copy")
+    private data class CopyEvent(
+        val content: String,
     ) : Event()
 
     private inner class DisplayHandler : CefDisplayHandlerAdapter() {
@@ -570,7 +579,6 @@ class KcefWebView {
         }
     }
 
-
     fun paste(msg: String) {
         val component = browser?.uiComponent ?: return
         for (c in msg) {
@@ -578,6 +586,24 @@ class KcefWebView {
             keyEvent(c, component, KeyEvent.KEY_TYPED, 0)?.let { browser!!.sendKeyEvent(it) }
             browser!!.sendKeyEvent(keyEvent(c, component, KeyEvent.KEY_RELEASED, 0)!!)
         }
+    }
+
+    fun copy() {
+        val frame = browser?.focusedFrame ?: return
+        frame.copy()
+        val clip = try { Toolkit.getDefaultToolkit().getSystemClipboard() } catch (e: HeadlessException) {
+            logger.warn(e) { "Failed to get clipboard" }
+            return
+        }
+        val text = try { clip.getData(DataFlavor.stringFlavor) as String } catch (e: Exception) {
+            logger.warn(e) { "Failed to get clipboard contents" }
+            return
+        }
+        WebView.notifyAllClients(
+            Json.encodeToString<Event>(
+                CopyEvent(text),
+            ),
+        )
     }
 
     fun canGoBack(): Boolean = browser!!.canGoBack()

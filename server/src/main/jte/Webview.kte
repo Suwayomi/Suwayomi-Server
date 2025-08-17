@@ -131,6 +131,59 @@
         main .status:empty {
             display: none;
         }
+        .copydialog {
+            display: none;
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            padding: 6px;
+        }
+        .copydialog.show {
+            display: block;
+        }
+        .copydialog::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: black;
+            opacity: 0.3;
+        }
+        .copydialog__inner {
+            position: relative;
+            max-width: 960px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background: #eee;
+            padding: 8px;
+            margin: auto;
+            height: 100%;
+        }
+        .copydialog__title {
+            display: flex;
+            flex-wrap: nowrap;
+            justify-content: space-between;
+        }
+        .copydialog input {
+            width: 100%;
+        }
+        .copydialog .close {
+            flex-shrink: 1;
+            all: unset;
+            cursor: pointer;
+            align-self: start;
+            font-size: 2rem;
+            line-height: 1;
+        }
+        @media (min-width: 500px) {
+            .copydialog {
+                padding: 24px;
+            }
+            .copydialog__inner {
+                padding: 12px 18px;
+                height: auto;
+            }
+        }
 
         /* https://css-tricks.com/snippets/css/css-triangle/ */
         .arrow-right {
@@ -161,9 +214,22 @@
         <canvas id="frame"></canvas>
         <input type="text" id="inputtrap" autocomplete="off"/>
     </main>
+    <div class="copydialog" id="copydialog">
+        <div class="copydialog__inner">
+            <div class="copydialog__title">
+                <h2>Copy</h2>
+                <button type="button" class="close" id="copyclose" title="Close">&times;</button>
+            </div>
+            <p>Automatic clipboard copy failed, please use the input below to manually copy the value.</p>
+            <input type="text" id="copyinput" disabled readonly/>
+        </div>
+    </div>
     <script>
         const messageDiv = document.getElementById('message');
         const statusDiv = document.getElementById('status');
+        const copyDiv = document.getElementById('copydialog');
+        const copyInput = document.getElementById('copyinput');
+        const copyClose = document.getElementById('copyclose');
         const frame = document.getElementById('frame');
         const frameInput = document.getElementById('inputtrap');
         const ctx = frame.getContext("2d");
@@ -189,6 +255,10 @@
             } catch (e) {
                 console.error(e);
             }
+
+            copyClose.addEventListener('click', () => {
+                copyDiv.classList.remove('show');
+            });
 
             /// Helpers
 
@@ -228,6 +298,20 @@
                 socket.send(JSON.stringify({ type: 'loadUrl', url: u, width: frame.clientWidth, height: frame.clientHeight }));
                 ctx.clearRect(0, 0, frame.width, frame.height);
             };
+
+            const copy = (data) => {
+                try {
+                    if (!!navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(data);
+                        return;
+                    }
+                    console.warn('Clipbaord API not supported (not served over HTTPS?), presenting dialog');
+                } catch (e) {
+                    console.error('Clipboard access threw, presenting dialog', e);
+                }
+                copyInput.value = data;
+                copyDiv.classList.add('show');
+            }
 
             /// Form
 
@@ -293,6 +377,9 @@
                         const lg = obj.severity == 4 ? console.error : obj.severity == 3 ? console.warn : console.log;
                         lg(obj.source + ':' + obj.line + ':', obj.message);
                     } break;
+                    case "copy":
+                        copy(obj.content);
+                        break;
                     default:
                         console.warn("Unknown event", obj.type)
                         break;
@@ -326,6 +413,14 @@
                 if (e.key === "Unidentified") return;
                 // paste is handled below
                 if (e.key === "v" && e.ctrlKey === true) return;
+                if (e.key === "c" && e.ctrlKey === true) {
+                    if (e.type === "keydown") {
+                        socket.send(JSON.stringify({
+                            type: 'copy',
+                        }));
+                    }
+                    return;
+                }
                 e.preventDefault();
                 const rect = frame.getBoundingClientRect();
                 const clickX = e.clientX !== undefined ? e.clientX - rect.left : 0;
