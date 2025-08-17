@@ -79,6 +79,12 @@ object WebView : Websocket<String>() {
         val deltaY: Float? = null,
     ) : TypeObject()
 
+    @Serializable
+    @SerialName("paste")
+    data class JsPasteMessage(
+        val data: String,
+    ) : TypeObject()
+
     override fun handleRequest(ctx: WsMessageContext) {
         val dr = driver ?: return
         try {
@@ -96,6 +102,9 @@ object WebView : Websocket<String>() {
                 }
                 is JsEventMessage -> {
                     dr.event(event)
+                }
+                is JsPasteMessage -> {
+                    dr.paste(event.data)
                 }
             }
         } catch (e: Exception) {
