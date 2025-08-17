@@ -468,9 +468,8 @@
             observer.observe(frame);
 
             const frameEvent = (e) => {
-                console.log(e);
                 e.preventDefault();
-                if (e.type === "click" && contextMenuDiv.classList.contains('show')) {
+                if (e.type === "mousedown" && contextMenuDiv.classList.contains('show')) {
                     console.log('remove context menu');
                     contextMenuDiv.classList.remove('show');
                     return;
@@ -512,7 +511,7 @@
 
             const attachEvents = () => {
                 console.log('Attaching event handlers to new document');
-                const events = ["click", "mousedown", "mouseup", "mousemove", "wheel", "keydown", "keyup"];
+                const events = ["mousedown", "mouseup", "mousemove", "wheel", "keydown", "keyup"];
                 for (const ev of events) {
                     frameInput.addEventListener(ev, frameEvent, false);
                 }
