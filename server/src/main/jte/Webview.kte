@@ -131,6 +131,34 @@
         main .status:empty {
             display: none;
         }
+        main .contextmenu {
+            display: none;
+            position: absolute;
+            right: 0;
+            max-width: fit-content;
+            min-height: calc(1.5em + 2px + 2px + 4px);
+            min-width: 120px;
+            flex-wrap: wrap;
+            border-radius: 4px;
+            border: 1px solid #333;
+        }
+        main .contextmenu.show {
+            display: flex;
+        }
+        main .contextmenu button {
+            all: unset;
+            line-height: 1.5;
+            flex-grow: 1;
+            background: white;
+            transition: background 0.1s ease-in-out;
+            cursor: pointer;
+            border: 0.5px solid #666;
+            padding: 2px 4px;
+            text-align: center;
+        }
+        main .contextmenu button:hover {
+            background: #eee;
+        }
         .copydialog {
             display: none;
             position: absolute;
@@ -213,8 +241,12 @@
         <div class="status" id="status"></div>
         <canvas id="frame"></canvas>
         <input type="text" id="inputtrap" autocomplete="off"/>
+        <div class="contextmenu" id="contextmenu" role="menu">
+            <button type="button" id="menu_copy" role="menuitem">Copy</button>
+            <button type="button" id="menu_paste" role="menuitem">Paste</button>
+        </div>
     </main>
-    <div class="copydialog" id="copydialog">
+    <div class="copydialog" id="copydialog" role="dialog">
         <div class="copydialog__inner">
             <div class="copydialog__title">
                 <h2>${MR.strings.webview_label_copy.localized(locale)}</h2>
@@ -230,6 +262,9 @@
         const copyDiv = document.getElementById('copydialog');
         const copyInput = document.getElementById('copyinput');
         const copyClose = document.getElementById('copyclose');
+        const contextMenuDiv = document.getElementById('contextmenu');
+        const contextMenuCopy = document.getElementById('menu_copy');
+        const contextMenuPaste = document.getElementById('menu_paste');
         const frame = document.getElementById('frame');
         const frameInput = document.getElementById('inputtrap');
         const ctx = frame.getContext("2d");
@@ -259,6 +294,30 @@
             copyClose.addEventListener('click', () => {
                 copyDiv.classList.remove('show');
             });
+
+            contextMenuCopy.addEventListener('click', () => {
+                socket.send(JSON.stringify({
+                    type: 'copy',
+                }));
+                contextMenuDiv.classList.remove('show');
+            });
+
+            contextMenuPaste.addEventListener('click', () => {
+                navigator.clipboard.readText().then(data => {
+                    socket.send(JSON.stringify({
+                        type: 'paste',
+                        data: data,
+                    }));
+                });
+                contextMenuDiv.classList.remove('show');
+            });
+
+            if (!navigator.clipboard || !navigator.clipboard.readText) {
+                // if not served via HTTPS, remove the button, users can still paste via clipboard
+                // e.g. Ctrl+V or the dedicated paste button on gboard
+                // TODO: dialog like with copy?
+                contextMenuPaste.remove();
+            }
 
             /// Helpers
 
@@ -301,7 +360,7 @@
 
             const copy = (data) => {
                 try {
-                    if (!!navigator.clipboard.writeText) {
+                    if (!!navigator.clipboard && !!navigator.clipboard.writeText) {
                         navigator.clipboard.writeText(data);
                         return;
                     }
@@ -409,9 +468,18 @@
             observer.observe(frame);
 
             const frameEvent = (e) => {
-                // Chrome Android bug, see below
+                console.log(e);
+                e.preventDefault();
+                if (e.type === "click" && contextMenuDiv.classList.contains('show')) {
+                    console.log('remove context menu');
+                    contextMenuDiv.classList.remove('show');
+                    return;
+                }
+                // right-click, handled in contextmenu below
+                if (e.type === "mousedown" && e.button === 2) return;
+                // Chrome Android bug, see input below
                 if (e.key === "Unidentified") return;
-                // paste is handled below
+                // paste is handled in input below
                 if (e.key === "v" && e.ctrlKey === true) return;
                 if (e.key === "c" && e.ctrlKey === true) {
                     if (e.type === "keydown") {
@@ -421,7 +489,6 @@
                     }
                     return;
                 }
-                e.preventDefault();
                 const rect = frame.getBoundingClientRect();
                 const clickX = e.clientX !== undefined ? e.clientX - rect.left : 0;
                 const clickY = e.clientY !== undefined ? e.clientY - rect.top : 0;
@@ -503,6 +570,16 @@
                 });
                 frameInput.addEventListener('contextmenu', e => {
                     e.preventDefault();
+                    contextMenuDiv.style.left = e.offsetX + 'px';
+                    contextMenuDiv.style.top = e.offsetY + 'px';
+                    contextMenuDiv.classList.add('show');
+
+                    const shiftLeft = contextMenuDiv.offsetParent.offsetWidth - contextMenuDiv.offsetWidth - contextMenuDiv.offsetLeft;
+                    if (shiftLeft < 0)
+                        contextMenuDiv.style.left = (e.offsetX + shiftLeft) + 'px';
+                    const shiftTop = contextMenuDiv.offsetParent.offsetHeight - contextMenuDiv.offsetHeight - contextMenuDiv.offsetTop;
+                    if (shiftTop < 0)
+                        contextMenuDiv.style.top = (e.offsetY + shiftTop) + 'px';
                 }, false);
             };
             attachEvents();
