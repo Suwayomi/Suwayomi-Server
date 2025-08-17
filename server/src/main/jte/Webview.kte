@@ -468,14 +468,6 @@
             observer.observe(frame);
 
             const frameEvent = (e) => {
-                e.preventDefault();
-                if (e.type === "mousedown" && contextMenuDiv.classList.contains('show')) {
-                    console.log('remove context menu');
-                    contextMenuDiv.classList.remove('show');
-                    return;
-                }
-                // right-click, handled in contextmenu below
-                if (e.type === "mousedown" && e.button === 2) return;
                 // Chrome Android bug, see input below
                 if (e.key === "Unidentified") return;
                 // paste is handled in input below
@@ -488,6 +480,14 @@
                     }
                     return;
                 }
+                e.preventDefault();
+                if (e.type === "mousedown" && contextMenuDiv.classList.contains('show')) {
+                    console.log('remove context menu');
+                    contextMenuDiv.classList.remove('show');
+                    return;
+                }
+                // right-click, handled in contextmenu below
+                if (e.type === "mousedown" && e.button === 2) return;
                 const rect = frame.getBoundingClientRect();
                 const clickX = e.clientX !== undefined ? e.clientX - rect.left : 0;
                 const clickY = e.clientY !== undefined ? e.clientY - rect.top : 0;
