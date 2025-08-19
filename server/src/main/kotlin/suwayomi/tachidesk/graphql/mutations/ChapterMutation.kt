@@ -1,6 +1,8 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import graphql.execution.DataFetcherResult
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
@@ -8,11 +10,14 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
+import suwayomi.tachidesk.graphql.types.SyncConflictInfoType
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyById
+import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -68,8 +73,10 @@ class ChapterMutation {
                     ChapterTable
                         .select(ChapterTable.id, ChapterTable.pageCount)
                         .where { ChapterTable.id inList ids }
-                        .groupBy { it[ChapterTable.id].value }
-                        .mapValues { it.value.firstOrNull()?.let { it[ChapterTable.pageCount] } }
+                        .associateBy(
+                            { it[ChapterTable.id].value },
+                            { it[ChapterTable.pageCount] },
+                        )
                 } else {
                     emptyMap()
                 }
@@ -91,6 +98,15 @@ class ChapterMutation {
                         }
                     }
                     execute(this@transaction)
+                }
+            }
+        }
+
+        // Sync with KoreaderSync when progress is updated
+        if (patch.lastPageRead != null || patch.isRead == true) {
+            GlobalScope.launch {
+                ids.forEach { chapterId ->
+                    KoreaderSyncService.pushProgress(chapterId)
                 }
             }
         }
@@ -241,6 +257,7 @@ class ChapterMutation {
         val clientMutationId: String?,
         val pages: List<String>,
         val chapter: ChapterType,
+        val syncConflict: SyncConflictInfoType?,
     )
 
     fun fetchChapterPages(input: FetchChapterPagesInput): CompletableFuture<DataFetcherResult<FetchChapterPagesPayload?>> {
@@ -249,7 +266,35 @@ class ChapterMutation {
 
         return future {
             asDataFetcherResult {
-                val chapter = getChapterDownloadReadyById(chapterId)
+                var chapter = getChapterDownloadReadyById(chapterId)
+                val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id)
+                var syncConflictInfo: SyncConflictInfoType? = null
+
+                if (syncResult != null) {
+                    if (syncResult.isConflict) {
+                        syncConflictInfo =
+                            SyncConflictInfoType(
+                                deviceName = syncResult.device,
+                                remotePage = syncResult.pageRead,
+                            )
+                    }
+
+                    if (syncResult.shouldUpdate) {
+                        // Update DB for SILENT and RECEIVE
+                        transaction {
+                            ChapterTable.update({ ChapterTable.id eq chapter.id }) {
+                                it[lastPageRead] = syncResult.pageRead
+                                it[lastReadAt] = syncResult.timestamp
+                            }
+                        }
+                    }
+                    // For PROMPT, SILENT, and RECEIVE, return the remote progress
+                    chapter =
+                        chapter.copy(
+                            lastPageRead = if (syncResult.shouldUpdate) syncResult.pageRead else chapter.lastPageRead,
+                            lastReadAt = if (syncResult.shouldUpdate) syncResult.timestamp else chapter.lastReadAt,
+                        )
+                }
 
                 val params =
                     buildString {
@@ -273,6 +318,7 @@ class ChapterMutation {
                             "/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}/page/${index}$params"
                         },
                     chapter = ChapterType(chapter),
+                    syncConflict = syncConflictInfo,
                 )
             }
         }
