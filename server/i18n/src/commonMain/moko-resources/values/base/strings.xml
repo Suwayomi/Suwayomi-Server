@@ -130,6 +130,7 @@
 
     <string name="label_error">Error</string>
     <string name="label_version">Version <xliff:g id="version" example="v2.0.1833">%1$s</xliff:g></string>
+    <string name="label_close">Close</string>
 
     <string name="webview_label_title">Suwayomi WebView</string>
     <string name="webview_label_disconnected">Disconnected, please refresh</string>
@@ -138,6 +139,8 @@
     <string name="webview_label_init">Initializing... Please wait</string>
     <string name="webview_label_getstarted">Enter a URL to get started</string>
     <string name="webview_label_loading">Loading page...</string>
+    <string name="webview_label_copy">Copy to Clipboard</string>
+    <string name="webview_label_copy_description">Automatic clipboard copy failed, please use the input below to manually copy the value.</string>
     <string name="webview_placeholder_url">Enter URL...</string>
 
     <string name="login_label_title">Suwayomi Login</string>
