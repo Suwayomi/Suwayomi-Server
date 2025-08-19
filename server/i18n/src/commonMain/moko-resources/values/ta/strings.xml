@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="opds_feeds_search_results">தேடல் முடிவுகள்</string>
     <string name="opds_feeds_status_title">நிலை</string>
     <string name="opds_feeds_genres_title">வகைகள்</string>
     <string name="opds_feeds_status_entry_content">வெளியீட்டு நிலை மூலம் மங்காவை உலாவுக</string>
@@ -25,9 +24,6 @@
     <string name="opds_search_description">பட்டியலில் மங்காவைத் தேடுங்கள்</string>
     <string name="opds_feeds_manga_chapters">%1$s அத்தியாயங்கள்</string>
     <string name="opds_feeds_chapter_details">%1$s | %2$s | விவரங்கள்</string>
-    <string name="opds_feeds_all_manga_title">அனைத்து மங்கா</string>
-    <string name="opds_feeds_all_manga_entry_content">உங்கள் நூலகத்தில் அனைத்து மங்காவையும் உலாவுக</string>
-    <string name="opds_feeds_sources_entry_content">மங்காவை மூலத்தால் உலாவுக</string>
     <string name="opds_feeds_categories_entry_content">வகைகளால் ஏற்பாடு செய்யப்பட்ட மங்காவை உலாவுக</string>
     <string name="opds_feeds_genres_entry_content">வகை குறிச்சொற்களால் மங்காவை உலாவுக</string>
     <string name="opds_feeds_languages_entry_content">உள்ளடக்க மொழியால் மங்காவை உலாவுக</string>
@@ -40,7 +36,6 @@
     <string name="opds_error_manga_not_found">அடையாளம் %1$d உடன் மங்கா காணப்படவில்லை</string>
     <string name="opds_error_chapter_not_found">குறியீட்டு %1$d உடன் அத்தியாயம் காணப்படவில்லை</string>
     <string name="opds_facetgroup_sort_order">வரிசைப்படுத்தும் முறை</string>
-    <string name="opds_facetgroup_read_status">நிலையைப் படியுங்கள்</string>
     <string name="opds_facet_sort_oldest_first">முதலில் பழமையானது</string>
     <string name="opds_facet_sort_newest_first">புதிய முதல்</string>
     <string name="opds_facet_sort_date_asc">தேதி ஏறுதல்</string>
@@ -52,13 +47,10 @@
     <string name="opds_linktitle_download_cbz">CBZ ஐ பதிவிறக்கவும்</string>
     <string name="opds_linktitle_stream_pages">பக்கங்களைக் காண்க (ச்ட்ரீமிங்)</string>
     <string name="opds_linktitle_chapter_cover">அத்தியாயம் கவர்</string>
-    <string name="opds_linktitle_current_page">தற்போதைய பக்கம்</string>
     <string name="opds_linktitle_self_feed">தற்போதைய ஊட்டம்</string>
     <string name="opds_chapter_status_downloaded">⬇️</string>
     <string name="opds_chapter_status_read">✅</string>
     <string name="opds_chapter_status_in_progress">⌛</string>
-    <string name="opds_chapter_status_error">⚠️</string>
-    <string name="opds_chapter_status_unknown">❔</string>
     <string name="opds_chapter_status_unread">⭕</string>
     <string name="opds_chapter_details_base">%1$s | %2$s</string>
     <string name="opds_feeds_genre_specific_title">இசைவகை: %1$s</string>
