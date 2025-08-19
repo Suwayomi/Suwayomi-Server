@@ -10,6 +10,7 @@ package suwayomi.tachidesk.manga.impl
 import androidx.preference.Preference
 import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.source.ConfigurableSource
+import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.source.sourcePreferences
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.json.JsonMapper
@@ -41,14 +42,15 @@ object Source {
                 val sourceExtension = ExtensionTable.selectAll().where { ExtensionTable.id eq it[SourceTable.extension] }.first()
 
                 SourceDataClass(
-                    it[SourceTable.id].value.toString(),
-                    it[SourceTable.name],
-                    it[SourceTable.lang],
-                    getExtensionIconUrl(sourceExtension[ExtensionTable.apkName]),
-                    catalogueSource.supportsLatest,
-                    catalogueSource is ConfigurableSource,
-                    it[SourceTable.isNsfw],
-                    catalogueSource.toString(),
+                    id = it[SourceTable.id].value.toString(),
+                    name = it[SourceTable.name],
+                    lang = it[SourceTable.lang],
+                    iconUrl = getExtensionIconUrl(sourceExtension[ExtensionTable.apkName]),
+                    supportsLatest = catalogueSource.supportsLatest,
+                    isConfigurable = catalogueSource is ConfigurableSource,
+                    isNsfw = it[SourceTable.isNsfw],
+                    displayName = catalogueSource.toString(),
+                    baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
                 )
             }
         }
@@ -61,16 +63,18 @@ object Source {
             val extension = ExtensionTable.selectAll().where { ExtensionTable.id eq source[SourceTable.extension] }.first()
 
             SourceDataClass(
-                sourceId.toString(),
-                source[SourceTable.name],
-                source[SourceTable.lang],
-                getExtensionIconUrl(
-                    extension[ExtensionTable.apkName],
-                ),
-                catalogueSource.supportsLatest,
-                catalogueSource is ConfigurableSource,
-                source[SourceTable.isNsfw],
-                catalogueSource.toString(),
+                id = sourceId.toString(),
+                name = source[SourceTable.name],
+                lang = source[SourceTable.lang],
+                iconUrl =
+                    getExtensionIconUrl(
+                        extension[ExtensionTable.apkName],
+                    ),
+                supportsLatest = catalogueSource.supportsLatest,
+                isConfigurable = catalogueSource is ConfigurableSource,
+                isNsfw = source[SourceTable.isNsfw],
+                displayName = catalogueSource.toString(),
+                baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
             )
         }
     }
