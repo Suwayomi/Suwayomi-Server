@@ -94,4 +94,26 @@ object ChapterDownloadHelper {
 
         return Triple(cbzFile.first, fileName, cbzFile.second)
     }
+
+    fun getCbzMetadataForDownload(chapterId: Int): Triple<String, Long, String> { // fileName, fileSize, contentType
+        val (chapterData, mangaTitle) =
+            transaction {
+                val row =
+                    (ChapterTable innerJoin MangaTable)
+                        .select(ChapterTable.columns + MangaTable.columns)
+                        .where { ChapterTable.id eq chapterId }
+                        .firstOrNull() ?: throw IllegalArgumentException("ChapterId $chapterId not found")
+                val chapter = ChapterTable.toDataClass(row)
+                val title = row[MangaTable.title]
+                Pair(chapter, title)
+            }
+
+        val scanlatorPart = chapterData.scanlator?.let { "[$it] " } ?: ""
+        val fileName = "$mangaTitle - $scanlatorPart${chapterData.name}.cbz"
+
+        val fileSize = provider(chapterData.mangaId, chapterData.id).getArchiveSize()
+        val contentType = "application/vnd.comicbook+zip"
+
+        return Triple(fileName, fileSize, contentType)
+    }
 }

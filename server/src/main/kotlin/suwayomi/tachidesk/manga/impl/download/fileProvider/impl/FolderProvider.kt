@@ -101,4 +101,11 @@ class FolderProvider(
         val zipData = byteArrayOutputStream.toByteArray()
         return ByteArrayInputStream(zipData) to zipData.size.toLong()
     }
+
+    override fun getArchiveSize(): Long {
+        val chapterDir = File(getChapterDownloadPath(mangaId, chapterId))
+        if (!chapterDir.exists() || !chapterDir.isDirectory) return 0L
+        // Approximation: actual CBZ size is slightly larger due to ZIP metadata, but sufficient for Content-Length header.
+        return chapterDir.listFiles()?.filter { it.isFile }?.sumOf { it.length() } ?: 0L
+    }
 }
