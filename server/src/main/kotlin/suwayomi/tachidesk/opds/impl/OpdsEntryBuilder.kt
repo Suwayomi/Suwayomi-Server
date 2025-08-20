@@ -325,7 +325,6 @@ object OpdsEntryBuilder {
             }
         }
 
-        // Integrated `buildChapterSummary` logic here
         val details =
             buildString {
                 append(MR.strings.opds_chapter_details_base.localized(locale, manga.title, chapter.name))
@@ -338,7 +337,6 @@ object OpdsEntryBuilder {
 
         val entryTitle = "$titlePrefix ${chapter.name}"
 
-        // Integrated `buildChapterLinks` logic here
         val links = mutableListOf<OpdsLinkXml>()
         chapter.url?.let {
             links.add(
