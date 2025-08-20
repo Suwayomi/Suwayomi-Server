@@ -131,6 +131,87 @@
         main .status:empty {
             display: none;
         }
+        main .contextmenu {
+            display: none;
+            position: absolute;
+            right: 0;
+            max-width: fit-content;
+            min-height: calc(1.5em + 2px + 2px + 4px);
+            min-width: 120px;
+            flex-wrap: wrap;
+            border-radius: 4px;
+            border: 1px solid #333;
+        }
+        main .contextmenu.show {
+            display: flex;
+        }
+        main .contextmenu button {
+            all: unset;
+            line-height: 1.5;
+            flex-grow: 1;
+            background: white;
+            transition: background 0.1s ease-in-out;
+            cursor: pointer;
+            border: 0.5px solid #666;
+            padding: 2px 4px;
+            text-align: center;
+        }
+        main .contextmenu button:hover {
+            background: #eee;
+        }
+        .copydialog {
+            display: none;
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            padding: 6px;
+        }
+        .copydialog.show {
+            display: block;
+        }
+        .copydialog::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: black;
+            opacity: 0.3;
+        }
+        .copydialog__inner {
+            position: relative;
+            max-width: 960px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background: #eee;
+            padding: 8px;
+            margin: auto;
+            height: 100%;
+        }
+        .copydialog__title {
+            display: flex;
+            flex-wrap: nowrap;
+            justify-content: space-between;
+        }
+        .copydialog input {
+            width: 100%;
+        }
+        .copydialog .close {
+            flex-shrink: 1;
+            all: unset;
+            cursor: pointer;
+            align-self: start;
+            font-size: 2rem;
+            line-height: 1;
+        }
+        @media (min-width: 500px) {
+            .copydialog {
+                padding: 24px;
+            }
+            .copydialog__inner {
+                padding: 12px 18px;
+                height: auto;
+            }
+        }
 
         /* https://css-tricks.com/snippets/css/css-triangle/ */
         .arrow-right {
@@ -160,10 +241,30 @@
         <div class="status" id="status"></div>
         <canvas id="frame"></canvas>
         <input type="text" id="inputtrap" autocomplete="off"/>
+        <div class="contextmenu" id="contextmenu" role="menu">
+            <button type="button" id="menu_copy" role="menuitem">Copy</button>
+            <button type="button" id="menu_paste" role="menuitem">Paste</button>
+        </div>
     </main>
+    <div class="copydialog" id="copydialog" role="dialog">
+        <div class="copydialog__inner">
+            <div class="copydialog__title">
+                <h2>${MR.strings.webview_label_copy.localized(locale)}</h2>
+                <button type="button" class="close" id="copyclose" title="${MR.strings.label_close.localized(locale)}">&times;</button>
+            </div>
+            <p>${MR.strings.webview_label_copy_description.localized(locale)}</p>
+            <input type="text" id="copyinput" disabled readonly/>
+        </div>
+    </div>
     <script>
         const messageDiv = document.getElementById('message');
         const statusDiv = document.getElementById('status');
+        const copyDiv = document.getElementById('copydialog');
+        const copyInput = document.getElementById('copyinput');
+        const copyClose = document.getElementById('copyclose');
+        const contextMenuDiv = document.getElementById('contextmenu');
+        const contextMenuCopy = document.getElementById('menu_copy');
+        const contextMenuPaste = document.getElementById('menu_paste');
         const frame = document.getElementById('frame');
         const frameInput = document.getElementById('inputtrap');
         const ctx = frame.getContext("2d");
@@ -192,6 +293,34 @@
                 url = window.decodeURIComponent(window.location.hash.replace(/^#/, ''));
             } catch (e) {
                 console.error(e);
+            }
+
+            copyClose.addEventListener('click', () => {
+                copyDiv.classList.remove('show');
+            });
+
+            contextMenuCopy.addEventListener('click', () => {
+                socket.send(JSON.stringify({
+                    type: 'copy',
+                }));
+                contextMenuDiv.classList.remove('show');
+            });
+
+            contextMenuPaste.addEventListener('click', () => {
+                navigator.clipboard.readText().then(data => {
+                    socket.send(JSON.stringify({
+                        type: 'paste',
+                        data: data,
+                    }));
+                });
+                contextMenuDiv.classList.remove('show');
+            });
+
+            if (!navigator.clipboard || !navigator.clipboard.readText) {
+                // if not served via HTTPS, remove the button, users can still paste via clipboard
+                // e.g. Ctrl+V or the dedicated paste button on gboard
+                // TODO: dialog like with copy?
+                contextMenuPaste.remove();
             }
 
             /// Helpers
@@ -232,6 +361,20 @@
                 socket.send(JSON.stringify({ type: 'loadUrl', url: u, width: frame.clientWidth, height: frame.clientHeight }));
                 ctx.clearRect(0, 0, frame.width, frame.height);
             };
+
+            const copy = (data) => {
+                try {
+                    if (!!navigator.clipboard && !!navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(data);
+                        return;
+                    }
+                    console.warn('Clipbaord API not supported (not served over HTTPS?), presenting dialog');
+                } catch (e) {
+                    console.error('Clipboard access threw, presenting dialog', e);
+                }
+                copyInput.value = data;
+                copyDiv.classList.add('show');
+            }
 
             /// Form
 
@@ -297,6 +440,9 @@
                         const lg = obj.severity == 4 ? console.error : obj.severity == 3 ? console.warn : console.log;
                         lg(obj.source + ':' + obj.line + ':', obj.message);
                     } break;
+                    case "copy":
+                        copy(obj.content);
+                        break;
                     default:
                         console.warn("Unknown event", obj.type)
                         break;
@@ -326,9 +472,26 @@
             observer.observe(frame);
 
             const frameEvent = (e) => {
-                // Chrome Android bug, see below
+                // Chrome Android bug, see input below
                 if (e.key === "Unidentified") return;
+                // paste is handled in input below
+                if (e.key === "v" && e.ctrlKey === true) return;
+                if (e.key === "c" && e.ctrlKey === true) {
+                    if (e.type === "keydown") {
+                        socket.send(JSON.stringify({
+                            type: 'copy',
+                        }));
+                    }
+                    return;
+                }
                 e.preventDefault();
+                if (e.type === "mousedown" && contextMenuDiv.classList.contains('show')) {
+                    console.log('remove context menu');
+                    contextMenuDiv.classList.remove('show');
+                    return;
+                }
+                // right-click, handled in contextmenu below
+                if (e.type === "mousedown" && e.button === 2) return;
                 const rect = frame.getBoundingClientRect();
                 const clickX = e.clientX !== undefined ? e.clientX - rect.left : 0;
                 const clickY = e.clientY !== undefined ? e.clientY - rect.top : 0;
@@ -352,7 +515,7 @@
 
             const attachEvents = () => {
                 console.log('Attaching event handlers to new document');
-                const events = ["click", "mousedown", "mouseup", "mousemove", "wheel", "keydown", "keyup"];
+                const events = ["mousedown", "mouseup", "mousemove", "wheel", "keydown", "keyup"];
                 for (const ev of events) {
                     frameInput.addEventListener(ev, frameEvent, false);
                 }
@@ -371,7 +534,6 @@
                         e.preventDefault();
                         let deltaX = touch.pageX - e.touches[0].pageX;
                         let deltaY = touch.pageY - e.touches[0].pageY;
-                        console.log(deltaX, deltaY)
                         if (Math.abs(deltaX) > Math.abs(deltaY)) {
                             // assume horizontal scroll
                             socket.send(JSON.stringify({
@@ -404,23 +566,23 @@
                 frameInput.addEventListener('input', e => {
                     e.preventDefault();
                     socket.send(JSON.stringify({
-                        type: 'event',
-                        eventType: 'keydown',
-                        clickX: 0,
-                        clickY: 0,
-                        key: e.data,
-                    }));
-                    socket.send(JSON.stringify({
-                        type: 'event',
-                        eventType: 'keyup',
-                        clickX: 0,
-                        clickY: 0,
-                        key: e.data,
+                        type: 'paste',
+                        data: e.data,
                     }));
                     e.target.value = '';
                 });
                 frameInput.addEventListener('contextmenu', e => {
                     e.preventDefault();
+                    contextMenuDiv.style.left = e.offsetX + 'px';
+                    contextMenuDiv.style.top = e.offsetY + 'px';
+                    contextMenuDiv.classList.add('show');
+
+                    const shiftLeft = contextMenuDiv.offsetParent.offsetWidth - contextMenuDiv.offsetWidth - contextMenuDiv.offsetLeft;
+                    if (shiftLeft < 0)
+                        contextMenuDiv.style.left = (e.offsetX + shiftLeft) + 'px';
+                    const shiftTop = contextMenuDiv.offsetParent.offsetHeight - contextMenuDiv.offsetHeight - contextMenuDiv.offsetTop;
+                    if (shiftTop < 0)
+                        contextMenuDiv.style.top = (e.offsetY + shiftTop) + 'px';
                 }, false);
             };
             attachEvents();

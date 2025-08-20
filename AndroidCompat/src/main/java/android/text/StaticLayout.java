@@ -366,9 +366,8 @@ public class StaticLayout extends Layout {
         mRightIndents = b.mRightIndents;
 
         String str = b.mText.subSequence(b.mStart, b.mEnd).toString();
-        AttributedString text = new AttributedString(str);
-        text.addAttribute(TextAttribute.FONT, getPaint().getFont());
-        FontRenderContext frc = new FontRenderContext(getPaint().getFont().getTransform(), RenderingHints.VALUE_TEXT_ANTIALIAS_DEFAULT, RenderingHints.VALUE_FRACTIONALMETRICS_DEFAULT);
+        AttributedString text = getPaint().getTypeface().createWithFallback(str);
+        FontRenderContext frc = new FontRenderContext(null, RenderingHints.VALUE_TEXT_ANTIALIAS_DEFAULT, RenderingHints.VALUE_FRACTIONALMETRICS_DEFAULT);
         LineBreakMeasurer measurer = new LineBreakMeasurer(text.getIterator(), frc);
         // TODO: directions
 

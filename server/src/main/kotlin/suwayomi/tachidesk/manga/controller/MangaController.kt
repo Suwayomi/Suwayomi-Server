@@ -9,7 +9,11 @@ package suwayomi.tachidesk.manga.controller
 
 import io.javalin.http.HandlerType
 import io.javalin.http.HttpStatus
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
@@ -17,9 +21,11 @@ import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyByIndex
+import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
@@ -331,8 +337,29 @@ object MangaController {
             behaviorOf = { ctx, mangaId, chapterIndex ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { getChapterDownloadReadyByIndex(chapterIndex, mangaId) }
-                        .thenApply { ctx.json(it) }
+                    future {
+                        var chapter = getChapterDownloadReadyByIndex(chapterIndex, mangaId)
+                        val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id)
+
+                        if (syncResult != null) {
+                            if (syncResult.shouldUpdate) {
+                                // Update DB for SILENT and RECEIVE
+                                transaction {
+                                    ChapterTable.update({ ChapterTable.id eq chapter.id }) {
+                                        it[lastPageRead] = syncResult.pageRead
+                                        it[lastReadAt] = syncResult.timestamp
+                                    }
+                                }
+                            }
+                            // For PROMPT, SILENT, and RECEIVE, return the remote progress
+                            chapter =
+                                chapter.copy(
+                                    lastPageRead = syncResult.pageRead,
+                                    lastReadAt = syncResult.timestamp,
+                                )
+                        }
+                        chapter
+                    }.thenApply { ctx.json(it) }
                 }
             },
             withResults = {
@@ -358,7 +385,12 @@ object MangaController {
             },
             behaviorOf = { ctx, mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                Chapter.modifyChapter(mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead)
+                val chapterId = Chapter.modifyChapter(mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead)
+
+                // Sync with KoreaderSync when progress is updated
+                if (lastPageRead != null || read == true) {
+                    GlobalScope.launch { KoreaderSyncService.pushProgress(chapterId) }
+                }
 
                 ctx.status(200)
             },
@@ -442,7 +474,11 @@ object MangaController {
                             ctx.result(it.first)
 
                             if (updateProgress == true) {
-                                Chapter.updateChapterProgress(mangaId, chapterIndex, pageNo = index)
+                                val chapterId = Chapter.updateChapterProgress(mangaId, chapterIndex, pageNo = index)
+                                // Sync progress with KoreaderSync if chapter update was successful
+                                if (chapterId != -1) {
+                                    GlobalScope.launch { KoreaderSyncService.pushProgress(chapterId) }
+                                }
                             }
                         }
                 }

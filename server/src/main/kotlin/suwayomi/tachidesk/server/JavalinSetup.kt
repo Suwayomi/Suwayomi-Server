@@ -175,9 +175,13 @@ object JavalinSetup {
 
         app.beforeMatched { ctx ->
             val isWebManifest = listOf("site.webmanifest", "manifest.json", "login.html").any { ctx.path().endsWith(it) }
+            val isPageIcon =
+                ctx.path().startsWith('/') &&
+                    !ctx.path().substring(1).contains('/') &&
+                    listOf(".png", ".jpg", ".ico").any { ctx.path().endsWith(it) }
             val isPreFlight = ctx.method() == HandlerType.OPTIONS
 
-            val requiresAuthentication = !isPreFlight && !isWebManifest
+            val requiresAuthentication = !isPreFlight && !isPageIcon && !isWebManifest
             if (!requiresAuthentication) {
                 return@beforeMatched
             }
