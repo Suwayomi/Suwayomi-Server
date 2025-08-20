@@ -1,10 +1,15 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import graphql.schema.DataFetchingEnvironment
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.KoSyncConnectPayload
 import suwayomi.tachidesk.graphql.types.LogoutKoSyncAccountPayload
 import suwayomi.tachidesk.graphql.types.SettingsType
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class KoreaderSyncMutation {
@@ -14,8 +19,12 @@ class KoreaderSyncMutation {
         val password: String,
     )
 
-    fun connectKoSyncAccount(input: ConnectKoSyncAccountInput): CompletableFuture<KoSyncConnectPayload> =
+    fun connectKoSyncAccount(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: ConnectKoSyncAccountInput,
+    ): CompletableFuture<KoSyncConnectPayload> =
         future {
+            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val result = KoreaderSyncService.connect(input.username, input.password)
 
             KoSyncConnectPayload(
@@ -31,8 +40,12 @@ class KoreaderSyncMutation {
         val clientMutationId: String? = null,
     )
 
-    fun logoutKoSyncAccount(input: LogoutKoSyncAccountInput): CompletableFuture<LogoutKoSyncAccountPayload> =
+    fun logoutKoSyncAccount(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: LogoutKoSyncAccountInput,
+    ): CompletableFuture<LogoutKoSyncAccountPayload> =
         future {
+            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             KoreaderSyncService.logout()
             LogoutKoSyncAccountPayload(
                 clientMutationId = input.clientMutationId,

@@ -89,6 +89,10 @@ object WebView : Websocket<String>() {
     @SerialName("copy")
     class JsCopyMessage : TypeObject()
 
+    @Serializable
+    @SerialName("ping")
+    class JsPingMessage : TypeObject()
+
     override fun handleRequest(ctx: WsMessageContext) {
         val dr = driver ?: return
         try {
@@ -112,6 +116,9 @@ object WebView : Websocket<String>() {
                 }
                 is JsCopyMessage -> {
                     dr.copy()
+                }
+                is JsPingMessage -> {
+                    notifyAllClients("{\"type\":\"pong\"}")
                 }
             }
         } catch (e: Exception) {

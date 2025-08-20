@@ -3,16 +3,21 @@ package suwayomi.tachidesk.graphql.mutations
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import graphql.execution.DataFetcherResult
+import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.asDataFetcherResult
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.TrackRecordType
 import suwayomi.tachidesk.graphql.types.TrackerType
 import suwayomi.tachidesk.manga.impl.track.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class TrackMutation {
@@ -28,7 +33,11 @@ class TrackMutation {
         val tracker: TrackerType,
     )
 
-    fun loginTrackerOAuth(input: LoginTrackerOAuthInput): CompletableFuture<LoginTrackerOAuthPayload> {
+    fun loginTrackerOAuth(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: LoginTrackerOAuthInput,
+    ): CompletableFuture<LoginTrackerOAuthPayload> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val tracker =
             requireNotNull(TrackerManager.getTracker(input.trackerId)) {
                 "Could not find tracker"
@@ -57,7 +66,11 @@ class TrackMutation {
         val tracker: TrackerType,
     )
 
-    fun loginTrackerCredentials(input: LoginTrackerCredentialsInput): CompletableFuture<LoginTrackerCredentialsPayload> {
+    fun loginTrackerCredentials(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: LoginTrackerCredentialsInput,
+    ): CompletableFuture<LoginTrackerCredentialsPayload> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val tracker =
             requireNotNull(TrackerManager.getTracker(input.trackerId)) {
                 "Could not find tracker"
@@ -84,7 +97,11 @@ class TrackMutation {
         val tracker: TrackerType,
     )
 
-    fun logoutTracker(input: LogoutTrackerInput): CompletableFuture<LogoutTrackerPayload> {
+    fun logoutTracker(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: LogoutTrackerInput,
+    ): CompletableFuture<LogoutTrackerPayload> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val tracker =
             requireNotNull(TrackerManager.getTracker(input.trackerId)) {
                 "Could not find tracker"
@@ -117,7 +134,11 @@ class TrackMutation {
         val trackRecord: TrackRecordType,
     )
 
-    fun bindTrack(input: BindTrackInput): CompletableFuture<BindTrackPayload> {
+    fun bindTrack(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: BindTrackInput,
+    ): CompletableFuture<BindTrackPayload> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, mangaId, trackerId, remoteId, private) = input
 
         return future {
@@ -152,7 +173,11 @@ class TrackMutation {
         val trackRecord: TrackRecordType,
     )
 
-    fun fetchTrack(input: FetchTrackInput): CompletableFuture<FetchTrackPayload> {
+    fun fetchTrack(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: FetchTrackInput,
+    ): CompletableFuture<FetchTrackPayload> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, recordId) = input
 
         return future {
@@ -184,7 +209,11 @@ class TrackMutation {
         val trackRecord: TrackRecordType?,
     )
 
-    fun unbindTrack(input: UnbindTrackInput): CompletableFuture<UnbindTrackPayload> {
+    fun unbindTrack(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UnbindTrackInput,
+    ): CompletableFuture<UnbindTrackPayload> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, recordId, deleteRemoteTrack) = input
 
         return future {
@@ -214,7 +243,11 @@ class TrackMutation {
         val trackRecords: List<TrackRecordType>,
     )
 
-    fun trackProgress(input: TrackProgressInput): CompletableFuture<DataFetcherResult<TrackProgressPayload?>> {
+    fun trackProgress(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: TrackProgressInput,
+    ): CompletableFuture<DataFetcherResult<TrackProgressPayload?>> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, mangaId) = input
 
         return future {
@@ -256,8 +289,12 @@ class TrackMutation {
         val trackRecord: TrackRecordType?,
     )
 
-    fun updateTrack(input: UpdateTrackInput): CompletableFuture<UpdateTrackPayload> =
+    fun updateTrack(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: UpdateTrackInput,
+    ): CompletableFuture<UpdateTrackPayload> =
         future {
+            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             Track.update(
                 Track.UpdateInput(
                     input.recordId,

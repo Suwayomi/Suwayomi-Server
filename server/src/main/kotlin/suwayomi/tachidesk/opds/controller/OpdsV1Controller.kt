@@ -9,7 +9,10 @@ import suwayomi.tachidesk.opds.dto.OpdsMangaFilter
 import suwayomi.tachidesk.opds.dto.OpdsSearchCriteria
 import suwayomi.tachidesk.opds.dto.PrimaryFilterType
 import suwayomi.tachidesk.opds.impl.OpdsFeedBuilder
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.queryParam
@@ -62,6 +65,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.contentType(OPDS_MIME).result(OpdsFeedBuilder.getRootFeed(BASE_URL, locale))
             },
@@ -84,6 +88,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -109,6 +114,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.contentType("application/opensearchdescription+xml").result(
                     """
@@ -136,6 +142,7 @@ object OpdsV1Controller {
         handler(
             documentWith = { withOperation { summary("OPDS Series in Library Feed") } },
             behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val pageNumber = ctx.queryParam("pageNumber")?.toIntOrNull()
                 val query = ctx.queryParam("query")
                 val author = ctx.queryParam("author")
@@ -188,6 +195,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -214,6 +222,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -240,6 +249,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -266,6 +276,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -291,6 +302,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -316,6 +328,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -342,6 +355,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -370,6 +384,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, sourceId, pageNumber, sort, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -405,6 +420,7 @@ object OpdsV1Controller {
             pathParam<Long>("sourceId"),
             documentWith = { withOperation { summary("OPDS Library Source Specific Series Feed") } },
             behaviorOf = { ctx, sourceId ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val criteria = buildCriteriaFromContext(ctx, OpdsMangaFilter(sourceId = sourceId, primaryFilter = PrimaryFilterType.SOURCE))
                 getLibraryFeed(ctx, ctx.queryParam("pageNumber")?.toIntOrNull(), criteria)
             },
@@ -422,6 +438,7 @@ object OpdsV1Controller {
             pathParam<Int>("categoryId"),
             documentWith = { withOperation { summary("OPDS Category Specific Series Feed") } },
             behaviorOf = { ctx, categoryId ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val criteria =
                     buildCriteriaFromContext(ctx, OpdsMangaFilter(categoryId = categoryId, primaryFilter = PrimaryFilterType.CATEGORY))
                 getLibraryFeed(ctx, ctx.queryParam("pageNumber")?.toIntOrNull(), criteria)
@@ -440,6 +457,7 @@ object OpdsV1Controller {
             pathParam<String>("genre"),
             documentWith = { withOperation { summary("OPDS Genre Specific Series Feed") } },
             behaviorOf = { ctx, genre ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val criteria = buildCriteriaFromContext(ctx, OpdsMangaFilter(genre = genre, primaryFilter = PrimaryFilterType.GENRE))
                 getLibraryFeed(ctx, ctx.queryParam("pageNumber")?.toIntOrNull(), criteria)
             },
@@ -457,6 +475,7 @@ object OpdsV1Controller {
             pathParam<Int>("statusId"),
             documentWith = { withOperation { summary("OPDS Status Specific Series Feed") } },
             behaviorOf = { ctx, statusId ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val criteria = buildCriteriaFromContext(ctx, OpdsMangaFilter(statusId = statusId, primaryFilter = PrimaryFilterType.STATUS))
                 getLibraryFeed(ctx, ctx.queryParam("pageNumber")?.toIntOrNull(), criteria)
             },
@@ -479,6 +498,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, langCode ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val criteria =
                     buildCriteriaFromContext(ctx, OpdsMangaFilter(langCode = langCode, primaryFilter = PrimaryFilterType.LANGUAGE))
                 getLibraryFeed(ctx, ctx.queryParam("pageNumber")?.toIntOrNull(), criteria)
@@ -506,6 +526,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, seriesId, pageNumber, sort, filter, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
@@ -536,6 +557,7 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, seriesId, chapterIndex, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {

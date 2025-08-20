@@ -34,6 +34,7 @@ import suwayomi.tachidesk.graphql.types.WebUIInterface
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.SystemPropertyOverridableConfigModule
 import kotlin.reflect.KProperty
+import kotlin.time.Duration
 
 val mutableConfigValueScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -152,6 +153,9 @@ class ServerConfig(
     val authMode: MutableStateFlow<AuthMode> by OverrideConfigValue()
     val authUsername: MutableStateFlow<String> by OverrideConfigValue()
     val authPassword: MutableStateFlow<String> by OverrideConfigValue()
+    val jwtAudience: MutableStateFlow<String> by OverrideConfigValue()
+    val jwtTokenExpiry: MutableStateFlow<Duration> by OverrideConfigValue()
+    val jwtRefreshExpiry: MutableStateFlow<Duration> by OverrideConfigValue()
     val basicAuthEnabled: MutableStateFlow<Boolean> by MigratedConfigValue({
         authMode.value == AuthMode.BASIC_AUTH
     }) {

@@ -1,16 +1,21 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import graphql.schema.DataFetchingEnvironment
 import io.javalin.http.UploadedFile
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
 import suwayomi.tachidesk.graphql.server.TemporaryFileStorage
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.BackupRestoreStatus
 import suwayomi.tachidesk.graphql.types.toStatus
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
 
@@ -26,7 +31,11 @@ class BackupMutation {
         val status: BackupRestoreStatus?,
     )
 
-    fun restoreBackup(input: RestoreBackupInput): CompletableFuture<RestoreBackupPayload> {
+    fun restoreBackup(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: RestoreBackupInput,
+    ): CompletableFuture<RestoreBackupPayload> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, backup) = input
 
         return future {
@@ -53,7 +62,11 @@ class BackupMutation {
         val url: String,
     )
 
-    fun createBackup(input: CreateBackupInput? = null): CreateBackupPayload {
+    fun createBackup(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: CreateBackupInput? = null,
+    ): CreateBackupPayload {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val filename = Backup.getFilename()
 
         val backup =
