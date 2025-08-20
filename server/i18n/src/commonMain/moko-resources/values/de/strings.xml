@@ -28,7 +28,6 @@
     <string name="opds_facet_filter_unread_only">Ungelesen</string>
     <string name="opds_linktitle_view_chapter_details">Kapitel Details ansehen &amp; Seiten holen</string>
     <string name="opds_linktitle_download_cbz">Als CBZ herunterladen</string>
-    <string name="opds_linktitle_stream_pages">Seiten anzeigen (Streaming)</string>
     <string name="opds_linktitle_search_catalog">Katalog durchsuchen</string>
     <string name="opds_linktitle_previous_page">Vorherige Seite</string>
     <string name="opds_linktitle_next_page">Nächste Seite</string>

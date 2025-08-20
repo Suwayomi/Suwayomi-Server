@@ -33,7 +33,6 @@
     <string name="opds_facet_filter_read_only">Somente lidos</string>
     <string name="opds_linktitle_download_cbz">Baixar como CBZ</string>
     <string name="opds_linktitle_view_chapter_details">Ver detalhes do capítulo &amp; Obter Páginas</string>
-    <string name="opds_linktitle_stream_pages">Ver Páginas (Streaming)</string>
     <string name="opds_linktitle_chapter_cover">Capa do capítulo</string>
     <string name="opds_linktitle_catalog_root">Raiz do catálogo</string>
     <string name="opds_linktitle_search_catalog">Pesquisar no catálogo</string>

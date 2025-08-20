@@ -43,7 +43,6 @@
     <string name="opds_facet_filter_read_only">仅已读</string>
     <string name="opds_linktitle_view_chapter_details">查看章节详情 &amp; 获取页面</string>
     <string name="opds_linktitle_download_cbz">下载 CBZ</string>
-    <string name="opds_linktitle_stream_pages">查看页面（流式）</string>
     <string name="opds_chapter_status_downloaded">⬇️</string>
     <string name="opds_chapter_status_read">✅</string>
     <string name="opds_chapter_status_in_progress">⌛</string>

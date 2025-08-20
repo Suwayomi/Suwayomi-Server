@@ -36,7 +36,6 @@
     <string name="opds_facet_filter_read_only">Tylko Przeczytane</string>
     <string name="opds_linktitle_view_chapter_details">Wyświetl Szczegóły Rozdziału i Pobierz Strony</string>
     <string name="opds_linktitle_download_cbz">Pobierz CBZ</string>
-    <string name="opds_linktitle_stream_pages">Wyświetlanie Stron (Strumieniowanie)</string>
     <string name="opds_linktitle_chapter_cover">Okładka Rozdziału</string>
     <string name="opds_linktitle_catalog_root">Katalog Główny</string>
     <string name="opds_linktitle_search_catalog">Katalog Wyszukiwania</string>

@@ -33,7 +33,6 @@
     <string name="opds_facet_filter_read_only">Leídos</string>
     <string name="opds_linktitle_view_chapter_details">Ver detalles del capítulo y obtener páginas</string>
     <string name="opds_linktitle_download_cbz">Descargar CBZ</string>
-    <string name="opds_linktitle_stream_pages">Ver páginas (streaming)</string>
     <string name="opds_linktitle_chapter_cover">Portada del capítulo</string>
     <string name="opds_linktitle_catalog_root">Raíz del catálogo</string>
     <string name="opds_linktitle_search_catalog">Buscar en catálogo</string>
@@ -110,4 +109,13 @@
     <string name="login_label_login">Iniciar sesión</string>
     <string name="login_placeholder_username">Escribe nombre de usuario...</string>
     <string name="login_placeholder_password">Secreto...</string>
+    <string name="opds_linktitle_stream_pages_start">Leer en línea</string>
+    <string name="opds_linktitle_stream_pages_continue">Continuar leyendo en línea</string>
+    <string name="opds_linktitle_stream_pages_start_local">Leer en línea (progreso local)</string>
+    <string name="opds_linktitle_stream_pages_continue_local">Continuar leyendo en línea (progreso local)</string>
+    <string name="opds_linktitle_stream_pages_start_remote">Leer en línea (sincronizado de %1$s)</string>
+    <string name="opds_linktitle_stream_pages_continue_remote">Continuar leyendo en línea (sincronizado de %1$s)</string>
+    <string name="label_close">Cerrar</string>
+    <string name="webview_label_copy">Copiar al portapapeles</string>
+    <string name="webview_label_copy_description">La copia automática al portapapeles falló, por favor use la entrada de abajo para copiar el valor manualmente.</string>
 </resources>

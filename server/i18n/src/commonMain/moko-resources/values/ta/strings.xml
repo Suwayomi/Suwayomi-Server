@@ -45,7 +45,6 @@
     <string name="opds_facet_filter_read_only">படிக்கவும்</string>
     <string name="opds_linktitle_view_chapter_details">அத்தியாயம் விவரங்களைக் காண்க &amp; பக்கங்களைப் பெறுங்கள்</string>
     <string name="opds_linktitle_download_cbz">CBZ ஐ பதிவிறக்கவும்</string>
-    <string name="opds_linktitle_stream_pages">பக்கங்களைக் காண்க (ச்ட்ரீமிங்)</string>
     <string name="opds_linktitle_chapter_cover">அத்தியாயம் கவர்</string>
     <string name="opds_linktitle_self_feed">தற்போதைய ஊட்டம்</string>
     <string name="opds_chapter_status_downloaded">⬇️</string>
