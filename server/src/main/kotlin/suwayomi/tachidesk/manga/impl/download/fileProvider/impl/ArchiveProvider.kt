@@ -108,6 +108,11 @@ class ArchiveProvider(
         return cbzFile.inputStream() to cbzFile.length()
     }
 
+    override fun getArchiveSize(): Long {
+        val cbzFile = File(getChapterCbzPath(mangaId, chapterId))
+        return if (cbzFile.exists()) cbzFile.length() else 0L
+    }
+
     private fun extractCbzFile(
         cbzFile: File,
         chapterFolder: File,

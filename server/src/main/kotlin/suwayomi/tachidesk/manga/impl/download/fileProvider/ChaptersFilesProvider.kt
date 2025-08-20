@@ -220,6 +220,8 @@ abstract class ChaptersFilesProvider<Type : FileType>(
 
     abstract fun getAsArchiveStream(): Pair<InputStream, Long>
 
+    abstract fun getArchiveSize(): Long
+
     private fun maybeConvertPages(chapterCacheFolder: File) {
         val conversions = serverConfig.downloadConversions.value
 
