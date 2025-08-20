@@ -496,25 +496,32 @@ object MangaController {
             documentWith = {
                 withOperation {
                     summary("Download chapter as CBZ")
-                    description("Get the CBZ file of the specified chapter")
+                    description("Get the CBZ file of the specified chapter, or its metadata via a HEAD request.")
                 }
             },
             behaviorOf = { ctx, chapterId, markAsRead ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val shouldMarkAsRead = if (ctx.method() == HandlerType.HEAD) false else markAsRead
-                ctx.future {
-                    future { ChapterDownloadHelper.getCbzForDownload(chapterId, shouldMarkAsRead) }
-                        .thenApply { (inputStream, fileName, fileSize) ->
-                            ctx.header("Content-Type", "application/vnd.comicbook+zip")
-                            ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
-                            ctx.header("Content-Length", fileSize.toString())
-                            if (ctx.method() == HandlerType.HEAD) {
-                                inputStream.close()
-                                ctx.status(200)
-                            } else {
+                if (ctx.method() == HandlerType.HEAD) {
+                    ctx.future {
+                        future { ChapterDownloadHelper.getCbzMetadataForDownload(chapterId) }
+                            .thenApply { (fileName, fileSize, contentType) ->
+                                ctx.header("Content-Type", contentType)
+                                ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
+                                ctx.header("Content-Length", fileSize.toString())
+                                ctx.status(HttpStatus.OK)
+                            }
+                    }
+                } else {
+                    val shouldMarkAsRead = markAsRead ?: false
+                    ctx.future {
+                        future { ChapterDownloadHelper.getCbzForDownload(chapterId, shouldMarkAsRead) }
+                            .thenApply { (inputStream, fileName, fileSize) ->
+                                ctx.header("Content-Type", "application/vnd.comicbook+zip")
+                                ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
+                                ctx.header("Content-Length", fileSize.toString())
                                 ctx.result(inputStream)
                             }
-                        }
+                    }
                 }
             },
             withResults = {

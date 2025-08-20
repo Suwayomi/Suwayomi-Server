@@ -699,6 +699,7 @@ object OpdsFeedBuilder {
                     MR.strings.opds_error_chapter_not_found.localized(locale, chapterSourceOrder),
                     locale,
                 )
+
         val builder =
             FeedBuilderInternal(
                 baseUrl,
@@ -708,13 +709,29 @@ object OpdsFeedBuilder {
                 OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                 null,
             )
-        builder.totalResults = 1
+
         mangaDetails.thumbnailUrl?.let { proxyThumbnailUrl(mangaDetails.id) }?.also {
             builder.icon = it
             builder.links.add(OpdsLinkXml(OpdsConstants.LINK_REL_IMAGE, it, OpdsConstants.TYPE_IMAGE_JPEG))
             builder.links.add(OpdsLinkXml(OpdsConstants.LINK_REL_IMAGE_THUMBNAIL, it, OpdsConstants.TYPE_IMAGE_JPEG))
         }
-        builder.entries.add(OpdsEntryBuilder.createChapterMetadataEntry(chapterMetadata, mangaDetails, baseUrl, locale))
+
+        val (primaryEntry, conflictEntry) =
+            OpdsEntryBuilder.createChapterMetadataEntries(
+                chapter = chapterMetadata,
+                manga = mangaDetails,
+                baseUrl = baseUrl,
+                locale = locale,
+            )
+
+        builder.entries.add(primaryEntry)
+        if (conflictEntry != null) {
+            builder.entries.add(conflictEntry)
+            builder.totalResults = 2
+        } else {
+            builder.totalResults = 1
+        }
+
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
 
