@@ -47,7 +47,7 @@ object KoreaderSyncService {
         val document: String? = null,
         val progress: String? = null,
         val percentage: Float? = null,
-        val timestamp: Long? = null,
+        val updated_at: Long? = null,
         val device: String? = null,
         val device_id: String? = null,
     )
@@ -81,6 +81,7 @@ object KoreaderSyncService {
             .Builder()
             .url(url)
             .addHeader("Accept", "application/vnd.koreader.v1+json")
+            .addHeader("Connection", "close")
             .apply(block)
             .build()
 
@@ -318,7 +319,13 @@ object KoreaderSyncService {
                     addHeader("x-auth-key", userkey)
                 }
 
+            logger.info { "[KOSYNC PUSH] PUT request to URL: ${request.url}" }
+            logger.info { "[KOSYNC PUSH] Sending data: $requestBody" }
+
             network.client.newCall(request).await().use { response ->
+                val responseBody = response.body.string()
+                logger.info { "[KOSYNC PUSH] PUT response status: ${response.code}" }
+                logger.info { "[KOSYNC PUSH] PUT response body: $responseBody" }
                 if (!response.isSuccessful) {
                     logger.warn { "[KOSYNC PUSH] Failed for chapterId=$chapterId: ${response.code}" }
                 } else {
@@ -351,15 +358,19 @@ object KoreaderSyncService {
                     addHeader("x-auth-user", username)
                     addHeader("x-auth-key", userkey)
                 }
+            logger.info { "[KOSYNC PULL] GET request to URL: ${request.url}" }
 
             network.client.newCall(request).await().use { response ->
+                logger.info { "[KOSYNC PULL] GET response status: ${response.code}" }
+
                 if (response.isSuccessful) {
                     val body = response.body.string()
+                    logger.info { "[KOSYNC PULL] GET response body: $body" }
                     if (body.isBlank() || body == "{}") return null
 
                     val progressResponse = json.decodeFromString(KoreaderProgressResponse.serializer(), body)
                     val pageRead = progressResponse.progress?.toIntOrNull()?.minus(1)
-                    val timestamp = progressResponse.timestamp
+                    val timestamp = progressResponse.updated_at
                     val device = progressResponse.device ?: "KOReader"
 
                     val localProgress =

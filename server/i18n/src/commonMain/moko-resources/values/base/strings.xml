@@ -110,6 +110,7 @@
     <string name="opds_chapter_status_in_progress">⌛ </string>
     <string name="opds_chapter_status_unread">⭕ </string>
     <string name="opds_chapter_status_downloaded">⬇️ </string>
+    <string name="opds_chapter_status_synced">🌐 </string>
 
     <string name="opds_chapter_details_base">Series: %1$s | %2$s</string>
     <string name="opds_chapter_details_scanlator"> | By %1$s</string>
