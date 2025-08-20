@@ -209,40 +209,123 @@ object OpdsEntryBuilder {
     }
 
     /**
-     * Creates an OPDS entry for a chapter's metadata, used when page count is not initially available.
+     * Creates one or two OPDS entries for a chapter, handling synchronization conflicts internally.
+     *
      * @param chapter The chapter metadata object.
      * @param manga The parent manga's details.
      * @param baseUrl The base URL for constructing links.
      * @param locale The locale for localization.
-     * @return An [OpdsEntryXml] object for the chapter's metadata.
+     * @return A `Pair` where the first element is the primary entry (always present) and the
+     * second is an optional entry representing the remote progress in case of a conflict.
      */
-    suspend fun createChapterMetadataEntry(
+    suspend fun createChapterMetadataEntries(
         chapter: OpdsChapterMetadataAcqEntry,
         manga: OpdsMangaDetails,
         baseUrl: String,
         locale: Locale,
-    ): OpdsEntryXml {
+    ): Pair<OpdsEntryXml, OpdsEntryXml?> {
         // Check remote progress before building the entry
         val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id)
 
-        val localLastPageRead = chapter.lastPageRead
-        val remoteLastPageRead = syncResult?.pageRead
-        val remoteLastReadAt = syncResult?.timestamp
+        // Exists a conflict if the sync service reports a conflict and the page numbers differ.
+        val hasConflict = syncResult?.isConflict == true && syncResult.pageRead != chapter.lastPageRead
 
-        val showConflict = syncResult?.isConflict == true && remoteLastPageRead != null && localLastPageRead != remoteLastPageRead
+        if (hasConflict) {
+            // Generate two entries: one for local progress and another for remote.
+            val localEntry =
+                buildSingleChapterMetadataEntry(
+                    chapter,
+                    manga,
+                    baseUrl,
+                    locale,
+                    progressSource = ProgressSource.Local(chapter.lastPageRead, chapter.lastReadAt),
+                    isConflict = true,
+                )
 
-        val finalLastPageRead = if (syncResult?.shouldUpdate == true) remoteLastPageRead ?: localLastPageRead else localLastPageRead
-        val finalLastReadAt = if (syncResult?.shouldUpdate == true) remoteLastReadAt ?: chapter.lastReadAt else chapter.lastReadAt
+            val remoteEntry =
+                buildSingleChapterMetadataEntry(
+                    chapter,
+                    manga,
+                    baseUrl,
+                    locale,
+                    progressSource = ProgressSource.Remote(syncResult!!.pageRead, syncResult.timestamp, syncResult.device),
+                    isConflict = true,
+                )
+            return Pair(localEntry, remoteEntry)
+        } else {
+            // No conflict, generate a single entry. Use remote progress if a silent update occurred.
+            val progressSource =
+                if (syncResult?.shouldUpdate == true) {
+                    ProgressSource.Remote(syncResult.pageRead, syncResult.timestamp, syncResult.device)
+                } else {
+                    ProgressSource.Local(chapter.lastPageRead, chapter.lastReadAt)
+                }
 
-        val statusKey =
-            when {
-                chapter.downloaded -> MR.strings.opds_chapter_status_downloaded
-                chapter.read -> MR.strings.opds_chapter_status_read
-                finalLastPageRead > 0 -> MR.strings.opds_chapter_status_in_progress
-                else -> MR.strings.opds_chapter_status_unread
+            val mainEntry =
+                buildSingleChapterMetadataEntry(
+                    chapter,
+                    manga,
+                    baseUrl,
+                    locale,
+                    progressSource = progressSource,
+                    isConflict = false,
+                )
+            return Pair(mainEntry, null)
+        }
+    }
+
+    /**
+     * Represents the source of progress information for a chapter.
+     */
+    private sealed class ProgressSource {
+        abstract val lastPageRead: Int
+        abstract val lastReadAt: Long
+
+        data class Local(
+            override val lastPageRead: Int,
+            override val lastReadAt: Long,
+        ) : ProgressSource()
+
+        data class Remote(
+            override val lastPageRead: Int,
+            override val lastReadAt: Long,
+            val device: String,
+        ) : ProgressSource()
+    }
+
+    /**
+     * Helper function to build a single OpdsEntryXml for a chapter.
+     */
+    private suspend fun buildSingleChapterMetadataEntry(
+        chapter: OpdsChapterMetadataAcqEntry,
+        manga: OpdsMangaDetails,
+        baseUrl: String,
+        locale: Locale,
+        progressSource: ProgressSource,
+        isConflict: Boolean,
+    ): OpdsEntryXml {
+        val idSuffix: String
+        val titlePrefix: String
+
+        when (progressSource) {
+            is ProgressSource.Local -> {
+                idSuffix = "" // No suffix for the primary/local entry
+                val statusKey =
+                    when {
+                        chapter.downloaded -> MR.strings.opds_chapter_status_downloaded
+                        chapter.read -> MR.strings.opds_chapter_status_read
+                        progressSource.lastPageRead > 0 -> MR.strings.opds_chapter_status_in_progress
+                        else -> MR.strings.opds_chapter_status_unread
+                    }
+                titlePrefix = statusKey.localized(locale)
             }
-        val titlePrefix = statusKey.localized(locale)
-        val entryTitle = "$titlePrefix ${chapter.name}"
+            is ProgressSource.Remote -> {
+                idSuffix = ":remote"
+                titlePrefix = MR.strings.opds_chapter_status_synced.localized(locale, progressSource.device)
+            }
+        }
+
+        // Integrated `buildChapterSummary` logic here
         val details =
             buildString {
                 append(MR.strings.opds_chapter_details_base.localized(locale, manga.title, chapter.name))
@@ -250,105 +333,76 @@ object OpdsEntryBuilder {
                     append(MR.strings.opds_chapter_details_scanlator.localized(locale, it))
                 }
                 val pageCountDisplay = chapter.pageCount.takeIf { it > 0 } ?: "?"
-                append(MR.strings.opds_chapter_details_progress.localized(locale, finalLastPageRead, pageCountDisplay))
+                append(MR.strings.opds_chapter_details_progress.localized(locale, progressSource.lastPageRead, pageCountDisplay))
             }
+
+        val entryTitle = "$titlePrefix ${chapter.name}"
+
+        // Integrated `buildChapterLinks` logic here
         val links = mutableListOf<OpdsLinkXml>()
-        var cbzFileSize: Long? = null
         chapter.url?.let {
             links.add(
-                OpdsLinkXml(
-                    OpdsConstants.LINK_REL_ALTERNATE,
-                    it,
-                    "text/html",
-                    MR.strings.opds_linktitle_view_on_web.localized(locale),
-                ),
+                OpdsLinkXml(OpdsConstants.LINK_REL_ALTERNATE, it, "text/html", MR.strings.opds_linktitle_view_on_web.localized(locale)),
             )
         }
         if (chapter.downloaded) {
-            val cbzStreamPair =
-                withContext(
-                    Dispatchers.IO,
-                ) { runCatching { ChapterDownloadHelper.getArchiveStreamWithSize(manga.id, chapter.id) }.getOrNull() }
-            cbzFileSize = cbzStreamPair?.second
-            cbzStreamPair?.let {
-                links.add(
-                    OpdsLinkXml(
-                        OpdsConstants.LINK_REL_ACQUISITION_OPEN_ACCESS,
-                        "/api/v1/chapter/${chapter.id}/download?markAsRead=${serverConfig.opdsMarkAsReadOnDownload.value}",
-                        OpdsConstants.TYPE_CBZ,
-                        MR.strings.opds_linktitle_download_cbz.localized(locale),
-                    ),
-                )
-            }
+            links.add(
+                OpdsLinkXml(
+                    OpdsConstants.LINK_REL_ACQUISITION_OPEN_ACCESS,
+                    "/api/v1/chapter/${chapter.id}/download?markAsRead=${serverConfig.opdsMarkAsReadOnDownload.value}",
+                    OpdsConstants.TYPE_CBZ,
+                    MR.strings.opds_linktitle_download_cbz.localized(locale),
+                ),
+            )
         }
         if (chapter.pageCount > 0) {
             val basePageHref =
                 "/api/v1/manga/${manga.id}/chapter/${chapter.sourceOrder}/page/{pageNumber}" +
                     "?updateProgress=${serverConfig.opdsEnablePageReadProgress.value}"
 
-            if (showConflict) {
-                // Option 1: Local progress
-                val localTitleRes =
-                    if (localLastPageRead >
-                        0
-                    ) {
-                        MR.strings.opds_linktitle_stream_pages_continue_local
-                    } else {
-                        MR.strings.opds_linktitle_stream_pages_start_local
+            val title: String =
+                when {
+                    !isConflict -> {
+                        val titleRes =
+                            if (progressSource.lastPageRead > 0) {
+                                MR.strings.opds_linktitle_stream_pages_continue
+                            } else {
+                                MR.strings.opds_linktitle_stream_pages_start
+                            }
+                        titleRes.localized(locale)
                     }
-                links.add(
-                    OpdsLinkXml(
-                        rel = OpdsConstants.LINK_REL_PSE_STREAM,
-                        href = basePageHref,
-                        type = OpdsConstants.TYPE_IMAGE_JPEG,
-                        title = localTitleRes.localized(locale),
-                        pseCount = chapter.pageCount,
-                        pseLastRead = localLastPageRead.takeIf { it >= 0 },
-                        pseLastReadDate = chapter.lastReadAt.takeIf { it > 0 }?.let { OpdsDateUtil.formatEpochMillisForOpds(it * 1000) },
-                    ),
-                )
-                // Option 2: Remote progress
-                val remoteTitleRes =
-                    if (remoteLastPageRead >
-                        0
-                    ) {
-                        MR.strings.opds_linktitle_stream_pages_continue_remote
-                    } else {
-                        MR.strings.opds_linktitle_stream_pages_start_remote
+                    progressSource is ProgressSource.Local -> {
+                        val titleRes =
+                            if (progressSource.lastPageRead > 0) {
+                                MR.strings.opds_linktitle_stream_pages_continue_local
+                            } else {
+                                MR.strings.opds_linktitle_stream_pages_start_local
+                            }
+                        titleRes.localized(locale)
                     }
-                links.add(
-                    OpdsLinkXml(
-                        rel = OpdsConstants.LINK_REL_PSE_STREAM,
-                        href = basePageHref,
-                        type = OpdsConstants.TYPE_IMAGE_JPEG,
-                        title = remoteTitleRes.localized(locale, syncResult.device),
-                        pseCount = chapter.pageCount,
-                        pseLastRead = remoteLastPageRead,
-                        pseLastReadDate = remoteLastReadAt?.takeIf { it > 0 }?.let { OpdsDateUtil.formatEpochMillisForOpds(it * 1000) },
-                    ),
-                )
-            } else {
-                // Normal behavior: single progress link
-                val titleRes =
-                    if (finalLastPageRead >
-                        0
-                    ) {
-                        MR.strings.opds_linktitle_stream_pages_continue
-                    } else {
-                        MR.strings.opds_linktitle_stream_pages_start
+                    progressSource is ProgressSource.Remote -> {
+                        val titleRes =
+                            if (progressSource.lastPageRead > 0) {
+                                MR.strings.opds_linktitle_stream_pages_continue_remote
+                            } else {
+                                MR.strings.opds_linktitle_stream_pages_start_remote
+                            }
+                        titleRes.localized(locale, progressSource.device)
                     }
-                links.add(
-                    OpdsLinkXml(
-                        rel = OpdsConstants.LINK_REL_PSE_STREAM,
-                        href = basePageHref,
-                        type = OpdsConstants.TYPE_IMAGE_JPEG,
-                        title = titleRes.localized(locale),
-                        pseCount = chapter.pageCount,
-                        pseLastRead = finalLastPageRead.takeIf { it > 0 },
-                        pseLastReadDate = finalLastReadAt.takeIf { it > 0 }?.let { OpdsDateUtil.formatEpochMillisForOpds(it * 1000) },
-                    ),
-                )
-            }
+                    else -> "" // Should not happen
+                }
+
+            links.add(
+                OpdsLinkXml(
+                    rel = OpdsConstants.LINK_REL_PSE_STREAM,
+                    href = basePageHref,
+                    type = OpdsConstants.TYPE_IMAGE_JPEG,
+                    title = title,
+                    pseCount = chapter.pageCount,
+                    pseLastRead = progressSource.lastPageRead.takeIf { it > 0 },
+                    pseLastReadDate = progressSource.lastReadAt.takeIf { it > 0 }?.let { OpdsDateUtil.formatEpochMillisForOpds(it * 1000) },
+                ),
+            )
             links.add(
                 OpdsLinkXml(
                     rel = OpdsConstants.LINK_REL_IMAGE,
@@ -358,8 +412,18 @@ object OpdsEntryBuilder {
                 ),
             )
         }
+
+        val cbzFileSize =
+            if (chapter.downloaded) {
+                withContext(Dispatchers.IO) {
+                    runCatching { ChapterDownloadHelper.getArchiveStreamWithSize(manga.id, chapter.id).second }.getOrNull()
+                }
+            } else {
+                null
+            }
+
         return OpdsEntryXml(
-            id = "urn:suwayomi:chapter:${chapter.id}:metadata",
+            id = "urn:suwayomi:chapter:${chapter.id}:metadata$idSuffix",
             title = entryTitle,
             updated = OpdsDateUtil.formatEpochMillisForOpds(chapter.uploadDate),
             authors =
