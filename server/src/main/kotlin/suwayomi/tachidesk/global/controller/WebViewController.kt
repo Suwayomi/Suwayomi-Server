@@ -31,7 +31,7 @@ object WebViewController {
                 }
             },
             behaviorOf = { ctx, lang ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                // intentionally not user-protected, this pages handles login by itself
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.contentType(ContentType.TEXT_HTML)
                 ctx.render(

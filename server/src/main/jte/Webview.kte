@@ -159,25 +159,26 @@
         main .contextmenu button:hover {
             background: #eee;
         }
-        .copydialog {
+        .copydialog, .logindialog {
             display: none;
             position: absolute;
             inset: 0;
             width: 100%;
             height: 100%;
             padding: 6px;
+            z-index: 1;
         }
-        .copydialog.show {
+        .copydialog.show, .logindialog.show {
             display: block;
         }
-        .copydialog::before {
+        .copydialog::before, .logindialog::before {
             content: '';
             position: absolute;
             inset: 0;
             background: black;
             opacity: 0.3;
         }
-        .copydialog__inner {
+        .copydialog__inner, .logindialog__inner {
             position: relative;
             max-width: 960px;
             border-radius: 8px;
@@ -204,10 +205,10 @@
             line-height: 1;
         }
         @media (min-width: 500px) {
-            .copydialog {
+            .copydialog, .logindialog {
                 padding: 24px;
             }
-            .copydialog__inner {
+            .copydialog__inner, .logindialog__inner {
                 padding: 12px 18px;
                 height: auto;
             }
@@ -221,6 +222,86 @@
             border-top: 9px solid transparent;
             border-bottom: 9px solid transparent;
             border-left: 9px solid currentcolor;
+        }
+
+        .logindialog .error {
+            margin: 8px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid #b71c1c;
+            background-color: #c62828;
+            color: white;
+        }
+        .logindialog .error:empty {
+            display: none;
+        }
+        .logindialog form label {
+            cursor: pointer;
+        }
+        .logindialog form button {
+            all: unset;
+            padding: 8px;
+            line-height: 1.75;
+            text-align: center;
+            min-width: 64px;
+            border-radius: 4px;
+            padding: 6px 8px;
+            color: rgb(91, 116, 239);
+            text-transform: uppercase;
+            letter-spacing: 0.02857em;
+        }
+        .logindialog form button:not([disabled]) {
+            cursor: pointer;
+        }
+        .logindialog form button:not([disabled]):hover {
+            background-color: rgba(91, 116, 239, 0.08);
+        }
+        .logindialog form input {
+            all: unset;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.23);
+            padding: 6px 12px;
+            width: auto;
+            min-width: 0;
+        }
+        .logindialog form input:hover {
+            border-color: white;
+        }
+        .logindialog form input:focus {
+            border-color: rgb(91, 116, 239);
+        }
+        .logindialog form .controls {
+            display: grid;
+            align-items: center;
+            grid-template-columns: 1fr;
+        }
+        .logindialog form .controls > :nth-child(even):not(:last-child) {
+            margin-bottom: 6px;
+        }
+        .logindialog form .submit {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 24px;
+        }
+        .logindialog input:disabled, .logindialog button:disabled {
+            opacity: 0.7;
+        }
+
+        @media (min-width: 500px) {
+            .logindialog form {
+                width: 100%;
+                max-width: 450px;
+                margin: 8px auto;
+            }
+            .logindialog form .controls {
+                grid-template-columns: auto 1fr;
+                column-gap: 16px;
+                row-gap: 6px;
+            }
+            .logindialog form .controls > :nth-child(even):not(:last-child) {
+                margin-bottom: 0px;
+            }
         }
     </style>
 </head>
@@ -256,6 +337,24 @@
             <input type="text" id="copyinput" disabled readonly/>
         </div>
     </div>
+    <div class="logindialog" id="logindialog" role="dialog">
+        <div class="logindialog__inner">
+            <form>
+                <h2>Login</h2>
+                <div class="error"></div>
+                <p>${MR.strings.webview_label_login_required.localized(locale)}</p>
+                <div class="controls">
+                    <label for="user">${MR.strings.login_label_username.localized(locale)}:</label>
+                    <input type="text" name="user" id="user" required placeholder="${MR.strings.login_placeholder_username.localized(locale)}"/>
+                    <label for="pass">${MR.strings.login_label_password.localized(locale)}:</label>
+                    <input type="password" name="pass" id="pass" required placeholder="${MR.strings.login_placeholder_password.localized(locale)}"/>
+                </div>
+                <div class="submit">
+                    <button type="submit" disabled>${MR.strings.login_label_login.localized(locale)}</button>
+                </div>
+            </form>
+        </div>
+    </div>
     <script>
         const messageDiv = document.getElementById('message');
         const statusDiv = document.getElementById('status');
@@ -277,321 +376,393 @@
         const params = new URLSearchParams(window.location.search);
         const token = params.get('token');
 
-        try {
-            const socketUrl = (window.location.origin + window.location.pathname).replace(/^http/,'ws');
-            // we pass the token as the subprotocol, which is widely considered the best solution to passing tokens
-            // browsers don't support setting custom headers for WebSockets...
-            const socket = new WebSocket(socketUrl, token ? [token] : []);
-
-            urlInput.disabled = false;
-            goButton.disabled = false;
-            reverseToggle.disabled = false;
-            reverseToggle.checked = window.localStorage.getItem('suwayomi_mouse_reverse_scroll') === "true";
-
-            let url = '';
-            try {
-                url = window.decodeURIComponent(window.location.hash.replace(/^#/, ''));
-            } catch (e) {
-                console.error(e);
-            }
-
-            copyClose.addEventListener('click', () => {
-                copyDiv.classList.remove('show');
-            });
-
-            contextMenuCopy.addEventListener('click', () => {
-                socket.send(JSON.stringify({
-                    type: 'copy',
-                }));
-                contextMenuDiv.classList.remove('show');
-            });
-
-            contextMenuPaste.addEventListener('click', () => {
-                navigator.clipboard.readText().then(data => {
-                    socket.send(JSON.stringify({
-                        type: 'paste',
-                        data: data,
-                    }));
+        function connectWs(socketUrl, token) {
+            return new Promise((resolve, reject) => {
+                // we pass the token as the subprotocol, which is widely considered the best solution to passing tokens
+                // browsers don't support setting custom headers for WebSockets...
+                const socket = new WebSocket(socketUrl, token ? [token] : []);
+                const f = (msg) => {
+                    console.debug('Connection active:', msg.data);
+                    socket.removeEventListener('message', f);
+                    socket.removeEventListener('close', closef);
+                    resolve(socket);
+                };
+                const closef = (e) => {
+                    socket.removeEventListener('message', f);
+                    if (e.code === 1011 && e.reason === "Unauthorized") {
+                        const loginDiv = document.getElementById('logindialog');
+                        const loginForm = document.querySelector('#logindialog form');
+                        const loginError = document.querySelector('#logindialog .error');
+                        loginError.textContent = '';
+                        loginForm.querySelectorAll('input, button').forEach(i => i.disabled = false);
+                        loginForm.addEventListener('submit', async (sev) => {
+                            sev.preventDefault();
+                            loginForm.querySelectorAll('input, button').forEach(i => i.disabled = true);
+                            const mutation = {
+                                "query": "mutation LOGIN($input: LoginInput!) {\n  login(input: $input) {\n    accessToken\n    refreshToken\n  }\n}",
+                                "variables": {
+                                    "input": {
+                                        "username": loginForm.user.value,
+                                        "password": loginForm.pass.value,
+                                    },
+                                },
+                                "operationName": "LOGIN",
+                            };
+                            const resp = await fetch("/api/graphql", {
+                                "headers": {
+                                    "Accept": "application/json, multipart/mixed",
+                                    "Content-Type": "application/json",
+                                    "Cache-Control": "no-cache"
+                                },
+                                "body": JSON.stringify(mutation),
+                                "method": "POST",
+                            }).then(r => r.json());
+                            if (resp.errors && resp.errors.length > 0) {
+                                const err = resp.errors[0].message.replace(/Exception[^:]* :|\r?\n.*/g, '');
+                                loginError.textContent = err;
+                                loginForm.pass.value = '';
+                                loginForm.querySelectorAll('input, button').forEach(i => i.disabled = false);
+                            } else {
+                                const newToken = resp.data.login.accessToken;
+                                const expiry = new Date(JSON.parse(atob(newToken.split('.')[1])).exp * 1000);
+                                console.log('Got new token', newToken, 'expires', expiry);
+                                document.cookie = "suwayomi-server-token=" + newToken + "; path=/; expires=" + expiry.toUTCString();
+                                loginDiv.classList.remove('show');
+                                loginForm.querySelectorAll('input, button').forEach(i => i.disabled = true);
+                                const newSocket = new WebSocket(socketUrl, [newToken]);
+                                newSocket.addEventListener('open', () => {
+                                    resolve(newSocket);
+                                });
+                            }
+                        });
+                        loginDiv.classList.add('show');
+                        return;
+                    }
+                    socket.removeEventListener('close', closef);
+                    reject(e);
+                };
+                socket.addEventListener('open', () => {
+                    console.debug('Socket opened, PING');
+                    socket.addEventListener('message', f);
+                    socket.send(JSON.stringify({type: "ping"}));
                 });
-                contextMenuDiv.classList.remove('show');
+                socket.addEventListener('close', closef);
             });
+        }
 
-            if (!navigator.clipboard || !navigator.clipboard.readText) {
-                // if not served via HTTPS, remove the button, users can still paste via clipboard
-                // e.g. Ctrl+V or the dedicated paste button on gboard
-                // TODO: dialog like with copy?
-                contextMenuPaste.remove();
-            }
+        (async function() {
+            try {
+                const socketUrl = (window.location.origin + window.location.pathname).replace(/^http/,'ws');
+                // we pass the token as the subprotocol, which is widely considered the best solution to passing tokens
+                // browsers don't support setting custom headers for WebSockets...
+                const socket = await connectWs(socketUrl, token);
 
-            /// Helpers
+                urlInput.disabled = false;
+                goButton.disabled = false;
+                reverseToggle.disabled = false;
+                reverseToggle.checked = window.localStorage.getItem('suwayomi_mouse_reverse_scroll') === "true";
 
-            const setHash = (u) => {
-                let current = '';
+                let url = '';
                 try {
-                    current = window.decodeURIComponent(window.location.hash.replace(/^#/, ''));
+                    url = window.decodeURIComponent(window.location.hash.replace(/^#/, ''));
                 } catch (e) {
                     console.error(e);
                 }
-                if (current != u)
-                    history.pushState(null, null, window.location.origin + window.location.pathname + '#' + window.encodeURIComponent(u));
-            };
 
-            const setTitle = (title) => {
-                if (!title) {
-                    document.title = origTitle;
-                    titleDiv.textContent = origTitle;
-                } else {
-                    document.title = "Suwayomi: " + title;
-                    titleDiv.textContent = "Suwayomi: " + title;
+                copyClose.addEventListener('click', () => {
+                    copyDiv.classList.remove('show');
+                });
+
+                contextMenuCopy.addEventListener('click', () => {
+                    socket.send(JSON.stringify({
+                        type: 'copy',
+                    }));
+                    contextMenuDiv.classList.remove('show');
+                });
+
+                contextMenuPaste.addEventListener('click', () => {
+                    navigator.clipboard.readText().then(data => {
+                        socket.send(JSON.stringify({
+                            type: 'paste',
+                            data: data,
+                        }));
+                    });
+                    contextMenuDiv.classList.remove('show');
+                });
+
+                if (!navigator.clipboard || !navigator.clipboard.readText) {
+                    // if not served via HTTPS, remove the button, users can still paste via clipboard
+                    // e.g. Ctrl+V or the dedicated paste button on gboard
+                    // TODO: dialog like with copy?
+                    contextMenuPaste.remove();
                 }
-            }
 
-            const loadUrl = (u) => {
-                if (!u) {
-                    urlInput.value = u;
-                    setHash(u);
-                    setTitle();
-                    messageDiv.textContent = "${MR.strings.webview_label_getstarted.localized(locale)}";
-                    ctx.clearRect(0, 0, frame.width, frame.height);
-                    return;
+                /// Helpers
+
+                const setHash = (u) => {
+                    let current = '';
+                    try {
+                        current = window.decodeURIComponent(window.location.hash.replace(/^#/, ''));
+                    } catch (e) {
+                        console.error(e);
+                    }
+                    if (current != u)
+                        history.pushState(null, null, window.location.origin + window.location.pathname + '#' + window.encodeURIComponent(u));
+                };
+
+                const setTitle = (title) => {
+                    if (!title) {
+                        document.title = origTitle;
+                        titleDiv.textContent = origTitle;
+                    } else {
+                        document.title = "Suwayomi: " + title;
+                        titleDiv.textContent = "Suwayomi: " + title;
+                    }
                 }
-                messageDiv.textContent = "${MR.strings.webview_label_loading.localized(locale)}";
-                messageDiv.classList.remove('error');
-                urlInput.value = u;
-                socket.send(JSON.stringify({ type: 'loadUrl', url: u, width: frame.clientWidth, height: frame.clientHeight }));
-                ctx.clearRect(0, 0, frame.width, frame.height);
-            };
 
-            const copy = (data) => {
-                try {
-                    if (!!navigator.clipboard && !!navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(data);
+                const loadUrl = (u) => {
+                    if (!u) {
+                        urlInput.value = u;
+                        setHash(u);
+                        setTitle();
+                        messageDiv.textContent = "${MR.strings.webview_label_getstarted.localized(locale)}";
+                        ctx.clearRect(0, 0, frame.width, frame.height);
                         return;
                     }
-                    console.warn('Clipbaord API not supported (not served over HTTPS?), presenting dialog');
-                } catch (e) {
-                    console.error('Clipboard access threw, presenting dialog', e);
-                }
-                copyInput.value = data;
-                copyDiv.classList.add('show');
-            }
+                    messageDiv.textContent = "${MR.strings.webview_label_loading.localized(locale)}";
+                    messageDiv.classList.remove('error');
+                    urlInput.value = u;
+                    socket.send(JSON.stringify({ type: 'loadUrl', url: u, width: frame.clientWidth, height: frame.clientHeight }));
+                    ctx.clearRect(0, 0, frame.width, frame.height);
+                };
 
-            /// Form
-
-            window.addEventListener('hashchange', e => {
-                const url = window.decodeURIComponent(window.location.hash.replace(/^#/, ''));
-                loadUrl(url);
-                console.log('Navigate to', url);
-            });
-
-            browseForm.addEventListener('submit', e => {
-                e.preventDefault();
-                const url = urlInput.value;
-                loadUrl(url);
-                console.log('Navigate to', url);
-            });
-
-            reverseToggle.addEventListener('change', e => {
-                window.localStorage.setItem('suwayomi_mouse_reverse_scroll', e.target.checked ? "true" : "false");
-            });
-
-            /// Server events
-
-            socket.addEventListener('open', () => {
-                loadUrl(url);
-                console.log('WebSocket connection opened');
-            });
-
-            socket.addEventListener('message', e => {
-                const obj = JSON.parse(e.data);
-                switch (obj.type) {
-                    case "addressChange":
-                        console.log('Loaded');
-                        messageDiv.textContent = '';
-                        urlInput.value = obj.url;
-                        setHash(obj.url);
-                        setTitle(obj.title);
-                        break;
-                    case "statusChange":
-                        statusDiv.textContent = obj.message;
-                        break;
-                    case "load": {
-                        if (obj.error) {
-                            messageDiv.textContent = "${MR.strings.label_error.localized(locale)}: " + obj.error;
-                            messageDiv.classList.add('error');
-                        } else {
-                            messageDiv.textContent = "";
+                const copy = (data) => {
+                    try {
+                        if (!!navigator.clipboard && !!navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(data);
+                            return;
                         }
-                        urlInput.value = obj.url;
-                        setTitle(obj.title);
-                    } break;
-                    case "render": {
-                        const img = new Image();
-                        const imgData = new Blob([new Uint8Array(obj.image)], { type: "image/png" });
-                        const url = URL.createObjectURL(imgData);
-                        img.addEventListener('load', e => {
-                            frame.width = img.width;
-                            frame.height = img.height;
-                            ctx.drawImage(img, 0, 0);
-                        });
-                        img.src = url;
-                    } break;
-                    case "consoleMessage": {
-                        const lg = obj.severity == 4 ? console.error : obj.severity == 3 ? console.warn : console.log;
-                        lg(obj.source + ':' + obj.line + ':', obj.message);
-                    } break;
-                    case "copy":
-                        copy(obj.content);
-                        break;
-                    default:
-                        console.warn("Unknown event", obj.type)
-                        break;
+                        console.warn('Clipbaord API not supported (not served over HTTPS?), presenting dialog');
+                    } catch (e) {
+                        console.error('Clipboard access threw, presenting dialog', e);
+                    }
+                    copyInput.value = data;
+                    copyDiv.classList.add('show');
                 }
-            });
 
-            socket.addEventListener('close', e => {
-                if (e.wasClean) {
-                    console.log(`WebSocket connection closed cleanly, code=` + e.code + `, reason=` + e.reason);
-                } else {
-                    console.error('WebSocket connection died');
-                }
-                document.body.classList.add('disconnected');
-            });
+                /// Form
 
-            socket.addEventListener('error', e => {
+                window.addEventListener('hashchange', e => {
+                    const url = window.decodeURIComponent(window.location.hash.replace(/^#/, ''));
+                    loadUrl(url);
+                    console.log('Navigate to', url);
+                });
+
+                browseForm.addEventListener('submit', e => {
+                    e.preventDefault();
+                    const url = urlInput.value;
+                    loadUrl(url);
+                    console.log('Navigate to', url);
+                });
+
+                reverseToggle.addEventListener('change', e => {
+                    window.localStorage.setItem('suwayomi_mouse_reverse_scroll', e.target.checked ? "true" : "false");
+                });
+
+                /// Server events
+
+                socket.addEventListener('message', e => {
+                    const obj = JSON.parse(e.data);
+                    switch (obj.type) {
+                        case "addressChange":
+                            console.log('Loaded');
+                            messageDiv.textContent = '';
+                            urlInput.value = obj.url;
+                            setHash(obj.url);
+                            setTitle(obj.title);
+                            break;
+                        case "statusChange":
+                            statusDiv.textContent = obj.message;
+                            break;
+                        case "load": {
+                            if (obj.error) {
+                                messageDiv.textContent = "${MR.strings.label_error.localized(locale)}: " + obj.error;
+                                messageDiv.classList.add('error');
+                            } else {
+                                messageDiv.textContent = "";
+                            }
+                            urlInput.value = obj.url;
+                            setTitle(obj.title);
+                        } break;
+                        case "render": {
+                            const img = new Image();
+                            const imgData = new Blob([new Uint8Array(obj.image)], { type: "image/png" });
+                            const url = URL.createObjectURL(imgData);
+                            img.addEventListener('load', e => {
+                                frame.width = img.width;
+                                frame.height = img.height;
+                                ctx.drawImage(img, 0, 0);
+                            });
+                            img.src = url;
+                        } break;
+                        case "consoleMessage": {
+                            const lg = obj.severity == 4 ? console.error : obj.severity == 3 ? console.warn : console.log;
+                            lg(obj.source + ':' + obj.line + ':', obj.message);
+                        } break;
+                        case "copy":
+                            copy(obj.content);
+                            break;
+                        default:
+                            console.warn("Unknown event", obj.type)
+                            break;
+                    }
+                });
+
+                socket.addEventListener('close', e => {
+                    if (e.wasClean) {
+                        console.log(`WebSocket connection closed cleanly, code=` + e.code + `, reason=` + e.reason);
+                    } else {
+                        console.error('WebSocket connection died', e);
+                    }
+                    document.body.classList.add('disconnected');
+                });
+
+                socket.addEventListener('error', e => {
+                    messageDiv.textContent = "${MR.strings.label_error.localized(locale)}: " + (e.message || e.reason || e);
+                    messageDiv.classList.add('error');
+                    console.error('WebSocket error:', e);
+                });
+
+                /// Page events
+
+                const observer = new ResizeObserver(() => {
+                    socket.send(JSON.stringify({ type: 'resize', width: frame.clientWidth, height: frame.clientHeight }));
+                });
+                observer.observe(frame);
+
+                const frameEvent = (e) => {
+                    // Chrome Android bug, see input below
+                    if (e.key === "Unidentified") return;
+                    // paste is handled in input below
+                    if (e.key === "v" && e.ctrlKey === true) return;
+                    if (e.key === "c" && e.ctrlKey === true) {
+                        if (e.type === "keydown") {
+                            socket.send(JSON.stringify({
+                                type: 'copy',
+                            }));
+                        }
+                        return;
+                    }
+                    e.preventDefault();
+                    if (e.type === "mousedown" && contextMenuDiv.classList.contains('show')) {
+                        console.log('remove context menu');
+                        contextMenuDiv.classList.remove('show');
+                        return;
+                    }
+                    // right-click, handled in contextmenu below
+                    if (e.type === "mousedown" && e.button === 2) return;
+                    const rect = frame.getBoundingClientRect();
+                    const clickX = e.clientX !== undefined ? e.clientX - rect.left : 0;
+                    const clickY = e.clientY !== undefined ? e.clientY - rect.top : 0;
+                    socket.send(JSON.stringify({
+                        type: 'event',
+                        eventType: e.type,
+                        clickX,
+                        clickY,
+                        button: e.button,
+                        ctrlKey: e.ctrlKey,
+                        shiftKey: e.shiftKey,
+                        altKey: e.altKey,
+                        metaKey: e.metaKey,
+                        key: e.key,
+                        clientX: e.clientX,
+                        clientY: e.clientY,
+                        deltaY: reverseToggle.checked && typeof e.deltaY === 'number' ? -e.deltaY : e.deltaY,
+                    }));
+                    frameInput.focus();
+                };
+
+                const attachEvents = () => {
+                    console.log('Attaching event handlers to new document');
+                    const events = ["mousedown", "mouseup", "mousemove", "wheel", "keydown", "keyup"];
+                    for (const ev of events) {
+                        frameInput.addEventListener(ev, frameEvent, false);
+                    }
+
+                    let touch = undefined;
+                    frameInput.addEventListener('touchstart', e => {
+                        if (e.touches.length === 1) {
+                            touch = e.touches[0];
+                        }
+                    }, false);
+                    frameInput.addEventListener('touchend', e => {
+                        touch = undefined;
+                    }, false);
+                    frameInput.addEventListener('touchmove', e => {
+                        if (e.touches.length === 1 && touch !== undefined) {
+                            e.preventDefault();
+                            let deltaX = touch.pageX - e.touches[0].pageX;
+                            let deltaY = touch.pageY - e.touches[0].pageY;
+                            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                                // assume horizontal scroll
+                                socket.send(JSON.stringify({
+                                    type: 'event',
+                                    eventType: 'wheel',
+                                    clickX: e.touches[0].pageX,
+                                    clickY: e.touches[0].pageY,
+                                    shiftKey: true,
+                                    clientX: e.touches[0].clientX,
+                                    clientY: e.touches[0].clientY,
+                                    deltaY: deltaX,
+                                }));
+                            } else {
+                                socket.send(JSON.stringify({
+                                    type: 'event',
+                                    eventType: 'wheel',
+                                    clickX: e.touches[0].pageX,
+                                    clickY: e.touches[0].pageY,
+                                    clientX: e.touches[0].clientX,
+                                    clientY: e.touches[0].clientY,
+                                    deltaY: deltaY,
+                                }));
+                            }
+                            touch = e.touches[0];
+                        }
+                    }, false);
+                    // known bug on Chrome Android:
+                    // https://stackoverflow.com/questions/36753548/keycode-on-android-is-always-229
+                    // on other browsers, the preventDefault above works so we don't get this event
+                    frameInput.addEventListener('input', e => {
+                        e.preventDefault();
+                        socket.send(JSON.stringify({
+                            type: 'paste',
+                            data: e.data,
+                        }));
+                        e.target.value = '';
+                    });
+                    frameInput.addEventListener('contextmenu', e => {
+                        e.preventDefault();
+                        contextMenuDiv.style.left = e.offsetX + 'px';
+                        contextMenuDiv.style.top = e.offsetY + 'px';
+                        contextMenuDiv.classList.add('show');
+
+                        const shiftLeft = contextMenuDiv.offsetParent.offsetWidth - contextMenuDiv.offsetWidth - contextMenuDiv.offsetLeft;
+                        if (shiftLeft < 0)
+                            contextMenuDiv.style.left = (e.offsetX + shiftLeft) + 'px';
+                        const shiftTop = contextMenuDiv.offsetParent.offsetHeight - contextMenuDiv.offsetHeight - contextMenuDiv.offsetTop;
+                        if (shiftTop < 0)
+                            contextMenuDiv.style.top = (e.offsetY + shiftTop) + 'px';
+                    }, false);
+                };
+                attachEvents();
+                frameInput.focus();
+                loadUrl(url);
+            } catch (e) {
                 messageDiv.textContent = "${MR.strings.label_error.localized(locale)}: " + (e.message || e.reason || e);
                 messageDiv.classList.add('error');
-                console.error('WebSocket error:', e);
-            });
-
-            /// Page events
-
-            const observer = new ResizeObserver(() => {
-                socket.send(JSON.stringify({ type: 'resize', width: frame.clientWidth, height: frame.clientHeight }));
-            });
-            observer.observe(frame);
-
-            const frameEvent = (e) => {
-                // Chrome Android bug, see input below
-                if (e.key === "Unidentified") return;
-                // paste is handled in input below
-                if (e.key === "v" && e.ctrlKey === true) return;
-                if (e.key === "c" && e.ctrlKey === true) {
-                    if (e.type === "keydown") {
-                        socket.send(JSON.stringify({
-                            type: 'copy',
-                        }));
-                    }
-                    return;
-                }
-                e.preventDefault();
-                if (e.type === "mousedown" && contextMenuDiv.classList.contains('show')) {
-                    console.log('remove context menu');
-                    contextMenuDiv.classList.remove('show');
-                    return;
-                }
-                // right-click, handled in contextmenu below
-                if (e.type === "mousedown" && e.button === 2) return;
-                const rect = frame.getBoundingClientRect();
-                const clickX = e.clientX !== undefined ? e.clientX - rect.left : 0;
-                const clickY = e.clientY !== undefined ? e.clientY - rect.top : 0;
-                socket.send(JSON.stringify({
-                    type: 'event',
-                    eventType: e.type,
-                    clickX,
-                    clickY,
-                    button: e.button,
-                    ctrlKey: e.ctrlKey,
-                    shiftKey: e.shiftKey,
-                    altKey: e.altKey,
-                    metaKey: e.metaKey,
-                    key: e.key,
-                    clientX: e.clientX,
-                    clientY: e.clientY,
-                    deltaY: reverseToggle.checked && typeof e.deltaY === 'number' ? -e.deltaY : e.deltaY,
-                }));
-                frameInput.focus();
-            };
-
-            const attachEvents = () => {
-                console.log('Attaching event handlers to new document');
-                const events = ["mousedown", "mouseup", "mousemove", "wheel", "keydown", "keyup"];
-                for (const ev of events) {
-                    frameInput.addEventListener(ev, frameEvent, false);
-                }
-
-                let touch = undefined;
-                frameInput.addEventListener('touchstart', e => {
-                    if (e.touches.length === 1) {
-                        touch = e.touches[0];
-                    }
-                }, false);
-                frameInput.addEventListener('touchend', e => {
-                    touch = undefined;
-                }, false);
-                frameInput.addEventListener('touchmove', e => {
-                    if (e.touches.length === 1 && touch !== undefined) {
-                        e.preventDefault();
-                        let deltaX = touch.pageX - e.touches[0].pageX;
-                        let deltaY = touch.pageY - e.touches[0].pageY;
-                        if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                            // assume horizontal scroll
-                            socket.send(JSON.stringify({
-                                type: 'event',
-                                eventType: 'wheel',
-                                clickX: e.touches[0].pageX,
-                                clickY: e.touches[0].pageY,
-                                shiftKey: true,
-                                clientX: e.touches[0].clientX,
-                                clientY: e.touches[0].clientY,
-                                deltaY: deltaX,
-                            }));
-                        } else {
-                            socket.send(JSON.stringify({
-                                type: 'event',
-                                eventType: 'wheel',
-                                clickX: e.touches[0].pageX,
-                                clickY: e.touches[0].pageY,
-                                clientX: e.touches[0].clientX,
-                                clientY: e.touches[0].clientY,
-                                deltaY: deltaY,
-                            }));
-                        }
-                        touch = e.touches[0];
-                    }
-                }, false);
-                // known bug on Chrome Android:
-                // https://stackoverflow.com/questions/36753548/keycode-on-android-is-always-229
-                // on other browsers, the preventDefault above works so we don't get this event
-                frameInput.addEventListener('input', e => {
-                    e.preventDefault();
-                    socket.send(JSON.stringify({
-                        type: 'paste',
-                        data: e.data,
-                    }));
-                    e.target.value = '';
-                });
-                frameInput.addEventListener('contextmenu', e => {
-                    e.preventDefault();
-                    contextMenuDiv.style.left = e.offsetX + 'px';
-                    contextMenuDiv.style.top = e.offsetY + 'px';
-                    contextMenuDiv.classList.add('show');
-
-                    const shiftLeft = contextMenuDiv.offsetParent.offsetWidth - contextMenuDiv.offsetWidth - contextMenuDiv.offsetLeft;
-                    if (shiftLeft < 0)
-                        contextMenuDiv.style.left = (e.offsetX + shiftLeft) + 'px';
-                    const shiftTop = contextMenuDiv.offsetParent.offsetHeight - contextMenuDiv.offsetHeight - contextMenuDiv.offsetTop;
-                    if (shiftTop < 0)
-                        contextMenuDiv.style.top = (e.offsetY + shiftTop) + 'px';
-                }, false);
-            };
-            attachEvents();
-            frameInput.focus();
-        } catch (e) {
-            messageDiv.textContent = "${MR.strings.label_error.localized(locale)}: " + (e.message || e);
-            messageDiv.classList.add('error');
-            console.error(e);
-        }
+                console.error(e);
+            }
+        })();
     </script>
 </body>
 </html>
