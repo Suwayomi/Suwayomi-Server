@@ -33,7 +33,6 @@
     <string name="opds_facet_sort_date_asc">Ngày tăng dần</string>
     <string name="opds_facet_filter_unread_only">Chưa đọc</string>
     <string name="opds_facet_filter_read_only">Đã đọc</string>
-    <string name="opds_linktitle_stream_pages">Xem trang (Trực tuyến)</string>
     <string name="opds_linktitle_chapter_cover">Bìa chương</string>
     <string name="opds_linktitle_catalog_root">Danh mục gốc</string>
     <string name="opds_linktitle_search_catalog">Tìm kiếm danh mục</string>
@@ -53,7 +52,7 @@
     <string name="opds_linktitle_view_chapter_details">Xem Chi Tiết Chương &amp; Nhận Trang</string>
     <string name="opds_facet_filter_all_chapters">Tất cả các chương</string>
     <string name="opds_chapter_status_in_progress">⌛</string>
-    <string name="opds_chapter_details_base">%1$s | %2$s</string>
+    <string name="opds_chapter_details_base">Loạt: %1$s | %2$s</string>
     <string name="opds_feeds_explore_title">Khám phá</string>
     <string name="opds_feeds_explore_entry_content">Khám phá loạt truyện từ nguồn của bạn</string>
     <string name="opds_feeds_history_title">Lịch sử</string>
@@ -110,4 +109,13 @@
     <string name="login_label_login">Đăng nhập</string>
     <string name="login_placeholder_username">Nhập tên người dùng...</string>
     <string name="login_placeholder_password">Bí mật...</string>
+    <string name="opds_linktitle_stream_pages_start">Đọc trực tuyến</string>
+    <string name="opds_linktitle_stream_pages_continue">Tiếp tục đọc trực tuyến</string>
+    <string name="opds_linktitle_stream_pages_start_local">Đọc trực tuyến (Tiến độ địa phương)</string>
+    <string name="opds_linktitle_stream_pages_continue_local">Tiếp tục đọc trực tuyến (Tiến độ địa phương)</string>
+    <string name="opds_linktitle_stream_pages_start_remote">Đọc trực tuyến (Đã đồng bộ từ %1$s)</string>
+    <string name="opds_linktitle_stream_pages_continue_remote">Tiếp tục đọc trực tuyến (Đã đồng bộ từ %1$s)</string>
+    <string name="label_close">Đóng</string>
+    <string name="webview_label_copy">Sao chép vào bảng tạm</string>
+    <string name="webview_label_copy_description">Không thể sao chép bảng tạm tự động, vui lòng sử dụng thông tin bên dưới để sao chép giá trị theo cách thủ công.</string>
 </resources>
