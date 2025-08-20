@@ -42,7 +42,7 @@ fun getUserFromContext(ctx: Context): UserType {
 
 fun getUserFromWsContext(ctx: WsConnectContext): UserType {
     val authentication =
-        ctx.header(Header.AUTHORIZATION) ?: ctx.cookie("suwayomi-server-token") ?: ctx.header("Sec-WebSocket-Protocol")
+        ctx.header(Header.AUTHORIZATION) ?: ctx.header("Sec-WebSocket-Protocol") ?: ctx.cookie("suwayomi-server-token")
     val token = authentication?.substringAfter("Bearer ") ?: ctx.queryParam("token")
 
     return getUserFromToken(token)
