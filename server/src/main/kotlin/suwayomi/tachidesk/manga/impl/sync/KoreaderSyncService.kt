@@ -121,7 +121,7 @@ object KoreaderSyncService {
                         try {
                             // This generates a deterministic CBZ stream from either a folder or an existing CBZ file.
                             // If it fails, it means the chapter is not available for hashing.
-                            val (stream, _) = ChapterDownloadHelper.getAsArchiveStream(mangaId, chapterId)
+                            val (stream, _) = ChapterDownloadHelper.getArchiveStreamWithSize(mangaId, chapterId)
                             stream.use {
                                 Hash.md5(it.readBytes())
                             }
