@@ -17,13 +17,11 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.KoSyncStatusPayload
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy
-import suwayomi.tachidesk.manga.impl.util.KoreaderHelper
-import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
+import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
-import java.io.File
 import java.util.UUID
 import kotlin.math.abs
 
@@ -102,35 +100,35 @@ object KoreaderSyncService {
 
     private fun getOrGenerateChapterHash(chapterId: Int): String? {
         return transaction {
-            val existingHash =
+            val chapterRow =
                 ChapterTable
-                    .select(ChapterTable.koreaderHash)
+                    .select(ChapterTable.koreaderHash, ChapterTable.manga, ChapterTable.isDownloaded)
                     .where { ChapterTable.id eq chapterId }
-                    .firstOrNull()
-                    ?.get(ChapterTable.koreaderHash)
+                    .firstOrNull() ?: return@transaction null
 
+            val existingHash = chapterRow[ChapterTable.koreaderHash]
             if (!existingHash.isNullOrBlank()) {
                 return@transaction existingHash
             }
 
+            val mangaId = chapterRow[ChapterTable.manga].value
             val checksumMethod = serverConfig.koreaderSyncChecksumMethod.value
+
             val newHash =
                 when (checksumMethod) {
                     KoreaderSyncChecksumMethod.BINARY -> {
-                        logger.info { "[KOSYNC HASH] No hash for chapterId=$chapterId. Generating from CBZ content." }
-                        val mangaId =
-                            ChapterTable
-                                .select(ChapterTable.manga)
-                                .where { ChapterTable.id eq chapterId }
-                                .firstOrNull()
-                                ?.get(ChapterTable.manga)
-                                ?.value ?: return@transaction null
-                        val cbzFile = File(getChapterCbzPath(mangaId, chapterId))
-                        if (!cbzFile.exists()) {
-                            logger.info { "[KOSYNC HASH] Could not generate hash for chapterId=$chapterId. CBZ not found." }
-                            return@transaction null
+                        logger.info { "[KOSYNC HASH] No hash for chapterId=$chapterId. Generating from downloaded content." }
+                        try {
+                            // This generates a deterministic CBZ stream from either a folder or an existing CBZ file.
+                            // If it fails, it means the chapter is not available for hashing.
+                            val (stream, _) = ChapterDownloadHelper.getArchiveStreamWithSize(mangaId, chapterId)
+                            stream.use {
+                                Hash.md5(it.readBytes())
+                            }
+                        } catch (e: Exception) {
+                            logger.warn(e) { "[KOSYNC HASH] Failed to generate archive stream for chapterId=$chapterId." }
+                            null
                         }
-                        KoreaderHelper.hashContents(cbzFile)
                     }
                     KoreaderSyncChecksumMethod.FILENAME -> {
                         logger.info { "[KOSYNC HASH] No hash for chapterId=$chapterId. Generating from filename." }
