@@ -466,8 +466,9 @@ class KcefWebView {
         val clickY = msg.clickY
         val modifier =
             (
-                (if (msg.altKey == true) InputEvent.ALT_DOWN_MASK else 0) or
-                    (if (msg.ctrlKey == true) InputEvent.CTRL_DOWN_MASK else 0) or
+                // Alt support is removed, since browsers already translate, so this messes with translation, see #1575
+                // (if (msg.altKey == true) InputEvent.ALT_DOWN_MASK else 0) or
+                (if (msg.ctrlKey == true) InputEvent.CTRL_DOWN_MASK else 0) or
                     (if (msg.shiftKey == true) InputEvent.SHIFT_DOWN_MASK else 0) or
                     (if (msg.metaKey == true) InputEvent.META_DOWN_MASK else 0)
             )
