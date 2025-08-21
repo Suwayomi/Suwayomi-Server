@@ -20,6 +20,7 @@ import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.InputStream
+import java.util.zip.Deflater
 
 private val applicationDirs: ApplicationDirs by injectLazy()
 
@@ -61,9 +62,12 @@ class ArchiveProvider(
         }
 
         ZipArchiveOutputStream(outputFile.outputStream()).use { zipOut ->
+            zipOut.setMethod(ZipArchiveOutputStream.DEFLATED)
+            zipOut.setLevel(Deflater.DEFAULT_COMPRESSION)
             if (chapterCacheFolder.isDirectory) {
                 chapterCacheFolder.listFiles()?.sortedBy { it.name }?.forEach {
                     val entry = ZipArchiveEntry(it.name)
+                    entry.time = 0L
                     try {
                         zipOut.putArchiveEntry(entry)
                         it.inputStream().use { inputStream ->
