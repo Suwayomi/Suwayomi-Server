@@ -15,15 +15,15 @@ import kotlin.math.ceil
  * Helper class to build an OpdsFeedXml.
  */
 class FeedBuilderInternal(
-    val baseUrl: String,
-    val idPath: String,
-    val title: String,
-    val locale: Locale,
-    val feedType: String,
-    var pageNum: Int? = 1,
-    var explicitQueryParams: String? = null,
-    val currentSort: String? = null,
-    val currentFilter: String? = null,
+    private val baseUrl: String,
+    private val idPath: String,
+    private val title: String,
+    private val locale: Locale,
+    private val feedType: String,
+    private val pageNum: Int? = 1,
+    private val explicitQueryParams: String? = null,
+    private val currentSort: String? = null,
+    private val currentFilter: String? = null,
     private val isSearchFeed: Boolean = false,
 ) {
     private val opdsItemsPerPageBounded: Int
@@ -57,8 +57,7 @@ class FeedBuilderInternal(
     }
 
     fun build(): OpdsFeedXml {
-        val actualPageNum = pageNum ?: 1
-        val selfLinkHref = buildUrlWithParams(idPath, if (pageNum != null) actualPageNum else null)
+        val selfLinkHref = buildUrlWithParams(idPath, if (pageNum != null) pageNum else null)
         val feedLinks = mutableListOf<OpdsLinkXml>()
         feedLinks.addAll(this.links)
 
@@ -82,46 +81,54 @@ class FeedBuilderInternal(
             ),
         )
 
+        // Add pagination links if needed
         if (pageNum != null) {
             val totalPages = ceil(totalResults.toDouble() / opdsItemsPerPageBounded).toInt()
 
             if (totalPages > 1) {
+                val currentPage = pageNum.coerceAtLeast(1)
+
+                // Always add 'first' link when there are multiple pages
                 feedLinks.add(
                     OpdsLinkXml(
                         OpdsConstants.LINK_REL_FIRST,
                         buildUrlWithParams(idPath, 1),
                         feedType,
-                        "First Page",
+                        MR.strings.opds_linktitle_first_page.localized(locale),
                     ),
                 )
-            }
-            if (actualPageNum > 1) {
-                feedLinks.add(
-                    OpdsLinkXml(
-                        OpdsConstants.LINK_REL_PREV,
-                        buildUrlWithParams(idPath, actualPageNum - 1),
-                        feedType,
-                        MR.strings.opds_linktitle_previous_page.localized(locale),
-                    ),
-                )
-            }
-            if (actualPageNum < totalPages) {
-                feedLinks.add(
-                    OpdsLinkXml(
-                        OpdsConstants.LINK_REL_NEXT,
-                        buildUrlWithParams(idPath, actualPageNum + 1),
-                        feedType,
-                        MR.strings.opds_linktitle_next_page.localized(locale),
-                    ),
-                )
-            }
-            if (totalPages > 1) {
+
+                // Add 'prev' link if not on first page
+                if (currentPage > 1) {
+                    feedLinks.add(
+                        OpdsLinkXml(
+                            OpdsConstants.LINK_REL_PREV,
+                            buildUrlWithParams(idPath, currentPage - 1),
+                            feedType,
+                            MR.strings.opds_linktitle_previous_page.localized(locale),
+                        ),
+                    )
+                }
+
+                // Add 'next' link if not on last page
+                if (currentPage < totalPages) {
+                    feedLinks.add(
+                        OpdsLinkXml(
+                            OpdsConstants.LINK_REL_NEXT,
+                            buildUrlWithParams(idPath, currentPage + 1),
+                            feedType,
+                            MR.strings.opds_linktitle_next_page.localized(locale),
+                        ),
+                    )
+                }
+
+                // Always add 'last' link when there are multiple pages
                 feedLinks.add(
                     OpdsLinkXml(
                         OpdsConstants.LINK_REL_LAST,
                         buildUrlWithParams(idPath, totalPages),
                         feedType,
-                        "Last Page",
+                        MR.strings.opds_linktitle_last_page.localized(locale),
                     ),
                 )
             }
@@ -135,7 +142,7 @@ class FeedBuilderInternal(
         currentFilter?.let { urnParams.add("filter_$it") }
         val urnSuffix = if (urnParams.isNotEmpty()) ":${urnParams.joinToString(":")}" else ""
 
-        val showPaginationFields = isSearchFeed && pageNum != null && totalResults > 0
+        val showOpenSearchFields = isSearchFeed && pageNum != null && totalResults > 0
 
         return OpdsFeedXml(
             id = "urn:suwayomi:feed:${idPath.replace('/',':')}$urnSuffix",
@@ -145,9 +152,9 @@ class FeedBuilderInternal(
             author = feedAuthor,
             links = feedLinks,
             entries = entries,
-            totalResults = totalResults.takeIf { showPaginationFields },
-            itemsPerPage = if (showPaginationFields) opdsItemsPerPageBounded else null,
-            startIndex = if (showPaginationFields) ((actualPageNum - 1) * opdsItemsPerPageBounded) else null,
+            totalResults = totalResults.takeIf { showOpenSearchFields },
+            itemsPerPage = if (showOpenSearchFields) opdsItemsPerPageBounded else null,
+            startIndex = if (showOpenSearchFields) ((pageNum - 1) * opdsItemsPerPageBounded) + 1 else null,
         )
     }
 }
