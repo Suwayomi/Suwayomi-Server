@@ -18,10 +18,12 @@ import suwayomi.tachidesk.graphql.types.KoSyncStatusPayload
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
+import suwayomi.tachidesk.manga.impl.util.KoreaderHelper
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
+import java.io.File
 import java.util.UUID
 import kotlin.math.abs
 
@@ -119,11 +121,19 @@ object KoreaderSyncService {
                     KoreaderSyncChecksumMethod.BINARY -> {
                         logger.info { "[KOSYNC HASH] No hash for chapterId=$chapterId. Generating from downloaded content." }
                         try {
-                            // This generates a deterministic CBZ stream from either a folder or an existing CBZ file.
-                            // If it fails, it means the chapter is not available for hashing.
+                            // Always create a CBZ in memory if it doesn't exist
                             val (stream, _) = ChapterDownloadHelper.getArchiveStreamWithSize(mangaId, chapterId)
-                            stream.use {
-                                Hash.md5(it.readBytes())
+                            // Write the stream to a temp file for partial hashing
+                            val tempFile = File.createTempFile("kosync-hash-", ".cbz")
+                            try {
+                                tempFile.outputStream().use { fos ->
+                                    stream.use { it.copyTo(fos) }
+                                }
+                                // Use the same hashing method as for downloads
+                                KoreaderHelper.hashContents(tempFile)
+                            } finally {
+                                // Always delete the temp file
+                                tempFile.delete()
                             }
                         } catch (e: Exception) {
                             logger.warn(e) { "[KOSYNC HASH] Failed to generate archive stream for chapterId=$chapterId." }
