@@ -9,9 +9,10 @@ import suwayomi.tachidesk.opds.model.OpdsLinkXml
 import suwayomi.tachidesk.opds.util.OpdsDateUtil
 import suwayomi.tachidesk.server.serverConfig
 import java.util.Locale
+import kotlin.math.ceil
 
 /**
- * Clase de ayuda para construir un OpdsFeedXml.
+ * Helper class to build an OpdsFeedXml.
  */
 class FeedBuilderInternal(
     val baseUrl: String,
@@ -23,6 +24,7 @@ class FeedBuilderInternal(
     var explicitQueryParams: String? = null,
     val currentSort: String? = null,
     val currentFilter: String? = null,
+    private val isSearchFeed: Boolean = false,
 ) {
     private val opdsItemsPerPageBounded: Int
         get() = serverConfig.opdsItemsPerPage.value.coerceIn(10, 5000)
@@ -81,6 +83,18 @@ class FeedBuilderInternal(
         )
 
         if (pageNum != null) {
+            val totalPages = ceil(totalResults.toDouble() / opdsItemsPerPageBounded).toInt()
+
+            if (totalPages > 1) {
+                feedLinks.add(
+                    OpdsLinkXml(
+                        OpdsConstants.LINK_REL_FIRST,
+                        buildUrlWithParams(idPath, 1),
+                        feedType,
+                        "First Page",
+                    ),
+                )
+            }
             if (actualPageNum > 1) {
                 feedLinks.add(
                     OpdsLinkXml(
@@ -91,13 +105,23 @@ class FeedBuilderInternal(
                     ),
                 )
             }
-            if (totalResults > actualPageNum * opdsItemsPerPageBounded) {
+            if (actualPageNum < totalPages) {
                 feedLinks.add(
                     OpdsLinkXml(
                         OpdsConstants.LINK_REL_NEXT,
                         buildUrlWithParams(idPath, actualPageNum + 1),
                         feedType,
                         MR.strings.opds_linktitle_next_page.localized(locale),
+                    ),
+                )
+            }
+            if (totalPages > 1) {
+                feedLinks.add(
+                    OpdsLinkXml(
+                        OpdsConstants.LINK_REL_LAST,
+                        buildUrlWithParams(idPath, totalPages),
+                        feedType,
+                        "Last Page",
                     ),
                 )
             }
@@ -111,7 +135,7 @@ class FeedBuilderInternal(
         currentFilter?.let { urnParams.add("filter_$it") }
         val urnSuffix = if (urnParams.isNotEmpty()) ":${urnParams.joinToString(":")}" else ""
 
-        val showPaginationFields = pageNum != null && totalResults > 0
+        val showPaginationFields = isSearchFeed && pageNum != null && totalResults > 0
 
         return OpdsFeedXml(
             id = "urn:suwayomi:feed:${idPath.replace('/',':')}$urnSuffix",
@@ -123,7 +147,7 @@ class FeedBuilderInternal(
             entries = entries,
             totalResults = totalResults.takeIf { showPaginationFields },
             itemsPerPage = if (showPaginationFields) opdsItemsPerPageBounded else null,
-            startIndex = if (showPaginationFields) ((actualPageNum - 1) * opdsItemsPerPageBounded + 1) else null,
+            startIndex = if (showPaginationFields) ((actualPageNum - 1) * opdsItemsPerPageBounded) else null,
         )
     }
 }
