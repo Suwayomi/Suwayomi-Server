@@ -182,6 +182,9 @@ class SettingsMutation {
 
         // Authentication
         updateSetting(settings.authMode, serverConfig.authMode)
+        updateSetting(settings.jwtAudience, serverConfig.jwtAudience)
+        updateSetting(settings.jwtTokenExpiry, serverConfig.jwtTokenExpiry)
+        updateSetting(settings.jwtRefreshExpiry, serverConfig.jwtRefreshExpiry)
         updateSetting(settings.authUsername, serverConfig.authUsername)
         updateSetting(settings.authPassword, serverConfig.authPassword)
         updateSetting(settings.basicAuthEnabled, serverConfig.basicAuthEnabled)

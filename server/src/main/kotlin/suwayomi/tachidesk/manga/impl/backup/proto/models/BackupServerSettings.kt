@@ -11,6 +11,7 @@ import suwayomi.tachidesk.graphql.types.SettingsDownloadConversion
 import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIInterface
+import kotlin.time.Duration
 
 @Serializable
 data class BackupServerSettings(
@@ -51,6 +52,9 @@ data class BackupServerSettings(
     @ProtoNumber(28) override var updateMangas: Boolean,
     // Authentication
     @ProtoNumber(56) override var authMode: AuthMode,
+    @ProtoNumber(58) override var jwtAudience: String?,
+    @ProtoNumber(66) override var jwtTokenExpiry: Duration?,
+    @ProtoNumber(67) override var jwtRefreshExpiry: Duration?,
     @ProtoNumber(29) override var basicAuthEnabled: Boolean?,
     @ProtoNumber(30) override var authUsername: String,
     @ProtoNumber(31) override var authPassword: String,

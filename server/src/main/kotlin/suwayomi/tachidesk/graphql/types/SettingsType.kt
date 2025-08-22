@@ -12,6 +12,7 @@ import org.jetbrains.exposed.sql.SortOrder
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
+import kotlin.time.Duration
 
 interface Settings : Node {
     val ip: String?
@@ -65,6 +66,9 @@ interface Settings : Node {
 
     // Authentication
     val authMode: AuthMode?
+    val jwtAudience: String?
+    val jwtTokenExpiry: Duration?
+    val jwtRefreshExpiry: Duration?
     val authUsername: String?
     val authPassword: String?
 
@@ -177,6 +181,9 @@ data class PartialSettingsType(
     override val updateMangas: Boolean?,
     // Authentication
     override val authMode: AuthMode?,
+    override val jwtAudience: String?,
+    override val jwtTokenExpiry: Duration?,
+    override val jwtRefreshExpiry: Duration?,
     override val authUsername: String?,
     override val authPassword: String?,
     @GraphQLDeprecated("Removed - prefer authMode")
@@ -267,6 +274,9 @@ class SettingsType(
     override val updateMangas: Boolean,
     // Authentication
     override val authMode: AuthMode,
+    override val jwtAudience: String,
+    override val jwtTokenExpiry: Duration,
+    override val jwtRefreshExpiry: Duration,
     override val authUsername: String,
     override val authPassword: String,
     @GraphQLDeprecated("Removed - prefer authMode")
@@ -358,6 +368,9 @@ class SettingsType(
         config.updateMangas.value,
         // Authentication
         config.authMode.value,
+        config.jwtAudience.value,
+        config.jwtTokenExpiry.value,
+        config.jwtRefreshExpiry.value,
         config.authUsername.value,
         config.authPassword.value,
         config.basicAuthEnabled.value,

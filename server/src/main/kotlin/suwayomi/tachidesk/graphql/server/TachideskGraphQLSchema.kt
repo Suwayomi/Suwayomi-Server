@@ -43,6 +43,7 @@ import suwayomi.tachidesk.graphql.queries.TrackQuery
 import suwayomi.tachidesk.graphql.queries.UpdateQuery
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLCursor
+import suwayomi.tachidesk.graphql.server.primitives.GraphQLDurationAsString
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLLongAsString
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLUpload
 import suwayomi.tachidesk.graphql.subscriptions.DownloadSubscription
@@ -50,11 +51,13 @@ import suwayomi.tachidesk.graphql.subscriptions.InfoSubscription
 import suwayomi.tachidesk.graphql.subscriptions.UpdateSubscription
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
+import kotlin.time.Duration
 
 class CustomSchemaGeneratorHooks : FlowSubscriptionSchemaGeneratorHooks() {
     override fun willGenerateGraphQLType(type: KType): GraphQLType? =
         when (type.classifier as? KClass<*>) {
             Long::class -> GraphQLLongAsString // encode to string for JS
+            Duration::class -> GraphQLDurationAsString // encode Duration as ISO-8601 string
             Cursor::class -> GraphQLCursor
             UploadedFile::class -> GraphQLUpload
             else -> super.willGenerateGraphQLType(type)
