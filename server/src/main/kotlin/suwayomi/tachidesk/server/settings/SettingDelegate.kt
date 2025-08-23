@@ -12,6 +12,7 @@ import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.mutableConfigValueScope
 import xyz.nulldev.ts.config.GlobalConfigManager
 import java.io.File
+import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.time.Duration
 
@@ -23,6 +24,8 @@ open class SettingDelegate<T : Any>(
     val validator: ((T) -> String?)? = null,
     val toValidValue: ((T) -> T)? = null,
     val convertGqlToInternalType: ((Any?) -> Any?)? = null,
+    protected val group: SettingGroup,
+    protected val description: String? = null,
 ) {
     var flow: MutableStateFlow<Any>? = null
     lateinit var propertyName: String
@@ -38,6 +41,7 @@ open class SettingDelegate<T : Any>(
         SettingsRegistry.register(
             SettingsRegistry.SettingMetadata(
                 name = propertyName,
+                type = defaultValue::class,
                 defaultValue = defaultValue,
                 validator =
                     validator?.let { validate ->
@@ -47,6 +51,22 @@ open class SettingDelegate<T : Any>(
                         }
                     },
                 convertGqlToInternalType = convertGqlToInternalType,
+                group = group.value,
+                description =
+                    run {
+                        val defaultValueString =
+                            when (defaultValue) {
+                                is String -> "\"$defaultValue\""
+                                else -> defaultValue
+                            }
+                        val defaultValueComment = "default: $defaultValueString"
+
+                        if (description != null) {
+                            "$defaultValueComment ; $description"
+                        } else {
+                            defaultValueComment
+                        }
+                    },
             ),
         )
 
@@ -134,6 +154,8 @@ class StringSetting(
     defaultValue: String = "",
     pattern: Regex? = null,
     maxLength: Int? = null,
+    group: SettingGroup,
+    description: String? = null,
 ) : SettingDelegate<String>(
         defaultValue = defaultValue,
         validator = { value ->
@@ -152,6 +174,8 @@ class StringSetting(
                 maxLength?.let { value.take(it) } ?: value
             }
         },
+        group = group,
+        description = description,
     )
 
 abstract class RangeSetting<T : Comparable<T>>(
@@ -160,6 +184,8 @@ abstract class RangeSetting<T : Comparable<T>>(
     max: T? = null,
     validator: ((T) -> String?)? = null,
     toValidValue: ((T) -> T)? = null,
+    group: SettingGroup,
+    description: String? = null,
 ) : SettingDelegate<T>(
         defaultValue = defaultValue,
         validator =
@@ -177,6 +203,17 @@ abstract class RangeSetting<T : Comparable<T>>(
 
                 coerceAtMost
             },
+        group = group,
+        description =
+            run {
+                val defaultDescription = "range: [${min ?: "-∞"}, ${max ?: "+∞"}]"
+
+                if (description != null) {
+                    "$defaultDescription ; $description"
+                } else {
+                    defaultDescription
+                }
+            },
     )
 
 class IntSetting(
@@ -185,18 +222,24 @@ class IntSetting(
     max: Int? = null,
     customValidator: ((Int) -> String?)? = null,
     customToValidValue: ((Int) -> Int)? = null,
+    group: SettingGroup,
+    description: String? = null,
 ) : RangeSetting<Int>(
         defaultValue = defaultValue,
         min = min,
         max = max,
         validator = customValidator,
         toValidValue = customToValidValue,
+        group = group,
+        description = description,
     )
 
 class DisableableIntSetting(
     defaultValue: Int = 0,
     min: Int? = null,
     max: Int? = null,
+    group: SettingGroup,
+    description: String? = null,
 ) : RangeSetting<Int>(
         defaultValue = defaultValue,
         min = min,
@@ -219,6 +262,15 @@ class DisableableIntSetting(
                 coerceAtMost
             }
         },
+        group = group,
+        description =
+            run {
+                if (description != null) {
+                    "0 == disabled ; $description"
+                } else {
+                    description
+                }
+            },
     )
 
 class DoubleSetting(
@@ -227,18 +279,24 @@ class DoubleSetting(
     max: Double? = null,
     customValidator: ((Double) -> String?)? = null,
     customToValidValue: ((Double) -> Double)? = null,
+    group: SettingGroup,
+    description: String? = null,
 ) : RangeSetting<Double>(
         defaultValue = defaultValue,
         min = min,
         max = max,
         validator = customValidator,
         toValidValue = customToValidValue,
+        group = group,
+        description = description,
     )
 
 class DisableableDoubleSetting(
     defaultValue: Double = 0.0,
     min: Double? = null,
     max: Double? = null,
+    group: SettingGroup,
+    description: String? = null,
 ) : RangeSetting<Double>(
         defaultValue = defaultValue,
         min = min,
@@ -261,18 +319,33 @@ class DisableableDoubleSetting(
                 coerceAtMost
             }
         },
+        group = group,
+        description =
+            run {
+                if (description != null) {
+                    "0.0 == disabled ; $description"
+                } else {
+                    description
+                }
+            },
     )
 
 class BooleanSetting(
     defaultValue: Boolean = false,
+    group: SettingGroup,
+    description: String? = null,
 ) : SettingDelegate<Boolean>(
         defaultValue = defaultValue,
         validator = null,
+        group = group,
+        description = description,
     )
 
 class PathSetting(
     defaultValue: String = "",
     mustExist: Boolean = false,
+    group: SettingGroup,
+    description: String? = null,
 ) : SettingDelegate<String>(
         defaultValue = defaultValue,
         validator = { value ->
@@ -282,11 +355,36 @@ class PathSetting(
                 null
             }
         },
+        group = group,
+        description = description,
     )
 
 class EnumSetting<T : Enum<T>>(
     defaultValue: T,
-) : SettingDelegate<T>(defaultValue = defaultValue)
+    enumClass: KClass<T>,
+    group: SettingGroup,
+    description: String? = null,
+) : SettingDelegate<T>(
+        defaultValue = defaultValue,
+        validator = { value ->
+            if (!enumClass.java.isInstance(value)) {
+                "Invalid enum value for ${enumClass.simpleName}"
+            } else {
+                null
+            }
+        },
+        group = group,
+        description =
+            run {
+                val defaultDescription = "options: ${enumClass.java.enumConstants.joinToString()}"
+
+                if (description != null) {
+                    "$description ; $defaultDescription"
+                } else {
+                    defaultDescription
+                }
+            },
+    )
 
 class DurationSetting(
     defaultValue: Duration,
@@ -294,18 +392,24 @@ class DurationSetting(
     max: Duration? = null,
     customValidator: ((Duration) -> String?)? = null,
     customToValidValue: ((Duration) -> Duration)? = null,
+    group: SettingGroup,
+    description: String? = null,
 ) : RangeSetting<Duration>(
         defaultValue = defaultValue,
         min = min,
         max = max,
         validator = customValidator,
         toValidValue = customToValidValue,
+        group = group,
+        description = description,
     )
 
 class ListSetting<T>(
     defaultValue: List<T> = emptyList(),
     itemValidator: ((T) -> String?)? = null,
     itemToValidValue: ((T) -> T?)? = null,
+    group: SettingGroup,
+    description: String? = null,
 ) : SettingDelegate<List<T>>(
         defaultValue = defaultValue,
         validator = { list ->
@@ -324,14 +428,20 @@ class ListSetting<T>(
                 defaultValue
             }
         },
+        group = group,
+        description = description,
     )
 
 class MapSetting<K, V>(
     defaultValue: Map<K, V> = emptyMap(),
     validator: ((Map<K, V>) -> String?)? = null,
     convertGqlToInternalType: ((Any?) -> Any?)? = null,
+    group: SettingGroup,
+    description: String? = null,
 ) : SettingDelegate<Map<K, V>>(
         defaultValue = defaultValue,
         validator = validator,
         convertGqlToInternalType = convertGqlToInternalType,
+        group = group,
+        description = description,
     )
