@@ -27,7 +27,7 @@ class FeedBuilderInternal(
     private val isSearchFeed: Boolean = false,
 ) {
     private val opdsItemsPerPageBounded: Int
-        get() = serverConfig.opdsItemsPerPage.value.coerceIn(10, 5000)
+        get() = serverConfig.opdsItemsPerPage.value
 
     private val feedAuthor = OpdsAuthorXml("Suwayomi", "https://suwayomi.org/")
     private val feedGeneratedAt: String = OpdsDateUtil.formatCurrentInstantForOpds()

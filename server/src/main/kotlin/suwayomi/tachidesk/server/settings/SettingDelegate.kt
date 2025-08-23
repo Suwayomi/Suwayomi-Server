@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.server.settings
 
 import io.github.config4k.getValue
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -18,8 +19,9 @@ import kotlin.time.Duration
  * Base delegate for settings to read values from the config file with automatic setting registration and validation
  */
 open class SettingDelegate<T : Any>(
-    protected val defaultValue: T,
+    val defaultValue: T,
     val validator: ((T) -> String?)? = null,
+    val toValidValue: ((T) -> T)? = null,
     val convertGqlToInternalType: ((Any?) -> Any?)? = null,
 ) {
     var flow: MutableStateFlow<Any>? = null
@@ -62,6 +64,20 @@ open class SettingDelegate<T : Any>(
         val stateFlow = thisRef.overridableConfig.getValue<ServerConfig, ReifiedT>(thisRef, property)
         @Suppress("UNCHECKED_CAST")
         flow = stateFlow as MutableStateFlow<Any>
+
+        // Validate config value and optionally fallback to default value
+        validator?.let { validate ->
+            @Suppress("UNCHECKED_CAST")
+            val initialValue = stateFlow.value as T
+            val error = validate(initialValue)
+            if (error != null) {
+                KotlinLogging.logger { }.warn {
+                    "Invalid config value ($initialValue) for $moduleName.$propertyName: $error. Using default value: $defaultValue"
+                }
+
+                stateFlow.value = toValidValue?.let { it(initialValue) } ?: defaultValue
+            }
+        }
 
         stateFlow
             .drop(1)
@@ -129,6 +145,38 @@ class StringSetting(
                 else -> null
             }
         },
+        toValidValue = { value ->
+            if (pattern != null && !value.matches(pattern)) {
+                defaultValue
+            } else {
+                maxLength?.let { value.take(it) } ?: value
+            }
+        },
+    )
+
+abstract class RangeSetting<T : Comparable<T>>(
+    defaultValue: T,
+    min: T? = null,
+    max: T? = null,
+    validator: ((T) -> String?)? = null,
+    toValidValue: ((T) -> T)? = null,
+) : SettingDelegate<T>(
+        defaultValue = defaultValue,
+        validator =
+            validator ?: { value ->
+                when {
+                    min != null && value < min -> "Value must be at least $min"
+                    max != null && value > max -> "Value must not exceed $max"
+                    else -> null
+                }
+            },
+        toValidValue =
+            toValidValue ?: { value ->
+                val coerceAtLeast = min?.let { value.coerceAtLeast(min) } ?: value
+                val coerceAtMost = max?.let { coerceAtLeast.coerceAtMost(max) } ?: value
+
+                coerceAtMost
+            },
     )
 
 class IntSetting(
@@ -136,30 +184,39 @@ class IntSetting(
     min: Int? = null,
     max: Int? = null,
     customValidator: ((Int) -> String?)? = null,
-) : SettingDelegate<Int>(
+    customToValidValue: ((Int) -> Int)? = null,
+) : RangeSetting<Int>(
         defaultValue = defaultValue,
-        validator =
-            customValidator ?: { value ->
-                when {
-                    min != null && value < min -> "Value must be at least $min"
-                    max != null && value > max -> "Value must not exceed $max"
-                    else -> null
-                }
-            },
+        min = min,
+        max = max,
+        validator = customValidator,
+        toValidValue = customToValidValue,
     )
 
 class DisableableIntSetting(
     defaultValue: Int = 0,
     min: Int? = null,
     max: Int? = null,
-) : SettingDelegate<Int>(
+) : RangeSetting<Int>(
         defaultValue = defaultValue,
+        min = min,
+        max = max,
         validator = { value ->
             when {
                 value == 0 -> null
-                min != null && value < min -> "Value must be 0 or at least $min"
-                max != null && value > max -> "Value must be 0 or not exceed $max"
+                min != null && value < min -> "Value must be 0.0 or at least $min"
+                max != null && value > max -> "Value must be 0.0 or not exceed $max"
                 else -> null
+            }
+        },
+        toValidValue = { value ->
+            if (value == 0) {
+                value
+            } else {
+                val coerceAtLeast = min?.let { value.coerceAtLeast(min) } ?: value
+                val coerceAtMost = max?.let { coerceAtLeast.coerceAtMost(max) } ?: value
+
+                coerceAtMost
             }
         },
     )
@@ -169,24 +226,23 @@ class DoubleSetting(
     min: Double? = null,
     max: Double? = null,
     customValidator: ((Double) -> String?)? = null,
-) : SettingDelegate<Double>(
+    customToValidValue: ((Double) -> Double)? = null,
+) : RangeSetting<Double>(
         defaultValue = defaultValue,
-        validator =
-            customValidator ?: { value ->
-                when {
-                    min != null && value < min -> "Value must be at least $min"
-                    max != null && value > max -> "Value must not exceed $max"
-                    else -> null
-                }
-            },
+        min = min,
+        max = max,
+        validator = customValidator,
+        toValidValue = customToValidValue,
     )
 
 class DisableableDoubleSetting(
     defaultValue: Double = 0.0,
     min: Double? = null,
     max: Double? = null,
-) : SettingDelegate<Double>(
+) : RangeSetting<Double>(
         defaultValue = defaultValue,
+        min = min,
+        max = max,
         validator = { value ->
             when {
                 value == 0.0 -> null
@@ -195,11 +251,24 @@ class DisableableDoubleSetting(
                 else -> null
             }
         },
+        toValidValue = { value ->
+            if (value == 0.0) {
+                value
+            } else {
+                val coerceAtLeast = min?.let { value.coerceAtLeast(min) } ?: value
+                val coerceAtMost = max?.let { coerceAtLeast.coerceAtMost(max) } ?: value
+
+                coerceAtMost
+            }
+        },
     )
 
 class BooleanSetting(
     defaultValue: Boolean = false,
-) : SettingDelegate<Boolean>(defaultValue = defaultValue)
+) : SettingDelegate<Boolean>(
+        defaultValue = defaultValue,
+        validator = null,
+    )
 
 class PathSetting(
     defaultValue: String = "",
@@ -223,20 +292,20 @@ class DurationSetting(
     defaultValue: Duration,
     min: Duration? = null,
     max: Duration? = null,
-) : SettingDelegate<Duration>(
+    customValidator: ((Duration) -> String?)? = null,
+    customToValidValue: ((Duration) -> Duration)? = null,
+) : RangeSetting<Duration>(
         defaultValue = defaultValue,
-        validator = { value ->
-            when {
-                min != null && value < min -> "Duration must be at least $min"
-                max != null && value > max -> "Duration must not exceed $max"
-                else -> null
-            }
-        },
+        min = min,
+        max = max,
+        validator = customValidator,
+        toValidValue = customToValidValue,
     )
 
 class ListSetting<T>(
     defaultValue: List<T> = emptyList(),
     itemValidator: ((T) -> String?)? = null,
+    itemToValidValue: ((T) -> T?)? = null,
 ) : SettingDelegate<List<T>>(
         defaultValue = defaultValue,
         validator = { list ->
@@ -246,6 +315,13 @@ class ListSetting<T>(
                 }
             } else {
                 null
+            }
+        },
+        toValidValue = { list ->
+            if (itemToValidValue != null) {
+                list.mapNotNull(itemToValidValue)
+            } else {
+                defaultValue
             }
         },
     )

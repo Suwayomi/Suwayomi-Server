@@ -97,15 +97,11 @@ object ProtoBackupExport : ProtoBackupBase() {
             }
         }
 
-        val (hour, minute) =
+        val (backupHour, backupMinute) =
             serverConfig.backupTime.value
                 .split(":")
                 .map { it.toInt() }
-        val backupHour = hour.coerceAtLeast(0).coerceAtMost(23)
-        val backupMinute = minute.coerceAtLeast(0).coerceAtMost(59)
-        val backupInterval =
-            serverConfig.backupInterval.value.days
-                .coerceAtLeast(1.days)
+        val backupInterval = serverConfig.backupInterval.value.days
 
         // trigger last backup in case the server wasn't running on the scheduled time
         val lastAutomatedBackup = preferences.getLong(LAST_AUTOMATED_BACKUP_KEY, 0)
