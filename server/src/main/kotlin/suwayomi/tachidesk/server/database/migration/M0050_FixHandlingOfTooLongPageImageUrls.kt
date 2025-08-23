@@ -13,7 +13,14 @@ import de.neonew.exposed.migrations.helpers.SQLMigration
 class M0050_FixHandlingOfTooLongPageImageUrls : SQLMigration() {
     override val sql: String =
         """
-        ALTER TABLE PAGE DROP CONSTRAINT UC_PAGE;
+        DELETE FROM PAGE
+        WHERE ID NOT IN (
+            SELECT MIN(ID)
+            FROM PAGE
+            GROUP BY INDEX, CHAPTER
+        );
+            
+        ALTER TABLE PAGE DROP CONSTRAINT IF EXISTS UC_PAGE;
         ALTER TABLE PAGE ADD CONSTRAINT UC_PAGE UNIQUE (INDEX, CHAPTER);
         
         ALTER TABLE PAGE ALTER COLUMN IMAGE_URL VARCHAR; -- the default length is `Integer.MAX_VALUE`

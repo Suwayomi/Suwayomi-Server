@@ -2,6 +2,7 @@ package suwayomi.tachidesk.manga.impl
 
 import kotlinx.coroutines.CoroutineScope
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
 import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.ArchiveProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.FolderProvider
@@ -32,6 +33,9 @@ object ChapterDownloadHelper {
         chapterId: Int,
     ): Boolean = provider(mangaId, chapterId).delete()
 
+    /**
+     * This function should never be called without calling [getChapterDownloadReady] beforehand.
+     */
     suspend fun download(
         mangaId: Int,
         chapterId: Int,
@@ -89,5 +93,27 @@ object ChapterDownloadHelper {
         }
 
         return Triple(cbzFile.first, fileName, cbzFile.second)
+    }
+
+    fun getCbzMetadataForDownload(chapterId: Int): Triple<String, Long, String> { // fileName, fileSize, contentType
+        val (chapterData, mangaTitle) =
+            transaction {
+                val row =
+                    (ChapterTable innerJoin MangaTable)
+                        .select(ChapterTable.columns + MangaTable.columns)
+                        .where { ChapterTable.id eq chapterId }
+                        .firstOrNull() ?: throw IllegalArgumentException("ChapterId $chapterId not found")
+                val chapter = ChapterTable.toDataClass(row)
+                val title = row[MangaTable.title]
+                Pair(chapter, title)
+            }
+
+        val scanlatorPart = chapterData.scanlator?.let { "[$it] " } ?: ""
+        val fileName = "$mangaTitle - $scanlatorPart${chapterData.name}.cbz"
+
+        val fileSize = provider(chapterData.mangaId, chapterData.id).getArchiveSize()
+        val contentType = "application/vnd.comicbook+zip"
+
+        return Triple(fileName, fileSize, contentType)
     }
 }

@@ -5,7 +5,6 @@
     <string name="opds_facet_sort_newest_first">最新优先</string>
     <string name="opds_facet_sort_date_asc">日期升序</string>
     <string name="opds_linktitle_chapter_cover">章节封面</string>
-    <string name="opds_linktitle_current_page">当前页面</string>
     <string name="opds_linktitle_catalog_root">目录根目录</string>
     <string name="opds_linktitle_search_catalog">搜索目录</string>
     <string name="opds_linktitle_previous_page">上一页</string>
@@ -15,14 +14,10 @@
     <string name="manga_status_unknown">未知</string>
     <string name="manga_status_ongoing">连载中</string>
     <string name="manga_status_completed">已完结</string>
-    <string name="opds_feeds_search_results">搜索结果</string>
     <string name="opds_feeds_sources_title">来源</string>
     <string name="opds_feeds_root">Suwayomi OPDS 目录</string>
     <string name="opds_feeds_manga_chapters">%1$s 章节</string>
     <string name="opds_feeds_chapter_details">%1$s | %2$s | 详情</string>
-    <string name="opds_feeds_all_manga_title">所有漫画</string>
-    <string name="opds_feeds_all_manga_entry_content">浏览您的图书馆中的所有漫画</string>
-    <string name="opds_feeds_sources_entry_content">按来源浏览漫画</string>
     <string name="opds_feeds_categories_title">类别</string>
     <string name="opds_feeds_categories_entry_content">按类别组织的漫画浏览</string>
     <string name="opds_feeds_genres_title">类型</string>
@@ -41,7 +36,6 @@
     <string name="opds_error_manga_not_found">未找到 ID 为 %1$d 的漫画</string>
     <string name="opds_error_chapter_not_found">未找到索引为 %1$d 的章节</string>
     <string name="opds_facetgroup_sort_order">排序方式</string>
-    <string name="opds_facetgroup_read_status">阅读状态</string>
     <string name="opds_facet_sort_oldest_first">最旧优先</string>
     <string name="opds_facet_sort_date_desc">日期降序</string>
     <string name="opds_facet_filter_all_chapters">所有章节</string>
@@ -49,12 +43,9 @@
     <string name="opds_facet_filter_read_only">仅已读</string>
     <string name="opds_linktitle_view_chapter_details">查看章节详情 &amp; 获取页面</string>
     <string name="opds_linktitle_download_cbz">下载 CBZ</string>
-    <string name="opds_linktitle_stream_pages">查看页面（流式）</string>
     <string name="opds_chapter_status_downloaded">⬇️</string>
     <string name="opds_chapter_status_read">✅</string>
     <string name="opds_chapter_status_in_progress">⌛</string>
-    <string name="opds_chapter_status_error">⚠️</string>
-    <string name="opds_chapter_status_unknown">❔</string>
     <string name="opds_chapter_status_unread">⭕</string>
     <string name="opds_chapter_details_base">%1$s | %2$s</string>
     <string name="opds_chapter_details_scanlator">| 由 %1$s</string>
