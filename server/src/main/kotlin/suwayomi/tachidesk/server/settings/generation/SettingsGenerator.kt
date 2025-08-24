@@ -53,6 +53,7 @@ object SettingsGenerator {
     fun generate(
         outputDir: File = File("server/src/main/resources"),
         testOutputDir: File = File("server/src/test/resources"),
+        graphqlOutputDir: File = File("server/src/main/kotlin/suwayomi/tachidesk/graphql/types"),
     ) {
         val settings = SettingsRegistry.getAll()
 
@@ -61,9 +62,13 @@ object SettingsGenerator {
             return
         }
 
+        println(" - Total: ${settings.size}")
+        println(" - Deprecated: ${settings.values.count { it.deprecated != null }}")
+        println(" - Require restart: ${settings.values.count { it.requiresRestart }}")
+
         SettingsConfigFileGenerator.generate(outputDir, testOutputDir, settings)
 
-        println("Settings files generated successfully!")
-        println("- Total settings: ${settings.size}")
+        val settingsTypeFile = graphqlOutputDir.resolve("SettingsType.kt")
+        SettingsGraphqlTypeGenerator.generate(settings, settingsTypeFile)
     }
 }

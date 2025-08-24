@@ -23,11 +23,13 @@ open class SettingDelegate<T : Any>(
     val defaultValue: T,
     val validator: ((T) -> String?)? = null,
     val toValidValue: ((T) -> T)? = null,
-    val convertGqlToInternalType: ((Any?) -> Any?)? = null,
     protected val group: SettingGroup,
+    protected val requiresRestart: Boolean? = null,
+    protected val typeInfo: SettingsRegistry.PartialTypeInfo? = null,
+    protected val deprecated: SettingsRegistry.SettingDeprecated? = null,
     protected val description: String? = null,
 ) {
-    var flow: MutableStateFlow<Any>? = null
+    var flow: MutableStateFlow<T>? = null
     lateinit var propertyName: String
     lateinit var moduleName: String
 
@@ -41,7 +43,15 @@ open class SettingDelegate<T : Any>(
         SettingsRegistry.register(
             SettingsRegistry.SettingMetadata(
                 name = propertyName,
-                type = defaultValue::class,
+                typeInfo =
+                    SettingsRegistry.TypeInfo(
+                        type = typeInfo?.type ?: defaultValue::class,
+                        specificType = typeInfo?.specificType,
+                        interfaceType = typeInfo?.interfaceType,
+                        imports = typeInfo?.imports,
+                        convertToGqlType = typeInfo?.convertToGqlType,
+                        convertToInternalType = typeInfo?.convertToInternalType,
+                    ),
                 defaultValue = defaultValue,
                 validator =
                     validator?.let { validate ->
@@ -50,8 +60,9 @@ open class SettingDelegate<T : Any>(
                             validate(value as T)
                         }
                     },
-                convertGqlToInternalType = convertGqlToInternalType,
                 group = group.value,
+                deprecated = deprecated,
+                requiresRestart = requiresRestart ?: false,
                 description =
                     run {
                         val defaultValueString =
@@ -83,12 +94,12 @@ open class SettingDelegate<T : Any>(
 
         val stateFlow = thisRef.overridableConfig.getValue<ServerConfig, ReifiedT>(thisRef, property)
         @Suppress("UNCHECKED_CAST")
-        flow = stateFlow as MutableStateFlow<Any>
+        flow = stateFlow as MutableStateFlow<T>
 
         // Validate config value and optionally fallback to default value
         validator?.let { validate ->
             @Suppress("UNCHECKED_CAST")
-            val initialValue = stateFlow.value as T
+            val initialValue = stateFlow.value
             val error = validate(initialValue)
             if (error != null) {
                 KotlinLogging.logger { }.warn {
@@ -119,11 +130,44 @@ open class SettingDelegate<T : Any>(
     }
 }
 
-class MigratedConfigValue<T>(
-    private val readMigrated: () -> T,
-    private val setMigrated: (T) -> Unit,
+class MigratedConfigValue<T : Any>(
+    private val defaultValue: T,
+    private val group: SettingGroup,
+    private val requiresRestart: Boolean? = null,
+    private val typeInfo: SettingsRegistry.PartialTypeInfo? = null,
+    private val deprecated: SettingsRegistry.SettingDeprecated,
+    private val readMigrated: (() -> T) = { defaultValue },
+    private val setMigrated: ((T) -> Unit) = {},
 ) {
-    private var flow: MutableStateFlow<T>? = null
+    var flow: MutableStateFlow<T>? = null
+    lateinit var propertyName: String
+    lateinit var moduleName: String
+
+    operator fun provideDelegate(
+        thisRef: ServerConfig,
+        property: KProperty<*>,
+    ): MigratedConfigValue<T> {
+        propertyName = property.name
+        moduleName = thisRef.moduleName
+
+        SettingsRegistry.register(
+            SettingsRegistry.SettingMetadata(
+                name = propertyName,
+                typeInfo =
+                    SettingsRegistry.TypeInfo(
+                        type = typeInfo?.type ?: defaultValue::class,
+                        specificType = typeInfo?.specificType,
+                        imports = typeInfo?.imports,
+                    ),
+                defaultValue = defaultValue,
+                group = group.value,
+                deprecated = deprecated,
+                requiresRestart = requiresRestart ?: true,
+            ),
+        )
+
+        return this
+    }
 
     operator fun getValue(
         thisRef: ServerConfig,
@@ -155,6 +199,8 @@ class StringSetting(
     pattern: Regex? = null,
     maxLength: Int? = null,
     group: SettingGroup,
+    deprecated: SettingsRegistry.SettingDeprecated? = null,
+    requiresRestart: Boolean? = null,
     description: String? = null,
 ) : SettingDelegate<String>(
         defaultValue = defaultValue,
@@ -175,6 +221,8 @@ class StringSetting(
             }
         },
         group = group,
+        deprecated = deprecated,
+        requiresRestart = requiresRestart,
         description = description,
     )
 
@@ -185,6 +233,9 @@ abstract class RangeSetting<T : Comparable<T>>(
     validator: ((T) -> String?)? = null,
     toValidValue: ((T) -> T)? = null,
     group: SettingGroup,
+    typeInfo: SettingsRegistry.PartialTypeInfo? = null,
+    deprecated: SettingsRegistry.SettingDeprecated? = null,
+    requiresRestart: Boolean? = null,
     description: String? = null,
 ) : SettingDelegate<T>(
         defaultValue = defaultValue,
@@ -204,6 +255,9 @@ abstract class RangeSetting<T : Comparable<T>>(
                 coerceAtMost
             },
         group = group,
+        typeInfo = typeInfo,
+        deprecated = deprecated,
+        requiresRestart = requiresRestart,
         description =
             run {
                 val defaultDescription = "range: [${min ?: "-∞"}, ${max ?: "+∞"}]"
@@ -223,6 +277,8 @@ class IntSetting(
     customValidator: ((Int) -> String?)? = null,
     customToValidValue: ((Int) -> Int)? = null,
     group: SettingGroup,
+    deprecated: SettingsRegistry.SettingDeprecated? = null,
+    requiresRestart: Boolean? = null,
     description: String? = null,
 ) : RangeSetting<Int>(
         defaultValue = defaultValue,
@@ -231,6 +287,8 @@ class IntSetting(
         validator = customValidator,
         toValidValue = customToValidValue,
         group = group,
+        deprecated = deprecated,
+        requiresRestart = requiresRestart,
         description = description,
     )
 
@@ -239,6 +297,8 @@ class DisableableIntSetting(
     min: Int? = null,
     max: Int? = null,
     group: SettingGroup,
+    deprecated: SettingsRegistry.SettingDeprecated? = null,
+    requiresRestart: Boolean? = null,
     description: String? = null,
 ) : RangeSetting<Int>(
         defaultValue = defaultValue,
@@ -263,6 +323,8 @@ class DisableableIntSetting(
             }
         },
         group = group,
+        deprecated = deprecated,
+        requiresRestart = requiresRestart,
         description =
             run {
                 if (description != null) {
@@ -280,6 +342,8 @@ class DoubleSetting(
     customValidator: ((Double) -> String?)? = null,
     customToValidValue: ((Double) -> Double)? = null,
     group: SettingGroup,
+    deprecated: SettingsRegistry.SettingDeprecated? = null,
+    requiresRestart: Boolean? = null,
     description: String? = null,
 ) : RangeSetting<Double>(
         defaultValue = defaultValue,
@@ -288,6 +352,8 @@ class DoubleSetting(
         validator = customValidator,
         toValidValue = customToValidValue,
         group = group,
+        deprecated = deprecated,
+        requiresRestart = requiresRestart,
         description = description,
     )
 
@@ -296,6 +362,8 @@ class DisableableDoubleSetting(
     min: Double? = null,
     max: Double? = null,
     group: SettingGroup,
+    deprecated: SettingsRegistry.SettingDeprecated? = null,
+    requiresRestart: Boolean? = null,
     description: String? = null,
 ) : RangeSetting<Double>(
         defaultValue = defaultValue,
@@ -320,6 +388,8 @@ class DisableableDoubleSetting(
             }
         },
         group = group,
+        deprecated = deprecated,
+        requiresRestart = requiresRestart,
         description =
             run {
                 if (description != null) {
@@ -333,11 +403,15 @@ class DisableableDoubleSetting(
 class BooleanSetting(
     defaultValue: Boolean = false,
     group: SettingGroup,
+    deprecated: SettingsRegistry.SettingDeprecated? = null,
+    requiresRestart: Boolean? = null,
     description: String? = null,
 ) : SettingDelegate<Boolean>(
         defaultValue = defaultValue,
         validator = null,
         group = group,
+        deprecated = deprecated,
+        requiresRestart = requiresRestart,
         description = description,
     )
 
@@ -345,6 +419,8 @@ class PathSetting(
     defaultValue: String = "",
     mustExist: Boolean = false,
     group: SettingGroup,
+    deprecated: SettingsRegistry.SettingDeprecated? = null,
+    requiresRestart: Boolean? = null,
     description: String? = null,
 ) : SettingDelegate<String>(
         defaultValue = defaultValue,
@@ -356,6 +432,8 @@ class PathSetting(
             }
         },
         group = group,
+        deprecated = deprecated,
+        requiresRestart = requiresRestart,
         description = description,
     )
 
@@ -363,6 +441,8 @@ class EnumSetting<T : Enum<T>>(
     defaultValue: T,
     enumClass: KClass<T>,
     group: SettingGroup,
+    deprecated: SettingsRegistry.SettingDeprecated? = null,
+    requiresRestart: Boolean? = null,
     description: String? = null,
 ) : SettingDelegate<T>(
         defaultValue = defaultValue,
@@ -374,6 +454,8 @@ class EnumSetting<T : Enum<T>>(
             }
         },
         group = group,
+        deprecated = deprecated,
+        requiresRestart = requiresRestart,
         description =
             run {
                 val defaultDescription = "options: ${enumClass.java.enumConstants.joinToString()}"
@@ -393,6 +475,8 @@ class DurationSetting(
     customValidator: ((Duration) -> String?)? = null,
     customToValidValue: ((Duration) -> Duration)? = null,
     group: SettingGroup,
+    deprecated: SettingsRegistry.SettingDeprecated? = null,
+    requiresRestart: Boolean? = null,
     description: String? = null,
 ) : RangeSetting<Duration>(
         defaultValue = defaultValue,
@@ -400,7 +484,13 @@ class DurationSetting(
         max = max,
         validator = customValidator,
         toValidValue = customToValidValue,
+        typeInfo =
+            SettingsRegistry.PartialTypeInfo(
+                imports = listOf("kotlin.time.Duration"),
+            ),
         group = group,
+        deprecated = deprecated,
+        requiresRestart = requiresRestart,
         description = description,
     )
 
@@ -408,7 +498,10 @@ class ListSetting<T>(
     defaultValue: List<T> = emptyList(),
     itemValidator: ((T) -> String?)? = null,
     itemToValidValue: ((T) -> T?)? = null,
+    typeInfo: SettingsRegistry.PartialTypeInfo? = null,
     group: SettingGroup,
+    deprecated: SettingsRegistry.SettingDeprecated? = null,
+    requiresRestart: Boolean? = null,
     description: String? = null,
 ) : SettingDelegate<List<T>>(
         defaultValue = defaultValue,
@@ -428,20 +521,27 @@ class ListSetting<T>(
                 defaultValue
             }
         },
+        typeInfo = typeInfo,
         group = group,
+        deprecated = deprecated,
+        requiresRestart = requiresRestart,
         description = description,
     )
 
 class MapSetting<K, V>(
     defaultValue: Map<K, V> = emptyMap(),
     validator: ((Map<K, V>) -> String?)? = null,
-    convertGqlToInternalType: ((Any?) -> Any?)? = null,
+    typeInfo: SettingsRegistry.PartialTypeInfo? = null,
     group: SettingGroup,
+    deprecated: SettingsRegistry.SettingDeprecated? = null,
+    requiresRestart: Boolean? = null,
     description: String? = null,
 ) : SettingDelegate<Map<K, V>>(
         defaultValue = defaultValue,
         validator = validator,
-        convertGqlToInternalType = convertGqlToInternalType,
+        typeInfo = typeInfo,
         group = group,
+        deprecated = deprecated,
+        requiresRestart = requiresRestart,
         description = description,
     )

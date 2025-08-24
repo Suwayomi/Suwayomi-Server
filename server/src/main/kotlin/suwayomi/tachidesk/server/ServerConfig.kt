@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import org.jetbrains.exposed.sql.SortOrder
 import suwayomi.tachidesk.graphql.types.AuthMode
+import suwayomi.tachidesk.graphql.types.DownloadConversion
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy
 import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionType
@@ -43,6 +44,7 @@ import suwayomi.tachidesk.server.settings.MapSetting
 import suwayomi.tachidesk.server.settings.MigratedConfigValue
 import suwayomi.tachidesk.server.settings.PathSetting
 import suwayomi.tachidesk.server.settings.SettingGroup
+import suwayomi.tachidesk.server.settings.SettingsRegistry
 import suwayomi.tachidesk.server.settings.StringSetting
 import xyz.nulldev.ts.config.SystemPropertyOverridableConfigModule
 import kotlin.collections.associate
@@ -127,6 +129,7 @@ class ServerConfig(
     val webUIEnabled: MutableStateFlow<Boolean> by BooleanSetting(
         defaultValue = true,
         group = SettingGroup.WEB_UI,
+        requiresRestart = false,
     )
 
     val webUIFlavor: MutableStateFlow<WebUIFlavor> by EnumSetting(
@@ -208,26 +211,43 @@ class ServerConfig(
         description = "Ignore re-uploaded chapters from auto-download",
     )
 
-    data class DownloadConversion(
-        val target: String,
-        val compressionLevel: Double? = null,
-    )
-
     val downloadConversions: MutableStateFlow<Map<String, DownloadConversion>> by MapSetting<String, DownloadConversion>(
         defaultValue = emptyMap(),
-        convertGqlToInternalType = { list ->
-            @Suppress("UNCHECKED_CAST")
-            val castedList = list as List<SettingsDownloadConversionType>
-
-            castedList.associate {
-                it.mimeType to
-                    DownloadConversion(
-                        target = it.target,
-                        compressionLevel = it.compressionLevel,
-                    )
-            }
-        },
         group = SettingGroup.DOWNLOADER,
+        typeInfo =
+            SettingsRegistry.PartialTypeInfo(
+                specificType = "List<SettingsDownloadConversionType>",
+                interfaceType = "List<SettingsDownloadConversion>",
+                imports =
+                    listOf(
+                        "suwayomi.tachidesk.graphql.types.SettingsDownloadConversion",
+                        "suwayomi.tachidesk.graphql.types.SettingsDownloadConversionType",
+                    ),
+                convertToGqlType = { value ->
+                    @Suppress("UNCHECKED_CAST")
+                    val castedValue = value as Map<String, DownloadConversion>
+
+                    castedValue.map {
+                        SettingsDownloadConversionType(
+                            it.key,
+                            it.value.target,
+                            it.value.compressionLevel,
+                        )
+                    }
+                },
+                convertToInternalType = { list ->
+                    @Suppress("UNCHECKED_CAST")
+                    val castedList = list as List<SettingsDownloadConversionType>
+
+                    castedList.associate {
+                        it.mimeType to
+                            DownloadConversion(
+                                target = it.target,
+                                compressionLevel = it.compressionLevel,
+                            )
+                    }
+                },
+            ),
         description =
             """
             map input mime type to conversion information, or "default" for others
@@ -261,6 +281,10 @@ class ServerConfig(
             }
         },
         group = SettingGroup.EXTENSION,
+        typeInfo =
+            SettingsRegistry.PartialTypeInfo(
+                specificType = "List<String>",
+            ),
         description = "example: [\"https://github.com/MY_ACCOUNT/MY_REPO/tree/repo\"]",
     )
 
@@ -569,18 +593,60 @@ class ServerConfig(
 
     /***********************************************************************/
     val basicAuthEnabled: MutableStateFlow<Boolean> by MigratedConfigValue(
+        defaultValue = false,
+        group = SettingGroup.AUTH,
+        deprecated =
+            SettingsRegistry.SettingDeprecated(
+                replaceWith = "authMode",
+                message = "Removed - prefer authUsername",
+            ),
         readMigrated = { authMode.value == AuthMode.BASIC_AUTH },
         setMigrated = { authMode.value = if (it) AuthMode.BASIC_AUTH else AuthMode.NONE },
     )
 
     val basicAuthUsername: MutableStateFlow<String> by MigratedConfigValue(
+        defaultValue = "",
+        group = SettingGroup.AUTH,
+        deprecated =
+            SettingsRegistry.SettingDeprecated(
+                replaceWith = "authUsername",
+                message = "Removed - prefer authUsername",
+            ),
         readMigrated = { authUsername.value },
         setMigrated = { authUsername.value = it },
     )
 
     val basicAuthPassword: MutableStateFlow<String> by MigratedConfigValue(
+        defaultValue = "",
+        group = SettingGroup.AUTH,
+        deprecated =
+            SettingsRegistry.SettingDeprecated(
+                replaceWith = "authPassword",
+                message = "Removed - prefer authPassword",
+            ),
         readMigrated = { authPassword.value },
         setMigrated = { authPassword.value = it },
+    )
+
+    val autoDownloadAheadLimit: MutableStateFlow<Int> by MigratedConfigValue(
+        defaultValue = 0,
+        group = SettingGroup.DOWNLOADER,
+        deprecated =
+            SettingsRegistry.SettingDeprecated(
+                replaceWith = "autoDownloadNewChaptersLimit",
+                message = "Replaced with autoDownloadNewChaptersLimit",
+            ),
+        readMigrated = { autoDownloadNewChaptersLimit.value },
+        setMigrated = { autoDownloadNewChaptersLimit.value = it },
+    )
+
+    val gqlDebugLogsEnabled: MutableStateFlow<Boolean> by MigratedConfigValue(
+        defaultValue = false,
+        group = SettingGroup.MISC,
+        deprecated =
+            SettingsRegistry.SettingDeprecated(
+                message = "Removed - does not do anything",
+            ),
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
