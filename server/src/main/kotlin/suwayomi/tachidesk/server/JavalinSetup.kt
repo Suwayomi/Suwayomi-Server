@@ -11,10 +11,12 @@ import gg.jte.ContentType
 import gg.jte.TemplateEngine
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.Javalin
+import io.javalin.apibuilder.ApiBuilder.after
 import io.javalin.apibuilder.ApiBuilder.path
 import io.javalin.http.Context
 import io.javalin.http.HandlerType
 import io.javalin.http.HttpStatus
+import io.javalin.http.NotFoundResponse
 import io.javalin.http.RedirectResponse
 import io.javalin.http.UnauthorizedResponse
 import io.javalin.http.staticfiles.Location
@@ -126,6 +128,14 @@ object JavalinSetup {
 
                         OpdsAPI.defineEndpoints()
                         GraphQL.defineEndpoints()
+
+                        after { ctx ->
+                            // If not matched, the request was for an invalid endpoint
+                            // Return a 404 instead of redirecting to the UI for usability
+                            if (ctx.endpointHandlerPath() == "*") {
+                                throw NotFoundResponse()
+                            }
+                        }
                     }
                 }
             }
@@ -180,6 +190,7 @@ object JavalinSetup {
                     !ctx.path().substring(1).contains('/') &&
                     listOf(".png", ".jpg", ".ico").any { ctx.path().endsWith(it) }
             val isPreFlight = ctx.method() == HandlerType.OPTIONS
+            val isApi = ctx.path().startsWith("/api/")
 
             val requiresAuthentication = !isPreFlight && !isPageIcon && !isWebManifest
             if (!requiresAuthentication) {
@@ -200,11 +211,7 @@ object JavalinSetup {
                 return username == serverConfig.authUsername.value
             }
 
-            if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid() && ctx.path().startsWith("/api")) {
-                throw UnauthorizedResponse()
-            }
-
-            if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid()) {
+            if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid() && !isApi) {
                 val url = "/login.html?redirect=" + URLEncoder.encode(ctx.fullUrl(), Charsets.UTF_8)
                 ctx.header("Location", url)
                 throw RedirectResponse(HttpStatus.SEE_OTHER)
@@ -216,6 +223,7 @@ object JavalinSetup {
             }
 
             ctx.setAttribute(Attribute.TachideskUser, getUserFromContext(ctx))
+            ctx.setAttribute(Attribute.TachideskBasic, credentialsValid())
         }
 
         app.events { event ->
@@ -294,6 +302,8 @@ object JavalinSetup {
         val name: String,
     ) {
         data object TachideskUser : Attribute<UserType>("user")
+
+        data object TachideskBasic : Attribute<Boolean>("basicAuthValid")
     }
 
     private fun <T : Any> Context.setAttribute(

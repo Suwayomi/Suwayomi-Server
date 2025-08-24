@@ -5,6 +5,8 @@ import io.javalin.http.Header
 import io.javalin.websocket.WsConnectContext
 import suwayomi.tachidesk.global.impl.util.Jwt
 import suwayomi.tachidesk.graphql.types.AuthMode
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.serverConfig
 
 sealed class UserType {
@@ -21,11 +23,17 @@ fun UserType.requireUser(): Int =
         UserType.Visitor -> throw UnauthorizedException()
     }
 
-fun getUserFromToken(token: String?): UserType {
-    if (serverConfig.authMode.value != AuthMode.UI_LOGIN) {
-        return UserType.Admin(1)
+fun UserType.requireUserWithBasicFallback(ctx: Context): Int =
+    when (this) {
+        is UserType.Admin -> id
+        UserType.Visitor if ctx.getAttribute(Attribute.TachideskBasic) -> 1
+        UserType.Visitor -> {
+            ctx.header("WWW-Authenticate", "Basic")
+            throw UnauthorizedException()
+        }
     }
 
+fun getUserFromToken(token: String?): UserType {
     if (token.isNullOrBlank()) {
         return UserType.Visitor
     }
@@ -34,18 +42,42 @@ fun getUserFromToken(token: String?): UserType {
 }
 
 fun getUserFromContext(ctx: Context): UserType {
-    val authentication = ctx.header(Header.AUTHORIZATION) ?: ctx.cookie("suwayomi-server-token")
-    val token = authentication?.substringAfter("Bearer ") ?: ctx.queryParam("token")
+    fun cookieValid(): Boolean {
+        val username = ctx.sessionAttribute<String>("logged-in") ?: return false
+        return username == serverConfig.authUsername.value
+    }
 
-    return getUserFromToken(token)
+    return when (serverConfig.authMode.value) {
+        // NOTE: Basic Auth is expected to have been validated by JavalinSetup
+        AuthMode.NONE, AuthMode.BASIC_AUTH -> UserType.Admin(1)
+        AuthMode.SIMPLE_LOGIN -> if (cookieValid()) UserType.Admin(1) else UserType.Visitor
+        AuthMode.UI_LOGIN -> {
+            val authentication = ctx.header(Header.AUTHORIZATION) ?: ctx.cookie("suwayomi-server-token")
+            val token = authentication?.substringAfter("Bearer ") ?: ctx.queryParam("token")
+
+            getUserFromToken(token)
+        }
+    }
 }
 
 fun getUserFromWsContext(ctx: WsConnectContext): UserType {
-    val authentication =
-        ctx.header(Header.AUTHORIZATION) ?: ctx.header("Sec-WebSocket-Protocol") ?: ctx.cookie("suwayomi-server-token")
-    val token = authentication?.substringAfter("Bearer ") ?: ctx.queryParam("token")
+    fun cookieValid(): Boolean {
+        val username = ctx.sessionAttribute<String>("logged-in") ?: return false
+        return username == serverConfig.authUsername.value
+    }
 
-    return getUserFromToken(token)
+    return when (serverConfig.authMode.value) {
+        // NOTE: Basic Auth is expected to have been validated by JavalinSetup
+        AuthMode.NONE, AuthMode.BASIC_AUTH -> UserType.Admin(1)
+        AuthMode.SIMPLE_LOGIN -> if (cookieValid()) UserType.Admin(1) else UserType.Visitor
+        AuthMode.UI_LOGIN -> {
+            val authentication =
+                ctx.header(Header.AUTHORIZATION) ?: ctx.header("Sec-WebSocket-Protocol") ?: ctx.cookie("suwayomi-server-token")
+            val token = authentication?.substringAfter("Bearer ") ?: ctx.queryParam("token")
+
+            getUserFromToken(token)
+        }
+    }
 }
 
 class UnauthorizedException : IllegalStateException("Unauthorized")
