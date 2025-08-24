@@ -132,8 +132,9 @@ object JavalinSetup {
                         after { ctx ->
                             // If not matched, the request was for an invalid endpoint
                             // Return a 404 instead of redirecting to the UI for usability
-                            if (ctx.endpointHandlerPath() == "*")
+                            if (ctx.endpointHandlerPath() == "*") {
                                 throw NotFoundResponse()
+                            }
                         }
                     }
                 }
@@ -301,6 +302,7 @@ object JavalinSetup {
         val name: String,
     ) {
         data object TachideskUser : Attribute<UserType>("user")
+
         data object TachideskBasic : Attribute<Boolean>("basicAuthValid")
     }
 

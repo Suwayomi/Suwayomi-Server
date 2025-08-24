@@ -14,14 +14,14 @@ import io.javalin.websocket.WsConfig
 import suwayomi.tachidesk.global.impl.WebView
 import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.i18n.LocalizationHelper
-import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.user.UnauthorizedException
 import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.queryParam
 import suwayomi.tachidesk.server.util.withOperation
-import suwayomi.tachidesk.server.user.UnauthorizedException
 import java.net.URLEncoder
 import java.util.Locale
 
