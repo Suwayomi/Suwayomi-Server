@@ -14,6 +14,7 @@ import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import suwayomi.tachidesk.graphql.types.DownloadConversion
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
@@ -25,7 +26,6 @@ import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
-import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.ConversionUtil
 import java.io.File
@@ -261,7 +261,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
 
     private fun convertPage(
         page: File,
-        conversion: ServerConfig.DownloadConversion,
+        conversion: DownloadConversion,
     ) {
         val (targetMime, compressionLevel) = conversion
 

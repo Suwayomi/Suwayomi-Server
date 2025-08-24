@@ -283,6 +283,7 @@ tasks {
         outputs.files(
             file("src/main/resources/server-reference.conf"),
             file("src/test/resources/server-reference.conf"),
+            file("src/main/kotlin/suwayomi/tachidesk/graphql/types/SettingsType.kt"),
         )
     }
 }

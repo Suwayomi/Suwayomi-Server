@@ -13,18 +13,21 @@ object SettingsConfigFileGenerator {
         testOutputDir: File,
         settings: Map<String, SettingsRegistry.SettingMetadata>,
     ) {
-        if (settings.isEmpty()) {
-            println("Warning: No settings found to write to config.")
+        // Config files only include up-to-date settings.
+        val settingsToInclude = settings.filterValues { it.deprecated == null }
+
+        if (settingsToInclude.isEmpty()) {
+            println("Warning: No settings found to write to config files.")
             return
         }
 
-        generateServerReferenceConf(settings, outputDir)
-        generateServerReferenceConf(settings, testOutputDir)
+        generateServerReferenceConf(settingsToInclude, outputDir)
+        generateServerReferenceConf(settingsToInclude, testOutputDir)
 
-        println("Config file generated successfully!")
+        println("Settings config file generated successfully!")
         println("- Main config: ${outputDir.resolve("server-reference.conf").absolutePath}")
         println("- Test config: ${testOutputDir.resolve("server-reference.conf").absolutePath}")
-        println("- Total settings: ${settings.size}")
+        println("- Total settings: ${settingsToInclude.size}")
     }
 
     private fun generateServerReferenceConf(

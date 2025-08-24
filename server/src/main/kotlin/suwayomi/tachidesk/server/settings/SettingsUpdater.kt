@@ -23,7 +23,12 @@ object SettingsUpdater {
             if (property != null) {
                 val stateFlow = property.get(serverConfig)
 
-                val maybeConvertedValue = SettingsRegistry.get(name)?.convertGqlToInternalType?.invoke(value) ?: value
+                val maybeConvertedValue =
+                    SettingsRegistry
+                        .get(name)
+                        ?.typeInfo
+                        ?.convertToInternalType
+                        ?.invoke(value) ?: value
 
                 // Normal update - MigratedConfigValue handles deprecated mappings automatically
                 @Suppress("UNCHECKED_CAST")
