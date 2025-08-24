@@ -6,6 +6,8 @@ import io.javalin.websocket.WsConnectContext
 import suwayomi.tachidesk.global.impl.util.Jwt
 import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 
 sealed class UserType {
     class Admin(
@@ -19,6 +21,16 @@ fun UserType.requireUser(): Int =
     when (this) {
         is UserType.Admin -> id
         UserType.Visitor -> throw UnauthorizedException()
+    }
+
+fun UserType.requireUserWithBasicFallback(ctx: Context): Int =
+    when (this) {
+        is UserType.Admin -> id
+        UserType.Visitor if ctx.getAttribute(Attribute.TachideskBasic) -> 1
+        UserType.Visitor -> {
+            ctx.header("WWW-Authenticate", "Basic")
+            throw UnauthorizedException()
+        }
     }
 
 fun getUserFromToken(token: String?): UserType {

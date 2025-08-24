@@ -213,6 +213,7 @@ object JavalinSetup {
             }
 
             ctx.setAttribute(Attribute.TachideskUser, getUserFromContext(ctx))
+            ctx.setAttribute(Attribute.TachideskBasic, credentialsValid())
         }
 
         app.events { event ->
@@ -291,6 +292,7 @@ object JavalinSetup {
         val name: String,
     ) {
         data object TachideskUser : Attribute<UserType>("user")
+        data object TachideskBasic : Attribute<Boolean>("basicAuthValid")
     }
 
     private fun <T : Any> Context.setAttribute(
