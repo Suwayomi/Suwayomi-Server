@@ -429,6 +429,9 @@ object ProtoBackupExport : ProtoBackupBase() {
             updateMangas = serverConfig.updateMangas.value,
             // Authentication
             authMode = serverConfig.authMode.value,
+            jwtAudience = serverConfig.jwtAudience.value,
+            jwtTokenExpiry = serverConfig.jwtTokenExpiry.value,
+            jwtRefreshExpiry = serverConfig.jwtRefreshExpiry.value,
             authUsername = serverConfig.authUsername.value,
             authPassword = serverConfig.authPassword.value,
             basicAuthEnabled = false,
