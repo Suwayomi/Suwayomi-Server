@@ -91,8 +91,10 @@
     <!-- OPDS link texts -->
     <string name="opds_linktitle_catalog_root">Catalog Root</string>
     <string name="opds_linktitle_search_catalog">Search Catalog</string>
+    <string name="opds_linktitle_first_page">First Page</string>
     <string name="opds_linktitle_previous_page">Previous Page</string>
     <string name="opds_linktitle_next_page">Next Page</string>
+    <string name="opds_linktitle_last_page">Last Page</string>
     <string name="opds_linktitle_self_feed">Current Feed</string>
     <string name="opds_linktitle_view_on_web">View on Web</string>
     <string name="opds_linktitle_stream_pages_start">Read Online</string>

@@ -125,6 +125,7 @@ object OpdsFeedBuilder {
                 locale,
                 OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                 pageNum,
+                isSearchFeed = true,
             )
         builder.totalResults = total
         builder.entries.addAll(mangaEntries.map { OpdsEntryBuilder.mangaAcqEntryToEntry(it, baseUrl, locale) })
@@ -148,6 +149,7 @@ object OpdsFeedBuilder {
         sort: String?,
         filter: String?,
         locale: Locale,
+        isSearch: Boolean,
     ): String {
         val result = MangaRepository.getLibraryManga(pageNum, sort, filter, criteria)
 
@@ -200,6 +202,7 @@ object OpdsFeedBuilder {
                 currentSort = criteria.sort,
                 currentFilter = criteria.filter,
                 explicitQueryParams = criteria.toCrossFilterQueryParameters(),
+                isSearchFeed = isSearch,
             )
         builder.totalResults = result.totalCount
 
