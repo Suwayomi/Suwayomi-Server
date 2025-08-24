@@ -180,6 +180,7 @@ object JavalinSetup {
                     !ctx.path().substring(1).contains('/') &&
                     listOf(".png", ".jpg", ".ico").any { ctx.path().endsWith(it) }
             val isPreFlight = ctx.method() == HandlerType.OPTIONS
+            val isApi = ctx.path().startsWith("/api/")
 
             val requiresAuthentication = !isPreFlight && !isPageIcon && !isWebManifest
             if (!requiresAuthentication) {
@@ -200,11 +201,7 @@ object JavalinSetup {
                 return username == serverConfig.authUsername.value
             }
 
-            if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid() && ctx.path().startsWith("/api")) {
-                throw UnauthorizedResponse()
-            }
-
-            if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid()) {
+            if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid() && !isApi) {
                 val url = "/login.html?redirect=" + URLEncoder.encode(ctx.fullUrl(), Charsets.UTF_8)
                 ctx.header("Location", url)
                 throw RedirectResponse(HttpStatus.SEE_OTHER)
