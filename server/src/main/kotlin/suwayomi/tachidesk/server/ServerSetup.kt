@@ -394,7 +394,6 @@ fun applicationSetup() {
         ignoreInitialValue = false,
     )
 
-
     // create system tray
     serverConfig.subscribeTo(
         serverConfig.systemTrayEnabled,
