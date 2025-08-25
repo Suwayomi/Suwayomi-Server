@@ -72,19 +72,20 @@ fun databaseUp() {
     logger.info {
         "Using ${db.vendor} database version ${db.version}"
     }
-    try {
-        if (serverConfig.databaseType.value == DatabaseType.POSTGRESQL) {
-            transaction {
-                val schema =
-                    Schema(
-                        "suwayomi",
-                        serverConfig.databaseUsername.value.takeIf { it.isNotBlank() },
-                    )
-                SchemaUtils.createSchema(schema)
-                SchemaUtils.setSchema(schema)
-            }
-        }
 
+    if (serverConfig.databaseType.value == DatabaseType.POSTGRESQL) {
+        transaction {
+            val schema =
+                Schema(
+                    "suwayomi",
+                    serverConfig.databaseUsername.value.takeIf { it.isNotBlank() },
+                )
+            SchemaUtils.createSchema(schema)
+            SchemaUtils.setSchema(schema)
+        }
+    }
+
+    try {
         val migrations = loadMigrationsFrom("suwayomi.tachidesk.server.database.migration", ServerConfig::class.java)
         runMigrations(migrations)
     } catch (e: SQLException) {
