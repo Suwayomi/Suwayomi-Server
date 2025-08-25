@@ -118,4 +118,6 @@
     <string name="label_close">Đóng</string>
     <string name="webview_label_copy">Sao chép vào bảng tạm</string>
     <string name="webview_label_copy_description">Không thể sao chép bảng tạm tự động, vui lòng sử dụng thông tin bên dưới để sao chép giá trị theo cách thủ công.</string>
+    <string name="opds_chapter_status_synced">🌐</string>
+    <string name="webview_label_login_required">Cấu hình của bạn yêu cầu bạn phải đăng nhập. Vui lòng nhập tên người dùng và mật khẩu.</string>
 </resources>
