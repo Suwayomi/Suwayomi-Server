@@ -7,12 +7,12 @@ package suwayomi.tachidesk.server.database.migration
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import de.neonew.exposed.migrations.helpers.SQLMigration
+import suwayomi.tachidesk.server.database.migration.helpers.RenameFieldMigration
 
 @Suppress("ClassName", "unused")
-class M0016_ChapterIndexRenameToSourceOrder : SQLMigration() {
-    override val sql =
-        """
-        ALTER TABLE CHAPTER ALTER COLUMN INDEX RENAME TO SOURCE_ORDER;
-        """.trimIndent()
-}
+class M0016_ChapterIndexRenameToSourceOrder :
+    RenameFieldMigration(
+        "CHAPTER",
+        "INDEX",
+        "SOURCE_ORDER",
+    )

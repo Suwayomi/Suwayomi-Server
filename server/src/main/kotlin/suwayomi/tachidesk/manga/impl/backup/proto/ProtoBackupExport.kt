@@ -387,6 +387,11 @@ object ProtoBackupExport : ProtoBackupBase() {
         return BackupServerSettings(
             ip = serverConfig.ip.value,
             port = serverConfig.port.value,
+            // database
+            databaseType = serverConfig.databaseType.value,
+            databaseUrl = serverConfig.databaseUrl.value,
+            databaseUsername = serverConfig.databaseUsername.value,
+            databasePassword = serverConfig.databasePassword.value,
             // socks
             socksProxyEnabled = serverConfig.socksProxyEnabled.value,
             socksProxyVersion = serverConfig.socksProxyVersion.value,

@@ -8,6 +8,8 @@ package suwayomi.tachidesk.server.database.migration
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import de.neonew.exposed.migrations.helpers.SQLMigration
+import suwayomi.tachidesk.server.database.migration.helpers.MAYBE_TYPE_PREFIX
+import suwayomi.tachidesk.server.database.migration.helpers.UNLIMITED_TEXT
 
 @Suppress("ClassName", "unused")
 class M0050_FixHandlingOfTooLongPageImageUrls : SQLMigration() {
@@ -23,6 +25,6 @@ class M0050_FixHandlingOfTooLongPageImageUrls : SQLMigration() {
         ALTER TABLE PAGE DROP CONSTRAINT IF EXISTS UC_PAGE;
         ALTER TABLE PAGE ADD CONSTRAINT UC_PAGE UNIQUE (INDEX, CHAPTER);
         
-        ALTER TABLE PAGE ALTER COLUMN IMAGE_URL VARCHAR; -- the default length is `Integer.MAX_VALUE`
+        ALTER TABLE PAGE ALTER COLUMN IMAGE_URL $MAYBE_TYPE_PREFIX$UNLIMITED_TEXT; -- the default length is `Integer.MAX_VALUE`
         """.trimIndent()
 }

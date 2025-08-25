@@ -8,6 +8,7 @@
 package suwayomi.tachidesk.graphql.types
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.jetbrains.exposed.sql.SortOrder
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.server.ServerConfig
@@ -17,6 +18,12 @@ import kotlin.time.Duration
 interface Settings : Node {
     val ip: String?
     val port: Int?
+
+    // database
+    val databaseType: DatabaseType?
+    val databaseUrl: String?
+    val databaseUsername: String?
+    val databasePassword: String?
 
     // proxy
     val socksProxyEnabled: Boolean?
@@ -142,6 +149,11 @@ class SettingsDownloadConversionType(
 data class PartialSettingsType(
     override val ip: String?,
     override val port: Int?,
+    // database
+    override val databaseType: DatabaseType?,
+    override val databaseUrl: String?,
+    override val databaseUsername: String?,
+    override val databasePassword: String?,
     // proxy
     override val socksProxyEnabled: Boolean?,
     override val socksProxyVersion: Int?,
@@ -235,6 +247,11 @@ data class PartialSettingsType(
 class SettingsType(
     override val ip: String,
     override val port: Int,
+    // database
+    override val databaseType: DatabaseType,
+    override val databaseUrl: String,
+    override val databaseUsername: String,
+    override val databasePassword: String,
     // proxy
     override val socksProxyEnabled: Boolean,
     override val socksProxyVersion: Int,
@@ -327,6 +344,11 @@ class SettingsType(
     constructor(config: ServerConfig = serverConfig) : this(
         config.ip.value,
         config.port.value,
+        // database
+        config.databaseType.value,
+        config.databaseUrl.value,
+        config.databaseUsername.value,
+        config.databasePassword.value,
         // proxy
         config.socksProxyEnabled.value,
         config.socksProxyVersion.value,

@@ -13,24 +13,40 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.DatabaseConfig
 import org.jetbrains.exposed.sql.ExperimentalKeywordApi
+import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.ServerConfig
+import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import java.sql.SQLException
+import kotlin.system.exitProcess
 
 object DBManager {
     val db by lazy {
         val applicationDirs = Injekt.get<ApplicationDirs>()
-        Database.connect(
-            "jdbc:h2:${applicationDirs.dataRoot}/database",
-            "org.h2.Driver",
-            databaseConfig =
-                DatabaseConfig {
-                    useNestedTransactions = true
-                    @OptIn(ExperimentalKeywordApi::class)
-                    preserveKeywordCasing = false
-                },
-        )
+        val dbConfig =
+            DatabaseConfig {
+                useNestedTransactions = true
+                @OptIn(ExperimentalKeywordApi::class)
+                preserveKeywordCasing = false
+            }
+        when (serverConfig.databaseType.value) {
+            DatabaseType.POSTGRESQL ->
+                Database.connect(
+                    "jdbc:${serverConfig.databaseUrl.value}",
+                    "org.postgresql.Driver",
+                    user = serverConfig.databaseUsername.value,
+                    password = serverConfig.databasePassword.value,
+                    databaseConfig = dbConfig,
+                )
+            DatabaseType.H2 ->
+                Database.connect(
+                    "jdbc:h2:${applicationDirs.dataRoot}/database",
+                    "org.h2.Driver",
+                    databaseConfig = dbConfig,
+                )
+        }
     }
 }
 
@@ -41,7 +57,11 @@ fun databaseUp(db: Database = DBManager.db) {
     logger.info {
         "Using ${db.vendor} database version ${db.version}"
     }
-
-    val migrations = loadMigrationsFrom("suwayomi.tachidesk.server.database.migration", ServerConfig::class.java)
-    runMigrations(migrations)
+    try {
+        val migrations = loadMigrationsFrom("suwayomi.tachidesk.server.database.migration", ServerConfig::class.java)
+        runMigrations(migrations)
+    } catch (e: SQLException) {
+        logger.error(e) { "Error up-to-database migration" }
+        exitProcess(101)
+    }
 }
