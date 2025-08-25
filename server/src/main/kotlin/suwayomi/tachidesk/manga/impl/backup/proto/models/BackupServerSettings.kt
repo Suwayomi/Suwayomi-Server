@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
 import org.jetbrains.exposed.sql.SortOrder
 import suwayomi.tachidesk.graphql.types.AuthMode
+import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy
 import suwayomi.tachidesk.graphql.types.Settings
@@ -82,6 +83,10 @@ data class BackupServerSettings(
     @ProtoNumber(65) override var koreaderSyncPercentageTolerance: Double,
     @ProtoNumber(66) override var jwtTokenExpiry: Duration?,
     @ProtoNumber(67) override var jwtRefreshExpiry: Duration?,
+    @ProtoNumber(68) override var databaseType: DatabaseType?,
+    @ProtoNumber(69) override var databaseUrl: String?,
+    @ProtoNumber(70) override var databaseUsername: String?,
+    @ProtoNumber(71) override var databasePassword: String?,
     // Deprecated settings
     @ProtoNumber(99991) override var basicAuthUsername: String?,
     @ProtoNumber(99992) override var basicAuthPassword: String?,

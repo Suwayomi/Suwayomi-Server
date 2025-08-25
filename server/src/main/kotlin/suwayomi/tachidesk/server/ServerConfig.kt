@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import org.jetbrains.exposed.sql.SortOrder
 import suwayomi.tachidesk.graphql.types.AuthMode
+import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy
 import suwayomi.tachidesk.graphql.types.WebUIChannel
@@ -104,6 +105,12 @@ class ServerConfig(
 
     val ip: MutableStateFlow<String> by OverrideConfigValue()
     val port: MutableStateFlow<Int> by OverrideConfigValue()
+
+    // database
+    val databaseType: MutableStateFlow<DatabaseType> by OverrideConfigValue()
+    val databaseUrl: MutableStateFlow<String> by OverrideConfigValue()
+    val databaseUsername: MutableStateFlow<String> by OverrideConfigValue()
+    val databasePassword: MutableStateFlow<String> by OverrideConfigValue()
 
     // proxy
     val socksProxyEnabled: MutableStateFlow<Boolean> by OverrideConfigValue()

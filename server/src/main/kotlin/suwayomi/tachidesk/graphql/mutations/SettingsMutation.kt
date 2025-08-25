@@ -133,6 +133,12 @@ class SettingsMutation {
         updateSetting(settings.ip, serverConfig.ip)
         updateSetting(settings.port, serverConfig.port)
 
+        // database
+        updateSetting(settings.databaseType, serverConfig.databaseType)
+        updateSetting(settings.databaseUrl, serverConfig.databaseUrl)
+        updateSetting(settings.databaseUsername, serverConfig.databaseUsername)
+        updateSetting(settings.databasePassword, serverConfig.databasePassword)
+
         // proxy
         updateSetting(settings.socksProxyEnabled, serverConfig.socksProxyEnabled)
         updateSetting(settings.socksProxyVersion, serverConfig.socksProxyVersion)

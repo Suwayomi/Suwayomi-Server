@@ -8,14 +8,16 @@ package suwayomi.tachidesk.server.database.migration
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import de.neonew.exposed.migrations.helpers.SQLMigration
+import suwayomi.tachidesk.server.database.migration.helpers.MAYBE_TYPE_PREFIX
+import suwayomi.tachidesk.server.database.migration.helpers.UNLIMITED_TEXT
 
 @Suppress("ClassName", "unused")
 class M0014_MangaRemoveLengthLimit : SQLMigration() {
     override val sql =
         """
-        ALTER TABLE MANGA ALTER COLUMN ARTIST VARCHAR(512);
-        ALTER TABLE MANGA ALTER COLUMN AUTHOR VARCHAR(512);
-        ALTER TABLE MANGA ALTER COLUMN DESCRIPTION VARCHAR; -- the default length is `Integer.MAX_VALUE`
-        ALTER TABLE MANGA ALTER COLUMN GENRE VARCHAR; -- the default length is `Integer.MAX_VALUE`
+        ALTER TABLE MANGA ALTER COLUMN ARTIST ${MAYBE_TYPE_PREFIX}VARCHAR(512);
+        ALTER TABLE MANGA ALTER COLUMN AUTHOR ${MAYBE_TYPE_PREFIX}VARCHAR(512);
+        ALTER TABLE MANGA ALTER COLUMN DESCRIPTION ${MAYBE_TYPE_PREFIX}$UNLIMITED_TEXT; -- the default length is `Integer.MAX_VALUE`
+        ALTER TABLE MANGA ALTER COLUMN GENRE ${MAYBE_TYPE_PREFIX}$UNLIMITED_TEXT; -- the default length is `Integer.MAX_VALUE`
         """.trimIndent()
 }
