@@ -55,7 +55,7 @@ jobs:
     name: Test pull request postgres
     runs-on: ubuntu-latest
     needs: check_wrapper
-    container: node:20-bookworm-slim
+    #container: node:20-bookworm-slim
     services:
       postgres:
         image: postgres
