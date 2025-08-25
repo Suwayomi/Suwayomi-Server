@@ -23,6 +23,7 @@ import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import xyz.nulldev.ts.config.CONFIG_PREFIX
 import java.sql.SQLException
 import kotlin.system.exitProcess
 
@@ -73,23 +74,24 @@ fun databaseUp() {
         "Using ${db.vendor} database version ${db.version}"
     }
 
-    if (serverConfig.databaseType.value == DatabaseType.POSTGRESQL) {
-        transaction {
-            val schema =
-                Schema(
-                    "suwayomi",
-                    serverConfig.databaseUsername.value.takeIf { it.isNotBlank() },
-                )
-            SchemaUtils.createSchema(schema)
-            SchemaUtils.setSchema(schema)
-        }
-    }
-
     try {
+        if (serverConfig.databaseType.value == DatabaseType.POSTGRESQL) {
+            transaction {
+                val schema =
+                    Schema(
+                        "suwayomi",
+                        serverConfig.databaseUsername.value.takeIf { it.isNotBlank() },
+                    )
+                SchemaUtils.createSchema(schema)
+                SchemaUtils.setSchema(schema)
+            }
+        }
         val migrations = loadMigrationsFrom("suwayomi.tachidesk.server.database.migration", ServerConfig::class.java)
         runMigrations(migrations)
     } catch (e: SQLException) {
         logger.error(e) { "Error up-to-database migration" }
-        exitProcess(101)
+        if (System.getProperty("crashOnFailedMigration").toBoolean()) {
+            exitProcess(101)
+        }
     }
 }
