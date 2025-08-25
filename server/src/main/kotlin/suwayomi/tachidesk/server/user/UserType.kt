@@ -34,6 +34,10 @@ fun UserType.requireUserWithBasicFallback(ctx: Context): Int =
     }
 
 fun getUserFromToken(token: String?): UserType {
+    if (serverConfig.authMode.value != AuthMode.UI_LOGIN) {
+        return UserType.Admin(1)
+    }
+
     if (token.isNullOrBlank()) {
         return UserType.Visitor
     }
