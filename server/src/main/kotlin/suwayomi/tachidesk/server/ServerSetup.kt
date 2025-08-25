@@ -372,6 +372,10 @@ fun applicationSetup() {
         "Localization service initialized. Supported languages: ${LocalizationHelper.getSupportedLocales()}"
     }
 
+    databaseUp()
+
+    LocalSource.register()
+
     serverConfig.subscribeTo(
         combine<Any, DatabaseSettings>(
             serverConfig.databaseType,
@@ -394,7 +398,7 @@ fun applicationSetup() {
 
             LocalSource.register()
         },
-        ignoreInitialValue = false,
+        ignoreInitialValue = true,
     )
 
     // create system tray
