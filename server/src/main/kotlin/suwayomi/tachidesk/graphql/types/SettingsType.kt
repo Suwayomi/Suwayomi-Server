@@ -8,7 +8,6 @@
 package suwayomi.tachidesk.graphql.types
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
-import kotlinx.coroutines.flow.MutableStateFlow
 import org.jetbrains.exposed.sql.SortOrder
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.server.ServerConfig
