@@ -13,6 +13,9 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.DatabaseConfig
 import org.jetbrains.exposed.sql.ExperimentalKeywordApi
+import org.jetbrains.exposed.sql.Schema
+import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.ServerConfig
@@ -58,6 +61,18 @@ fun databaseUp(db: Database = DBManager.db) {
         "Using ${db.vendor} database version ${db.version}"
     }
     try {
+        if (serverConfig.databaseType.value == DatabaseType.POSTGRESQL) {
+            transaction {
+                val schema =
+                    Schema(
+                        "suwayomi",
+                        serverConfig.databaseUsername.value.takeIf { it.isNotBlank() },
+                    )
+                SchemaUtils.createSchema(schema)
+                SchemaUtils.setSchema(schema)
+            }
+        }
+
         val migrations = loadMigrationsFrom("suwayomi.tachidesk.server.database.migration", ServerConfig::class.java)
         runMigrations(migrations)
     } catch (e: SQLException) {
