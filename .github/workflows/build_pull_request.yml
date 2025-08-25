@@ -66,7 +66,10 @@ jobs:
           gcc -fPIC -I$JAVA_HOME/include -I$JAVA_HOME/include/linux -shared scripts/resources/catch_abort.c -lpthread -o scripts/resources/catch_abort.so
           export LD_PRELOAD="$(pwd)/scripts/resources/catch_abort.so"
           JAR=$(ls ./server/build/*.jar| head -1)
-          timeout 30s java -Dsuwayomi.tachidesk.config.server.initialOpenInBrowserEnabled=false \
+          set +e
+          timeout 30s java -DcrashOnFailedMigration=true \
+              -Dsuwayomi.tachidesk.config.server.systemTrayEnabled=false \
+              -Dsuwayomi.tachidesk.config.server.initialOpenInBrowserEnabled=false \
               -Dsuwayomi.tachidesk.config.server.databaseType=POSTGRESQL \
               -Dsuwayomi.tachidesk.config.server.databaseUrl=postgresql://localhost:5432/postgres \
               -Dsuwayomi.tachidesk.config.server.databaseUsername=postgres \
@@ -80,7 +83,9 @@ jobs:
             exit "$ecode"
           fi
 
-          timeout 30s java -Dsuwayomi.tachidesk.config.server.initialOpenInBrowserEnabled=false \
+          timeout 30s java -DcrashOnFailedMigration=true \
+              -Dsuwayomi.tachidesk.config.server.systemTrayEnabled=false \
+              -Dsuwayomi.tachidesk.config.server.initialOpenInBrowserEnabled=false \
               -jar "$JAR"
 
           ecode="$?"
