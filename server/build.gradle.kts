@@ -52,6 +52,7 @@ dependencies {
 
     // Exposed ORM
     implementation(libs.bundles.exposed)
+    implementation(libs.postgres)
     implementation(libs.h2)
 
     // Exposed Migrations

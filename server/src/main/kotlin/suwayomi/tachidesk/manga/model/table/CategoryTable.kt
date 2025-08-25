@@ -15,7 +15,7 @@ import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 
 object CategoryTable : IntIdTable() {
     val name = varchar("name", 64)
-    val order = integer("order").default(0)
+    val order = integer("sort_order").default(0)
     val isDefault = bool("is_default").default(false)
     val includeInUpdate = integer("include_in_update").default(IncludeOrExclude.UNSET.value)
     val includeInDownload = integer("include_in_download").default(IncludeOrExclude.UNSET.value)

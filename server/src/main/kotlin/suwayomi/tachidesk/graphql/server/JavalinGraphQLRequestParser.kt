@@ -72,7 +72,7 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
                     )
                 }
             }
-        } catch (e: IOException) {
+        } catch (_: IOException) {
             null
         }
     }
