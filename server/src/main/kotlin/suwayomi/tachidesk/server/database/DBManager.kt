@@ -23,7 +23,6 @@ import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import xyz.nulldev.ts.config.CONFIG_PREFIX
 import java.sql.SQLException
 import kotlin.system.exitProcess
 
