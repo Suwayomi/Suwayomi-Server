@@ -52,7 +52,9 @@ jobs:
         run: ./gradlew ktlintCheck :server:shadowJar --stacktrace
 
   postgres-test:
+    name: Test pull request postgres
     runs-on: ubuntu-latest
+    needs: check_wrapper
     container: node:20-bookworm-slim
     services:
       postgres:
@@ -68,6 +70,10 @@ jobs:
     steps:
       - name: Checkout pull request
         uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: master
+          fetch-depth: 0
 
       - name: Set up JDK
         uses: actions/setup-java@v5
