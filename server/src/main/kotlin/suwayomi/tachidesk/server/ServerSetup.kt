@@ -38,6 +38,7 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 import suwayomi.tachidesk.global.impl.KcefWebView.Companion.toCefCookie
 import suwayomi.tachidesk.graphql.types.AuthMode
+import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
@@ -112,6 +113,13 @@ data class ProxySettings(
     val proxyPort: String,
     val proxyUsername: String,
     val proxyPassword: String,
+)
+
+data class DatabaseSettings(
+    val databaseType: DatabaseType,
+    val databaseUrl: String,
+    val databaseUsername: String,
+    val databasePassword: String,
 )
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
@@ -361,9 +369,31 @@ fun applicationSetup() {
         "Localization service initialized. Supported languages: ${LocalizationHelper.getSupportedLocales()}"
     }
 
-    databaseUp()
+    serverConfig.subscribeTo(
+        combine<Any, DatabaseSettings>(
+            serverConfig.databaseType,
+            serverConfig.databaseUrl,
+            serverConfig.databaseUsername,
+            serverConfig.databasePassword,
+        ) { vargs ->
+            DatabaseSettings(
+                vargs[0] as DatabaseType,
+                vargs[1] as String,
+                vargs[2] as String,
+                vargs[3] as String,
+            )
+        }.distinctUntilChanged(),
+        { (databaseType, databaseUrl, databaseUsername, databasePassword) ->
+            logger.info {
+                "Database changed - type=$databaseType url=$databaseUrl, username=$databaseUsername, password=[REDACTED]"
+            }
+            databaseUp()
 
-    LocalSource.register()
+            LocalSource.register()
+        },
+        ignoreInitialValue = false,
+    )
+
 
     // create system tray
     serverConfig.subscribeTo(

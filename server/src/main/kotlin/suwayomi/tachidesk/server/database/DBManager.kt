@@ -15,6 +15,7 @@ import org.jetbrains.exposed.sql.DatabaseConfig
 import org.jetbrains.exposed.sql.ExperimentalKeywordApi
 import org.jetbrains.exposed.sql.Schema
 import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -26,7 +27,17 @@ import java.sql.SQLException
 import kotlin.system.exitProcess
 
 object DBManager {
-    val db by lazy {
+    var db: Database? = null
+        private set
+
+    fun setupDatabase(): Database {
+        if (TransactionManager.isInitialized()) {
+            val currentDatabase = TransactionManager.currentOrNull()?.db
+            if (currentDatabase != null) {
+                TransactionManager.closeAndUnregister(currentDatabase)
+            }
+        }
+
         val applicationDirs = Injekt.get<ApplicationDirs>()
         val dbConfig =
             DatabaseConfig {
@@ -34,7 +45,7 @@ object DBManager {
                 @OptIn(ExperimentalKeywordApi::class)
                 preserveKeywordCasing = false
             }
-        when (serverConfig.databaseType.value) {
+        return when (serverConfig.databaseType.value) {
             DatabaseType.POSTGRESQL ->
                 Database.connect(
                     "jdbc:${serverConfig.databaseUrl.value}",
@@ -49,13 +60,14 @@ object DBManager {
                     "org.h2.Driver",
                     databaseConfig = dbConfig,
                 )
-        }
+        }.also { db = it }
     }
 }
 
 private val logger = KotlinLogging.logger {}
 
-fun databaseUp(db: Database = DBManager.db) {
+fun databaseUp() {
+    val db = DBManager.setupDatabase()
     // call db to initialize the lazy object
     logger.info {
         "Using ${db.vendor} database version ${db.version}"
