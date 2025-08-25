@@ -64,8 +64,8 @@ jobs:
           gcc -fPIC -I$JAVA_HOME/include -I$JAVA_HOME/include/linux -shared scripts/resources/catch_abort.c -lpthread -o scripts/resources/catch_abort.so
           export LD_PRELOAD="scripts/resources/catch_abort.so"
           JAR=$(ls ./server/build/*.jar| head -1)
-          timeout 30s java -Dsuwayomi.tachidesk.config.databaseType=POSTGRESQL \
-              -Dsuwayomi.tachidesk.config.databaseUrl=postgresql://localhost:5432/postgres \
-              -Dsuwayomi.tachidesk.config.databaseUsername=postgres \
-              -Dsuwayomi.tachidesk.config.databasePassword=postgres \
+          timeout 30s java -Dsuwayomi.tachidesk.config.server.databaseType=POSTGRESQL \
+              -Dsuwayomi.tachidesk.config.server.databaseUrl=postgresql://localhost:5432/postgres \
+              -Dsuwayomi.tachidesk.config.server.databaseUsername=postgres \
+              -Dsuwayomi.tachidesk.config.server.databasePassword=postgres \
               -jar "$JAR"
