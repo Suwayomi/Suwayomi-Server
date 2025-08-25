@@ -390,7 +390,7 @@ fun applicationSetup() {
                 vargs[3] as String,
             )
         }.distinctUntilChanged(),
-        { (databaseType, databaseUrl, databaseUsername, databasePassword) ->
+        { (databaseType, databaseUrl, databaseUsername, _) ->
             logger.info {
                 "Database changed - type=$databaseType url=$databaseUrl, username=$databaseUsername, password=[REDACTED]"
             }
