@@ -51,3 +51,49 @@ jobs:
         working-directory: master
         run: ./gradlew ktlintCheck :server:shadowJar --stacktrace
 
+  postgres-test:
+    runs-on: ubuntu-latest
+    container: node:20-bookworm-slim
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout pull request
+        uses: actions/checkout@v5
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: 21
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Copy CI gradle.properties
+        run: |
+          cd master
+          mkdir -p ~/.gradle
+          cp .github/runner-files/ci-gradle.properties ~/.gradle/gradle.properties
+
+      - name: Build Jar
+        working-directory: master
+        run: ./gradlew :server:shadowJar --stacktrace
+
+      - name: Run Jar
+        working-directory: master
+        run: |
+          JAR=$(ls ./server/build/*.jar| head -1)
+          timeout 30s java -Dsuwayomi.tachidesk.config.databaseType=POSTGRESQL \
+              -Dsuwayomi.tachidesk.config.databaseUrl=postgresql://localhost:5432/postgres \
+              -Dsuwayomi.tachidesk.config.databaseUsername=postgres \
+              -Dsuwayomi.tachidesk.config.databasePassword=postgres \
+              -jar "$JAR"
