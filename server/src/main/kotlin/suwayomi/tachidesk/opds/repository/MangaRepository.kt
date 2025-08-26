@@ -40,7 +40,7 @@ import suwayomi.tachidesk.server.serverConfig
  */
 object MangaRepository {
     private val opdsItemsPerPageBounded: Int
-        get() = serverConfig.opdsItemsPerPage.value.coerceIn(10, 5000)
+        get() = serverConfig.opdsItemsPerPage.value
 
     /**
      * Maps a database [ResultRow] to an [OpdsMangaAcqEntry] data transfer object.
