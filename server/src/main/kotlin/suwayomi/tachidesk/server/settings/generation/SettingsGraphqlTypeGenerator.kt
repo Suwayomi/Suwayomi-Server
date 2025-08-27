@@ -4,8 +4,6 @@ import suwayomi.tachidesk.server.settings.SettingsRegistry
 import java.io.File
 import kotlin.text.appendLine
 
-private fun String.addIndentation(times: Int): String = this.prependIndent(" ".repeat(times))
-
 object SettingsGraphqlTypeGenerator {
     fun generate(
         settings: Map<String, SettingsRegistry.SettingMetadata>,
@@ -13,8 +11,7 @@ object SettingsGraphqlTypeGenerator {
     ) {
         outputFile.parentFile.mkdirs()
 
-        // Type only includes settings that can be mutated during runtime.
-        val settingsToInclude = settings.values.filter { it.requiresRestart }
+        val settingsToInclude = settings.values
 
         if (settingsToInclude.isEmpty()) {
             println("Warning: No settings found to create graphql type from.")
@@ -25,7 +22,7 @@ object SettingsGraphqlTypeGenerator {
 
         outputFile.writeText(
             buildString {
-                writeFileHeader()
+                appendLine(KotlinFileGeneratorHelper.createFileHeader("suwayomi.tachidesk.graphql.types"))
                 writeImports(groupedSettings.values.flatten())
                 writeSettingsInterface(groupedSettings)
                 writePartialSettingsType(groupedSettings)
@@ -36,35 +33,20 @@ object SettingsGraphqlTypeGenerator {
         println("Graphql type generated successfully! Total settings: ${settingsToInclude.size}")
     }
 
-    private fun StringBuilder.writeFileHeader() {
-        appendLine("@file:Suppress(\"ktlint\")")
-        appendLine()
-        appendLine("/*")
-        appendLine(" * Copyright (C) Contributors to the Suwayomi project")
-        appendLine(" *")
-        appendLine(" * This Source Code Form is subject to the terms of the Mozilla Public")
-        appendLine(" * License, v. 2.0. If a copy of the MPL was not distributed with this")
-        appendLine(" * file, You can obtain one at https://mozilla.org/MPL/2.0/. */")
-        appendLine()
-        appendLine("package suwayomi.tachidesk.graphql.types")
-        appendLine()
-    }
-
     private fun StringBuilder.writeImports(settings: List<SettingsRegistry.SettingMetadata>) {
-        appendLine("import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated")
-        appendLine("import org.jetbrains.exposed.sql.SortOrder")
-        appendLine("import suwayomi.tachidesk.graphql.server.primitives.Node")
-        appendLine("import suwayomi.tachidesk.server.ServerConfig")
-        appendLine("import suwayomi.tachidesk.server.serverConfig")
-        appendLine("import suwayomi.tachidesk.server.settings.SettingsRegistry")
-
-        settings
-            .mapNotNull { it.typeInfo.imports }
-            .flatten()
-            .distinct()
-            .forEach { appendLine("import $it") }
-
-        appendLine()
+        appendLine(
+            KotlinFileGeneratorHelper.createImports(
+                listOf(
+                    "com.expediagroup.graphql.generator.annotations.GraphQLDeprecated",
+                    "com.expediagroup.graphql.generator.annotations.GraphQLIgnore",
+                    "suwayomi.tachidesk.graphql.server.primitives.Node",
+                    "suwayomi.tachidesk.server.ServerConfig",
+                    "suwayomi.tachidesk.server.serverConfig",
+                    "suwayomi.tachidesk.server.settings.SettingsRegistry",
+                ),
+                settings,
+            ),
+        )
     }
 
     private fun StringBuilder.writeSettingsInterface(groupedSettings: Map<String, List<SettingsRegistry.SettingMetadata>>) {
@@ -137,6 +119,10 @@ object SettingsGraphqlTypeGenerator {
         if (!asType) {
             appendLine("${getConfigAccess(setting)},".addIndentation(indentation))
             return
+        }
+
+        if (setting.requiresRestart) {
+            appendLine("@GraphQLIgnore".addIndentation(indentation))
         }
 
         if (setting.deprecated != null) {

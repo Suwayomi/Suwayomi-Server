@@ -9,15 +9,22 @@
 
 package suwayomi.tachidesk.graphql.types
 
+
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
-import org.jetbrains.exposed.sql.SortOrder
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.settings.SettingsRegistry
-import suwayomi.tachidesk.graphql.types.SettingsDownloadConversion
-import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionType
+import suwayomi.tachidesk.graphql.types.WebUIFlavor
+import suwayomi.tachidesk.graphql.types.WebUIInterface
+import suwayomi.tachidesk.graphql.types.WebUIChannel
+import suwayomi.tachidesk.graphql.types.AuthMode
 import kotlin.time.Duration
+import org.jetbrains.exposed.sql.SortOrder
+import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
+import suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy
+
 
 interface Settings : Node {
     // Network
@@ -37,16 +44,18 @@ interface Settings : Node {
     val electronPath: String?
     val webUIChannel: WebUIChannel?
     val webUIUpdateCheckInterval: Double?
+    @GraphQLIgnore
+    val webUIEnabled: Boolean?
     // Downloader
     val downloadAsCbz: Boolean?
     val downloadsPath: String?
     val autoDownloadNewChapters: Boolean?
     val excludeEntryWithUnreadChapters: Boolean?
+    @GraphQLDeprecated("Replaced with autoDownloadNewChaptersLimit", ReplaceWith("autoDownloadNewChaptersLimit"))
+    val autoDownloadAheadLimit: Int?
     val autoDownloadNewChaptersLimit: Int?
     val autoDownloadIgnoreReUploads: Boolean?
     val downloadConversions: List<SettingsDownloadConversion>?
-    @GraphQLDeprecated("Replaced with autoDownloadNewChaptersLimit", ReplaceWith("autoDownloadNewChaptersLimit"))
-    val autoDownloadAheadLimit: Int?
     // Extension/Source
     val extensionRepos: List<String>?
     val maxSourcesInParallel: Int?
@@ -57,26 +66,26 @@ interface Settings : Node {
     val globalUpdateInterval: Double?
     val updateMangas: Boolean?
     // Authentication
-    val authMode: AuthMode?
+    @GraphQLDeprecated("Removed - prefer authUsername", ReplaceWith("authMode"))
+    val basicAuthEnabled: Boolean?
     val authUsername: String?
     val authPassword: String?
+    val authMode: AuthMode?
     val jwtAudience: String?
     val jwtTokenExpiry: Duration?
     val jwtRefreshExpiry: Duration?
-    @GraphQLDeprecated("Removed - prefer authUsername", ReplaceWith("authMode"))
-    val basicAuthEnabled: Boolean?
     @GraphQLDeprecated("Removed - prefer authUsername", ReplaceWith("authUsername"))
     val basicAuthUsername: String?
     @GraphQLDeprecated("Removed - prefer authPassword", ReplaceWith("authPassword"))
     val basicAuthPassword: String?
     // Misc
     val debugLogsEnabled: Boolean?
+    @GraphQLDeprecated("Removed - does not do anything")
+    val gqlDebugLogsEnabled: Boolean?
     val systemTrayEnabled: Boolean?
     val maxLogFiles: Int?
     val maxLogFileSize: String?
     val maxLogFolderSize: String?
-    @GraphQLDeprecated("Removed - does not do anything")
-    val gqlDebugLogsEnabled: Boolean?
     // Backup
     val backupPath: String?
     val backupTime: String?
@@ -127,16 +136,18 @@ data class PartialSettingsType(
     override val electronPath: String?,
     override val webUIChannel: WebUIChannel?,
     override val webUIUpdateCheckInterval: Double?,
+    @GraphQLIgnore
+    override val webUIEnabled: Boolean?,
     // Downloader
     override val downloadAsCbz: Boolean?,
     override val downloadsPath: String?,
     override val autoDownloadNewChapters: Boolean?,
     override val excludeEntryWithUnreadChapters: Boolean?,
+    @GraphQLDeprecated("Replaced with autoDownloadNewChaptersLimit", ReplaceWith("autoDownloadNewChaptersLimit"))
+    override val autoDownloadAheadLimit: Int?,
     override val autoDownloadNewChaptersLimit: Int?,
     override val autoDownloadIgnoreReUploads: Boolean?,
     override val downloadConversions: List<SettingsDownloadConversionType>?,
-    @GraphQLDeprecated("Replaced with autoDownloadNewChaptersLimit", ReplaceWith("autoDownloadNewChaptersLimit"))
-    override val autoDownloadAheadLimit: Int?,
     // Extension/Source
     override val extensionRepos: List<String>?,
     override val maxSourcesInParallel: Int?,
@@ -147,26 +158,26 @@ data class PartialSettingsType(
     override val globalUpdateInterval: Double?,
     override val updateMangas: Boolean?,
     // Authentication
-    override val authMode: AuthMode?,
+    @GraphQLDeprecated("Removed - prefer authUsername", ReplaceWith("authMode"))
+    override val basicAuthEnabled: Boolean?,
     override val authUsername: String?,
     override val authPassword: String?,
+    override val authMode: AuthMode?,
     override val jwtAudience: String?,
     override val jwtTokenExpiry: Duration?,
     override val jwtRefreshExpiry: Duration?,
-    @GraphQLDeprecated("Removed - prefer authUsername", ReplaceWith("authMode"))
-    override val basicAuthEnabled: Boolean?,
     @GraphQLDeprecated("Removed - prefer authUsername", ReplaceWith("authUsername"))
     override val basicAuthUsername: String?,
     @GraphQLDeprecated("Removed - prefer authPassword", ReplaceWith("authPassword"))
     override val basicAuthPassword: String?,
     // Misc
     override val debugLogsEnabled: Boolean?,
+    @GraphQLDeprecated("Removed - does not do anything")
+    override val gqlDebugLogsEnabled: Boolean?,
     override val systemTrayEnabled: Boolean?,
     override val maxLogFiles: Int?,
     override val maxLogFileSize: String?,
     override val maxLogFolderSize: String?,
-    @GraphQLDeprecated("Removed - does not do anything")
-    override val gqlDebugLogsEnabled: Boolean?,
     // Backup
     override val backupPath: String?,
     override val backupTime: String?,
@@ -217,16 +228,18 @@ class SettingsType(
     override val electronPath: String,
     override val webUIChannel: WebUIChannel,
     override val webUIUpdateCheckInterval: Double,
+    @GraphQLIgnore
+    override val webUIEnabled: Boolean,
     // Downloader
     override val downloadAsCbz: Boolean,
     override val downloadsPath: String,
     override val autoDownloadNewChapters: Boolean,
     override val excludeEntryWithUnreadChapters: Boolean,
+    @GraphQLDeprecated("Replaced with autoDownloadNewChaptersLimit", ReplaceWith("autoDownloadNewChaptersLimit"))
+    override val autoDownloadAheadLimit: Int,
     override val autoDownloadNewChaptersLimit: Int,
     override val autoDownloadIgnoreReUploads: Boolean,
     override val downloadConversions: List<SettingsDownloadConversionType>,
-    @GraphQLDeprecated("Replaced with autoDownloadNewChaptersLimit", ReplaceWith("autoDownloadNewChaptersLimit"))
-    override val autoDownloadAheadLimit: Int,
     // Extension/Source
     override val extensionRepos: List<String>,
     override val maxSourcesInParallel: Int,
@@ -237,26 +250,26 @@ class SettingsType(
     override val globalUpdateInterval: Double,
     override val updateMangas: Boolean,
     // Authentication
-    override val authMode: AuthMode,
+    @GraphQLDeprecated("Removed - prefer authUsername", ReplaceWith("authMode"))
+    override val basicAuthEnabled: Boolean,
     override val authUsername: String,
     override val authPassword: String,
+    override val authMode: AuthMode,
     override val jwtAudience: String,
     override val jwtTokenExpiry: Duration,
     override val jwtRefreshExpiry: Duration,
-    @GraphQLDeprecated("Removed - prefer authUsername", ReplaceWith("authMode"))
-    override val basicAuthEnabled: Boolean,
     @GraphQLDeprecated("Removed - prefer authUsername", ReplaceWith("authUsername"))
     override val basicAuthUsername: String,
     @GraphQLDeprecated("Removed - prefer authPassword", ReplaceWith("authPassword"))
     override val basicAuthPassword: String,
     // Misc
     override val debugLogsEnabled: Boolean,
+    @GraphQLDeprecated("Removed - does not do anything")
+    override val gqlDebugLogsEnabled: Boolean,
     override val systemTrayEnabled: Boolean,
     override val maxLogFiles: Int,
     override val maxLogFileSize: String,
     override val maxLogFolderSize: String,
-    @GraphQLDeprecated("Removed - does not do anything")
-    override val gqlDebugLogsEnabled: Boolean,
     // Backup
     override val backupPath: String,
     override val backupTime: String,
@@ -307,15 +320,16 @@ class SettingsType(
         config.electronPath.value,
         config.webUIChannel.value,
         config.webUIUpdateCheckInterval.value,
+        config.webUIEnabled.value,
         // Downloader
         config.downloadAsCbz.value,
         config.downloadsPath.value,
         config.autoDownloadNewChapters.value,
         config.excludeEntryWithUnreadChapters.value,
+        config.autoDownloadAheadLimit.value,
         config.autoDownloadNewChaptersLimit.value,
         config.autoDownloadIgnoreReUploads.value,
         SettingsRegistry.get("downloadConversions")!!.typeInfo.convertToGqlType!!(config.downloadConversions.value) as List<SettingsDownloadConversionType>,
-        config.autoDownloadAheadLimit.value,
         // Extension/Source
         config.extensionRepos.value,
         config.maxSourcesInParallel.value,
@@ -326,22 +340,22 @@ class SettingsType(
         config.globalUpdateInterval.value,
         config.updateMangas.value,
         // Authentication
-        config.authMode.value,
+        config.basicAuthEnabled.value,
         config.authUsername.value,
         config.authPassword.value,
+        config.authMode.value,
         config.jwtAudience.value,
         config.jwtTokenExpiry.value,
         config.jwtRefreshExpiry.value,
-        config.basicAuthEnabled.value,
         config.basicAuthUsername.value,
         config.basicAuthPassword.value,
         // Misc
         config.debugLogsEnabled.value,
+        config.gqlDebugLogsEnabled.value,
         config.systemTrayEnabled.value,
         config.maxLogFiles.value,
         config.maxLogFileSize.value,
         config.maxLogFolderSize.value,
-        config.gqlDebugLogsEnabled.value,
         // Backup
         config.backupPath.value,
         config.backupTime.value,

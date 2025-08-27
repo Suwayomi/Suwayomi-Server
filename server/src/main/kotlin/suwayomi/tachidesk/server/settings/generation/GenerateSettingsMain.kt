@@ -16,11 +16,15 @@ fun main() {
         val outputDir = File("src/main/resources")
         val testOutputDir = File("src/test/resources")
         val graphqlOutputDir = File("src/main/kotlin/suwayomi/tachidesk/graphql/types")
+        val backupSettingsOutputDir = File("src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/models")
+        val backupSettingsHandlerOutputDir = File("src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/handlers")
 
         SettingsGenerator.generate(
             outputDir = outputDir,
             testOutputDir = testOutputDir,
             graphqlOutputDir = graphqlOutputDir,
+            backupSettingsOutputDir = backupSettingsOutputDir,
+            backupSettingsHandlerOutputDir = backupSettingsHandlerOutputDir,
         )
 
         println("✅ Settings files generation completed successfully!")

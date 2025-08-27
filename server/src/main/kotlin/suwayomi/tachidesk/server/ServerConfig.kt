@@ -31,6 +31,7 @@ import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionType
 import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIInterface
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList.repoMatchRegex
 import suwayomi.tachidesk.server.settings.BooleanSetting
 import suwayomi.tachidesk.server.settings.DisableableDoubleSetting
@@ -58,42 +59,36 @@ val mutableConfigValueScope = CoroutineScope(SupervisorJob() + Dispatchers.Defau
 
 const val SERVER_CONFIG_MODULE_NAME = "server"
 
+// Settings are ordered by "protoNumber".
 class ServerConfig(
     getConfig: () -> Config,
 ) : SystemPropertyOverridableConfigModule(
         getConfig,
         SERVER_CONFIG_MODULE_NAME,
     ) {
-    /********************************/
-    /**                           **/
-    /**          Network          **/
-    /**                           **/
-    /*******************************/
     val ip: MutableStateFlow<String> by StringSetting(
+        protoNumber = 1,
         defaultValue = "0.0.0.0",
         pattern = "^((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4}$".toRegex(),
         group = SettingGroup.NETWORK,
     )
 
     val port: MutableStateFlow<Int> by IntSetting(
+        protoNumber = 2,
         defaultValue = 4567,
         min = 1,
         max = 65535,
         group = SettingGroup.NETWORK,
     )
 
-    /*******************************/
-    /**                           **/
-    /**           Proxy           **/
-    /**                           **/
-
-    /*******************************/
     val socksProxyEnabled: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 3,
         defaultValue = false,
         group = SettingGroup.PROXY,
     )
 
     val socksProxyVersion: MutableStateFlow<Int> by IntSetting(
+        protoNumber = 4,
         defaultValue = 5,
         min = 4,
         max = 5,
@@ -101,68 +96,69 @@ class ServerConfig(
     )
 
     val socksProxyHost: MutableStateFlow<String> by StringSetting(
+        protoNumber = 5,
         defaultValue = "",
         group = SettingGroup.PROXY,
     )
 
     val socksProxyPort: MutableStateFlow<String> by StringSetting(
+        protoNumber = 6,
         defaultValue = "",
         group = SettingGroup.PROXY,
     )
 
     val socksProxyUsername: MutableStateFlow<String> by StringSetting(
+        protoNumber = 7,
         defaultValue = "",
         group = SettingGroup.PROXY,
     )
 
     val socksProxyPassword: MutableStateFlow<String> by StringSetting(
+        protoNumber = 8,
         defaultValue = "",
         group = SettingGroup.PROXY,
     )
 
-    /*******************************/
-    /**                           **/
-    /**           WebUI           **/
-    /**                           **/
-
-    /*******************************/
-    val webUIEnabled: MutableStateFlow<Boolean> by BooleanSetting(
-        defaultValue = true,
-        group = SettingGroup.WEB_UI,
-        requiresRestart = false,
-    )
-
     val webUIFlavor: MutableStateFlow<WebUIFlavor> by EnumSetting(
+        protoNumber = 9,
         defaultValue = WebUIFlavor.WEBUI,
         enumClass = WebUIFlavor::class,
         group = SettingGroup.WEB_UI,
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.WebUIFlavor")),
     )
 
     val initialOpenInBrowserEnabled: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 10,
         defaultValue = true,
         group = SettingGroup.WEB_UI,
         description = "Open client on startup",
     )
 
     val webUIInterface: MutableStateFlow<WebUIInterface> by EnumSetting(
+        protoNumber = 11,
         defaultValue = WebUIInterface.BROWSER,
         enumClass = WebUIInterface::class,
         group = SettingGroup.WEB_UI,
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.WebUIInterface")),
     )
 
     val electronPath: MutableStateFlow<String> by PathSetting(
+        protoNumber = 12,
         defaultValue = "",
         mustExist = true,
         group = SettingGroup.WEB_UI,
     )
 
     val webUIChannel: MutableStateFlow<WebUIChannel> by EnumSetting(
+        protoNumber = 13,
         defaultValue = WebUIChannel.STABLE,
         enumClass = WebUIChannel::class,
         group = SettingGroup.WEB_UI,
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.WebUIChannel")),
     )
 
     val webUIUpdateCheckInterval: MutableStateFlow<Double> by DisableableDoubleSetting(
+        protoNumber = 14,
         defaultValue = 23.hours.inWholeHours.toDouble(),
         min = 0.0,
         max = 23.0,
@@ -170,35 +166,47 @@ class ServerConfig(
         description = "Time in hours",
     )
 
-    /*******************************/
-    /**                           **/
-    /**         Downloader        **/
-    /**                           **/
-
-    /*******************************/
     val downloadAsCbz: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 15,
         defaultValue = false,
         group = SettingGroup.DOWNLOADER,
     )
 
     val downloadsPath: MutableStateFlow<String> by PathSetting(
+        protoNumber = 16,
         defaultValue = "",
         mustExist = true,
         group = SettingGroup.DOWNLOADER,
     )
 
     val autoDownloadNewChapters: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 17,
         defaultValue = false,
         group = SettingGroup.DOWNLOADER,
     )
 
     val excludeEntryWithUnreadChapters: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 18,
         defaultValue = true,
         group = SettingGroup.DOWNLOADER,
         description = "Exclude entries with unread chapters from auto-download",
     )
 
+    val autoDownloadAheadLimit: MutableStateFlow<Int> by MigratedConfigValue(
+        protoNumber = 19,
+        defaultValue = 0,
+        group = SettingGroup.DOWNLOADER,
+        deprecated =
+            SettingsRegistry.SettingDeprecated(
+                replaceWith = "autoDownloadNewChaptersLimit",
+                message = "Replaced with autoDownloadNewChaptersLimit",
+            ),
+        readMigrated = { autoDownloadNewChaptersLimit.value },
+        setMigrated = { autoDownloadNewChaptersLimit.value = it },
+    )
+
     val autoDownloadNewChaptersLimit: MutableStateFlow<Int> by DisableableIntSetting(
+        protoNumber = 20,
         defaultValue = 0,
         min = 0,
         group = SettingGroup.DOWNLOADER,
@@ -206,22 +214,304 @@ class ServerConfig(
     )
 
     val autoDownloadIgnoreReUploads: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 21,
         defaultValue = false,
         group = SettingGroup.DOWNLOADER,
         description = "Ignore re-uploaded chapters from auto-download",
     )
 
+    val extensionRepos: MutableStateFlow<List<String>> by ListSetting<String>(
+        protoNumber = 22,
+        defaultValue = emptyList(),
+        itemValidator = { url ->
+            if (url.matches(repoMatchRegex)) {
+                null
+            } else {
+                "Invalid repository URL format"
+            }
+        },
+        itemToValidValue = { url ->
+            if (url.matches(repoMatchRegex)) {
+                url
+            } else {
+                null
+            }
+        },
+        group = SettingGroup.EXTENSION,
+        typeInfo =
+            SettingsRegistry.PartialTypeInfo(
+                specificType = "List<String>",
+            ),
+        description = "example: [\"https://github.com/MY_ACCOUNT/MY_REPO/tree/repo\"]",
+    )
+
+    val maxSourcesInParallel: MutableStateFlow<Int> by IntSetting(
+        protoNumber = 23,
+        defaultValue = 6,
+        min = 1,
+        max = 20,
+        group = SettingGroup.EXTENSION,
+        description =
+            "How many different sources can do requests (library update, downloads) in parallel. " +
+                "Library update/downloads are grouped by source and all manga of a source are updated/downloaded synchronously",
+    )
+
+    val excludeUnreadChapters: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 24,
+        defaultValue = true,
+        group = SettingGroup.LIBRARY_UPDATES,
+    )
+
+    val excludeNotStarted: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 25,
+        defaultValue = true,
+        group = SettingGroup.LIBRARY_UPDATES,
+    )
+
+    val excludeCompleted: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 26,
+        defaultValue = true,
+        group = SettingGroup.LIBRARY_UPDATES,
+    )
+
+    val globalUpdateInterval: MutableStateFlow<Double> by DisableableDoubleSetting(
+        protoNumber = 27,
+        defaultValue = 12.hours.inWholeHours.toDouble(),
+        min = 6.0,
+        group = SettingGroup.LIBRARY_UPDATES,
+        description = "Time in hours",
+    )
+
+    val updateMangas: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 28,
+        defaultValue = false,
+        group = SettingGroup.LIBRARY_UPDATES,
+        description = "Update manga metadata and thumbnail along with the chapter list update during the library update.",
+    )
+
+    val basicAuthEnabled: MutableStateFlow<Boolean> by MigratedConfigValue(
+        protoNumber = 29,
+        defaultValue = false,
+        group = SettingGroup.AUTH,
+        deprecated =
+            SettingsRegistry.SettingDeprecated(
+                replaceWith = "authMode",
+                message = "Removed - prefer authMode",
+            ),
+        readMigrated = { authMode.value == AuthMode.BASIC_AUTH },
+        setMigrated = { authMode.value = if (it) AuthMode.BASIC_AUTH else AuthMode.NONE },
+        typeInfo =
+            SettingsRegistry.PartialTypeInfo(
+                restoreLegacy = { value ->
+                    value.takeIf { authMode.value == AuthMode.NONE }
+                },
+            ),
+    )
+
+    val authUsername: MutableStateFlow<String> by StringSetting(
+        protoNumber = 30,
+        defaultValue = "",
+        group = SettingGroup.AUTH,
+    )
+
+    val authPassword: MutableStateFlow<String> by StringSetting(
+        protoNumber = 31,
+        defaultValue = "",
+        group = SettingGroup.AUTH,
+    )
+
+    val debugLogsEnabled: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 32,
+        defaultValue = false,
+        group = SettingGroup.MISC,
+    )
+
+    val gqlDebugLogsEnabled: MutableStateFlow<Boolean> by MigratedConfigValue(
+        protoNumber = 33,
+        defaultValue = false,
+        group = SettingGroup.MISC,
+        deprecated =
+            SettingsRegistry.SettingDeprecated(
+                message = "Removed - does not do anything",
+            ),
+    )
+
+    val systemTrayEnabled: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 34,
+        defaultValue = true,
+        group = SettingGroup.MISC,
+    )
+
+    val maxLogFiles: MutableStateFlow<Int> by IntSetting(
+        protoNumber = 35,
+        defaultValue = 31,
+        min = 0,
+        group = SettingGroup.MISC,
+        description = "The max number of days to keep files before they get deleted",
+    )
+
+    private val logbackSizePattern = "^[0-9]+(|kb|KB|mb|MB|gb|GB)$".toRegex()
+    val maxLogFileSize: MutableStateFlow<String> by StringSetting(
+        protoNumber = 36,
+        defaultValue = "10mb",
+        pattern = logbackSizePattern,
+        group = SettingGroup.MISC,
+        description = "Maximum log file size - values: 1 (bytes), 1KB (kilobytes), 1MB (megabytes), 1GB (gigabytes)",
+    )
+
+    val maxLogFolderSize: MutableStateFlow<String> by StringSetting(
+        protoNumber = 37,
+        defaultValue = "100mb",
+        pattern = logbackSizePattern,
+        group = SettingGroup.MISC,
+        description = "Maximum log folder size - values: 1 (bytes), 1KB (kilobytes), 1MB (megabytes), 1GB (gigabytes)",
+    )
+
+    val backupPath: MutableStateFlow<String> by PathSetting(
+        protoNumber = 38,
+        defaultValue = "",
+        mustExist = true,
+        group = SettingGroup.BACKUP,
+    )
+
+    val backupTime: MutableStateFlow<String> by StringSetting(
+        protoNumber = 39,
+        defaultValue = "00:00",
+        pattern = "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$".toRegex(),
+        group = SettingGroup.BACKUP,
+        description = "Daily backup time (HH:MM) ; range: [00:00, 23:59]",
+    )
+
+    val backupInterval: MutableStateFlow<Int> by DisableableIntSetting(
+        protoNumber = 40,
+        defaultValue = 1,
+        min = 0,
+        group = SettingGroup.BACKUP,
+        description = "Time in days",
+    )
+
+    val backupTTL: MutableStateFlow<Int> by DisableableIntSetting(
+        protoNumber = 41,
+        defaultValue = 14.days.inWholeDays.toInt(),
+        min = 0,
+        group = SettingGroup.BACKUP,
+        description = "Backup retention in days",
+    )
+
+    val localSourcePath: MutableStateFlow<String> by PathSetting(
+        protoNumber = 42,
+        defaultValue = "",
+        mustExist = true,
+        group = SettingGroup.LOCAL_SOURCE,
+    )
+
+    val flareSolverrEnabled: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 43,
+        defaultValue = false,
+        group = SettingGroup.CLOUDFLARE,
+    )
+
+    val flareSolverrUrl: MutableStateFlow<String> by StringSetting(
+        protoNumber = 44,
+        defaultValue = "http://localhost:8191",
+        group = SettingGroup.CLOUDFLARE,
+    )
+
+    val flareSolverrTimeout: MutableStateFlow<Int> by IntSetting(
+        protoNumber = 45,
+        defaultValue = 60.seconds.inWholeSeconds.toInt(),
+        min = 0,
+        group = SettingGroup.CLOUDFLARE,
+        description = "Time in seconds",
+    )
+
+    val flareSolverrSessionName: MutableStateFlow<String> by StringSetting(
+        protoNumber = 46,
+        defaultValue = "suwayomi",
+        group = SettingGroup.CLOUDFLARE,
+    )
+
+    val flareSolverrSessionTtl: MutableStateFlow<Int> by IntSetting(
+        protoNumber = 47,
+        defaultValue = 15.minutes.inWholeMinutes.toInt(),
+        min = 0,
+        group = SettingGroup.CLOUDFLARE,
+        description = "Time in minutes",
+    )
+
+    val flareSolverrAsResponseFallback: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 48,
+        defaultValue = false,
+        group = SettingGroup.CLOUDFLARE,
+    )
+
+    val opdsUseBinaryFileSizes: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 49,
+        defaultValue = false,
+        group = SettingGroup.OPDS,
+        description = "Display file size in binary (KiB, MiB, GiB) instead of decimal (KB, MB, GB)",
+    )
+
+    val opdsItemsPerPage: MutableStateFlow<Int> by IntSetting(
+        protoNumber = 50,
+        defaultValue = 100,
+        min = 10,
+        max = 5000,
+        group = SettingGroup.OPDS,
+    )
+
+    val opdsEnablePageReadProgress: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 51,
+        defaultValue = true,
+        group = SettingGroup.OPDS,
+    )
+
+    val opdsMarkAsReadOnDownload: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 52,
+        defaultValue = false,
+        group = SettingGroup.OPDS,
+    )
+
+    val opdsShowOnlyUnreadChapters: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 53,
+        defaultValue = false,
+        group = SettingGroup.OPDS,
+    )
+
+    val opdsShowOnlyDownloadedChapters: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 54,
+        defaultValue = false,
+        group = SettingGroup.OPDS,
+    )
+
+    val opdsChapterSortOrder: MutableStateFlow<SortOrder> by EnumSetting(
+        protoNumber = 55,
+        defaultValue = SortOrder.DESC,
+        enumClass = SortOrder::class,
+        group = SettingGroup.OPDS,
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("org.jetbrains.exposed.sql.SortOrder")),
+    )
+
+    val authMode: MutableStateFlow<AuthMode> by EnumSetting(
+        protoNumber = 56,
+        defaultValue = AuthMode.NONE,
+        enumClass = AuthMode::class,
+        group = SettingGroup.AUTH,
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.AuthMode")),
+    )
+
     val downloadConversions: MutableStateFlow<Map<String, DownloadConversion>> by MapSetting<String, DownloadConversion>(
+        protoNumber = 57,
         defaultValue = emptyMap(),
         group = SettingGroup.DOWNLOADER,
         typeInfo =
             SettingsRegistry.PartialTypeInfo(
                 specificType = "List<SettingsDownloadConversionType>",
                 interfaceType = "List<SettingsDownloadConversion>",
+                backupType = "List<BackupSettingsDownloadConversionType>",
                 imports =
                     listOf(
-                        "suwayomi.tachidesk.graphql.types.SettingsDownloadConversion",
-                        "suwayomi.tachidesk.graphql.types.SettingsDownloadConversionType",
+                        "suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType",
                     ),
                 convertToGqlType = { value ->
                     @Suppress("UNCHECKED_CAST")
@@ -247,6 +537,18 @@ class ServerConfig(
                             )
                     }
                 },
+                convertToBackupType = { value ->
+                    @Suppress("UNCHECKED_CAST")
+                    val castedValue = value as Map<String, DownloadConversion>
+
+                    castedValue.map {
+                        BackupSettingsDownloadConversionType(
+                            it.key,
+                            it.value.target,
+                            it.value.compressionLevel,
+                        )
+                    }
+                },
             ),
         description =
             """
@@ -258,326 +560,54 @@ class ServerConfig(
             """.trimIndent(),
     )
 
-    /*******************************/
-    /**                           **/
-    /**      Extension/Source     **/
-    /**                           **/
-
-    /*******************************/
-    val extensionRepos: MutableStateFlow<List<String>> by ListSetting<String>(
-        defaultValue = emptyList(),
-        itemValidator = { url ->
-            if (url.matches(repoMatchRegex)) {
-                null
-            } else {
-                "Invalid repository URL format"
-            }
-        },
-        itemToValidValue = { url ->
-            if (url.matches(repoMatchRegex)) {
-                url
-            } else {
-                null
-            }
-        },
-        group = SettingGroup.EXTENSION,
-        typeInfo =
-            SettingsRegistry.PartialTypeInfo(
-                specificType = "List<String>",
-            ),
-        description = "example: [\"https://github.com/MY_ACCOUNT/MY_REPO/tree/repo\"]",
-    )
-
-    val maxSourcesInParallel: MutableStateFlow<Int> by IntSetting(
-        defaultValue = 6,
-        min = 1,
-        max = 20,
-        group = SettingGroup.EXTENSION,
-        description =
-            "How many different sources can do requests (library update, downloads) in parallel. " +
-                "Library update/downloads are grouped by source and all manga of a source are updated/downloaded synchronously",
-    )
-
-    /*******************************/
-    /**                           **/
-    /**      Library updates      **/
-    /**                           **/
-
-    /*******************************/
-    val excludeUnreadChapters: MutableStateFlow<Boolean> by BooleanSetting(
-        defaultValue = true,
-        group = SettingGroup.LIBRARY_UPDATES,
-    )
-
-    val excludeNotStarted: MutableStateFlow<Boolean> by BooleanSetting(
-        defaultValue = true,
-        group = SettingGroup.LIBRARY_UPDATES,
-    )
-
-    val excludeCompleted: MutableStateFlow<Boolean> by BooleanSetting(
-        defaultValue = true,
-        group = SettingGroup.LIBRARY_UPDATES,
-    )
-
-    val globalUpdateInterval: MutableStateFlow<Double> by DisableableDoubleSetting(
-        defaultValue = 12.hours.inWholeHours.toDouble(),
-        min = 6.0,
-        group = SettingGroup.LIBRARY_UPDATES,
-        description = "Time in hours",
-    )
-
-    val updateMangas: MutableStateFlow<Boolean> by BooleanSetting(
-        defaultValue = false,
-        group = SettingGroup.LIBRARY_UPDATES,
-        description = "Update manga metadata and thumbnail along with the chapter list update during the library update.",
-    )
-
-    /*******************************/
-    /**                           **/
-    /**       Authentication      **/
-    /**                           **/
-
-    /*******************************/
-    val authMode: MutableStateFlow<AuthMode> by EnumSetting(
-        defaultValue = AuthMode.NONE,
-        enumClass = AuthMode::class,
-        group = SettingGroup.AUTH,
-    )
-
-    val authUsername: MutableStateFlow<String> by StringSetting(
-        defaultValue = "",
-        group = SettingGroup.AUTH,
-    )
-
-    val authPassword: MutableStateFlow<String> by StringSetting(
-        defaultValue = "",
-        group = SettingGroup.AUTH,
-    )
-
     val jwtAudience: MutableStateFlow<String> by StringSetting(
+        protoNumber = 58,
         defaultValue = "suwayomi-server-api",
         group = SettingGroup.AUTH,
     )
 
-    val jwtTokenExpiry: MutableStateFlow<Duration> by DurationSetting(
-        defaultValue = 5.minutes,
-        min = 0.seconds,
-        group = SettingGroup.AUTH,
-    )
-
-    val jwtRefreshExpiry: MutableStateFlow<Duration> by DurationSetting(
-        defaultValue = 60.days,
-        min = 0.seconds,
-        group = SettingGroup.AUTH,
-    )
-
-    /*******************************/
-    /**                           **/
-    /**            Misc           **/
-    /**                           **/
-
-    /*******************************/
-    val debugLogsEnabled: MutableStateFlow<Boolean> by BooleanSetting(
-        defaultValue = false,
-        group = SettingGroup.MISC,
-    )
-
-    val systemTrayEnabled: MutableStateFlow<Boolean> by BooleanSetting(
-        defaultValue = true,
-        group = SettingGroup.MISC,
-    )
-
-    val maxLogFiles: MutableStateFlow<Int> by IntSetting(
-        defaultValue = 31,
-        min = 0,
-        group = SettingGroup.MISC,
-        description = "The max number of days to keep files before they get deleted",
-    )
-
-    private val logbackSizePattern = "^[0-9]+(|kb|KB|mb|MB|gb|GB)$".toRegex()
-    val maxLogFileSize: MutableStateFlow<String> by StringSetting(
-        defaultValue = "10mb",
-        pattern = logbackSizePattern,
-        group = SettingGroup.MISC,
-        description = "Maximum log file size - values: 1 (bytes), 1KB (kilobytes), 1MB (megabytes), 1GB (gigabytes)",
-    )
-
-    val maxLogFolderSize: MutableStateFlow<String> by StringSetting(
-        defaultValue = "100mb",
-        pattern = logbackSizePattern,
-        group = SettingGroup.MISC,
-        description = "Maximum log folder size - values: 1 (bytes), 1KB (kilobytes), 1MB (megabytes), 1GB (gigabytes)",
-    )
-
-    /*******************************/
-    /**                           **/
-    /**           Backup          **/
-    /**                           **/
-
-    /*******************************/
-    val backupPath: MutableStateFlow<String> by PathSetting(
-        defaultValue = "",
-        mustExist = true,
-        group = SettingGroup.BACKUP,
-    )
-
-    val backupTime: MutableStateFlow<String> by StringSetting(
-        defaultValue = "00:00",
-        pattern = "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$".toRegex(),
-        group = SettingGroup.BACKUP,
-        description = "Daily backup time (HH:MM) ; range: [00:00, 23:59]",
-    )
-
-    val backupInterval: MutableStateFlow<Int> by DisableableIntSetting(
-        defaultValue = 1,
-        min = 0,
-        group = SettingGroup.BACKUP,
-        description = "Time in days",
-    )
-
-    val backupTTL: MutableStateFlow<Int> by DisableableIntSetting(
-        defaultValue = 14.days.inWholeDays.toInt(),
-        min = 0,
-        group = SettingGroup.BACKUP,
-        description = "Backup retention in days",
-    )
-
-    /*******************************/
-    /**                           **/
-    /**        Local source       **/
-    /**                           **/
-
-    /*******************************/
-    val localSourcePath: MutableStateFlow<String> by PathSetting(
-        defaultValue = "",
-        mustExist = true,
-        group = SettingGroup.LOCAL_SOURCE,
-    )
-
-    /*******************************/
-    /**                           **/
-    /**         Cloudflare        **/
-    /**                           **/
-
-    /*******************************/
-    val flareSolverrEnabled: MutableStateFlow<Boolean> by BooleanSetting(
-        defaultValue = false,
-        group = SettingGroup.CLOUDFLARE,
-    )
-
-    val flareSolverrUrl: MutableStateFlow<String> by StringSetting(
-        defaultValue = "http://localhost:8191",
-        group = SettingGroup.CLOUDFLARE,
-    )
-
-    val flareSolverrTimeout: MutableStateFlow<Int> by IntSetting(
-        defaultValue = 60.seconds.inWholeSeconds.toInt(),
-        min = 0,
-        group = SettingGroup.CLOUDFLARE,
-        description = "Time in seconds",
-    )
-
-    val flareSolverrSessionName: MutableStateFlow<String> by StringSetting(
-        defaultValue = "suwayomi",
-        group = SettingGroup.CLOUDFLARE,
-    )
-
-    val flareSolverrSessionTtl: MutableStateFlow<Int> by IntSetting(
-        defaultValue = 15.minutes.inWholeMinutes.toInt(),
-        min = 0,
-        group = SettingGroup.CLOUDFLARE,
-        description = "Time in minutes",
-    )
-
-    val flareSolverrAsResponseFallback: MutableStateFlow<Boolean> by BooleanSetting(
-        defaultValue = false,
-        group = SettingGroup.CLOUDFLARE,
-    )
-
-    /*******************************/
-    /**                           **/
-    /**            OPDS           **/
-    /**                           **/
-
-    /*******************************/
-    val opdsUseBinaryFileSizes: MutableStateFlow<Boolean> by BooleanSetting(
-        defaultValue = false,
-        group = SettingGroup.OPDS,
-        description = "Display file size in binary (KiB, MiB, GiB) instead of decimal (KB, MB, GB)",
-    )
-
-    val opdsItemsPerPage: MutableStateFlow<Int> by IntSetting(
-        defaultValue = 100,
-        min = 10,
-        max = 5000,
-        group = SettingGroup.OPDS,
-    )
-
-    val opdsEnablePageReadProgress: MutableStateFlow<Boolean> by BooleanSetting(
-        defaultValue = true,
-        group = SettingGroup.OPDS,
-    )
-
-    val opdsMarkAsReadOnDownload: MutableStateFlow<Boolean> by BooleanSetting(
-        defaultValue = false,
-        group = SettingGroup.OPDS,
-    )
-
-    val opdsShowOnlyUnreadChapters: MutableStateFlow<Boolean> by BooleanSetting(
-        defaultValue = false,
-        group = SettingGroup.OPDS,
-    )
-
-    val opdsShowOnlyDownloadedChapters: MutableStateFlow<Boolean> by BooleanSetting(
-        defaultValue = false,
-        group = SettingGroup.OPDS,
-    )
-
-    val opdsChapterSortOrder: MutableStateFlow<SortOrder> by EnumSetting(
-        defaultValue = SortOrder.DESC,
-        enumClass = SortOrder::class,
-        group = SettingGroup.OPDS,
-    )
-
-    /*******************************/
-    /**                           **/
-    /**       KOReader sync       **/
-    /**                           **/
-
-    /*******************************/
     val koreaderSyncServerUrl: MutableStateFlow<String> by StringSetting(
+        protoNumber = 59,
         defaultValue = "http://localhost:17200",
         group = SettingGroup.KOREADER_SYNC,
     )
 
     val koreaderSyncUsername: MutableStateFlow<String> by StringSetting(
+        protoNumber = 60,
         defaultValue = "",
         group = SettingGroup.KOREADER_SYNC,
     )
 
     val koreaderSyncUserkey: MutableStateFlow<String> by StringSetting(
+        protoNumber = 61,
         defaultValue = "",
         group = SettingGroup.KOREADER_SYNC,
     )
 
     val koreaderSyncDeviceId: MutableStateFlow<String> by StringSetting(
+        protoNumber = 62,
         defaultValue = "",
         group = SettingGroup.KOREADER_SYNC,
     )
 
     val koreaderSyncChecksumMethod: MutableStateFlow<KoreaderSyncChecksumMethod> by EnumSetting(
+        protoNumber = 63,
         defaultValue = KoreaderSyncChecksumMethod.BINARY,
         enumClass = KoreaderSyncChecksumMethod::class,
         group = SettingGroup.KOREADER_SYNC,
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod")),
     )
 
     val koreaderSyncStrategy: MutableStateFlow<KoreaderSyncStrategy> by EnumSetting(
+        protoNumber = 64,
         defaultValue = KoreaderSyncStrategy.DISABLED,
         enumClass = KoreaderSyncStrategy::class,
         group = SettingGroup.KOREADER_SYNC,
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy")),
     )
 
     val koreaderSyncPercentageTolerance: MutableStateFlow<Double> by DoubleSetting(
+        protoNumber = 65,
         defaultValue = 0.000000000000001,
         min = 0.000000000000001,
         max = 1.0,
@@ -585,26 +615,35 @@ class ServerConfig(
         description = "Absolute tolerance for progress comparison",
     )
 
-    /***********************************************************************/
-    /**                                                                   **/
-    /**                        Deprecated settings                        **/
-    /**           (using MigratedConfigValue for proper mapping)          **/
-    /**                                                                   **/
-
-    /***********************************************************************/
-    val basicAuthEnabled: MutableStateFlow<Boolean> by MigratedConfigValue(
-        defaultValue = false,
+    val jwtTokenExpiry: MutableStateFlow<Duration> by DurationSetting(
+        protoNumber = 66,
+        defaultValue = 5.minutes,
+        min = 0.seconds,
         group = SettingGroup.AUTH,
-        deprecated =
-            SettingsRegistry.SettingDeprecated(
-                replaceWith = "authMode",
-                message = "Removed - prefer authUsername",
-            ),
-        readMigrated = { authMode.value == AuthMode.BASIC_AUTH },
-        setMigrated = { authMode.value = if (it) AuthMode.BASIC_AUTH else AuthMode.NONE },
     )
 
+    val jwtRefreshExpiry: MutableStateFlow<Duration> by DurationSetting(
+        protoNumber = 67,
+        defaultValue = 60.days,
+        min = 0.seconds,
+        group = SettingGroup.AUTH,
+    )
+
+    val webUIEnabled: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 68,
+        defaultValue = true,
+        group = SettingGroup.WEB_UI,
+        requiresRestart = true,
+    )
+
+    /** ****************************************************************** **/
+    /**                                                                    **/
+    /**                          Renamed settings                          **/
+    /**                                                                    **/
+
+    /** ****************************************************************** **/
     val basicAuthUsername: MutableStateFlow<String> by MigratedConfigValue(
+        protoNumber = 99991,
         defaultValue = "",
         group = SettingGroup.AUTH,
         deprecated =
@@ -617,6 +656,7 @@ class ServerConfig(
     )
 
     val basicAuthPassword: MutableStateFlow<String> by MigratedConfigValue(
+        protoNumber = 99992,
         defaultValue = "",
         group = SettingGroup.AUTH,
         deprecated =
@@ -626,27 +666,6 @@ class ServerConfig(
             ),
         readMigrated = { authPassword.value },
         setMigrated = { authPassword.value = it },
-    )
-
-    val autoDownloadAheadLimit: MutableStateFlow<Int> by MigratedConfigValue(
-        defaultValue = 0,
-        group = SettingGroup.DOWNLOADER,
-        deprecated =
-            SettingsRegistry.SettingDeprecated(
-                replaceWith = "autoDownloadNewChaptersLimit",
-                message = "Replaced with autoDownloadNewChaptersLimit",
-            ),
-        readMigrated = { autoDownloadNewChaptersLimit.value },
-        setMigrated = { autoDownloadNewChaptersLimit.value = it },
-    )
-
-    val gqlDebugLogsEnabled: MutableStateFlow<Boolean> by MigratedConfigValue(
-        defaultValue = false,
-        group = SettingGroup.MISC,
-        deprecated =
-            SettingsRegistry.SettingDeprecated(
-                message = "Removed - does not do anything",
-            ),
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)

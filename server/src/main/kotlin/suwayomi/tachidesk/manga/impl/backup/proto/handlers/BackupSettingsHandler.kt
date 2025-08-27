@@ -1,93 +1,96 @@
+@file:Suppress("ktlint")
+
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
 package suwayomi.tachidesk.manga.impl.backup.proto.handlers
 
+
 import suwayomi.tachidesk.graphql.mutations.SettingsMutation
-import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupServerSettings
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupServerSettings.BackupSettingsDownloadConversionType
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.settings.SettingsRegistry
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType
+
 
 object BackupSettingsHandler {
     fun backup(flags: BackupFlags): BackupServerSettings? {
-        if (!flags.includeServerSettings) {
-            return null
-        }
+        if (!flags.includeServerSettings) { return null }
 
         return BackupServerSettings(
+            // Network
             ip = serverConfig.ip.value,
             port = serverConfig.port.value,
-            // socks
+            // Proxy
             socksProxyEnabled = serverConfig.socksProxyEnabled.value,
             socksProxyVersion = serverConfig.socksProxyVersion.value,
             socksProxyHost = serverConfig.socksProxyHost.value,
             socksProxyPort = serverConfig.socksProxyPort.value,
             socksProxyUsername = serverConfig.socksProxyUsername.value,
             socksProxyPassword = serverConfig.socksProxyPassword.value,
-            // webUI
+            // WebUI
             webUIFlavor = serverConfig.webUIFlavor.value,
             initialOpenInBrowserEnabled = serverConfig.initialOpenInBrowserEnabled.value,
             webUIInterface = serverConfig.webUIInterface.value,
             electronPath = serverConfig.electronPath.value,
             webUIChannel = serverConfig.webUIChannel.value,
             webUIUpdateCheckInterval = serverConfig.webUIUpdateCheckInterval.value,
-            // downloader
+            webUIEnabled = serverConfig.webUIEnabled.value,
+            // Downloader
             downloadAsCbz = serverConfig.downloadAsCbz.value,
             downloadsPath = serverConfig.downloadsPath.value,
             autoDownloadNewChapters = serverConfig.autoDownloadNewChapters.value,
             excludeEntryWithUnreadChapters = serverConfig.excludeEntryWithUnreadChapters.value,
-            autoDownloadAheadLimit = 0, // deprecated
+            autoDownloadAheadLimit = serverConfig.autoDownloadAheadLimit.value,
             autoDownloadNewChaptersLimit = serverConfig.autoDownloadNewChaptersLimit.value,
             autoDownloadIgnoreReUploads = serverConfig.autoDownloadIgnoreReUploads.value,
-            downloadConversions =
-                serverConfig.downloadConversions.value.map {
-                    BackupSettingsDownloadConversionType(
-                        it.key,
-                        it.value.target,
-                        it.value.compressionLevel,
-                    )
-                },
-            // extension
+            downloadConversions = SettingsRegistry.get("downloadConversions")!!.typeInfo.convertToBackupType!!(serverConfig.downloadConversions.value) as List<BackupSettingsDownloadConversionType>,
+            // Extension/Source
             extensionRepos = serverConfig.extensionRepos.value,
-            // requests
             maxSourcesInParallel = serverConfig.maxSourcesInParallel.value,
-            // updater
+            // Library updates
             excludeUnreadChapters = serverConfig.excludeUnreadChapters.value,
             excludeNotStarted = serverConfig.excludeNotStarted.value,
             excludeCompleted = serverConfig.excludeCompleted.value,
             globalUpdateInterval = serverConfig.globalUpdateInterval.value,
             updateMangas = serverConfig.updateMangas.value,
             // Authentication
+            basicAuthEnabled = serverConfig.basicAuthEnabled.value,
+            authUsername = serverConfig.authUsername.value,
+            authPassword = serverConfig.authPassword.value,
             authMode = serverConfig.authMode.value,
             jwtAudience = serverConfig.jwtAudience.value,
             jwtTokenExpiry = serverConfig.jwtTokenExpiry.value,
             jwtRefreshExpiry = serverConfig.jwtRefreshExpiry.value,
-            authUsername = serverConfig.authUsername.value,
-            authPassword = serverConfig.authPassword.value,
-            basicAuthEnabled = false,
-            basicAuthUsername = null,
-            basicAuthPassword = null,
-            // misc
+            basicAuthUsername = serverConfig.basicAuthUsername.value,
+            basicAuthPassword = serverConfig.basicAuthPassword.value,
+            // Misc
             debugLogsEnabled = serverConfig.debugLogsEnabled.value,
-            gqlDebugLogsEnabled = false, // deprecated
+            gqlDebugLogsEnabled = serverConfig.gqlDebugLogsEnabled.value,
             systemTrayEnabled = serverConfig.systemTrayEnabled.value,
             maxLogFiles = serverConfig.maxLogFiles.value,
             maxLogFileSize = serverConfig.maxLogFileSize.value,
             maxLogFolderSize = serverConfig.maxLogFolderSize.value,
-            // backup
+            // Backup
             backupPath = serverConfig.backupPath.value,
             backupTime = serverConfig.backupTime.value,
             backupInterval = serverConfig.backupInterval.value,
             backupTTL = serverConfig.backupTTL.value,
-            // local source
+            // Local source
             localSourcePath = serverConfig.localSourcePath.value,
-            // cloudflare bypass
+            // Cloudflare
             flareSolverrEnabled = serverConfig.flareSolverrEnabled.value,
             flareSolverrUrl = serverConfig.flareSolverrUrl.value,
             flareSolverrTimeout = serverConfig.flareSolverrTimeout.value,
             flareSolverrSessionName = serverConfig.flareSolverrSessionName.value,
             flareSolverrSessionTtl = serverConfig.flareSolverrSessionTtl.value,
             flareSolverrAsResponseFallback = serverConfig.flareSolverrAsResponseFallback.value,
-            // opds
+            // OPDS
             opdsUseBinaryFileSizes = serverConfig.opdsUseBinaryFileSizes.value,
             opdsItemsPerPage = serverConfig.opdsItemsPerPage.value,
             opdsEnablePageReadProgress = serverConfig.opdsEnablePageReadProgress.value,
@@ -95,7 +98,7 @@ object BackupSettingsHandler {
             opdsShowOnlyUnreadChapters = serverConfig.opdsShowOnlyUnreadChapters.value,
             opdsShowOnlyDownloadedChapters = serverConfig.opdsShowOnlyDownloadedChapters.value,
             opdsChapterSortOrder = serverConfig.opdsChapterSortOrder.value,
-            // koreader sync
+            // KOReader sync
             koreaderSyncServerUrl = serverConfig.koreaderSyncServerUrl.value,
             koreaderSyncUsername = serverConfig.koreaderSyncUsername.value,
             koreaderSyncUserkey = serverConfig.koreaderSyncUserkey.value,
@@ -107,18 +110,13 @@ object BackupSettingsHandler {
     }
 
     fun restore(backupServerSettings: BackupServerSettings?) {
-        if (backupServerSettings == null) {
-            return
-        }
+        if (backupServerSettings == null) { return }
 
         SettingsMutation().updateSettings(
             backupServerSettings.copy(
-                // legacy settings cannot overwrite new settings
-                basicAuthEnabled =
-                    backupServerSettings.basicAuthEnabled.takeIf {
-                        serverConfig.authMode.value == AuthMode.NONE
-                    },
+                basicAuthEnabled = SettingsRegistry.get("basicAuthEnabled")!!.typeInfo.restoreLegacy!!(backupServerSettings.basicAuthEnabled) as Boolean,
             ),
         )
     }
 }
+

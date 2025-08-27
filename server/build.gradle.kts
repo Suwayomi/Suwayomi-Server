@@ -284,6 +284,8 @@ tasks {
             file("src/main/resources/server-reference.conf"),
             file("src/test/resources/server-reference.conf"),
             file("src/main/kotlin/suwayomi/tachidesk/graphql/types/SettingsType.kt"),
+            file("src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/models/BackupServerSettings.kt"),
+            file("src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/handlers/BackupSettingsHandler.kt"),
         )
     }
 }

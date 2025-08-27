@@ -15,30 +15,40 @@ object SettingsRegistry {
         val type: KClass<*>?
         val specificType: String?
         val interfaceType: String?
+        val backupType: String?
         val imports: List<String>?
         val convertToGqlType: ((configValue: Any) -> Any)?
-        val convertToInternalType: ((gqlValue: Any) -> Any?)?
+        val convertToInternalType: ((gqlValue: Any) -> Any)?
+        val convertToBackupType: ((gqlValue: Any) -> Any)?
+        val restoreLegacy: ((backupValue: Any?) -> Any?)?
     }
 
     data class TypeInfo(
         override val type: KClass<*>,
         override val specificType: String? = null,
         override val interfaceType: String? = null,
+        override val backupType: String? = null,
         override val imports: List<String>? = null,
         override val convertToGqlType: ((configValue: Any) -> Any)? = null,
-        override val convertToInternalType: ((gqlValue: Any) -> Any?)? = null,
+        override val convertToInternalType: ((gqlValue: Any) -> Any)? = null,
+        override val convertToBackupType: ((gqlValue: Any) -> Any)? = null,
+        override val restoreLegacy: ((backupValue: Any?) -> Any?)? = null,
     ) : ITypeInfo
 
     data class PartialTypeInfo(
         override val type: KClass<*>? = null,
         override val specificType: String? = null,
         override val interfaceType: String? = null,
+        override val backupType: String? = null,
         override val imports: List<String>? = null,
         override val convertToGqlType: ((configValue: Any) -> Any)? = null,
-        override val convertToInternalType: ((gqlValue: Any) -> Any?)? = null,
+        override val convertToInternalType: ((gqlValue: Any) -> Any)? = null,
+        override val convertToBackupType: ((gqlValue: Any) -> Any)? = null,
+        override val restoreLegacy: ((backupValue: Any?) -> Any?)? = null,
     ) : ITypeInfo
 
     data class SettingMetadata(
+        val protoNumber: Int,
         val name: String,
         val typeInfo: TypeInfo,
         val defaultValue: Any,

@@ -1,17 +1,28 @@
+@file:Suppress("ktlint")
+
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
 package suwayomi.tachidesk.manga.impl.backup.proto.models
+
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
-import org.jetbrains.exposed.sql.SortOrder
-import suwayomi.tachidesk.graphql.types.AuthMode
-import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
-import suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy
 import suwayomi.tachidesk.graphql.types.Settings
-import suwayomi.tachidesk.graphql.types.SettingsDownloadConversion
-import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIInterface
+import suwayomi.tachidesk.graphql.types.WebUIChannel
+import org.jetbrains.exposed.sql.SortOrder
+import suwayomi.tachidesk.graphql.types.AuthMode
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType
+import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
+import suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy
 import kotlin.time.Duration
+
 
 @Serializable
 data class BackupServerSettings(
@@ -33,6 +44,7 @@ data class BackupServerSettings(
     @ProtoNumber(16) override var downloadsPath: String,
     @ProtoNumber(17) override var autoDownloadNewChapters: Boolean,
     @ProtoNumber(18) override var excludeEntryWithUnreadChapters: Boolean,
+    @Deprecated("Replaced with autoDownloadNewChaptersLimit", ReplaceWith("autoDownloadNewChaptersLimit"))
     @ProtoNumber(19) override var autoDownloadAheadLimit: Int,
     @ProtoNumber(20) override var autoDownloadNewChaptersLimit: Int,
     @ProtoNumber(21) override var autoDownloadIgnoreReUploads: Boolean,
@@ -43,10 +55,12 @@ data class BackupServerSettings(
     @ProtoNumber(26) override var excludeCompleted: Boolean,
     @ProtoNumber(27) override var globalUpdateInterval: Double,
     @ProtoNumber(28) override var updateMangas: Boolean,
-    @ProtoNumber(29) override var basicAuthEnabled: Boolean?,
+    @Deprecated("Removed - prefer authUsername", ReplaceWith("authMode"))
+    @ProtoNumber(29) override var basicAuthEnabled: Boolean,
     @ProtoNumber(30) override var authUsername: String,
     @ProtoNumber(31) override var authPassword: String,
     @ProtoNumber(32) override var debugLogsEnabled: Boolean,
+    @Deprecated("Removed - does not do anything")
     @ProtoNumber(33) override var gqlDebugLogsEnabled: Boolean,
     @ProtoNumber(34) override var systemTrayEnabled: Boolean,
     @ProtoNumber(35) override var maxLogFiles: Int,
@@ -71,8 +85,8 @@ data class BackupServerSettings(
     @ProtoNumber(54) override var opdsShowOnlyDownloadedChapters: Boolean,
     @ProtoNumber(55) override var opdsChapterSortOrder: SortOrder,
     @ProtoNumber(56) override var authMode: AuthMode,
-    @ProtoNumber(57) override val downloadConversions: List<BackupSettingsDownloadConversionType>?,
-    @ProtoNumber(58) override var jwtAudience: String?,
+    @ProtoNumber(57) override var downloadConversions: List<BackupSettingsDownloadConversionType>,
+    @ProtoNumber(58) override var jwtAudience: String,
     @ProtoNumber(59) override var koreaderSyncServerUrl: String,
     @ProtoNumber(60) override var koreaderSyncUsername: String,
     @ProtoNumber(61) override var koreaderSyncUserkey: String,
@@ -80,16 +94,12 @@ data class BackupServerSettings(
     @ProtoNumber(63) override var koreaderSyncChecksumMethod: KoreaderSyncChecksumMethod,
     @ProtoNumber(64) override var koreaderSyncStrategy: KoreaderSyncStrategy,
     @ProtoNumber(65) override var koreaderSyncPercentageTolerance: Double,
-    @ProtoNumber(66) override var jwtTokenExpiry: Duration?,
-    @ProtoNumber(67) override var jwtRefreshExpiry: Duration?,
-    // Deprecated settings
-    @ProtoNumber(99991) override var basicAuthUsername: String?,
-    @ProtoNumber(99992) override var basicAuthPassword: String?,
-) : Settings {
-    @Serializable
-    class BackupSettingsDownloadConversionType(
-        @ProtoNumber(1) override val mimeType: String,
-        @ProtoNumber(2) override val target: String,
-        @ProtoNumber(3) override val compressionLevel: Double?,
-    ) : SettingsDownloadConversion
-}
+    @ProtoNumber(66) override var jwtTokenExpiry: Duration,
+    @ProtoNumber(67) override var jwtRefreshExpiry: Duration,
+    @ProtoNumber(68) override var webUIEnabled: Boolean,
+    @Deprecated("Removed - prefer authUsername", ReplaceWith("authUsername"))
+    @ProtoNumber(99991) override var basicAuthUsername: String,
+    @Deprecated("Removed - prefer authPassword", ReplaceWith("authPassword"))
+    @ProtoNumber(99992) override var basicAuthPassword: String,
+) : Settings
+

@@ -20,6 +20,7 @@ import kotlin.time.Duration
  * Base delegate for settings to read values from the config file with automatic setting registration and validation
  */
 open class SettingDelegate<T : Any>(
+    protected val protoNumber: Int,
     val defaultValue: T,
     val validator: ((T) -> String?)? = null,
     val toValidValue: ((T) -> T)? = null,
@@ -42,15 +43,18 @@ open class SettingDelegate<T : Any>(
 
         SettingsRegistry.register(
             SettingsRegistry.SettingMetadata(
+                protoNumber = protoNumber,
                 name = propertyName,
                 typeInfo =
                     SettingsRegistry.TypeInfo(
                         type = typeInfo?.type ?: defaultValue::class,
                         specificType = typeInfo?.specificType,
                         interfaceType = typeInfo?.interfaceType,
+                        backupType = typeInfo?.backupType,
                         imports = typeInfo?.imports,
                         convertToGqlType = typeInfo?.convertToGqlType,
                         convertToInternalType = typeInfo?.convertToInternalType,
+                        convertToBackupType = typeInfo?.convertToBackupType,
                     ),
                 defaultValue = defaultValue,
                 validator =
@@ -131,6 +135,7 @@ open class SettingDelegate<T : Any>(
 }
 
 class MigratedConfigValue<T : Any>(
+    private val protoNumber: Int,
     private val defaultValue: T,
     private val group: SettingGroup,
     private val requiresRestart: Boolean? = null,
@@ -152,17 +157,20 @@ class MigratedConfigValue<T : Any>(
 
         SettingsRegistry.register(
             SettingsRegistry.SettingMetadata(
+                protoNumber = protoNumber,
                 name = propertyName,
                 typeInfo =
                     SettingsRegistry.TypeInfo(
                         type = typeInfo?.type ?: defaultValue::class,
                         specificType = typeInfo?.specificType,
+                        backupType = typeInfo?.backupType,
                         imports = typeInfo?.imports,
+                        restoreLegacy = typeInfo?.restoreLegacy,
                     ),
                 defaultValue = defaultValue,
                 group = group.value,
                 deprecated = deprecated,
-                requiresRestart = requiresRestart ?: true,
+                requiresRestart = requiresRestart ?: false,
             ),
         )
 
@@ -195,6 +203,7 @@ class MigratedConfigValue<T : Any>(
 
 // Specialized delegates for common types
 class StringSetting(
+    protoNumber: Int,
     defaultValue: String = "",
     pattern: Regex? = null,
     maxLength: Int? = null,
@@ -203,6 +212,7 @@ class StringSetting(
     requiresRestart: Boolean? = null,
     description: String? = null,
 ) : SettingDelegate<String>(
+        protoNumber = protoNumber,
         defaultValue = defaultValue,
         validator = { value ->
             when {
@@ -227,6 +237,7 @@ class StringSetting(
     )
 
 abstract class RangeSetting<T : Comparable<T>>(
+    protoNumber: Int,
     defaultValue: T,
     min: T? = null,
     max: T? = null,
@@ -238,6 +249,7 @@ abstract class RangeSetting<T : Comparable<T>>(
     requiresRestart: Boolean? = null,
     description: String? = null,
 ) : SettingDelegate<T>(
+        protoNumber = protoNumber,
         defaultValue = defaultValue,
         validator =
             validator ?: { value ->
@@ -271,6 +283,7 @@ abstract class RangeSetting<T : Comparable<T>>(
     )
 
 class IntSetting(
+    protoNumber: Int,
     defaultValue: Int = 0,
     min: Int? = null,
     max: Int? = null,
@@ -281,6 +294,7 @@ class IntSetting(
     requiresRestart: Boolean? = null,
     description: String? = null,
 ) : RangeSetting<Int>(
+        protoNumber = protoNumber,
         defaultValue = defaultValue,
         min = min,
         max = max,
@@ -293,6 +307,7 @@ class IntSetting(
     )
 
 class DisableableIntSetting(
+    protoNumber: Int,
     defaultValue: Int = 0,
     min: Int? = null,
     max: Int? = null,
@@ -301,6 +316,7 @@ class DisableableIntSetting(
     requiresRestart: Boolean? = null,
     description: String? = null,
 ) : RangeSetting<Int>(
+        protoNumber = protoNumber,
         defaultValue = defaultValue,
         min = min,
         max = max,
@@ -336,6 +352,7 @@ class DisableableIntSetting(
     )
 
 class DoubleSetting(
+    protoNumber: Int,
     defaultValue: Double = 0.0,
     min: Double? = null,
     max: Double? = null,
@@ -346,6 +363,7 @@ class DoubleSetting(
     requiresRestart: Boolean? = null,
     description: String? = null,
 ) : RangeSetting<Double>(
+        protoNumber = protoNumber,
         defaultValue = defaultValue,
         min = min,
         max = max,
@@ -358,6 +376,7 @@ class DoubleSetting(
     )
 
 class DisableableDoubleSetting(
+    protoNumber: Int,
     defaultValue: Double = 0.0,
     min: Double? = null,
     max: Double? = null,
@@ -366,6 +385,7 @@ class DisableableDoubleSetting(
     requiresRestart: Boolean? = null,
     description: String? = null,
 ) : RangeSetting<Double>(
+        protoNumber = protoNumber,
         defaultValue = defaultValue,
         min = min,
         max = max,
@@ -401,12 +421,14 @@ class DisableableDoubleSetting(
     )
 
 class BooleanSetting(
+    protoNumber: Int,
     defaultValue: Boolean = false,
     group: SettingGroup,
     deprecated: SettingsRegistry.SettingDeprecated? = null,
     requiresRestart: Boolean? = null,
     description: String? = null,
 ) : SettingDelegate<Boolean>(
+        protoNumber = protoNumber,
         defaultValue = defaultValue,
         validator = null,
         group = group,
@@ -416,6 +438,7 @@ class BooleanSetting(
     )
 
 class PathSetting(
+    protoNumber: Int,
     defaultValue: String = "",
     mustExist: Boolean = false,
     group: SettingGroup,
@@ -423,6 +446,7 @@ class PathSetting(
     requiresRestart: Boolean? = null,
     description: String? = null,
 ) : SettingDelegate<String>(
+        protoNumber = protoNumber,
         defaultValue = defaultValue,
         validator = { value ->
             if (mustExist && value.isNotEmpty() && !File(value).exists()) {
@@ -438,13 +462,16 @@ class PathSetting(
     )
 
 class EnumSetting<T : Enum<T>>(
+    protoNumber: Int,
     defaultValue: T,
     enumClass: KClass<T>,
+    typeInfo: SettingsRegistry.PartialTypeInfo? = null,
     group: SettingGroup,
     deprecated: SettingsRegistry.SettingDeprecated? = null,
     requiresRestart: Boolean? = null,
     description: String? = null,
 ) : SettingDelegate<T>(
+        protoNumber = protoNumber,
         defaultValue = defaultValue,
         validator = { value ->
             if (!enumClass.java.isInstance(value)) {
@@ -453,6 +480,7 @@ class EnumSetting<T : Enum<T>>(
                 null
             }
         },
+        typeInfo = typeInfo,
         group = group,
         deprecated = deprecated,
         requiresRestart = requiresRestart,
@@ -469,6 +497,7 @@ class EnumSetting<T : Enum<T>>(
     )
 
 class DurationSetting(
+    protoNumber: Int,
     defaultValue: Duration,
     min: Duration? = null,
     max: Duration? = null,
@@ -479,6 +508,7 @@ class DurationSetting(
     requiresRestart: Boolean? = null,
     description: String? = null,
 ) : RangeSetting<Duration>(
+        protoNumber = protoNumber,
         defaultValue = defaultValue,
         min = min,
         max = max,
@@ -495,6 +525,7 @@ class DurationSetting(
     )
 
 class ListSetting<T>(
+    protoNumber: Int,
     defaultValue: List<T> = emptyList(),
     itemValidator: ((T) -> String?)? = null,
     itemToValidValue: ((T) -> T?)? = null,
@@ -504,6 +535,7 @@ class ListSetting<T>(
     requiresRestart: Boolean? = null,
     description: String? = null,
 ) : SettingDelegate<List<T>>(
+        protoNumber = protoNumber,
         defaultValue = defaultValue,
         validator = { list ->
             if (itemValidator != null) {
@@ -529,6 +561,7 @@ class ListSetting<T>(
     )
 
 class MapSetting<K, V>(
+    protoNumber: Int,
     defaultValue: Map<K, V> = emptyMap(),
     validator: ((Map<K, V>) -> String?)? = null,
     typeInfo: SettingsRegistry.PartialTypeInfo? = null,
@@ -537,6 +570,7 @@ class MapSetting<K, V>(
     requiresRestart: Boolean? = null,
     description: String? = null,
 ) : SettingDelegate<Map<K, V>>(
+        protoNumber = protoNumber,
         defaultValue = defaultValue,
         validator = validator,
         typeInfo = typeInfo,
