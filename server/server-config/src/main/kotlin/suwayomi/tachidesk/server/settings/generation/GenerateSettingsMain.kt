@@ -12,7 +12,7 @@ fun main() {
     println("Generating settings files from ServerConfig registry...")
 
     try {
-        // Set output directories relative to the current working directory
+        // Set output directories relative to the current working directory (server module)
         val outputDir = File("src/main/resources")
         val testOutputDir = File("src/test/resources")
         val graphqlOutputDir = File("src/main/kotlin/suwayomi/tachidesk/graphql/types")

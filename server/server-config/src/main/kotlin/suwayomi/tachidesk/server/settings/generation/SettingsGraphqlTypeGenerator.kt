@@ -125,10 +125,11 @@ object SettingsGraphqlTypeGenerator {
             appendLine("@GraphQLIgnore".addIndentation(indentation))
         }
 
-        if (setting.deprecated != null) {
-            val replaceWithSuffix = setting.deprecated.replaceWith?.let { ", ReplaceWith(\"$it\")" } ?: ""
+        val deprecated = setting.deprecated
+        if (deprecated != null) {
+            val replaceWithSuffix = deprecated.replaceWith?.let { ", ReplaceWith(\"$it\")" } ?: ""
             appendLine(
-                "@GraphQLDeprecated(\"${setting.deprecated.message}\"$replaceWithSuffix)".addIndentation(
+                "@GraphQLDeprecated(\"${deprecated.message}\"$replaceWithSuffix)".addIndentation(
                     indentation,
                 ),
             )

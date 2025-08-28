@@ -59,10 +59,11 @@ object SettingsBackupServerSettingsGenerator {
         indentation: Int,
     ) {
         sortedSettings.forEach { setting ->
-            if (setting.deprecated != null) {
-                val replaceWithSuffix = setting.deprecated.replaceWith?.let { ", ReplaceWith(\"$it\")" } ?: ""
+            val deprecated = setting.deprecated
+            if (deprecated != null) {
+                val replaceWithSuffix = deprecated.replaceWith?.let { ", ReplaceWith(\"$it\")" } ?: ""
                 appendLine(
-                    "@Deprecated(\"${setting.deprecated.message}\"$replaceWithSuffix)".addIndentation(
+                    "@Deprecated(\"${deprecated.message}\"$replaceWithSuffix)".addIndentation(
                         indentation,
                     ),
                 )

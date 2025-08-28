@@ -88,8 +88,9 @@ object SettingsConfigFileGenerator {
 
         val settingString = "$key = $renderedValue"
 
-        if (setting.description != null) {
-            val descriptionLines = setting.description.split("\n")
+        val description = setting.description
+        if (description != null) {
+            val descriptionLines = description.split("\n")
 
             if (descriptionLines.isEmpty()) {
                 return

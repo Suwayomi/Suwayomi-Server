@@ -91,6 +91,9 @@ dependencies {
 
     // i18n
     implementation(projects.server.i18n)
+    
+    // Settings module
+    implementation(projects.server.serverConfig)
 
     // uncomment to test extensions directly
 //    implementation(fileTree("lib/"))
@@ -228,27 +231,5 @@ tasks {
 
     runKtlintCheckOverMainSourceSet {
         mustRunAfter(generateJte)
-    }
-
-    register<JavaExec>("generateSettings") {
-        group = "build setup"
-        description = "Generates settings from ServerConfig"
-
-        dependsOn(compileKotlin)
-        classpath = sourceSets.main.get().runtimeClasspath
-        mainClass.set("suwayomi.tachidesk.server.settings.generation.SettingsGeneratorKt")
-
-        inputs.files(
-            sourceSets.main.get().allSource.filter {
-                it.name.contains("ServerConfig") || it.name.contains("Settings")
-            },
-        )
-        outputs.files(
-            file("src/main/resources/server-reference.conf"),
-            file("src/test/resources/server-reference.conf"),
-            file("src/main/kotlin/suwayomi/tachidesk/graphql/types/SettingsType.kt"),
-            file("src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/models/BackupServerSettings.kt"),
-            file("src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/handlers/BackupSettingsHandler.kt"),
-        )
     }
 }
