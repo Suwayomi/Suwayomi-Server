@@ -230,43 +230,6 @@ tasks {
         mustRunAfter(generateJte)
     }
 
-    // Generate settings from ServerConfig after compilation
-    compileKotlin {
-        finalizedBy("generateSettings")
-    }
-
-    // Copy generated settings to build resources after generation
-    register<Copy>("copyGeneratedSettingsConfigFile") {
-        dependsOn("generateSettings", "processResources")
-        from("src/main/resources/server-reference.conf")
-        into("build/resources/main")
-    }
-
-    register<Copy>("copyGeneratedTestSettingsConfigFile") {
-        dependsOn("generateSettings", "processTestResources")
-        from("src/test/resources/server-reference.conf")
-        into("build/resources/test")
-    }
-
-    // Make sure all resources including settings are available before running
-    named<JavaExec>("run") {
-        dependsOn("classes", "processResources", "copyGeneratedSettingsConfigFile")
-    }
-
-    // Ensure files are available for tests
-    test {
-        dependsOn("copyGeneratedTestSettingsConfigFile")
-    }
-
-    // Ensure files are included in jars
-    jar {
-        dependsOn("copyGeneratedSettingsConfigFile")
-    }
-
-    shadowJar {
-        dependsOn("copyGeneratedSettingsConfigFile")
-    }
-
     register<JavaExec>("generateSettings") {
         group = "build setup"
         description = "Generates settings from ServerConfig"
