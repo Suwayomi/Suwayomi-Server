@@ -204,7 +204,7 @@ class MigratedConfigValue<T : Any>(
 // Specialized delegates for common types
 class StringSetting(
     protoNumber: Int,
-    defaultValue: String = "",
+    defaultValue: String,
     pattern: Regex? = null,
     maxLength: Int? = null,
     group: SettingGroup,
@@ -284,7 +284,7 @@ abstract class RangeSetting<T : Comparable<T>>(
 
 class IntSetting(
     protoNumber: Int,
-    defaultValue: Int = 0,
+    defaultValue: Int,
     min: Int? = null,
     max: Int? = null,
     customValidator: ((Int) -> String?)? = null,
@@ -308,7 +308,7 @@ class IntSetting(
 
 class DisableableIntSetting(
     protoNumber: Int,
-    defaultValue: Int = 0,
+    defaultValue: Int,
     min: Int? = null,
     max: Int? = null,
     group: SettingGroup,
@@ -353,7 +353,7 @@ class DisableableIntSetting(
 
 class DoubleSetting(
     protoNumber: Int,
-    defaultValue: Double = 0.0,
+    defaultValue: Double,
     min: Double? = null,
     max: Double? = null,
     customValidator: ((Double) -> String?)? = null,
@@ -377,7 +377,7 @@ class DoubleSetting(
 
 class DisableableDoubleSetting(
     protoNumber: Int,
-    defaultValue: Double = 0.0,
+    defaultValue: Double,
     min: Double? = null,
     max: Double? = null,
     group: SettingGroup,
@@ -422,7 +422,7 @@ class DisableableDoubleSetting(
 
 class BooleanSetting(
     protoNumber: Int,
-    defaultValue: Boolean = false,
+    defaultValue: Boolean,
     group: SettingGroup,
     deprecated: SettingsRegistry.SettingDeprecated? = null,
     requiresRestart: Boolean? = null,
@@ -439,7 +439,7 @@ class BooleanSetting(
 
 class PathSetting(
     protoNumber: Int,
-    defaultValue: String = "",
+    defaultValue: String,
     mustExist: Boolean = false,
     group: SettingGroup,
     deprecated: SettingsRegistry.SettingDeprecated? = null,
@@ -526,7 +526,7 @@ class DurationSetting(
 
 class ListSetting<T>(
     protoNumber: Int,
-    defaultValue: List<T> = emptyList(),
+    defaultValue: List<T>,
     itemValidator: ((T) -> String?)? = null,
     itemToValidValue: ((T) -> T?)? = null,
     typeInfo: SettingsRegistry.PartialTypeInfo? = null,
@@ -562,7 +562,7 @@ class ListSetting<T>(
 
 class MapSetting<K, V>(
     protoNumber: Int,
-    defaultValue: Map<K, V> = emptyMap(),
+    defaultValue: Map<K, V>,
     validator: ((Map<K, V>) -> String?)? = null,
     typeInfo: SettingsRegistry.PartialTypeInfo? = null,
     group: SettingGroup,
