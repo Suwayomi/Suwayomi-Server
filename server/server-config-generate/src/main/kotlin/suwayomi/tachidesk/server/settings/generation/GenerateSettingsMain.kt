@@ -13,11 +13,11 @@ fun main() {
 
     try {
         // Set output directories relative to the current working directory (server module)
-        val outputDir = File("src/main/resources")
-        val testOutputDir = File("src/test/resources")
-        val graphqlOutputDir = File("src/main/kotlin/suwayomi/tachidesk/graphql/types")
-        val backupSettingsOutputDir = File("src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/models")
-        val backupSettingsHandlerOutputDir = File("src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/handlers")
+        val outputDir = File("build/generated/src/main/resources")
+        val testOutputDir = File("build/generated/src/test/resources")
+        val graphqlOutputDir = File("build/generated/src/main/kotlin/suwayomi/tachidesk/graphql/types")
+        val backupSettingsOutputDir = File("build/generated/src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/models")
+        val backupSettingsHandlerOutputDir = File("build/generated/src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/handlers")
 
         SettingsGenerator.generate(
             outputDir = outputDir,
