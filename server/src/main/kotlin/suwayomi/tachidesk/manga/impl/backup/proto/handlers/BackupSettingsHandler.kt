@@ -15,15 +15,7 @@ import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupServerSettings
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.settings.SettingsRegistry
-import suwayomi.tachidesk.graphql.types.WebUIFlavor
-import suwayomi.tachidesk.graphql.types.WebUIInterface
-import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType
-import suwayomi.tachidesk.graphql.types.AuthMode
-import kotlin.time.Duration
-import org.jetbrains.exposed.sql.SortOrder
-import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
-import suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy
 
 
 object BackupSettingsHandler {
@@ -67,7 +59,6 @@ object BackupSettingsHandler {
             excludeCompleted = serverConfig.excludeCompleted.value,
             globalUpdateInterval = serverConfig.globalUpdateInterval.value,
             updateMangas = serverConfig.updateMangas.value,
-            test = serverConfig.test.value,
             // Authentication
             basicAuthEnabled = serverConfig.basicAuthEnabled.value,
             authUsername = serverConfig.authUsername.value,

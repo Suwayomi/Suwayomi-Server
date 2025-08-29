@@ -97,7 +97,6 @@ data class BackupServerSettings(
     @ProtoNumber(66) override var jwtTokenExpiry: Duration,
     @ProtoNumber(67) override var jwtRefreshExpiry: Duration,
     @ProtoNumber(68) override var webUIEnabled: Boolean,
-    @ProtoNumber(69) override var test: Boolean,
     @Deprecated("Removed - prefer authUsername", ReplaceWith("authUsername"))
     @ProtoNumber(99991) override var basicAuthUsername: String,
     @Deprecated("Removed - prefer authPassword", ReplaceWith("authPassword"))

@@ -19,7 +19,6 @@ import suwayomi.tachidesk.server.settings.SettingsRegistry
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIInterface
 import suwayomi.tachidesk.graphql.types.WebUIChannel
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType
 import suwayomi.tachidesk.graphql.types.AuthMode
 import kotlin.time.Duration
 import org.jetbrains.exposed.sql.SortOrder
@@ -66,7 +65,6 @@ interface Settings : Node {
     val excludeCompleted: Boolean?
     val globalUpdateInterval: Double?
     val updateMangas: Boolean?
-    val test: Boolean?
     // Authentication
     @GraphQLDeprecated("Removed - prefer authUsername", ReplaceWith("authMode"))
     val basicAuthEnabled: Boolean?
@@ -159,7 +157,6 @@ data class PartialSettingsType(
     override val excludeCompleted: Boolean?,
     override val globalUpdateInterval: Double?,
     override val updateMangas: Boolean?,
-    override val test: Boolean?,
     // Authentication
     @GraphQLDeprecated("Removed - prefer authUsername", ReplaceWith("authMode"))
     override val basicAuthEnabled: Boolean?,
@@ -252,7 +249,6 @@ class SettingsType(
     override val excludeCompleted: Boolean,
     override val globalUpdateInterval: Double,
     override val updateMangas: Boolean,
-    override val test: Boolean,
     // Authentication
     @GraphQLDeprecated("Removed - prefer authUsername", ReplaceWith("authMode"))
     override val basicAuthEnabled: Boolean,
@@ -343,7 +339,6 @@ class SettingsType(
         config.excludeCompleted.value,
         config.globalUpdateInterval.value,
         config.updateMangas.value,
-        config.test.value,
         // Authentication
         config.basicAuthEnabled.value,
         config.authUsername.value,
