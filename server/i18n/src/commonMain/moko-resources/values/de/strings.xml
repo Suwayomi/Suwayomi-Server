@@ -49,7 +49,7 @@
     <string name="opds_feeds_manga_chapters">%1$s Kapitel</string>
     <string name="opds_chapter_details_progress">| Fortschritt: %1$d von %2$d</string>
     <string name="opds_feeds_categories_entry_content">Durchsuche Serien nach Kategorien organisiert</string>
-    <string name="opds_chapter_details_base">%1$s | %2$s</string>
+    <string name="opds_chapter_details_base">Serie: %1$s | %2$s</string>
     <string name="opds_linktitle_chapter_cover">Kapitel Cover</string>
     <string name="opds_linktitle_catalog_root">Katalog Root</string>
     <string name="opds_chapter_status_read">✅</string>
@@ -109,4 +109,17 @@
     <string name="login_label_login">Anmelden</string>
     <string name="login_placeholder_username">Benutzername eingeben...</string>
     <string name="login_placeholder_password">Geheim...</string>
+    <string name="opds_linktitle_stream_pages_start">Online lesen</string>
+    <string name="opds_linktitle_stream_pages_continue">Online weiter lesen</string>
+    <string name="opds_linktitle_stream_pages_start_local">Online lesen (mit lokalem Fortschritt)</string>
+    <string name="opds_linktitle_stream_pages_continue_local">Online weiter lesen (mit lokalem Fortschritt)</string>
+    <string name="opds_linktitle_stream_pages_start_remote">Online lesen (Synchronisiert mit %1$s)</string>
+    <string name="opds_linktitle_stream_pages_continue_remote">Online weiter lesen (Synchronisiert mit %1$s)</string>
+    <string name="opds_chapter_status_synced">🌐</string>
+    <string name="label_close">Schließen</string>
+    <string name="webview_label_copy">In Zwischenablage kopieren</string>
+    <string name="webview_label_copy_description">Das automatische Ablegen in die Zwischenablage ist fehlgeschlagen, bitte nutze das Feld unten, um manuell zu kopieren.</string>
+    <string name="webview_label_login_required">Deine Konfiguration erfordert die Anmeldung. Bitte gib Benutzername und Passwort ein.</string>
+    <string name="opds_linktitle_first_page">Erste Seite</string>
+    <string name="opds_linktitle_last_page">Letzte Seite</string>
 </resources>
