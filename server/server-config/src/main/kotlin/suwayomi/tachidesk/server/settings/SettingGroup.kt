@@ -4,6 +4,7 @@ enum class SettingGroup(
     val value: String,
 ) {
     NETWORK("Network"),
+    DATABASE("Database"),
     PROXY("Proxy"),
     WEB_UI("WebUI"),
     DOWNLOADER("Downloader"),
