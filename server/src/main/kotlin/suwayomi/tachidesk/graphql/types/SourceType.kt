@@ -342,7 +342,7 @@ fun updateFilterList(
 sealed interface Preference
 
 data class SwitchPreference(
-    val key: String,
+    val key: String?,
     val title: String?,
     val summary: String?,
     val visible: Boolean,
@@ -352,7 +352,7 @@ data class SwitchPreference(
 ) : Preference
 
 data class CheckBoxPreference(
-    val key: String,
+    val key: String?,
     val title: String?,
     val summary: String?,
     val visible: Boolean,
@@ -362,7 +362,7 @@ data class CheckBoxPreference(
 ) : Preference
 
 data class EditTextPreference(
-    val key: String,
+    val key: String?,
     val title: String?,
     val summary: String?,
     val visible: Boolean,
@@ -375,7 +375,7 @@ data class EditTextPreference(
 ) : Preference
 
 data class ListPreference(
-    val key: String,
+    val key: String?,
     val title: String?,
     val summary: String?,
     val visible: Boolean,
@@ -387,7 +387,7 @@ data class ListPreference(
 ) : Preference
 
 data class MultiSelectListPreference(
-    val key: String,
+    val key: String?,
     val title: String?,
     val summary: String?,
     val visible: Boolean,
