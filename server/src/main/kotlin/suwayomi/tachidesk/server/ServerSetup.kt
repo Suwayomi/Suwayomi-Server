@@ -19,7 +19,6 @@ import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.createAppModule
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.local.LocalSource
-import io.github.config4k.registerCustomType
 import io.github.config4k.toConfig
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.json.JavalinJackson
@@ -48,8 +47,7 @@ import suwayomi.tachidesk.manga.impl.util.lang.renameTo
 import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
-import suwayomi.tachidesk.server.util.DurationType
-import suwayomi.tachidesk.server.util.MutableStateFlowType
+import suwayomi.tachidesk.server.util.ConfigTypeRegistration
 import suwayomi.tachidesk.server.util.SystemTray
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -176,8 +174,7 @@ fun applicationSetup() {
     mainLoop.start()
 
     // register Tachidesk's config which is dubbed "ServerConfig"
-    registerCustomType(MutableStateFlowType())
-    registerCustomType(DurationType())
+    ConfigTypeRegistration.registerCustomTypes()
     GlobalConfigManager.registerModule(
         ServerConfig.register { GlobalConfigManager.config },
     )

@@ -92,6 +92,9 @@ dependencies {
     // i18n
     implementation(projects.server.i18n)
 
+    // Settings module
+    implementation(projects.server.serverConfig)
+
     // uncomment to test extensions directly
 //    implementation(fileTree("lib/"))
     implementation(kotlin("script-runtime"))
@@ -123,6 +126,15 @@ sourceSets {
     main {
         resources {
             srcDir("src/main/resources")
+            srcDir("build/generated/src/main/resources")
+        }
+        kotlin {
+            srcDir("build/generated/src/main/kotlin")
+        }
+    }
+    test {
+        resources {
+            srcDir("build/generated/src/test/resources")
         }
     }
 }
@@ -228,5 +240,13 @@ tasks {
 
     runKtlintCheckOverMainSourceSet {
         mustRunAfter(generateJte)
+    }
+
+    compileKotlin {
+        dependsOn(":server:server-config-generate:generateSettings")
+    }
+
+    processResources {
+        dependsOn(":server:server-config-generate:generateSettings")
     }
 }
