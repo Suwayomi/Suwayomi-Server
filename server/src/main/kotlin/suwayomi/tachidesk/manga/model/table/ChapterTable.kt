@@ -14,13 +14,14 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Chapter.getChapterMetaMap
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
+import suwayomi.tachidesk.manga.model.table.columns.truncatingVarchar
 
 object ChapterTable : IntIdTable() {
     val url = varchar("url", 2048)
-    val name = varchar("name", 512)
+    val name = truncatingVarchar("name", 512)
     val date_upload = long("date_upload").default(0)
     val chapter_number = float("chapter_number").default(-1f)
-    val scanlator = varchar("scanlator", 128).nullable()
+    val scanlator = truncatingVarchar("scanlator", 256).nullable()
 
     val fetchedAt = long("fetched_at").default(0)
 
@@ -34,6 +35,8 @@ object ChapterTable : IntIdTable() {
     val pageCount = integer("page_count").default(-1)
 
     val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
+
+    val koreaderHash = varchar("koreader_hash", 32).nullable()
 }
 
 fun ChapterTable.toDataClass(

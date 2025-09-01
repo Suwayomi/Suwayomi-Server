@@ -33,6 +33,7 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import suwayomi.tachidesk.server.database.dbTransaction
 
 object CategoryManga {
     fun addMangaToCategory(
@@ -71,10 +72,12 @@ object CategoryManga {
                 newCategoryIds.map { mangaId to it }
             }
 
-        CategoryMangaTable.batchInsert(newMangaCategoryMappings) { (mangaId, categoryId) ->
-            this[CategoryMangaTable.manga] = mangaId
-            this[CategoryMangaTable.category] = categoryId
-            this[CategoryMangaTable.user] = userId
+        dbTransaction {
+            CategoryMangaTable.batchInsert(newMangaCategoryMappings) { (mangaId, categoryId) ->
+                this[CategoryMangaTable.manga] = mangaId
+                this[CategoryMangaTable.category] = categoryId
+                this[CategoryMangaTable.user] = userId
+            }
         }
     }
 

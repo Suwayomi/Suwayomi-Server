@@ -4,6 +4,7 @@ import graphql.schema.DataFetchingEnvironment
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.SettingsType
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
 
 class SettingsQuery {

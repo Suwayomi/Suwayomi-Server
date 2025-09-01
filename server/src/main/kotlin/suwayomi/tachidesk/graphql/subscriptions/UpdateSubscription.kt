@@ -17,8 +17,8 @@ import suwayomi.tachidesk.graphql.types.UpdateStatus
 import suwayomi.tachidesk.graphql.types.UpdaterUpdates
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.UpdateUpdates
-import suwayomi.tachidesk.server.JavalinSetup
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
 import uy.kohesive.injekt.injectLazy
 

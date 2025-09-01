@@ -15,6 +15,7 @@ import io.javalin.websocket.WsContext
 import org.dataloader.BatchLoaderEnvironment
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.UserType
 
 /**
  * Custom logic for how Suwayomi-Server should create its context given the [Context]
@@ -26,10 +27,13 @@ class TachideskGraphQLContextFactory : GraphQLContextFactory<Context> {
             request.getPair(Attribute.TachideskUser),
         ).toGraphQLContext()
 
-    fun generateContextMap(request: WsContext): Map<*, Any> =
+    fun generateContextMap(
+        user: UserType,
+        request: WsContext,
+    ): Map<*, Any> =
         mapOf(
             Context::class to request,
-            request.getPair(Attribute.TachideskUser),
+            Attribute.TachideskUser to user,
         )
 
     private fun <T : Any> Context.getPair(attribute: Attribute<T>) = attribute to getAttribute(attribute)

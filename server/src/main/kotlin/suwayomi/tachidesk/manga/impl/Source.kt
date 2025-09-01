@@ -10,15 +10,17 @@ package suwayomi.tachidesk.manga.impl
 import androidx.preference.Preference
 import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.source.ConfigurableSource
+import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.source.sourcePreferences
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.json.JsonMapper
 import io.javalin.json.fromJsonString
+import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.extension.Extension.getExtensionIconUrl
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
@@ -27,7 +29,6 @@ import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
-import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.androidimpl.CustomContext
 
@@ -41,14 +42,15 @@ object Source {
                 val sourceExtension = ExtensionTable.selectAll().where { ExtensionTable.id eq it[SourceTable.extension] }.first()
 
                 SourceDataClass(
-                    it[SourceTable.id].value.toString(),
-                    it[SourceTable.name],
-                    it[SourceTable.lang],
-                    getExtensionIconUrl(sourceExtension[ExtensionTable.apkName]),
-                    catalogueSource.supportsLatest,
-                    catalogueSource is ConfigurableSource,
-                    it[SourceTable.isNsfw],
-                    catalogueSource.toString(),
+                    id = it[SourceTable.id].value.toString(),
+                    name = it[SourceTable.name],
+                    lang = it[SourceTable.lang],
+                    iconUrl = getExtensionIconUrl(sourceExtension[ExtensionTable.apkName]),
+                    supportsLatest = catalogueSource.supportsLatest,
+                    isConfigurable = catalogueSource is ConfigurableSource,
+                    isNsfw = it[SourceTable.isNsfw],
+                    displayName = catalogueSource.toString(),
+                    baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
                 )
             }
         }
@@ -61,16 +63,18 @@ object Source {
             val extension = ExtensionTable.selectAll().where { ExtensionTable.id eq source[SourceTable.extension] }.first()
 
             SourceDataClass(
-                sourceId.toString(),
-                source[SourceTable.name],
-                source[SourceTable.lang],
-                getExtensionIconUrl(
-                    extension[ExtensionTable.apkName],
-                ),
-                catalogueSource.supportsLatest,
-                catalogueSource is ConfigurableSource,
-                source[SourceTable.isNsfw],
-                catalogueSource.toString(),
+                id = sourceId.toString(),
+                name = source[SourceTable.name],
+                lang = source[SourceTable.lang],
+                iconUrl =
+                    getExtensionIconUrl(
+                        extension[ExtensionTable.apkName],
+                    ),
+                supportsLatest = catalogueSource.supportsLatest,
+                isConfigurable = catalogueSource is ConfigurableSource,
+                isNsfw = source[SourceTable.isNsfw],
+                displayName = catalogueSource.toString(),
+                baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
             )
         }
     }
@@ -142,6 +146,10 @@ object Source {
         val screen = preferenceScreenMap[sourceId]!!
         val pref = screen.preferences[position]
 
+        if (!pref.isEnabled) {
+            return
+        }
+
         val newValue = getValue(pref)
 
         pref.saveNewValue(newValue)
@@ -151,37 +159,79 @@ object Source {
         unregisterCatalogueSource(sourceId)
     }
 
+    fun getSourcesMetaMaps(ids: List<Long>): Map<Long, Map<String, String>> =
+        transaction {
+            SourceMetaTable
+                .selectAll()
+                .where { SourceMetaTable.ref inList ids }
+                .groupBy { it[SourceMetaTable.ref] }
+                .mapValues { it.value.associate { it[SourceMetaTable.key] to it[SourceMetaTable.value] } }
+                .withDefault { emptyMap() }
+        }
+
     fun modifyMeta(
         userId: Int,
         sourceId: Long,
         key: String,
         value: String,
     ) {
-        transaction {
-            val meta =
-                transaction {
-                    SourceMetaTable.selectAll().where {
-                        SourceMetaTable.user eq userId and (SourceMetaTable.ref eq sourceId) and
-                            (SourceMetaTable.key eq key)
-                    }
-                }.firstOrNull()
+        modifySourceMetas(userId, mapOf(sourceId to mapOf(key to value)))
+    }
 
-            if (meta == null) {
-                SourceMetaTable.insert {
-                    it[SourceMetaTable.key] = key
-                    it[SourceMetaTable.value] = value
-                    it[SourceMetaTable.ref] = sourceId
-                    it[SourceMetaTable.user] = userId
+    fun modifySourceMetas(
+        userId: Int,
+        metaBySourceIds: Map<Long, Map<String, String>>,
+    ) {
+        transaction {
+            val sourceIds = metaBySourceIds.keys
+            val metaKeys = metaBySourceIds.flatMap { it.value.keys }
+
+            val dbMetaBySourceId =
+                SourceMetaTable
+                    .selectAll()
+                    .where {
+                        (SourceMetaTable.ref inList sourceIds) and (SourceMetaTable.key inList metaKeys) and
+                            (SourceMetaTable.user eq userId)
+                    }.groupBy { it[SourceMetaTable.ref] }
+
+            val existingMetaByMetaId =
+                sourceIds.flatMap { sourceId ->
+                    val metaByKey = dbMetaBySourceId[sourceId].orEmpty().associateBy { it[SourceMetaTable.key] }
+                    val existingMetas = metaBySourceIds[sourceId].orEmpty().filter { (key) -> key in metaByKey.keys }
+
+                    existingMetas.map { entry ->
+                        val metaId = metaByKey[entry.key]!![SourceMetaTable.id].value
+
+                        metaId to entry
+                    }
                 }
-            } else {
-                SourceMetaTable.update(
-                    {
-                        (SourceMetaTable.user eq userId) and
-                            (SourceMetaTable.ref eq sourceId) and
-                            (SourceMetaTable.key eq key)
-                    },
-                ) {
-                    it[SourceMetaTable.value] = value
+
+            val newMetaBySourceId =
+                sourceIds.flatMap { sourceId ->
+                    val metaByKey = dbMetaBySourceId[sourceId].orEmpty().associateBy { it[SourceMetaTable.key] }
+
+                    metaBySourceIds[sourceId]
+                        .orEmpty()
+                        .filter { entry -> entry.key !in metaByKey.keys }
+                        .map { entry -> sourceId to entry }
+                }
+
+            if (existingMetaByMetaId.isNotEmpty()) {
+                BatchUpdateStatement(SourceMetaTable).apply {
+                    existingMetaByMetaId.forEach { (metaId, entry) ->
+                        addBatch(EntityID(metaId, SourceMetaTable))
+                        this[SourceMetaTable.value] = entry.value
+                    }
+                    execute(this@transaction)
+                }
+            }
+
+            if (newMetaBySourceId.isNotEmpty()) {
+                SourceMetaTable.batchInsert(newMetaBySourceId) { (sourceId, entry) ->
+                    this[SourceMetaTable.ref] = sourceId
+                    this[SourceMetaTable.key] = entry.key
+                    this[SourceMetaTable.value] = entry.value
+                    this[SourceMetaTable.user] = userId
                 }
             }
         }

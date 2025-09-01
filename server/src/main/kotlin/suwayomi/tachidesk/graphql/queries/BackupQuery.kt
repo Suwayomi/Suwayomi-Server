@@ -8,6 +8,7 @@ import suwayomi.tachidesk.graphql.types.toStatus
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
 
 class BackupQuery {

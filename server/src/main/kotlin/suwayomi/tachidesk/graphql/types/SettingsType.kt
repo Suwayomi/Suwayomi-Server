@@ -8,9 +8,11 @@
 package suwayomi.tachidesk.graphql.types
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import org.jetbrains.exposed.sql.SortOrder
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
+import kotlin.time.Duration
 
 interface Settings : Node {
     val ip: String?
@@ -47,6 +49,7 @@ interface Settings : Node {
     val autoDownloadAheadLimit: Int?
     val autoDownloadNewChaptersLimit: Int?
     val autoDownloadIgnoreReUploads: Boolean?
+    val downloadConversions: List<SettingsDownloadConversion>?
 
     // extension
     val extensionRepos: List<String>?
@@ -62,8 +65,20 @@ interface Settings : Node {
     val updateMangas: Boolean?
 
     // Authentication
+    val authMode: AuthMode?
+    val jwtAudience: String?
+    val jwtTokenExpiry: Duration?
+    val jwtRefreshExpiry: Duration?
+    val authUsername: String?
+    val authPassword: String?
+
+    @GraphQLDeprecated("Removed - prefer authMode")
     val basicAuthEnabled: Boolean?
+
+    @GraphQLDeprecated("Removed - prefer authUsername")
     val basicAuthUsername: String?
+
+    @GraphQLDeprecated("Removed - prefer authPassword")
     val basicAuthPassword: String?
     val multiUser: Boolean?
 
@@ -93,7 +108,37 @@ interface Settings : Node {
     val flareSolverrSessionName: String?
     val flareSolverrSessionTtl: Int?
     val flareSolverrAsResponseFallback: Boolean?
+
+    // opds
+    val opdsUseBinaryFileSizes: Boolean?
+    val opdsItemsPerPage: Int?
+    val opdsEnablePageReadProgress: Boolean?
+    val opdsMarkAsReadOnDownload: Boolean?
+    val opdsShowOnlyUnreadChapters: Boolean?
+    val opdsShowOnlyDownloadedChapters: Boolean?
+    val opdsChapterSortOrder: SortOrder?
+
+    // koreader sync
+    val koreaderSyncServerUrl: String?
+    val koreaderSyncUsername: String?
+    val koreaderSyncUserkey: String?
+    val koreaderSyncDeviceId: String?
+    val koreaderSyncChecksumMethod: KoreaderSyncChecksumMethod?
+    val koreaderSyncStrategy: KoreaderSyncStrategy?
+    val koreaderSyncPercentageTolerance: Double?
 }
+
+interface SettingsDownloadConversion {
+    val mimeType: String
+    val target: String
+    val compressionLevel: Double?
+}
+
+class SettingsDownloadConversionType(
+    override val mimeType: String,
+    override val target: String,
+    override val compressionLevel: Double?,
+) : SettingsDownloadConversion
 
 data class PartialSettingsType(
     override val ip: String?,
@@ -124,6 +169,7 @@ data class PartialSettingsType(
     override val autoDownloadAheadLimit: Int?,
     override val autoDownloadNewChaptersLimit: Int?,
     override val autoDownloadIgnoreReUploads: Boolean?,
+    override val downloadConversions: List<SettingsDownloadConversionType>?,
     // extension
     override val extensionRepos: List<String>?,
     // requests
@@ -135,8 +181,17 @@ data class PartialSettingsType(
     override val globalUpdateInterval: Double?,
     override val updateMangas: Boolean?,
     // Authentication
+    override val authMode: AuthMode?,
+    override val jwtAudience: String?,
+    override val jwtTokenExpiry: Duration?,
+    override val jwtRefreshExpiry: Duration?,
+    override val authUsername: String?,
+    override val authPassword: String?,
+    @GraphQLDeprecated("Removed - prefer authMode")
     override val basicAuthEnabled: Boolean?,
+    @GraphQLDeprecated("Removed - prefer authUsername")
     override val basicAuthUsername: String?,
+    @GraphQLDeprecated("Removed - prefer authPassword")
     override val basicAuthPassword: String?,
     override val multiUser: Boolean?,
     // misc
@@ -161,6 +216,22 @@ data class PartialSettingsType(
     override val flareSolverrSessionName: String?,
     override val flareSolverrSessionTtl: Int?,
     override val flareSolverrAsResponseFallback: Boolean?,
+    // opds
+    override val opdsUseBinaryFileSizes: Boolean?,
+    override val opdsItemsPerPage: Int?,
+    override val opdsEnablePageReadProgress: Boolean?,
+    override val opdsMarkAsReadOnDownload: Boolean?,
+    override val opdsShowOnlyUnreadChapters: Boolean?,
+    override val opdsShowOnlyDownloadedChapters: Boolean?,
+    override val opdsChapterSortOrder: SortOrder?,
+    // koreader sync
+    override val koreaderSyncServerUrl: String?,
+    override val koreaderSyncUsername: String?,
+    override val koreaderSyncUserkey: String?,
+    override val koreaderSyncDeviceId: String?,
+    override val koreaderSyncChecksumMethod: KoreaderSyncChecksumMethod?,
+    override val koreaderSyncStrategy: KoreaderSyncStrategy?,
+    override val koreaderSyncPercentageTolerance: Double?,
 ) : Settings
 
 class SettingsType(
@@ -191,7 +262,8 @@ class SettingsType(
     )
     override val autoDownloadAheadLimit: Int,
     override val autoDownloadNewChaptersLimit: Int,
-    override val autoDownloadIgnoreReUploads: Boolean?,
+    override val autoDownloadIgnoreReUploads: Boolean,
+    override val downloadConversions: List<SettingsDownloadConversionType>,
     // extension
     override val extensionRepos: List<String>,
     // requests
@@ -203,8 +275,17 @@ class SettingsType(
     override val globalUpdateInterval: Double,
     override val updateMangas: Boolean,
     // Authentication
+    override val authMode: AuthMode,
+    override val jwtAudience: String,
+    override val jwtTokenExpiry: Duration,
+    override val jwtRefreshExpiry: Duration,
+    override val authUsername: String,
+    override val authPassword: String,
+    @GraphQLDeprecated("Removed - prefer authMode")
     override val basicAuthEnabled: Boolean,
+    @GraphQLDeprecated("Removed - prefer authUsername")
     override val basicAuthUsername: String,
+    @GraphQLDeprecated("Removed - prefer authPassword")
     override val basicAuthPassword: String,
     override val multiUser: Boolean?,
     // misc
@@ -229,6 +310,22 @@ class SettingsType(
     override val flareSolverrSessionName: String,
     override val flareSolverrSessionTtl: Int,
     override val flareSolverrAsResponseFallback: Boolean,
+    // opds
+    override val opdsUseBinaryFileSizes: Boolean,
+    override val opdsItemsPerPage: Int,
+    override val opdsEnablePageReadProgress: Boolean,
+    override val opdsMarkAsReadOnDownload: Boolean,
+    override val opdsShowOnlyUnreadChapters: Boolean,
+    override val opdsShowOnlyDownloadedChapters: Boolean,
+    override val opdsChapterSortOrder: SortOrder,
+    // koreader sync
+    override val koreaderSyncServerUrl: String,
+    override val koreaderSyncUsername: String,
+    override val koreaderSyncUserkey: String,
+    override val koreaderSyncDeviceId: String,
+    override val koreaderSyncChecksumMethod: KoreaderSyncChecksumMethod,
+    override val koreaderSyncStrategy: KoreaderSyncStrategy,
+    override val koreaderSyncPercentageTolerance: Double,
 ) : Settings {
     constructor(config: ServerConfig = serverConfig) : this(
         config.ip.value,
@@ -241,11 +338,11 @@ class SettingsType(
         config.socksProxyUsername.value,
         config.socksProxyPassword.value,
         // webUI
-        WebUIFlavor.from(config.webUIFlavor.value),
+        config.webUIFlavor.value,
         config.initialOpenInBrowserEnabled.value,
-        WebUIInterface.from(config.webUIInterface.value),
+        config.webUIInterface.value,
         config.electronPath.value,
-        WebUIChannel.from(config.webUIChannel.value),
+        config.webUIChannel.value,
         config.webUIUpdateCheckInterval.value,
         // downloader
         config.downloadAsCbz.value,
@@ -255,6 +352,13 @@ class SettingsType(
         config.autoDownloadNewChaptersLimit.value, // deprecated
         config.autoDownloadNewChaptersLimit.value,
         config.autoDownloadIgnoreReUploads.value,
+        config.downloadConversions.value.map {
+            SettingsDownloadConversionType(
+                it.key,
+                it.value.target,
+                it.value.compressionLevel,
+            )
+        },
         // extension
         config.extensionRepos.value,
         // requests
@@ -266,6 +370,12 @@ class SettingsType(
         config.globalUpdateInterval.value,
         config.updateMangas.value,
         // Authentication
+        config.authMode.value,
+        config.jwtAudience.value,
+        config.jwtTokenExpiry.value,
+        config.jwtRefreshExpiry.value,
+        config.authUsername.value,
+        config.authPassword.value,
         config.basicAuthEnabled.value,
         config.basicAuthUsername.value,
         config.basicAuthPassword.value,
@@ -291,5 +401,21 @@ class SettingsType(
         config.flareSolverrSessionName.value,
         config.flareSolverrSessionTtl.value,
         config.flareSolverrAsResponseFallback.value,
+        // opds
+        config.opdsUseBinaryFileSizes.value,
+        config.opdsItemsPerPage.value,
+        config.opdsEnablePageReadProgress.value,
+        config.opdsMarkAsReadOnDownload.value,
+        config.opdsShowOnlyUnreadChapters.value,
+        config.opdsShowOnlyDownloadedChapters.value,
+        config.opdsChapterSortOrder.value,
+        // koreader sync
+        config.koreaderSyncServerUrl.value,
+        config.koreaderSyncUsername.value,
+        config.koreaderSyncUserkey.value,
+        config.koreaderSyncDeviceId.value,
+        config.koreaderSyncChecksumMethod.value,
+        config.koreaderSyncStrategy.value,
+        config.koreaderSyncPercentageTolerance.value,
     )
 }

@@ -59,6 +59,7 @@ object BackupController {
                 }
             },
             behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 // TODO: rewrite this with ctx.uploadedFiles(), don't call the multipart field "backup.proto.gz"
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
@@ -97,6 +98,8 @@ object BackupController {
                                 includeChapters = true,
                                 includeTracking = true,
                                 includeHistory = true,
+                                includeClientData = true,
+                                includeServerSettings = true,
                             ),
                         )
                     }.thenApply { ctx.result(it) }
@@ -131,6 +134,8 @@ object BackupController {
                                 includeChapters = true,
                                 includeTracking = true,
                                 includeHistory = true,
+                                includeClientData = true,
+                                includeServerSettings = true,
                             ),
                         )
                     }.thenApply { ctx.result(it) }

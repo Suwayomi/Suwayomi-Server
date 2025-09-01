@@ -20,6 +20,7 @@ import suwayomi.tachidesk.graphql.mutations.DownloadMutation
 import suwayomi.tachidesk.graphql.mutations.ExtensionMutation
 import suwayomi.tachidesk.graphql.mutations.ImageMutation
 import suwayomi.tachidesk.graphql.mutations.InfoMutation
+import suwayomi.tachidesk.graphql.mutations.KoreaderSyncMutation
 import suwayomi.tachidesk.graphql.mutations.MangaMutation
 import suwayomi.tachidesk.graphql.mutations.MetaMutation
 import suwayomi.tachidesk.graphql.mutations.SettingsMutation
@@ -33,6 +34,7 @@ import suwayomi.tachidesk.graphql.queries.ChapterQuery
 import suwayomi.tachidesk.graphql.queries.DownloadQuery
 import suwayomi.tachidesk.graphql.queries.ExtensionQuery
 import suwayomi.tachidesk.graphql.queries.InfoQuery
+import suwayomi.tachidesk.graphql.queries.KoreaderSyncQuery
 import suwayomi.tachidesk.graphql.queries.MangaQuery
 import suwayomi.tachidesk.graphql.queries.MetaQuery
 import suwayomi.tachidesk.graphql.queries.SettingsQuery
@@ -41,6 +43,7 @@ import suwayomi.tachidesk.graphql.queries.TrackQuery
 import suwayomi.tachidesk.graphql.queries.UpdateQuery
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLCursor
+import suwayomi.tachidesk.graphql.server.primitives.GraphQLDurationAsString
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLLongAsString
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLUpload
 import suwayomi.tachidesk.graphql.subscriptions.DownloadSubscription
@@ -48,11 +51,13 @@ import suwayomi.tachidesk.graphql.subscriptions.InfoSubscription
 import suwayomi.tachidesk.graphql.subscriptions.UpdateSubscription
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
+import kotlin.time.Duration
 
 class CustomSchemaGeneratorHooks : FlowSubscriptionSchemaGeneratorHooks() {
     override fun willGenerateGraphQLType(type: KType): GraphQLType? =
         when (type.classifier as? KClass<*>) {
             Long::class -> GraphQLLongAsString // encode to string for JS
+            Duration::class -> GraphQLDurationAsString // encode Duration as ISO-8601 string
             Cursor::class -> GraphQLCursor
             UploadedFile::class -> GraphQLUpload
             else -> super.willGenerateGraphQLType(type)
@@ -75,6 +80,7 @@ val schema =
                 TopLevelObject(DownloadQuery()),
                 TopLevelObject(ExtensionQuery()),
                 TopLevelObject(InfoQuery()),
+                TopLevelObject(KoreaderSyncQuery()),
                 TopLevelObject(MangaQuery()),
                 TopLevelObject(MetaQuery()),
                 TopLevelObject(SettingsQuery()),
@@ -91,6 +97,7 @@ val schema =
                 TopLevelObject(ExtensionMutation()),
                 TopLevelObject(ImageMutation()),
                 TopLevelObject(InfoMutation()),
+                TopLevelObject(KoreaderSyncMutation()),
                 TopLevelObject(MangaMutation()),
                 TopLevelObject(MetaMutation()),
                 TopLevelObject(SettingsMutation()),

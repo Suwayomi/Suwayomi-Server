@@ -22,4 +22,5 @@ data class TrackRecordDataClass(
     val remoteUrl: String,
     val startDate: Long,
     val finishDate: Long,
+    val private: Boolean,
 )

@@ -17,6 +17,7 @@ import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
@@ -36,10 +37,10 @@ class DownloadMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: DeleteDownloadedChaptersInput,
     ): DataFetcherResult<DeleteDownloadedChaptersPayload?> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, chapters) = input
 
         return asDataFetcherResult {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             Chapter.deleteChapters(chapters)
 
             DeleteDownloadedChaptersPayload(
@@ -69,10 +70,10 @@ class DownloadMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: DeleteDownloadedChapterInput,
     ): DataFetcherResult<DeleteDownloadedChapterPayload?> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, chapter) = input
 
         return asDataFetcherResult {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             Chapter.deleteChapters(listOf(chapter))
 
             DeleteDownloadedChapterPayload(
@@ -99,11 +100,11 @@ class DownloadMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: EnqueueChapterDownloadsInput,
     ): CompletableFuture<DataFetcherResult<EnqueueChapterDownloadsPayload?>> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, chapters) = input
 
         return future {
             asDataFetcherResult {
-                dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
                 DownloadManager.enqueue(DownloadManager.EnqueueInput(chapters))
 
                 EnqueueChapterDownloadsPayload(
@@ -136,11 +137,11 @@ class DownloadMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: EnqueueChapterDownloadInput,
     ): CompletableFuture<DataFetcherResult<EnqueueChapterDownloadPayload?>> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, chapter) = input
 
         return future {
             asDataFetcherResult {
-                dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
                 DownloadManager.enqueue(DownloadManager.EnqueueInput(listOf(chapter)))
 
                 EnqueueChapterDownloadPayload(
@@ -172,6 +173,7 @@ class DownloadMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: DequeueChapterDownloadsInput,
     ): CompletableFuture<DataFetcherResult<DequeueChapterDownloadsPayload?>> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, chapters) = input
 
         return future {
@@ -211,11 +213,11 @@ class DownloadMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: DequeueChapterDownloadInput,
     ): CompletableFuture<DataFetcherResult<DequeueChapterDownloadPayload?>> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, chapter) = input
 
         return future {
             asDataFetcherResult {
-                dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
                 DownloadManager.dequeue(DownloadManager.EnqueueInput(listOf(chapter)))
 
                 DequeueChapterDownloadPayload(
@@ -347,11 +349,11 @@ class DownloadMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: ReorderChapterDownloadInput,
     ): CompletableFuture<DataFetcherResult<ReorderChapterDownloadPayload?>> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, chapter, to) = input
 
         return future {
             asDataFetcherResult {
-                dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
                 DownloadManager.reorder(chapter, to)
 
                 ReorderChapterDownloadPayload(

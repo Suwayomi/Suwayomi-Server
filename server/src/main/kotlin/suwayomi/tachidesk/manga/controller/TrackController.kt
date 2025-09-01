@@ -54,6 +54,7 @@ object TrackController {
                 body<Track.LoginInput>()
             },
             behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val input = json.decodeFromString<Track.LoginInput>(ctx.body())
                 logger.debug { "tracker login $input" }
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
@@ -78,6 +79,7 @@ object TrackController {
                 body<Track.LogoutInput>()
             },
             behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val input = json.decodeFromString<Track.LogoutInput>(ctx.body())
                 logger.debug { "tracker logout $input" }
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
@@ -102,6 +104,7 @@ object TrackController {
                 body<Track.SearchInput>()
             },
             behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val input = json.decodeFromString<Track.SearchInput>(ctx.body())
                 logger.debug { "tracker search $input" }
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
@@ -121,16 +124,17 @@ object TrackController {
             queryParam<Int>("mangaId"),
             queryParam<Int>("trackerId"),
             queryParam<String>("remoteId"),
+            queryParam<Boolean>("private"),
             documentWith = {
                 withOperation {
                     summary("Track Record Bind")
                     description("Bind a Track Record to a Manga")
                 }
             },
-            behaviorOf = { ctx, mangaId, trackerId, remoteId ->
+            behaviorOf = { ctx, mangaId, trackerId, remoteId, private ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { Track.bind(userId, mangaId, trackerId, remoteId.toLong()) }
+                    future { Track.bind(userId, mangaId, trackerId, remoteId.toLong(), private) }
                         .thenApply { ctx.status(HttpStatus.OK) }
                 }
             },
@@ -149,6 +153,7 @@ object TrackController {
                 body<Track.UpdateInput>()
             },
             behaviorOf = { ctx ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val input = json.decodeFromString<Track.UpdateInput>(ctx.body())
                 logger.debug { "tracker update $input" }
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
@@ -172,6 +177,7 @@ object TrackController {
                 }
             },
             behaviorOf = { ctx, trackerId ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future { Track.getTrackerThumbnail(trackerId) }
                         .thenApply {

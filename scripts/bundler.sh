@@ -30,7 +30,7 @@ main() {
   RELEASE_NAME="$(echo "${JAR%.*}" | xargs basename)-$OS"
   RELEASE_VERSION=$(echo "$JAR" | grep -oP "v\K[0-9]+\.[0-9]+\.[0-9]+")
   #RELEASE_REVISION_NUMBER="$(tmp="${JAR%.*}" && echo "${tmp##*-}" | tr -d r)"
-  local electron_version="v28.1.3"
+  local electron_version="v37.2.5"
 
   # clean temporary directory on function return
   trap "rm -rf $RELEASE_NAME/" RETURN
@@ -38,10 +38,26 @@ main() {
 
   download_launcher
 
+  if [ ! -f scripts/resources/catch_abort.so ]; then
+    gcc -fPIC -I$JAVA_HOME/include -I$JAVA_HOME/include/linux -shared scripts/resources/catch_abort.c -lpthread -o scripts/resources/catch_abort.so
+  fi
+
   case "$OS" in
     debian-all)
       RELEASE="$RELEASE_NAME.deb"
       make_deb_package
+      move_release_to_output_dir
+      ;;
+    appimage)
+      # https://github.com/adoptium/temurin21-binaries/releases/
+      JRE_RELEASE="jdk-21.0.8+9"
+      JRE="OpenJDK21U-jre_x64_linux_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
+      JRE_DIR="$JRE_RELEASE-jre"
+      JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
+      setup_jre
+
+      RELEASE="$RELEASE_NAME.AppImage"
+      make_appimage
       move_release_to_output_dir
       ;;
     linux-assets)
@@ -52,7 +68,7 @@ main() {
       ;;
     linux-x64)
       # https://github.com/adoptium/temurin21-binaries/releases/
-      JRE_RELEASE="jdk-21.0.7+6"
+      JRE_RELEASE="jdk-21.0.8+9"
       JRE="OpenJDK21U-jre_x64_linux_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
       JRE_DIR="$JRE_RELEASE-jre"
       JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
@@ -68,7 +84,7 @@ main() {
       ;;
     macOS-x64)
       # https://github.com/adoptium/temurin21-binaries/releases/
-      JRE_RELEASE="jdk-21.0.7+6"
+      JRE_RELEASE="jdk-21.0.8+9"
       JRE="OpenJDK21U-jre_x64_mac_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
       JRE_DIR="$JRE_RELEASE-jre"
       JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
@@ -84,7 +100,7 @@ main() {
       ;;
     macOS-arm64)
       # https://github.com/adoptium/temurin21-binaries/releases/
-      JRE_RELEASE="jdk-21.0.7+6"
+      JRE_RELEASE="jdk-21.0.8+9"
       JRE="OpenJDK21U-jre_aarch64_mac_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
       JRE_DIR="$JRE_RELEASE-jre"
       JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
@@ -100,7 +116,7 @@ main() {
       ;;
     windows-x64)
       # https://github.com/adoptium/temurin21-binaries/releases/
-      JRE_RELEASE="jdk-21.0.7+6"
+      JRE_RELEASE="jdk-21.0.8+9"
       JRE="OpenJDK21U-jre_x64_windows_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').zip"
       JRE_DIR="$JRE_RELEASE-jre"
       JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
@@ -184,6 +200,7 @@ make_linux_bundle() {
   cp "$JAR" "$RELEASE_NAME/bin/Suwayomi-Server.jar"
   cp "scripts/resources/suwayomi-launcher.sh" "$RELEASE_NAME/"
   cp "scripts/resources/suwayomi-server.sh" "$RELEASE_NAME/"
+  cp "scripts/resources/catch_abort.so" "$RELEASE_NAME/bin/"
 
   tar -I "gzip -9" -cvf "$RELEASE" "$RELEASE_NAME/"
 }
@@ -208,6 +225,7 @@ make_deb_package() {
   mv "$RELEASE_NAME/Suwayomi-Launcher.jar" "$RELEASE_NAME/$source_dir/Suwayomi-Launcher.jar"
   cp "$JAR" "$RELEASE_NAME/$source_dir/Suwayomi-Server.jar"
   copy_linux_package_assets_to "$RELEASE_NAME/$source_dir/"
+  cp "scripts/resources/catch_abort.so" "$RELEASE_NAME/$source_dir/"
   tar -I "gzip" -C "$RELEASE_NAME/" -cvf "$upstream_source" "$source_dir"
 
   cp -r "scripts/resources/deb/" "$RELEASE_NAME/$source_dir/debian/"
@@ -222,6 +240,25 @@ make_deb_package() {
 
   local deb="suwayomi-server_$RELEASE_VERSION-1_all.deb"
   mv "$RELEASE_NAME/$deb" "$RELEASE"
+}
+
+# https://linuxconfig.org/building-a-hello-world-appimage-on-linux
+make_appimage() {
+  local APPIMAGE_URL="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+  local APPIMAGE_TOOLNAME="appimagetool-x86_64.AppImage"
+  mkdir "$RELEASE_NAME/bin/"
+  cp "$JAR" "$RELEASE_NAME/bin/Suwayomi-Server.jar"
+
+  cp "scripts/resources/pkg/suwayomi-server.desktop" "$RELEASE_NAME/suwayomi-server.desktop"
+  cp "server/src/main/resources/icon/faviconlogo.png" "$RELEASE_NAME/suwayomi-server.png"
+  cp "scripts/resources/appimage/AppRun" "$RELEASE_NAME/AppRun"
+  chmod +x "$RELEASE_NAME/AppRun"
+
+  sudo apt update
+  sudo apt install libfuse2
+  curl -L $APPIMAGE_URL -o $APPIMAGE_TOOLNAME
+  chmod +x $APPIMAGE_TOOLNAME
+  ARCH=x86_64 ./$APPIMAGE_TOOLNAME "$RELEASE_NAME" "$RELEASE"
 }
 
 make_windows_bundle() {

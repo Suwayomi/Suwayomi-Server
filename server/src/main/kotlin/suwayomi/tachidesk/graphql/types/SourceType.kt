@@ -11,6 +11,7 @@ import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.model.FilterList
+import eu.kanade.tachiyomi.source.online.HttpSource
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.selectAll
@@ -44,6 +45,7 @@ class SourceType(
     val isConfigurable: Boolean,
     val isNsfw: Boolean,
     val displayName: String,
+    val baseUrl: String?,
 ) : Node {
     constructor(source: SourceDataClass) : this(
         id = source.id.toLong(),
@@ -54,6 +56,7 @@ class SourceType(
         isConfigurable = source.isConfigurable,
         isNsfw = source.isNsfw,
         displayName = source.displayName,
+        baseUrl = source.baseUrl,
     )
 
     constructor(row: ResultRow, sourceExtension: ResultRow, catalogueSource: CatalogueSource) : this(
@@ -65,6 +68,7 @@ class SourceType(
         isConfigurable = catalogueSource is ConfigurableSource,
         isNsfw = row[SourceTable.isNsfw],
         displayName = catalogueSource.toString(),
+        baseUrl = catalogueSource.runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> =
@@ -342,6 +346,7 @@ data class SwitchPreference(
     val title: String?,
     val summary: String?,
     val visible: Boolean,
+    val enabled: Boolean,
     val currentValue: Boolean?,
     val default: Boolean,
 ) : Preference
@@ -351,6 +356,7 @@ data class CheckBoxPreference(
     val title: String?,
     val summary: String?,
     val visible: Boolean,
+    val enabled: Boolean,
     val currentValue: Boolean?,
     val default: Boolean,
 ) : Preference
@@ -360,6 +366,7 @@ data class EditTextPreference(
     val title: String?,
     val summary: String?,
     val visible: Boolean,
+    val enabled: Boolean,
     val currentValue: String?,
     val default: String?,
     val dialogTitle: String?,
@@ -372,6 +379,7 @@ data class ListPreference(
     val title: String?,
     val summary: String?,
     val visible: Boolean,
+    val enabled: Boolean,
     val currentValue: String?,
     val default: String?,
     val entries: List<String>,
@@ -383,6 +391,7 @@ data class MultiSelectListPreference(
     val title: String?,
     val summary: String?,
     val visible: Boolean,
+    val enabled: Boolean,
     val currentValue: List<String>?,
     val default: List<String>?,
     val dialogTitle: String?,
@@ -399,6 +408,7 @@ fun preferenceOf(preference: SourcePreference): Preference =
                 preference.title?.toString(),
                 preference.summary?.toString(),
                 preference.visible,
+                preference.isEnabled,
                 preference.currentValue as Boolean,
                 preference.defaultValue as Boolean,
             )
@@ -408,6 +418,7 @@ fun preferenceOf(preference: SourcePreference): Preference =
                 preference.title?.toString(),
                 preference.summary?.toString(),
                 preference.visible,
+                preference.isEnabled,
                 preference.currentValue as Boolean,
                 preference.defaultValue as Boolean,
             )
@@ -417,6 +428,7 @@ fun preferenceOf(preference: SourcePreference): Preference =
                 preference.title?.toString(),
                 preference.summary?.toString(),
                 preference.visible,
+                preference.isEnabled,
                 (preference.currentValue as CharSequence?)?.toString(),
                 (preference.defaultValue as CharSequence?)?.toString(),
                 preference.dialogTitle?.toString(),
@@ -429,6 +441,7 @@ fun preferenceOf(preference: SourcePreference): Preference =
                 preference.title?.toString(),
                 preference.summary?.toString(),
                 preference.visible,
+                preference.isEnabled,
                 (preference.currentValue as CharSequence?)?.toString(),
                 (preference.defaultValue as CharSequence?)?.toString(),
                 preference.entries.map { it.toString() },
@@ -440,6 +453,7 @@ fun preferenceOf(preference: SourcePreference): Preference =
                 preference.title?.toString(),
                 preference.summary?.toString(),
                 preference.visible,
+                preference.isEnabled,
                 (preference.currentValue as Collection<*>?)?.map { it.toString() },
                 (preference.defaultValue as Collection<*>?)?.map { it.toString() },
                 preference.dialogTitle?.toString(),

@@ -16,6 +16,7 @@ import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
@@ -36,12 +37,12 @@ class TrackMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: LoginTrackerOAuthInput,
     ): CompletableFuture<LoginTrackerOAuthPayload> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val tracker =
             requireNotNull(TrackerManager.getTracker(input.trackerId)) {
                 "Could not find tracker"
             }
         return future {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             tracker.authCallback(userId, input.callbackUrl)
             val trackerType = TrackerType(tracker, userId)
             LoginTrackerOAuthPayload(
@@ -69,12 +70,12 @@ class TrackMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: LoginTrackerCredentialsInput,
     ): CompletableFuture<LoginTrackerCredentialsPayload> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val tracker =
             requireNotNull(TrackerManager.getTracker(input.trackerId)) {
                 "Could not find tracker"
             }
         return future {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             tracker.login(userId, input.username, input.password)
             val trackerType = TrackerType(tracker, userId)
             LoginTrackerCredentialsPayload(
@@ -100,12 +101,12 @@ class TrackMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: LogoutTrackerInput,
     ): CompletableFuture<LogoutTrackerPayload> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val tracker =
             requireNotNull(TrackerManager.getTracker(input.trackerId)) {
                 "Could not find tracker"
             }
         return future {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             require(tracker.isLoggedIn(userId)) {
                 "Cannot logout of a tracker that is not logged-in"
             }
@@ -124,6 +125,8 @@ class TrackMutation {
         val mangaId: Int,
         val trackerId: Int,
         val remoteId: Long,
+        @GraphQLDescription("This will only work if the tracker of the track record supports private tracking")
+        val private: Boolean? = null,
     )
 
     data class BindTrackPayload(
@@ -135,15 +138,16 @@ class TrackMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: BindTrackInput,
     ): CompletableFuture<BindTrackPayload> {
-        val (clientMutationId, mangaId, trackerId, remoteId) = input
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val (clientMutationId, mangaId, trackerId, remoteId, private) = input
 
         return future {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             Track.bind(
                 userId,
                 mangaId,
                 trackerId,
                 remoteId,
+                private ?: false,
             )
             val trackRecord =
                 transaction {
@@ -176,10 +180,10 @@ class TrackMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: FetchTrackInput,
     ): CompletableFuture<FetchTrackPayload> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, recordId) = input
 
         return future {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             Track.refresh(userId, recordId)
             val trackRecord =
                 transaction {
@@ -213,10 +217,10 @@ class TrackMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: UnbindTrackInput,
     ): CompletableFuture<UnbindTrackPayload> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, recordId, deleteRemoteTrack) = input
 
         return future {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             Track.unbind(userId, recordId, deleteRemoteTrack)
             val trackRecord =
                 transaction {
@@ -248,11 +252,11 @@ class TrackMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: TrackProgressInput,
     ): CompletableFuture<DataFetcherResult<TrackProgressPayload?>> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, mangaId) = input
 
         return future {
             asDataFetcherResult {
-                val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
                 Track.trackChapter(userId, mangaId)
                 val trackRecords =
                     transaction {
@@ -277,8 +281,12 @@ class TrackMutation {
         val status: Int? = null,
         val lastChapterRead: Double? = null,
         val scoreString: String? = null,
+        @GraphQLDescription("This will only work if the tracker of the track record supports reading dates")
         val startDate: Long? = null,
+        @GraphQLDescription("This will only work if the tracker of the track record supports reading dates")
         val finishDate: Long? = null,
+        @GraphQLDescription("This will only work if the tracker of the track record supports private tracking")
+        val private: Boolean? = null,
         @GraphQLDeprecated("Replaced with \"unbindTrack\" mutation", replaceWith = ReplaceWith("unbindTrack"))
         val unbind: Boolean? = null,
     )
@@ -304,6 +312,7 @@ class TrackMutation {
                     input.startDate,
                     input.finishDate,
                     input.unbind,
+                    input.private,
                 ),
             )
 

@@ -1,15 +1,15 @@
 package android.graphics;
 
-import android.os.Parcel;
 import android.os.Parcelable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import android.os.Parcel;
 
 public final class Rect {
-    int left;
-    int top;
-    int right;
-    int bottom;
+    public int left;
+    public int top;
+    public int right;
+    public int bottom;
 
     private static final class UnflattenHelper {
         private static final Pattern FLATTENED_PATTERN = Pattern.compile(

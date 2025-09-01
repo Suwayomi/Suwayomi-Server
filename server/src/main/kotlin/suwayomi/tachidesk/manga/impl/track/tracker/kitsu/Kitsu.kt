@@ -1,11 +1,12 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.kitsu
 
 import android.annotation.StringRes
+import eu.kanade.tachiyomi.data.track.kitsu.dto.KitsuOAuth
 import io.github.reactivecircus.cache4k.Cache
 import io.github.reactivecircus.cache4k.Cache.Builder.Companion.invoke
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTrackService
+import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
@@ -17,7 +18,7 @@ import kotlin.time.Duration.Companion.hours
 class Kitsu(
     id: Int,
 ) : Tracker(id, "Kitsu"),
-    DeletableTrackService {
+    DeletableTracker {
     companion object {
         const val READING = 1
         const val COMPLETED = 2
@@ -26,9 +27,9 @@ class Kitsu(
         const val PLAN_TO_READ = 5
     }
 
-    override val supportsTrackDeletion: Boolean = true
-
     override val supportsReadingDates: Boolean = true
+
+    override val supportsPrivateTracking: Boolean = true
 
     private val json: Json by injectLazy()
 
@@ -78,7 +79,7 @@ class Kitsu(
     override fun indexToScore(
         userId: Int,
         index: Int,
-    ): Float = if (index > 0) (index + 1) / 2.0f else 0.0f
+    ): Double = if (index > 0) (index + 1) / 2.0 else 0.0
 
     override fun displayScore(
         userId: Int,
@@ -105,7 +106,7 @@ class Kitsu(
                     track.finished_reading_date = System.currentTimeMillis()
                 } else {
                     track.status = READING
-                    if (track.last_chapter_read == 1.0f) {
+                    if (track.last_chapter_read == 1.0) {
                         track.started_reading_date = System.currentTimeMillis()
                     }
                 }
@@ -129,8 +130,8 @@ class Kitsu(
     ): Track {
         val remoteTrack = api(userId).findLibManga(track, getUserId(userId))
         return if (remoteTrack != null) {
-            track.copyPersonalFrom(remoteTrack)
-            track.media_id = remoteTrack.media_id
+            track.copyPersonalFrom(remoteTrack, copyRemotePrivate = false)
+            track.remote_id = remoteTrack.remote_id
 
             if (track.status != COMPLETED) {
                 track.status = if (hasReadChapters) READING else track.status
@@ -139,7 +140,7 @@ class Kitsu(
             update(userId, track)
         } else {
             track.status = if (hasReadChapters) READING else PLAN_TO_READ
-            track.score = 0.0f
+            track.score = 0.0
             add(userId, track)
         }
     }
@@ -180,15 +181,15 @@ class Kitsu(
     // TODO: this seems to be called saveOAuth in other trackers
     fun saveToken(
         userId: Int,
-        oauth: OAuth?,
+        oauth: KitsuOAuth?,
     ) {
         trackPreferences.setTrackToken(userId, this, json.encodeToString(oauth))
     }
 
     // TODO: this seems to be called loadOAuth in other trackers
-    fun restoreToken(userId: Int): OAuth? =
+    fun restoreToken(userId: Int): KitsuOAuth? =
         try {
-            json.decodeFromString<OAuth>(trackPreferences.getTrackToken(userId, this)!!)
+            json.decodeFromString<KitsuOAuth>(trackPreferences.getTrackToken(userId, this)!!)
         } catch (e: Exception) {
             null
         }

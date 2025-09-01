@@ -30,6 +30,7 @@ import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
@@ -48,10 +49,10 @@ class SourceMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: SetSourceMetaInput,
     ): DataFetcherResult<SetSourceMetaPayload?> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, meta) = input
 
         return asDataFetcherResult {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             Source.modifyMeta(userId, meta.sourceId, meta.key, meta.value)
 
             SetSourceMetaPayload(clientMutationId, meta)
@@ -74,10 +75,10 @@ class SourceMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: DeleteSourceMetaInput,
     ): DataFetcherResult<DeleteSourceMetaPayload?> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, sourceId, key) = input
 
         return asDataFetcherResult {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val (meta, source) =
                 transaction {
                     val meta =
@@ -140,11 +141,11 @@ class SourceMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: FetchSourceMangaInput,
     ): CompletableFuture<DataFetcherResult<FetchSourceMangaPayload?>> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, sourceId, type, page, query, filters) = input
 
         return future {
             asDataFetcherResult {
-                val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
                 val source = GetCatalogueSource.getCatalogueSourceOrNull(sourceId)!!
                 val mangasPage =
                     when (type) {
@@ -164,7 +165,7 @@ class SourceMutation {
                         }
                     }
 
-                val mangaIds = mangasPage.insertOrUpdate(userId, sourceId)
+                val mangaIds = mangasPage.insertOrUpdate(sourceId)
 
                 val mangas =
                     transaction {
@@ -211,10 +212,10 @@ class SourceMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: UpdateSourcePreferenceInput,
     ): DataFetcherResult<UpdateSourcePreferencePayload?> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, sourceId, change) = input
 
         return asDataFetcherResult {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             Source.setSourcePreference(sourceId, change.position, "") { preference ->
                 when (preference) {
                     is SwitchPreferenceCompat -> change.switchState

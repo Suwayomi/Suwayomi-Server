@@ -7,8 +7,16 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import io.javalin.http.HandlerType
 import io.javalin.http.HttpStatus
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
@@ -16,9 +24,14 @@ import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyByIndex
+import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable.lastPageRead
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable.lastReadAt
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable.user
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
@@ -331,8 +344,46 @@ object MangaController {
             behaviorOf = { ctx, mangaId, chapterIndex ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { getChapterDownloadReadyByIndex(userId, chapterIndex, mangaId) }
-                        .thenApply { ctx.json(it) }
+                    future {
+                        var chapter = getChapterDownloadReadyByIndex(userId, chapterIndex, mangaId)
+                        val syncResult = KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
+
+                        if (syncResult != null) {
+                            if (syncResult.shouldUpdate) {
+                                // Update DB for SILENT and RECEIVE
+                                transaction {
+                                    val existingRecord =
+                                        ChapterUserTable
+                                            .selectAll()
+                                            .where {
+                                                (ChapterUserTable.chapter eq chapter.id) and
+                                                    (ChapterUserTable.user eq userId)
+                                            }.singleOrNull()
+
+                                    if (existingRecord != null) {
+                                        ChapterUserTable.update({ ChapterUserTable.id eq existingRecord[ChapterUserTable.id] }) {
+                                            it[lastPageRead] = syncResult.pageRead
+                                            it[lastReadAt] = syncResult.timestamp
+                                        }
+                                    } else {
+                                        ChapterUserTable.insert {
+                                            it[user] = userId
+                                            it[ChapterUserTable.chapter] = chapter.id
+                                            it[lastPageRead] = syncResult.pageRead
+                                            it[lastReadAt] = syncResult.timestamp
+                                        }
+                                    }
+                                }
+                            }
+                            // For PROMPT, SILENT, and RECEIVE, return the remote progress
+                            chapter =
+                                chapter.copy(
+                                    lastPageRead = syncResult.pageRead,
+                                    lastReadAt = syncResult.timestamp,
+                                )
+                        }
+                        chapter
+                    }.thenApply { ctx.json(it) }
                 }
             },
             withResults = {
@@ -358,7 +409,12 @@ object MangaController {
             },
             behaviorOf = { ctx, mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                Chapter.modifyChapter(userId, mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead)
+                val chapterId = Chapter.modifyChapter(userId, mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead)
+
+                // Sync with KoreaderSync when progress is updated
+                if (lastPageRead != null || read == true) {
+                    GlobalScope.launch { KoreaderSyncService.pushProgress(userId, chapterId) }
+                }
 
                 ctx.status(200)
             },
@@ -422,6 +478,7 @@ object MangaController {
             pathParam<Int>("chapterIndex"),
             pathParam<Int>("index"),
             queryParam<Boolean?>("updateProgress"),
+            queryParam<String?>("format"),
             documentWith = {
                 withOperation {
                     summary("Get a chapter page")
@@ -430,10 +487,10 @@ object MangaController {
                     )
                 }
             },
-            behaviorOf = { ctx, mangaId, chapterIndex, index, updateProgress ->
+            behaviorOf = { ctx, mangaId, chapterIndex, index, updateProgress, format ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { Page.getPageImage(mangaId, chapterIndex, index, null) }
+                    future { Page.getPageImage(mangaId, chapterIndex, index, format, null) }
                         .thenApply {
                             ctx.header("content-type", it.second)
                             val httpCacheSeconds = 1.days.inWholeSeconds
@@ -441,7 +498,11 @@ object MangaController {
                             ctx.result(it.first)
 
                             if (updateProgress == true) {
-                                Chapter.updateChapterProgress(userId, mangaId, chapterIndex, pageNo = index)
+                                val chapterId = Chapter.updateChapterProgress(userId, mangaId, chapterIndex, pageNo = index)
+                                // Sync progress with KoreaderSync if chapter update was successful
+                                if (chapterId != -1) {
+                                    GlobalScope.launch { KoreaderSyncService.pushProgress(userId, chapterId) }
+                                }
                             }
                         }
                 }
@@ -455,22 +516,36 @@ object MangaController {
     val downloadChapter =
         handler(
             pathParam<Int>("chapterId"),
+            queryParam<Boolean?>("markAsRead"),
             documentWith = {
                 withOperation {
                     summary("Download chapter as CBZ")
-                    description("Get the CBZ file of the specified chapter")
+                    description("Get the CBZ file of the specified chapter, or its metadata via a HEAD request.")
                 }
             },
-            behaviorOf = { ctx, chapterId ->
+            behaviorOf = { ctx, chapterId, markAsRead ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.future {
-                    future { ChapterDownloadHelper.getCbzForDownload(userId, chapterId) }
-                        .thenApply { (inputStream, fileName, fileSize) ->
-                            ctx.header("Content-Type", "application/vnd.comicbook+zip")
-                            ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
-                            ctx.header("Content-Length", fileSize.toString())
-                            ctx.result(inputStream)
-                        }
+                if (ctx.method() == HandlerType.HEAD) {
+                    ctx.future {
+                        future { ChapterDownloadHelper.getCbzMetadataForDownload(userId, chapterId) }
+                            .thenApply { (fileName, fileSize, contentType) ->
+                                ctx.header("Content-Type", contentType)
+                                ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
+                                ctx.header("Content-Length", fileSize.toString())
+                                ctx.status(HttpStatus.OK)
+                            }
+                    }
+                } else {
+                    val shouldMarkAsRead = markAsRead ?: false
+                    ctx.future {
+                        future { ChapterDownloadHelper.getCbzForDownload(userId, chapterId, shouldMarkAsRead) }
+                            .thenApply { (inputStream, fileName, fileSize) ->
+                                ctx.header("Content-Type", "application/vnd.comicbook+zip")
+                                ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
+                                ctx.header("Content-Length", fileSize.toString())
+                                ctx.result(inputStream)
+                            }
+                    }
                 }
             },
             withResults = {

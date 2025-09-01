@@ -155,6 +155,9 @@ class MangaType(
     fun firstUnreadChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> =
         dataFetchingEnvironment.getValueFromDataLoader("FirstUnreadChapterForMangaDataLoader", id)
 
+    fun highestNumberedChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> =
+        dataFetchingEnvironment.getValueFromDataLoader("HighestNumberedChapterForMangaDataLoader", id)
+
     fun chapters(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterNodeList> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterNodeList>("ChaptersForMangaDataLoader", id)
 

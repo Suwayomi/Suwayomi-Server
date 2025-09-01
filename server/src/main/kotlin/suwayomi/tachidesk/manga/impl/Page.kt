@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.coroutines.flow.StateFlow
+import libcore.net.MimeUtils
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
@@ -23,8 +24,12 @@ import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
+import suwayomi.tachidesk.util.ConversionUtil
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
+import javax.imageio.ImageIO
 
 object Page {
     /**
@@ -45,10 +50,10 @@ object Page {
         mangaId: Int,
         chapterIndex: Int,
         index: Int,
+        format: String? = null,
         progressFlow: ((StateFlow<Int>) -> Unit)? = null,
     ): Pair<InputStream, String> {
         val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
-        val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
         val chapterEntry =
             transaction {
                 ChapterTable
@@ -59,6 +64,14 @@ object Page {
                     }.first()
             }
         val chapterId = chapterEntry[ChapterTable.id].value
+
+        try {
+            if (chapterEntry[ChapterTable.isDownloaded]) {
+                return convertImageResponse(ChapterDownloadHelper.getImage(mangaId, chapterId, index), format)
+            }
+        } catch (_: Exception) {
+            // ignore and fetch again
+        }
 
         val pageEntry =
             transaction {
@@ -79,18 +92,22 @@ object Page {
         progressFlow?.invoke(tachiyomiPage.progress)
 
         // we treat Local source differently
-        if (source.id == LocalSource.ID) {
+        if (mangaEntry[MangaTable.sourceReference] == LocalSource.ID) {
             // is of archive format
             if (LocalSource.pageCache.containsKey(chapterEntry[ChapterTable.url])) {
                 val pageStream = LocalSource.pageCache[chapterEntry[ChapterTable.url]]!![index]
-                return pageStream() to (ImageUtil.findImageType { pageStream() }?.mime ?: "image/jpeg")
+                return convertImageResponse(pageStream() to (ImageUtil.findImageType { pageStream() }?.mime ?: "image/jpeg"), format)
             }
 
             // is of directory format
             val imageFile = File(tachiyomiPage.imageUrl!!)
-            return imageFile.inputStream() to (ImageUtil.findImageType { imageFile.inputStream() }?.mime ?: "image/jpeg")
+            return convertImageResponse(
+                imageFile.inputStream() to (ImageUtil.findImageType { imageFile.inputStream() }?.mime ?: "image/jpeg"),
+                format,
+            )
         }
 
+        val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
         source as HttpSource
 
         if (pageEntry[PageTable.imageUrl] == null) {
@@ -102,24 +119,48 @@ object Page {
             }
         }
 
-        val fileName = getPageName(index)
-
-        try {
-            if (chapterEntry[ChapterTable.isDownloaded]) {
-                return ChapterDownloadHelper.getImage(mangaId, chapterId, index)
-            }
-        } catch (_: Exception) {
-            // ignore and fetch again
-        }
+        val fileName = getPageName(index, chapterEntry[ChapterTable.pageCount])
 
         val cacheSaveDir = getChapterCachePath(mangaId, chapterId)
 
         // Note: don't care about invalidating cache because OS cache is not permanent
-        return getImageResponse(cacheSaveDir, fileName) {
-            source.getImage(tachiyomiPage)
+        return convertImageResponse(
+            getImageResponse(cacheSaveDir, fileName) {
+                source.getImage(tachiyomiPage)
+            },
+            format,
+        )
+    }
+
+    private suspend fun convertImageResponse(
+        image: Pair<InputStream, String>,
+        format: String? = null,
+    ): Pair<InputStream, String> {
+        val imageExtension = MimeUtils.guessExtensionFromMimeType(image.second) ?: image.second.removePrefix("image/")
+
+        val targetExtension =
+            (if (format != imageExtension) format else null)
+                ?: return image
+
+        val outStream = ByteArrayOutputStream()
+        val writers = ImageIO.getImageWritersBySuffix(targetExtension)
+        val writer = writers.next()
+        ImageIO.createImageOutputStream(outStream).use { o ->
+            writer.setOutput(o)
+
+            val inImage =
+                ConversionUtil.readImage(image.first, image.second)
+                    ?: throw NoSuchElementException("No conversion to $targetExtension possible")
+            writer.write(inImage)
         }
+        writer.dispose()
+        val inStream = ByteArrayInputStream(outStream.toByteArray())
+        return Pair(inStream.buffered(), MimeUtils.guessMimeTypeFromExtension(targetExtension) ?: "image/$targetExtension")
     }
 
     /** converts 0 to "001" */
-    fun getPageName(index: Int): String = String.format("%03d", index + 1)
+    fun getPageName(
+        index: Int,
+        pageCount: Int,
+    ): String = String.format("%0${pageCount.toString().length.coerceAtLeast(3)}d", index + 1)
 }

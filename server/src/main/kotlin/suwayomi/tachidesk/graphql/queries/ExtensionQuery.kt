@@ -42,6 +42,7 @@ import suwayomi.tachidesk.graphql.types.ExtensionNodeList
 import suwayomi.tachidesk.graphql.types.ExtensionType
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 

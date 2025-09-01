@@ -17,12 +17,14 @@ import suwayomi.tachidesk.graphql.dataLoaders.ChapterDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ChapterMetaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ChaptersForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.DisplayScoreForTrackRecordDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.DisplayScoreForTrackSearchDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.DownloadedChapterCountForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ExtensionDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ExtensionForSourceDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.FirstUnreadChapterForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.GlobalMetaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.HasDuplicateChaptersForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.HighestNumberedChapterForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.LastReadChapterForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.LatestFetchedChapterForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.LatestReadChapterForMangaDataLoader
@@ -60,6 +62,7 @@ class TachideskDataLoaderRegistryFactory {
                 LatestFetchedChapterForMangaDataLoader(),
                 LatestUploadedChapterForMangaDataLoader(),
                 FirstUnreadChapterForMangaDataLoader(),
+                HighestNumberedChapterForMangaDataLoader(),
                 GlobalMetaDataLoader(),
                 ChapterMetaDataLoader(),
                 MangaMetaDataLoader(),
@@ -81,6 +84,7 @@ class TachideskDataLoaderRegistryFactory {
                 TrackerTokenExpiredDataLoader(),
                 TrackRecordsForMangaIdDataLoader(),
                 DisplayScoreForTrackRecordDataLoader(),
+                DisplayScoreForTrackSearchDataLoader(),
                 TrackRecordsForTrackerIdDataLoader(),
                 TrackRecordDataLoader(),
             )

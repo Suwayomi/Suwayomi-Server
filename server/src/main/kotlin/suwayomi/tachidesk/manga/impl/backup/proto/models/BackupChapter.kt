@@ -2,7 +2,6 @@ package suwayomi.tachidesk.manga.impl.backup.proto.models
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
-import suwayomi.tachidesk.manga.impl.backup.models.ChapterImpl
 
 @Serializable
 data class BackupChapter(
@@ -20,18 +19,6 @@ data class BackupChapter(
     // chapterNumber is called number is 1.x
     @ProtoNumber(9) var chapterNumber: Float = 0F,
     @ProtoNumber(10) var sourceOrder: Int = 0,
-) {
-    fun toChapterImpl(): ChapterImpl =
-        ChapterImpl().apply {
-            url = this@BackupChapter.url
-            name = this@BackupChapter.name
-            chapter_number = this@BackupChapter.chapterNumber
-            scanlator = this@BackupChapter.scanlator
-            read = this@BackupChapter.read
-            bookmark = this@BackupChapter.bookmark
-            last_page_read = this@BackupChapter.lastPageRead
-            date_fetch = this@BackupChapter.dateFetch
-            date_upload = this@BackupChapter.dateUpload
-            source_order = this@BackupChapter.sourceOrder
-        }
-}
+    // suwayomi
+    @ProtoNumber(9000) var meta: Map<String, String> = emptyMap(),
+)

@@ -31,6 +31,10 @@ class TestUpdater : IUpdater {
         TODO("Not yet implemented")
     }
 
+    override fun deleteLastAutomatedUpdateTimestamp() {
+        TODO("Not yet implemented")
+    }
+
     override fun addCategoriesToUpdateQueue(
         categories: List<CategoryDataClass>,
         clear: Boolean?,
@@ -45,10 +49,16 @@ class TestUpdater : IUpdater {
 
     override val status: Flow<UpdateStatus>
         get() = TODO("Not yet implemented")
+    override val updates: Flow<UpdateUpdates>
+        get() = TODO("Not yet implemented")
     override val statusDeprecated: StateFlow<UpdateStatus>
         get() = TODO("Not yet implemented")
 
     override fun reset() {
+        TODO("Not yet implemented")
+    }
+
+    override fun getStatus(): UpdateUpdates {
         TODO("Not yet implemented")
     }
 }

@@ -20,13 +20,15 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.http.HttpStatus
 import okhttp3.CacheControl
 import okhttp3.Response
+import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
@@ -64,16 +66,6 @@ import java.time.Instant
 private val logger = KotlinLogging.logger { }
 
 object Manga {
-    private fun truncate(
-        text: String?,
-        maxLength: Int,
-    ): String? =
-        if (text?.length ?: 0 > maxLength) {
-            text?.take(maxLength - 3) + "..."
-        } else {
-            text
-        }
-
     suspend fun getManga(
         userId: Int,
         mangaId: Int,
@@ -169,11 +161,11 @@ object Manga {
 
                 it[MangaTable.artist] = sManga.artist ?: mangaEntry[MangaTable.artist]
                 it[MangaTable.author] = sManga.author ?: mangaEntry[MangaTable.author]
-                it[MangaTable.description] = sManga.description?.let { truncate(it, 4096) }
+                it[MangaTable.description] = sManga.description
                     ?: mangaEntry[MangaTable.description]
                 it[MangaTable.genre] = sManga.genre ?: mangaEntry[MangaTable.genre]
                 it[MangaTable.status] = sManga.status
-                if (!sManga.thumbnail_url.isNullOrEmpty() && sManga.thumbnail_url != mangaEntry[MangaTable.thumbnail_url]) {
+                if (!sManga.thumbnail_url.isNullOrEmpty()) {
                     it[MangaTable.thumbnail_url] = sManga.thumbnail_url
                     it[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
                     clearThumbnail(mangaId)
@@ -295,29 +287,63 @@ object Manga {
         key: String,
         value: String,
     ) {
+        modifyMangasMetas(userId, mapOf(mangaId to mapOf(key to value)))
+    }
+
+    fun modifyMangasMetas(
+        userId: Int,
+        metaByMangaId: Map<Int, Map<String, String>>,
+    ) {
         transaction {
-            val meta =
+            val mangaIds = metaByMangaId.keys
+            val metaKeys = metaByMangaId.flatMap { it.value.keys }
+
+            val dbMetaByMangaId =
                 MangaMetaTable
                     .selectAll()
-                    .where { MangaMetaTable.user eq userId and (MangaMetaTable.ref eq mangaId) and (MangaMetaTable.key eq key) }
-                    .firstOrNull()
+                    .where {
+                        (MangaMetaTable.ref inList mangaIds) and (MangaMetaTable.key inList metaKeys) and
+                            (MangaMetaTable.user eq userId)
+                    }.groupBy { it[MangaMetaTable.ref].value }
 
-            if (meta == null) {
-                MangaMetaTable.insert {
-                    it[MangaMetaTable.key] = key
-                    it[MangaMetaTable.value] = value
-                    it[MangaMetaTable.ref] = mangaId
-                    it[MangaMetaTable.user] = userId
+            val existingMetaByMetaId =
+                mangaIds.flatMap { mangaId ->
+                    val metaByKey = dbMetaByMangaId[mangaId].orEmpty().associateBy { it[MangaMetaTable.key] }
+                    val existingMetas = metaByMangaId[mangaId].orEmpty().filter { (key) -> key in metaByKey.keys }
+
+                    existingMetas.map { entry ->
+                        val metaId = metaByKey[entry.key]!![MangaMetaTable.id].value
+
+                        metaId to entry
+                    }
                 }
-            } else {
-                MangaMetaTable.update(
-                    {
-                        MangaMetaTable.user eq userId and
-                            (MangaMetaTable.ref eq mangaId) and
-                            (MangaMetaTable.key eq key)
-                    },
-                ) {
-                    it[MangaMetaTable.value] = value
+
+            val newMetaByMangaId =
+                mangaIds.flatMap { mangaId ->
+                    val metaByKey = dbMetaByMangaId[mangaId].orEmpty().associateBy { it[MangaMetaTable.key] }
+
+                    metaByMangaId[mangaId]
+                        .orEmpty()
+                        .filter { entry -> entry.key !in metaByKey.keys }
+                        .map { entry -> mangaId to entry }
+                }
+
+            if (existingMetaByMetaId.isNotEmpty()) {
+                BatchUpdateStatement(MangaMetaTable).apply {
+                    existingMetaByMetaId.forEach { (metaId, entry) ->
+                        addBatch(EntityID(metaId, MangaMetaTable))
+                        this[MangaMetaTable.value] = entry.value
+                    }
+                    execute(this@transaction)
+                }
+            }
+
+            if (newMetaByMangaId.isNotEmpty()) {
+                MangaMetaTable.batchInsert(newMetaByMangaId) { (mangaId, entry) ->
+                    this[MangaMetaTable.ref] = EntityID(mangaId, MangaTable)
+                    this[MangaMetaTable.key] = entry.key
+                    this[MangaMetaTable.value] = entry.value
+                    this[MangaMetaTable.user] = userId
                 }
             }
         }

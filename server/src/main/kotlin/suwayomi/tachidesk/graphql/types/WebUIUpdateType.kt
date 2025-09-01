@@ -34,11 +34,6 @@ data class WebUIUpdateStatus(
 enum class WebUIInterface {
     BROWSER,
     ELECTRON,
-    ;
-
-    companion object {
-        fun from(value: String): WebUIInterface = entries.find { it.name.lowercase() == value.lowercase() } ?: BROWSER
-    }
 }
 
 enum class WebUIChannel {
@@ -49,8 +44,6 @@ enum class WebUIChannel {
 
     companion object {
         fun from(channel: String): WebUIChannel = entries.find { it.name.lowercase() == channel.lowercase() } ?: STABLE
-
-        fun doesConfigChannelEqual(channel: WebUIChannel): Boolean = serverConfig.webUIChannel.value.equals(channel.name, true)
     }
 }
 
@@ -92,6 +85,6 @@ enum class WebUIFlavor(
         fun from(value: String): WebUIFlavor = entries.find { it.uiName == value } ?: default
 
         val current: WebUIFlavor
-            get() = from(serverConfig.webUIFlavor.value)
+            get() = serverConfig.webUIFlavor.value
     }
 }

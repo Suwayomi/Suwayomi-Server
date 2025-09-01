@@ -12,6 +12,7 @@ import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
 import uy.kohesive.injekt.injectLazy
 import java.util.concurrent.CompletableFuture
@@ -69,7 +70,6 @@ class UpdateMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: UpdateLibraryMangaInput,
     ): CompletableFuture<DataFetcherResult<UpdateLibraryMangaPayload?>> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         updateLibrary(
             dataFetchingEnvironment,
             UpdateLibraryInput(
@@ -105,7 +105,6 @@ class UpdateMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: UpdateCategoryMangaInput,
     ): CompletableFuture<DataFetcherResult<UpdateCategoryMangaPayload?>> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         updateLibrary(
             dataFetchingEnvironment,
             UpdateLibraryInput(

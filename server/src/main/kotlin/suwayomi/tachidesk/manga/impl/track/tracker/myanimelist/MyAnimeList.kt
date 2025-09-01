@@ -5,11 +5,12 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.reactivecircus.cache4k.Cache
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTrackService
+import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
 import suwayomi.tachidesk.manga.impl.track.tracker.extractToken
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
+import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALOAuth
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
@@ -18,7 +19,7 @@ import kotlin.time.Duration.Companion.hours
 class MyAnimeList(
     id: Int,
 ) : Tracker(id, "MyAnimeList"),
-    DeletableTrackService {
+    DeletableTracker {
     companion object {
         const val READING = 1
         const val COMPLETED = 2
@@ -30,8 +31,6 @@ class MyAnimeList(
         private const val SEARCH_ID_PREFIX = "id:"
         private const val SEARCH_LIST_PREFIX = "my:"
     }
-
-    override val supportsTrackDeletion: Boolean = true
 
     private val json: Json by injectLazy()
 
@@ -102,7 +101,7 @@ class MyAnimeList(
                     track.finished_reading_date = System.currentTimeMillis()
                 } else if (track.status != REREADING) {
                     track.status = READING
-                    if (track.last_chapter_read == 1F) {
+                    if (track.last_chapter_read == 1.0) {
                         track.started_reading_date = System.currentTimeMillis()
                     }
                 }
@@ -127,18 +126,18 @@ class MyAnimeList(
         val remoteTrack = api(userId).findListItem(track)
         return if (remoteTrack != null) {
             track.copyPersonalFrom(remoteTrack)
-            track.media_id = remoteTrack.media_id
+            track.remote_id = remoteTrack.remote_id
 
             if (track.status != COMPLETED) {
                 val isRereading = track.status == REREADING
-                track.status = if (isRereading.not() && hasReadChapters) READING else track.status
+                track.status = if (!isRereading && hasReadChapters) READING else track.status
             }
 
             update(userId, track)
         } else {
             // Set default fields if it's not found in the list
             track.status = if (hasReadChapters) READING else PLAN_TO_READ
-            track.score = 0F
+            track.score = 0.0
             add(userId, track)
         }
     }
@@ -190,11 +189,10 @@ class MyAnimeList(
         authCode: String,
     ) {
         try {
-            logger.debug { "login $authCode" }
             val oauth = api(userId).getAccessToken(authCode)
             interceptor(userId).setAuth(oauth)
             val username = api(userId).getCurrentUser()
-            saveCredentials(userId, username, oauth.access_token)
+            saveCredentials(userId, username, oauth.accessToken)
         } catch (e: Throwable) {
             logger.error(e) { "oauth err" }
             logout(userId)
@@ -210,14 +208,14 @@ class MyAnimeList(
 
     fun saveOAuth(
         userId: Int,
-        oAuth: OAuth?,
+        oAuth: MALOAuth?,
     ) {
         trackPreferences.setTrackToken(userId, this, json.encodeToString(oAuth))
     }
 
-    fun loadOAuth(userId: Int): OAuth? =
+    fun loadOAuth(userId: Int): MALOAuth? =
         try {
-            json.decodeFromString<OAuth>(trackPreferences.getTrackToken(userId, this)!!)
+            json.decodeFromString<MALOAuth>(trackPreferences.getTrackToken(userId, this)!!)
         } catch (e: Exception) {
             logger.error(e) { "loadOAuth err" }
             null

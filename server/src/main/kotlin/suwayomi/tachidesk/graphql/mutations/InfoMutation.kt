@@ -13,6 +13,7 @@ import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import java.util.concurrent.CompletableFuture

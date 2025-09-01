@@ -23,6 +23,7 @@ import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
 import uy.kohesive.injekt.injectLazy
 import java.time.Instant
@@ -115,11 +116,11 @@ class MangaMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: UpdateMangaInput,
     ): CompletableFuture<DataFetcherResult<UpdateMangaPayload?>> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, id, patch) = input
 
         return future {
             asDataFetcherResult {
-                val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
                 updateMangas(userId, listOf(id), patch)
 
                 val manga =
@@ -145,11 +146,11 @@ class MangaMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: UpdateMangasInput,
     ): CompletableFuture<DataFetcherResult<UpdateMangasPayload?>> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, ids, patch) = input
 
         return future {
             asDataFetcherResult {
-                val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
                 updateMangas(userId, ids, patch)
 
                 val mangas =
@@ -183,11 +184,11 @@ class MangaMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: FetchMangaInput,
     ): CompletableFuture<DataFetcherResult<FetchMangaPayload?>> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, id) = input
 
         return future {
             asDataFetcherResult {
-                val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
                 Manga.fetchManga(id)
 
                 val manga =
@@ -220,10 +221,10 @@ class MangaMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: SetMangaMetaInput,
     ): DataFetcherResult<SetMangaMetaPayload?> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, meta) = input
 
         return asDataFetcherResult {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             Manga.modifyMangaMeta(userId, meta.mangaId, meta.key, meta.value)
 
             SetMangaMetaPayload(clientMutationId, meta)
@@ -246,10 +247,10 @@ class MangaMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: DeleteMangaMetaInput,
     ): DataFetcherResult<DeleteMangaMetaPayload?> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, mangaId, key) = input
 
         return asDataFetcherResult {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val (meta, manga) =
                 transaction {
                     val meta =

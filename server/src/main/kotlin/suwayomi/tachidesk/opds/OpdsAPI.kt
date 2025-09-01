@@ -7,49 +7,87 @@ import suwayomi.tachidesk.opds.controller.OpdsV1Controller
 object OpdsAPI {
     fun defineEndpoints() {
         path("opds/v1.2") {
-            // Root feed (Navigation Feed)
+            // OPDS Catalog Root Feed (Navigation)
             get(OpdsV1Controller.rootFeed)
 
-            // Search Description
+            // OPDS Search Description Feed
             get("search", OpdsV1Controller.searchFeed)
 
-            // Complete feed for crawlers
-            // get("complete", OpdsV1Controller.completeFeed)
+            // --- Main Navigation Feeds ---
 
-            // Main groupings
-            get("mangas", OpdsV1Controller.mangasFeed)
-            get("sources", OpdsV1Controller.sourcesFeed)
-            get("categories", OpdsV1Controller.categoriesFeed)
-            get("genres", OpdsV1Controller.genresFeed)
-            get("status", OpdsV1Controller.statusFeed)
-            get("languages", OpdsV1Controller.languagesFeed)
+            // Explore Navigation Feed
+            get("explore", OpdsV1Controller.exploreSourcesFeed)
+
+            // Reading History Acquisition Feed
+            get("history", OpdsV1Controller.historyFeed)
+
+            // Library Updates Acquisition Feed
             get("library-updates", OpdsV1Controller.libraryUpdatesFeed)
 
-            // Faceted feeds (Acquisition Feeds)
-            path("manga/{mangaId}") {
-                get(OpdsV1Controller.mangaFeed)
+            // --- Library-Specific Feeds ---
+            path("library") {
+                // All Series in Library / Search Results Feed (Acquisition)
+                get("series", OpdsV1Controller.seriesFeed)
+
+                // Library Sources Navigation Feed
+                get("sources", OpdsV1Controller.librarySourcesFeed)
+
+                // Library Source-Specific Series Acquisition Feed
+                path("source/{sourceId}") {
+                    get(OpdsV1Controller.librarySourceFeed)
+                }
+
+                // Library Categories Navigation Feed
+                get("categories", OpdsV1Controller.categoriesFeed)
+
+                // Library Genres Navigation Feed
+                get("genres", OpdsV1Controller.genresFeed)
+
+                // Library Status Navigation Feed
+                get("statuses", OpdsV1Controller.statusesFeed)
+
+                // Library Content Languages Navigation Feed
+                get("languages", OpdsV1Controller.languagesFeed)
             }
 
-            path("manga/{mangaId}/chapter/{chapterId}/fetch") {
+            // --- Explore-Specific Feeds ---
+
+            // All Sources Navigation Feed (Explore)
+            get("sources", OpdsV1Controller.exploreSourcesFeed)
+
+            // Source-Specific Series Acquisition Feed (Explore)
+            path("source/{sourceId}") {
+                get(OpdsV1Controller.exploreSourceFeed)
+            }
+
+            // --- Item-Specific Feeds (Apply to both Library and Explore contexts) ---
+
+            // Series Chapters Acquisition Feed
+            path("series/{seriesId}/chapters") {
+                get(OpdsV1Controller.seriesChaptersFeed)
+            }
+
+            // Chapter Metadata Acquisition Feed
+            path("series/{seriesId}/chapter/{chapterIndex}/metadata") {
                 get(OpdsV1Controller.chapterMetadataFeed)
             }
 
-            path("source/{sourceId}") {
-                get(OpdsV1Controller.sourceFeed)
-            }
-
+            // Category-Specific Series Acquisition Feed (Library)
             path("category/{categoryId}") {
                 get(OpdsV1Controller.categoryFeed)
             }
 
+            // Genre-Specific Series Acquisition Feed (Library)
             path("genre/{genre}") {
                 get(OpdsV1Controller.genreFeed)
             }
 
+            // Status-Specific Series Acquisition Feed (Library)
             path("status/{statusId}") {
                 get(OpdsV1Controller.statusMangaFeed)
             }
 
+            // Language-Specific Series Acquisition Feed (Library)
             path("language/{langCode}") {
                 get(OpdsV1Controller.languageFeed)
             }

@@ -12,6 +12,8 @@ import suwayomi.tachidesk.global.model.table.UserTable
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.user.Permissions
 import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.server.user.requirePermissions
@@ -37,6 +39,23 @@ class UserMutation {
         if (dataFetchingEnvironment.getAttribute(Attribute.TachideskUser) !is UserType.Visitor) {
             throw IllegalArgumentException("Cannot login while already logged-in")
         }
+
+        if (!serverConfig.multiUser.value) { // todo: user accounts
+            val isValid =
+                input.username == serverConfig.authUsername.value &&
+                    input.password == serverConfig.authPassword.value
+            if (isValid) {
+                val jwt = Jwt.generateJwt(1)
+                return LoginPayload(
+                    clientMutationId = input.clientMutationId,
+                    accessToken = jwt.accessToken,
+                    refreshToken = jwt.refreshToken,
+                )
+            } else {
+                throw Exception("Incorrect username or password.")
+            }
+        }
+
         val user =
             transaction {
                 UserTable
@@ -64,16 +83,14 @@ class UserMutation {
     data class RefreshTokenPayload(
         val clientMutationId: String?,
         val accessToken: String,
-        val refreshToken: String,
     )
 
     fun refreshToken(input: RefreshTokenInput): RefreshTokenPayload {
-        val jwt = Jwt.refreshJwt(input.refreshToken)
+        val accessToken = Jwt.refreshJwt(input.refreshToken)
 
         return RefreshTokenPayload(
             clientMutationId = input.clientMutationId,
-            accessToken = jwt.accessToken,
-            refreshToken = jwt.refreshToken,
+            accessToken = accessToken,
         )
     }
 

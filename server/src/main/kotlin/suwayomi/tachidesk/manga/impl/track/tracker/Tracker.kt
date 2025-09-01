@@ -20,7 +20,7 @@ abstract class Tracker(
     // Application and remote support for reading dates
     open val supportsReadingDates: Boolean = false
 
-    abstract val supportsTrackDeletion: Boolean
+    open val supportsPrivateTracking: Boolean = false
 
     override fun toString() = "$name ($id)"
 
@@ -41,7 +41,7 @@ abstract class Tracker(
     open fun indexToScore(
         userId: Int,
         index: Int,
-    ): Float = index.toFloat()
+    ): Double = index.toDouble()
 
     abstract fun displayScore(
         userId: Int,

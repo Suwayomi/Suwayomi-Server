@@ -2,7 +2,6 @@ package suwayomi.tachidesk.graphql.mutations
 
 import graphql.schema.DataFetchingEnvironment
 import io.javalin.http.UploadedFile
-import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
 import suwayomi.tachidesk.graphql.server.TemporaryFileStorage
@@ -15,6 +14,7 @@ import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
@@ -31,7 +31,6 @@ class BackupMutation {
         val status: BackupRestoreStatus?,
     )
 
-    @OptIn(DelicateCoroutinesApi::class)
     fun restoreBackup(
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: RestoreBackupInput,
@@ -79,6 +78,8 @@ class BackupMutation {
                     includeChapters = input?.includeChapters ?: true,
                     includeTracking = true,
                     includeHistory = true,
+                    includeClientData = true,
+                    includeServerSettings = true,
                 ),
             )
 

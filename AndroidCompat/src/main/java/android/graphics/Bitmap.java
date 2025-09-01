@@ -2,17 +2,17 @@ package android.graphics;
 
 import android.annotation.ColorInt;
 import android.annotation.NonNull;
-
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.Iterator;
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageOutputStream;
-import java.awt.image.BufferedImage;
-import java.awt.image.Raster;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.Iterator;
+
 
 public final class Bitmap {
     private final int width;
@@ -75,6 +75,19 @@ public final class Bitmap {
         }
     }
 
+    private static int configToBufferedImageType(Config config) {
+        switch (config) {
+            case ALPHA_8:
+                return BufferedImage.TYPE_BYTE_GRAY;
+            case RGB_565:
+                return BufferedImage.TYPE_USHORT_565_RGB;
+            case ARGB_8888:
+                return BufferedImage.TYPE_INT_ARGB;
+            default:
+                throw new UnsupportedOperationException("Bitmap.Config(" + config + ") not supported");
+        }
+    }
+
     /**
      * Common code for checking that x and y are >= 0
      *
@@ -106,7 +119,7 @@ public final class Bitmap {
     }
 
     public static Bitmap createBitmap(int width, int height, Config config) {
-        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        BufferedImage image = new BufferedImage(width, height, configToBufferedImageType(config));
         return new Bitmap(image);
     }
 
@@ -144,8 +157,10 @@ public final class Bitmap {
             formatString = "png";
         } else if (format == Bitmap.CompressFormat.JPEG) {
             formatString = "jpg";
+        } else if (format == Bitmap.CompressFormat.WEBP || format == Bitmap.CompressFormat.WEBP_LOSSY) {
+            formatString = "webp";
         } else {
-            throw new IllegalArgumentException("unsupported compression format!");
+            throw new IllegalArgumentException("unsupported compression format! " + format);
         }
 
         Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName(formatString);
@@ -162,14 +177,19 @@ public final class Bitmap {
         }
         writer.setOutput(ios);
 
+        BufferedImage img = image;
+
         ImageWriteParam param = writer.getDefaultWriteParam();
         if ("jpg".equals(formatString)) {
             param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
             param.setCompressionQuality(qualityFloat);
+
+            img = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
+            img.getGraphics().drawImage(image, 0, 0, null);
         }
 
         try {
-            writer.write(null, new IIOImage(image, null, null), param);
+            writer.write(null, new IIOImage(img, null, null), param);
             ios.close();
             writer.dispose();
         } catch (IOException ex) {
@@ -177,6 +197,12 @@ public final class Bitmap {
         }
 
         return true;
+    }
+
+    public Bitmap copy(Config config, boolean isMutable) {
+        Bitmap ret = createBitmap(width, height, config);
+        ret.image.getGraphics().drawImage(image, 0, 0, null);
+        return ret;
     }
 
     /**
@@ -224,12 +250,18 @@ public final class Bitmap {
                           int x, int y, int width, int height) {
         checkPixelsAccess(x, y, width, height, offset, stride, pixels);
 
-        Raster raster = image.getData();
-        int[] rasterPixels = raster.getPixels(x, y, width, height, (int[]) null);
+        image.getRGB(x, y, width, height, pixels, offset, stride);
+    }
 
-        for (int ht = 0; ht < height; ht++) {
-            int rowOffset = offset + stride * ht;
-            System.arraycopy(rasterPixels, ht * width, pixels, rowOffset, width);
-        }
+    public void eraseColor(int c) {
+        java.awt.Color color = Color.valueOf(c).toJavaColor();
+        Graphics2D graphics = image.createGraphics();
+        graphics.setColor(color);
+        graphics.fillRect(0, 0, width, height);
+        graphics.dispose();
+    }
+
+    public void recycle() {
+        // do nothing
     }
 }

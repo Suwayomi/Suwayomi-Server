@@ -13,6 +13,7 @@ import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.GlobalMetaType
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
 
 class MetaMutation {
@@ -30,10 +31,10 @@ class MetaMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: SetGlobalMetaInput,
     ): DataFetcherResult<SetGlobalMetaPayload?> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, meta) = input
 
         return asDataFetcherResult {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             GlobalMeta.modifyMeta(userId, meta.key, meta.value)
 
             SetGlobalMetaPayload(clientMutationId, meta)
@@ -54,10 +55,10 @@ class MetaMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: DeleteGlobalMetaInput,
     ): DataFetcherResult<DeleteGlobalMetaPayload?> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, key) = input
 
         return asDataFetcherResult {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val meta =
                 transaction {
                     val meta =

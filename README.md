@@ -5,26 +5,34 @@
 
 ## Table of Content
 - [What is Suwayomi?](#what-is-suwayomi)
-- [Features](#Features)
-- [Suwayomi client projects](#Suwayomi-client-projects)
+  - [Features](#features)
+- [Suwayomi client projects](#suwayomi-client-projects)
+  - [Actively Developed Clients](#actively-developed-clients)
+  - [Inactive Clients (functional but outdated)](#inactive-clients-functional-but-outdated)
+  - [Abandoned Clients (functionality unknown)](#abandoned-clients-functionality-unknown)
 - [Downloading and Running the app](#downloading-and-running-the-app)
-  * [Using Operating System Specific Bundles](#using-operating-system-specific-bundles)
-      - [Launcher Scripts](#launcher-scripts)
-    + [Windows](#windows)
-    + [macOS](#macos)
-    + [GNU/Linux](#gnulinux)
-  * [Other methods of getting Suwayomi](#other-methods-of-getting-suwayomi)
-    + [Arch Linux](#arch-linux)
-    + [Ubuntu-based distributions](#ubuntu-based-distributions)
-    + [Docker](#docker)
-  * [Advanced Methods](#advanced-methods)
-    + [Running the jar release directly](#running-the-jar-release-directly)
-    + [Using Suwayomi Remotely](#using-suwayomi-remotely)
-- [Syncing With Mihon (Tachiyomi)](#syncing-with-mihon-tachiyomi)
-- [Troubleshooting and Support](#troubleshooting-and-support)
-- [Contributing and Technical info](#contributing-and-technical-info)
-- [Credit](#credit)
-- [License](#license)
+  - [Using Operating System Specific Bundles](#using-operating-system-specific-bundles)
+    - [Windows](#windows)
+    - [macOS](#macos)
+    - [GNU/Linux](#gnulinux)
+  - [Other methods of getting Suwayomi](#other-methods-of-getting-suwayomi)
+    - [Docker](#docker)
+    - [Arch Linux](#arch-linux)
+    - [Debian/Ubuntu](#debianubuntu)
+    - [NixOS](#nixos)
+  - [Advanced Methods](#advanced-methods)
+    - [Running the jar release directly](#running-the-jar-release-directly)
+    - [Using Suwayomi Remotely](#using-suwayomi-remotely)
+  - [Syncing With Mihon (Tachiyomi) and Neko](#syncing-with-mihon-tachiyomi-and-neko)
+    - [The Suwayomi extension and tracker](#the-suwayomi-extension-and-tracker)
+    - [The Suwayomi merge source in Neko](#the-suwayomi-merge-source-in-neko)
+    - [Other methods](#other-methods)
+  - [Troubleshooting and Support](#troubleshooting-and-support)
+  - [Contributing and Technical info](#contributing-and-technical-info)
+  - [Translation](#translation)
+  - [Credit](#credit)
+  - [License](#license)
+  - [Disclaimer](#disclaimer)
 <!-- Generated with https://ecotrust-canada.github.io/markdown-toc/ -->
 
 # What is Suwayomi?
@@ -94,6 +102,25 @@ Download the latest `linux-x64`(x86_64) release from [the releases section](http
 
 `tar xvf` the downloaded file and double-click on one of the launcher scripts or run them using the terminal.
 
+#### WebView support (GNU/Linux)
+
+WebView support is implemented via [KCEF](https://github.com/DATL4G/KCEF).
+This is optional, and is only necessary to support some extensions.
+
+To have a functional WebView, several dependencies are required; aside from X11 libraries necessary for rendering Chromium, some JNI bindings are necessary: gluegen and jogl (found in Ubuntu as `libgluegen2-jni` and `libjogl2-jni`).
+Note that on some systems (e.g. Ubuntu), the JNI libraries are not automatically found, see below.
+
+A KCEF server is launched on startup, which loads the X11 libraries.
+If those are missing, you should see "Could not load 'jcef' library".
+If so, use `ldd ~/.local/share/Tachidesk/bin/kcef/libjcef.so | grep not` to figure out which libraries are not found on your system.
+
+The JNI bindings are only loaded when a browser is actually launched.
+This is done by extensions that rely on WebView, not by Suwayomi itself.
+If there is a problem loading the JNI libraries, you should see a message indicating the library and the search path.
+This search path includes the current working directory, if you do not want to modify system directories.
+
+Refer to the [Dockerfile](https://github.com/Suwayomi/Suwayomi-Server-docker/blob/main/Dockerfile) for more details.
+
 ## Other methods of getting Suwayomi
 ### Docker
 Check our Official Docker release [Suwayomi Container](https://github.com/orgs/Suwayomi/packages/container/package/tachidesk) for running Suwayomi Server in a docker container. Source code for our container is available at [docker-tachidesk](https://github.com/Suwayomi/docker-tachidesk), an example compose file can also be found there. By default, the server will be running on http://localhost:4567 open this url in your browser.
@@ -156,15 +183,24 @@ Check out [this wiki page](https://github.com/Suwayomi/Suwayomi-Server/wiki/Conf
 
 If you face issues with your setup then we are happy to provide help, just join our discord server(a discord badge is on the top of the page, you are just a click-clack away!).
 
-## Syncing With Mihon (Tachiyomi)
+## Syncing With Mihon (Tachiyomi) and Neko
 ### The Suwayomi extension and tracker
-- You can install the `Suwayomi` extension inside Mihon (Tachiyomi).
+- You can install and configure the `Suwayomi` [extension](https://github.com/Suwayomi/tachiyomi-extension) inside Mihon (Tachiyomi) and forks.
 - The extension will load your Suwayomi library.
 - By manipulating extension search filters you can browse your categories.
 - You can enable the Suwayomi tracker to track reading progress with your Suwayomi server.
   - Note: to sync from
     - Mihon (Tachiyomi) to Suwayomi: Mihon (Tachiyomi) automatically updates the chapters read status when it's updating the tracker (e.g. while reading)
     - Suwayomi to Mihon (Tachiyomi): To sync Mihon (Tachiyomi) with Suwayomi, you have to open the manga's track information, then, Mihon (Tachiyomi) will automatically update its chapter list with the state from Suwayomi
+
+### The Suwayomi merge source in Neko
+- You can enable the `Suwayomi` source in the Merge Source settings
+- You can merge titles in Neko with titles from your Suwayomi library.
+- You can enable 2-way automatic sync to track reading progress with your Suwayomi server.
+  - Note: only applies to merged titles
+    - Neko automatically updates the chapters read status in Suwayomi
+    - During updates, Neko will automatically update its chapter list with the read state from Suwayomi
+    - This only pulls if the status is read, to prevent marking read chapters as unread in Neko
 
 ### Other methods
 Checkout [this issue](https://github.com/Suwayomi/Suwayomi-Server/issues/159) for tracking progress.
@@ -174,6 +210,15 @@ See [this troubleshooting wiki page](https://github.com/Suwayomi/Suwayomi-Server
 
 ## Contributing and Technical info
 See [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+## Translation
+Feel free to translate the project on [Weblate](https://hosted.weblate.org/projects/suwayomi/suwayomi-server/)
+
+<details><summary>Translation Progress</summary>
+<a href="https://hosted.weblate.org/engage/suwayomi-server/">
+<img src="https://hosted.weblate.org/widgets/suwayomi/-/suwayomi-server/multi-auto.svg" alt="Translation status" />
+</a>
+</details>
 
 ## Credit
 This project is a spiritual successor of [TachiWeb-Server](https://github.com/Tachiweb/TachiWeb-server), Many of the ideas and the groundwork adopted in this project comes from TachiWeb.

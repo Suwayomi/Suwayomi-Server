@@ -125,7 +125,7 @@ object WebInterfaceManager {
         }
 
         return AboutWebUI(
-            channel = WebUIChannel.from(serverConfig.webUIChannel.value),
+            channel = serverConfig.webUIChannel.value,
             tag = currentVersion,
         )
     }
@@ -138,7 +138,7 @@ object WebInterfaceManager {
         WebUIUpdateStatus(
             info =
                 WebUIUpdateInfo(
-                    channel = WebUIChannel.from(serverConfig.webUIChannel.value),
+                    channel = serverConfig.webUIChannel.value,
                     tag = version,
                 ),
             state,
@@ -168,7 +168,7 @@ object WebInterfaceManager {
     private fun scheduleWebUIUpdateCheck() {
         HAScheduler.descheduleCron(currentUpdateTaskId)
 
-        val isAutoUpdateDisabled = !isAutoUpdateEnabled() || serverConfig.webUIFlavor.value == WebUIFlavor.CUSTOM.uiName
+        val isAutoUpdateDisabled = !isAutoUpdateEnabled() || serverConfig.webUIFlavor.value == WebUIFlavor.CUSTOM
         if (isAutoUpdateDisabled) {
             return
         }
@@ -216,7 +216,7 @@ object WebInterfaceManager {
     }
 
     suspend fun setupWebUI() {
-        if (serverConfig.webUIFlavor.value == WebUIFlavor.CUSTOM.uiName) {
+        if (serverConfig.webUIFlavor.value == WebUIFlavor.CUSTOM) {
             return
         }
 
@@ -320,7 +320,7 @@ object WebInterfaceManager {
         if (!flavor.isDefault()) {
             log.warn { "fallback to default webUI \"${WebUIFlavor.default.uiName}\"" }
 
-            serverConfig.webUIFlavor.value = WebUIFlavor.default.uiName
+            serverConfig.webUIFlavor.value = WebUIFlavor.default
 
             val fallbackToBundledVersion = !doDownload { getLatestCompatibleVersion(flavor) }
             if (!fallbackToBundledVersion) {
@@ -523,7 +523,7 @@ object WebInterfaceManager {
         )
 
     private suspend fun getLatestCompatibleVersion(flavor: WebUIFlavor): String {
-        if (WebUIChannel.doesConfigChannelEqual(WebUIChannel.BUNDLED)) {
+        if (serverConfig.webUIChannel.value == WebUIChannel.BUNDLED) {
             logger.debug { "getLatestCompatibleVersion: Channel is \"${WebUIChannel.BUNDLED}\", do not check for update" }
             return BuildConfig.WEBUI_TAG
         }
@@ -558,9 +558,9 @@ object WebInterfaceManager {
             // is a STABLE webUI release, without a specified webUI version, which requires same handling as the PREVIEW release
             val isUnknownStableVersion = webUIVersion == "STABLEPREVIEW"
 
-            if (!WebUIChannel.doesConfigChannelEqual(WebUIChannel.from(webUIVersion))) {
+            if (serverConfig.webUIChannel.value != WebUIChannel.from(webUIVersion)) {
                 // allow only STABLE versions for STABLE channel
-                if (WebUIChannel.doesConfigChannelEqual(WebUIChannel.STABLE) && !isUnknownStableVersion) {
+                if (serverConfig.webUIChannel.value == WebUIChannel.STABLE && !isUnknownStableVersion) {
                     continue
                 }
 

@@ -16,16 +16,17 @@ import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.MangaStatus.Companion
+import suwayomi.tachidesk.manga.model.table.columns.truncatingVarchar
 
 object MangaTable : IntIdTable() {
     val url = varchar("url", 2048)
-    val title = varchar("title", 512)
+    val title = truncatingVarchar("title", 512)
     val initialized = bool("initialized").default(false)
 
-    val artist = varchar("artist", Integer.MAX_VALUE).nullable()
-    val author = varchar("author", Integer.MAX_VALUE).nullable()
-    val description = varchar("description", Integer.MAX_VALUE).nullable()
-    val genre = varchar("genre", Integer.MAX_VALUE).nullable()
+    val artist = truncatingVarchar("artist", Integer.MAX_VALUE).nullable()
+    val author = truncatingVarchar("author", Integer.MAX_VALUE).nullable()
+    val description = truncatingVarchar("description", Integer.MAX_VALUE).nullable()
+    val genre = truncatingVarchar("genre", Integer.MAX_VALUE).nullable()
 
     val status = integer("status").default(SManga.UNKNOWN)
     val thumbnail_url = varchar("thumbnail_url", 2048).nullable()

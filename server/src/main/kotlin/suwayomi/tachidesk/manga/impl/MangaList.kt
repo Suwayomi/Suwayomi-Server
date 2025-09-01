@@ -48,10 +48,7 @@ object MangaList {
         return mangasPage.processEntries(userId, sourceId)
     }
 
-    fun MangasPage.insertOrUpdate(
-        userId: Int,
-        sourceId: Long,
-    ): List<Int> =
+    fun MangasPage.insertOrUpdate(sourceId: Long): List<Int> =
         transaction {
             val existingMangaUrlsToId =
                 MangaTable
@@ -135,7 +132,7 @@ object MangaList {
         val mangasPage = this
         val mangaList =
             transaction {
-                val mangaIds = insertOrUpdate(userId, sourceId)
+                val mangaIds = insertOrUpdate(sourceId)
                 return@transaction MangaTable
                     .getWithUserData(userId)
                     .selectAll()

@@ -23,6 +23,7 @@ public class Preference {
     protected Context context;
 
     private boolean isVisible;
+    private boolean isEnabled = true;
     private String key;
     private CharSequence title;
     private CharSequence summary;
@@ -68,7 +69,11 @@ public class Preference {
     }
 
     public void setEnabled(boolean enabled) {
-        throw new RuntimeException("Stub!");
+        isEnabled = enabled;
+    }
+
+    public boolean isEnabled() {
+        return isEnabled;
     }
 
     public String getKey() {

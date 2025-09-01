@@ -41,6 +41,7 @@ import suwayomi.tachidesk.graphql.types.CategoryNodeList
 import suwayomi.tachidesk.graphql.types.CategoryType
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 

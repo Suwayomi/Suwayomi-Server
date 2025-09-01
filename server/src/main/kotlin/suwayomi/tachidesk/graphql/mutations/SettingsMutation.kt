@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import graphql.schema.DataFetchingEnvironment
 import kotlinx.coroutines.flow.MutableStateFlow
 import suwayomi.tachidesk.graphql.server.getAttribute
@@ -8,6 +9,7 @@ import suwayomi.tachidesk.graphql.types.Settings
 import suwayomi.tachidesk.graphql.types.SettingsType
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList.repoMatchRegex
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.SERVER_CONFIG_MODULE_NAME
 import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
@@ -98,6 +100,9 @@ class SettingsMutation {
 
         // local source
         validateFilePath(settings.localSourcePath, "localSourcePath")
+
+        // opds
+        validateValue(settings.opdsItemsPerPage, "opdsItemsPerPage") { it in 10..5000 }
     }
 
     private fun <SettingType : Any> updateSetting(
@@ -111,7 +116,20 @@ class SettingsMutation {
         configSetting.value = newSetting
     }
 
-    private fun updateSettings(settings: Settings) {
+    private fun <SettingType : Any, RealSettingType : Any> updateSetting(
+        newSetting: RealSettingType?,
+        configSetting: MutableStateFlow<SettingType>,
+        mapper: (RealSettingType) -> SettingType,
+    ) {
+        if (newSetting == null) {
+            return
+        }
+
+        configSetting.value = mapper(newSetting)
+    }
+
+    @GraphQLIgnore
+    fun updateSettings(settings: Settings) {
         updateSetting(settings.ip, serverConfig.ip)
         updateSetting(settings.port, serverConfig.port)
 
@@ -124,11 +142,11 @@ class SettingsMutation {
         updateSetting(settings.socksProxyPassword, serverConfig.socksProxyPassword)
 
         // webUI
-        updateSetting(settings.webUIFlavor?.uiName, serverConfig.webUIFlavor)
+        updateSetting(settings.webUIFlavor, serverConfig.webUIFlavor)
         updateSetting(settings.initialOpenInBrowserEnabled, serverConfig.initialOpenInBrowserEnabled)
-        updateSetting(settings.webUIInterface?.name?.lowercase(), serverConfig.webUIInterface)
+        updateSetting(settings.webUIInterface, serverConfig.webUIInterface)
         updateSetting(settings.electronPath, serverConfig.electronPath)
-        updateSetting(settings.webUIChannel?.name?.lowercase(), serverConfig.webUIChannel)
+        updateSetting(settings.webUIChannel, serverConfig.webUIChannel)
         updateSetting(settings.webUIUpdateCheckInterval, serverConfig.webUIUpdateCheckInterval)
 
         // downloader
@@ -139,6 +157,15 @@ class SettingsMutation {
         updateSetting(settings.autoDownloadAheadLimit, serverConfig.autoDownloadNewChaptersLimit) // deprecated
         updateSetting(settings.autoDownloadNewChaptersLimit, serverConfig.autoDownloadNewChaptersLimit)
         updateSetting(settings.autoDownloadIgnoreReUploads, serverConfig.autoDownloadIgnoreReUploads)
+        updateSetting(settings.downloadConversions, serverConfig.downloadConversions) { list ->
+            list.associate {
+                it.mimeType to
+                    ServerConfig.DownloadConversion(
+                        target = it.target,
+                        compressionLevel = it.compressionLevel,
+                    )
+            }
+        }
 
         // extension
         updateSetting(settings.extensionRepos, serverConfig.extensionRepos)
@@ -154,6 +181,12 @@ class SettingsMutation {
         updateSetting(settings.updateMangas, serverConfig.updateMangas)
 
         // Authentication
+        updateSetting(settings.authMode, serverConfig.authMode)
+        updateSetting(settings.jwtAudience, serverConfig.jwtAudience)
+        updateSetting(settings.jwtTokenExpiry, serverConfig.jwtTokenExpiry)
+        updateSetting(settings.jwtRefreshExpiry, serverConfig.jwtRefreshExpiry)
+        updateSetting(settings.authUsername, serverConfig.authUsername)
+        updateSetting(settings.authPassword, serverConfig.authPassword)
         updateSetting(settings.basicAuthEnabled, serverConfig.basicAuthEnabled)
         updateSetting(settings.basicAuthUsername, serverConfig.basicAuthUsername)
         updateSetting(settings.basicAuthPassword, serverConfig.basicAuthPassword)
@@ -182,6 +215,24 @@ class SettingsMutation {
         updateSetting(settings.flareSolverrSessionName, serverConfig.flareSolverrSessionName)
         updateSetting(settings.flareSolverrSessionTtl, serverConfig.flareSolverrSessionTtl)
         updateSetting(settings.flareSolverrAsResponseFallback, serverConfig.flareSolverrAsResponseFallback)
+
+        // opds
+        updateSetting(settings.opdsUseBinaryFileSizes, serverConfig.opdsUseBinaryFileSizes)
+        updateSetting(settings.opdsItemsPerPage, serverConfig.opdsItemsPerPage)
+        updateSetting(settings.opdsEnablePageReadProgress, serverConfig.opdsEnablePageReadProgress)
+        updateSetting(settings.opdsMarkAsReadOnDownload, serverConfig.opdsMarkAsReadOnDownload)
+        updateSetting(settings.opdsShowOnlyUnreadChapters, serverConfig.opdsShowOnlyUnreadChapters)
+        updateSetting(settings.opdsShowOnlyDownloadedChapters, serverConfig.opdsShowOnlyDownloadedChapters)
+        updateSetting(settings.opdsChapterSortOrder, serverConfig.opdsChapterSortOrder)
+
+        // koreader sync
+        updateSetting(settings.koreaderSyncServerUrl, serverConfig.koreaderSyncServerUrl)
+        updateSetting(settings.koreaderSyncUsername, serverConfig.koreaderSyncUsername)
+        updateSetting(settings.koreaderSyncUserkey, serverConfig.koreaderSyncUserkey)
+        updateSetting(settings.koreaderSyncDeviceId, serverConfig.koreaderSyncDeviceId)
+        updateSetting(settings.koreaderSyncChecksumMethod, serverConfig.koreaderSyncChecksumMethod)
+        updateSetting(settings.koreaderSyncStrategy, serverConfig.koreaderSyncStrategy)
+        updateSetting(settings.koreaderSyncPercentageTolerance, serverConfig.koreaderSyncPercentageTolerance)
     }
 
     fun setSettings(
@@ -214,7 +265,12 @@ class SettingsMutation {
         val (clientMutationId) = input
 
         GlobalConfigManager.resetUserConfig()
-        val defaultServerConfig = ServerConfig({ GlobalConfigManager.config.getConfig(SERVER_CONFIG_MODULE_NAME) })
+        val defaultServerConfig =
+            ServerConfig {
+                GlobalConfigManager.config.getConfig(
+                    SERVER_CONFIG_MODULE_NAME,
+                )
+            }
 
         val settings = SettingsType(defaultServerConfig)
         updateSettings(settings)

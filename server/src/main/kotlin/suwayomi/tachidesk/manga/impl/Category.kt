@@ -7,15 +7,16 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
@@ -26,6 +27,8 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import kotlin.collections.component1
+import kotlin.collections.orEmpty
 
 object Category {
     /**
@@ -221,38 +224,82 @@ object Category {
                 .associate { it[CategoryMetaTable.key] to it[CategoryMetaTable.value] }
         }
 
+    fun getCategoriesMetaMaps(
+        userId: Int,
+        ids: List<Int>,
+    ): Map<Int, Map<String, String>> =
+        transaction {
+            CategoryMetaTable
+                .selectAll()
+                .where { CategoryMetaTable.ref inList ids and (CategoryMetaTable.user eq userId) }
+                .groupBy { it[CategoryMetaTable.ref].value }
+                .mapValues { it.value.associate { it[CategoryMetaTable.key] to it[CategoryMetaTable.value] } }
+                .withDefault { emptyMap() }
+        }
+
     fun modifyMeta(
         userId: Int,
         categoryId: Int,
         key: String,
         value: String,
     ) {
-        transaction {
-            val meta =
-                transaction {
-                    CategoryMetaTable.selectAll().where {
-                        (CategoryMetaTable.ref eq categoryId) and
-                            (CategoryMetaTable.user eq userId) and
-                            (CategoryMetaTable.key eq key)
-                    }
-                }.firstOrNull()
+        modifyCategoriesMetas(userId, mapOf(categoryId to mapOf(key to value)))
+    }
 
-            if (meta == null) {
-                CategoryMetaTable.insert {
-                    it[CategoryMetaTable.key] = key
-                    it[CategoryMetaTable.value] = value
-                    it[CategoryMetaTable.ref] = categoryId
-                    it[CategoryMetaTable.user] = userId
+    fun modifyCategoriesMetas(
+        userId: Int,
+        metaByCategoryId: Map<Int, Map<String, String>>,
+    ) {
+        transaction {
+            val categoryIds = metaByCategoryId.keys
+            val metaKeys = metaByCategoryId.flatMap { it.value.keys }
+
+            val dbMetaByCategoryId =
+                CategoryMetaTable
+                    .selectAll()
+                    .where {
+                        (CategoryMetaTable.ref inList categoryIds) and (CategoryMetaTable.key inList metaKeys) and
+                            (CategoryMetaTable.user eq userId)
+                    }.groupBy { it[CategoryMetaTable.ref].value }
+
+            val existingMetaByMetaId =
+                categoryIds.flatMap { categoryId ->
+                    val dbMetaByKey = dbMetaByCategoryId[categoryId].orEmpty().associateBy { it[CategoryMetaTable.key] }
+                    val existingMetas = metaByCategoryId[categoryId].orEmpty().filter { (key) -> key in dbMetaByKey.keys }
+
+                    existingMetas.map { entry ->
+                        val metaId = dbMetaByKey[entry.key]!![CategoryMetaTable.id].value
+
+                        metaId to entry
+                    }
                 }
-            } else {
-                CategoryMetaTable.update(
-                    {
-                        (CategoryMetaTable.ref eq categoryId) and
-                            (CategoryMetaTable.user eq userId) and
-                            (CategoryMetaTable.key eq key)
-                    },
-                ) {
-                    it[CategoryMetaTable.value] = value
+
+            val newMetaByCategoryId =
+                categoryIds.flatMap { categoryID ->
+                    val dbMetaByKey = dbMetaByCategoryId[categoryID].orEmpty().associateBy { it[CategoryMetaTable.key] }
+
+                    metaByCategoryId[categoryID]
+                        .orEmpty()
+                        .filter { entry -> entry.key !in dbMetaByKey.keys }
+                        .map { entry -> categoryID to entry }
+                }
+
+            if (existingMetaByMetaId.isNotEmpty()) {
+                BatchUpdateStatement(CategoryMetaTable).apply {
+                    existingMetaByMetaId.forEach { (metaId, entry) ->
+                        addBatch(EntityID(metaId, CategoryMetaTable))
+                        this[CategoryMetaTable.value] = entry.value
+                    }
+                    execute(this@transaction)
+                }
+            }
+
+            if (newMetaByCategoryId.isNotEmpty()) {
+                CategoryMetaTable.batchInsert(newMetaByCategoryId) { (categoryId, entry) ->
+                    this[CategoryMetaTable.ref] = EntityID(categoryId, CategoryTable)
+                    this[CategoryMetaTable.key] = entry.key
+                    this[CategoryMetaTable.value] = entry.value
+                    this[CategoryMetaTable.user] = userId
                 }
             }
         }

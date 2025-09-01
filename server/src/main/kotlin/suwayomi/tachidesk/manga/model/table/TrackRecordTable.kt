@@ -10,13 +10,14 @@ package suwayomi.tachidesk.manga.model.table
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ReferenceOption
 import suwayomi.tachidesk.global.model.table.UserTable
+import suwayomi.tachidesk.manga.model.table.columns.truncatingVarchar
 
 object TrackRecordTable : IntIdTable() {
     val mangaId = reference("manga_id", MangaTable, ReferenceOption.CASCADE)
     val trackerId = integer("sync_id")
     val remoteId = long("remote_id")
     val libraryId = long("library_id").nullable()
-    val title = varchar("title", 512)
+    val title = truncatingVarchar("title", 512)
     val lastChapterRead = double("last_chapter_read")
     val totalChapters = integer("total_chapters")
     val status = integer("status")
@@ -24,5 +25,6 @@ object TrackRecordTable : IntIdTable() {
     val remoteUrl = varchar("remote_url", 512)
     val startDate = long("start_date")
     val finishDate = long("finish_date")
+    val private = bool("private").default(false)
     val user = reference("user", UserTable, ReferenceOption.CASCADE)
 }

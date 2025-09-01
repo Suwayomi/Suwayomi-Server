@@ -264,6 +264,7 @@ object SourceController {
                 }
             },
             behaviorOf = { ctx, searchTerm ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 // TODO
                 ctx.json(Search.sourceGlobalSearch(searchTerm))
             },

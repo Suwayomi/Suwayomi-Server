@@ -10,10 +10,11 @@ package xyz.nulldev.ts.config
 import ch.qos.logback.classic.Level
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
+import com.typesafe.config.ConfigObject
 import com.typesafe.config.ConfigValue
-import com.typesafe.config.ConfigValueFactory
 import com.typesafe.config.parser.ConfigDocument
 import com.typesafe.config.parser.ConfigDocumentFactory
+import io.github.config4k.toConfig
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -112,7 +113,8 @@ open class ConfigManager {
         value: Any,
     ) {
         mutex.withLock {
-            val configValue = ConfigValueFactory.fromAnyRef(value)
+            val actualValue = if (value is Enum<*>) value.name else value
+            val configValue = actualValue.toConfig("internal").getValue("internal")
 
             updateUserConfigFile(path, configValue)
             internalConfig = internalConfig.withValue(path, configValue)
@@ -137,12 +139,17 @@ open class ConfigManager {
      *  - adds missing settings
      *  - removes outdated settings
      */
-    fun updateUserConfig() {
+    fun updateUserConfig(migrate: ConfigDocument.(Config) -> ConfigDocument) {
         val serverConfig = ConfigFactory.parseResources("server-reference.conf")
         val userConfig = getUserConfig()
 
-        val hasMissingSettings = serverConfig.entrySet().any { !userConfig.hasPath(it.key) }
-        val hasOutdatedSettings = userConfig.entrySet().any { !serverConfig.hasPath(it.key) }
+        // NOTE: if more than 1 dot is included, that's a nested setting, which we need to filter out here
+        val refKeys =
+            serverConfig.root().entries.flatMap {
+                (it.value as? ConfigObject)?.entries?.map { e -> "${it.key}.${e.key}" }.orEmpty()
+            }
+        val hasMissingSettings = refKeys.any { !userConfig.hasPath(it) }
+        val hasOutdatedSettings = userConfig.entrySet().any { !refKeys.contains(it.key) && it.key.count { c -> c == '.' } <= 1 }
         val isUserConfigOutdated = hasMissingSettings || hasOutdatedSettings
         if (!isUserConfigOutdated) {
             return
@@ -158,10 +165,15 @@ open class ConfigManager {
             .filter {
                 serverConfig.hasPath(
                     it.key,
-                )
+                ) ||
+                    it.key.count { c -> c == '.' } > 1
             }.forEach { newUserConfigDoc = newUserConfigDoc.withValue(it.key, it.value) }
 
+        newUserConfigDoc =
+            migrate(newUserConfigDoc, internalConfig)
+
         userConfigFile.writeText(newUserConfigDoc.render())
+        getUserConfig().entrySet().forEach { internalConfig = internalConfig.withValue(it.key, it.value) }
     }
 }
 

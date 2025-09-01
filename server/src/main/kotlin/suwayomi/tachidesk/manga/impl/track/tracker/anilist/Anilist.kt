@@ -5,8 +5,9 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.reactivecircus.cache4k.Cache
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTrackService
+import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
+import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALOAuth
 import suwayomi.tachidesk.manga.impl.track.tracker.extractToken
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
@@ -18,7 +19,7 @@ import kotlin.time.Duration.Companion.hours
 class Anilist(
     id: Int,
 ) : Tracker(id, "AniList"),
-    DeletableTrackService {
+    DeletableTracker {
     companion object {
         const val READING = 1
         const val COMPLETED = 2
@@ -33,8 +34,6 @@ class Anilist(
         const val POINT_5 = "POINT_5"
         const val POINT_3 = "POINT_3"
     }
-
-    override val supportsTrackDeletion: Boolean = true
 
     private val json: Json by injectLazy()
 
@@ -56,6 +55,8 @@ class Anilist(
         }
 
     override val supportsReadingDates: Boolean = true
+
+    override val supportsPrivateTracking: Boolean = true
 
     private val logger = KotlinLogging.logger {}
 
@@ -99,26 +100,26 @@ class Anilist(
     override fun indexToScore(
         userId: Int,
         index: Int,
-    ): Float =
+    ): Double =
         when (trackPreferences.getScoreType(userId, this)) {
             // 10 point
-            POINT_10 -> index * 10f
+            POINT_10 -> index * 10.0
             // 100 point
-            POINT_100 -> index.toFloat()
+            POINT_100 -> index.toDouble()
             // 5 stars
             POINT_5 ->
                 when (index) {
-                    0 -> 0f
-                    else -> index * 20f - 10f
+                    0 -> 0.0
+                    else -> index * 20.0 - 10.0
                 }
             // Smiley
             POINT_3 ->
                 when (index) {
-                    0 -> 0f
-                    else -> index * 25f + 10f
+                    0 -> 0.0
+                    else -> index * 25.0 + 10.0
                 }
             // 10 point decimal
-            POINT_10_DECIMAL -> index.toFloat()
+            POINT_10_DECIMAL -> index.toDouble()
             else -> throw Exception("Unknown score type")
         }
 
@@ -130,17 +131,17 @@ class Anilist(
         return when (val type = trackPreferences.getScoreType(userId, this)) {
             POINT_5 ->
                 when (score) {
-                    0f -> "0 ★"
+                    0.0 -> "0 ★"
                     else -> "${((score + 10) / 20).toInt()} ★"
                 }
             POINT_3 ->
                 when {
-                    score == 0f -> "0"
+                    score == 0.0 -> "0"
                     score <= 35 -> "😦"
                     score <= 60 -> "😐"
                     else -> "😊"
                 }
-            else -> track.toAnilistScore(type)
+            else -> track.toApiScore(type)
         }
     }
 
@@ -169,7 +170,7 @@ class Anilist(
                     track.finished_reading_date = System.currentTimeMillis()
                 } else if (track.status != REREADING) {
                     track.status = READING
-                    if (track.last_chapter_read == 1F) {
+                    if (track.last_chapter_read == 1.0) {
                         track.started_reading_date = System.currentTimeMillis()
                     }
                 }
@@ -198,19 +199,19 @@ class Anilist(
     ): Track {
         val remoteTrack = api(userId).findLibManga(track, getUsername(userId).toInt())
         return if (remoteTrack != null) {
-            track.copyPersonalFrom(remoteTrack)
+            track.copyPersonalFrom(remoteTrack, copyRemotePrivate = false)
             track.library_id = remoteTrack.library_id
 
             if (track.status != COMPLETED) {
                 val isRereading = track.status == REREADING
-                track.status = if (isRereading.not() && hasReadChapters) READING else track.status
+                track.status = if (!isRereading && hasReadChapters) READING else track.status
             }
 
             update(userId, track)
         } else {
             // Set default fields if it's not found in the list
             track.status = if (hasReadChapters) READING else PLAN_TO_READ
-            track.score = 0F
+            track.score = 0.0
             add(userId, track)
         }
     }
@@ -252,12 +253,11 @@ class Anilist(
         token: String,
     ) {
         try {
-            logger.debug { "login $token" }
             val oauth = api(userId).createOAuth(token)
             interceptor(userId).setAuth(oauth)
             val (username, scoreType) = api(userId).getCurrentUser()
             trackPreferences.setScoreType(userId, this, scoreType)
-            saveCredentials(userId, username.toString(), oauth.access_token)
+            saveCredentials(userId, username.toString(), oauth.accessToken)
         } catch (e: Throwable) {
             logger.error(e) { "oauth err" }
             logout(userId)
@@ -273,14 +273,14 @@ class Anilist(
 
     fun saveOAuth(
         userId: Int,
-        oAuth: OAuth?,
+        oAuth: ALOAuth?,
     ) {
         trackPreferences.setTrackToken(userId, this, json.encodeToString(oAuth))
     }
 
-    fun loadOAuth(userId: Int): OAuth? =
+    fun loadOAuth(userId: Int): ALOAuth? =
         try {
-            json.decodeFromString<OAuth>(trackPreferences.getTrackToken(userId, this)!!)
+            json.decodeFromString<ALOAuth>(trackPreferences.getTrackToken(userId, this)!!)
         } catch (e: Exception) {
             logger.error(e) { "loadOAuth err" }
             null

@@ -47,4 +47,5 @@ dependencies {
 
     // OpenJDK lacks native JPEG encoder and native WEBP decoder
     implementation(libs.bundles.twelvemonkeys)
+    implementation(libs.imageio.webp)
 }

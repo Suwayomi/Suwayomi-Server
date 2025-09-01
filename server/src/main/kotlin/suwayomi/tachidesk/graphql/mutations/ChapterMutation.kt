@@ -2,10 +2,13 @@ package suwayomi.tachidesk.graphql.mutations
 
 import graphql.execution.DataFetcherResult
 import graphql.schema.DataFetchingEnvironment
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -13,15 +16,19 @@ import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
+import suwayomi.tachidesk.graphql.types.SyncConflictInfoType
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyById
+import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
+import java.net.URLEncoder
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
 
@@ -74,8 +81,10 @@ class ChapterMutation {
                     ChapterTable
                         .select(ChapterTable.id, ChapterTable.pageCount)
                         .where { ChapterTable.id inList ids }
-                        .groupBy { it[ChapterTable.id].value }
-                        .mapValues { it.value.firstOrNull()?.let { it[ChapterTable.pageCount] } }
+                        .associateBy(
+                            { it[ChapterTable.id].value },
+                            { it[ChapterTable.pageCount] },
+                        )
                 } else {
                     emptyMap()
                 }
@@ -105,6 +114,15 @@ class ChapterMutation {
                         // ).coerceAtLeast(0)
                         update[lastReadAt] = now
                     }
+                }
+            }
+        }
+
+        // Sync with KoreaderSync when progress is updated
+        if (patch.lastPageRead != null || patch.isRead == true) {
+            GlobalScope.launch {
+                ids.forEach { chapterId ->
+                    KoreaderSyncService.pushProgress(userId, chapterId)
                 }
             }
         }
@@ -176,6 +194,7 @@ class ChapterMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: FetchChaptersInput,
     ): CompletableFuture<DataFetcherResult<FetchChaptersPayload?>> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, mangaId) = input
 
         return future {
@@ -285,32 +304,103 @@ class ChapterMutation {
     data class FetchChapterPagesInput(
         val clientMutationId: String? = null,
         val chapterId: Int,
-    )
+        val format: String? = null,
+    ) {
+        fun toParams(): Map<String, String> =
+            buildMap {
+                if (!format.isNullOrBlank()) {
+                    put("format", format)
+                }
+            }
+    }
 
     data class FetchChapterPagesPayload(
         val clientMutationId: String?,
         val pages: List<String>,
         val chapter: ChapterType,
+        val syncConflict: SyncConflictInfoType?,
     )
 
     fun fetchChapterPages(
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: FetchChapterPagesInput,
     ): CompletableFuture<DataFetcherResult<FetchChapterPagesPayload?>> {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, chapterId) = input
+        val paramsMap = input.toParams()
 
         return future {
             asDataFetcherResult {
-                val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-                val chapter = getChapterDownloadReadyById(userId, chapterId)
+                var chapter = getChapterDownloadReadyById(userId, chapterId)
+                val syncResult = KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
+                var syncConflictInfo: SyncConflictInfoType? = null
+
+                if (syncResult != null) {
+                    if (syncResult.isConflict) {
+                        syncConflictInfo =
+                            SyncConflictInfoType(
+                                deviceName = syncResult.device,
+                                remotePage = syncResult.pageRead,
+                            )
+                    }
+
+                    if (syncResult.shouldUpdate) {
+                        // Update DB for SILENT and RECEIVE
+                        transaction {
+                            val existingRecord =
+                                ChapterUserTable
+                                    .selectAll()
+                                    .where {
+                                        (ChapterUserTable.chapter eq chapter.id) and
+                                            (ChapterUserTable.user eq userId)
+                                    }.singleOrNull()
+
+                            if (existingRecord != null) {
+                                ChapterUserTable.update({ ChapterUserTable.id eq existingRecord[ChapterUserTable.id] }) {
+                                    it[lastPageRead] = syncResult.pageRead
+                                    it[lastReadAt] = syncResult.timestamp
+                                }
+                            } else {
+                                ChapterUserTable.insert {
+                                    it[user] = userId
+                                    it[ChapterUserTable.chapter] = chapter.id
+                                    it[lastPageRead] = syncResult.pageRead
+                                    it[lastReadAt] = syncResult.timestamp
+                                }
+                            }
+                        }
+                    }
+                    // For PROMPT, SILENT, and RECEIVE, return the remote progress
+                    chapter =
+                        chapter.copy(
+                            lastPageRead = if (syncResult.shouldUpdate) syncResult.pageRead else chapter.lastPageRead,
+                            lastReadAt = if (syncResult.shouldUpdate) syncResult.timestamp else chapter.lastReadAt,
+                        )
+                }
+
+                val params =
+                    buildString {
+                        if (paramsMap.isNotEmpty()) {
+                            append("?")
+                            paramsMap.entries.forEach { entry ->
+                                if (length > 1) {
+                                    append("&")
+                                }
+                                append(entry.key)
+                                append("=")
+                                append(URLEncoder.encode(entry.value, Charsets.UTF_8))
+                            }
+                        }
+                    }
 
                 FetchChapterPagesPayload(
                     clientMutationId = clientMutationId,
                     pages =
                         List(chapter.pageCount) { index ->
-                            "/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}/page/$index"
+                            "/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}/page/${index}$params"
                         },
                     chapter = ChapterType(chapter),
+                    syncConflict = syncConflictInfo,
                 )
             }
         }

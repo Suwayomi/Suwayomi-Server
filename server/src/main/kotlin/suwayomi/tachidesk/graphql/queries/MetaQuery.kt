@@ -37,6 +37,7 @@ import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.GlobalMetaNodeList
 import suwayomi.tachidesk.graphql.types.GlobalMetaType
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
@@ -131,7 +132,7 @@ class MetaQuery {
         last: Int? = null,
         offset: Int? = null,
     ): GlobalMetaNodeList {
-        val userId = dataFetchingEnvironment.graphQlContext.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val queryResults =
             transaction {
                 val res = GlobalMetaTable.selectAll().where { GlobalMetaTable.user eq userId }
