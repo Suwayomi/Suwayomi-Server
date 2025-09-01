@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.manga.model.table
+package suwayomi.tachidesk.global.model.table
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -7,12 +7,13 @@ package suwayomi.tachidesk.manga.model.table
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ReferenceOption
-import suwayomi.tachidesk.global.model.table.UserTable
+import org.jetbrains.exposed.sql.Table
 
-object CategoryMangaTable : IntIdTable() {
-    val category = reference("category", CategoryTable, ReferenceOption.CASCADE)
-    val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
+/**
+ * Users registered in Tachidesk.
+ */
+object UserPermissionsTable : Table() {
     val user = reference("user", UserTable, ReferenceOption.CASCADE)
+    val permission = varchar("permission", 128)
 }

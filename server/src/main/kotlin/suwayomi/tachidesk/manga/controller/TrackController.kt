@@ -36,8 +36,8 @@ object TrackController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.json(Track.getTrackerList())
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.json(Track.getTrackerList(userId))
             },
             withResults = {
                 json<Array<TrackerDataClass>>(HttpStatus.OK)
@@ -57,8 +57,9 @@ object TrackController {
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val input = json.decodeFromString<Track.LoginInput>(ctx.body())
                 logger.debug { "tracker login $input" }
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { Track.login(input) }
+                    future { Track.login(userId, input) }
                         .thenApply { ctx.status(HttpStatus.OK) }
                 }
             },
@@ -81,8 +82,9 @@ object TrackController {
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val input = json.decodeFromString<Track.LogoutInput>(ctx.body())
                 logger.debug { "tracker logout $input" }
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { Track.logout(input) }
+                    future { Track.logout(userId, input) }
                         .thenApply { ctx.status(HttpStatus.OK) }
                 }
             },
@@ -105,8 +107,9 @@ object TrackController {
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val input = json.decodeFromString<Track.SearchInput>(ctx.body())
                 logger.debug { "tracker search $input" }
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { Track.search(input) }
+                    future { Track.search(userId, input) }
                         .thenApply { ctx.json(it) }
                 }
             },
@@ -129,9 +132,9 @@ object TrackController {
                 }
             },
             behaviorOf = { ctx, mangaId, trackerId, remoteId, private ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { Track.bind(mangaId, trackerId, remoteId.toLong(), private) }
+                    future { Track.bind(userId, mangaId, trackerId, remoteId.toLong(), private) }
                         .thenApply { ctx.status(HttpStatus.OK) }
                 }
             },
@@ -153,8 +156,9 @@ object TrackController {
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val input = json.decodeFromString<Track.UpdateInput>(ctx.body())
                 logger.debug { "tracker update $input" }
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { Track.update(input) }
+                    future { Track.update(userId, input) }
                         .thenApply { ctx.status(HttpStatus.OK) }
                 }
             },

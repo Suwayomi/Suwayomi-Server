@@ -156,6 +156,7 @@ class ServerConfig(
     val jwtAudience: MutableStateFlow<String> by OverrideConfigValue()
     val jwtTokenExpiry: MutableStateFlow<Duration> by OverrideConfigValue()
     val jwtRefreshExpiry: MutableStateFlow<Duration> by OverrideConfigValue()
+    val multiUser: MutableStateFlow<Boolean> by OverrideConfigValue()
     val basicAuthEnabled: MutableStateFlow<Boolean> by MigratedConfigValue({
         authMode.value == AuthMode.BASIC_AUTH
     }) {

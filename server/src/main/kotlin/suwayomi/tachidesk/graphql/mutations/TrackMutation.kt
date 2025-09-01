@@ -37,14 +37,14 @@ class TrackMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: LoginTrackerOAuthInput,
     ): CompletableFuture<LoginTrackerOAuthPayload> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val tracker =
             requireNotNull(TrackerManager.getTracker(input.trackerId)) {
                 "Could not find tracker"
             }
         return future {
-            tracker.authCallback(input.callbackUrl)
-            val trackerType = TrackerType(tracker)
+            tracker.authCallback(userId, input.callbackUrl)
+            val trackerType = TrackerType(tracker, userId)
             LoginTrackerOAuthPayload(
                 input.clientMutationId,
                 trackerType.isLoggedIn,
@@ -70,14 +70,14 @@ class TrackMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: LoginTrackerCredentialsInput,
     ): CompletableFuture<LoginTrackerCredentialsPayload> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val tracker =
             requireNotNull(TrackerManager.getTracker(input.trackerId)) {
                 "Could not find tracker"
             }
         return future {
-            tracker.login(input.username, input.password)
-            val trackerType = TrackerType(tracker)
+            tracker.login(userId, input.username, input.password)
+            val trackerType = TrackerType(tracker, userId)
             LoginTrackerCredentialsPayload(
                 input.clientMutationId,
                 trackerType.isLoggedIn,
@@ -101,17 +101,17 @@ class TrackMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: LogoutTrackerInput,
     ): CompletableFuture<LogoutTrackerPayload> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val tracker =
             requireNotNull(TrackerManager.getTracker(input.trackerId)) {
                 "Could not find tracker"
             }
-        require(tracker.isLoggedIn) {
-            "Cannot logout of a tracker that is not logged-in"
-        }
         return future {
-            tracker.logout()
-            val trackerType = TrackerType(tracker)
+            require(tracker.isLoggedIn(userId)) {
+                "Cannot logout of a tracker that is not logged-in"
+            }
+            tracker.logout(userId)
+            val trackerType = TrackerType(tracker, userId)
             LogoutTrackerPayload(
                 input.clientMutationId,
                 trackerType.isLoggedIn,
@@ -138,11 +138,12 @@ class TrackMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: BindTrackInput,
     ): CompletableFuture<BindTrackPayload> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, mangaId, trackerId, remoteId, private) = input
 
         return future {
             Track.bind(
+                userId,
                 mangaId,
                 trackerId,
                 remoteId,
@@ -153,7 +154,9 @@ class TrackMutation {
                     TrackRecordTable
                         .selectAll()
                         .where {
-                            TrackRecordTable.mangaId eq mangaId and (TrackRecordTable.trackerId eq trackerId)
+                            TrackRecordTable.mangaId eq mangaId and
+                                (TrackRecordTable.trackerId eq trackerId) and
+                                (TrackRecordTable.user eq userId)
                         }.first()
                 }
             BindTrackPayload(
@@ -177,17 +180,18 @@ class TrackMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: FetchTrackInput,
     ): CompletableFuture<FetchTrackPayload> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, recordId) = input
 
         return future {
-            Track.refresh(recordId)
+            Track.refresh(userId, recordId)
             val trackRecord =
                 transaction {
                     TrackRecordTable
                         .selectAll()
                         .where {
-                            TrackRecordTable.id eq recordId
+                            TrackRecordTable.id eq recordId and
+                                (TrackRecordTable.user eq userId)
                         }.first()
                 }
             FetchTrackPayload(
@@ -213,17 +217,18 @@ class TrackMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: UnbindTrackInput,
     ): CompletableFuture<UnbindTrackPayload> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, recordId, deleteRemoteTrack) = input
 
         return future {
-            Track.unbind(recordId, deleteRemoteTrack)
+            Track.unbind(userId, recordId, deleteRemoteTrack)
             val trackRecord =
                 transaction {
                     TrackRecordTable
                         .selectAll()
                         .where {
-                            TrackRecordTable.id eq recordId
+                            TrackRecordTable.id eq recordId and
+                                (TrackRecordTable.user eq userId)
                         }.firstOrNull()
                 }
             UnbindTrackPayload(
@@ -247,18 +252,20 @@ class TrackMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: TrackProgressInput,
     ): CompletableFuture<DataFetcherResult<TrackProgressPayload?>> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, mangaId) = input
 
         return future {
             asDataFetcherResult {
-                Track.trackChapter(mangaId)
+                Track.trackChapter(userId, mangaId)
                 val trackRecords =
                     transaction {
                         TrackRecordTable
                             .selectAll()
-                            .where { TrackRecordTable.mangaId eq mangaId }
-                            .toList()
+                            .where {
+                                TrackRecordTable.mangaId eq mangaId and
+                                    (TrackRecordTable.user eq userId)
+                            }.toList()
                     }
                 TrackProgressPayload(
                     clientMutationId,
@@ -294,8 +301,9 @@ class TrackMutation {
         input: UpdateTrackInput,
     ): CompletableFuture<UpdateTrackPayload> =
         future {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             Track.update(
+                userId,
                 Track.UpdateInput(
                     input.recordId,
                     input.status,
@@ -313,7 +321,8 @@ class TrackMutation {
                     TrackRecordTable
                         .selectAll()
                         .where {
-                            TrackRecordTable.id eq input.recordId
+                            TrackRecordTable.id eq input.recordId and
+                                (TrackRecordTable.user eq userId)
                         }.firstOrNull()
                 }
             UpdateTrackPayload(

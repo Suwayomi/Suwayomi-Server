@@ -42,10 +42,10 @@ object UpdateController {
                 }
             },
             behaviorOf = { ctx, pageNum ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        Chapter.getRecentChapters(pageNum)
+                        Chapter.getRecentChapters(userId, pageNum)
                     }.thenApply { ctx.json(it) }
                 }
             },
@@ -70,17 +70,17 @@ object UpdateController {
                 }
             },
             behaviorOf = { ctx, categoryId ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val updater = Injekt.get<IUpdater>()
                 if (categoryId == null) {
                     logger.info { "Adding Library to Update Queue" }
                     updater.addCategoriesToUpdateQueue(
-                        Category.getCategoryList(),
+                        Category.getCategoryList(userId),
                         clear = true,
                         forceAll = false,
                     )
                 } else {
-                    val category = Category.getCategoryById(categoryId)
+                    val category = Category.getCategoryById(userId, categoryId)
                     if (category != null) {
                         updater.addCategoriesToUpdateQueue(
                             listOf(category),

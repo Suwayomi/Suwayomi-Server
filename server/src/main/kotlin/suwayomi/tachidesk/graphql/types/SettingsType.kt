@@ -80,6 +80,7 @@ interface Settings : Node {
 
     @GraphQLDeprecated("Removed - prefer authPassword")
     val basicAuthPassword: String?
+    val multiUser: Boolean?
 
     // misc
     val debugLogsEnabled: Boolean?
@@ -192,6 +193,7 @@ data class PartialSettingsType(
     override val basicAuthUsername: String?,
     @GraphQLDeprecated("Removed - prefer authPassword")
     override val basicAuthPassword: String?,
+    override val multiUser: Boolean?,
     // misc
     override val debugLogsEnabled: Boolean?,
     @GraphQLDeprecated("Removed - does not do anything")
@@ -285,6 +287,7 @@ class SettingsType(
     override val basicAuthUsername: String,
     @GraphQLDeprecated("Removed - prefer authPassword")
     override val basicAuthPassword: String,
+    override val multiUser: Boolean?,
     // misc
     override val debugLogsEnabled: Boolean,
     @GraphQLDeprecated("Removed - does not do anything")
@@ -376,6 +379,7 @@ class SettingsType(
         config.basicAuthEnabled.value,
         config.basicAuthUsername.value,
         config.basicAuthPassword.value,
+        config.multiUser.value,
         // misc
         config.debugLogsEnabled.value,
         false,

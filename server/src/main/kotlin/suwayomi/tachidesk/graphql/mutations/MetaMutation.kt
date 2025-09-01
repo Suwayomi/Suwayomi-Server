@@ -3,6 +3,7 @@ package suwayomi.tachidesk.graphql.mutations
 import graphql.execution.DataFetcherResult
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -30,11 +31,11 @@ class MetaMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: SetGlobalMetaInput,
     ): DataFetcherResult<SetGlobalMetaPayload?> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, meta) = input
 
         return asDataFetcherResult {
-            GlobalMeta.modifyMeta(meta.key, meta.value)
+            GlobalMeta.modifyMeta(userId, meta.key, meta.value)
 
             SetGlobalMetaPayload(clientMutationId, meta)
         }
@@ -54,7 +55,7 @@ class MetaMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: DeleteGlobalMetaInput,
     ): DataFetcherResult<DeleteGlobalMetaPayload?> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, key) = input
 
         return asDataFetcherResult {
@@ -63,10 +64,10 @@ class MetaMutation {
                     val meta =
                         GlobalMetaTable
                             .selectAll()
-                            .where { GlobalMetaTable.key eq key }
+                            .where { GlobalMetaTable.key eq key and (GlobalMetaTable.user eq userId) }
                             .firstOrNull()
 
-                    GlobalMetaTable.deleteWhere { GlobalMetaTable.key eq key }
+                    GlobalMetaTable.deleteWhere { GlobalMetaTable.key eq key and (GlobalMetaTable.user eq userId) }
 
                     if (meta != null) {
                         GlobalMetaType(meta)

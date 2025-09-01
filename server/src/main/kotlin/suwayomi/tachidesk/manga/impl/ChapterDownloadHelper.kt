@@ -62,6 +62,7 @@ object ChapterDownloadHelper {
     ): Pair<InputStream, Long> = provider(mangaId, chapterId).getAsArchiveStream()
 
     fun getCbzForDownload(
+        userId: Int,
         chapterId: Int,
         markAsRead: Boolean?,
     ): Triple<InputStream, String, Long> {
@@ -72,7 +73,7 @@ object ChapterDownloadHelper {
                         .select(ChapterTable.columns + MangaTable.columns)
                         .where { ChapterTable.id eq chapterId }
                         .firstOrNull() ?: throw IllegalArgumentException("ChapterId $chapterId not found")
-                val chapter = ChapterTable.toDataClass(row)
+                val chapter = ChapterTable.toDataClass(userId, row)
                 val title = row[MangaTable.title]
                 Pair(chapter, title)
             }
@@ -83,6 +84,7 @@ object ChapterDownloadHelper {
 
         if (markAsRead == true) {
             Chapter.modifyChapter(
+                userId = userId,
                 chapterData.mangaId,
                 chapterData.index,
                 isRead = true,
@@ -95,7 +97,10 @@ object ChapterDownloadHelper {
         return Triple(cbzFile.first, fileName, cbzFile.second)
     }
 
-    fun getCbzMetadataForDownload(chapterId: Int): Triple<String, Long, String> { // fileName, fileSize, contentType
+    fun getCbzMetadataForDownload(
+        userId: Int,
+        chapterId: Int,
+    ): Triple<String, Long, String> { // fileName, fileSize, contentType
         val (chapterData, mangaTitle) =
             transaction {
                 val row =
@@ -103,7 +108,7 @@ object ChapterDownloadHelper {
                         .select(ChapterTable.columns + MangaTable.columns)
                         .where { ChapterTable.id eq chapterId }
                         .firstOrNull() ?: throw IllegalArgumentException("ChapterId $chapterId not found")
-                val chapter = ChapterTable.toDataClass(row)
+                val chapter = ChapterTable.toDataClass(userId, row)
                 val title = row[MangaTable.title]
                 Pair(chapter, title)
             }

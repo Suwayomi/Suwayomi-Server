@@ -27,6 +27,7 @@ import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
@@ -48,11 +49,11 @@ class SourceMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: SetSourceMetaInput,
     ): DataFetcherResult<SetSourceMetaPayload?> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, meta) = input
 
         return asDataFetcherResult {
-            Source.modifyMeta(meta.sourceId, meta.key, meta.value)
+            Source.modifyMeta(userId, meta.sourceId, meta.key, meta.value)
 
             SetSourceMetaPayload(clientMutationId, meta)
         }
@@ -74,7 +75,7 @@ class SourceMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: DeleteSourceMetaInput,
     ): DataFetcherResult<DeleteSourceMetaPayload?> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, sourceId, key) = input
 
         return asDataFetcherResult {
@@ -83,10 +84,17 @@ class SourceMutation {
                     val meta =
                         SourceMetaTable
                             .selectAll()
-                            .where { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
-                            .firstOrNull()
+                            .where {
+                                (SourceMetaTable.user eq userId) and
+                                    (SourceMetaTable.ref eq sourceId) and
+                                    (SourceMetaTable.key eq key)
+                            }.firstOrNull()
 
-                    SourceMetaTable.deleteWhere { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
+                    SourceMetaTable.deleteWhere {
+                        (SourceMetaTable.user eq userId) and
+                            (SourceMetaTable.ref eq sourceId) and
+                            (SourceMetaTable.key eq key)
+                    }
 
                     val source =
                         transaction {
@@ -133,7 +141,7 @@ class SourceMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: FetchSourceMangaInput,
     ): CompletableFuture<DataFetcherResult<FetchSourceMangaPayload?>> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, sourceId, type, page, query, filters) = input
 
         return future {
@@ -162,6 +170,7 @@ class SourceMutation {
                 val mangas =
                     transaction {
                         MangaTable
+                            .getWithUserData(userId)
                             .selectAll()
                             .where { MangaTable.id inList mangaIds }
                             .map { MangaType(it) }

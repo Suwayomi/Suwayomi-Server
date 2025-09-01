@@ -2,6 +2,9 @@ package suwayomi.tachidesk.manga.impl.track.tracker.kitsu
 
 import android.annotation.StringRes
 import eu.kanade.tachiyomi.data.track.kitsu.dto.KitsuOAuth
+import io.github.reactivecircus.cache4k.Cache
+import io.github.reactivecircus.cache4k.Cache.Builder.Companion.invoke
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
@@ -9,6 +12,8 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
 import java.text.DecimalFormat
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration.Companion.hours
 
 class Kitsu(
     id: Int,
@@ -28,9 +33,22 @@ class Kitsu(
 
     private val json: Json by injectLazy()
 
-    private val interceptor by lazy { KitsuInterceptor(this) }
+    private val interceptors = ConcurrentHashMap<Int, KitsuInterceptor>()
+    private val apis =
+        Cache
+            .Builder<Int, KitsuApi>()
+            .expireAfterAccess(1.hours)
+            .build()
 
-    private val api by lazy { KitsuApi(client, interceptor) }
+    fun interceptor(userId: Int): KitsuInterceptor =
+        interceptors.getOrPut(userId) {
+            KitsuInterceptor(userId, this)
+        }
+
+    suspend fun api(userId: Int): KitsuApi =
+        apis.get(userId) {
+            KitsuApi(client, interceptor(userId))
+        }
 
     override fun getLogo(): String = "/static/tracker/kitsu.png"
 
@@ -53,21 +71,31 @@ class Kitsu(
 
     override fun getCompletionStatus(): Int = COMPLETED
 
-    override fun getScoreList(): List<String> {
+    override fun getScoreList(userId: Int): List<String> {
         val df = DecimalFormat("0.#")
         return listOf("0") + IntRange(2, 20).map { df.format(it / 2f) }
     }
 
-    override fun indexToScore(index: Int): Double = if (index > 0) (index + 1) / 2.0 else 0.0
+    override fun indexToScore(
+        userId: Int,
+        index: Int,
+    ): Double = if (index > 0) (index + 1) / 2.0 else 0.0
 
-    override fun displayScore(track: Track): String {
+    override fun displayScore(
+        userId: Int,
+        track: Track,
+    ): String {
         val df = DecimalFormat("0.#")
         return df.format(track.score)
     }
 
-    private suspend fun add(track: Track): Track = api.addLibManga(track, getUserId())
+    private suspend fun add(
+        userId: Int,
+        track: Track,
+    ): Track = api(userId).addLibManga(track, getUserId(userId))
 
     override suspend fun update(
+        userId: Int,
         track: Track,
         didReadChapter: Boolean,
     ): Track {
@@ -85,18 +113,22 @@ class Kitsu(
             }
         }
 
-        return api.updateLibManga(track)
+        return api(userId).updateLibManga(track)
     }
 
-    override suspend fun delete(track: Track) {
-        api.removeLibManga(track)
+    override suspend fun delete(
+        userId: Int,
+        track: Track,
+    ) {
+        api(userId).removeLibManga(track)
     }
 
     override suspend fun bind(
+        userId: Int,
         track: Track,
         hasReadChapters: Boolean,
     ): Track {
-        val remoteTrack = api.findLibManga(track, getUserId())
+        val remoteTrack = api(userId).findLibManga(track, getUserId(userId))
         return if (remoteTrack != null) {
             track.copyPersonalFrom(remoteTrack, copyRemotePrivate = false)
             track.remote_id = remoteTrack.remote_id
@@ -105,49 +137,59 @@ class Kitsu(
                 track.status = if (hasReadChapters) READING else track.status
             }
 
-            update(track)
+            update(userId, track)
         } else {
             track.status = if (hasReadChapters) READING else PLAN_TO_READ
             track.score = 0.0
-            add(track)
+            add(userId, track)
         }
     }
 
-    override suspend fun search(query: String): List<TrackSearch> = api.search(query)
+    override suspend fun search(
+        userId: Int,
+        query: String,
+    ): List<TrackSearch> = api(userId).search(query)
 
-    override suspend fun refresh(track: Track): Track {
-        val remoteTrack = api.getLibManga(track)
+    override suspend fun refresh(
+        userId: Int,
+        track: Track,
+    ): Track {
+        val remoteTrack = api(userId).getLibManga(track)
         track.copyPersonalFrom(remoteTrack)
         track.total_chapters = remoteTrack.total_chapters
         return track
     }
 
     override suspend fun login(
+        userId: Int,
         username: String,
         password: String,
     ) {
-        val token = api.login(username, password)
-        interceptor.newAuth(token)
-        val userId = api.getCurrentUser()
-        saveCredentials(username, userId)
+        val token = api(userId).login(username, password)
+        interceptor(userId).newAuth(token)
+        val kitsuUserId = api(userId).getCurrentUser()
+        saveCredentials(userId, username, kitsuUserId)
     }
 
-    override fun logout() {
-        super.logout()
-        interceptor.newAuth(null)
+    override suspend fun logout(userId: Int) {
+        super.logout(userId)
+        interceptor(userId).newAuth(null)
     }
 
-    private fun getUserId(): String = getPassword()
+    private fun getUserId(userId: Int): String = getPassword(userId)
 
     // TODO: this seems to be called saveOAuth in other trackers
-    fun saveToken(oauth: KitsuOAuth?) {
-        trackPreferences.setTrackToken(this, json.encodeToString(oauth))
+    fun saveToken(
+        userId: Int,
+        oauth: KitsuOAuth?,
+    ) {
+        trackPreferences.setTrackToken(userId, this, json.encodeToString(oauth))
     }
 
     // TODO: this seems to be called loadOAuth in other trackers
-    fun restoreToken(): KitsuOAuth? =
+    fun restoreToken(userId: Int): KitsuOAuth? =
         try {
-            json.decodeFromString<KitsuOAuth>(trackPreferences.getTrackToken(this)!!)
+            json.decodeFromString<KitsuOAuth>(trackPreferences.getTrackToken(userId, this)!!)
         } catch (e: Exception) {
             null
         }

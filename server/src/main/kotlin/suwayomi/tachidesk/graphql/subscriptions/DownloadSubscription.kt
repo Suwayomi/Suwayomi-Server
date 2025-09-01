@@ -17,7 +17,6 @@ import suwayomi.tachidesk.graphql.types.DownloadStatus
 import suwayomi.tachidesk.graphql.types.DownloadUpdates
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
-import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
 
 class DownloadSubscription {

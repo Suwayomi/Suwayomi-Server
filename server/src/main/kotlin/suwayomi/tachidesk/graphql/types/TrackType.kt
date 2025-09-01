@@ -25,8 +25,8 @@ class TrackerType(
     val supportsReadingDates: Boolean,
     val supportsPrivateTracking: Boolean,
 ) : Node {
-    constructor(tracker: Tracker) : this(
-        tracker.isLoggedIn,
+    constructor(tracker: Tracker, userId: Int) : this(
+        tracker.isLoggedIn(userId),
         tracker,
     )
 

@@ -68,7 +68,9 @@ class InfoMutation {
         }
     }
 
-    fun resetWebUIUpdateStatus(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<DataFetcherResult<WebUIUpdateStatus?>> =
+    fun resetWebUIUpdateStatus(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+    ): CompletableFuture<DataFetcherResult<WebUIUpdateStatus?>> =
         future {
             asDataFetcherResult {
                 dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()

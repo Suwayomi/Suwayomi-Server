@@ -13,9 +13,11 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
@@ -43,7 +45,10 @@ import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.ChapterNodeList
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
@@ -58,7 +63,10 @@ class ChapterQuery {
     fun chapter(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Int,
-    ): CompletableFuture<ChapterType> = dataFetchingEnvironment.getValueFromDataLoader("ChapterDataLoader", id)
+    ): CompletableFuture<ChapterType> {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        return dataFetchingEnvironment.getValueFromDataLoader("ChapterDataLoader", id)
+    }
 
     enum class ChapterOrderBy(
         override val column: Column<*>,
@@ -68,7 +76,7 @@ class ChapterQuery {
         NAME(ChapterTable.name),
         UPLOAD_DATE(ChapterTable.date_upload),
         CHAPTER_NUMBER(ChapterTable.chapter_number),
-        LAST_READ_AT(ChapterTable.lastReadAt),
+        LAST_READ_AT(ChapterUserTable.lastReadAt),
         FETCHED_AT(ChapterTable.fetchedAt),
         ;
 
@@ -79,7 +87,7 @@ class ChapterQuery {
                 NAME -> greaterNotUnique(ChapterTable.name, ChapterTable.id, cursor, String::toString)
                 UPLOAD_DATE -> greaterNotUnique(ChapterTable.date_upload, ChapterTable.id, cursor, String::toLong)
                 CHAPTER_NUMBER -> greaterNotUnique(ChapterTable.chapter_number, ChapterTable.id, cursor, String::toFloat)
-                LAST_READ_AT -> greaterNotUnique(ChapterTable.lastReadAt, ChapterTable.id, cursor, String::toLong)
+                LAST_READ_AT -> greaterNotUnique(ChapterUserTable.lastReadAt, ChapterTable.id, cursor, String::toLong)
                 FETCHED_AT -> greaterNotUnique(ChapterTable.fetchedAt, ChapterTable.id, cursor, String::toLong)
             }
 
@@ -90,7 +98,7 @@ class ChapterQuery {
                 NAME -> lessNotUnique(ChapterTable.name, ChapterTable.id, cursor, String::toString)
                 UPLOAD_DATE -> lessNotUnique(ChapterTable.date_upload, ChapterTable.id, cursor, String::toLong)
                 CHAPTER_NUMBER -> lessNotUnique(ChapterTable.chapter_number, ChapterTable.id, cursor, String::toFloat)
-                LAST_READ_AT -> lessNotUnique(ChapterTable.lastReadAt, ChapterTable.id, cursor, String::toLong)
+                LAST_READ_AT -> lessNotUnique(ChapterUserTable.lastReadAt, ChapterTable.id, cursor, String::toLong)
                 FETCHED_AT -> lessNotUnique(ChapterTable.fetchedAt, ChapterTable.id, cursor, String::toLong)
             }
 
@@ -141,10 +149,10 @@ class ChapterQuery {
             opAnd.eq(chapterNumber, ChapterTable.chapter_number)
             opAnd.eq(scanlator, ChapterTable.scanlator)
             opAnd.eq(mangaId, ChapterTable.manga)
-            opAnd.eq(isRead, ChapterTable.isRead)
-            opAnd.eq(isBookmarked, ChapterTable.isBookmarked)
-            opAnd.eq(lastPageRead, ChapterTable.lastPageRead)
-            opAnd.eq(lastReadAt, ChapterTable.lastReadAt)
+            opAnd.eq(isRead, ChapterUserTable.isRead)
+            opAnd.eq(isBookmarked, ChapterUserTable.isBookmarked)
+            opAnd.eq(lastPageRead, ChapterUserTable.lastPageRead)
+            opAnd.eq(lastReadAt, ChapterUserTable.lastReadAt)
             opAnd.eq(sourceOrder, ChapterTable.sourceOrder)
             opAnd.eq(realUrl, ChapterTable.realUrl)
             opAnd.eq(fetchedAt, ChapterTable.fetchedAt)
@@ -186,10 +194,10 @@ class ChapterQuery {
                 andFilterWithCompare(ChapterTable.chapter_number, chapterNumber),
                 andFilterWithCompareString(ChapterTable.scanlator, scanlator),
                 andFilterWithCompareEntity(ChapterTable.manga, mangaId),
-                andFilterWithCompare(ChapterTable.isRead, isRead),
-                andFilterWithCompare(ChapterTable.isBookmarked, isBookmarked),
-                andFilterWithCompare(ChapterTable.lastPageRead, lastPageRead),
-                andFilterWithCompare(ChapterTable.lastReadAt, lastReadAt),
+                andFilterWithCompare(ChapterUserTable.isRead, isRead),
+                andFilterWithCompare(ChapterUserTable.isBookmarked, isBookmarked),
+                andFilterWithCompare(ChapterUserTable.lastPageRead, lastPageRead),
+                andFilterWithCompare(ChapterUserTable.lastReadAt, lastReadAt),
                 andFilterWithCompare(ChapterTable.sourceOrder, sourceOrder),
                 andFilterWithCompareString(ChapterTable.realUrl, realUrl),
                 andFilterWithCompare(ChapterTable.fetchedAt, fetchedAt),
@@ -197,7 +205,7 @@ class ChapterQuery {
                 andFilterWithCompare(ChapterTable.pageCount, pageCount),
             )
 
-        fun getLibraryOp() = andFilterWithCompare(MangaTable.inLibrary, inLibrary)
+        fun getLibraryOp() = andFilterWithCompare(MangaUserTable.inLibrary, inLibrary)
     }
 
     fun chapters(
@@ -221,15 +229,15 @@ class ChapterQuery {
         last: Int? = null,
         offset: Int? = null,
     ): ChapterNodeList {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val queryResults =
             transaction {
-                val res = ChapterTable.selectAll()
+                val res = ChapterTable.getWithUserData(userId).selectAll()
 
                 val libraryOp = filter?.getLibraryOp()
                 if (libraryOp != null) {
                     res.adjustColumnSet {
-                        innerJoin(MangaTable)
+                        innerJoin(MangaTable.getWithUserData(userId))
                     }
                     res.andWhere { libraryOp }
                 }

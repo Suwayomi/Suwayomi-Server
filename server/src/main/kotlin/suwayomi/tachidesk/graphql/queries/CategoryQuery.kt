@@ -148,10 +148,10 @@ class CategoryQuery {
         last: Int? = null,
         offset: Int? = null,
     ): CategoryNodeList {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val queryResults =
             transaction {
-                val res = CategoryTable.selectAll()
+                val res = CategoryTable.selectAll().where { CategoryTable.user eq userId }
 
                 res.applyOps(condition, filter)
 

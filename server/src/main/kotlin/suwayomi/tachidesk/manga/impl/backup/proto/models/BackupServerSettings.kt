@@ -82,6 +82,7 @@ data class BackupServerSettings(
     @ProtoNumber(65) override var koreaderSyncPercentageTolerance: Double,
     @ProtoNumber(66) override var jwtTokenExpiry: Duration?,
     @ProtoNumber(67) override var jwtRefreshExpiry: Duration?,
+    @ProtoNumber(68) override val multiUser: Boolean?,
     // Deprecated settings
     @ProtoNumber(99991) override var basicAuthUsername: String?,
     @ProtoNumber(99992) override var basicAuthPassword: String?,

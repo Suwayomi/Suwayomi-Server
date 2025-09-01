@@ -78,10 +78,10 @@ object SourceController {
                 }
             },
             behaviorOf = { ctx, sourceId, pageNum ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        MangaList.getMangaList(sourceId, pageNum, popular = true)
+                        MangaList.getMangaList(userId, sourceId, pageNum, popular = true)
                     }.thenApply { ctx.json(it) }
                 }
             },
@@ -102,10 +102,10 @@ object SourceController {
                 }
             },
             behaviorOf = { ctx, sourceId, pageNum ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        MangaList.getMangaList(sourceId, pageNum, popular = false)
+                        MangaList.getMangaList(userId, sourceId, pageNum, popular = false)
                     }.thenApply { ctx.json(it) }
                 }
             },
@@ -217,9 +217,9 @@ object SourceController {
                 }
             },
             behaviorOf = { ctx, sourceId, searchTerm, pageNum ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { Search.sourceSearch(sourceId, searchTerm, pageNum) }
+                    future { Search.sourceSearch(userId, sourceId, searchTerm, pageNum) }
                         .thenApply { ctx.json(it) }
                 }
             },
@@ -241,10 +241,10 @@ object SourceController {
                 body<FilterData>()
             },
             behaviorOf = { ctx, sourceId, pageNum ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 val filter = json.decodeFromString<FilterData>(ctx.body())
                 ctx.future {
-                    future { Search.sourceFilter(sourceId, pageNum, filter) }
+                    future { Search.sourceFilter(userId, sourceId, pageNum, filter) }
                         .thenApply { ctx.json(it) }
                 }
             },

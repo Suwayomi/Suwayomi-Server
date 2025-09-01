@@ -219,13 +219,14 @@ object OpdsEntryBuilder {
      * second is an optional entry representing the remote progress in case of a conflict.
      */
     suspend fun createChapterMetadataEntries(
+        userId: Int,
         chapter: OpdsChapterMetadataAcqEntry,
         manga: OpdsMangaDetails,
         baseUrl: String,
         locale: Locale,
     ): Pair<OpdsEntryXml, OpdsEntryXml?> {
         // Check remote progress before building the entry
-        val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id)
+        val syncResult = KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
 
         // Exists a conflict if the sync service reports a conflict and the page numbers differ.
         val hasConflict = syncResult?.isConflict == true && syncResult.pageRead != chapter.lastPageRead
@@ -545,6 +546,7 @@ object OpdsEntryBuilder {
      * and cross-filtering by source, category, status, language, and genre.
      */
     fun addLibraryFacets(
+        userId: Int,
         feedBuilder: FeedBuilderInternal,
         baseUrl: String,
         activeFilters: OpdsMangaFilter,
@@ -555,7 +557,7 @@ object OpdsEntryBuilder {
 
         val sortGroup = MR.strings.opds_facetgroup_sort_order.localized(locale)
         val filterGroup = MR.strings.opds_facetgroup_filter_content.localized(locale)
-        val filterCounts = MangaRepository.getLibraryFilterCounts()
+        val filterCounts = MangaRepository.getLibraryFilterCounts(userId)
 
         val buildUrl = { newFilters: OpdsMangaFilter, newSort: String, newFilter: String ->
             val crossFilterParams = newFilters.toCrossFilterQueryParameters()
@@ -660,7 +662,7 @@ object OpdsEntryBuilder {
 
         // --- Cross-Filter Facets ---
         if (activeFilters.primaryFilter != PrimaryFilterType.SOURCE) {
-            val sources = NavigationRepository.getLibrarySources(1).first
+            val sources = NavigationRepository.getLibrarySources(userId, 1).first
             addFacet(
                 feedBuilder,
                 buildUrl(activeFilters.without("source_id"), currentSort, currentFilter),
@@ -681,7 +683,7 @@ object OpdsEntryBuilder {
             }
         }
         if (activeFilters.primaryFilter != PrimaryFilterType.CATEGORY) {
-            val categories = NavigationRepository.getCategories(1).first
+            val categories = NavigationRepository.getCategories(userId, 1).first
             addFacet(
                 feedBuilder,
                 buildUrl(activeFilters.without("category_id"), currentSort, currentFilter),
@@ -702,7 +704,7 @@ object OpdsEntryBuilder {
             }
         }
         if (activeFilters.primaryFilter != PrimaryFilterType.STATUS) {
-            val statuses = NavigationRepository.getStatuses(locale)
+            val statuses = NavigationRepository.getStatuses(userId, locale)
             addFacet(
                 feedBuilder,
                 buildUrl(activeFilters.without("status_id"), currentSort, currentFilter),
@@ -723,7 +725,7 @@ object OpdsEntryBuilder {
             }
         }
         if (activeFilters.primaryFilter != PrimaryFilterType.LANGUAGE) {
-            val languages = NavigationRepository.getContentLanguages(locale)
+            val languages = NavigationRepository.getContentLanguages(userId, locale)
             addFacet(
                 feedBuilder,
                 buildUrl(activeFilters.without("lang_code"), currentSort, currentFilter),
@@ -744,7 +746,7 @@ object OpdsEntryBuilder {
             }
         }
         if (activeFilters.primaryFilter != PrimaryFilterType.GENRE) {
-            val genres = NavigationRepository.getGenres(1, locale).first
+            val genres = NavigationRepository.getGenres(userId, 1, locale).first
             addFacet(
                 feedBuilder,
                 buildUrl(activeFilters.without("genre"), currentSort, currentFilter),

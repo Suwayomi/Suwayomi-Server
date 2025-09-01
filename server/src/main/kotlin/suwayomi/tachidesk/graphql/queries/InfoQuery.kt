@@ -29,8 +29,10 @@ class InfoQuery {
         val discord: String,
     )
 
-    fun aboutServer(): AboutServerPayload =
-        AboutServerPayload(
+    fun aboutServer(dataFetchingEnvironment: DataFetchingEnvironment): AboutServerPayload {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+
+        return AboutServerPayload(
             BuildConfig.NAME,
             BuildConfig.VERSION,
             BuildConfig.REVISION,
@@ -39,6 +41,7 @@ class InfoQuery {
             BuildConfig.GITHUB,
             BuildConfig.DISCORD,
         )
+    }
 
     data class CheckForServerUpdatesPayload(
         /** [channel] mirrors [suwayomi.tachidesk.server.BuildConfig.BUILD_TYPE] */

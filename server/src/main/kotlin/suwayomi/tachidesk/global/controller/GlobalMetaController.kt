@@ -27,8 +27,8 @@ object GlobalMetaController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.json(GlobalMeta.getMetaMap())
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.json(GlobalMeta.getMetaMap(userId))
                 ctx.status(200)
             },
             withResults = {
@@ -48,8 +48,8 @@ object GlobalMetaController {
                 }
             },
             behaviorOf = { ctx, key, value ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                GlobalMeta.modifyMeta(key, value)
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                GlobalMeta.modifyMeta(userId, key, value)
                 ctx.status(200)
             },
             withResults = {
