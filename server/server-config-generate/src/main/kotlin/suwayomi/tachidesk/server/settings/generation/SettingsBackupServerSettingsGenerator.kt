@@ -70,7 +70,7 @@ object SettingsBackupServerSettingsGenerator {
             }
 
             appendLine(
-                "@ProtoNumber(${setting.protoNumber}) override var ${setting.name}: ${getSettingType(setting)},"
+                "@ProtoNumber(${setting.protoNumber}) override var ${setting.name}: ${getSettingType(setting)}? = null,"
                     .addIndentation(indentation),
             )
         }

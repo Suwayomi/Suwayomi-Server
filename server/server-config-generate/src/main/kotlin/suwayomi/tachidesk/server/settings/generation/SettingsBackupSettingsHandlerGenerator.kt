@@ -85,7 +85,7 @@ object SettingsBackupSettingsHandlerGenerator {
             appendLine(
                 "${setting.name} = SettingsRegistry.get(\"${setting.name}\")!!.typeInfo.restoreLegacy!!(".addIndentation(indentation * 4) +
                     "backupServerSettings.${setting.name}" +
-                    ") as ${getSettingType(setting, false)},",
+                    ") as? ${getSettingType(setting, false)},",
             )
         }
         appendLine("),".addIndentation(indentation * 3))
@@ -129,7 +129,7 @@ object SettingsBackupSettingsHandlerGenerator {
         if (setting.typeInfo.convertToBackupType != null) {
             return "SettingsRegistry.get(\"${setting.name}\")!!.typeInfo.convertToBackupType!!(" +
                 "serverConfig.${setting.name}.value" +
-                ") as ${getSettingType(setting, true)}"
+                ") as? ${getSettingType(setting, true)}"
         }
 
         return "serverConfig.${setting.name}.value"
