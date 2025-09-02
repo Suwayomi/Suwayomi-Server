@@ -678,7 +678,7 @@ class ServerConfig(
     )
 
     val webUIEnabled: MutableStateFlow<Boolean> by BooleanSetting(
-        protoNumber = 78,
+        protoNumber = 68,
         group = SettingGroup.WEB_UI,
         defaultValue = true,
         requiresRestart = true,
