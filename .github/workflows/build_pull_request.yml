@@ -23,6 +23,18 @@ jobs:
     name: Build pull request
     needs: check_wrapper
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
 
     steps:
       - name: Checkout pull request
@@ -47,7 +59,39 @@ jobs:
           mkdir -p ~/.gradle
           cp .github/runner-files/ci-gradle.properties ~/.gradle/gradle.properties
 
-      - name: Build Jar
+      - name: Build And Run Jar
         working-directory: master
-        run: ./gradlew ktlintCheck :server:shadowJar --stacktrace
+        run: |
+          ./gradlew ktlintCheck :server:shadowJar --stacktrace
+          gcc -fPIC -I$JAVA_HOME/include -I$JAVA_HOME/include/linux -shared scripts/resources/catch_abort.c -lpthread -o scripts/resources/catch_abort.so
+          export LD_PRELOAD="$(pwd)/scripts/resources/catch_abort.so"
+          JAR=$(ls ./server/build/*.jar| head -1)
+          set +e
+          timeout 30s java -DcrashOnFailedMigration=true \
+              -Dsuwayomi.tachidesk.config.server.systemTrayEnabled=false \
+              -Dsuwayomi.tachidesk.config.server.initialOpenInBrowserEnabled=false \
+              -Dsuwayomi.tachidesk.config.server.databaseType=POSTGRESQL \
+              -Dsuwayomi.tachidesk.config.server.databaseUrl=postgresql://localhost:5432/postgres \
+              -Dsuwayomi.tachidesk.config.server.databaseUsername=postgres \
+              -Dsuwayomi.tachidesk.config.server.databasePassword=postgres \
+              -jar "$JAR"
 
+          ecode="$?"
+          # if exit code is not 124 or 125, then error
+          if ! [ "$ecode" -eq 124 -o "$ecode" -eq 125 ]; then 
+            printf "exit code '%s' - exiting.\n" "$ecode"
+            exit "$ecode"
+          fi
+
+          timeout 30s java -DcrashOnFailedMigration=true \
+              -Dsuwayomi.tachidesk.config.server.systemTrayEnabled=false \
+              -Dsuwayomi.tachidesk.config.server.initialOpenInBrowserEnabled=false \
+              -jar "$JAR"
+
+          ecode="$?"
+          # if exit code is not 124 or 125, then error
+          if ! [ "$ecode" -eq 124 -o "$ecode" -eq 125 ]; then 
+            printf "exit code '%s' - exiting.\n" "$ecode"
+            exit "$ecode"
+          fi
+          exit 0

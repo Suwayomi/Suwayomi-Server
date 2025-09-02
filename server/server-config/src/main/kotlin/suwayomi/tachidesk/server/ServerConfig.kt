@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import org.jetbrains.exposed.sql.SortOrder
 import suwayomi.tachidesk.graphql.types.AuthMode
+import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.graphql.types.DownloadConversion
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy
@@ -634,6 +635,32 @@ class ServerConfig(
         group = SettingGroup.WEB_UI,
         defaultValue = true,
         requiresRestart = true,
+    )
+
+    val databaseType: MutableStateFlow<DatabaseType> by EnumSetting(
+        protoNumber = 69,
+        group = SettingGroup.DATABASE,
+        defaultValue = DatabaseType.H2,
+        enumClass = DatabaseType::class,
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.DatabaseType")),
+    )
+
+    val databaseUrl: MutableStateFlow<String> by StringSetting(
+        protoNumber = 70,
+        group = SettingGroup.DATABASE,
+        defaultValue = "postgresql://localhost:5432/suwayomi",
+    )
+
+    val databaseUsername: MutableStateFlow<String> by StringSetting(
+        protoNumber = 71,
+        group = SettingGroup.DATABASE,
+        defaultValue = "",
+    )
+
+    val databasePassword: MutableStateFlow<String> by StringSetting(
+        protoNumber = 72,
+        group = SettingGroup.DATABASE,
+        defaultValue = "",
     )
 
     /** ****************************************************************** **/

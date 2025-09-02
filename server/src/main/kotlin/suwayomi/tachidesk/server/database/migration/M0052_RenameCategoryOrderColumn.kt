@@ -1,5 +1,8 @@
 package suwayomi.tachidesk.server.database.migration
 
+import suwayomi.tachidesk.server.database.migration.helpers.INITIAL_ORDER_NAME
+import suwayomi.tachidesk.server.database.migration.helpers.RenameFieldMigration
+
 /*
  * Copyright (C) Contributors to the Suwayomi project
  *
@@ -7,13 +10,10 @@ package suwayomi.tachidesk.server.database.migration
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import de.neonew.exposed.migrations.helpers.SQLMigration
-import suwayomi.tachidesk.server.database.migration.helpers.MAYBE_TYPE_PREFIX
-
 @Suppress("ClassName", "unused")
-class M0047_ChapterScanlatorIncreaseLength : SQLMigration() {
-    override val sql =
-        """
-        ALTER TABLE CHAPTER ALTER COLUMN SCANLATOR ${MAYBE_TYPE_PREFIX}VARCHAR(256);
-        """.trimIndent()
-}
+class M0052_RenameCategoryOrderColumn :
+    RenameFieldMigration(
+        "Category",
+        INITIAL_ORDER_NAME,
+        "sort_order",
+    )

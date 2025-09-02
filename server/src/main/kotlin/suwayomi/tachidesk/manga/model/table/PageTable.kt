@@ -9,11 +9,12 @@ package suwayomi.tachidesk.manga.model.table
 
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ReferenceOption
+import suwayomi.tachidesk.manga.model.table.columns.unlimitedVarchar
 
 object PageTable : IntIdTable() {
     val index = integer("index")
     val url = varchar("url", 2048)
-    val imageUrl = varchar("image_url", Integer.MAX_VALUE).nullable()
+    val imageUrl = unlimitedVarchar("image_url").nullable()
 
     val chapter = reference("chapter", ChapterTable, ReferenceOption.CASCADE)
 }
