@@ -8,8 +8,6 @@ package suwayomi.tachidesk.manga.impl.download.model
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Queued
-import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
-import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 
 class DownloadQueueItem(
     val chapterId: Int,
@@ -22,6 +20,5 @@ class DownloadQueueItem(
     var progress: Float = 0f,
     var tries: Int = 0,
 ) {
-    override fun toString(): String =
-        "$mangaId - $chapterId | state= $state, tries= $tries, progress= $progress"
+    override fun toString(): String = "$mangaId - $chapterId | state= $state, tries= $tries, progress= $progress"
 }

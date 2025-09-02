@@ -35,10 +35,10 @@ import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Error
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Queued
 import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
-import suwayomi.tachidesk.manga.impl.download.model.OldDownloadStatus
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdate
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdates
+import suwayomi.tachidesk.manga.impl.download.model.OldDownloadStatus
 import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
@@ -234,12 +234,16 @@ object DownloadManager {
                 val mangaIds = items.map { it.mangaId }.toSet()
                 val chapterIds = items.map { it.chapterId }.toSet()
                 transaction {
-                    val mangas = MangaTable.selectAll()
-                        .where { MangaTable.id inList mangaIds }
-                        .associateBy( { it[MangaTable.id].value }, { MangaTable.toDataClass(it) })
-                    val chapters = ChapterTable.selectAll()
-                        .where { ChapterTable.id inList chapterIds }
-                        .associateBy( { it[ChapterTable.id].value }, { ChapterTable.toDataClass(it) })
+                    val mangas =
+                        MangaTable
+                            .selectAll()
+                            .where { MangaTable.id inList mangaIds }
+                            .associateBy({ it[MangaTable.id].value }, { MangaTable.toDataClass(it) })
+                    val chapters =
+                        ChapterTable
+                            .selectAll()
+                            .where { ChapterTable.id inList chapterIds }
+                            .associateBy({ it[ChapterTable.id].value }, { ChapterTable.toDataClass(it) })
                     items.mapNotNull {
                         DownloadChapter(
                             it.chapterIndex,
@@ -423,7 +427,7 @@ object DownloadManager {
                     manga.id,
                     manga.sourceId.toLong(),
                     downloadQueue.size,
-                    0
+                    0,
                 )
             downloadQueue.add(newDownloadChapter)
             triggerSaveDownloadQueue()

@@ -17,7 +17,6 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.DownloadConversion
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
-import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.util.KoreaderHelper
 import suwayomi.tachidesk.manga.impl.util.createComicInfoFile

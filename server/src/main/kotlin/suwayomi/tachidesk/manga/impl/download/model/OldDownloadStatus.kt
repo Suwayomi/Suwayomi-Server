@@ -22,7 +22,6 @@ data class DownloadStatus(
     val queue: List<DownloadQueueItem>,
 )
 
-
 data class DownloadUpdates(
     val status: Status,
     val updates: List<DownloadUpdate>,
