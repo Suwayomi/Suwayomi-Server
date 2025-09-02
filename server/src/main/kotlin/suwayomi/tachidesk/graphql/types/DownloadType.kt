@@ -17,7 +17,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.types.DownloadState.FINISHED
-import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
+import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdate
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType
@@ -71,8 +71,8 @@ class DownloadType(
     val tries: Int,
     val position: Int,
 ) : Node {
-    constructor(downloadChapter: DownloadChapter) : this(
-        downloadChapter.chapter.id,
+    constructor(downloadChapter: DownloadQueueItem) : this(
+        downloadChapter.chapterId,
         downloadChapter.mangaId,
         when (downloadChapter.state) {
             OtherDownloadState.Queued -> DownloadState.QUEUED
@@ -110,7 +110,7 @@ class DownloadUpdate(
 ) : Node {
     constructor(downloadUpdate: DownloadUpdate) : this(
         downloadUpdate.type,
-        DownloadType(downloadUpdate.downloadChapter),
+        DownloadType(downloadUpdate.downloadQueueItem),
     )
 }
 

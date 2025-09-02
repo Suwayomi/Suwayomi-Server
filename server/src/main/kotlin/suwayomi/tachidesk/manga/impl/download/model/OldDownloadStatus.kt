@@ -12,13 +12,19 @@ enum class Status {
     Started,
 }
 
-data class DownloadStatus(
+data class OldDownloadStatus(
     val status: Status,
     val queue: List<DownloadChapter>,
 )
 
+data class DownloadStatus(
+    val status: Status,
+    val queue: List<DownloadQueueItem>,
+)
+
+
 data class DownloadUpdates(
     val status: Status,
     val updates: List<DownloadUpdate>,
-    val initial: List<DownloadChapter>?,
+    val initial: List<DownloadQueueItem>?,
 )

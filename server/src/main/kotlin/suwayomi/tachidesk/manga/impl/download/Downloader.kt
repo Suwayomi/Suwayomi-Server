@@ -17,12 +17,11 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyById
-import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
+import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Error
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Finished
@@ -38,8 +37,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 class Downloader(
     private val scope: CoroutineScope,
-    val sourceId: String,
-    private val downloadQueue: CopyOnWriteArrayList<DownloadChapter>,
+    val sourceId: Long,
+    private val downloadQueue: CopyOnWriteArrayList<DownloadQueueItem>,
     private val notifier: (immediate: Boolean, download: DownloadUpdate?) -> Unit,
     private val onComplete: () -> Unit,
     private val onDownloadFinished: () -> Unit,
@@ -52,7 +51,7 @@ class Downloader(
 
     private var job: Job? = null
     private val availableSourceDownloads
-        get() = downloadQueue.filter { it.manga.sourceId == sourceId }
+        get() = downloadQueue.filter { it.sourceId == sourceId }
 
     class StopDownloadException : Exception("Cancelled download")
 
@@ -64,7 +63,7 @@ class Downloader(
         downloadUpdate: DownloadUpdate?,
         immediate: Boolean,
     ) {
-        val download = downloadUpdate?.downloadChapter
+        val download = downloadUpdate?.downloadQueueItem
         notifier(immediate, downloadUpdate)
         currentCoroutineContext().ensureActive()
         if (download != null && download != availableSourceDownloads.firstOrNull { it.state != Error }) {
@@ -105,7 +104,7 @@ class Downloader(
 
     private fun finishDownload(
         logger: KLogger,
-        download: DownloadChapter,
+        download: DownloadQueueItem,
     ) {
         notifier(true, DownloadUpdate(FINISHED, download))
         downloadQueue -= download
@@ -137,19 +136,21 @@ class Downloader(
                 download.state = Downloading
                 step(DownloadUpdate(PROGRESS, download), true)
 
-                download.chapter = getChapterDownloadReadyById(download.chapter.id)
+                val chapter = getChapterDownloadReadyById(download.chapterId)
 
-                if (download.chapter.pageCount <= 0) {
+                if (chapter.pageCount <= 0) {
                     throw EmptyChapterException()
                 }
 
-                ChapterDownloadHelper.download(download.mangaId, download.chapter.id, download, scope) { downloadChapter, immediate ->
+                download.pageCount = chapter.pageCount
+
+                ChapterDownloadHelper.download(download.mangaId, download.chapterId, download, scope) { downloadChapter, immediate ->
                     step(downloadChapter?.let { DownloadUpdate(PROGRESS, downloadChapter) }, immediate)
                 }
                 download.state = Finished
                 transaction {
                     ChapterTable.update(
-                        { (ChapterTable.manga eq download.mangaId) and (ChapterTable.sourceOrder eq download.chapterIndex) },
+                        { (ChapterTable.id eq download.chapterId) },
                     ) {
                         it[isDownloaded] = true
                     }

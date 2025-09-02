@@ -7,6 +7,7 @@ import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.ArchiveProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.FolderProvider
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
+import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -39,9 +40,9 @@ object ChapterDownloadHelper {
     suspend fun download(
         mangaId: Int,
         chapterId: Int,
-        download: DownloadChapter,
+        download: DownloadQueueItem,
         scope: CoroutineScope,
-        step: suspend (DownloadChapter?, Boolean) -> Unit,
+        step: suspend (DownloadQueueItem?, Boolean) -> Unit,
     ): Boolean = provider(mangaId, chapterId).download().execute(download, scope, step)
 
     // return the appropriate provider based on how the download was saved. For the logic is simple but will evolve when new types of downloads are available
