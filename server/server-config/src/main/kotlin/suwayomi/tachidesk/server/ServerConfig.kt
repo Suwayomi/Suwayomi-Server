@@ -654,26 +654,8 @@ class ServerConfig(
         },
     )
 
-    val koreaderSyncStrategyForward: MutableStateFlow<KoreaderSyncConflictStrategy> by EnumSetting(
-        protoNumber = 65,
-        group = SettingGroup.KOREADER_SYNC,
-        defaultValue = KoreaderSyncConflictStrategy.PROMPT,
-        enumClass = KoreaderSyncConflictStrategy::class,
-        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy")),
-        description = "Strategy to apply when remote progress is newer than local.",
-    )
-
-    val koreaderSyncStrategyBackward: MutableStateFlow<KoreaderSyncConflictStrategy> by EnumSetting(
-        protoNumber = 66,
-        group = SettingGroup.KOREADER_SYNC,
-        defaultValue = KoreaderSyncConflictStrategy.DISABLED,
-        enumClass = KoreaderSyncConflictStrategy::class,
-        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy")),
-        description = "Strategy to apply when remote progress is older than local.",
-    )
-
     val koreaderSyncPercentageTolerance: MutableStateFlow<Double> by DoubleSetting(
-        protoNumber = 67,
+        protoNumber = 65,
         group = SettingGroup.KOREADER_SYNC,
         defaultValue = 0.000000000000001,
         min = 0.000000000000001,
@@ -682,28 +664,28 @@ class ServerConfig(
     )
 
     val jwtTokenExpiry: MutableStateFlow<Duration> by DurationSetting(
-        protoNumber = 68,
+        protoNumber = 66,
         group = SettingGroup.AUTH,
         defaultValue = 5.minutes,
         min = 0.seconds,
     )
 
     val jwtRefreshExpiry: MutableStateFlow<Duration> by DurationSetting(
-        protoNumber = 69,
+        protoNumber = 67,
         group = SettingGroup.AUTH,
         defaultValue = 60.days,
         min = 0.seconds,
     )
 
     val webUIEnabled: MutableStateFlow<Boolean> by BooleanSetting(
-        protoNumber = 70,
+        protoNumber = 78,
         group = SettingGroup.WEB_UI,
         defaultValue = true,
         requiresRestart = true,
     )
 
     val databaseType: MutableStateFlow<DatabaseType> by EnumSetting(
-        protoNumber = 71,
+        protoNumber = 69,
         group = SettingGroup.DATABASE,
         defaultValue = DatabaseType.H2,
         enumClass = DatabaseType::class,
@@ -711,21 +693,39 @@ class ServerConfig(
     )
 
     val databaseUrl: MutableStateFlow<String> by StringSetting(
-        protoNumber = 72,
+        protoNumber = 70,
         group = SettingGroup.DATABASE,
         defaultValue = "postgresql://localhost:5432/suwayomi",
     )
 
     val databaseUsername: MutableStateFlow<String> by StringSetting(
-        protoNumber = 73,
+        protoNumber = 71,
         group = SettingGroup.DATABASE,
         defaultValue = "",
     )
 
     val databasePassword: MutableStateFlow<String> by StringSetting(
-        protoNumber = 74,
+        protoNumber = 72,
         group = SettingGroup.DATABASE,
         defaultValue = "",
+    )
+
+    val koreaderSyncStrategyForward: MutableStateFlow<KoreaderSyncConflictStrategy> by EnumSetting(
+        protoNumber = 73,
+        group = SettingGroup.KOREADER_SYNC,
+        defaultValue = KoreaderSyncConflictStrategy.PROMPT,
+        enumClass = KoreaderSyncConflictStrategy::class,
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy")),
+        description = "Strategy to apply when remote progress is newer than local.",
+    )
+
+    val koreaderSyncStrategyBackward: MutableStateFlow<KoreaderSyncConflictStrategy> by EnumSetting(
+        protoNumber = 74,
+        group = SettingGroup.KOREADER_SYNC,
+        defaultValue = KoreaderSyncConflictStrategy.DISABLED,
+        enumClass = KoreaderSyncConflictStrategy::class,
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy")),
+        description = "Strategy to apply when remote progress is older than local.",
     )
 
     /** ****************************************************************** **/
