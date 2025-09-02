@@ -27,7 +27,8 @@ import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.graphql.types.DownloadConversion
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
-import suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy
+import suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy
+import suwayomi.tachidesk.graphql.types.KoreaderSyncLegacyStrategy
 import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionType
 import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
@@ -599,16 +600,80 @@ class ServerConfig(
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod")),
     )
 
-    val koreaderSyncStrategy: MutableStateFlow<KoreaderSyncStrategy> by EnumSetting(
+    @Deprecated("Use koreaderSyncStrategyForward and koreaderSyncStrategyBackward instead")
+    val koreaderSyncStrategy: MutableStateFlow<KoreaderSyncLegacyStrategy> by MigratedConfigValue(
         protoNumber = 64,
+        defaultValue = KoreaderSyncLegacyStrategy.DISABLED,
         group = SettingGroup.KOREADER_SYNC,
-        defaultValue = KoreaderSyncStrategy.DISABLED,
-        enumClass = KoreaderSyncStrategy::class,
-        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy")),
+        typeInfo =
+            SettingsRegistry.PartialTypeInfo(
+                imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncLegacyStrategy"),
+            ),
+        deprecated =
+        SettingsRegistry.SettingDeprecated(
+            replaceWith = "koreaderSyncStrategyForward, koreaderSyncStrategyBackward",
+            message = "Replaced with koreaderSyncStrategyForward and koreaderSyncStrategyBackward",
+        ),
+        readMigrated = {
+            // This is a best-effort reverse mapping. It's not perfect but covers common cases.
+            when {
+                koreaderSyncStrategyForward.value == KoreaderSyncConflictStrategy.PROMPT &&
+                    koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.PROMPT -> KoreaderSyncLegacyStrategy.PROMPT
+                koreaderSyncStrategyForward.value == KoreaderSyncConflictStrategy.KEEP_REMOTE &&
+                    koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.KEEP_LOCAL -> KoreaderSyncLegacyStrategy.SILENT
+                koreaderSyncStrategyForward.value == KoreaderSyncConflictStrategy.KEEP_LOCAL &&
+                    koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.KEEP_LOCAL -> KoreaderSyncLegacyStrategy.SEND
+                koreaderSyncStrategyForward.value == KoreaderSyncConflictStrategy.KEEP_REMOTE &&
+                    koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.KEEP_REMOTE -> KoreaderSyncLegacyStrategy.RECEIVE
+                else -> KoreaderSyncLegacyStrategy.DISABLED
+            }
+        },
+        setMigrated = { value ->
+            when (value) {
+                KoreaderSyncLegacyStrategy.PROMPT -> {
+                    koreaderSyncStrategyForward.value = KoreaderSyncConflictStrategy.PROMPT
+                    koreaderSyncStrategyBackward.value = KoreaderSyncConflictStrategy.PROMPT
+                }
+                KoreaderSyncLegacyStrategy.SILENT -> {
+                    koreaderSyncStrategyForward.value = KoreaderSyncConflictStrategy.KEEP_REMOTE // Remote is newer
+                    koreaderSyncStrategyBackward.value = KoreaderSyncConflictStrategy.KEEP_LOCAL  // Local is newer
+                }
+                KoreaderSyncLegacyStrategy.SEND -> {
+                    koreaderSyncStrategyForward.value = KoreaderSyncConflictStrategy.KEEP_LOCAL
+                    koreaderSyncStrategyBackward.value = KoreaderSyncConflictStrategy.KEEP_LOCAL
+                }
+                KoreaderSyncLegacyStrategy.RECEIVE -> {
+                    koreaderSyncStrategyForward.value = KoreaderSyncConflictStrategy.KEEP_REMOTE
+                    koreaderSyncStrategyBackward.value = KoreaderSyncConflictStrategy.KEEP_REMOTE
+                }
+                KoreaderSyncLegacyStrategy.DISABLED -> {
+                    koreaderSyncStrategyForward.value = KoreaderSyncConflictStrategy.DISABLED
+                    koreaderSyncStrategyBackward.value = KoreaderSyncConflictStrategy.DISABLED
+                }
+            }
+        },
+    )
+
+    val koreaderSyncStrategyForward: MutableStateFlow<KoreaderSyncConflictStrategy> by EnumSetting(
+        protoNumber = 65,
+        group = SettingGroup.KOREADER_SYNC,
+        defaultValue = KoreaderSyncConflictStrategy.PROMPT,
+        enumClass = KoreaderSyncConflictStrategy::class,
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy")),
+        description = "Strategy to apply when remote progress is newer than local.",
+    )
+
+    val koreaderSyncStrategyBackward: MutableStateFlow<KoreaderSyncConflictStrategy> by EnumSetting(
+        protoNumber = 66,
+        group = SettingGroup.KOREADER_SYNC,
+        defaultValue = KoreaderSyncConflictStrategy.DISABLED,
+        enumClass = KoreaderSyncConflictStrategy::class,
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy")),
+        description = "Strategy to apply when remote progress is older than local.",
     )
 
     val koreaderSyncPercentageTolerance: MutableStateFlow<Double> by DoubleSetting(
-        protoNumber = 65,
+        protoNumber = 67,
         group = SettingGroup.KOREADER_SYNC,
         defaultValue = 0.000000000000001,
         min = 0.000000000000001,
@@ -617,28 +682,28 @@ class ServerConfig(
     )
 
     val jwtTokenExpiry: MutableStateFlow<Duration> by DurationSetting(
-        protoNumber = 66,
+        protoNumber = 68,
         group = SettingGroup.AUTH,
         defaultValue = 5.minutes,
         min = 0.seconds,
     )
 
     val jwtRefreshExpiry: MutableStateFlow<Duration> by DurationSetting(
-        protoNumber = 67,
+        protoNumber = 69,
         group = SettingGroup.AUTH,
         defaultValue = 60.days,
         min = 0.seconds,
     )
 
     val webUIEnabled: MutableStateFlow<Boolean> by BooleanSetting(
-        protoNumber = 68,
+        protoNumber = 70,
         group = SettingGroup.WEB_UI,
         defaultValue = true,
         requiresRestart = true,
     )
 
     val databaseType: MutableStateFlow<DatabaseType> by EnumSetting(
-        protoNumber = 69,
+        protoNumber = 71,
         group = SettingGroup.DATABASE,
         defaultValue = DatabaseType.H2,
         enumClass = DatabaseType::class,
@@ -646,19 +711,19 @@ class ServerConfig(
     )
 
     val databaseUrl: MutableStateFlow<String> by StringSetting(
-        protoNumber = 70,
+        protoNumber = 72,
         group = SettingGroup.DATABASE,
         defaultValue = "postgresql://localhost:5432/suwayomi",
     )
 
     val databaseUsername: MutableStateFlow<String> by StringSetting(
-        protoNumber = 71,
+        protoNumber = 73,
         group = SettingGroup.DATABASE,
         defaultValue = "",
     )
 
     val databasePassword: MutableStateFlow<String> by StringSetting(
-        protoNumber = 72,
+        protoNumber = 74,
         group = SettingGroup.DATABASE,
         defaultValue = "",
     )
