@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.server.database.migration
 
 import de.neonew.exposed.migrations.helpers.SQLMigration
+import suwayomi.tachidesk.server.database.migration.helpers.INITIAL_ORDER_NAME
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -13,6 +14,6 @@ import de.neonew.exposed.migrations.helpers.SQLMigration
 class M0027_AddDefaultCategory : SQLMigration() {
     override val sql: String =
         """
-        INSERT INTO CATEGORY (ID, NAME, IS_DEFAULT, "ORDER", INCLUDE_IN_UPDATE) VALUES (0, 'Default', TRUE, 0, -1)
+        INSERT INTO CATEGORY (ID, NAME, IS_DEFAULT, $INITIAL_ORDER_NAME, INCLUDE_IN_UPDATE) VALUES (0, 'Default', TRUE, 0, -1)
         """.trimIndent()
 }

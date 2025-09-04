@@ -19,7 +19,6 @@ import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.createAppModule
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.local.LocalSource
-import io.github.config4k.registerCustomType
 import io.github.config4k.toConfig
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.json.JavalinJackson
@@ -39,6 +38,7 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 import suwayomi.tachidesk.global.impl.KcefWebView.Companion.toCefCookie
 import suwayomi.tachidesk.graphql.types.AuthMode
+import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
@@ -48,8 +48,7 @@ import suwayomi.tachidesk.manga.impl.util.lang.renameTo
 import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
-import suwayomi.tachidesk.server.util.DurationType
-import suwayomi.tachidesk.server.util.MutableStateFlowType
+import suwayomi.tachidesk.server.util.ConfigTypeRegistration
 import suwayomi.tachidesk.server.util.SystemTray
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -116,6 +115,13 @@ data class ProxySettings(
     val proxyPassword: String,
 )
 
+data class DatabaseSettings(
+    val databaseType: DatabaseType,
+    val databaseUrl: String,
+    val databaseUsername: String,
+    val databasePassword: String,
+)
+
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
 val androidCompat by lazy { AndroidCompat() }
@@ -176,8 +182,7 @@ fun applicationSetup() {
     mainLoop.start()
 
     // register Tachidesk's config which is dubbed "ServerConfig"
-    registerCustomType(MutableStateFlowType())
-    registerCustomType(DurationType())
+    ConfigTypeRegistration.registerCustomTypes()
     GlobalConfigManager.registerModule(
         ServerConfig.register { GlobalConfigManager.config },
     )
@@ -367,6 +372,31 @@ fun applicationSetup() {
     databaseUp()
 
     LocalSource.register()
+
+    serverConfig.subscribeTo(
+        combine<Any, DatabaseSettings>(
+            serverConfig.databaseType,
+            serverConfig.databaseUrl,
+            serverConfig.databaseUsername,
+            serverConfig.databasePassword,
+        ) { vargs ->
+            DatabaseSettings(
+                vargs[0] as DatabaseType,
+                vargs[1] as String,
+                vargs[2] as String,
+                vargs[3] as String,
+            )
+        }.distinctUntilChanged(),
+        { (databaseType, databaseUrl, databaseUsername, _) ->
+            logger.info {
+                "Database changed - type=$databaseType url=$databaseUrl, username=$databaseUsername, password=[REDACTED]"
+            }
+            databaseUp()
+
+            LocalSource.register()
+        },
+        ignoreInitialValue = true,
+    )
 
     // create system tray
     serverConfig.subscribeTo(

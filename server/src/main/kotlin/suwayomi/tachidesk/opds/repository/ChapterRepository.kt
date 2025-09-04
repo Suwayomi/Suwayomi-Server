@@ -6,7 +6,6 @@ import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -25,7 +24,7 @@ import suwayomi.tachidesk.server.serverConfig
 
 object ChapterRepository {
     private val opdsItemsPerPageBounded: Int
-        get() = serverConfig.opdsItemsPerPage.value.coerceIn(10, 5000)
+        get() = serverConfig.opdsItemsPerPage.value
 
     private fun ResultRow.toOpdsChapterListAcqEntry(): OpdsChapterListAcqEntry =
         OpdsChapterListAcqEntry(

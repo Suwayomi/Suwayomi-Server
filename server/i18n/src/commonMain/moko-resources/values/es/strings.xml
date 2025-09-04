@@ -118,4 +118,8 @@
     <string name="label_close">Cerrar</string>
     <string name="webview_label_copy">Copiar al portapapeles</string>
     <string name="webview_label_copy_description">La copia automática al portapapeles falló, por favor use la entrada de abajo para copiar el valor manualmente.</string>
+    <string name="opds_chapter_status_synced">🌐</string>
+    <string name="webview_label_login_required">Su configuración requiere que inicie sesión. Introduzca su nombre de usuario y contraseña.</string>
+    <string name="opds_linktitle_first_page">Primera página</string>
+    <string name="opds_linktitle_last_page">Última página</string>
 </resources>

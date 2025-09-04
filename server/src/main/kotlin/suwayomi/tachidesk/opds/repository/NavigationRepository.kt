@@ -30,7 +30,7 @@ import java.util.Locale
 
 object NavigationRepository {
     private val opdsItemsPerPageBounded: Int
-        get() = serverConfig.opdsItemsPerPage.value.coerceIn(10, 5000)
+        get() = serverConfig.opdsItemsPerPage.value
 
     private val rootSectionDetails: Map<String, Triple<String, StringResource, StringResource>> =
         mapOf(

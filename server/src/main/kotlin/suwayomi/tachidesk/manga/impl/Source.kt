@@ -134,7 +134,6 @@ object Source {
         position: Int,
         value: String,
         getValue: (Preference) -> Any = { pref ->
-            println(jsonMapper::class.java.name)
             when (pref.defaultValueType) {
                 "String" -> value
                 "Boolean" -> value.toBoolean()

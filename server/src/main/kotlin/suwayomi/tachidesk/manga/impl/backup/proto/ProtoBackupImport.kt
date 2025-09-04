@@ -31,8 +31,6 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.global.impl.GlobalMeta
-import suwayomi.tachidesk.graphql.mutations.SettingsMutation
-import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.graphql.types.toStatus
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.Category.modifyCategoriesMetas
@@ -42,12 +40,12 @@ import suwayomi.tachidesk.manga.impl.Manga.modifyMangasMetas
 import suwayomi.tachidesk.manga.impl.Source.modifySourceMetas
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.ValidationResult
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.validate
+import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupHistory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupServerSettings
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSource
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupTracking
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
@@ -58,7 +56,6 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.server.database.dbTransaction
-import suwayomi.tachidesk.server.serverConfig
 import java.io.InputStream
 import java.util.Date
 import java.util.Timer
@@ -220,7 +217,7 @@ object ProtoBackupImport : ProtoBackupBase() {
             BackupRestoreState.RestoringSettings(restoreCategories + restoreMeta + restoreSettings, restoreAmount),
         )
 
-        restoreServerSettings(backup.serverSettings)
+        BackupSettingsHandler.restore(backup.serverSettings)
 
         // Store source mapping for error messages
         val sourceMapping = backup.getSourceMap()
@@ -562,22 +559,6 @@ object ProtoBackupImport : ProtoBackupBase() {
         backupSources: List<BackupSource>,
     ) {
         modifySourceMetas(userId, backupSources.associateBy { it.sourceId }.mapValues { it.value.meta })
-    }
-
-    private fun restoreServerSettings(backupServerSettings: BackupServerSettings?) {
-        if (backupServerSettings == null) {
-            return
-        }
-
-        SettingsMutation().updateSettings(
-            backupServerSettings.copy(
-                // legacy settings cannot overwrite new settings
-                basicAuthEnabled =
-                    backupServerSettings.basicAuthEnabled.takeIf {
-                        serverConfig.authMode.value == AuthMode.NONE
-                    },
-            ),
-        )
     }
 
     private fun TrackRecordDataClass.forComparison() = this.copy(id = 0, mangaId = 0)

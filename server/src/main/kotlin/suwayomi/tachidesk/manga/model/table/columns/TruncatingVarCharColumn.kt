@@ -4,6 +4,8 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.VarCharColumnType
+import suwayomi.tachidesk.graphql.types.DatabaseType
+import suwayomi.tachidesk.server.serverConfig
 
 class TruncatingVarCharColumn(
     private val table: String,
@@ -34,3 +36,12 @@ fun Table.truncatingVarchar(
     length: Int,
     collate: String? = null,
 ): Column<String> = registerColumn(name, TruncatingVarCharColumn(this.tableName, name, length, collate))
+
+fun Table.unlimitedVarchar(
+    name: String,
+    collate: String? = null,
+): Column<String> =
+    when (serverConfig.databaseType.value) {
+        DatabaseType.H2 -> truncatingVarchar(name, Int.MAX_VALUE, collate)
+        DatabaseType.POSTGRESQL -> text(name, collate)
+    }
