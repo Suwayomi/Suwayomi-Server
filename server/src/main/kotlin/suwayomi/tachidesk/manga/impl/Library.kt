@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.local.LocalSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -75,6 +76,19 @@ object Library {
         inLibrary: Boolean,
     ) {
         scope.launch {
+            val sourceId =
+                transaction {
+                    MangaTable
+                        .select(MangaTable.sourceReference)
+                        .where { MangaTable.id eq mangaId }
+                        .first()
+                        .get(MangaTable.sourceReference)
+                }
+
+            if (sourceId == LocalSource.ID) {
+                return@launch
+            }
+
             try {
                 if (inLibrary) {
                     ThumbnailDownloadHelper.download(mangaId)
