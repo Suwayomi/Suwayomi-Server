@@ -339,6 +339,31 @@ fun applicationSetup() {
                         "server.authPassword",
                         toType = { it.unwrapped() as? String },
                     )
+
+                // Migrate KOReader sync strategy from single to forward/backward strategies
+                try {
+                    val oldStrategy = config.getString("server.koreaderSyncStrategy")
+                    val (forward, backward) =
+                        when (oldStrategy.uppercase()) {
+                            "PROMPT" -> "PROMPT" to "PROMPT"
+                            "SILENT" -> "KEEP_REMOTE" to "KEEP_LOCAL"
+                            "SEND" -> "KEEP_LOCAL" to "KEEP_LOCAL"
+                            "RECEIVE" -> "KEEP_REMOTE" to "KEEP_REMOTE"
+                            "DISABLED" -> "DISABLED" to "DISABLED"
+                            else -> null to null
+                        }
+
+                    if (forward != null && backward != null) {
+                        updatedConfig =
+                            updatedConfig
+                                .withValue("server.koreaderSyncStrategyForward", forward.toConfig("internal").getValue("internal"))
+                                .withValue("server.koreaderSyncStrategyBackward", backward.toConfig("internal").getValue("internal"))
+                                .withoutPath("server.koreaderSyncStrategy")
+                    }
+                } catch (_: ConfigException.Missing) {
+                    // Key doesn't exist, no migration needed
+                }
+
                 updatedConfig
             }
         }
