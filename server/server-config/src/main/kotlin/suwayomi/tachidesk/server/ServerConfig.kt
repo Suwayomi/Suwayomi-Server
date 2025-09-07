@@ -203,6 +203,7 @@ class ServerConfig(
             SettingsRegistry.SettingDeprecated(
                 replaceWith = "autoDownloadNewChaptersLimit",
                 message = "Replaced with autoDownloadNewChaptersLimit",
+                migrateConfigValue = { it.unwrapped() as? Int }
             ),
         readMigrated = { autoDownloadNewChaptersLimit.value },
         setMigrated = { autoDownloadNewChaptersLimit.value = it },
