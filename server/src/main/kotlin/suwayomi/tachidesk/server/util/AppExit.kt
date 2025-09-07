@@ -19,6 +19,7 @@ enum class ExitCode(
     MutexCheckFailedTachideskRunning(1),
     MutexCheckFailedAnotherAppRunning(2),
     WebUISetupFailure(3),
+    ConfigMigrationMisconfiguredFailure(4),
 }
 
 fun shutdownApp(exitCode: ExitCode) {
