@@ -8,11 +8,10 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.global.impl.util.Bcrypt
 import suwayomi.tachidesk.global.impl.util.Jwt
-import suwayomi.tachidesk.global.model.table.UserTable
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
-import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.user.Permissions
 import suwayomi.tachidesk.server.user.UserType
@@ -58,13 +57,13 @@ class UserMutation {
 
         val user =
             transaction {
-                UserTable
+                UserAccountTable
                     .selectAll()
-                    .where { UserTable.username.lowerCase() eq input.username.lowercase() }
+                    .where { UserAccountTable.username.lowerCase() eq input.username.lowercase() }
                     .firstOrNull()
             }
-        if (user != null && Bcrypt.verify(user[UserTable.password], input.password)) {
-            val jwt = Jwt.generateJwt(user[UserTable.id].value)
+        if (user != null && Bcrypt.verify(user[UserAccountTable.password], input.password)) {
+            val jwt = Jwt.generateJwt(user[UserAccountTable.id].value)
             return LoginPayload(
                 clientMutationId = input.clientMutationId,
                 accessToken = jwt.accessToken,
@@ -113,16 +112,16 @@ class UserMutation {
         val (clientMutationId, username, password) = input
         transaction {
             val userExists =
-                UserTable
+                UserAccountTable
                     .selectAll()
-                    .where { UserTable.username.lowerCase() eq username.lowercase() }
+                    .where { UserAccountTable.username.lowerCase() eq username.lowercase() }
                     .isNotEmpty()
             if (userExists) {
                 throw Exception("Username already exists")
             } else {
-                UserTable.insert {
-                    it[UserTable.username] = username
-                    it[UserTable.password] = Bcrypt.encryptPassword(password)
+                UserAccountTable.insert {
+                    it[UserAccountTable.username] = username
+                    it[UserAccountTable.password] = Bcrypt.encryptPassword(password)
                 }
             }
         }
@@ -149,8 +148,8 @@ class UserMutation {
 
         val (clientMutationId, password) = input
         transaction {
-            UserTable.update({ UserTable.id eq userId }) {
-                it[UserTable.password] = Bcrypt.encryptPassword(password)
+            UserAccountTable.update({ UserAccountTable.id eq userId }) {
+                it[UserAccountTable.password] = Bcrypt.encryptPassword(password)
             }
         }
 

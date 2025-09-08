@@ -9,13 +9,12 @@ package suwayomi.tachidesk.manga.model.table
 
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ReferenceOption
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.leftJoin
-import suwayomi.tachidesk.global.model.table.UserTable
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 
 object MangaUserTable : IntIdTable() {
     val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
-    val user = reference("user", UserTable, ReferenceOption.CASCADE)
+    val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
     val inLibrary = bool("in_library").default(false)
     val inLibraryAt = long("in_library_at").default(0)
 }

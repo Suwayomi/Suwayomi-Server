@@ -14,6 +14,6 @@ import org.jetbrains.exposed.sql.Table
  * Users registered in Tachidesk.
  */
 object UserRolesTable : Table() {
-    val user = reference("user", UserTable, ReferenceOption.CASCADE)
+    val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
     val role = varchar("role", 24)
 }

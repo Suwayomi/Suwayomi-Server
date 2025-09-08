@@ -16,5 +16,5 @@ import org.jetbrains.exposed.sql.ReferenceOption
 object GlobalMetaTable : IntIdTable() {
     val key = varchar("key", 256)
     val value = varchar("value", 4096)
-    val user = reference("user", UserTable, ReferenceOption.CASCADE)
+    val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
 }

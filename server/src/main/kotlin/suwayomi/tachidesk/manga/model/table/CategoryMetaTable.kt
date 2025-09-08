@@ -9,7 +9,7 @@ package suwayomi.tachidesk.manga.model.table
 
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ReferenceOption
-import suwayomi.tachidesk.global.model.table.UserTable
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable.ref
 
 /**
@@ -19,5 +19,5 @@ object CategoryMetaTable : IntIdTable() {
     val key = varchar("key", 256)
     val value = varchar("value", 4096)
     val ref = reference("category_ref", CategoryTable, ReferenceOption.CASCADE)
-    val user = reference("user", UserTable, ReferenceOption.CASCADE)
+    val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
 }

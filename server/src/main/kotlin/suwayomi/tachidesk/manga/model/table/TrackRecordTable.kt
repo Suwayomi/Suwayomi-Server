@@ -9,7 +9,7 @@ package suwayomi.tachidesk.manga.model.table
 
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ReferenceOption
-import suwayomi.tachidesk.global.model.table.UserTable
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.manga.model.table.columns.truncatingVarchar
 
 object TrackRecordTable : IntIdTable() {
@@ -26,5 +26,5 @@ object TrackRecordTable : IntIdTable() {
     val startDate = long("start_date")
     val finishDate = long("finish_date")
     val private = bool("private").default(false)
-    val user = reference("user", UserTable, ReferenceOption.CASCADE)
+    val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
 }
