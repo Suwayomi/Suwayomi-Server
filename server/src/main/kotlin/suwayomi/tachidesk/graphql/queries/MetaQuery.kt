@@ -132,10 +132,10 @@ class MetaQuery {
         last: Int? = null,
         offset: Int? = null,
     ): GlobalMetaNodeList {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val queryResults =
             transaction {
-                val res = GlobalMetaTable.selectAll()
+                val res = GlobalMetaTable.selectAll().where { GlobalMetaTable.user eq userId }
 
                 res.applyOps(condition, filter)
 

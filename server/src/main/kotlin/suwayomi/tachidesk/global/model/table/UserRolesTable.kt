@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.manga.model.table
+package suwayomi.tachidesk.global.model.table
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -7,16 +7,13 @@ package suwayomi.tachidesk.manga.model.table
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ReferenceOption
-import suwayomi.tachidesk.global.model.table.UserAccountTable
+import org.jetbrains.exposed.sql.Table
 
 /**
- * Metadata storage for clients, about Source with id == [ref].
+ * Users registered in Tachidesk.
  */
-object SourceMetaTable : IntIdTable() {
-    val key = varchar("key", 256)
-    val value = varchar("value", 4096)
-    val ref = long("source_ref")
+object UserRolesTable : Table() {
     val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
+    val role = varchar("role", 24)
 }

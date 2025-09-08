@@ -35,9 +35,9 @@ class UpdateMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: UpdateLibraryInput,
     ): CompletableFuture<DataFetcherResult<UpdateLibraryPayload?>> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         updater.addCategoriesToUpdateQueue(
-            Category.getCategoryList().filter { input.categories?.contains(it.id) ?: true },
+            Category.getCategoryList(userId).filter { input.categories?.contains(it.id) ?: true },
             clear = true,
             forceAll = !input.categories.isNullOrEmpty(),
         )
@@ -74,7 +74,7 @@ class UpdateMutation {
             dataFetchingEnvironment,
             UpdateLibraryInput(
                 clientMutationId = input.clientMutationId,
-                categories = null,
+                categories = null, // todo filter by user's categories
             ),
         )
 
@@ -109,7 +109,7 @@ class UpdateMutation {
             dataFetchingEnvironment,
             UpdateLibraryInput(
                 clientMutationId = input.clientMutationId,
-                categories = input.categories,
+                categories = input.categories, // todo filter by user's categories
             ),
         )
 

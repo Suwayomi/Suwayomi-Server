@@ -14,12 +14,18 @@ sealed class UserType {
         val id: Int,
     ) : UserType()
 
+    class User(
+        val id: Int,
+        val permissions: List<Permissions>,
+    ) : UserType()
+
     data object Visitor : UserType()
 }
 
 fun UserType.requireUser(): Int =
     when (this) {
         is UserType.Admin -> id
+        is UserType.User -> id
         UserType.Visitor -> throw UnauthorizedException()
     }
 
@@ -31,6 +37,8 @@ fun UserType.requireUserWithBasicFallback(ctx: Context): Int =
             ctx.header("WWW-Authenticate", "Basic")
             throw UnauthorizedException()
         }
+
+        is UserType.User -> id
     }
 
 fun getUserFromToken(token: String?): UserType {
@@ -43,6 +51,19 @@ fun getUserFromToken(token: String?): UserType {
     }
 
     return Jwt.verifyJwt(token)
+}
+
+fun UserType.requirePermissions(vararg permissions: Permissions) {
+    when (this) {
+        is UserType.Admin -> Unit
+        is UserType.User -> {
+            val userPermissions = this.permissions
+            if (!permissions.all { it in userPermissions }) {
+                throw ForbiddenException()
+            }
+        }
+        UserType.Visitor -> throw UnauthorizedException()
+    }
 }
 
 fun getUserFromContext(ctx: Context): UserType {

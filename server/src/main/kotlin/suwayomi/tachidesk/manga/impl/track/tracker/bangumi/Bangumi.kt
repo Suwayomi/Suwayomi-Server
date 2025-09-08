@@ -1,6 +1,8 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.bangumi
 
 import android.annotation.StringRes
+import io.github.reactivecircus.cache4k.Cache
+import io.github.reactivecircus.cache4k.Cache.Builder.Companion.invoke
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
 import suwayomi.tachidesk.manga.impl.track.tracker.bangumi.dto.BGMOAuth
@@ -9,6 +11,8 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration.Companion.hours
 
 class Bangumi(
     id: Int,
@@ -27,19 +31,39 @@ class Bangumi(
 
     private val json: Json by injectLazy()
 
-    private val interceptor by lazy { BangumiInterceptor(this) }
+    private val interceptors = ConcurrentHashMap<Int, BangumiInterceptor>()
+    private val apis =
+        Cache
+            .Builder<Int, BangumiApi>()
+            .expireAfterAccess(1.hours)
+            .build()
 
-    private val api by lazy { BangumiApi(id, client, interceptor) }
+    fun interceptor(userId: Int): BangumiInterceptor =
+        interceptors.getOrPut(userId) {
+            BangumiInterceptor(userId, this)
+        }
+
+    suspend fun api(userId: Int): BangumiApi =
+        apis.get(userId) {
+            BangumiApi(id, client, interceptor(userId))
+        }
 
     override val supportsPrivateTracking: Boolean = true
 
-    override fun getScoreList(): List<String> = SCORE_LIST
+    override fun getScoreList(userId: Int): List<String> = SCORE_LIST
 
-    override fun displayScore(track: Track): String = track.score.toInt().toString()
+    override fun displayScore(
+        userId: Int,
+        track: Track,
+    ): String = track.score.toInt().toString()
 
-    private suspend fun add(track: Track): Track = api.addLibManga(track)
+    private suspend fun add(
+        userId: Int,
+        track: Track,
+    ): Track = api(userId).addLibManga(track)
 
     override suspend fun update(
+        userId: Int,
         track: Track,
         didReadChapter: Boolean,
     ): Track {
@@ -53,14 +77,15 @@ class Bangumi(
             }
         }
 
-        return api.updateLibManga(track)
+        return api(userId).updateLibManga(track)
     }
 
     override suspend fun bind(
+        userId: Int,
         track: Track,
         hasReadChapters: Boolean,
     ): Track {
-        val statusTrack = api.statusLibManga(track, getUsername())
+        val statusTrack = api(userId).statusLibManga(track, getUsername(userId))
         return if (statusTrack != null) {
             track.copyPersonalFrom(statusTrack, copyRemotePrivate = false)
             track.library_id = statusTrack.library_id
@@ -71,28 +96,37 @@ class Bangumi(
                 track.status = if (hasReadChapters) READING else statusTrack.status
             }
 
-            update(track)
+            update(userId, track)
         } else {
             // Set default fields if it's not found in the list
             track.status = if (hasReadChapters) READING else PLAN_TO_READ
             track.score = 0.0
-            add(track)
+            add(userId, track)
         }
     }
 
-    override suspend fun search(query: String): List<TrackSearch> = api.search(query)
+    override suspend fun search(
+        userId: Int,
+        query: String,
+    ): List<TrackSearch> = api(userId).search(query)
 
-    override suspend fun refresh(track: Track): Track {
-        val remoteStatusTrack = api.statusLibManga(track, getUsername()) ?: throw Exception("Could not find manga")
+    override suspend fun refresh(
+        userId: Int,
+        track: Track,
+    ): Track {
+        val remoteStatusTrack = api(userId).statusLibManga(track, getUsername(userId)) ?: throw Exception("Could not find manga")
         track.copyPersonalFrom(remoteStatusTrack)
         return track
     }
 
     override fun authUrl(): String = BangumiApi.authUrl().toString()
 
-    override suspend fun authCallback(url: String) {
+    override suspend fun authCallback(
+        userId: Int,
+        url: String,
+    ) {
         val code = url.extractToken("code") ?: throw IOException("cannot find token")
-        login(code)
+        login(userId, code)
     }
 
     override fun getLogo() = "/static/tracker/bangumi.png"
@@ -117,38 +151,45 @@ class Bangumi(
     override fun getCompletionStatus(): Int = COMPLETED
 
     override suspend fun login(
+        userId: Int,
         username: String,
         password: String,
-    ) = login(password)
+    ) = login(userId, password)
 
-    suspend fun login(code: String) {
+    suspend fun login(
+        userId: Int,
+        code: String,
+    ) {
         try {
-            val oauth = api.accessToken(code)
-            interceptor.newAuth(oauth)
+            val oauth = api(userId).accessToken(code)
+            interceptor(userId).newAuth(oauth)
             // Users can set a 'username' (not nickname) once which effectively
             // replaces the stringified ID in certain queries.
             // If no username is set, the API returns the user ID as a strings
-            val username = api.getUsername()
-            saveCredentials(username, oauth.accessToken)
+            val username = api(userId).getUsername()
+            saveCredentials(userId, username, oauth.accessToken)
         } catch (_: Throwable) {
-            logout()
+            logout(userId)
         }
     }
 
-    fun saveToken(oauth: BGMOAuth?) {
-        trackPreferences.setTrackToken(this, json.encodeToString(oauth))
+    fun saveToken(
+        userId: Int,
+        oauth: BGMOAuth?,
+    ) {
+        trackPreferences.setTrackToken(userId, this, json.encodeToString(oauth))
     }
 
-    fun restoreToken(): BGMOAuth? =
+    fun restoreToken(userId: Int): BGMOAuth? =
         try {
-            json.decodeFromString<BGMOAuth>(trackPreferences.getTrackToken(this)!!)
+            json.decodeFromString<BGMOAuth>(trackPreferences.getTrackToken(userId, this)!!)
         } catch (_: Exception) {
             null
         }
 
-    override fun logout() {
-        super.logout()
-        trackPreferences.setTrackToken(this, null)
-        interceptor.newAuth(null)
+    override suspend fun logout(userId: Int) {
+        super.logout(userId)
+        trackPreferences.setTrackToken(userId, this, null)
+        interceptor(userId).newAuth(null)
     }
 }

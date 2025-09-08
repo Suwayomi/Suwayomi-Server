@@ -35,11 +35,11 @@ class BackupMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: RestoreBackupInput,
     ): CompletableFuture<RestoreBackupPayload> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, backup) = input
 
         return future {
-            val restoreId = ProtoBackupImport.restore(backup.content())
+            val restoreId = ProtoBackupImport.restore(userId, backup.content())
 
             withTimeout(10.seconds) {
                 ProtoBackupImport.notifyFlow.first {
@@ -66,11 +66,12 @@ class BackupMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: CreateBackupInput? = null,
     ): CreateBackupPayload {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val filename = Backup.getFilename()
 
         val backup =
             ProtoBackupExport.createBackup(
+                userId,
                 BackupFlags(
                     includeManga = true,
                     includeCategories = input?.includeCategories ?: true,

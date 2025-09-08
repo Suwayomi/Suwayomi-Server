@@ -156,6 +156,7 @@ cronUtils = "com.cronutils:cron-utils:9.2.1"
 kcef = "dev.datlag:kcef:2024.04.20.4"
 
 # User
+bcrypt = "at.favre.lib:bcrypt:0.10.2"
 jwt = "com.auth0:java-jwt:4.5.0"
 
 # lint - used for renovate to update ktlint version

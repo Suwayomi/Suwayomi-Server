@@ -663,6 +663,12 @@ class ServerConfig(
         defaultValue = "",
     )
 
+    val multiUser: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 73,
+        defaultValue = false,
+        group = SettingGroup.AUTH,
+    )
+
     /** ****************************************************************** **/
     /**                                                                    **/
     /**                          Renamed settings                          **/

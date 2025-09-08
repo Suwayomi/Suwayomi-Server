@@ -23,10 +23,6 @@ object ChapterTable : IntIdTable() {
     val chapter_number = float("chapter_number").default(-1f)
     val scanlator = truncatingVarchar("scanlator", 256).nullable()
 
-    val isRead = bool("read").default(false)
-    val isBookmarked = bool("bookmark").default(false)
-    val lastPageRead = integer("last_page_read").default(0)
-    val lastReadAt = long("last_read_at").default(0)
     val fetchedAt = long("fetched_at").default(0)
 
     val sourceOrder = integer("source_order")
@@ -44,6 +40,7 @@ object ChapterTable : IntIdTable() {
 }
 
 fun ChapterTable.toDataClass(
+    userId: Int,
     chapterEntry: ResultRow,
     includeChapterCount: Boolean = true,
     includeChapterMeta: Boolean = true,
@@ -55,10 +52,10 @@ fun ChapterTable.toDataClass(
     chapterNumber = chapterEntry[chapter_number],
     scanlator = chapterEntry[scanlator],
     mangaId = chapterEntry[manga].value,
-    read = chapterEntry[isRead],
-    bookmarked = chapterEntry[isBookmarked],
-    lastPageRead = chapterEntry[lastPageRead],
-    lastReadAt = chapterEntry[lastReadAt],
+    read = chapterEntry.getOrNull(ChapterUserTable.isRead) ?: false,
+    bookmarked = chapterEntry.getOrNull(ChapterUserTable.isBookmarked) ?: false,
+    lastPageRead = chapterEntry.getOrNull(ChapterUserTable.lastPageRead) ?: 0,
+    lastReadAt = chapterEntry.getOrNull(ChapterUserTable.lastReadAt) ?: 0,
     index = chapterEntry[sourceOrder],
     fetchedAt = chapterEntry[fetchedAt],
     realUrl = chapterEntry[realUrl],
@@ -78,7 +75,7 @@ fun ChapterTable.toDataClass(
         },
     meta =
         if (includeChapterMeta) {
-            getChapterMetaMap(chapterEntry[id])
+            getChapterMetaMap(userId, chapterEntry[id])
         } else {
             emptyMap()
         },

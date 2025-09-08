@@ -178,6 +178,7 @@ class DownloadMutation {
 
         return future {
             asDataFetcherResult {
+                dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
                 DownloadManager.dequeue(DownloadManager.EnqueueInput(chapters))
 
                 DequeueChapterDownloadsPayload(

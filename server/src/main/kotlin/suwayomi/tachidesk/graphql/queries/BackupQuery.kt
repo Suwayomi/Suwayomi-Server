@@ -34,8 +34,8 @@ class BackupQuery {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: ValidateBackupInput,
     ): ValidateBackupResult {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        val result = ProtoBackupValidator.validate(input.backup.content())
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val result = ProtoBackupValidator.validate(userId, input.backup.content())
         return ValidateBackupResult(
             result.missingSourceIds.map { ValidateBackupSource(it.first, it.second) },
             result.missingTrackers.map { ValidateBackupTracker(it) },

@@ -144,7 +144,8 @@ class TrackQuery {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (queryResults, resultsAsType) =
             run {
-                var res = TrackerManager.services.map { TrackerType(it) }
+                val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+                var res = TrackerManager.services.map { TrackerType(it, userId) }
 
                 if (condition != null) {
                     res =
@@ -423,7 +424,8 @@ class TrackQuery {
         dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val queryResults =
             transaction {
-                val res = TrackRecordTable.selectAll()
+                val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+                val res = TrackRecordTable.selectAll().where { TrackRecordTable.user eq userId }
 
                 res.applyOps(condition, filter)
 
@@ -508,16 +510,16 @@ class TrackQuery {
         input: SearchTrackerInput,
     ): CompletableFuture<SearchTrackerPayload> =
         future {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val tracker =
                 requireNotNull(TrackerManager.getTracker(input.trackerId)) {
                     "Tracker not found"
                 }
-            require(tracker.isLoggedIn) {
+            require(tracker.isLoggedIn(userId)) {
                 "Tracker needs to be logged-in to search"
             }
             SearchTrackerPayload(
-                tracker.search(input.query).insertAll().map {
+                tracker.search(userId, input.query).insertAll().map {
                     TrackSearchType(it)
                 },
             )

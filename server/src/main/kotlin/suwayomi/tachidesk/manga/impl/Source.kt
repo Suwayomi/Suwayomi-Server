@@ -169,14 +169,18 @@ object Source {
         }
 
     fun modifyMeta(
+        userId: Int,
         sourceId: Long,
         key: String,
         value: String,
     ) {
-        modifySourceMetas(mapOf(sourceId to mapOf(key to value)))
+        modifySourceMetas(userId, mapOf(sourceId to mapOf(key to value)))
     }
 
-    fun modifySourceMetas(metaBySourceIds: Map<Long, Map<String, String>>) {
+    fun modifySourceMetas(
+        userId: Int,
+        metaBySourceIds: Map<Long, Map<String, String>>,
+    ) {
         transaction {
             val sourceIds = metaBySourceIds.keys
             val metaKeys = metaBySourceIds.flatMap { it.value.keys }
@@ -184,8 +188,10 @@ object Source {
             val dbMetaBySourceId =
                 SourceMetaTable
                     .selectAll()
-                    .where { (SourceMetaTable.ref inList sourceIds) and (SourceMetaTable.key inList metaKeys) }
-                    .groupBy { it[SourceMetaTable.ref] }
+                    .where {
+                        (SourceMetaTable.ref inList sourceIds) and (SourceMetaTable.key inList metaKeys) and
+                            (SourceMetaTable.user eq userId)
+                    }.groupBy { it[SourceMetaTable.ref] }
 
             val existingMetaByMetaId =
                 sourceIds.flatMap { sourceId ->
@@ -224,6 +230,7 @@ object Source {
                     this[SourceMetaTable.ref] = sourceId
                     this[SourceMetaTable.key] = entry.key
                     this[SourceMetaTable.value] = entry.value
+                    this[SourceMetaTable.user] = userId
                 }
             }
         }

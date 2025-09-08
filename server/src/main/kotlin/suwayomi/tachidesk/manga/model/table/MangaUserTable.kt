@@ -9,15 +9,20 @@ package suwayomi.tachidesk.manga.model.table
 
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ReferenceOption
+import org.jetbrains.exposed.sql.leftJoin
 import suwayomi.tachidesk.global.model.table.UserAccountTable
-import suwayomi.tachidesk.manga.model.table.CategoryMetaTable.ref
 
-/**
- * Metadata storage for clients, about Category with id == [ref].
- */
-object CategoryMetaTable : IntIdTable() {
-    val key = varchar("key", 256)
-    val value = varchar("value", 4096)
-    val ref = reference("category_ref", CategoryTable, ReferenceOption.CASCADE)
+object MangaUserTable : IntIdTable() {
+    val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
     val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
+    val inLibrary = bool("in_library").default(false)
+    val inLibraryAt = long("in_library_at").default(0)
 }
+
+fun MangaTable.getWithUserData(userId: Int) =
+    leftJoin(
+        MangaUserTable,
+        onColumn = { MangaTable.id },
+        otherColumn = { MangaUserTable.manga },
+        additionalConstraint = { MangaUserTable.user eq userId },
+    )
