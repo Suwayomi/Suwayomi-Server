@@ -197,22 +197,22 @@ object ProtoBackupImport : ProtoBackupBase() {
         val getRestoreAmount = { size: Int -> size + restoreCategories + restoreMeta + restoreSettings }
         val restoreAmount = getRestoreAmount(backup.backupManga.size)
 
-        updateRestoreState(id, BackupRestoreState.RestoringCategories(restoreCategories, restoreAmount))
+        updateRestoreState(
+            id,
+            BackupRestoreState.RestoringSettings(restoreSettings, restoreAmount),
+        )
+
+        BackupSettingsHandler.restore(backup.serverSettings)
+
+        updateRestoreState(id, BackupRestoreState.RestoringCategories(restoreSettings + restoreCategories, restoreAmount))
 
         val categoryMapping = restoreCategories(backup.backupCategories)
 
-        updateRestoreState(id, BackupRestoreState.RestoringMeta(restoreCategories + restoreMeta, restoreAmount))
+        updateRestoreState(id, BackupRestoreState.RestoringMeta(restoreSettings + restoreCategories + restoreMeta, restoreAmount))
 
         restoreGlobalMeta(backup.meta)
 
         restoreSourceMeta(backup.backupSources)
-
-        updateRestoreState(
-            id,
-            BackupRestoreState.RestoringSettings(restoreCategories + restoreMeta + restoreSettings, restoreAmount),
-        )
-
-        BackupSettingsHandler.restore(backup.serverSettings)
 
         // Store source mapping for error messages
         val sourceMapping = backup.getSourceMap()
