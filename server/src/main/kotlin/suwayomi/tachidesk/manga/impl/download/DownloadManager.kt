@@ -191,13 +191,11 @@ object DownloadManager {
         }
 
         if (immediate) {
+            val status = getStatus()
             scope.launch {
-                if (statusFlow.subscriptionCount.value > 0) {
-                    val status = getStatus()
-                    statusFlow.emit(status)
-                }
+                statusFlow.emit(status)
                 if (clients.isNotEmpty()) {
-                    val status = getOldStatus()
+                    val status = getOldStatus(status)
                     clients.forEach {
                         it.value.send(status)
                     }
@@ -222,15 +220,11 @@ object DownloadManager {
             downloadQueue.toList(),
         )
 
-    fun getOldStatus(): OldDownloadStatus =
+    fun getOldStatus(status: DownloadStatus): OldDownloadStatus =
         OldDownloadStatus(
-            if (downloaders.values.any { it.isActive }) {
-                Status.Started
-            } else {
-                Status.Stopped
-            },
+            status.status,
             run {
-                val items = downloadQueue.toList()
+                val items = status.queue
                 val mangaIds = items.map { it.mangaId }.toSet()
                 val chapterIds = items.map { it.chapterId }.toSet()
                 transaction {
