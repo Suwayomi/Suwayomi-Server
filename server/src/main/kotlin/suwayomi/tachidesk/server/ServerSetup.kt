@@ -223,8 +223,8 @@ fun applicationSetup() {
                 .root()
                 .render(ConfigRenderOptions.concise().setFormatted(true))
                 .replace(
-                    Regex("(\"(?:basicAuth|auth)(?:Username|Password)\"\\s:\\s)(?!\"\")\".*\""),
-                    "$1\"******\"",
+                    Regex("(\".*(?i:username|password).*\"\\s:\\s)\".*\""),
+                    "$1\"[REDACTED]\"",
                 )
     }
 
