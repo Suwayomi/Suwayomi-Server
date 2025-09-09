@@ -17,7 +17,6 @@ import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
-import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
@@ -114,7 +113,7 @@ class DownloadMutation {
                             DownloadStatus(
                                 DownloadManager.updates
                                     .first {
-                                        DownloadManager.getStatus().queue.any { it.chapter.id in chapters }
+                                        DownloadManager.getStatus().queue.any { it.chapterId in chapters }
                                     }.let { DownloadManager.getStatus() },
                             )
                         },
@@ -150,7 +149,7 @@ class DownloadMutation {
                         withTimeout(30.seconds) {
                             DownloadStatus(
                                 DownloadManager.updates
-                                    .first { it.updates.any { it.downloadChapter.chapter.id == chapter } }
+                                    .first { it.updates.any { it.downloadQueueItem.chapterId == chapter } }
                                     .let { DownloadManager.getStatus() },
                             )
                         },
@@ -188,7 +187,7 @@ class DownloadMutation {
                                 DownloadManager.updates
                                     .first {
                                         it.updates.any {
-                                            it.downloadChapter.chapter.id in chapters && it.type == DEQUEUED
+                                            it.downloadQueueItem.chapterId in chapters && it.type == DEQUEUED
                                         }
                                     }.let { DownloadManager.getStatus() },
                             )
@@ -227,7 +226,7 @@ class DownloadMutation {
                                 DownloadManager.updates
                                     .first {
                                         it.updates.any {
-                                            it.downloadChapter.chapter.id == chapter && it.type == DEQUEUED
+                                            it.downloadQueueItem.chapterId == chapter && it.type == DEQUEUED
                                         }
                                     }.let { DownloadManager.getStatus() },
                             )
@@ -361,7 +360,7 @@ class DownloadMutation {
                         withTimeout(30.seconds) {
                             DownloadStatus(
                                 DownloadManager.updates
-                                    .first { it.updates.indexOfFirst { it.downloadChapter.chapter.id == chapter } <= to }
+                                    .first { it.updates.indexOfFirst { it.downloadQueueItem.chapterId == chapter } <= to }
                                     .let { DownloadManager.getStatus() },
                             )
                         },

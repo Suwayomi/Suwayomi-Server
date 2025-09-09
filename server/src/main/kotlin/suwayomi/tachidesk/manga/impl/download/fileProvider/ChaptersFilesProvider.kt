@@ -17,7 +17,7 @@ import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.DownloadConversion
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
-import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
+import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.util.KoreaderHelper
 import suwayomi.tachidesk.manga.impl.util.createComicInfoFile
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
@@ -104,9 +104,9 @@ abstract class ChaptersFilesProvider<Type : FileType>(
 
     @OptIn(FlowPreview::class)
     private suspend fun downloadImpl(
-        download: DownloadChapter,
+        download: DownloadQueueItem,
         scope: CoroutineScope,
-        step: suspend (DownloadChapter?, Boolean) -> Unit,
+        step: suspend (DownloadQueueItem?, Boolean) -> Unit,
     ): Boolean {
         val existingDownloadPageCount =
             try {
@@ -114,7 +114,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
             } catch (_: Exception) {
                 0
             }
-        val pageCount = download.chapter.pageCount
+        val pageCount = download.pageCount
 
         check(pageCount > 0) { "pageCount must be greater than 0 - ChapterForDownload#getChapterDownloadReady not called" }
         check(existingDownloadPageCount == 0 || existingDownloadPageCount == pageCount) {
@@ -153,7 +153,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                 Page
                     .getPageImage(
                         mangaId = download.mangaId,
-                        chapterIndex = download.chapterIndex,
+                        chapterId = download.chapterId,
                         index = pageNum,
                     ) { flow ->
                         pageProgressJob =
@@ -213,7 +213,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
     /**
      * This function should never be called without calling [getChapterDownloadReady] beforehand.
      */
-    override fun download(): FileDownload3Args<DownloadChapter, CoroutineScope, suspend (DownloadChapter?, Boolean) -> Unit> =
+    override fun download(): FileDownload3Args<DownloadQueueItem, CoroutineScope, suspend (DownloadQueueItem?, Boolean) -> Unit> =
         FileDownload3Args(::downloadImpl)
 
     abstract override fun delete(): Boolean

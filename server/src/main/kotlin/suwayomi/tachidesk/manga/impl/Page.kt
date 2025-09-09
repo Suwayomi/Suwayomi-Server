@@ -48,7 +48,7 @@ object Page {
 
     suspend fun getPageImage(
         mangaId: Int,
-        chapterIndex: Int,
+        chapterId: Int,
         index: Int,
         format: String? = null,
         progressFlow: ((StateFlow<Int>) -> Unit)? = null,
@@ -58,10 +58,8 @@ object Page {
             transaction {
                 ChapterTable
                     .selectAll()
-                    .where {
-                        (ChapterTable.sourceOrder eq chapterIndex) and
-                            (ChapterTable.manga eq mangaId)
-                    }.first()
+                    .where { ChapterTable.id eq chapterId }
+                    .first()
             }
         val chapterId = chapterEntry[ChapterTable.id].value
 
