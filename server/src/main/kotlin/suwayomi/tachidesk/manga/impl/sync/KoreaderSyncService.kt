@@ -16,7 +16,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.KoSyncStatusPayload
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
-import suwayomi.tachidesk.graphql.types.KoreaderSyncStrategy
+import suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.util.KoreaderHelper
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -274,8 +274,15 @@ object KoreaderSyncService {
     }
 
     suspend fun pushProgress(chapterId: Int) {
-        val strategy = serverConfig.koreaderSyncStrategy.value
-        if (strategy == KoreaderSyncStrategy.DISABLED || strategy == KoreaderSyncStrategy.RECEIVE) return
+        val forwardStrategy = serverConfig.koreaderSyncStrategyForward.value
+        val backwardStrategy = serverConfig.koreaderSyncStrategyBackward.value
+
+        // if both directions keep remote, is in receive-only mode, so don't push.
+        if (forwardStrategy == KoreaderSyncConflictStrategy.KEEP_REMOTE &&
+            backwardStrategy == KoreaderSyncConflictStrategy.KEEP_REMOTE
+        ) {
+            return
+        }
 
         val username = serverConfig.koreaderSyncUsername.value
         val userkey = serverConfig.koreaderSyncUserkey.value
@@ -346,8 +353,15 @@ object KoreaderSyncService {
     }
 
     suspend fun checkAndPullProgress(chapterId: Int): SyncResult? {
-        val strategy = serverConfig.koreaderSyncStrategy.value
-        if (strategy == KoreaderSyncStrategy.DISABLED || strategy == KoreaderSyncStrategy.SEND) return null
+        val forwardStrategy = serverConfig.koreaderSyncStrategyForward.value
+        val backwardStrategy = serverConfig.koreaderSyncStrategyBackward.value
+
+        // Skip remote fetch if both directions disabled OR both keep local (no remote data needed)
+        if ((forwardStrategy == KoreaderSyncConflictStrategy.DISABLED && backwardStrategy == KoreaderSyncConflictStrategy.DISABLED) ||
+            (forwardStrategy == KoreaderSyncConflictStrategy.KEEP_LOCAL && backwardStrategy == KoreaderSyncConflictStrategy.KEEP_LOCAL)
+        ) {
+            return null
+        }
 
         val username = serverConfig.koreaderSyncUsername.value
         val userkey = serverConfig.koreaderSyncUserkey.value
@@ -417,19 +431,14 @@ object KoreaderSyncService {
                             return null
                         }
 
-                        when (strategy) {
-                            KoreaderSyncStrategy.RECEIVE -> {
-                                return SyncResult(pageRead, timestamp, device, shouldUpdate = true)
-                            }
-                            KoreaderSyncStrategy.SILENT -> {
-                                if (timestamp > (localProgress?.lastReadAt ?: 0L)) {
-                                    return SyncResult(pageRead, timestamp, device, shouldUpdate = true)
-                                }
-                            }
-                            KoreaderSyncStrategy.PROMPT -> {
-                                return SyncResult(pageRead, timestamp, device, isConflict = true)
-                            }
-                            else -> {} // SEND and DISABLED already handled at the start of the function
+                        val localTimestamp = localProgress?.lastReadAt ?: 0L
+                        val isRemoteNewer = timestamp > localTimestamp
+                        val strategy = if (isRemoteNewer) forwardStrategy else backwardStrategy
+
+                        return when (strategy) {
+                            KoreaderSyncConflictStrategy.PROMPT -> SyncResult(pageRead, timestamp, device, isConflict = true)
+                            KoreaderSyncConflictStrategy.KEEP_REMOTE -> SyncResult(pageRead, timestamp, device, shouldUpdate = true)
+                            KoreaderSyncConflictStrategy.KEEP_LOCAL, KoreaderSyncConflictStrategy.DISABLED -> null
                         }
                     }
                 } else {
