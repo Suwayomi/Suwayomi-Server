@@ -466,21 +466,27 @@ object MangaController {
             behaviorOf = { ctx, mangaId, chapterIndex, index, updateProgress, format ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { Page.getPageImage(mangaId, chapterIndex, index, format, null) }
-                        .thenApply {
-                            ctx.header("content-type", it.second)
-                            val httpCacheSeconds = 1.days.inWholeSeconds
-                            ctx.header("cache-control", "max-age=$httpCacheSeconds")
-                            ctx.result(it.first)
+                    future {
+                        Page.getPageImage(
+                            mangaId = mangaId,
+                            chapterIndex = chapterIndex,
+                            index = index,
+                            format = format,
+                        )
+                    }.thenApply {
+                        ctx.header("content-type", it.second)
+                        val httpCacheSeconds = 1.days.inWholeSeconds
+                        ctx.header("cache-control", "max-age=$httpCacheSeconds")
+                        ctx.result(it.first)
 
-                            if (updateProgress == true) {
-                                val chapterId = Chapter.updateChapterProgress(mangaId, chapterIndex, pageNo = index)
-                                // Sync progress with KoreaderSync if chapter update was successful
-                                if (chapterId != -1) {
-                                    GlobalScope.launch { KoreaderSyncService.pushProgress(chapterId) }
-                                }
+                        if (updateProgress == true) {
+                            val chapterId = Chapter.updateChapterProgress(mangaId, chapterIndex, pageNo = index)
+                            // Sync progress with KoreaderSync if chapter update was successful
+                            if (chapterId != -1) {
+                                GlobalScope.launch { KoreaderSyncService.pushProgress(chapterId) }
                             }
                         }
+                    }
                 }
             },
             withResults = {
