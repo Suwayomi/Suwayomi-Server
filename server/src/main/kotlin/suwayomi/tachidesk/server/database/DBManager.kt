@@ -21,10 +21,11 @@ import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.util.ExitCode
+import suwayomi.tachidesk.server.util.shutdownApp
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.sql.SQLException
-import kotlin.system.exitProcess
 
 object DBManager {
     var db: Database? = null
@@ -90,7 +91,7 @@ fun databaseUp() {
     } catch (e: SQLException) {
         logger.error(e) { "Error up-to-database migration" }
         if (System.getProperty("crashOnFailedMigration").toBoolean()) {
-            exitProcess(101)
+            shutdownApp(ExitCode.DbMigrationFailure)
         }
     }
 }
