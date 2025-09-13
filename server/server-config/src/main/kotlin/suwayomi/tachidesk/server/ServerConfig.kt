@@ -8,6 +8,7 @@ package suwayomi.tachidesk.server
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import com.typesafe.config.Config
+import io.github.config4k.toConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -202,6 +203,7 @@ class ServerConfig(
             SettingsRegistry.SettingDeprecated(
                 replaceWith = "autoDownloadNewChaptersLimit",
                 message = "Replaced with autoDownloadNewChaptersLimit",
+                migrateConfigValue = { it.unwrapped() as? Int }
             ),
         readMigrated = { autoDownloadNewChaptersLimit.value },
         setMigrated = { autoDownloadNewChaptersLimit.value = it },
@@ -299,6 +301,13 @@ class ServerConfig(
             SettingsRegistry.SettingDeprecated(
                 replaceWith = "authMode",
                 message = "Removed - prefer authMode",
+                migrateConfigValue = {
+                    if (it.unwrapped() as? Boolean == true) {
+                        AuthMode.BASIC_AUTH.name
+                    } else {
+                        null
+                    }
+                }
             ),
         readMigrated = { authMode.value == AuthMode.BASIC_AUTH },
         setMigrated = { authMode.value = if (it) AuthMode.BASIC_AUTH else AuthMode.NONE },
@@ -613,6 +622,28 @@ class ServerConfig(
         SettingsRegistry.SettingDeprecated(
             replaceWith = "koreaderSyncStrategyForward, koreaderSyncStrategyBackward",
             message = "Replaced with koreaderSyncStrategyForward and koreaderSyncStrategyBackward",
+            migrateConfig = { value, config ->
+                val oldStrategy = (value.unwrapped() as? String)?.uppercase()
+
+                val (forward, backward) =
+                    when (oldStrategy) {
+                        "PROMPT" -> "PROMPT" to "PROMPT"
+                        "SILENT" -> "KEEP_REMOTE" to "KEEP_LOCAL"
+                        "SEND" -> "KEEP_LOCAL" to "KEEP_LOCAL"
+                        "RECEIVE" -> "KEEP_REMOTE" to "KEEP_REMOTE"
+                        "DISABLED" -> "DISABLED" to "DISABLED"
+                        else -> null to null
+                    }
+
+                if (forward != null && backward != null) {
+                    config
+                        .withValue("server.koreaderSyncStrategyForward", forward.toConfig("internal").getValue("internal"))
+                        .withValue("server.koreaderSyncStrategyBackward", backward.toConfig("internal").getValue("internal"))
+                        .withoutPath("server.koreaderSyncStrategy")
+                } else {
+                    config
+                }
+            }
         ),
         readMigrated = {
             // This is a best-effort reverse mapping. It's not perfect but covers common cases.
@@ -742,6 +773,7 @@ class ServerConfig(
             SettingsRegistry.SettingDeprecated(
                 replaceWith = "authUsername",
                 message = "Removed - prefer authUsername",
+                migrateConfigValue = { it.unwrapped() as? String },
             ),
         readMigrated = { authUsername.value },
         setMigrated = { authUsername.value = it },
@@ -755,6 +787,7 @@ class ServerConfig(
             SettingsRegistry.SettingDeprecated(
                 replaceWith = "authPassword",
                 message = "Removed - prefer authPassword",
+                migrateConfigValue = { it.unwrapped() as? String },
             ),
         readMigrated = { authPassword.value },
         setMigrated = { authPassword.value = it },
