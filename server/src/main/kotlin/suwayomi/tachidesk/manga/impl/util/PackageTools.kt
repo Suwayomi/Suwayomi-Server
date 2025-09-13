@@ -67,6 +67,7 @@ object PackageTools {
             .printIR(false)
             .noCode(false)
             .skipExceptions(false)
+            .dontSanitizeNames(true)
             .to(jarFilePath)
         if (handler.hasException()) {
             val rootPath = Path(applicationDirs.extensionsRoot)
