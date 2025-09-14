@@ -19,6 +19,7 @@ import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.createAppModule
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.local.LocalSource
+import io.github.config4k.getValue
 import io.github.config4k.toConfig
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.json.JavalinJackson
@@ -144,7 +145,7 @@ fun setupLogLevelUpdating(
     )
 }
 
-fun migrateConfig(
+fun migrateConfigValue(
     configDocument: ConfigDocument,
     config: Config,
     configKey: String,
@@ -166,6 +167,54 @@ fun migrateConfig(
     }
 
     return configDocument
+}
+
+fun migrateConfig(
+    configDocument: ConfigDocument,
+    config: Config,
+): ConfigDocument {
+    var updatedConfig = configDocument
+
+    val settingsRequiringMigration = SettingsRegistry.getAll().filterValues { it.deprecated?.replaceWith != null }
+    settingsRequiringMigration.forEach { (name, data) ->
+        val configKey = "server.$name"
+        val toConfigKey = "server.${data.deprecated!!.replaceWith}"
+
+        try {
+            config.getValue(configKey)
+        } catch (_: ConfigException) {
+            // Ignore, no migration required
+            return@forEach
+        }
+
+        logger.debug { "Migrating config value: $configKey -> $toConfigKey" }
+
+        try {
+            if (data.deprecated!!.migrateConfig != null) {
+                updatedConfig = data.deprecated!!.migrateConfig!!(config.getValue(configKey), updatedConfig)
+                return@forEach
+            }
+
+            if (data.deprecated!!.migrateConfigValue != null) {
+                updatedConfig =
+                    migrateConfigValue(
+                        updatedConfig,
+                        config,
+                        configKey,
+                        toConfigKey,
+                        data.deprecated!!.migrateConfigValue!!,
+                    )
+                return@forEach
+            }
+        } catch (e: Exception) {
+            logger.warn(e) { "Failed to migrate config value: $configKey -> $toConfigKey" }
+            return@forEach
+        }
+
+        shutdownApp(ExitCode.ConfigMigrationMisconfiguredFailure)
+    }
+
+    return updatedConfig
 }
 
 fun serverModule(applicationDirs: ApplicationDirs): Module =
@@ -310,37 +359,7 @@ fun applicationSetup() {
             }
         } else {
             // make sure the user config file is up-to-date
-            GlobalConfigManager.updateUserConfig { config ->
-                var updatedConfig = this
-
-                val settingsRequiringMigration = SettingsRegistry.getAll().filterValues { it.deprecated?.replaceWith != null }
-                settingsRequiringMigration.forEach { (name, data) ->
-                    val configKey = "server.$name"
-                    val toConfigKey = "server.${data.deprecated!!.replaceWith}"
-
-                    if (data.deprecated!!.migrateConfig != null) {
-                        logger.debug { "Migrating config value: $configKey -> $toConfigKey" }
-                        updatedConfig = data.deprecated!!.migrateConfig!!(config.getValue(configKey), updatedConfig)
-                        return@forEach
-                    }
-
-                    if (data.deprecated!!.migrateConfigValue != null) {
-                        updatedConfig =
-                            migrateConfig(
-                                updatedConfig,
-                                config,
-                                configKey,
-                                toConfigKey,
-                                data.deprecated!!.migrateConfigValue!!,
-                            )
-                        return@forEach
-                    }
-
-                    shutdownApp(ExitCode.ConfigMigrationMisconfiguredFailure)
-                }
-
-                updatedConfig
-            }
+            GlobalConfigManager.updateUserConfig { migrateConfig(this, it) }
         }
     } catch (e: Exception) {
         logger.error(e) { "Exception while creating initial server.conf" }
