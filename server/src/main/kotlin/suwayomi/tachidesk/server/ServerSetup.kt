@@ -320,7 +320,11 @@ fun applicationSetup() {
 
                     if (data.deprecated!!.migrateConfig != null) {
                         logger.debug { "Migrating config value: $configKey -> $toConfigKey" }
-                        updatedConfig = data.deprecated!!.migrateConfig!!(config.getValue(configKey), updatedConfig)
+                        try {
+                            updatedConfig = data.deprecated!!.migrateConfig!!(config.getValue(configKey), updatedConfig)
+                        } catch (_: ConfigException) {
+                            // ignore, likely already migrated
+                        }
                         return@forEach
                     }
 
