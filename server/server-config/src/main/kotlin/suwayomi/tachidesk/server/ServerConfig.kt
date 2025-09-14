@@ -189,8 +189,8 @@ class ServerConfig(
 
     val downloadAsCbz: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 15,
-        defaultValue = false,
         group = SettingGroup.DOWNLOADER,
+        defaultValue = false,
     )
 
     val downloadsPath: MutableStateFlow<String> by PathSetting(
@@ -203,8 +203,8 @@ class ServerConfig(
 
     val autoDownloadNewChapters: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 17,
-        defaultValue = false,
         group = SettingGroup.DOWNLOADER,
+        defaultValue = false,
     )
 
     val excludeEntryWithUnreadChapters: MutableStateFlow<Boolean> by BooleanSetting(
@@ -217,8 +217,8 @@ class ServerConfig(
     @Deprecated("Will get removed", replaceWith = ReplaceWith("autoDownloadNewChaptersLimit"))
     val autoDownloadAheadLimit: MutableStateFlow<Int> by MigratedConfigValue(
         protoNumber = 19,
-        defaultValue = 0,
         group = SettingGroup.DOWNLOADER,
+        defaultValue = 0,
         deprecated =
             SettingsRegistry.SettingDeprecated(
                 replaceWith = "autoDownloadNewChaptersLimit",
@@ -282,20 +282,20 @@ class ServerConfig(
 
     val excludeUnreadChapters: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 24,
-        defaultValue = true,
         group = SettingGroup.LIBRARY_UPDATES,
+        defaultValue = true,
     )
 
     val excludeNotStarted: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 25,
-        defaultValue = true,
         group = SettingGroup.LIBRARY_UPDATES,
+        defaultValue = true,
     )
 
     val excludeCompleted: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 26,
-        defaultValue = true,
         group = SettingGroup.LIBRARY_UPDATES,
+        defaultValue = true,
     )
 
     val globalUpdateInterval: MutableStateFlow<Double> by DisableableDoubleSetting(
@@ -316,8 +316,8 @@ class ServerConfig(
     @Deprecated("Will get removed", replaceWith = ReplaceWith("authMode"))
     val basicAuthEnabled: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 29,
-        defaultValue = false,
         group = SettingGroup.AUTH,
+        defaultValue = false,
         deprecated =
             SettingsRegistry.SettingDeprecated(
                 replaceWith = "authMode",
@@ -356,15 +356,15 @@ class ServerConfig(
 
     val debugLogsEnabled: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 32,
-        defaultValue = false,
         group = SettingGroup.MISC,
+        defaultValue = false,
     )
 
     @Deprecated("Removed - does not do anything")
     val gqlDebugLogsEnabled: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 33,
-        defaultValue = false,
         group = SettingGroup.MISC,
+        defaultValue = false,
         deprecated =
             SettingsRegistry.SettingDeprecated(
                 message = "Removed - does not do anything",
@@ -373,8 +373,8 @@ class ServerConfig(
 
     val systemTrayEnabled: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 34,
-        defaultValue = true,
         group = SettingGroup.MISC,
+        defaultValue = true,
     )
 
     val maxLogFiles: MutableStateFlow<Int> by IntSetting(
@@ -479,8 +479,8 @@ class ServerConfig(
 
     val flareSolverrAsResponseFallback: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 48,
-        defaultValue = false,
         group = SettingGroup.CLOUDFLARE,
+        defaultValue = false,
     )
 
     val opdsUseBinaryFileSizes: MutableStateFlow<Boolean> by BooleanSetting(
@@ -500,26 +500,26 @@ class ServerConfig(
 
     val opdsEnablePageReadProgress: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 51,
-        defaultValue = true,
         group = SettingGroup.OPDS,
+        defaultValue = true,
     )
 
     val opdsMarkAsReadOnDownload: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 52,
-        defaultValue = false,
         group = SettingGroup.OPDS,
+        defaultValue = false,
     )
 
     val opdsShowOnlyUnreadChapters: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 53,
-        defaultValue = false,
         group = SettingGroup.OPDS,
+        defaultValue = false,
     )
 
     val opdsShowOnlyDownloadedChapters: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 54,
-        defaultValue = false,
         group = SettingGroup.OPDS,
+        defaultValue = false,
     )
 
     val opdsChapterSortOrder: MutableStateFlow<SortOrder> by EnumSetting(
@@ -541,8 +541,8 @@ class ServerConfig(
 
     fun createDownloadConversionsMap(protoNumber: Int, key: String) = MapSetting<String, DownloadConversion>(
         protoNumber = protoNumber,
-        defaultValue = emptyMap(),
         group = SettingGroup.DOWNLOADER,
+        defaultValue = emptyMap(),
         typeInfo =
             SettingsRegistry.PartialTypeInfo(
                 specificType = "List<SettingsDownloadConversionType>",
@@ -700,8 +700,8 @@ class ServerConfig(
     @Deprecated("Use koreaderSyncStrategyForward and koreaderSyncStrategyBackward instead")
     val koreaderSyncStrategy: MutableStateFlow<KoreaderSyncLegacyStrategy> by MigratedConfigValue(
         protoNumber = 64,
-        defaultValue = KoreaderSyncLegacyStrategy.DISABLED,
         group = SettingGroup.KOREADER_SYNC,
+        defaultValue = KoreaderSyncLegacyStrategy.DISABLED,
         typeInfo =
             SettingsRegistry.PartialTypeInfo(
                 imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncLegacyStrategy"),
@@ -933,8 +933,8 @@ class ServerConfig(
     @Deprecated("Removed - prefer authUsername", replaceWith = ReplaceWith("authUsername"))
     val basicAuthUsername: MutableStateFlow<String> by MigratedConfigValue(
         protoNumber = 99991,
-        defaultValue = "",
         group = SettingGroup.AUTH,
+        defaultValue = "",
         deprecated =
             SettingsRegistry.SettingDeprecated(
                 replaceWith = "authUsername",
@@ -948,8 +948,8 @@ class ServerConfig(
     @Deprecated("Removed - prefer authPassword", replaceWith = ReplaceWith("authPassword"))
     val basicAuthPassword: MutableStateFlow<String> by MigratedConfigValue(
         protoNumber = 99992,
-        defaultValue = "",
         group = SettingGroup.AUTH,
+        defaultValue = "",
         deprecated =
             SettingsRegistry.SettingDeprecated(
                 replaceWith = "authPassword",
