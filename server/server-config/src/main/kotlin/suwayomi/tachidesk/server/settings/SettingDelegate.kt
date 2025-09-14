@@ -16,6 +16,14 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.time.Duration
 
+private fun maybeRedact(value: Any, privacySafe: Boolean): String {
+    return if (privacySafe) {
+        value.toString()
+    } else {
+        "[REDACTED]"
+    }
+}
+
 /**
  * Base delegate for settings to read values from the config file with automatic setting registration and validation
  */
@@ -30,6 +38,7 @@ open class SettingDelegate<T : Any>(
     protected val deprecated: SettingsRegistry.SettingDeprecated? = null,
     protected val description: String? = null,
     protected val excludeFromBackup: Boolean? = null,
+    val privacySafe: Boolean,
 ) {
     var flow: MutableStateFlow<T>? = null
     lateinit var propertyName: String
@@ -83,7 +92,8 @@ open class SettingDelegate<T : Any>(
                             defaultValueComment
                         }
                     },
-                excludeFromBackup = excludeFromBackup
+                excludeFromBackup = excludeFromBackup,
+                privacySafe = privacySafe,
             ),
         )
 
@@ -109,7 +119,7 @@ open class SettingDelegate<T : Any>(
             val error = validate(initialValue)
             if (error != null) {
                 KotlinLogging.logger { }.warn {
-                    "Invalid config value ($initialValue) for $moduleName.$propertyName: $error. Using default value: $defaultValue"
+                    "Invalid config value for $moduleName.$propertyName: $error. Using default value: $defaultValue"
                 }
 
                 stateFlow.value = toValidValue?.let { it(initialValue) } ?: defaultValue
@@ -145,6 +155,7 @@ class MigratedConfigValue<T : Any>(
     private val deprecated: SettingsRegistry.SettingDeprecated,
     private val readMigrated: (() -> T) = { defaultValue },
     private val setMigrated: ((T) -> Unit) = {},
+    private val privacySafe: Boolean
 ) {
     var flow: MutableStateFlow<T>? = null
     lateinit var propertyName: String
@@ -174,6 +185,7 @@ class MigratedConfigValue<T : Any>(
                 deprecated = deprecated,
                 requiresRestart = requiresRestart ?: false,
                 excludeFromBackup = null,
+                privacySafe = privacySafe,
             ),
         )
 
@@ -215,15 +227,16 @@ class StringSetting(
     requiresRestart: Boolean? = null,
     description: String? = null,
     excludeFromBackup: Boolean? = null,
+    privacySafe: Boolean,
 ) : SettingDelegate<String>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
         validator = { value ->
             when {
                 pattern != null && !value.matches(pattern) ->
-                    "Value must match pattern: ${pattern.pattern}"
+                    "Value (${maybeRedact(value, privacySafe)}) must match pattern: ${pattern.pattern}"
                 maxLength != null && value.length > maxLength ->
-                    "Value must not exceed $maxLength characters"
+                    "Value (${maybeRedact(value, privacySafe)}) must not exceed $maxLength characters"
                 else -> null
             }
         },
@@ -239,6 +252,7 @@ class StringSetting(
         requiresRestart = requiresRestart,
         description = description,
         excludeFromBackup = excludeFromBackup,
+        privacySafe = privacySafe,
     )
 
 abstract class RangeSetting<T : Comparable<T>>(
@@ -254,14 +268,15 @@ abstract class RangeSetting<T : Comparable<T>>(
     requiresRestart: Boolean? = null,
     description: String? = null,
     excludeFromBackup: Boolean? = null,
+    privacySafe: Boolean,
 ) : SettingDelegate<T>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
         validator =
             validator ?: { value ->
                 when {
-                    min != null && value < min -> "Value must be at least $min"
-                    max != null && value > max -> "Value must not exceed $max"
+                    min != null && value < min -> "Value (${maybeRedact(value, privacySafe)}) must be at least $min"
+                    max != null && value > max -> "Value (${maybeRedact(value, privacySafe)}) must not exceed $max"
                     else -> null
                 }
             },
@@ -287,6 +302,7 @@ abstract class RangeSetting<T : Comparable<T>>(
                 }
             },
         excludeFromBackup = excludeFromBackup,
+        privacySafe = privacySafe,
     )
 
 class IntSetting(
@@ -301,6 +317,7 @@ class IntSetting(
     requiresRestart: Boolean? = null,
     description: String? = null,
     excludeFromBackup: Boolean? = null,
+    privacySafe: Boolean,
 ) : RangeSetting<Int>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -313,6 +330,7 @@ class IntSetting(
         requiresRestart = requiresRestart,
         description = description,
         excludeFromBackup = excludeFromBackup,
+        privacySafe = privacySafe,
     )
 
 class DisableableIntSetting(
@@ -325,6 +343,7 @@ class DisableableIntSetting(
     requiresRestart: Boolean? = null,
     description: String? = null,
     excludeFromBackup: Boolean? = null,
+    privacySafe: Boolean,
 ) : RangeSetting<Int>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -333,8 +352,8 @@ class DisableableIntSetting(
         validator = { value ->
             when {
                 value == 0 -> null
-                min != null && value < min -> "Value must be 0.0 or at least $min"
-                max != null && value > max -> "Value must be 0.0 or not exceed $max"
+                min != null && value < min -> "Value (${maybeRedact(value, privacySafe)}) must be 0.0 or at least $min"
+                max != null && value > max -> "Value (${maybeRedact(value, privacySafe)}) must be 0.0 or not exceed $max"
                 else -> null
             }
         },
@@ -360,6 +379,7 @@ class DisableableIntSetting(
                 }
             },
         excludeFromBackup = excludeFromBackup,
+        privacySafe = privacySafe,
     )
 
 class DoubleSetting(
@@ -374,6 +394,7 @@ class DoubleSetting(
     requiresRestart: Boolean? = null,
     description: String? = null,
     excludeFromBackup: Boolean? = null,
+    privacySafe: Boolean,
 ) : RangeSetting<Double>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -386,6 +407,7 @@ class DoubleSetting(
         requiresRestart = requiresRestart,
         description = description,
         excludeFromBackup = excludeFromBackup,
+        privacySafe = privacySafe,
     )
 
 class DisableableDoubleSetting(
@@ -398,6 +420,7 @@ class DisableableDoubleSetting(
     requiresRestart: Boolean? = null,
     description: String? = null,
     excludeFromBackup: Boolean? = null,
+    privacySafe: Boolean,
 ) : RangeSetting<Double>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -406,8 +429,8 @@ class DisableableDoubleSetting(
         validator = { value ->
             when {
                 value == 0.0 -> null
-                min != null && value < min -> "Value must 0.0 or be at least $min"
-                max != null && value > max -> "Value must 0.0 or not exceed $max"
+                min != null && value < min -> "Value (${maybeRedact(value, privacySafe)}) must 0.0 or be at least $min"
+                max != null && value > max -> "Value (${maybeRedact(value, privacySafe)}) must 0.0 or not exceed $max"
                 else -> null
             }
         },
@@ -433,6 +456,7 @@ class DisableableDoubleSetting(
                 }
             },
         excludeFromBackup = excludeFromBackup,
+        privacySafe = privacySafe,
     )
 
 class BooleanSetting(
@@ -443,6 +467,7 @@ class BooleanSetting(
     requiresRestart: Boolean? = null,
     description: String? = null,
     excludeFromBackup: Boolean? = null,
+    privacySafe: Boolean,
 ) : SettingDelegate<Boolean>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -452,6 +477,7 @@ class BooleanSetting(
         requiresRestart = requiresRestart,
         description = description,
         excludeFromBackup = excludeFromBackup,
+        privacySafe = privacySafe,
     )
 
 class PathSetting(
@@ -463,12 +489,13 @@ class PathSetting(
     requiresRestart: Boolean? = null,
     description: String? = null,
     excludeFromBackup: Boolean? = null,
+    privacySafe: Boolean,
 ) : SettingDelegate<String>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
         validator = { value ->
             if (mustExist && value.isNotEmpty() && !File(value).exists()) {
-                "Path does not exist: $value"
+                "Path does not exist: ${maybeRedact(value, privacySafe)}"
             } else {
                 null
             }
@@ -478,6 +505,7 @@ class PathSetting(
         requiresRestart = requiresRestart,
         description = description,
         excludeFromBackup = excludeFromBackup,
+        privacySafe = privacySafe,
     )
 
 class EnumSetting<T : Enum<T>>(
@@ -490,12 +518,13 @@ class EnumSetting<T : Enum<T>>(
     requiresRestart: Boolean? = null,
     description: String? = null,
     excludeFromBackup: Boolean? = null,
+    privacySafe: Boolean,
 ) : SettingDelegate<T>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
         validator = { value ->
             if (!enumClass.java.isInstance(value)) {
-                "Invalid enum value for ${enumClass.simpleName}"
+                "Invalid enum value (${maybeRedact(value, privacySafe)}) for ${enumClass.simpleName}"
             } else {
                 null
             }
@@ -515,6 +544,7 @@ class EnumSetting<T : Enum<T>>(
                 }
             },
         excludeFromBackup = excludeFromBackup,
+        privacySafe = privacySafe,
     )
 
 class DurationSetting(
@@ -529,6 +559,7 @@ class DurationSetting(
     requiresRestart: Boolean? = null,
     description: String? = null,
     excludeFromBackup: Boolean? = null,
+    privacySafe: Boolean,
 ) : RangeSetting<Duration>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -545,6 +576,7 @@ class DurationSetting(
         requiresRestart = requiresRestart,
         description = description,
         excludeFromBackup = excludeFromBackup,
+        privacySafe = privacySafe,
     )
 
 class ListSetting<T>(
@@ -558,6 +590,7 @@ class ListSetting<T>(
     requiresRestart: Boolean? = null,
     description: String? = null,
     excludeFromBackup: Boolean? = null,
+    privacySafe: Boolean,
 ) : SettingDelegate<List<T>>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -583,6 +616,7 @@ class ListSetting<T>(
         requiresRestart = requiresRestart,
         description = description,
         excludeFromBackup = excludeFromBackup,
+        privacySafe = privacySafe,
     )
 
 class MapSetting<K, V>(
@@ -595,6 +629,7 @@ class MapSetting<K, V>(
     requiresRestart: Boolean? = null,
     description: String? = null,
     excludeFromBackup: Boolean? = null,
+    privacySafe: Boolean,
 ) : SettingDelegate<Map<K, V>>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -605,4 +640,5 @@ class MapSetting<K, V>(
         requiresRestart = requiresRestart,
         description = description,
         excludeFromBackup = excludeFromBackup,
+        privacySafe = privacySafe,
     )
