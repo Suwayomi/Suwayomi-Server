@@ -99,17 +99,24 @@ server.updateMangas = false
 
 ### Authentication
 ```
-server.authMode = "none" # none, basic_auth or simple_login
+server.authMode = "none" # none, basic_auth, simple_login or ui_login
 server.authUsername = "user"
 server.authPassword = "pass"
+server.jwtAudience = "suwayomi-server-api"
+server.jwtTokenExpiry = "5m"
+server.jwtRefreshExpiry = "60d"
 ```
 - `server.authMode = "none"`: Since v2.1.1867, Suwayomi supports two modes of authentication. Enabling authentication is useful when hosting on a public network/the Internet. If you used the original `server.basicAuth*` variables, it will be automatically migrated.  
   `basic_auth` configures Suwayomi for [Basic access authentication](https://en.wikipedia.org/wiki/Basic_access_authentication).  
-  `simple_login` works similarly to Basic Authentication, but presents a custom login page. The login is stored via a cookie and needs to be refreshed on every server restart or every 30 minutes.
+  `simple_login` works similarly to Basic Authentication, but presents a custom login page. The login is stored via a cookie and needs to be refreshed on every server restart or every 30 minutes.  
+  `ui_login` is a new [JWT](https://en.wikipedia.org/wiki/JSON_Web_Token)-based authentication scheme, which tightly integrates with the chosen UI. Instead of restricting access completely, this allows the user to still open the UI (e.g. WebUI). Unlike the other two modes, this means the login page is entirely customizable by the UI. The `jwt*` settings can be used to tune session duration in this mode.
 - `server.authUsername` the username value that you have to provide when authenticating.
 - `server.authPassword` the password value that you have to provide when authenticating.
+- `server.jwtAudience` is any string to be embedded into the JWT token. See `aud` field in [JWT](https://en.wikipedia.org/wiki/JSON_Web_Token#Standard_fields).
+- `server.jwtTokenExpiry` is the time any token is valid ("access token"); after expiry, the refresh token will be used to generate a new access token again without prompting for credentials.
+- `server.jwtRefreshExpiry` is the time the refresh token is valid. After it has expired, the user will be prompted to login again; before that, the session can be quietly refreshed using this token. Note the security implication in this: While the access token is valid, the server fully trusts the holder of that token. After the access token has expired, the refresh token can be used to obtain a new access token; only at this time can the session be terminated by the server.
 
-**Note**: Basic access authentication sends username and password in cleartext and is not completely secure over HTTP, it's recommended to pair this feature with a reverse proxy server like nginx and expose the server over HTTPS. Similarly, with `simple_login`, the credentials are sent in cleartext on login, and the cookie is sent with every request. Also your browser caches the credentials/cookie, so you should be careful when accessing the server from non-private devices and use incognito mode.
+**Note**: Basic access authentication sends username and password in cleartext and is not completely secure over HTTP, it's recommended to pair this feature with a reverse proxy server like nginx and expose the server over HTTPS. Similarly, with `simple_login` and `ui_login`, the credentials are sent in cleartext on login, and the cookie/token is sent with every request. Also your browser caches the credentials/cookie, so you should be careful when accessing the server from non-private devices and use incognito mode.
 
 ### misc
 ```
