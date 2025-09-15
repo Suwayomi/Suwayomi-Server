@@ -55,6 +55,10 @@ class BackupMutation {
         val clientMutationId: String? = null,
         val includeChapters: Boolean? = null,
         val includeCategories: Boolean? = null,
+        val includeTracking: Boolean? = null,
+        val includeHistory: Boolean? = null,
+        val includeClientData: Boolean? = null,
+        val includeServerSettings: Boolean? = null,
     )
 
     data class CreateBackupPayload(
@@ -75,10 +79,10 @@ class BackupMutation {
                     includeManga = true,
                     includeCategories = input?.includeCategories ?: true,
                     includeChapters = input?.includeChapters ?: true,
-                    includeTracking = true,
-                    includeHistory = true,
-                    includeClientData = true,
-                    includeServerSettings = true,
+                    includeTracking = input?.includeTracking ?: true,
+                    includeHistory = input?.includeHistory ?: true,
+                    includeClientData = input?.includeClientData ?: true,
+                    includeServerSettings = input?.includeServerSettings ?: true,
                 ),
             )
 
