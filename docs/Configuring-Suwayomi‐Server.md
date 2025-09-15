@@ -197,6 +197,26 @@ server.opdsChapterSortOrder = "DESC"
 - `server.opdsShowOnlyDownloadedChapters = false` controls if OPDS listings should only include downloaded chapters.
 - `server.opdsChapterSortOrder = "DESC"` sets the default chapter sort order in OPDS listings, either `"ASC"` or `"DESC"`
 
+### KOReader Sync
+```
+server.koreaderSyncServerUrl = "http://localhost:17200"
+server.koreaderSyncUsername = ""
+server.koreaderSyncUserkey = ""
+server.koreaderSyncDeviceId = ""
+server.koreaderSyncChecksumMethod = BINARY # BINARY or FILENAME
+server.koreaderSyncPercentageTolerance = 1.0E-15 # range: [1.0E-15, 1.0]
+server.koreaderSyncStrategyForward = PROMPT # PROMPT, KEEP_LOCAL, KEEP_REMOTE, DISABLED
+server.koreaderSyncStrategyBackward = DISABLED # PROMPT, KEEP_LOCAL, KEEP_REMOTE, DISABLED
+```
+- `server.koreaderSyncServerUrl` where KOReader Sync Server is running.
+- `server.koreaderSyncUsername` the username with which to autenticate at the KOReader instance.
+- `server.koreaderSyncUserkey` the password/key with which to autenticate at the KOReader instance.
+- `server.koreaderSyncDeviceId` a unique ID to identify Suwayomi at the KOReader Sync Server. Leave blank to auto-generate.
+- `server.koreaderSyncChecksumMethod` the method by which to identify chapters at the KOReader Sync Server. BINARY includes the entire contents of the chapter, and is thus more expensive, but may be convenient to catch updated chapters.
+- `server.koreaderSyncPercentageTolerance` when syncing read progress for a chapter from other devices, how much difference (absolute) is allowed to be ignored. When above this tolerance, Suwayomi's read progress will be replaced by the remote device's according to the specified strategy. The strategy is chosed from `server.koreaderSyncStrategyForward` and `server.koreaderSyncStrategyBackward` based on the timestamps of the last read.
+- `server.koreaderSyncStrategyForward` the strategy to apply when remote progress is newer than local.
+- `server.koreaderSyncStrategyBackward` the strategy to apply when remote progress is older than local.
+
 ## Overriding configuration options with command-line arguments
 You can override the above configuration options with command-line arguments. 
 You usually only need to set this when using custom setups like a portable version of Suwayomi or your if your User dir cannot be written to or your system administrator doesn't allow it.
