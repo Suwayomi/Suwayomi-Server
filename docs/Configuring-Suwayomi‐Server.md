@@ -28,8 +28,11 @@ server.port = 4567
 ### Socks5 proxy
 ```
 server.socksProxyEnabled = false
+server.socksProxyVersion = 5 # 4 or 5
 server.socksProxyHost = ""
 server.socksProxyPort = ""
+server.socksProxyUsername = ""
+server.socksProxyPassword = ""
 ```
 This section directs Suwayomi to connect to the network through a proxy server. 
 
@@ -47,6 +50,8 @@ server.initialOpenInBrowserEnabled = true
 server.webUIInterface = "browser" # "browser" or "electron"
 server.electronPath = ""
 server.webUIFlavor = "WebUI" # "WebUI" or "Custom"
+server.webUIChannel = preview # "BUNDLED" or "STABLE" or "PREVIEW"
+server.webUIUpdateCheckInterval = 23
 ```
 - `server.webUIEnabled` controls if Suwayomi will serve `Suwayomi-WebUI` and if it downloads/updates it on startup.
 - `server.initialOpenInBrowserEnabled` controls if Suwayomi will attempt to open a brwoser/electron window on startup, disabling this on headless servers is recommended.
@@ -54,6 +59,8 @@ server.webUIFlavor = "WebUI" # "WebUI" or "Custom"
 - `server.electronPath` path of the main electron executable, should be in double quotes
 - `server.webUIFlavor` set `"WebUI"` to make the server download and update Suwayomi-WebUI automatically or `"Custom"` if you want the server to serve a custom web interface that you manage by yourself.
   - Note: "Custom" would be useful if you want to test preview versions of Suwayomi-WebUI or when you are using or developing other web interfaces like the web version of Suwayomi-Sorayomi.
+- `server.webUIChannel` allows to choose which update channel to use (only valid when flavor is set to "WebUI"). Use `"BUNDLED"` to use the version included in the server download, `"STABLE"` to use the latest stable release or `"PREVIEW"` to use the latest preview release (potentially buggy).
+- `server.webUIUpdateCheckInterval` the interval time in hours at which to check for updates. Use `0` to disable update checking.
 
 ### Downloader
 ```
@@ -99,17 +106,24 @@ server.updateMangas = false
 
 ### Authentication
 ```
-server.authMode = "none" # none, basic_auth or simple_login
+server.authMode = "none" # none, basic_auth, simple_login or ui_login
 server.authUsername = "user"
 server.authPassword = "pass"
+server.jwtAudience = "suwayomi-server-api"
+server.jwtTokenExpiry = "5m"
+server.jwtRefreshExpiry = "60d"
 ```
 - `server.authMode = "none"`: Since v2.1.1867, Suwayomi supports two modes of authentication. Enabling authentication is useful when hosting on a public network/the Internet. If you used the original `server.basicAuth*` variables, it will be automatically migrated.  
   `basic_auth` configures Suwayomi for [Basic access authentication](https://en.wikipedia.org/wiki/Basic_access_authentication).  
-  `simple_login` works similarly to Basic Authentication, but presents a custom login page. The login is stored via a cookie and needs to be refreshed on every server restart or every 30 minutes.
+  `simple_login` works similarly to Basic Authentication, but presents a custom login page. The login is stored via a cookie and needs to be refreshed on every server restart or every 30 minutes.  
+  `ui_login` is a new [JWT](https://en.wikipedia.org/wiki/JSON_Web_Token)-based authentication scheme, which tightly integrates with the chosen UI. Instead of restricting access completely, this allows the user to still open the UI (e.g. WebUI). Unlike the other two modes, this means the login page is entirely customizable by the UI. The `jwt*` settings can be used to tune session duration in this mode.
 - `server.authUsername` the username value that you have to provide when authenticating.
 - `server.authPassword` the password value that you have to provide when authenticating.
+- `server.jwtAudience` is any string to be embedded into the JWT token. See `aud` field in [JWT](https://en.wikipedia.org/wiki/JSON_Web_Token#Standard_fields).
+- `server.jwtTokenExpiry` is the time any token is valid ("access token"); after expiry, the refresh token will be used to generate a new access token again without prompting for credentials.
+- `server.jwtRefreshExpiry` is the time the refresh token is valid. After it has expired, the user will be prompted to login again; before that, the session can be quietly refreshed using this token. Note the security implication in this: While the access token is valid, the server fully trusts the holder of that token. After the access token has expired, the refresh token can be used to obtain a new access token; only at this time can the session be terminated by the server.
 
-**Note**: Basic access authentication sends username and password in cleartext and is not completely secure over HTTP, it's recommended to pair this feature with a reverse proxy server like nginx and expose the server over HTTPS. Similarly, with `simple_login`, the credentials are sent in cleartext on login, and the cookie is sent with every request. Also your browser caches the credentials/cookie, so you should be careful when accessing the server from non-private devices and use incognito mode.
+**Note**: Basic access authentication sends username and password in cleartext and is not completely secure over HTTP, it's recommended to pair this feature with a reverse proxy server like nginx and expose the server over HTTPS. Similarly, with `simple_login` and `ui_login`, the credentials are sent in cleartext on login, and the cookie/token is sent with every request. Also your browser caches the credentials/cookie, so you should be careful when accessing the server from non-private devices and use incognito mode.
 
 ### misc
 ```
@@ -165,6 +179,8 @@ server.flareSolverrAsResponseFallback = false
 
 **Note:** Byparr is a popular alternative to FlareSolverr. It uses the same API schema as FlareSolverr, so you can also configure the address of a Byparr instance in `server.flareSolverrUrl`.
 
+**Note:** The example [docker-compose.yml file](https://github.com/Suwayomi/Suwayomi-Server-docker/blob/main/docker-compose.yml) contains everything you need to get started with Suwayomi+Byparr.
+
 ### OPDS
 ```
 server.opdsUseBinaryFileSizes = false
@@ -182,6 +198,43 @@ server.opdsChapterSortOrder = "DESC"
 - `server.opdsShowOnlyUnreadChapters = false` controls if OPDS listings should only include unread chapters.
 - `server.opdsShowOnlyDownloadedChapters = false` controls if OPDS listings should only include downloaded chapters.
 - `server.opdsChapterSortOrder = "DESC"` sets the default chapter sort order in OPDS listings, either `"ASC"` or `"DESC"`
+
+### KOReader Sync
+```
+server.koreaderSyncServerUrl = "http://localhost:17200"
+server.koreaderSyncUsername = ""
+server.koreaderSyncUserkey = ""
+server.koreaderSyncDeviceId = ""
+server.koreaderSyncChecksumMethod = BINARY # BINARY or FILENAME
+server.koreaderSyncPercentageTolerance = 1.0E-15 # range: [1.0E-15, 1.0]
+server.koreaderSyncStrategyForward = PROMPT # PROMPT, KEEP_LOCAL, KEEP_REMOTE, DISABLED
+server.koreaderSyncStrategyBackward = DISABLED # PROMPT, KEEP_LOCAL, KEEP_REMOTE, DISABLED
+```
+- `server.koreaderSyncServerUrl` where KOReader Sync Server is running.
+- `server.koreaderSyncUsername` the username with which to authenticate at the KOReader instance.
+- `server.koreaderSyncUserkey` the password/key with which to authenticate at the KOReader instance.
+- `server.koreaderSyncDeviceId` a unique ID to identify Suwayomi at the KOReader Sync Server. Leave blank to auto-generate.
+- `server.koreaderSyncChecksumMethod` the method by which to identify chapters at the KOReader Sync Server. BINARY includes the entire contents of the chapter, and is thus more expensive, but may be convenient to catch updated chapters.
+- `server.koreaderSyncPercentageTolerance` when syncing read progress for a chapter from other devices, how much difference (absolute) is allowed to be ignored. When above this tolerance, Suwayomi's read progress will be replaced by the remote device's according to the specified strategy. The strategy is chosed from `server.koreaderSyncStrategyForward` and `server.koreaderSyncStrategyBackward` based on the timestamps of the last read.
+- `server.koreaderSyncStrategyForward` the strategy to apply when remote progress is newer than local.
+- `server.koreaderSyncStrategyBackward` the strategy to apply when remote progress is older than local.
+
+### Database
+```
+server.databaseType = H2 # H2, POSTGRESQL
+server.databaseUrl = "postgresql://localhost:5432/suwayomi"
+server.databaseUsername = ""
+server.databasePassword = ""
+```
+- `server.databaseType` chooses which type of database to use. [H2](https://en.wikipedia.org/wiki/H2_Database_Engine) is the default; it is a simple file-based database for Java applications. Since it is only based on files without a server process, file corruption can be common when the server is not shut down properly. [PostgreSQL](https://en.wikipedia.org/wiki/PostgreSQL) is a popular cross-platform, stable database. To use PostgreSQL, you need to run an instance yourself.
+- `server.databaseUrl` the URL where to find the PostgreSQL server, including the database name.
+- `server.databaseUsername` the username with which to authenticate at the PostgreSQL instance.
+- `server.databasePassword` the username with which to authenticate at the PostgreSQL instance.
+
+**Note:** The example [docker-compose.yml file](https://github.com/Suwayomi/Suwayomi-Server-docker/blob/main/docker-compose.yml) contains everything you need to get started with Suwayomi+PostgreSQL. Please be aware that PostgreSQL support is currently still in beta.
+
+> [!CAUTION]
+> Be careful when restoring backups if you change these options! Server settings may be included in the backup, so restoring a backup with those settings may unintentionally switch your setup to a different database than intended.
 
 ## Overriding configuration options with command-line arguments
 You can override the above configuration options with command-line arguments. 
