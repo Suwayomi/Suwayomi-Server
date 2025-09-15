@@ -28,8 +28,11 @@ server.port = 4567
 ### Socks5 proxy
 ```
 server.socksProxyEnabled = false
+server.socksProxyVersion = 5 # 4 or 5
 server.socksProxyHost = ""
 server.socksProxyPort = ""
+server.socksProxyUsername = ""
+server.socksProxyPassword = ""
 ```
 This section directs Suwayomi to connect to the network through a proxy server. 
 
@@ -47,6 +50,8 @@ server.initialOpenInBrowserEnabled = true
 server.webUIInterface = "browser" # "browser" or "electron"
 server.electronPath = ""
 server.webUIFlavor = "WebUI" # "WebUI" or "Custom"
+server.webUIChannel = preview # "BUNDLED" or "STABLE" or "PREVIEW"
+server.webUIUpdateCheckInterval = 23
 ```
 - `server.webUIEnabled` controls if Suwayomi will serve `Suwayomi-WebUI` and if it downloads/updates it on startup.
 - `server.initialOpenInBrowserEnabled` controls if Suwayomi will attempt to open a brwoser/electron window on startup, disabling this on headless servers is recommended.
@@ -54,6 +59,8 @@ server.webUIFlavor = "WebUI" # "WebUI" or "Custom"
 - `server.electronPath` path of the main electron executable, should be in double quotes
 - `server.webUIFlavor` set `"WebUI"` to make the server download and update Suwayomi-WebUI automatically or `"Custom"` if you want the server to serve a custom web interface that you manage by yourself.
   - Note: "Custom" would be useful if you want to test preview versions of Suwayomi-WebUI or when you are using or developing other web interfaces like the web version of Suwayomi-Sorayomi.
+- `server.webUIChannel` allows to choose which update channel to use (only valid when flavor is set to "WebUI"). Use `"BUNDLED"` to use the version included in the server download, `"STABLE"` to use the latest stable release or `"PREVIEW"` to use the latest preview release (potentially buggy).
+- `server.webUIUpdateCheckInterval` the interval time in hours at which to check for updates. Use `0` to disable update checking.
 
 ### Downloader
 ```
