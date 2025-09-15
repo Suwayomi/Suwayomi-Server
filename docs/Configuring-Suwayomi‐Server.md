@@ -179,6 +179,8 @@ server.flareSolverrAsResponseFallback = false
 
 **Note:** Byparr is a popular alternative to FlareSolverr. It uses the same API schema as FlareSolverr, so you can also configure the address of a Byparr instance in `server.flareSolverrUrl`.
 
+**Note:** The example [docker-compose.yml file](https://github.com/Suwayomi/Suwayomi-Server-docker/blob/main/docker-compose.yml) contains everything you need to get started with Suwayomi+Byparr.
+
 ### OPDS
 ```
 server.opdsUseBinaryFileSizes = false
@@ -209,13 +211,30 @@ server.koreaderSyncStrategyForward = PROMPT # PROMPT, KEEP_LOCAL, KEEP_REMOTE, D
 server.koreaderSyncStrategyBackward = DISABLED # PROMPT, KEEP_LOCAL, KEEP_REMOTE, DISABLED
 ```
 - `server.koreaderSyncServerUrl` where KOReader Sync Server is running.
-- `server.koreaderSyncUsername` the username with which to autenticate at the KOReader instance.
-- `server.koreaderSyncUserkey` the password/key with which to autenticate at the KOReader instance.
+- `server.koreaderSyncUsername` the username with which to authenticate at the KOReader instance.
+- `server.koreaderSyncUserkey` the password/key with which to authenticate at the KOReader instance.
 - `server.koreaderSyncDeviceId` a unique ID to identify Suwayomi at the KOReader Sync Server. Leave blank to auto-generate.
 - `server.koreaderSyncChecksumMethod` the method by which to identify chapters at the KOReader Sync Server. BINARY includes the entire contents of the chapter, and is thus more expensive, but may be convenient to catch updated chapters.
 - `server.koreaderSyncPercentageTolerance` when syncing read progress for a chapter from other devices, how much difference (absolute) is allowed to be ignored. When above this tolerance, Suwayomi's read progress will be replaced by the remote device's according to the specified strategy. The strategy is chosed from `server.koreaderSyncStrategyForward` and `server.koreaderSyncStrategyBackward` based on the timestamps of the last read.
 - `server.koreaderSyncStrategyForward` the strategy to apply when remote progress is newer than local.
 - `server.koreaderSyncStrategyBackward` the strategy to apply when remote progress is older than local.
+
+### Database
+```
+server.databaseType = H2 # H2, POSTGRESQL
+server.databaseUrl = "postgresql://localhost:5432/suwayomi"
+server.databaseUsername = ""
+server.databasePassword = ""
+```
+- `server.databaseType` chooses which type of database to use. [H2](https://en.wikipedia.org/wiki/H2_Database_Engine) is the default; it is a simple file-based database for Java applications. Since it is only based on files without a server process, file corruption can be common when the server is not shut down properly. [PostgreSQL](https://en.wikipedia.org/wiki/PostgreSQL) is a popular cross-platform, stable database. To use PostgreSQL, you need to run an instance yourself.
+- `server.databaseUrl` the URL where to find the PostgreSQL server, including the database name.
+- `server.databaseUsername` the username with which to authenticate at the PostgreSQL instance.
+- `server.databasePassword` the username with which to authenticate at the PostgreSQL instance.
+
+**Note:** The example [docker-compose.yml file](https://github.com/Suwayomi/Suwayomi-Server-docker/blob/main/docker-compose.yml) contains everything you need to get started with Suwayomi+PostgreSQL. Please be aware that PostgreSQL support is currently still in beta.
+
+> [!CAUTION]
+> Be careful when restoring backups if you change these options! Server settings may be included in the backup, so restoring a backup with those settings may unintentionally switch your setup to a different database than intended.
 
 ## Overriding configuration options with command-line arguments
 You can override the above configuration options with command-line arguments. 
