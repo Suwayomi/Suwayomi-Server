@@ -715,6 +715,14 @@ class ServerConfig(
         requiresRestart = true,
     )
 
+    val webUISubpath: MutableStateFlow<String> by StringSetting(
+        protoNumber = 75,
+        group = SettingGroup.WEB_UI,
+        defaultValue = "",
+        pattern = "^(/[a-zA-Z0-9._-]+)*$".toRegex(),
+        description = "Serve WebUI under a subpath (e.g., /manga). Leave empty for root path. Must start with / if specified.",
+    )
+
     val databaseType: MutableStateFlow<DatabaseType> by EnumSetting(
         protoNumber = 69,
         group = SettingGroup.DATABASE,

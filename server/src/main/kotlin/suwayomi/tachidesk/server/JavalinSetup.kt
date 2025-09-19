@@ -65,18 +65,66 @@ object JavalinSetup {
                 val templateEngine = TemplateEngine.createPrecompiled(ContentType.Html)
                 config.fileRenderer(JavalinJte(templateEngine))
                 if (serverConfig.webUIEnabled.value) {
-                    val serveWebUI = {
-                        config.spaRoot.addFile("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
-                    }
-                    WebInterfaceManager.setServeWebUI(serveWebUI)
+                    val subpath = serverConfig.webUISubpath.value
+                    val rootPath = if (subpath.isNotBlank()) "$subpath/" else "/"
 
                     runBlocking {
                         WebInterfaceManager.setupWebUI()
                     }
 
-                    logger.info { "Serving web static files for ${serverConfig.webUIFlavor.value}" }
-                    config.staticFiles.add(applicationDirs.webUIRoot, Location.EXTERNAL)
-                    serveWebUI()
+                    // Only create a copy and inject config when subpath is active
+                    val servableWebUIRoot = if (subpath.isNotBlank()) {
+                        val tempWebUIRoot = WebInterfaceManager.createServableWebUIDirectory()
+
+                        // Inject subpath configuration
+                        val indexHtmlPath = "$tempWebUIRoot/index.html"
+                        val indexHtmlFile = java.io.File(indexHtmlPath)
+
+                        if (indexHtmlFile.exists()) {
+                            val originalIndexHtml = indexHtmlFile.readText()
+
+                            // Only inject if not already injected
+                            if (!originalIndexHtml.contains("window.__SUWAYOMI_CONFIG__")) {
+                                val configScript = """
+                                    <script>
+                                    window.__SUWAYOMI_CONFIG__ = {
+                                      webUISubpath: "$subpath"
+                                    };
+                                    </script>
+                                """.trimIndent()
+
+                                val modifiedIndexHtml = originalIndexHtml.replace(
+                                    "</head>",
+                                    "$configScript</head>"
+                                )
+
+                                indexHtmlFile.writeText(modifiedIndexHtml)
+                                logger.info { "Injected subpath configuration into WebUI index.html" }
+                            }
+                        }
+
+                        tempWebUIRoot
+                    } else {
+                        // Use original webUI root when no subpath
+                        applicationDirs.webUIRoot
+                    }
+
+                    config.spaRoot.addFile(rootPath, "$servableWebUIRoot/index.html", Location.EXTERNAL)
+
+                    logger.info {
+                        "Serving web static files for ${serverConfig.webUIFlavor.value}" +
+                            if (subpath.isNotBlank()) " under subpath '$subpath'" else ""
+                    }
+
+                    if (subpath.isNotBlank()) {
+                        config.staticFiles.add { staticFiles ->
+                            staticFiles.hostedPath = subpath
+                            staticFiles.directory = servableWebUIRoot
+                            staticFiles.location = Location.EXTERNAL
+                        }
+                    } else {
+                        config.staticFiles.add(servableWebUIRoot, Location.EXTERNAL)
+                    }
 
                     // config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
                 }
@@ -120,7 +168,10 @@ object JavalinSetup {
                 }
 
                 config.router.apiBuilder {
-                    path("api/") {
+                    val subpath = serverConfig.webUISubpath.value
+                    val apiPath = if (subpath.isNotBlank()) "$subpath/api/" else "api/"
+
+                    path(apiPath) {
                         path("v1/") {
                             GlobalAPI.defineEndpoints()
                             MangaAPI.defineEndpoints()
@@ -140,7 +191,11 @@ object JavalinSetup {
                 }
             }
 
-        app.get("/login.html") { ctx ->
+        val subpath = serverConfig.webUISubpath.value
+        val loginPath = if (subpath.isNotBlank()) "$subpath/login.html" else "/login.html"
+
+
+        app.get(loginPath) { ctx ->
             val locale: Locale = LocalizationHelper.ctxToLocale(ctx)
             ctx.header("content-type", "text/html")
             val httpCacheSeconds = 1.days.inWholeSeconds
@@ -154,7 +209,7 @@ object JavalinSetup {
             )
         }
 
-        app.post("/login.html") { ctx ->
+        app.post(loginPath) { ctx ->
             val username = ctx.formParam("user")
             val password = ctx.formParam("pass")
             val isValid =
@@ -162,7 +217,8 @@ object JavalinSetup {
                     password == serverConfig.authPassword.value
 
             if (isValid) {
-                val redirect = ctx.queryParam("redirect") ?: "/"
+                val defaultRedirect = if (subpath.isNotBlank()) "$subpath/" else "/"
+                val redirect = ctx.queryParam("redirect") ?: defaultRedirect
                 // NOTE: We currently have no session handler attached.
                 // Thus, all sessions are stored in memory and not persisted.
                 // Furthermore, default session timeout appears to be 30m
@@ -190,7 +246,8 @@ object JavalinSetup {
                     !ctx.path().substring(1).contains('/') &&
                     listOf(".png", ".jpg", ".ico").any { ctx.path().endsWith(it) }
             val isPreFlight = ctx.method() == HandlerType.OPTIONS
-            val isApi = ctx.path().startsWith("/api/")
+            val apiPath = if (subpath.isNotBlank()) "$subpath/api/" else "/api/"
+            val isApi = ctx.path().startsWith(apiPath)
 
             val requiresAuthentication = !isPreFlight && !isPageIcon && !isWebManifest
             if (!requiresAuthentication) {
@@ -212,7 +269,7 @@ object JavalinSetup {
             }
 
             if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid() && !isApi) {
-                val url = "/login.html?redirect=" + URLEncoder.encode(ctx.fullUrl(), Charsets.UTF_8)
+                val url = "$loginPath?redirect=" + URLEncoder.encode(ctx.fullUrl(), Charsets.UTF_8)
                 ctx.header("Location", url)
                 throw RedirectResponse(HttpStatus.SEE_OTHER)
             }
