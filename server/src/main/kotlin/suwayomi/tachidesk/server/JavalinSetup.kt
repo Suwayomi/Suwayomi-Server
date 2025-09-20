@@ -7,6 +7,12 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import java.io.IOException
+import java.net.URLEncoder
+import java.util.*
+import java.util.concurrent.CompletableFuture
+import kotlin.concurrent.thread
+import kotlin.time.Duration.Companion.days
 import gg.jte.ContentType
 import gg.jte.TemplateEngine
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -43,12 +49,6 @@ import suwayomi.tachidesk.server.user.getUserFromWsContext
 import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import uy.kohesive.injekt.injectLazy
-import java.io.IOException
-import java.net.URLEncoder
-import java.util.Locale
-import java.util.concurrent.CompletableFuture
-import kotlin.concurrent.thread
-import kotlin.time.Duration.Companion.days
 
 object JavalinSetup {
     private val logger = KotlinLogging.logger {}
@@ -72,8 +72,8 @@ object JavalinSetup {
                         WebInterfaceManager.setupWebUI()
                     }
 
-                    // Only create a copy and inject config when subpath is active
-                    val servableWebUIRoot = if (subpath.isNotBlank()) {
+                    // Helper function to create a servable WebUI directory with subpath injection
+                    fun createServableWebUIRoot(): String = if (subpath.isNotBlank()) {
                         val tempWebUIRoot = WebInterfaceManager.createServableWebUIDirectory()
 
                         // Inject subpath configuration
@@ -95,26 +95,24 @@ object JavalinSetup {
 
                                 val modifiedIndexHtml = originalIndexHtml.replace(
                                     "</head>",
-                                    "$configScript</head>"
+                                    "$configScript</head>",
                                 )
 
                                 indexHtmlFile.writeText(modifiedIndexHtml)
-                                logger.info { "Injected subpath configuration into WebUI index.html" }
                             }
                         }
 
                         tempWebUIRoot
                     } else {
-                        // Use original webUI root when no subpath
+                        // Use the original webUI root when no subpath
                         applicationDirs.webUIRoot
                     }
 
-                    config.spaRoot.addFile(rootPath, "$servableWebUIRoot/index.html", Location.EXTERNAL)
+                    // Initial setup of a servable WebUI directory
+                    val servableWebUIRoot = createServableWebUIRoot()
 
-                    logger.info {
-                        "Serving web static files for ${serverConfig.webUIFlavor.value}" +
-                            if (subpath.isNotBlank()) " under subpath '$subpath'" else ""
-                    }
+                    // Configure static files once during initialization
+                    config.spaRoot.addFile(rootPath, "$servableWebUIRoot/index.html", Location.EXTERNAL)
 
                     if (subpath.isNotBlank()) {
                         config.staticFiles.add { staticFiles ->
@@ -124,6 +122,18 @@ object JavalinSetup {
                         }
                     } else {
                         config.staticFiles.add(servableWebUIRoot, Location.EXTERNAL)
+                    }
+
+                    // Set up callback for WebUI updates (only updates the SPA root, not static files)
+                    val serveWebUI = {
+                        val updatedServableRoot = createServableWebUIRoot()
+                        config.spaRoot.addFile(rootPath, "$updatedServableRoot/index.html", Location.EXTERNAL)
+                    }
+                    WebInterfaceManager.setServeWebUI(serveWebUI)
+
+                    logger.info {
+                        "Serving web static files for ${serverConfig.webUIFlavor.value}" +
+                            if (subpath.isNotBlank()) " under subpath '$subpath'" else ""
                     }
 
                     // config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
@@ -240,7 +250,8 @@ object JavalinSetup {
         }
 
         app.beforeMatched { ctx ->
-            val isWebManifest = listOf("site.webmanifest", "manifest.json", "login.html").any { ctx.path().endsWith(it) }
+            val isWebManifest =
+                listOf("site.webmanifest", "manifest.json", "login.html").any { ctx.path().endsWith(it) }
             val isPageIcon =
                 ctx.path().startsWith('/') &&
                     !ctx.path().substring(1).contains('/') &&
