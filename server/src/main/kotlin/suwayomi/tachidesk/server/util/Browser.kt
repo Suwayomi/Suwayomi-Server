@@ -18,7 +18,9 @@ object Browser {
 
     private fun getAppBaseUrl(): String {
         val appIP = if (serverConfig.ip.value == "0.0.0.0") "127.0.0.1" else serverConfig.ip.value
-        return "http://$appIP:${serverConfig.port.value}"
+        val baseUrl = "http://$appIP:${serverConfig.port.value}"
+        val subpath = serverConfig.webUISubpath.value
+        return if (subpath.isNotBlank()) "$baseUrl$subpath/" else baseUrl
     }
 
     fun openInBrowser() {

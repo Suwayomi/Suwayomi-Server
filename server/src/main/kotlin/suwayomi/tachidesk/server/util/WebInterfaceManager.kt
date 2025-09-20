@@ -155,6 +155,23 @@ object WebInterfaceManager {
         this.serveWebUI = serveWebUI
     }
 
+    fun createServableWebUIDirectory(): String {
+        val originalWebUIRoot = applicationDirs.webUIRoot
+        val tempWebUIRoot = "${applicationDirs.tempRoot}/webui-serve"
+
+        // Clean and create temp directory
+        File(tempWebUIRoot).deleteRecursively()
+        File(tempWebUIRoot).mkdirs()
+
+        // Copy entire WebUI directory to temp location
+        File(originalWebUIRoot).copyRecursively(File(tempWebUIRoot))
+
+        logger.info { "Created servable WebUI directory at: $tempWebUIRoot" }
+
+        // Return canonical path to avoid Jetty alias issues
+        return File(tempWebUIRoot).canonicalPath
+    }
+
     private fun setServedWebUIFlavor(flavor: WebUIFlavor) {
         preferences.edit().putString(SERVED_WEBUI_FLAVOR_KEY, flavor.uiName).apply()
     }
