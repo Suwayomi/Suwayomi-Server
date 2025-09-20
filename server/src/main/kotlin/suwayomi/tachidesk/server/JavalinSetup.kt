@@ -7,12 +7,6 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import java.io.IOException
-import java.net.URLEncoder
-import java.util.*
-import java.util.concurrent.CompletableFuture
-import kotlin.concurrent.thread
-import kotlin.time.Duration.Companion.days
 import gg.jte.ContentType
 import gg.jte.TemplateEngine
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -49,6 +43,12 @@ import suwayomi.tachidesk.server.user.getUserFromWsContext
 import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import uy.kohesive.injekt.injectLazy
+import java.io.IOException
+import java.net.URLEncoder
+import java.util.Locale
+import java.util.concurrent.CompletableFuture
+import kotlin.concurrent.thread
+import kotlin.time.Duration.Companion.days
 
 object JavalinSetup {
     private val logger = KotlinLogging.logger {}
@@ -73,40 +73,43 @@ object JavalinSetup {
                     }
 
                     // Helper function to create a servable WebUI directory with subpath injection
-                    fun createServableWebUIRoot(): String = if (subpath.isNotBlank()) {
-                        val tempWebUIRoot = WebInterfaceManager.createServableWebUIDirectory()
+                    fun createServableWebUIRoot(): String =
+                        if (subpath.isNotBlank()) {
+                            val tempWebUIRoot = WebInterfaceManager.createServableWebUIDirectory()
 
-                        // Inject subpath configuration
-                        val indexHtmlPath = "$tempWebUIRoot/index.html"
-                        val indexHtmlFile = java.io.File(indexHtmlPath)
+                            // Inject subpath configuration
+                            val indexHtmlPath = "$tempWebUIRoot/index.html"
+                            val indexHtmlFile = java.io.File(indexHtmlPath)
 
-                        if (indexHtmlFile.exists()) {
-                            val originalIndexHtml = indexHtmlFile.readText()
+                            if (indexHtmlFile.exists()) {
+                                val originalIndexHtml = indexHtmlFile.readText()
 
-                            // Only inject if not already injected
-                            if (!originalIndexHtml.contains("window.__SUWAYOMI_CONFIG__")) {
-                                val configScript = """
-                                    <script>
-                                    window.__SUWAYOMI_CONFIG__ = {
-                                      webUISubpath: "$subpath"
-                                    };
-                                    </script>
-                                """.trimIndent()
+                                // Only inject if not already injected
+                                if (!originalIndexHtml.contains("window.__SUWAYOMI_CONFIG__")) {
+                                    val configScript =
+                                        """
+                                        <script>
+                                        window.__SUWAYOMI_CONFIG__ = {
+                                          webUISubpath: "$subpath"
+                                        };
+                                        </script>
+                                        """.trimIndent()
 
-                                val modifiedIndexHtml = originalIndexHtml.replace(
-                                    "</head>",
-                                    "$configScript</head>",
-                                )
+                                    val modifiedIndexHtml =
+                                        originalIndexHtml.replace(
+                                            "</head>",
+                                            "$configScript</head>",
+                                        )
 
-                                indexHtmlFile.writeText(modifiedIndexHtml)
+                                    indexHtmlFile.writeText(modifiedIndexHtml)
+                                }
                             }
-                        }
 
-                        tempWebUIRoot
-                    } else {
-                        // Use the original webUI root when no subpath
-                        applicationDirs.webUIRoot
-                    }
+                            tempWebUIRoot
+                        } else {
+                            // Use the original webUI root when no subpath
+                            applicationDirs.webUIRoot
+                        }
 
                     // Initial setup of a servable WebUI directory
                     val servableWebUIRoot = createServableWebUIRoot()
@@ -203,7 +206,6 @@ object JavalinSetup {
 
         val subpath = serverConfig.webUISubpath.value
         val loginPath = if (subpath.isNotBlank()) "$subpath/login.html" else "/login.html"
-
 
         app.get(loginPath) { ctx ->
             val locale: Locale = LocalizationHelper.ctxToLocale(ctx)
