@@ -69,6 +69,7 @@ exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "e
 exposed-javatime = { module = "org.jetbrains.exposed:exposed-java-time", version.ref = "exposed" }
 postgres = "org.postgresql:postgresql:42.7.7"
 h2 = "com.h2database:h2:1.4.200" # current database driver, can't update to h2 v2 without sql migration
+hikaricp = "com.zaxxer:HikariCP:7.0.2"
 
 # Exposed Migrations
 exposed-migrations = "com.github.Suwayomi:exposed-migrations:3.8.0"

@@ -9,6 +9,7 @@ import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.FolderProvider
 import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
+import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
@@ -61,23 +62,27 @@ object ChapterDownloadHelper {
         chapterId: Int,
     ): Pair<InputStream, Long> = provider(mangaId, chapterId).getAsArchiveStream()
 
+    private fun getChapterWithCbzFileName(chapterId: Int): Pair<ChapterDataClass, String> =
+        transaction {
+            val row =
+                (ChapterTable innerJoin MangaTable)
+                    .select(ChapterTable.columns + MangaTable.columns)
+                    .where { ChapterTable.id eq chapterId }
+                    .firstOrNull() ?: throw IllegalArgumentException("ChapterId $chapterId not found")
+            val chapter = ChapterTable.toDataClass(row)
+            val mangaTitle = row[MangaTable.title]
+
+            val scanlatorPart = chapter.scanlator?.let { "[$it] " } ?: ""
+            val fileName = "$mangaTitle - $scanlatorPart${chapter.name}.cbz"
+
+            Pair(chapter, fileName)
+        }
+
     fun getCbzForDownload(
         chapterId: Int,
         markAsRead: Boolean?,
     ): Triple<InputStream, String, Long> {
-        val (chapterData, mangaTitle) =
-            transaction {
-                val row =
-                    (ChapterTable innerJoin MangaTable)
-                        .select(ChapterTable.columns + MangaTable.columns)
-                        .where { ChapterTable.id eq chapterId }
-                        .firstOrNull() ?: throw IllegalArgumentException("ChapterId $chapterId not found")
-                val chapter = ChapterTable.toDataClass(row)
-                val title = row[MangaTable.title]
-                Pair(chapter, title)
-            }
-
-        val fileName = "$mangaTitle - [${chapterData.scanlator}] ${chapterData.name}.cbz"
+        val (chapterData, fileName) = getChapterWithCbzFileName(chapterId)
 
         val cbzFile = provider(chapterData.mangaId, chapterData.id).getAsArchiveStream()
 
@@ -96,20 +101,7 @@ object ChapterDownloadHelper {
     }
 
     fun getCbzMetadataForDownload(chapterId: Int): Triple<String, Long, String> { // fileName, fileSize, contentType
-        val (chapterData, mangaTitle) =
-            transaction {
-                val row =
-                    (ChapterTable innerJoin MangaTable)
-                        .select(ChapterTable.columns + MangaTable.columns)
-                        .where { ChapterTable.id eq chapterId }
-                        .firstOrNull() ?: throw IllegalArgumentException("ChapterId $chapterId not found")
-                val chapter = ChapterTable.toDataClass(row)
-                val title = row[MangaTable.title]
-                Pair(chapter, title)
-            }
-
-        val scanlatorPart = chapterData.scanlator?.let { "[$it] " } ?: ""
-        val fileName = "$mangaTitle - $scanlatorPart${chapterData.name}.cbz"
+        val (chapterData, fileName) = getChapterWithCbzFileName(chapterId)
 
         val fileSize = provider(chapterData.mangaId, chapterData.id).getArchiveSize()
         val contentType = "application/vnd.comicbook+zip"
