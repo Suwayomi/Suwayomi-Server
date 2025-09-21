@@ -43,6 +43,7 @@ import suwayomi.tachidesk.server.user.getUserFromWsContext
 import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import uy.kohesive.injekt.injectLazy
+import java.io.File
 import java.io.IOException
 import java.net.URLEncoder
 import java.util.Locale
@@ -78,8 +79,7 @@ object JavalinSetup {
                             val tempWebUIRoot = WebInterfaceManager.createServableWebUIDirectory()
 
                             // Inject subpath configuration
-                            val indexHtmlPath = "$tempWebUIRoot/index.html"
-                            val indexHtmlFile = java.io.File(indexHtmlPath)
+                            val indexHtmlFile = File("$tempWebUIRoot/index.html")
 
                             if (indexHtmlFile.exists()) {
                                 val originalIndexHtml = indexHtmlFile.readText()
