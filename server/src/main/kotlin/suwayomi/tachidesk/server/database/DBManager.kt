@@ -28,6 +28,8 @@ import suwayomi.tachidesk.server.util.shutdownApp
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.sql.SQLException
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 object DBManager {
     var db: Database? = null
@@ -65,10 +67,10 @@ object DBManager {
                 // Optimized for Raspberry Pi / Low memory environments
                 maximumPoolSize = 6 // Moderate pool for better concurrency
                 minimumIdle = 2 // Keep 2 idle connections for responsiveness
-                connectionTimeout = 45000 // 45 seconds (more tolerance for slow devices)
-                idleTimeout = 300000 // 5 minutes (close idle connections faster)
-                maxLifetime = 900000 // 15 minutes (recycle connections more often)
-                leakDetectionThreshold = 60000 // 1 minute leak detection
+                connectionTimeout = 45.seconds.inWholeMilliseconds // more tolerance for slow devices
+                idleTimeout = 5.minutes.inWholeMilliseconds // close idle connections faster
+                maxLifetime = 15.minutes.inWholeMilliseconds // recycle connections more often
+                leakDetectionThreshold = 1.minutes.inWholeMilliseconds
 
                 // Pool name for monitoring
                 poolName = "Suwayomi-DB-Pool"
@@ -86,7 +88,7 @@ object DBManager {
         }
 
         // Close the existing pool if any
-        hikariDataSource?.close()
+        shutdown()
 
         val dbConfig =
             DatabaseConfig {
