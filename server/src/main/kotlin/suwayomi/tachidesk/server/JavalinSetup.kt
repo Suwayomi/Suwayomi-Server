@@ -75,6 +75,7 @@ object JavalinSetup {
                     }
 
                     logger.info { "Serving web static files for ${serverConfig.webUIFlavor.value}" }
+                    config.aliasCheckForStaticFiles = new ContextHandler.ApproveAliases()
                     config.staticFiles.add(applicationDirs.webUIRoot, Location.EXTERNAL)
                     serveWebUI()
 
