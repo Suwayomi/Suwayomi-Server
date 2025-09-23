@@ -7,6 +7,8 @@ package suwayomi.tachidesk.server.database
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import de.neonew.exposed.migrations.loadMigrationsFrom
 import de.neonew.exposed.migrations.runMigrations
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -26,12 +28,58 @@ import suwayomi.tachidesk.server.util.shutdownApp
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.sql.SQLException
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 object DBManager {
     var db: Database? = null
         private set
 
+    @Volatile
+    private var hikariDataSource: HikariDataSource? = null
+
+    private fun createHikariDataSource(): HikariDataSource {
+        val applicationDirs = Injekt.get<ApplicationDirs>()
+        val config =
+            HikariConfig().apply {
+                when (serverConfig.databaseType.value) {
+                    DatabaseType.POSTGRESQL -> {
+                        jdbcUrl = "jdbc:${serverConfig.databaseUrl.value}"
+                        driverClassName = "org.postgresql.Driver"
+                        username = serverConfig.databaseUsername.value
+                        password = serverConfig.databasePassword.value
+                        // PostgreSQL specific optimizations
+                        addDataSourceProperty("cachePrepStmts", "true")
+                        addDataSourceProperty("prepStmtCacheSize", "25")
+                        addDataSourceProperty("prepStmtCacheSqlLimit", "256")
+                        addDataSourceProperty("useServerPrepStmts", "true")
+                    }
+                    DatabaseType.H2 -> {
+                        jdbcUrl = "jdbc:h2:${applicationDirs.dataRoot}/database"
+                        driverClassName = "org.h2.Driver"
+                        // H2 specific optimizations
+                        addDataSourceProperty("cachePrepStmts", "true")
+                        addDataSourceProperty("prepStmtCacheSize", "25")
+                        addDataSourceProperty("prepStmtCacheSqlLimit", "256")
+                    }
+                }
+
+                // Optimized for Raspberry Pi / Low memory environments
+                maximumPoolSize = 6 // Moderate pool for better concurrency
+                minimumIdle = 2 // Keep 2 idle connections for responsiveness
+                connectionTimeout = 45.seconds.inWholeMilliseconds // more tolerance for slow devices
+                idleTimeout = 5.minutes.inWholeMilliseconds // close idle connections faster
+                maxLifetime = 15.minutes.inWholeMilliseconds // recycle connections more often
+                leakDetectionThreshold = 1.minutes.inWholeMilliseconds
+
+                // Pool name for monitoring
+                poolName = "Suwayomi-DB-Pool"
+            }
+        return HikariDataSource(config)
+    }
+
     fun setupDatabase(): Database {
+        // Clean up existing connections
         if (TransactionManager.isInitialized()) {
             val currentDatabase = TransactionManager.currentOrNull()?.db
             if (currentDatabase != null) {
@@ -39,30 +87,35 @@ object DBManager {
             }
         }
 
-        val applicationDirs = Injekt.get<ApplicationDirs>()
+        // Close the existing pool if any
+        shutdown()
+
         val dbConfig =
             DatabaseConfig {
                 useNestedTransactions = true
                 @OptIn(ExperimentalKeywordApi::class)
                 preserveKeywordCasing = false
             }
-        return when (serverConfig.databaseType.value) {
-            DatabaseType.POSTGRESQL ->
-                Database.connect(
-                    "jdbc:${serverConfig.databaseUrl.value}",
-                    "org.postgresql.Driver",
-                    user = serverConfig.databaseUsername.value,
-                    password = serverConfig.databasePassword.value,
-                    databaseConfig = dbConfig,
-                )
-            DatabaseType.H2 ->
-                Database.connect(
-                    "jdbc:h2:${applicationDirs.dataRoot}/database",
-                    "org.h2.Driver",
-                    databaseConfig = dbConfig,
-                )
-        }.also { db = it }
+
+        // Create a new HikariCP pool
+        hikariDataSource = createHikariDataSource()
+
+        return Database
+            .connect(hikariDataSource!!, databaseConfig = dbConfig)
+            .also { db = it }
     }
+
+    fun shutdown() {
+        hikariDataSource?.close()
+        hikariDataSource = null
+    }
+
+    fun getPoolStats(): String? =
+        hikariDataSource?.let { ds ->
+            "DB Pool Stats - Active: ${ds.hikariPoolMXBean.activeConnections}, " +
+                "Idle: ${ds.hikariPoolMXBean.idleConnections}, " +
+                "Waiting: ${ds.hikariPoolMXBean.threadsAwaitingConnection}"
+        }
 }
 
 private val logger = KotlinLogging.logger {}
@@ -73,6 +126,19 @@ fun databaseUp() {
     logger.info {
         "Using ${db.vendor} database version ${db.version}"
     }
+
+    // Log pool statistics
+    DBManager.getPoolStats()?.let { stats ->
+        logger.info { "HikariCP initialized: $stats" }
+    }
+
+    // Add shutdown hook to properly close HikariCP pool
+    Runtime.getRuntime().addShutdownHook(
+        Thread {
+            logger.info { "Shutting down HikariCP connection pool..." }
+            DBManager.shutdown()
+        },
+    )
 
     try {
         if (serverConfig.databaseType.value == DatabaseType.POSTGRESQL) {
