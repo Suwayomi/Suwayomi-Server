@@ -43,6 +43,7 @@ import suwayomi.tachidesk.server.user.getUserFromWsContext
 import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import uy.kohesive.injekt.injectLazy
+import java.io.File
 import java.io.IOException
 import java.net.URLEncoder
 import java.util.Locale
@@ -65,18 +66,78 @@ object JavalinSetup {
                 val templateEngine = TemplateEngine.createPrecompiled(ContentType.Html)
                 config.fileRenderer(JavalinJte(templateEngine))
                 if (serverConfig.webUIEnabled.value) {
-                    val serveWebUI = {
-                        config.spaRoot.addFile("/", applicationDirs.webUIRoot + "/index.html", Location.EXTERNAL)
-                    }
-                    WebInterfaceManager.setServeWebUI(serveWebUI)
+                    val subpath = serverConfig.webUISubpath.value
+                    val rootPath = if (subpath.isNotBlank()) "$subpath/" else "/"
 
                     runBlocking {
                         WebInterfaceManager.setupWebUI()
                     }
 
-                    logger.info { "Serving web static files for ${serverConfig.webUIFlavor.value}" }
-                    config.staticFiles.add(applicationDirs.webUIRoot, Location.EXTERNAL)
-                    serveWebUI()
+                    // Helper function to create a servable WebUI directory with subpath injection
+                    fun createServableWebUIRoot(): String =
+                        if (subpath.isNotBlank()) {
+                            val tempWebUIRoot = WebInterfaceManager.createServableWebUIDirectory()
+
+                            // Inject subpath configuration
+                            val indexHtmlFile = File("$tempWebUIRoot/index.html")
+
+                            if (indexHtmlFile.exists()) {
+                                val originalIndexHtml = indexHtmlFile.readText()
+
+                                // Only inject if not already injected
+                                if (!originalIndexHtml.contains("window.__SUWAYOMI_CONFIG__")) {
+                                    val configScript =
+                                        """
+                                        <script>
+                                        window.__SUWAYOMI_CONFIG__ = {
+                                          webUISubpath: "$subpath"
+                                        };
+                                        </script>
+                                        """.trimIndent()
+
+                                    val modifiedIndexHtml =
+                                        originalIndexHtml.replace(
+                                            "</head>",
+                                            "$configScript</head>",
+                                        )
+
+                                    indexHtmlFile.writeText(modifiedIndexHtml)
+                                }
+                            }
+
+                            tempWebUIRoot
+                        } else {
+                            // Use the original webUI root when no subpath
+                            applicationDirs.webUIRoot
+                        }
+
+                    // Initial setup of a servable WebUI directory
+                    val servableWebUIRoot = createServableWebUIRoot()
+
+                    // Configure static files once during initialization
+                    config.spaRoot.addFile(rootPath, "$servableWebUIRoot/index.html", Location.EXTERNAL)
+
+                    if (subpath.isNotBlank()) {
+                        config.staticFiles.add { staticFiles ->
+                            staticFiles.hostedPath = subpath
+                            staticFiles.directory = servableWebUIRoot
+                            staticFiles.location = Location.EXTERNAL
+                        }
+                    } else {
+                        config.staticFiles.add(servableWebUIRoot, Location.EXTERNAL)
+                    }
+
+                    // Set up callback for WebUI updates (only updates the SPA root, not static files)
+                    val serveWebUI = {
+                        val updatedServableRoot = createServableWebUIRoot()
+                        config.spaRoot.addFile(rootPath, "$updatedServableRoot/index.html", Location.EXTERNAL)
+                    }
+                    WebInterfaceManager.setServeWebUI(serveWebUI)
+
+                    logger.info {
+                        "Serving web static files for ${serverConfig.webUIFlavor.value}" +
+                            if (subpath.isNotBlank()) " under subpath '$subpath'" else ""
+                    }
 
                     // config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
                 }
@@ -120,7 +181,10 @@ object JavalinSetup {
                 }
 
                 config.router.apiBuilder {
-                    path("api/") {
+                    val subpath = serverConfig.webUISubpath.value
+                    val apiPath = if (subpath.isNotBlank()) "$subpath/api/" else "api/"
+
+                    path(apiPath) {
                         path("v1/") {
                             GlobalAPI.defineEndpoints()
                             MangaAPI.defineEndpoints()
@@ -140,7 +204,10 @@ object JavalinSetup {
                 }
             }
 
-        app.get("/login.html") { ctx ->
+        val subpath = serverConfig.webUISubpath.value
+        val loginPath = if (subpath.isNotBlank()) "$subpath/login.html" else "/login.html"
+
+        app.get(loginPath) { ctx ->
             val locale: Locale = LocalizationHelper.ctxToLocale(ctx)
             ctx.header("content-type", "text/html")
             val httpCacheSeconds = 1.days.inWholeSeconds
@@ -154,7 +221,7 @@ object JavalinSetup {
             )
         }
 
-        app.post("/login.html") { ctx ->
+        app.post(loginPath) { ctx ->
             val username = ctx.formParam("user")
             val password = ctx.formParam("pass")
             val isValid =
@@ -162,7 +229,8 @@ object JavalinSetup {
                     password == serverConfig.authPassword.value
 
             if (isValid) {
-                val redirect = ctx.queryParam("redirect") ?: "/"
+                val defaultRedirect = if (subpath.isNotBlank()) "$subpath/" else "/"
+                val redirect = ctx.queryParam("redirect") ?: defaultRedirect
                 // NOTE: We currently have no session handler attached.
                 // Thus, all sessions are stored in memory and not persisted.
                 // Furthermore, default session timeout appears to be 30m
@@ -184,13 +252,15 @@ object JavalinSetup {
         }
 
         app.beforeMatched { ctx ->
-            val isWebManifest = listOf("site.webmanifest", "manifest.json", "login.html").any { ctx.path().endsWith(it) }
+            val isWebManifest =
+                listOf("site.webmanifest", "manifest.json", "login.html").any { ctx.path().endsWith(it) }
             val isPageIcon =
                 ctx.path().startsWith('/') &&
                     !ctx.path().substring(1).contains('/') &&
                     listOf(".png", ".jpg", ".ico").any { ctx.path().endsWith(it) }
             val isPreFlight = ctx.method() == HandlerType.OPTIONS
-            val isApi = ctx.path().startsWith("/api/")
+            val apiPath = if (subpath.isNotBlank()) "$subpath/api/" else "/api/"
+            val isApi = ctx.path().startsWith(apiPath)
 
             val requiresAuthentication = !isPreFlight && !isPageIcon && !isWebManifest
             if (!requiresAuthentication) {
@@ -212,7 +282,7 @@ object JavalinSetup {
             }
 
             if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid() && !isApi) {
-                val url = "/login.html?redirect=" + URLEncoder.encode(ctx.fullUrl(), Charsets.UTF_8)
+                val url = "$loginPath?redirect=" + URLEncoder.encode(ctx.fullUrl(), Charsets.UTF_8)
                 ctx.header("Location", url)
                 throw RedirectResponse(HttpStatus.SEE_OTHER)
             }
