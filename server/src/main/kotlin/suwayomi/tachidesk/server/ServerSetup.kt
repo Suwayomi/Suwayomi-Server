@@ -437,8 +437,8 @@ fun applicationSetup() {
 
     runMigrations(applicationDirs)
 
-    // Disable jetty's logging
     setLogLevelFor("org.eclipse.jetty", Level.OFF)
+    setLogLevelFor("com.zaxxer.hikari", Level.WARN)
 
     // socks proxy settings
     serverConfig.subscribeTo(

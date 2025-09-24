@@ -135,7 +135,7 @@ class KcefWebView {
                     ConsoleEvent(level.ordinal, message, source, line),
                 ),
             )
-            logger.debug { "$source:$line: $message" }
+            logger.trace { "$source:$line: $message" }
             return true
         }
 
@@ -173,7 +173,7 @@ class KcefWebView {
             frame: CefFrame,
             httpStatusCode: Int,
         ) {
-            logger.info { "Load event: ${frame.name} - ${frame.url}" }
+            logger.trace { "Load event: ${frame.name} - ${frame.url}" }
             if (httpStatusCode > 0 && frame.isMain) handleLoad(frame.url, httpStatusCode)
             flush()
         }
@@ -199,7 +199,7 @@ class KcefWebView {
             requestInitiator: String,
             disableDefaultHandling: BoolRef,
         ): CefResourceRequestHandler? {
-            logger.info { "Load resource: ${frame.name} - ${request.url}" }
+            logger.trace { "Load resource: ${frame.name} - ${request.url}" }
             return null
         }
     }
@@ -253,7 +253,7 @@ class KcefWebView {
                 addRequestHandler(RequestHandler())
             }
 
-        logger.info { "Start loading cookies" }
+        logger.debug { "Start loading cookies" }
         CefCookieManager.getGlobalManager().apply {
             val cookies = networkHelper.cookieStore.getStoredCookies()
             for (cookie in cookies) {
@@ -307,7 +307,7 @@ class KcefWebView {
 
     private fun flush() {
         if (browser == null) return
-        logger.info { "Start cookie flush" }
+        logger.trace { "Start cookie flush" }
         CefCookieManager.getGlobalManager().visitAllCookies { it, _, _, _ ->
             try {
                 networkHelper.cookieStore.addAll(
@@ -631,7 +631,7 @@ class KcefWebView {
         error: String? = null,
     ) {
         browser!!.evaluateJavaScript("return document.title") {
-            logger.info { "Load finished with title $it" }
+            logger.trace { "Load finished with title $it" }
             WebView.notifyAllClients(
                 Json.encodeToString<Event>(
                     LoadEvent(url, it ?: "", status, error),
