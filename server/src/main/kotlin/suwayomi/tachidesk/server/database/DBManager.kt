@@ -119,12 +119,13 @@ object DBManager {
 private val logger = KotlinLogging.logger {}
 
 fun databaseUp() {
-    val db = try {
-        DBManager.setupDatabase()
-    } catch (e: Exception) {
-        logger.error(e) { "Failed to setup Database" }
-        return
-    }
+    val db =
+        try {
+            DBManager.setupDatabase()
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to setup Database" }
+            return
+        }
 
     logger.info {
         "Using ${db.vendor} database version ${db.version}"
