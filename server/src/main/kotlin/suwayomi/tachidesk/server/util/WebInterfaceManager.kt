@@ -14,6 +14,8 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.awaitSuccess
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.javalin.config.JavalinConfig
+import io.javalin.http.staticfiles.Location
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -151,11 +153,77 @@ object WebInterfaceManager {
 
     private var serveWebUI: () -> Unit = {}
 
-    fun setServeWebUI(serveWebUI: () -> Unit) {
-        this.serveWebUI = serveWebUI
+    fun setup(config: JavalinConfig) {
+        if (!serverConfig.webUIEnabled.value) {
+            return
+        }
+
+        runBlocking {
+            setupWebUI()
+        }
+
+        val rootPath = ServerSubpath.asRootPath()
+        val servableWebUIRoot = createServableRoot()
+
+        config.spaRoot.addFile(rootPath, "$servableWebUIRoot/index.html", Location.EXTERNAL)
+
+        if (ServerSubpath.isDefined()) {
+            config.staticFiles.add { staticFiles ->
+                staticFiles.hostedPath = ServerSubpath.normalized()
+                staticFiles.directory = servableWebUIRoot
+                staticFiles.location = Location.EXTERNAL
+            }
+        } else {
+            config.staticFiles.add(servableWebUIRoot, Location.EXTERNAL)
+        }
+
+        serveWebUI = {
+            val updatedServableRoot = createServableRoot()
+            config.spaRoot.addFile(rootPath, "$updatedServableRoot/index.html", Location.EXTERNAL)
+        }
+
+        logger.info {
+            "Serving web static files for ${serverConfig.webUIFlavor.value}" +
+                if (ServerSubpath.isDefined()) " under subpath '${ServerSubpath.normalized()}'" else ""
+        }
     }
 
-    fun createServableWebUIDirectory(): String {
+    private fun createServableRoot(): String {
+        if (ServerSubpath.isDefined()) {
+            val tempWebUIRoot = createServableDirectory()
+
+            val indexHtmlFile = File("$tempWebUIRoot/index.html")
+
+            if (indexHtmlFile.exists()) {
+                val originalIndexHtml = indexHtmlFile.readText()
+
+                if (!originalIndexHtml.contains("window.__SUWAYOMI_CONFIG__")) {
+                    val configScript =
+                        """
+                        <script>
+                        window.__SUWAYOMI_CONFIG__ = {
+                          webUISubpath: "${ServerSubpath.normalized()}"
+                        };
+                        </script>
+                        """.trimIndent()
+
+                    val modifiedIndexHtml =
+                        originalIndexHtml.replace(
+                            "</head>",
+                            "$configScript</head>",
+                        )
+
+                    indexHtmlFile.writeText(modifiedIndexHtml)
+                }
+            }
+
+            return tempWebUIRoot
+        } else {
+            return applicationDirs.webUIRoot
+        }
+    }
+
+    private fun createServableDirectory(): String {
         val originalWebUIRoot = applicationDirs.webUIRoot
         val tempWebUIRoot = "${applicationDirs.tempRoot}/webui-serve"
 

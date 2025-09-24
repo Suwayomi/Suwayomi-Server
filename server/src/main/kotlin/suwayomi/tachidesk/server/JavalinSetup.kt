@@ -19,7 +19,6 @@ import io.javalin.http.HttpStatus
 import io.javalin.http.NotFoundResponse
 import io.javalin.http.RedirectResponse
 import io.javalin.http.UnauthorizedResponse
-import io.javalin.http.staticfiles.Location
 import io.javalin.rendering.template.JavalinJte
 import io.javalin.websocket.WsContext
 import kotlinx.coroutines.CoroutineScope
@@ -27,7 +26,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.future.future
-import kotlinx.coroutines.runBlocking
 import org.eclipse.jetty.server.ServerConnector
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
@@ -43,8 +41,6 @@ import suwayomi.tachidesk.server.user.getUserFromWsContext
 import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.ServerSubpath
 import suwayomi.tachidesk.server.util.WebInterfaceManager
-import uy.kohesive.injekt.injectLazy
-import java.io.File
 import java.io.IOException
 import java.net.URLEncoder
 import java.util.Locale
@@ -55,8 +51,6 @@ import kotlin.time.Duration.Companion.days
 object JavalinSetup {
     private val logger = KotlinLogging.logger {}
 
-    private val applicationDirs: ApplicationDirs by injectLazy()
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     fun <T> future(block: suspend CoroutineScope.() -> T): CompletableFuture<T> = scope.future(block = block)
@@ -66,75 +60,10 @@ object JavalinSetup {
             Javalin.create { config ->
                 val templateEngine = TemplateEngine.createPrecompiled(ContentType.Html)
                 config.fileRenderer(JavalinJte(templateEngine))
-                if (serverConfig.webUIEnabled.value) {
-                    val rootPath = ServerSubpath.asRootPath()
 
-                    runBlocking {
-                        WebInterfaceManager.setupWebUI()
-                    }
+                WebInterfaceManager.setup(config)
 
-                    // Helper function to create a servable WebUI directory with subpath injection
-                    fun createServableWebUIRoot(): String =
-                        if (ServerSubpath.isDefined()) {
-                            val tempWebUIRoot = WebInterfaceManager.createServableWebUIDirectory()
-
-                            val indexHtmlFile = File("$tempWebUIRoot/index.html")
-
-                            if (indexHtmlFile.exists()) {
-                                val originalIndexHtml = indexHtmlFile.readText()
-
-                                if (!originalIndexHtml.contains("window.__SUWAYOMI_CONFIG__")) {
-                                    val configScript =
-                                        """
-                                        <script>
-                                        window.__SUWAYOMI_CONFIG__ = {
-                                          webUISubpath: "${ServerSubpath.normalized()}"
-                                        };
-                                        </script>
-                                        """.trimIndent()
-
-                                    val modifiedIndexHtml =
-                                        originalIndexHtml.replace(
-                                            "</head>",
-                                            "$configScript</head>",
-                                        )
-
-                                    indexHtmlFile.writeText(modifiedIndexHtml)
-                                }
-                            }
-
-                            tempWebUIRoot
-                        } else {
-                            applicationDirs.webUIRoot
-                        }
-
-                    val servableWebUIRoot = createServableWebUIRoot()
-
-                    config.spaRoot.addFile(rootPath, "$servableWebUIRoot/index.html", Location.EXTERNAL)
-
-                    if (ServerSubpath.isDefined()) {
-                        config.staticFiles.add { staticFiles ->
-                            staticFiles.hostedPath = ServerSubpath.normalized()
-                            staticFiles.directory = servableWebUIRoot
-                            staticFiles.location = Location.EXTERNAL
-                        }
-                    } else {
-                        config.staticFiles.add(servableWebUIRoot, Location.EXTERNAL)
-                    }
-
-                    val serveWebUI = {
-                        val updatedServableRoot = createServableWebUIRoot()
-                        config.spaRoot.addFile(rootPath, "$updatedServableRoot/index.html", Location.EXTERNAL)
-                    }
-                    WebInterfaceManager.setServeWebUI(serveWebUI)
-
-                    logger.info {
-                        "Serving web static files for ${serverConfig.webUIFlavor.value}" +
-                            if (ServerSubpath.isDefined()) " under subpath '${ServerSubpath.normalized()}'" else ""
-                    }
-
-                    // config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
-                }
+                // config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
 
                 var connectorAdded = false
                 config.jetty.modifyServer { server ->
