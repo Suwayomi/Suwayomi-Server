@@ -189,38 +189,31 @@ object WebInterfaceManager {
     }
 
     private fun createServableRoot(): String {
-        if (ServerSubpath.isDefined()) {
-            val tempWebUIRoot = createServableDirectory()
+        val tempWebUIRoot = createServableDirectory()
+        val orgIndexHtml = File("$tempWebUIRoot/index.html")
 
-            val indexHtmlFile = File("$tempWebUIRoot/index.html")
+        if (orgIndexHtml.exists()) {
+            val originalIndexHtml = orgIndexHtml.readText()
+            val subpathInjectionScript =
+                """
+                <script>
+                    "// <<suwayomi-subpath-injection>>"
+                    const baseTag = document.createElement('base');
+                    baseTag.href = location.origin + "${ServerSubpath.normalized()}/";
+                    document.head.appendChild(baseTag);
+                </script>
+                """.trimIndent()
 
-            if (indexHtmlFile.exists()) {
-                val originalIndexHtml = indexHtmlFile.readText()
+            val indexHtmlWithSubpathInjection =
+                originalIndexHtml.replace(
+                    "<head>",
+                    "<head>$subpathInjectionScript",
+                )
 
-                if (!originalIndexHtml.contains("window.__SUWAYOMI_CONFIG__")) {
-                    val configScript =
-                        """
-                        <script>
-                        window.__SUWAYOMI_CONFIG__ = {
-                          webUISubpath: "${ServerSubpath.normalized()}"
-                        };
-                        </script>
-                        """.trimIndent()
-
-                    val modifiedIndexHtml =
-                        originalIndexHtml.replace(
-                            "</head>",
-                            "$configScript</head>",
-                        )
-
-                    indexHtmlFile.writeText(modifiedIndexHtml)
-                }
-            }
-
-            return tempWebUIRoot
-        } else {
-            return applicationDirs.webUIRoot
+            orgIndexHtml.writeText(indexHtmlWithSubpathInjection)
         }
+
+        return tempWebUIRoot
     }
 
     private fun createServableDirectory(): String {
