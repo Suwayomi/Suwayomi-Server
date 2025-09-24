@@ -129,13 +129,13 @@ fun databaseUp() {
 
     // Log pool statistics
     DBManager.getPoolStats()?.let { stats ->
-        logger.info { "HikariCP initialized: $stats" }
+        logger.debug { "HikariCP initialized: $stats" }
     }
 
     // Add shutdown hook to properly close HikariCP pool
     Runtime.getRuntime().addShutdownHook(
         Thread {
-            logger.info { "Shutting down HikariCP connection pool..." }
+            logger.debug { "Shutting down HikariCP connection pool..." }
             DBManager.shutdown()
         },
     )
