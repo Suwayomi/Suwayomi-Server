@@ -50,8 +50,6 @@ object DBManager {
                         password = serverConfig.databasePassword.value
                         // PostgreSQL specific optimizations
                         addDataSourceProperty("cachePrepStmts", "true")
-                        addDataSourceProperty("prepStmtCacheSize", "25")
-                        addDataSourceProperty("prepStmtCacheSqlLimit", "256")
                         addDataSourceProperty("useServerPrepStmts", "true")
                     }
                     DatabaseType.H2 -> {
@@ -121,8 +119,14 @@ object DBManager {
 private val logger = KotlinLogging.logger {}
 
 fun databaseUp() {
-    val db = DBManager.setupDatabase()
-    // call db to initialize the lazy object
+    val db =
+        try {
+            DBManager.setupDatabase()
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to setup Database" }
+            return
+        }
+
     logger.info {
         "Using ${db.vendor} database version ${db.version}"
     }
