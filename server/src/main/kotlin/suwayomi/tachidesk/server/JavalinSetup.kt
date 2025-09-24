@@ -19,7 +19,6 @@ import io.javalin.http.HttpStatus
 import io.javalin.http.NotFoundResponse
 import io.javalin.http.RedirectResponse
 import io.javalin.http.UnauthorizedResponse
-import io.javalin.http.staticfiles.Location
 import io.javalin.rendering.template.JavalinJte
 import io.javalin.websocket.WsContext
 import kotlinx.coroutines.CoroutineScope
@@ -27,7 +26,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.future.future
-import kotlinx.coroutines.runBlocking
 import org.eclipse.jetty.server.ServerConnector
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
@@ -41,9 +39,8 @@ import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.server.user.getUserFromContext
 import suwayomi.tachidesk.server.user.getUserFromWsContext
 import suwayomi.tachidesk.server.util.Browser
+import suwayomi.tachidesk.server.util.ServerSubpath
 import suwayomi.tachidesk.server.util.WebInterfaceManager
-import uy.kohesive.injekt.injectLazy
-import java.io.File
 import java.io.IOException
 import java.net.URLEncoder
 import java.util.Locale
@@ -54,8 +51,6 @@ import kotlin.time.Duration.Companion.days
 object JavalinSetup {
     private val logger = KotlinLogging.logger {}
 
-    private val applicationDirs: ApplicationDirs by injectLazy()
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     fun <T> future(block: suspend CoroutineScope.() -> T): CompletableFuture<T> = scope.future(block = block)
@@ -65,82 +60,10 @@ object JavalinSetup {
             Javalin.create { config ->
                 val templateEngine = TemplateEngine.createPrecompiled(ContentType.Html)
                 config.fileRenderer(JavalinJte(templateEngine))
-                if (serverConfig.webUIEnabled.value) {
-                    val subpath = serverConfig.webUISubpath.value
-                    val rootPath = if (subpath.isNotBlank()) "$subpath/" else "/"
 
-                    runBlocking {
-                        WebInterfaceManager.setupWebUI()
-                    }
+                WebInterfaceManager.setup(config)
 
-                    // Helper function to create a servable WebUI directory with subpath injection
-                    fun createServableWebUIRoot(): String =
-                        if (subpath.isNotBlank()) {
-                            val tempWebUIRoot = WebInterfaceManager.createServableWebUIDirectory()
-
-                            // Inject subpath configuration
-                            val indexHtmlFile = File("$tempWebUIRoot/index.html")
-
-                            if (indexHtmlFile.exists()) {
-                                val originalIndexHtml = indexHtmlFile.readText()
-
-                                // Only inject if not already injected
-                                if (!originalIndexHtml.contains("window.__SUWAYOMI_CONFIG__")) {
-                                    val configScript =
-                                        """
-                                        <script>
-                                        window.__SUWAYOMI_CONFIG__ = {
-                                          webUISubpath: "$subpath"
-                                        };
-                                        </script>
-                                        """.trimIndent()
-
-                                    val modifiedIndexHtml =
-                                        originalIndexHtml.replace(
-                                            "</head>",
-                                            "$configScript</head>",
-                                        )
-
-                                    indexHtmlFile.writeText(modifiedIndexHtml)
-                                }
-                            }
-
-                            tempWebUIRoot
-                        } else {
-                            // Use the original webUI root when no subpath
-                            applicationDirs.webUIRoot
-                        }
-
-                    // Initial setup of a servable WebUI directory
-                    val servableWebUIRoot = createServableWebUIRoot()
-
-                    // Configure static files once during initialization
-                    config.spaRoot.addFile(rootPath, "$servableWebUIRoot/index.html", Location.EXTERNAL)
-
-                    if (subpath.isNotBlank()) {
-                        config.staticFiles.add { staticFiles ->
-                            staticFiles.hostedPath = subpath
-                            staticFiles.directory = servableWebUIRoot
-                            staticFiles.location = Location.EXTERNAL
-                        }
-                    } else {
-                        config.staticFiles.add(servableWebUIRoot, Location.EXTERNAL)
-                    }
-
-                    // Set up callback for WebUI updates (only updates the SPA root, not static files)
-                    val serveWebUI = {
-                        val updatedServableRoot = createServableWebUIRoot()
-                        config.spaRoot.addFile(rootPath, "$updatedServableRoot/index.html", Location.EXTERNAL)
-                    }
-                    WebInterfaceManager.setServeWebUI(serveWebUI)
-
-                    logger.info {
-                        "Serving web static files for ${serverConfig.webUIFlavor.value}" +
-                            if (subpath.isNotBlank()) " under subpath '$subpath'" else ""
-                    }
-
-                    // config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
-                }
+                // config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
 
                 var connectorAdded = false
                 config.jetty.modifyServer { server ->
@@ -181,10 +104,7 @@ object JavalinSetup {
                 }
 
                 config.router.apiBuilder {
-                    val subpath = serverConfig.webUISubpath.value
-                    val apiPath = if (subpath.isNotBlank()) "$subpath/api/" else "api/"
-
-                    path(apiPath) {
+                    path(ServerSubpath.maybeAddAsPrefix("api/")) {
                         path("v1/") {
                             GlobalAPI.defineEndpoints()
                             MangaAPI.defineEndpoints()
@@ -204,8 +124,7 @@ object JavalinSetup {
                 }
             }
 
-        val subpath = serverConfig.webUISubpath.value
-        val loginPath = if (subpath.isNotBlank()) "$subpath/login.html" else "/login.html"
+        val loginPath = ServerSubpath.maybeAddAsPrefix("/login.html")
 
         app.get(loginPath) { ctx ->
             val locale: Locale = LocalizationHelper.ctxToLocale(ctx)
@@ -229,8 +148,7 @@ object JavalinSetup {
                     password == serverConfig.authPassword.value
 
             if (isValid) {
-                val defaultRedirect = if (subpath.isNotBlank()) "$subpath/" else "/"
-                val redirect = ctx.queryParam("redirect") ?: defaultRedirect
+                val redirect = ctx.queryParam("redirect") ?: ServerSubpath.maybeAddAsPrefix("/")
                 // NOTE: We currently have no session handler attached.
                 // Thus, all sessions are stored in memory and not persisted.
                 // Furthermore, default session timeout appears to be 30m
@@ -259,8 +177,7 @@ object JavalinSetup {
                     !ctx.path().substring(1).contains('/') &&
                     listOf(".png", ".jpg", ".ico").any { ctx.path().endsWith(it) }
             val isPreFlight = ctx.method() == HandlerType.OPTIONS
-            val apiPath = if (subpath.isNotBlank()) "$subpath/api/" else "/api/"
-            val isApi = ctx.path().startsWith(apiPath)
+            val isApi = ctx.path().startsWith(ServerSubpath.maybeAddAsPrefix("/api/"))
 
             val requiresAuthentication = !isPreFlight && !isPageIcon && !isWebManifest
             if (!requiresAuthentication) {

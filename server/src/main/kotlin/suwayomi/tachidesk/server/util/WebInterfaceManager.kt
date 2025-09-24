@@ -14,6 +14,8 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.awaitSuccess
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.javalin.config.JavalinConfig
+import io.javalin.http.staticfiles.Location
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -151,22 +153,79 @@ object WebInterfaceManager {
 
     private var serveWebUI: () -> Unit = {}
 
-    fun setServeWebUI(serveWebUI: () -> Unit) {
-        this.serveWebUI = serveWebUI
+    fun setup(config: JavalinConfig) {
+        if (!serverConfig.webUIEnabled.value) {
+            return
+        }
+
+        runBlocking {
+            setupWebUI()
+        }
+
+        val rootPath = ServerSubpath.asRootPath()
+        val servableWebUIRoot = createServableRoot()
+
+        config.spaRoot.addFile(rootPath, "$servableWebUIRoot/index.html", Location.EXTERNAL)
+
+        if (ServerSubpath.isDefined()) {
+            config.staticFiles.add { staticFiles ->
+                staticFiles.hostedPath = ServerSubpath.normalized()
+                staticFiles.directory = servableWebUIRoot
+                staticFiles.location = Location.EXTERNAL
+            }
+        } else {
+            config.staticFiles.add(servableWebUIRoot, Location.EXTERNAL)
+        }
+
+        serveWebUI = {
+            val updatedServableRoot = createServableRoot()
+            config.spaRoot.addFile(rootPath, "$updatedServableRoot/index.html", Location.EXTERNAL)
+        }
+
+        logger.info {
+            "Serving web static files for ${serverConfig.webUIFlavor.value}" +
+                if (ServerSubpath.isDefined()) " under subpath '${ServerSubpath.normalized()}'" else ""
+        }
     }
 
-    fun createServableWebUIDirectory(): String {
+    private fun createServableRoot(): String {
+        val tempWebUIRoot = createServableDirectory()
+        val orgIndexHtml = File("$tempWebUIRoot/index.html")
+
+        if (orgIndexHtml.exists()) {
+            val originalIndexHtml = orgIndexHtml.readText()
+            val subpathInjectionScript =
+                """
+                <script>
+                    "// <<suwayomi-subpath-injection>>"
+                    const baseTag = document.createElement('base');
+                    baseTag.href = location.origin + "${ServerSubpath.normalized()}/";
+                    document.head.appendChild(baseTag);
+                </script>
+                """.trimIndent()
+
+            val indexHtmlWithSubpathInjection =
+                originalIndexHtml.replace(
+                    "<head>",
+                    "<head>$subpathInjectionScript",
+                )
+
+            orgIndexHtml.writeText(indexHtmlWithSubpathInjection)
+        }
+
+        return tempWebUIRoot
+    }
+
+    private fun createServableDirectory(): String {
         val originalWebUIRoot = applicationDirs.webUIRoot
         val tempWebUIRoot = "${applicationDirs.tempRoot}/webui-serve"
 
-        // Clean and create temp directory
         File(tempWebUIRoot).deleteRecursively()
         File(tempWebUIRoot).mkdirs()
 
-        // Copy entire WebUI directory to temp location
         File(originalWebUIRoot).copyRecursively(File(tempWebUIRoot))
 
-        logger.info { "Created servable WebUI directory at: $tempWebUIRoot" }
+        logger.debug { "Created servable WebUI directory at: $tempWebUIRoot" }
 
         // Return canonical path to avoid Jetty alias issues
         return File(tempWebUIRoot).canonicalPath
