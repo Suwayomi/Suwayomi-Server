@@ -199,7 +199,7 @@ object WebInterfaceManager {
                 <script>
                     "// <<suwayomi-subpath-injection>>"
                     const baseTag = document.createElement('base');
-                    baseTag.href = location.origin + "${ServerSubpath.normalized()}/";
+                    baseTag.href = location.origin + "${ServerSubpath.asRootPath()}";
                     document.head.appendChild(baseTag);
                 </script>
                 """.trimIndent()
