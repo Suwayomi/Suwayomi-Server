@@ -1,20 +1,16 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import graphql.execution.DataFetcherResult
-import graphql.schema.DataFetchingEnvironment
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
 import suwayomi.tachidesk.graphql.asDataFetcherResult
-import suwayomi.tachidesk.graphql.server.getAttribute
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
 import suwayomi.tachidesk.graphql.types.UpdateState.ERROR
 import suwayomi.tachidesk.graphql.types.UpdateState.IDLE
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
-import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
-import suwayomi.tachidesk.server.JavalinSetup.getAttribute
-import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
@@ -29,13 +25,10 @@ class InfoMutation {
         val updateStatus: WebUIUpdateStatus,
     )
 
-    fun updateWebUI(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: WebUIUpdateInput,
-    ): CompletableFuture<DataFetcherResult<WebUIUpdatePayload?>> {
+    @RequireAuth
+    fun updateWebUI(input: WebUIUpdateInput): CompletableFuture<DataFetcherResult<WebUIUpdatePayload?>> {
         return future {
             asDataFetcherResult {
-                dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
                 withTimeout(30.seconds) {
                     if (WebInterfaceManager.status.value.state === DOWNLOADING) {
                         return@withTimeout WebUIUpdatePayload(input.clientMutationId, WebInterfaceManager.status.value)
@@ -68,10 +61,10 @@ class InfoMutation {
         }
     }
 
-    fun resetWebUIUpdateStatus(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<DataFetcherResult<WebUIUpdateStatus?>> =
+    @RequireAuth
+    fun resetWebUIUpdateStatus(): CompletableFuture<DataFetcherResult<WebUIUpdateStatus?>> =
         future {
             asDataFetcherResult {
-                dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
                 withTimeout(30.seconds) {
                     val isUpdateFinished = WebInterfaceManager.status.value.state != DOWNLOADING
                     if (!isUpdateFinished) {

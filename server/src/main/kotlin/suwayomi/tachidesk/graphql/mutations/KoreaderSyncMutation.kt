@@ -1,12 +1,11 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import graphql.execution.DataFetcherResult
-import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.asDataFetcherResult
-import suwayomi.tachidesk.graphql.server.getAttribute
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.KoSyncConnectPayload
 import suwayomi.tachidesk.graphql.types.LogoutKoSyncAccountPayload
@@ -14,9 +13,7 @@ import suwayomi.tachidesk.graphql.types.SettingsType
 import suwayomi.tachidesk.graphql.types.SyncConflictInfoType
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterTable
-import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
-import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class KoreaderSyncMutation {
@@ -26,12 +23,9 @@ class KoreaderSyncMutation {
         val password: String,
     )
 
-    fun connectKoSyncAccount(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: ConnectKoSyncAccountInput,
-    ): CompletableFuture<KoSyncConnectPayload> =
+    @RequireAuth
+    fun connectKoSyncAccount(input: ConnectKoSyncAccountInput): CompletableFuture<KoSyncConnectPayload> =
         future {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val result = KoreaderSyncService.connect(input.username, input.password)
 
             KoSyncConnectPayload(
@@ -47,12 +41,9 @@ class KoreaderSyncMutation {
         val clientMutationId: String? = null,
     )
 
-    fun logoutKoSyncAccount(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: LogoutKoSyncAccountInput,
-    ): CompletableFuture<LogoutKoSyncAccountPayload> =
+    @RequireAuth
+    fun logoutKoSyncAccount(input: LogoutKoSyncAccountInput): CompletableFuture<LogoutKoSyncAccountPayload> =
         future {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             KoreaderSyncService.logout()
             LogoutKoSyncAccountPayload(
                 clientMutationId = input.clientMutationId,
@@ -72,14 +63,10 @@ class KoreaderSyncMutation {
         val chapter: ChapterType?,
     )
 
-    fun pushKoSyncProgress(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: PushKoSyncProgressInput,
-    ): CompletableFuture<DataFetcherResult<PushKoSyncProgressPayload?>> =
+    @RequireAuth
+    fun pushKoSyncProgress(input: PushKoSyncProgressInput): CompletableFuture<DataFetcherResult<PushKoSyncProgressPayload?>> =
         future {
             asDataFetcherResult {
-                dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-
                 KoreaderSyncService.pushProgress(input.chapterId)
 
                 val chapter =
@@ -110,14 +97,10 @@ class KoreaderSyncMutation {
         val syncConflict: SyncConflictInfoType?,
     )
 
-    fun pullKoSyncProgress(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: PullKoSyncProgressInput,
-    ): CompletableFuture<DataFetcherResult<PullKoSyncProgressPayload?>> =
+    @RequireAuth
+    fun pullKoSyncProgress(input: PullKoSyncProgressInput): CompletableFuture<DataFetcherResult<PullKoSyncProgressPayload?>> =
         future {
             asDataFetcherResult {
-                dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-
                 val syncResult = KoreaderSyncService.checkAndPullProgress(input.chapterId)
                 var syncConflictInfo: SyncConflictInfoType? = null
 

@@ -1,13 +1,12 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import graphql.execution.DataFetcherResult
-import graphql.schema.DataFetchingEnvironment
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.asDataFetcherResult
-import suwayomi.tachidesk.graphql.server.getAttribute
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.DownloadStatus
 import suwayomi.tachidesk.manga.impl.Chapter
@@ -15,9 +14,7 @@ import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.DEQUEUED
 import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.model.table.ChapterTable
-import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
-import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
 
@@ -32,11 +29,8 @@ class DownloadMutation {
         val chapters: List<ChapterType>,
     )
 
-    fun deleteDownloadedChapters(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: DeleteDownloadedChaptersInput,
-    ): DataFetcherResult<DeleteDownloadedChaptersPayload?> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun deleteDownloadedChapters(input: DeleteDownloadedChaptersInput): DataFetcherResult<DeleteDownloadedChaptersPayload?> {
         val (clientMutationId, chapters) = input
 
         return asDataFetcherResult {
@@ -65,11 +59,8 @@ class DownloadMutation {
         val chapters: ChapterType,
     )
 
-    fun deleteDownloadedChapter(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: DeleteDownloadedChapterInput,
-    ): DataFetcherResult<DeleteDownloadedChapterPayload?> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun deleteDownloadedChapter(input: DeleteDownloadedChapterInput): DataFetcherResult<DeleteDownloadedChapterPayload?> {
         val (clientMutationId, chapter) = input
 
         return asDataFetcherResult {
@@ -95,11 +86,10 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
+    @RequireAuth
     fun enqueueChapterDownloads(
-        dataFetchingEnvironment: DataFetchingEnvironment,
         input: EnqueueChapterDownloadsInput,
     ): CompletableFuture<DataFetcherResult<EnqueueChapterDownloadsPayload?>> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, chapters) = input
 
         return future {
@@ -132,11 +122,8 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
-    fun enqueueChapterDownload(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: EnqueueChapterDownloadInput,
-    ): CompletableFuture<DataFetcherResult<EnqueueChapterDownloadPayload?>> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun enqueueChapterDownload(input: EnqueueChapterDownloadInput): CompletableFuture<DataFetcherResult<EnqueueChapterDownloadPayload?>> {
         val (clientMutationId, chapter) = input
 
         return future {
@@ -168,11 +155,10 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
+    @RequireAuth
     fun dequeueChapterDownloads(
-        dataFetchingEnvironment: DataFetchingEnvironment,
         input: DequeueChapterDownloadsInput,
     ): CompletableFuture<DataFetcherResult<DequeueChapterDownloadsPayload?>> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, chapters) = input
 
         return future {
@@ -207,11 +193,8 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
-    fun dequeueChapterDownload(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: DequeueChapterDownloadInput,
-    ): CompletableFuture<DataFetcherResult<DequeueChapterDownloadPayload?>> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun dequeueChapterDownload(input: DequeueChapterDownloadInput): CompletableFuture<DataFetcherResult<DequeueChapterDownloadPayload?>> {
         val (clientMutationId, chapter) = input
 
         return future {
@@ -245,13 +228,10 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
-    fun startDownloader(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: StartDownloaderInput,
-    ): CompletableFuture<DataFetcherResult<StartDownloaderPayload?>> =
+    @RequireAuth
+    fun startDownloader(input: StartDownloaderInput): CompletableFuture<DataFetcherResult<StartDownloaderPayload?>> =
         future {
             asDataFetcherResult {
-                dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
                 DownloadManager.start()
 
                 StartDownloaderPayload(
@@ -277,13 +257,10 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
-    fun stopDownloader(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: StopDownloaderInput,
-    ): CompletableFuture<DataFetcherResult<StopDownloaderPayload?>> =
+    @RequireAuth
+    fun stopDownloader(input: StopDownloaderInput): CompletableFuture<DataFetcherResult<StopDownloaderPayload?>> =
         future {
             asDataFetcherResult {
-                dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
                 DownloadManager.stop()
 
                 StopDownloaderPayload(
@@ -309,13 +286,10 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
-    fun clearDownloader(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: ClearDownloaderInput,
-    ): CompletableFuture<DataFetcherResult<ClearDownloaderPayload?>> =
+    @RequireAuth
+    fun clearDownloader(input: ClearDownloaderInput): CompletableFuture<DataFetcherResult<ClearDownloaderPayload?>> =
         future {
             asDataFetcherResult {
-                dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
                 DownloadManager.clear()
 
                 ClearDownloaderPayload(
@@ -343,11 +317,8 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
-    fun reorderChapterDownload(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: ReorderChapterDownloadInput,
-    ): CompletableFuture<DataFetcherResult<ReorderChapterDownloadPayload?>> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun reorderChapterDownload(input: ReorderChapterDownloadInput): CompletableFuture<DataFetcherResult<ReorderChapterDownloadPayload?>> {
         val (clientMutationId, chapter, to) = input
 
         return future {

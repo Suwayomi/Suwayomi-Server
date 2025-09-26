@@ -9,25 +9,20 @@ package suwayomi.tachidesk.graphql.subscriptions
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
-import graphql.schema.DataFetchingEnvironment
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import suwayomi.tachidesk.graphql.server.getAttribute
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.DownloadStatus
 import suwayomi.tachidesk.graphql.types.DownloadUpdates
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
-import suwayomi.tachidesk.server.JavalinSetup.Attribute
-import suwayomi.tachidesk.server.JavalinSetup.getAttribute
-import suwayomi.tachidesk.server.user.requireUser
 
 class DownloadSubscription {
     @GraphQLDeprecated("Replaced with downloadStatusChanged", ReplaceWith("downloadStatusChanged(input)"))
-    fun downloadChanged(dataFetchingEnvironment: DataFetchingEnvironment): Flow<DownloadStatus> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        return DownloadManager.status.map { downloadStatus ->
+    @RequireAuth
+    fun downloadChanged(): Flow<DownloadStatus> =
+        DownloadManager.status.map { downloadStatus ->
             DownloadStatus(downloadStatus)
         }
-    }
 
     data class DownloadChangedInput(
         @GraphQLDescription(
@@ -40,11 +35,8 @@ class DownloadSubscription {
         val maxUpdates: Int?,
     )
 
-    fun downloadStatusChanged(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: DownloadChangedInput,
-    ): Flow<DownloadUpdates> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun downloadStatusChanged(input: DownloadChangedInput): Flow<DownloadUpdates> {
         val omitUpdates = input.maxUpdates != null
         val maxUpdates = input.maxUpdates ?: 50
 
