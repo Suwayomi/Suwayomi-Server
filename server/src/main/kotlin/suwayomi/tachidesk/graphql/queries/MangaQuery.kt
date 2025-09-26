@@ -16,6 +16,7 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
 import suwayomi.tachidesk.graphql.queries.filter.ComparableScalarFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
@@ -28,7 +29,6 @@ import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompare
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
-import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
@@ -43,19 +43,14 @@ import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
-import suwayomi.tachidesk.server.JavalinSetup.Attribute
-import suwayomi.tachidesk.server.JavalinSetup.getAttribute
-import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class MangaQuery {
+    @RequireAuth
     fun manga(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Int,
-    ): CompletableFuture<MangaType> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        return dataFetchingEnvironment.getValueFromDataLoader("MangaDataLoader", id)
-    }
+    ): CompletableFuture<MangaType> = dataFetchingEnvironment.getValueFromDataLoader("MangaDataLoader", id)
 
     enum class MangaOrderBy(
         override val column: Column<*>,
@@ -222,8 +217,8 @@ class MangaQuery {
             )
     }
 
+    @RequireAuth
     fun mangas(
-        dataFetchingEnvironment: DataFetchingEnvironment,
         condition: MangaCondition? = null,
         filter: MangaFilter? = null,
         @GraphQLDeprecated(
@@ -243,7 +238,6 @@ class MangaQuery {
         last: Int? = null,
         offset: Int? = null,
     ): MangaNodeList {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val queryResults =
             transaction {
                 val res =
