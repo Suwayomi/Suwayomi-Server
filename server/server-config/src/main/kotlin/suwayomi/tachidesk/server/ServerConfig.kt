@@ -35,7 +35,7 @@ import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIInterface
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType
-import suwayomi.tachidesk.manga.impl.extension.ExtensionsList.repoMatchRegex
+import suwayomi.tachidesk.manga.impl.extension.repoMatchRegex
 import suwayomi.tachidesk.server.settings.BooleanSetting
 import suwayomi.tachidesk.server.settings.DisableableDoubleSetting
 import suwayomi.tachidesk.server.settings.DisableableIntSetting

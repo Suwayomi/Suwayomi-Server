@@ -1,5 +1,7 @@
 package suwayomi.tachidesk.graphql.types
 
+import suwayomi.tachidesk.server.serverConfig
+
 enum class WebUIInterface {
     BROWSER,
     ELECTRON,
@@ -30,17 +32,30 @@ enum class WebUIFlavor(
         "https://api.github.com/repos/Suwayomi/Suwayomi-WebUI-preview/releases/latest",
         "Suwayomi-WebUI",
     ),
+
     VUI(
         "VUI",
         "https://github.com/Suwayomi/Suwayomi-VUI",
-        "https://raw.githubusercontent.com/Suwayomi/Suwayomi-VUI/master/versionToServerVersionMapping.json",
+        "https://raw.githubusercontent.com/Suwayomi/Suwayomi-VUI/main/versionToServerVersionMapping.json",
         "https://api.github.com/repos/Suwayomi/Suwayomi-VUI/releases/latest",
-        "Suwayomi-VUI",
+        "Suwayomi-VUI-Web",
     ),
-    CUSTOM("Custom", "", "", "", ""),
+
+    CUSTOM(
+        "Custom",
+        "repoURL",
+        "versionMappingUrl",
+        "latestReleaseInfoURL",
+        "baseFileName",
+    ),
     ;
 
     companion object {
-        fun from(flavor: String): WebUIFlavor = entries.find { it.name.lowercase() == flavor.lowercase() } ?: WEBUI
+        val default: WebUIFlavor = WEBUI
+
+        fun from(value: String): WebUIFlavor = entries.find { it.uiName == value } ?: default
+
+        val current: WebUIFlavor
+            get() = serverConfig.webUIFlavor.value
     }
 }

@@ -223,10 +223,4 @@ object ExtensionsList {
         } else {
             this
         }
-
-    val repoMatchRegex =
-        (
-            "https:\\/\\/(?>www\\.|raw\\.)?(github|githubusercontent)\\.com" +
-                "\\/([^\\/]+)\\/([^\\/]+)(?>(?>\\/tree|\\/blob)?\\/([^\\/\\n]*))?(?>\\/([^\\/\\n]*\\.json)?)?"
-        ).toRegex()
 }
