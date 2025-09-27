@@ -232,7 +232,7 @@ make_deb_package() {
   sed -i "s/\$pkgver/$RELEASE_VERSION/" "$RELEASE_NAME/$source_dir/debian/changelog"
   sed -i "s/\$pkgrel/1/"                "$RELEASE_NAME/$source_dir/debian/changelog"
 
-  if [ "$CI" = true ]; then
+  if [ "${CI:-}" = true ]; then
     sudo apt update
     sudo apt install devscripts build-essential dh-exec
   fi
@@ -256,7 +256,7 @@ make_appimage() {
   cp "scripts/resources/appimage/AppRun" "$RELEASE_NAME/AppRun"
   chmod +x "$RELEASE_NAME/AppRun"
 
-  if [ "$CI" = true ]; then
+  if [ "${CI:-}" = true ]; then
     sudo apt update
     sudo apt install libfuse2
   fi
@@ -271,7 +271,7 @@ make_windows_bundle() {
   ##./bundler.sh: line 250: wine: command not found
 
   ## check if running under github actions
-  #if [ "$CI" = true ]; then
+  #if [ "${CI:-}" = true ]; then
     ## change electron executable's icon
     #sudo dpkg --add-architecture i386
     #wget -qO - https://dl.winehq.org/wine-builds/winehq.key \
@@ -302,7 +302,7 @@ make_windows_bundle() {
 }
 
 make_windows_package() {
-  if [ "$CI" = true ]; then
+  if [ "${CI:-}" = true ]; then
     sudo apt update
     sudo apt install -y wixl
   fi
