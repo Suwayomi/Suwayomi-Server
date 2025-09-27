@@ -4,6 +4,12 @@ plugins {
             .get()
             .pluginId,
     )
+    id(
+        libs.plugins.kotlin.serialization
+            .get()
+            .pluginId,
+    )
+
 }
 
 dependencies {
