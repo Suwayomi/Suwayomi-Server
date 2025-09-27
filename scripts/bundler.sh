@@ -42,6 +42,9 @@ main() {
     gcc -fPIC -I$JAVA_HOME/include -I$JAVA_HOME/include/linux -shared scripts/resources/catch_abort.c -lpthread -o scripts/resources/catch_abort.so
   fi
 
+  JRE_RELEASE="jre21.0.8"
+  ZULU_RELEASE="zulu21.44.17"
+
   case "$OS" in
     debian-all)
       RELEASE="$RELEASE_NAME.deb"
@@ -49,11 +52,9 @@ main() {
       move_release_to_output_dir
       ;;
     appimage)
-      # https://github.com/adoptium/temurin21-binaries/releases/
-      JRE_RELEASE="jdk-21.0.8+9"
-      JRE="OpenJDK21U-jre_x64_linux_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
-      JRE_DIR="$JRE_RELEASE-jre"
-      JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
+      JRE="$ZULU_RELEASE-ca-$JRE_RELEASE-linux_x64.zip"
+      JRE_DIR="${JRE%.*}"
+      JRE_URL="https://cdn.azul.com/zulu/bin/$JRE"
       setup_jre
 
       RELEASE="$RELEASE_NAME.AppImage"
@@ -67,11 +68,9 @@ main() {
       move_release_to_output_dir
       ;;
     linux-x64)
-      # https://github.com/adoptium/temurin21-binaries/releases/
-      JRE_RELEASE="jdk-21.0.8+9"
-      JRE="OpenJDK21U-jre_x64_linux_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
-      JRE_DIR="$JRE_RELEASE-jre"
-      JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
+      JRE="$ZULU_RELEASE-ca-$JRE_RELEASE-linux_x64.zip"
+      JRE_DIR="${JRE%.*}"
+      JRE_URL="https://cdn.azul.com/zulu/bin/$JRE"
       ELECTRON="electron-$electron_version-linux-x64.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_electron
@@ -83,11 +82,9 @@ main() {
       move_release_to_output_dir
       ;;
     macOS-x64)
-      # https://github.com/adoptium/temurin21-binaries/releases/
-      JRE_RELEASE="jdk-21.0.8+9"
-      JRE="OpenJDK21U-jre_x64_mac_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
-      JRE_DIR="$JRE_RELEASE-jre"
-      JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
+      JRE="$ZULU_RELEASE-ca-$JRE_RELEASE-macosx_x64.zip"
+      JRE_DIR="${JRE%.*}"
+      JRE_URL="https://cdn.azul.com/zulu/bin/$JRE"
       ELECTRON="electron-$electron_version-darwin-x64.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_electron
@@ -99,11 +96,9 @@ main() {
       move_release_to_output_dir
       ;;
     macOS-arm64)
-      # https://github.com/adoptium/temurin21-binaries/releases/
-      JRE_RELEASE="jdk-21.0.8+9"
-      JRE="OpenJDK21U-jre_aarch64_mac_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').tar.gz"
-      JRE_DIR="$JRE_RELEASE-jre"
-      JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
+      JRE="$ZULU_RELEASE-ca-$JRE_RELEASE-macosx_aarch64.zip"
+      JRE_DIR="${JRE%.*}"
+      JRE_URL="https://cdn.azul.com/zulu/bin/$JRE"
       ELECTRON="electron-$electron_version-darwin-arm64.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_electron
@@ -115,11 +110,9 @@ main() {
       move_release_to_output_dir
       ;;
     windows-x64)
-      # https://github.com/adoptium/temurin21-binaries/releases/
-      JRE_RELEASE="jdk-21.0.8+9"
-      JRE="OpenJDK21U-jre_x64_windows_hotspot_$(echo "$JRE_RELEASE" | sed 's/jdk//;s/-//g;s/+/_/g').zip"
-      JRE_DIR="$JRE_RELEASE-jre"
-      JRE_URL="https://github.com/adoptium/temurin21-binaries/releases/download/$JRE_RELEASE/$JRE"
+      JRE="$ZULU_RELEASE-ca-$JRE_RELEASE-win_x64.zip"
+      JRE_DIR="${JRE%.*}"
+      JRE_URL="https://cdn.azul.com/zulu/bin/$JRE"
       ELECTRON="electron-$electron_version-win32-x64.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_electron
