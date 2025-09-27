@@ -50,6 +50,7 @@ import suwayomi.tachidesk.server.settings.PathSetting
 import suwayomi.tachidesk.server.settings.SettingGroup
 import suwayomi.tachidesk.server.settings.SettingsRegistry
 import suwayomi.tachidesk.server.settings.StringSetting
+import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.SystemPropertyOverridableConfigModule
 import kotlin.collections.associate
 import kotlin.time.Duration
@@ -61,6 +62,8 @@ import kotlin.time.Duration.Companion.seconds
 val mutableConfigValueScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
 const val SERVER_CONFIG_MODULE_NAME = "server"
+
+val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
 // Settings are ordered by "protoNumber".
 class ServerConfig(
