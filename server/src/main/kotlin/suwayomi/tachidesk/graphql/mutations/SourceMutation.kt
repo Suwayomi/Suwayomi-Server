@@ -6,14 +6,13 @@ import androidx.preference.ListPreference
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.SwitchPreferenceCompat
 import graphql.execution.DataFetcherResult
-import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.asDataFetcherResult
-import suwayomi.tachidesk.graphql.server.getAttribute
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.FilterChange
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.graphql.types.Preference
@@ -27,10 +26,7 @@ import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
-import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
-import suwayomi.tachidesk.server.JavalinSetup.getAttribute
-import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class SourceMutation {
@@ -44,11 +40,8 @@ class SourceMutation {
         val meta: SourceMetaType,
     )
 
-    fun setSourceMeta(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: SetSourceMetaInput,
-    ): DataFetcherResult<SetSourceMetaPayload?> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun setSourceMeta(input: SetSourceMetaInput): DataFetcherResult<SetSourceMetaPayload?> {
         val (clientMutationId, meta) = input
 
         return asDataFetcherResult {
@@ -70,11 +63,8 @@ class SourceMutation {
         val source: SourceType?,
     )
 
-    fun deleteSourceMeta(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: DeleteSourceMetaInput,
-    ): DataFetcherResult<DeleteSourceMetaPayload?> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun deleteSourceMeta(input: DeleteSourceMetaInput): DataFetcherResult<DeleteSourceMetaPayload?> {
         val (clientMutationId, sourceId, key) = input
 
         return asDataFetcherResult {
@@ -129,11 +119,8 @@ class SourceMutation {
         val hasNextPage: Boolean,
     )
 
-    fun fetchSourceManga(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: FetchSourceMangaInput,
-    ): CompletableFuture<DataFetcherResult<FetchSourceMangaPayload?>> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun fetchSourceManga(input: FetchSourceMangaInput): CompletableFuture<DataFetcherResult<FetchSourceMangaPayload?>> {
         val (clientMutationId, sourceId, type, page, query, filters) = input
 
         return future {
@@ -199,11 +186,8 @@ class SourceMutation {
         val source: SourceType,
     )
 
-    fun updateSourcePreference(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: UpdateSourcePreferenceInput,
-    ): DataFetcherResult<UpdateSourcePreferencePayload?> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun updateSourcePreference(input: UpdateSourcePreferenceInput): DataFetcherResult<UpdateSourcePreferencePayload?> {
         val (clientMutationId, sourceId, change) = input
 
         return asDataFetcherResult {

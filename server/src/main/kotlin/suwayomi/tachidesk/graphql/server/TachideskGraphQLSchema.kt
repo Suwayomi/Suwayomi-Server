@@ -9,10 +9,12 @@ package suwayomi.tachidesk.graphql.server
 
 import com.expediagroup.graphql.generator.SchemaGeneratorConfig
 import com.expediagroup.graphql.generator.TopLevelObject
+import com.expediagroup.graphql.generator.directives.KotlinDirectiveWiringFactory
 import com.expediagroup.graphql.generator.hooks.FlowSubscriptionSchemaGeneratorHooks
 import com.expediagroup.graphql.generator.toSchema
 import graphql.schema.GraphQLType
 import io.javalin.http.UploadedFile
+import suwayomi.tachidesk.graphql.directives.RequireAuthDirectiveWiring
 import suwayomi.tachidesk.graphql.mutations.BackupMutation
 import suwayomi.tachidesk.graphql.mutations.CategoryMutation
 import suwayomi.tachidesk.graphql.mutations.ChapterMutation
@@ -54,6 +56,11 @@ import kotlin.reflect.KType
 import kotlin.time.Duration
 
 class CustomSchemaGeneratorHooks : FlowSubscriptionSchemaGeneratorHooks() {
+    override val wiringFactory =
+        KotlinDirectiveWiringFactory(
+            manualWiring = mapOf("requireAuth" to RequireAuthDirectiveWiring()),
+        )
+
     override fun willGenerateGraphQLType(type: KType): GraphQLType? =
         when (type.classifier as? KClass<*>) {
             Long::class -> GraphQLLongAsString // encode to string for JS
