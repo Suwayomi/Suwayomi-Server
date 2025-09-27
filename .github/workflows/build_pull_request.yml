@@ -48,7 +48,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: 21
-          distribution: 'temurin'
+          distribution: 'zulu'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
