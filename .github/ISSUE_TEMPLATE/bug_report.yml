@@ -46,6 +46,17 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: database
+    attributes:
+      label: Used database
+      description: H2 is the default database
+      options:
+        - H2
+        - PostgreSQL
+    validations:
+      required: true
+
   - type: input
     id: server-os
     attributes:
