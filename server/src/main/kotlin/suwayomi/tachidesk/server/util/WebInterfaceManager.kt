@@ -158,33 +158,25 @@ object WebInterfaceManager {
             return
         }
 
-        runBlocking {
-            setupWebUI()
-        }
-
-        val rootPath = ServerSubpath.asRootPath()
-        val servableWebUIRoot = createServableRoot()
-
-        config.spaRoot.addFile(rootPath, "$servableWebUIRoot/index.html", Location.EXTERNAL)
-
-        if (ServerSubpath.isDefined()) {
-            config.staticFiles.add { staticFiles ->
-                staticFiles.hostedPath = ServerSubpath.normalized()
-                staticFiles.directory = servableWebUIRoot
-                staticFiles.location = Location.EXTERNAL
-            }
-        } else {
-            config.staticFiles.add(servableWebUIRoot, Location.EXTERNAL)
+        config.staticFiles.add { staticFiles ->
+            if (ServerSubpath.isDefined()) staticFiles.hostedPath = ServerSubpath.normalized()
+            staticFiles.directory = applicationDirs.webUIServe
+            staticFiles.location = Location.EXTERNAL
         }
 
         serveWebUI = {
             val updatedServableRoot = createServableRoot()
-            config.spaRoot.addFile(rootPath, "$updatedServableRoot/index.html", Location.EXTERNAL)
+            config.spaRoot.addFile(ServerSubpath.asRootPath(), "$updatedServableRoot/index.html", Location.EXTERNAL)
+
+            logger.info {
+                "Serving SPA files for ${serverConfig.webUIFlavor.value}" +
+                    if (ServerSubpath.isDefined()) " under subpath '${ServerSubpath.normalized()}'" else ""
+            }
         }
 
-        logger.info {
-            "Serving web static files for ${serverConfig.webUIFlavor.value}" +
-                if (ServerSubpath.isDefined()) " under subpath '${ServerSubpath.normalized()}'" else ""
+        @OptIn(DelicateCoroutinesApi::class)
+        GlobalScope.launch(Dispatchers.IO) {
+            setupWebUI()
         }
     }
 
@@ -218,7 +210,7 @@ object WebInterfaceManager {
 
     private fun createServableDirectory(): String {
         val originalWebUIRoot = applicationDirs.webUIRoot
-        val tempWebUIRoot = "${applicationDirs.tempRoot}/webui-serve"
+        val tempWebUIRoot = applicationDirs.webUIServe
 
         File(tempWebUIRoot).deleteRecursively()
         File(tempWebUIRoot).mkdirs()
@@ -240,7 +232,6 @@ object WebInterfaceManager {
 
     private fun isAutoUpdateEnabled(): Boolean = serverConfig.webUIUpdateCheckInterval.value.toInt() > 0
 
-    @OptIn(DelicateCoroutinesApi::class)
     private fun scheduleWebUIUpdateCheck() {
         HAScheduler.descheduleCron(currentUpdateTaskId)
 
@@ -282,6 +273,7 @@ object WebInterfaceManager {
         val wasPreviousUpdateCheckTriggered =
             (System.currentTimeMillis() - lastAutomatedUpdate) < updateInterval.inWholeMilliseconds
         if (!wasPreviousUpdateCheckTriggered) {
+            @OptIn(DelicateCoroutinesApi::class)
             GlobalScope.launch(Dispatchers.IO) {
                 task()
             }
@@ -293,6 +285,7 @@ object WebInterfaceManager {
 
     suspend fun setupWebUI() {
         if (serverConfig.webUIFlavor.value == WebUIFlavor.CUSTOM) {
+            serveWebUI()
             return
         }
 
@@ -306,11 +299,13 @@ object WebInterfaceManager {
             val currentVersion = getLocalVersion()
 
             log.info { "found webUI files - version= $currentVersion" }
+            serveWebUI()
 
             val hasFlavorChanged = flavor.uiName != servedFlavor.uiName
             if (hasFlavorChanged) {
                 try {
                     doInitialSetup(flavor)
+                    serveWebUI()
                     return
                 } catch (e: Exception) {
                     log.warn(e) { "Failed to install the version of the new flavor, proceeding with version of previous flavor" }
@@ -321,6 +316,7 @@ object WebInterfaceManager {
             if (!isLocalWebUIValid(flavorToValidate, applicationDirs.webUIRoot)) {
                 try {
                     doInitialSetup(flavorToValidate, isInvalid = true)
+                    serveWebUI()
                 } catch (e: Exception) {
                     log.warn(e) { "WebUI is invalid and failed to install a valid version, proceeding with invalid version" }
                 }
@@ -340,6 +336,7 @@ object WebInterfaceManager {
 
                 try {
                     setupBundledWebUI()
+                    serveWebUI()
                 } catch (e: Exception) {
                     log.error(e) { "failed the update to the bundled webUI" }
                 }
@@ -351,6 +348,7 @@ object WebInterfaceManager {
         log.warn { "no webUI files found, starting download..." }
         try {
             doInitialSetup(flavor)
+            serveWebUI()
         } catch (e: Exception) {
             log.error(e) {
                 "Failed to setup the webUI. Unable to start the server with a served webUI, change the settings to start" +
@@ -459,6 +457,7 @@ object WebInterfaceManager {
         log.info { "An update is available, starting download..." }
         try {
             downloadVersion(flavor, getLatestCompatibleVersion(flavor))
+            serveWebUI()
         } catch (e: Exception) {
             log.warn(e) { "failed due to" }
         }
@@ -680,12 +679,14 @@ object WebInterfaceManager {
         flavor: WebUIFlavor,
         version: String,
     ) {
-        scope.launch {
+        @OptIn(DelicateCoroutinesApi::class)
+        GlobalScope.launch(Dispatchers.IO) {
             downloadVersion(flavor, version)
+            serveWebUI()
         }
     }
 
-    suspend fun downloadVersion(
+    private suspend fun downloadVersion(
         flavor: WebUIFlavor,
         version: String,
     ) {
@@ -719,8 +720,6 @@ object WebInterfaceManager {
             setServedWebUIFlavor(flavor)
 
             emitStatus(version, FINISHED, 100, immediate = true)
-
-            serveWebUI()
         } catch (e: Exception) {
             emitStatus(version, ERROR, 0, immediate = true)
             throw e

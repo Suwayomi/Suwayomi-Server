@@ -88,6 +88,7 @@ class ApplicationDirs(
     val localMangaRoot
         get() = serverConfig.localSourcePath.value.ifBlank { "$dataRoot/local" }
     val webUIRoot = "$dataRoot/webUI"
+    val webUIServe = "$tempRoot/webUI-serve"
     val automatedBackupRoot
         get() = serverConfig.backupPath.value.ifBlank { "$dataRoot/backups" }
 
