@@ -1,7 +1,6 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import graphql.execution.DataFetcherResult
-import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
@@ -13,7 +12,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.asDataFetcherResult
-import suwayomi.tachidesk.graphql.server.getAttribute
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.CategoryMetaType
 import suwayomi.tachidesk.graphql.types.CategoryType
 import suwayomi.tachidesk.graphql.types.MangaType
@@ -25,9 +24,6 @@ import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
-import suwayomi.tachidesk.server.JavalinSetup.Attribute
-import suwayomi.tachidesk.server.JavalinSetup.getAttribute
-import suwayomi.tachidesk.server.user.requireUser
 
 class CategoryMutation {
     data class SetCategoryMetaInput(
@@ -40,12 +36,9 @@ class CategoryMutation {
         val meta: CategoryMetaType,
     )
 
-    fun setCategoryMeta(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: SetCategoryMetaInput,
-    ): DataFetcherResult<SetCategoryMetaPayload?> =
+    @RequireAuth
+    fun setCategoryMeta(input: SetCategoryMetaInput): DataFetcherResult<SetCategoryMetaPayload?> =
         asDataFetcherResult {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val (clientMutationId, meta) = input
 
             Category.modifyMeta(meta.categoryId, meta.key, meta.value)
@@ -65,12 +58,9 @@ class CategoryMutation {
         val category: CategoryType,
     )
 
-    fun deleteCategoryMeta(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: DeleteCategoryMetaInput,
-    ): DataFetcherResult<DeleteCategoryMetaPayload?> =
+    @RequireAuth
+    fun deleteCategoryMeta(input: DeleteCategoryMetaInput): DataFetcherResult<DeleteCategoryMetaPayload?> =
         asDataFetcherResult {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val (clientMutationId, categoryId, key) = input
 
             val (meta, category) =
@@ -163,12 +153,9 @@ class CategoryMutation {
         }
     }
 
-    fun updateCategory(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: UpdateCategoryInput,
-    ): DataFetcherResult<UpdateCategoryPayload?> =
+    @RequireAuth
+    fun updateCategory(input: UpdateCategoryInput): DataFetcherResult<UpdateCategoryPayload?> =
         asDataFetcherResult {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val (clientMutationId, id, patch) = input
 
             updateCategories(listOf(id), patch)
@@ -184,12 +171,9 @@ class CategoryMutation {
             )
         }
 
-    fun updateCategories(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: UpdateCategoriesInput,
-    ): DataFetcherResult<UpdateCategoriesPayload?> =
+    @RequireAuth
+    fun updateCategories(input: UpdateCategoriesInput): DataFetcherResult<UpdateCategoriesPayload?> =
         asDataFetcherResult {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val (clientMutationId, ids, patch) = input
 
             updateCategories(ids, patch)
@@ -216,12 +200,9 @@ class CategoryMutation {
         val position: Int,
     )
 
-    fun updateCategoryOrder(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: UpdateCategoryOrderInput,
-    ): DataFetcherResult<UpdateCategoryOrderPayload?> =
+    @RequireAuth
+    fun updateCategoryOrder(input: UpdateCategoryOrderInput): DataFetcherResult<UpdateCategoryOrderPayload?> =
         asDataFetcherResult {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val (clientMutationId, categoryId, position) = input
             require(position > 0) {
                 "'order' must not be <= 0"
@@ -278,12 +259,9 @@ class CategoryMutation {
         val category: CategoryType,
     )
 
-    fun createCategory(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: CreateCategoryInput,
-    ): DataFetcherResult<CreateCategoryPayload?> =
+    @RequireAuth
+    fun createCategory(input: CreateCategoryInput): DataFetcherResult<CreateCategoryPayload?> =
         asDataFetcherResult {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val (clientMutationId, name, order, default, includeInUpdate, includeInDownload) = input
             transaction {
                 require(CategoryTable.selectAll().where { CategoryTable.name eq input.name }.isEmpty()) {
@@ -341,12 +319,9 @@ class CategoryMutation {
         val mangas: List<MangaType>,
     )
 
-    fun deleteCategory(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: DeleteCategoryInput,
-    ): DataFetcherResult<DeleteCategoryPayload?> {
+    @RequireAuth
+    fun deleteCategory(input: DeleteCategoryInput): DataFetcherResult<DeleteCategoryPayload?> {
         return asDataFetcherResult {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val (clientMutationId, categoryId) = input
             if (categoryId == 0) { // Don't delete default category
                 return@asDataFetcherResult DeleteCategoryPayload(
@@ -434,12 +409,9 @@ class CategoryMutation {
         }
     }
 
-    fun updateMangaCategories(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: UpdateMangaCategoriesInput,
-    ): DataFetcherResult<UpdateMangaCategoriesPayload?> =
+    @RequireAuth
+    fun updateMangaCategories(input: UpdateMangaCategoriesInput): DataFetcherResult<UpdateMangaCategoriesPayload?> =
         asDataFetcherResult {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val (clientMutationId, id, patch) = input
 
             updateMangas(listOf(id), patch)
@@ -455,12 +427,9 @@ class CategoryMutation {
             )
         }
 
-    fun updateMangasCategories(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: UpdateMangasCategoriesInput,
-    ): DataFetcherResult<UpdateMangasCategoriesPayload?> =
+    @RequireAuth
+    fun updateMangasCategories(input: UpdateMangasCategoriesInput): DataFetcherResult<UpdateMangasCategoriesPayload?> =
         asDataFetcherResult {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val (clientMutationId, ids, patch) = input
 
             updateMangas(ids, patch)

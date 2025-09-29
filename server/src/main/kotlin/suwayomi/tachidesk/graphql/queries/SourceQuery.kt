@@ -17,6 +17,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
 import suwayomi.tachidesk.graphql.queries.filter.HasGetOp
@@ -27,7 +28,6 @@ import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompare
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
-import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
@@ -40,19 +40,14 @@ import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.SourceNodeList
 import suwayomi.tachidesk.graphql.types.SourceType
 import suwayomi.tachidesk.manga.model.table.SourceTable
-import suwayomi.tachidesk.server.JavalinSetup.Attribute
-import suwayomi.tachidesk.server.JavalinSetup.getAttribute
-import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class SourceQuery {
+    @RequireAuth
     fun source(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Long,
-    ): CompletableFuture<SourceType> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        return dataFetchingEnvironment.getValueFromDataLoader("SourceDataLoader", id)
-    }
+    ): CompletableFuture<SourceType> = dataFetchingEnvironment.getValueFromDataLoader("SourceDataLoader", id)
 
     enum class SourceOrderBy(
         override val column: Column<*>,
@@ -127,8 +122,8 @@ class SourceQuery {
             )
     }
 
+    @RequireAuth
     fun sources(
-        dataFetchingEnvironment: DataFetchingEnvironment,
         condition: SourceCondition? = null,
         filter: SourceFilter? = null,
         @GraphQLDeprecated(
@@ -148,7 +143,6 @@ class SourceQuery {
         last: Int? = null,
         offset: Int? = null,
     ): SourceNodeList {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (queryResults, resultsAsType) =
             transaction {
                 val res = SourceTable.selectAll()

@@ -1,7 +1,6 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import graphql.execution.DataFetcherResult
-import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.selectAll
@@ -9,11 +8,8 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.global.impl.GlobalMeta
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
 import suwayomi.tachidesk.graphql.asDataFetcherResult
-import suwayomi.tachidesk.graphql.server.getAttribute
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.GlobalMetaType
-import suwayomi.tachidesk.server.JavalinSetup.Attribute
-import suwayomi.tachidesk.server.JavalinSetup.getAttribute
-import suwayomi.tachidesk.server.user.requireUser
 
 class MetaMutation {
     data class SetGlobalMetaInput(
@@ -26,11 +22,8 @@ class MetaMutation {
         val meta: GlobalMetaType,
     )
 
-    fun setGlobalMeta(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: SetGlobalMetaInput,
-    ): DataFetcherResult<SetGlobalMetaPayload?> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun setGlobalMeta(input: SetGlobalMetaInput): DataFetcherResult<SetGlobalMetaPayload?> {
         val (clientMutationId, meta) = input
 
         return asDataFetcherResult {
@@ -50,11 +43,8 @@ class MetaMutation {
         val meta: GlobalMetaType?,
     )
 
-    fun deleteGlobalMeta(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: DeleteGlobalMetaInput,
-    ): DataFetcherResult<DeleteGlobalMetaPayload?> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun deleteGlobalMeta(input: DeleteGlobalMetaInput): DataFetcherResult<DeleteGlobalMetaPayload?> {
         val (clientMutationId, key) = input
 
         return asDataFetcherResult {
