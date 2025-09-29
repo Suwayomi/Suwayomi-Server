@@ -19,7 +19,6 @@ import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.createAppModule
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.local.LocalSource
-import io.github.config4k.getValue
 import io.github.config4k.toConfig
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.json.JavalinJackson
@@ -124,8 +123,6 @@ data class DatabaseSettings(
     val databaseUsername: String,
     val databasePassword: String,
 )
-
-val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
 val androidCompat by lazy { AndroidCompat() }
 
