@@ -429,6 +429,7 @@ class ServerConfig(
         protoNumber = 43,
         defaultValue = false,
         group = SettingGroup.CLOUDFLARE,
+        excludeFromBackup = true,
     )
 
     val flareSolverrUrl: MutableStateFlow<String> by StringSetting(
