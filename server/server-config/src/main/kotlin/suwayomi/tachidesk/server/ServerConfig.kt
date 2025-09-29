@@ -744,15 +744,6 @@ class ServerConfig(
         defaultValue = "",
     )
 
-    val webUISubpath: MutableStateFlow<String> by StringSetting(
-        protoNumber = 75,
-        group = SettingGroup.WEB_UI,
-        defaultValue = "",
-        pattern = "^(/[a-zA-Z0-9._-]+)*$".toRegex(),
-        description = "Serve WebUI under a subpath (e.g., /manga). Leave empty for root path. Must start with / if specified.",
-        requiresRestart = true,
-    )
-
     val koreaderSyncStrategyForward: MutableStateFlow<KoreaderSyncConflictStrategy> by EnumSetting(
         protoNumber = 73,
         group = SettingGroup.KOREADER_SYNC,
@@ -769,6 +760,15 @@ class ServerConfig(
         enumClass = KoreaderSyncConflictStrategy::class,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy")),
         description = "Strategy to apply when remote progress is older than local.",
+    )
+
+    val webUISubpath: MutableStateFlow<String> by StringSetting(
+        protoNumber = 75,
+        group = SettingGroup.WEB_UI,
+        defaultValue = "",
+        pattern = "^(/[a-zA-Z0-9._-]+)*$".toRegex(),
+        description = "Serve WebUI under a subpath (e.g., /manga). Leave empty for root path. Must start with / if specified.",
+        requiresRestart = true,
     )
 
     /** ****************************************************************** **/
