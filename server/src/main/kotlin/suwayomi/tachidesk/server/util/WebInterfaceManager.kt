@@ -22,7 +22,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -87,8 +86,7 @@ object WebInterfaceManager {
     private val json: Json by injectLazy()
     private val network: NetworkHelper by injectLazy()
 
-    private val notifyFlow =
-        MutableSharedFlow<WebUIUpdateStatus>(extraBufferCapacity = 1, onBufferOverflow = DROP_OLDEST)
+    private val notifyFlow = MutableSharedFlow<WebUIUpdateStatus?>()
 
     private val statusFlow = MutableSharedFlow<WebUIUpdateStatus>()
     val status =
@@ -102,7 +100,10 @@ object WebInterfaceManager {
         scope.launch {
             @OptIn(FlowPreview::class)
             notifyFlow.sample(1.seconds).collect {
-                statusFlow.emit(it)
+                if (it != null) {
+                    logger.debug { "notifyFlow: sampling $it" }
+                    statusFlow.emit(it)
+                }
             }
         }
 
@@ -667,6 +668,7 @@ object WebInterfaceManager {
             val status = getStatus(version, state, progress)
 
             if (immediate) {
+                notifyFlow.emit(null)
                 statusFlow.emit(status)
                 return@launch
             }
