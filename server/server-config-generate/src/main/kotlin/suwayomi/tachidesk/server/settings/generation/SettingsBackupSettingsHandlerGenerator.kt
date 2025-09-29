@@ -132,7 +132,7 @@ object SettingsBackupSettingsHandlerGenerator {
     }
 
     private fun getConfigAccess(setting: SettingsRegistry.SettingMetadata): String {
-        if (setting.excludeFromBackup == true) {
+        if (setting.excludeFromBackup == true || setting.deprecated != null) {
             return "null"
         }
         if (setting.typeInfo.convertToBackupType != null) {
