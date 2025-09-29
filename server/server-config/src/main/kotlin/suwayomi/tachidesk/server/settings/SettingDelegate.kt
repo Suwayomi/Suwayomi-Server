@@ -29,6 +29,7 @@ open class SettingDelegate<T : Any>(
     protected val typeInfo: SettingsRegistry.PartialTypeInfo? = null,
     protected val deprecated: SettingsRegistry.SettingDeprecated? = null,
     protected val description: String? = null,
+    protected val excludeFromBackup: Boolean? = null,
 ) {
     var flow: MutableStateFlow<T>? = null
     lateinit var propertyName: String
@@ -82,6 +83,7 @@ open class SettingDelegate<T : Any>(
                             defaultValueComment
                         }
                     },
+                excludeFromBackup = excludeFromBackup
             ),
         )
 
@@ -171,6 +173,7 @@ class MigratedConfigValue<T : Any>(
                 group = group.value,
                 deprecated = deprecated,
                 requiresRestart = requiresRestart ?: false,
+                excludeFromBackup = null,
             ),
         )
 
@@ -211,6 +214,7 @@ class StringSetting(
     deprecated: SettingsRegistry.SettingDeprecated? = null,
     requiresRestart: Boolean? = null,
     description: String? = null,
+    excludeFromBackup: Boolean? = null,
 ) : SettingDelegate<String>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -234,6 +238,7 @@ class StringSetting(
         deprecated = deprecated,
         requiresRestart = requiresRestart,
         description = description,
+        excludeFromBackup = excludeFromBackup,
     )
 
 abstract class RangeSetting<T : Comparable<T>>(
@@ -248,6 +253,7 @@ abstract class RangeSetting<T : Comparable<T>>(
     deprecated: SettingsRegistry.SettingDeprecated? = null,
     requiresRestart: Boolean? = null,
     description: String? = null,
+    excludeFromBackup: Boolean? = null,
 ) : SettingDelegate<T>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -280,6 +286,7 @@ abstract class RangeSetting<T : Comparable<T>>(
                     defaultDescription
                 }
             },
+        excludeFromBackup = excludeFromBackup,
     )
 
 class IntSetting(
@@ -293,6 +300,7 @@ class IntSetting(
     deprecated: SettingsRegistry.SettingDeprecated? = null,
     requiresRestart: Boolean? = null,
     description: String? = null,
+    excludeFromBackup: Boolean? = null,
 ) : RangeSetting<Int>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -304,6 +312,7 @@ class IntSetting(
         deprecated = deprecated,
         requiresRestart = requiresRestart,
         description = description,
+        excludeFromBackup = excludeFromBackup,
     )
 
 class DisableableIntSetting(
@@ -315,6 +324,7 @@ class DisableableIntSetting(
     deprecated: SettingsRegistry.SettingDeprecated? = null,
     requiresRestart: Boolean? = null,
     description: String? = null,
+    excludeFromBackup: Boolean? = null,
 ) : RangeSetting<Int>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -349,6 +359,7 @@ class DisableableIntSetting(
                     description
                 }
             },
+        excludeFromBackup = excludeFromBackup,
     )
 
 class DoubleSetting(
@@ -362,6 +373,7 @@ class DoubleSetting(
     deprecated: SettingsRegistry.SettingDeprecated? = null,
     requiresRestart: Boolean? = null,
     description: String? = null,
+    excludeFromBackup: Boolean? = null,
 ) : RangeSetting<Double>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -373,6 +385,7 @@ class DoubleSetting(
         deprecated = deprecated,
         requiresRestart = requiresRestart,
         description = description,
+        excludeFromBackup = excludeFromBackup,
     )
 
 class DisableableDoubleSetting(
@@ -384,6 +397,7 @@ class DisableableDoubleSetting(
     deprecated: SettingsRegistry.SettingDeprecated? = null,
     requiresRestart: Boolean? = null,
     description: String? = null,
+    excludeFromBackup: Boolean? = null,
 ) : RangeSetting<Double>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -418,6 +432,7 @@ class DisableableDoubleSetting(
                     description
                 }
             },
+        excludeFromBackup = excludeFromBackup,
     )
 
 class BooleanSetting(
@@ -427,6 +442,7 @@ class BooleanSetting(
     deprecated: SettingsRegistry.SettingDeprecated? = null,
     requiresRestart: Boolean? = null,
     description: String? = null,
+    excludeFromBackup: Boolean? = null,
 ) : SettingDelegate<Boolean>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -435,6 +451,7 @@ class BooleanSetting(
         deprecated = deprecated,
         requiresRestart = requiresRestart,
         description = description,
+        excludeFromBackup = excludeFromBackup,
     )
 
 class PathSetting(
@@ -445,6 +462,7 @@ class PathSetting(
     deprecated: SettingsRegistry.SettingDeprecated? = null,
     requiresRestart: Boolean? = null,
     description: String? = null,
+    excludeFromBackup: Boolean? = null,
 ) : SettingDelegate<String>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -459,6 +477,7 @@ class PathSetting(
         deprecated = deprecated,
         requiresRestart = requiresRestart,
         description = description,
+        excludeFromBackup = excludeFromBackup,
     )
 
 class EnumSetting<T : Enum<T>>(
@@ -470,6 +489,7 @@ class EnumSetting<T : Enum<T>>(
     deprecated: SettingsRegistry.SettingDeprecated? = null,
     requiresRestart: Boolean? = null,
     description: String? = null,
+    excludeFromBackup: Boolean? = null,
 ) : SettingDelegate<T>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -494,6 +514,7 @@ class EnumSetting<T : Enum<T>>(
                     defaultDescription
                 }
             },
+        excludeFromBackup = excludeFromBackup,
     )
 
 class DurationSetting(
@@ -507,6 +528,7 @@ class DurationSetting(
     deprecated: SettingsRegistry.SettingDeprecated? = null,
     requiresRestart: Boolean? = null,
     description: String? = null,
+    excludeFromBackup: Boolean? = null,
 ) : RangeSetting<Duration>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -522,6 +544,7 @@ class DurationSetting(
         deprecated = deprecated,
         requiresRestart = requiresRestart,
         description = description,
+        excludeFromBackup = excludeFromBackup,
     )
 
 class ListSetting<T>(
@@ -534,6 +557,7 @@ class ListSetting<T>(
     deprecated: SettingsRegistry.SettingDeprecated? = null,
     requiresRestart: Boolean? = null,
     description: String? = null,
+    excludeFromBackup: Boolean? = null,
 ) : SettingDelegate<List<T>>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -558,6 +582,7 @@ class ListSetting<T>(
         deprecated = deprecated,
         requiresRestart = requiresRestart,
         description = description,
+        excludeFromBackup = excludeFromBackup,
     )
 
 class MapSetting<K, V>(
@@ -569,6 +594,7 @@ class MapSetting<K, V>(
     deprecated: SettingsRegistry.SettingDeprecated? = null,
     requiresRestart: Boolean? = null,
     description: String? = null,
+    excludeFromBackup: Boolean? = null,
 ) : SettingDelegate<Map<K, V>>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
@@ -578,4 +604,5 @@ class MapSetting<K, V>(
         deprecated = deprecated,
         requiresRestart = requiresRestart,
         description = description,
+        excludeFromBackup = excludeFromBackup,
     )

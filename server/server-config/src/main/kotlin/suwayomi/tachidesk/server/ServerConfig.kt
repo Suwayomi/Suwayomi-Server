@@ -77,6 +77,7 @@ class ServerConfig(
         group = SettingGroup.NETWORK,
         defaultValue = "0.0.0.0",
         pattern = "^((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4}$".toRegex(),
+        excludeFromBackup = true,
     )
 
     val port: MutableStateFlow<Int> by IntSetting(
@@ -85,6 +86,7 @@ class ServerConfig(
         defaultValue = 4567,
         min = 1,
         max = 65535,
+        excludeFromBackup = true,
     )
 
     val socksProxyEnabled: MutableStateFlow<Boolean> by BooleanSetting(
@@ -153,6 +155,7 @@ class ServerConfig(
         group = SettingGroup.WEB_UI,
         defaultValue = "",
         mustExist = true,
+        excludeFromBackup = true,
     )
 
     val webUIChannel: MutableStateFlow<WebUIChannel> by EnumSetting(
@@ -183,6 +186,7 @@ class ServerConfig(
         group = SettingGroup.DOWNLOADER,
         defaultValue = "",
         mustExist = true,
+        excludeFromBackup = true,
     )
 
     val autoDownloadNewChapters: MutableStateFlow<Boolean> by BooleanSetting(
@@ -386,6 +390,7 @@ class ServerConfig(
         group = SettingGroup.BACKUP,
         defaultValue = "",
         mustExist = true,
+        excludeFromBackup = true,
     )
 
     val backupTime: MutableStateFlow<String> by StringSetting(
@@ -417,6 +422,7 @@ class ServerConfig(
         group = SettingGroup.LOCAL_SOURCE,
         defaultValue = "",
         mustExist = true,
+        excludeFromBackup = true,
     )
 
     val flareSolverrEnabled: MutableStateFlow<Boolean> by BooleanSetting(
@@ -724,24 +730,28 @@ class ServerConfig(
         defaultValue = DatabaseType.H2,
         enumClass = DatabaseType::class,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.DatabaseType")),
+        excludeFromBackup = true,
     )
 
     val databaseUrl: MutableStateFlow<String> by StringSetting(
         protoNumber = 70,
         group = SettingGroup.DATABASE,
         defaultValue = "postgresql://localhost:5432/suwayomi",
+        excludeFromBackup = true,
     )
 
     val databaseUsername: MutableStateFlow<String> by StringSetting(
         protoNumber = 71,
         group = SettingGroup.DATABASE,
         defaultValue = "",
+        excludeFromBackup = true,
     )
 
     val databasePassword: MutableStateFlow<String> by StringSetting(
         protoNumber = 72,
         group = SettingGroup.DATABASE,
         defaultValue = "",
+        excludeFromBackup = true,
     )
 
     val koreaderSyncStrategyForward: MutableStateFlow<KoreaderSyncConflictStrategy> by EnumSetting(
@@ -769,6 +779,7 @@ class ServerConfig(
         pattern = "^(/[a-zA-Z0-9._-]+)*$".toRegex(),
         description = "Serve WebUI under a subpath (e.g., /manga). Leave empty for root path. Must start with / if specified.",
         requiresRestart = true,
+        excludeFromBackup = true,
     )
 
 

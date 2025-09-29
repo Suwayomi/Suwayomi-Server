@@ -72,6 +72,7 @@ object SettingsRegistry {
         val deprecated: SettingDeprecated? = null,
         val requiresRestart: Boolean,
         val description: String? = null,
+        val excludeFromBackup: Boolean? = null,
     )
 
     private val settings = mutableMapOf<String, SettingMetadata>()

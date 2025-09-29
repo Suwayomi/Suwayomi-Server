@@ -88,6 +88,12 @@ object SettingsBackupSettingsHandlerGenerator {
                     ") as? ${getSettingType(setting, false)},",
             )
         }
+        val excludedSettings = settings.filter { it.excludeFromBackup == true }
+        excludedSettings.forEach { setting ->
+            appendLine(
+                "${setting.name} = null,".addIndentation(indentation * 4),
+            )
+        }
         appendLine("),".addIndentation(indentation * 3))
         appendLine(")".addIndentation(contentIndentation))
         appendLine("}".addIndentation(indentation))
@@ -126,6 +132,9 @@ object SettingsBackupSettingsHandlerGenerator {
     }
 
     private fun getConfigAccess(setting: SettingsRegistry.SettingMetadata): String {
+        if (setting.excludeFromBackup == true) {
+            return "null"
+        }
         if (setting.typeInfo.convertToBackupType != null) {
             return "SettingsRegistry.get(\"${setting.name}\")!!.typeInfo.convertToBackupType!!(" +
                 "serverConfig.${setting.name}.value" +
