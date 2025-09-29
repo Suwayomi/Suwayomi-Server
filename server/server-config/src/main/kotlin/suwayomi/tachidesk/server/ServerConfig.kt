@@ -35,7 +35,7 @@ import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIInterface
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType
-import suwayomi.tachidesk.manga.impl.extension.ExtensionsList.repoMatchRegex
+import suwayomi.tachidesk.manga.impl.extension.repoMatchRegex
 import suwayomi.tachidesk.server.settings.BooleanSetting
 import suwayomi.tachidesk.server.settings.DisableableDoubleSetting
 import suwayomi.tachidesk.server.settings.DisableableIntSetting
@@ -50,6 +50,7 @@ import suwayomi.tachidesk.server.settings.PathSetting
 import suwayomi.tachidesk.server.settings.SettingGroup
 import suwayomi.tachidesk.server.settings.SettingsRegistry
 import suwayomi.tachidesk.server.settings.StringSetting
+import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.SystemPropertyOverridableConfigModule
 import kotlin.collections.associate
 import kotlin.time.Duration
@@ -61,6 +62,8 @@ import kotlin.time.Duration.Companion.seconds
 val mutableConfigValueScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
 const val SERVER_CONFIG_MODULE_NAME = "server"
+
+val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
 // Settings are ordered by "protoNumber".
 class ServerConfig(
@@ -167,6 +170,14 @@ class ServerConfig(
         min = 0.0,
         max = 23.0,
         description = "Time in hours",
+    )
+
+    val webUISubpath: MutableStateFlow<String> by StringSetting(
+        protoNumber = 75,
+        group = SettingGroup.WEB_UI,
+        defaultValue = "",
+        pattern = "^(/[a-zA-Z0-9._-]+)*$".toRegex(),
+        description = "Serve WebUI under a subpath (e.g., /manga). Leave empty for root path. Must start with / if specified.",
     )
 
     val downloadAsCbz: MutableStateFlow<Boolean> by BooleanSetting(
@@ -757,13 +768,6 @@ class ServerConfig(
         enumClass = KoreaderSyncConflictStrategy::class,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy")),
         description = "Strategy to apply when remote progress is older than local.",
-    )
-
-    val webUISubpath: MutableStateFlow<String> by StringSetting(
-        protoNumber = 76,
-        group = SettingGroup.WEB_UI,
-        defaultValue = "",
-        description = "Subpath for serving the web UI (e.g., '/tachidesk')",
     )
 
     /** ****************************************************************** **/
