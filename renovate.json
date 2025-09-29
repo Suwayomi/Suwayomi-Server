@@ -13,9 +13,16 @@
       "matchStrings": [
         "JRE_RELEASE=[\"'](?<currentValue>.+?)[\"']\\s+"
       ],
-      "datasourceTemplate": "github-releases",
-      "depNameTemplate": "adoptium/temurin21-binaries",
-      "versioningTemplate": "regex:^jdk-?(?<major>\\d+).(?<minor>\\d+).+?(?<patch>[\\d+]+)$"
+      "datasourceTemplate": "custom.zulu",
+      "versioningTemplate": "regex:^(?<major>\\d+)\.(?<minor>\\d+)\.(?<patch>\\d+).*$"
     }
-  ]
+  ],
+  "customDatasources": {
+    "zulu": {
+      "defaultRegistryUrlTemplate": "https://api.azul.com/metadata/v1/zulu/packages?availability_types=ca&release_status=both&java_package_type=jre&crac_supported=false&javafx_bundled=false&java_version=21&arch=x86&os=linux&archive_type=zip&page_size=1000&include_fields=java_package_features,release_status,support_term,os,arch,hw_bitness,abi,java_package_type,javafx_bundled,sha256_hash,cpu_gen,size,archive_type,certifications,lib_c_type,crac_supported&page=1&azul_com=true",
+      "transformTemplates": [
+        "{\"releases\": $$.$join([$join($map(distro_version[[0..2]], $string), \".\"), \"_\", $join($map(java_version, $string), \".\")])}"
+      ]
+    }
+  }
 }
