@@ -24,11 +24,14 @@ import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
+import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.ConversionUtil
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
+import java.io.PipedInputStream
+import java.io.PipedOutputStream
 import javax.imageio.ImageIO
 
 object Page {
@@ -142,12 +145,41 @@ object Page {
         image: Pair<InputStream, String>,
         format: String? = null,
     ): Pair<InputStream, String> {
-        val imageExtension = MimeUtils.guessExtensionFromMimeType(image.second) ?: image.second.removePrefix("image/")
+        var currentImage = image
+        var currentMimeType = image.second
 
-        val targetExtension =
-            (if (format != imageExtension) format else null)
-                ?: return image
+        // Step 1: Check if HTTP upscaling is configured
+        val conversions = serverConfig.downloadConversions.value
+        val defaultConversion = conversions["default"]
+        val imageType = image.second
+        val conversion = conversions[imageType] ?: defaultConversion
 
+        // Apply HTTP upscaling if configured (complementary with format conversion)
+        if (conversion != null && ConversionUtil.isHttpConversion(conversion)) {
+            try {
+                val upscaledStream = ConversionUtil.upscaleImageHttp(currentImage.first, currentMimeType, conversion.target)
+                if (upscaledStream != null) {
+                    // Update current image to upscaled version
+                    currentImage = Pair(upscaledStream, "image/jpeg") // HTTP upscaler returns JPEG
+                    currentMimeType = "image/jpeg"
+                }
+            } catch (e: Exception) {
+                // HTTP upscaling failed, continue with original image
+            }
+        }
+
+        // Step 2: Apply format conversion if requested (works on upscaled or original image)
+        val imageExtension = MimeUtils.guessExtensionFromMimeType(currentMimeType) ?: currentMimeType.removePrefix("image/")
+        val targetExtension = (if (format != imageExtension) format else null) ?: return currentImage
+
+        return convertToFormat(currentImage.first, currentMimeType, targetExtension)
+    }
+
+    private fun convertToFormat(
+        inputStream: InputStream,
+        sourceMimeType: String,
+        targetExtension: String,
+    ): Pair<InputStream, String> {
         val outStream = ByteArrayOutputStream()
         val writers = ImageIO.getImageWritersBySuffix(targetExtension)
         val writer = writers.next()
@@ -155,7 +187,7 @@ object Page {
             writer.setOutput(o)
 
             val inImage =
-                ConversionUtil.readImage(image.first, image.second)
+                ConversionUtil.readImage(inputStream, sourceMimeType)
                     ?: throw NoSuchElementException("No conversion to $targetExtension possible")
             writer.write(inImage)
         }
