@@ -172,14 +172,6 @@ class ServerConfig(
         description = "Time in hours",
     )
 
-    val webUISubpath: MutableStateFlow<String> by StringSetting(
-        protoNumber = 75,
-        group = SettingGroup.WEB_UI,
-        defaultValue = "",
-        pattern = "^(/[a-zA-Z0-9._-]+)*$".toRegex(),
-        description = "Serve WebUI under a subpath (e.g., /manga). Leave empty for root path. Must start with / if specified.",
-    )
-
     val downloadAsCbz: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 15,
         defaultValue = false,
@@ -750,6 +742,15 @@ class ServerConfig(
         protoNumber = 72,
         group = SettingGroup.DATABASE,
         defaultValue = "",
+    )
+
+    val webUISubpath: MutableStateFlow<String> by StringSetting(
+        protoNumber = 75,
+        group = SettingGroup.WEB_UI,
+        defaultValue = "",
+        pattern = "^(/[a-zA-Z0-9._-]+)*$".toRegex(),
+        description = "Serve WebUI under a subpath (e.g., /manga). Leave empty for root path. Must start with / if specified.",
+        requiresRestart = true,
     )
 
     val koreaderSyncStrategyForward: MutableStateFlow<KoreaderSyncConflictStrategy> by EnumSetting(
