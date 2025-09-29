@@ -119,12 +119,14 @@ class ServerConfig(
         protoNumber = 7,
         group = SettingGroup.PROXY,
         defaultValue = "",
+        excludeFromBackup = true,
     )
 
     val socksProxyPassword: MutableStateFlow<String> by StringSetting(
         protoNumber = 8,
         group = SettingGroup.PROXY,
         defaultValue = "",
+        excludeFromBackup = true,
     )
 
     val webUIFlavor: MutableStateFlow<WebUIFlavor> by EnumSetting(
@@ -330,12 +332,14 @@ class ServerConfig(
         protoNumber = 30,
         group = SettingGroup.AUTH,
         defaultValue = "",
+        excludeFromBackup = true,
     )
 
     val authPassword: MutableStateFlow<String> by StringSetting(
         protoNumber = 31,
         group = SettingGroup.AUTH,
         defaultValue = "",
+        excludeFromBackup = true,
     )
 
     val debugLogsEnabled: MutableStateFlow<Boolean> by BooleanSetting(
@@ -597,12 +601,14 @@ class ServerConfig(
         protoNumber = 60,
         group = SettingGroup.KOREADER_SYNC,
         defaultValue = "",
+        excludeFromBackup = true,
     )
 
     val koreaderSyncUserkey: MutableStateFlow<String> by StringSetting(
         protoNumber = 61,
         group = SettingGroup.KOREADER_SYNC,
         defaultValue = "",
+        excludeFromBackup = true,
     )
 
     val koreaderSyncDeviceId: MutableStateFlow<String> by StringSetting(
