@@ -523,6 +523,7 @@ class ServerConfig(
         defaultValue = AuthMode.NONE,
         enumClass = AuthMode::class,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.AuthMode")),
+        excludeFromBackup = true,
     )
 
     val downloadConversions: MutableStateFlow<Map<String, DownloadConversion>> by MapSetting<String, DownloadConversion>(
