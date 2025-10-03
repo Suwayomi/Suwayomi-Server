@@ -194,14 +194,15 @@ private class ChapterForDownload(
         val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
         val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
-        return source.getPageList(
-            SChapter.create().apply {
-                url = chapterEntry[ChapterTable.url]
-                name = chapterEntry[ChapterTable.name]
-                scanlator = chapterEntry[ChapterTable.scanlator]
-                chapter_number = chapterEntry[ChapterTable.chapter_number]
-                date_upload = chapterEntry[ChapterTable.date_upload]
-            },
-        )
+        return source
+            .getPageList(
+                SChapter.create().apply {
+                    url = chapterEntry[ChapterTable.url]
+                    name = chapterEntry[ChapterTable.name]
+                    scanlator = chapterEntry[ChapterTable.scanlator]
+                    chapter_number = chapterEntry[ChapterTable.chapter_number]
+                    date_upload = chapterEntry[ChapterTable.date_upload]
+                },
+            ).mapIndexed { index, page -> Page(index, page.url, page.imageUrl, page.uri) }
     }
 }
