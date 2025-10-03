@@ -1,18 +1,21 @@
 package suwayomi.tachidesk.util
 
+import eu.kanade.tachiyomi.network.NetworkHelper
+import eu.kanade.tachiyomi.network.POST
+import eu.kanade.tachiyomi.network.await
 import io.github.oshai.kotlinlogging.KotlinLogging
 import libcore.net.MimeUtils
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
 import suwayomi.tachidesk.graphql.types.DownloadConversion
+import uy.kohesive.injekt.injectLazy
 import java.awt.image.BufferedImage
 import java.io.File
 import java.io.InputStream
-import java.util.concurrent.TimeUnit
+import java.nio.file.Files
 import javax.imageio.ImageIO
+import kotlin.getValue
 
 object ConversionUtil {
     val logger = KotlinLogging.logger {}
@@ -58,16 +61,18 @@ object ConversionUtil {
         return null
     }
 
+    private val networkService: NetworkHelper by injectLazy()
+
     /**
-     * Send image to external HTTP service for upscaling
-     * Returns the upscaled image stream or null if failed
+     * Send image to external HTTP service for conversion
+     * Returns the converted image stream or null if failed
      */
-    fun upscaleImageHttp(
+    suspend fun imageHttpConvert(
         imageFile: File,
         targetUrl: String,
     ): InputStream? =
         try {
-            logger.debug { "Sending ${imageFile.name} to HTTP upscaler: $targetUrl" }
+            logger.debug { "Sending ${imageFile.name} to HTTP converter: $targetUrl" }
 
             val contentType = MimeUtils.guessMimeTypeFromExtension(imageFile.extension) ?: "application/octet-stream"
 
@@ -81,37 +86,20 @@ object ConversionUtil {
                         imageFile.asRequestBody(contentType.toMediaType()),
                     ).build()
 
-            val client =
-                OkHttpClient
-                    .Builder()
-                    .connectTimeout(5, TimeUnit.SECONDS) // Faster timeout for connection
-                    .readTimeout(60, TimeUnit.SECONDS) // Reasonable timeout for processing
-                    .build()
-
-            val request =
-                Request
-                    .Builder()
-                    .url(targetUrl)
-                    .post(requestBody)
-                    .build()
-
-            val response = client.newCall(request).execute()
-            if (response.isSuccessful) {
-                logger.debug { "HTTP upscaling successful for ${imageFile.name}" }
-                response.body?.byteStream()
-            } else {
-                logger.warn { "HTTP upscaling failed: ${response.code} - ${response.message}" }
-                null
-            }
+            val response = networkService.client
+                .newCall(POST(targetUrl, body = requestBody))
+                .await()
+            logger.debug { "HTTP conversion successful for ${imageFile.name}" }
+            response.body.byteStream()
         } catch (e: Exception) {
-            logger.warn(e) { "HTTP upscaling failed for ${imageFile.name}" }
+            logger.warn(e) { "HTTP conversion failed for ${imageFile.name}" }
             null
         }
 
     /**
      * Overload that takes InputStream and mimeType, creates temp file for HTTP upload
      */
-    fun upscaleImageHttp(
+    suspend fun imageHttpConvert(
         inputStream: InputStream,
         mimeType: String,
         targetUrl: String,
@@ -120,23 +108,20 @@ object ConversionUtil {
             // Create temporary file from input stream
             val extension = MimeUtils.guessExtensionFromMimeType(mimeType) ?: "tmp"
 
-            val tempFile =
-                kotlin.io.path
-                    .createTempFile("upscale", ".$extension")
-                    .toFile()
+            val tempFile = Files.createTempFile("conversion", ".$extension").toFile()
             tempFile.outputStream().use { output ->
                 inputStream.copyTo(output)
             }
 
-            // Upscale using file method
-            val result = upscaleImageHttp(tempFile, targetUrl)
+            // Convert using file method
+            val result = imageHttpConvert(tempFile, targetUrl)
 
             // Clean up temp file
             tempFile.delete()
 
             result
         } catch (e: Exception) {
-            logger.warn(e) { "Failed to create temp file for HTTP upscaling" }
+            logger.warn(e) { "Failed to create temp file for HTTP converter" }
             null
         }
 

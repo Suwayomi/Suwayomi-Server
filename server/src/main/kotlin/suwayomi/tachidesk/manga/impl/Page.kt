@@ -30,8 +30,6 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
-import java.io.PipedInputStream
-import java.io.PipedOutputStream
 import javax.imageio.ImageIO
 
 object Page {
@@ -145,34 +143,41 @@ object Page {
         image: Pair<InputStream, String>,
         format: String? = null,
     ): Pair<InputStream, String> {
-        var currentImage = image
+        var currentImage = image.first
         var currentMimeType = image.second
 
-        // Step 1: Check if HTTP upscaling is configured
         val conversions = serverConfig.downloadConversions.value
         val defaultConversion = conversions["default"]
-        val imageType = image.second
-        val conversion = conversions[imageType] ?: defaultConversion
+        val conversion = conversions[currentMimeType] ?: defaultConversion
 
-        // Apply HTTP upscaling if configured (complementary with format conversion)
+        // Apply HTTP conversion if configured (complementary with format conversion)
         if (conversion != null && ConversionUtil.isHttpConversion(conversion)) {
             try {
-                val upscaledStream = ConversionUtil.upscaleImageHttp(currentImage.first, currentMimeType, conversion.target)
-                if (upscaledStream != null) {
-                    // Update current image to upscaled version
-                    currentImage = Pair(upscaledStream, "image/jpeg") // HTTP upscaler returns JPEG
-                    currentMimeType = "image/jpeg"
+                val convertedStream = ConversionUtil.imageHttpConvert(
+                    inputStream = currentImage,
+                    mimeType = currentMimeType,
+                    targetUrl = conversion.target,
+                )?.buffered()
+                if (convertedStream != null) {
+                    val mime = ImageUtil.findImageType(convertedStream.buffered())?.mime
+                        ?: "image/jpeg"
+
+                    // Update current image to converted version
+                    currentImage = convertedStream
+                    currentMimeType = mime
                 }
-            } catch (e: Exception) {
-                // HTTP upscaling failed, continue with original image
+            } catch (_: Exception) {
+                // HTTP conversion failed, continue with original image
             }
         }
 
-        // Step 2: Apply format conversion if requested (works on upscaled or original image)
-        val imageExtension = MimeUtils.guessExtensionFromMimeType(currentMimeType) ?: currentMimeType.removePrefix("image/")
-        val targetExtension = (if (format != imageExtension) format else null) ?: return currentImage
+        // Apply format conversion if requested
+        val imageExtension = MimeUtils.guessExtensionFromMimeType(currentMimeType)
+            ?: currentMimeType.removePrefix("image/")
+        val targetExtension = (if (format != imageExtension) format else null)
+            ?: return currentImage to currentMimeType
 
-        return convertToFormat(currentImage.first, currentMimeType, targetExtension)
+        return convertToFormat(currentImage, currentMimeType, targetExtension)
     }
 
     private fun convertToFormat(
