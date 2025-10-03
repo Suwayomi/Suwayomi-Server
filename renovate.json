@@ -13,6 +13,7 @@
       "matchStrings": [
         "JRE_RELEASE=[\"'](?<currentValue>.+?)[\"']\\s+"
       ],
+      "depNameTemplate": "zulu",
       "datasourceTemplate": "custom.zulu",
       "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+).*$"
     }
