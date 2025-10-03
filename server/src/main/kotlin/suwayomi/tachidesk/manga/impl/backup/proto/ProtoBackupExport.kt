@@ -154,7 +154,7 @@ object ProtoBackupExport : ProtoBackupBase() {
         automatedBackupDir.listFiles { file -> file.name.startsWith(Backup.getBasename(AUTO_BACKUP_FILENAME)) }?.forEach { file ->
             try {
                 cleanupAutomatedBackupFile(file)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // ignore, will be retried on next cleanup
             }
         }
@@ -310,10 +310,6 @@ object ProtoBackupExport : ProtoBackupBase() {
                     backupManga.tracking = tracks
                 }
             }
-
-//            if (flags.includeHistory) {
-//                backupManga.history = TODO()
-//            }
 
             backupManga
         }
