@@ -21,6 +21,7 @@ import okio.Sink
 import okio.buffer
 import okio.gzip
 import org.jetbrains.exposed.sql.Query
+import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -169,7 +170,12 @@ object ProtoBackupExport : ProtoBackupBase() {
     fun createBackup(flags: BackupFlags): InputStream {
         // Create root object
 
-        val databaseManga = transaction { MangaTable.selectAll().where { MangaTable.inLibrary eq true } }
+        val databaseManga =
+            if (flags.includeManga) {
+                transaction { MangaTable.selectAll().where { MangaTable.inLibrary eq true }.toList() }
+            } else {
+                emptyList()
+            }
 
         val backup: Backup =
             transaction {
@@ -194,7 +200,7 @@ object ProtoBackupExport : ProtoBackupBase() {
     }
 
     private fun backupManga(
-        databaseManga: Query,
+        databaseManga: List<ResultRow>,
         flags: BackupFlags,
     ): List<BackupManga> =
         databaseManga.map { mangaRow ->
@@ -326,7 +332,7 @@ object ProtoBackupExport : ProtoBackupBase() {
     }
 
     private fun backupExtensionInfo(
-        mangas: Query,
+        mangas: List<ResultRow>,
         flags: BackupFlags,
     ): List<BackupSource> {
         val inLibraryMangaSourceIds =
