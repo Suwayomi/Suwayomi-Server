@@ -7,26 +7,25 @@ package suwayomi.tachidesk.manga.impl.backup.proto.handlers
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.selectAll
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.Source.modifySourceMetas
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSource
-import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.database.dbTransaction
 
 object BackupSourceHandler {
     fun backup(
-        mangas: List<ResultRow>,
+        backupMangas: List<BackupManga>,
         flags: BackupFlags,
     ): List<BackupSource> =
         dbTransaction {
             val inLibraryMangaSourceIds =
-                mangas
+                backupMangas
                     .asSequence()
-                    .map { it[MangaTable.sourceReference] }
+                    .map { it.source }
                     .distinct()
                     .toList()
             val sources = SourceTable.selectAll().where { SourceTable.id inList inLibraryMangaSourceIds }
