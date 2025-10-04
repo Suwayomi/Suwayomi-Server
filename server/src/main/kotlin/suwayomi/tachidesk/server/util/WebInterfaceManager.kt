@@ -36,6 +36,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import net.lingala.zip4j.ZipFile
+import org.eclipse.jetty.server.handler.ContextHandler
 import suwayomi.tachidesk.graphql.types.AboutWebUI
 import suwayomi.tachidesk.graphql.types.UpdateState
 import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
@@ -164,6 +165,7 @@ object WebInterfaceManager {
             // Use canonical path to avoid Jetty alias issues
             staticFiles.directory = File(applicationDirs.webUIServe).canonicalPath
             staticFiles.location = Location.EXTERNAL
+            staticFiles.aliasCheck = ContextHandler.ApproveAliases()
         }
 
         serveWebUI = {
