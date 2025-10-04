@@ -20,7 +20,6 @@ import okio.Buffer
 import okio.Sink
 import okio.buffer
 import okio.gzip
-import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.selectAll
@@ -119,7 +118,7 @@ object ProtoBackupExport : ProtoBackupBase() {
     private fun createAutomatedBackup() {
         logger.info { "Creating automated backup..." }
 
-        createBackup(BackupFlags.DEFAULT).use { input ->
+        createBackup(BackupFlags.fromServerConfig()).use { input ->
             val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
             automatedBackupDir.mkdirs()
 
