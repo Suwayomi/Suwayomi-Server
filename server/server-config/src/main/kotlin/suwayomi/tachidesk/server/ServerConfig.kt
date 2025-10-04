@@ -34,6 +34,7 @@ import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionType
 import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIInterface
+import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType
 import suwayomi.tachidesk.manga.impl.extension.repoMatchRegex
 import suwayomi.tachidesk.server.settings.BooleanSetting
@@ -788,6 +789,48 @@ class ServerConfig(
         description = "Serve WebUI under a subpath (e.g., /manga). Leave empty for root path. Must start with / if specified.",
         requiresRestart = true,
         excludeFromBackup = true,
+    )
+
+    val autoBackupIncludeManga: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 76,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeManga,
+    )
+
+    val autoBackupIncludeCategories: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 77,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeCategories,
+    )
+
+    val autoBackupIncludeChapters: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 78,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeChapters,
+    )
+
+    val autoBackupIncludeTracking: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 79,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeTracking,
+    )
+
+    val autoBackupIncludeHistory: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 80,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeHistory,
+    )
+
+    val autoBackupIncludeClientData: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 81,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeClientData,
+    )
+
+    val autoBackupIncludeServerSettings: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 82,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeServerSettings,
     )
 
 
