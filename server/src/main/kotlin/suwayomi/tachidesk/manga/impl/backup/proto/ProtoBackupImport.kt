@@ -32,8 +32,6 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.global.impl.GlobalMeta
 import suwayomi.tachidesk.graphql.types.toStatus
-import suwayomi.tachidesk.manga.impl.Category
-import suwayomi.tachidesk.manga.impl.Category.modifyCategoriesMetas
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter.modifyChaptersMetas
 import suwayomi.tachidesk.manga.impl.Manga.clearThumbnail
@@ -42,6 +40,7 @@ import suwayomi.tachidesk.manga.impl.Source.modifySourceMetas
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.ValidationResult
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.validate
+import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupCategoryHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupGlobalMetaHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
@@ -216,7 +215,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         val categoryMapping =
             if (flags.includeCategories) {
                 updateRestoreState(id, BackupRestoreState.RestoringCategories(restoreSettings + restoreCategories, restoreAmount))
-                restoreCategories(backup.backupCategories)
+                BackupCategoryHandler.restore(backup.backupCategories)
             } else {
                 emptyMap()
             }
@@ -273,23 +272,6 @@ object ProtoBackupImport : ProtoBackupBase() {
         updateRestoreState(id, BackupRestoreState.Success)
 
         return validationResult
-    }
-
-    private fun restoreCategories(backupCategories: List<BackupCategory>): Map<Int, Int> {
-        val categoryIds = Category.createCategories(backupCategories.map { it.name })
-
-        val metaEntryByCategoryId =
-            categoryIds
-                .zip(backupCategories)
-                .associate { (categoryId, backupCategory) ->
-                    categoryId to backupCategory.meta
-                }
-
-        modifyCategoriesMetas(metaEntryByCategoryId)
-
-        return backupCategories.withIndex().associate { (index, backupCategory) ->
-            backupCategory.order to categoryIds[index]
-        }
     }
 
     private fun restoreManga(
