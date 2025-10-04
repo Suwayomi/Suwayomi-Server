@@ -36,13 +36,13 @@ import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter.modifyChaptersMetas
 import suwayomi.tachidesk.manga.impl.Manga.clearThumbnail
 import suwayomi.tachidesk.manga.impl.Manga.modifyMangasMetas
-import suwayomi.tachidesk.manga.impl.Source.modifySourceMetas
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.ValidationResult
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.validate
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupCategoryHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupGlobalMetaHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSettingsHandler
+import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSourceHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
@@ -225,7 +225,7 @@ object ProtoBackupImport : ProtoBackupBase() {
 
             BackupGlobalMetaHandler.restore(backup.meta)
 
-            restoreSourceMeta(backup.backupSources)
+            BackupSourceHandler.restore(backup.backupSources)
         }
 
         // Store source mapping for error messages
@@ -533,10 +533,6 @@ object ProtoBackupImport : ProtoBackupBase() {
 
         Tracker.updateTrackRecords(existingTracks)
         Tracker.insertTrackRecords(newTracks)
-    }
-
-    private fun restoreSourceMeta(backupSources: List<BackupSource>) {
-        modifySourceMetas(backupSources.associateBy { it.sourceId }.mapValues { it.value.meta })
     }
 
     private fun TrackRecordDataClass.forComparison() = this.copy(id = 0, mangaId = 0)
