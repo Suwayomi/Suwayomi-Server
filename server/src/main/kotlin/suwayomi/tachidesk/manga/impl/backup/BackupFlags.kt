@@ -1,5 +1,7 @@
 package suwayomi.tachidesk.manga.impl.backup
 
+import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
+
 /*
  * Copyright (C) Contributors to the Suwayomi project
  *
@@ -7,12 +9,46 @@ package suwayomi.tachidesk.manga.impl.backup
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+interface IBackupFlags {
+    val includeManga: Boolean?
+    val includeCategories: Boolean?
+    val includeChapters: Boolean?
+    val includeTracking: Boolean?
+    val includeHistory: Boolean?
+    val includeClientData: Boolean?
+    val includeServerSettings: Boolean?
+}
+
 data class BackupFlags(
-    val includeManga: Boolean,
-    val includeCategories: Boolean,
-    val includeChapters: Boolean,
-    val includeTracking: Boolean,
-    val includeHistory: Boolean,
-    val includeClientData: Boolean,
-    val includeServerSettings: Boolean,
-)
+    override val includeManga: Boolean,
+    override val includeCategories: Boolean,
+    override val includeChapters: Boolean,
+    override val includeTracking: Boolean,
+    override val includeHistory: Boolean,
+    override val includeClientData: Boolean,
+    override val includeServerSettings: Boolean,
+) : IBackupFlags {
+    companion object {
+        val DEFAULT =
+            BackupFlags(
+                includeManga = true,
+                includeCategories = true,
+                includeChapters = true,
+                includeTracking = true,
+                includeHistory = true,
+                includeClientData = true,
+                includeServerSettings = true,
+            )
+
+        fun fromPartial(partialFlags: IBackupFlags?): BackupFlags =
+            BackupFlags(
+                includeManga = partialFlags?.includeManga ?: DEFAULT.includeManga,
+                includeCategories = partialFlags?.includeCategories ?: DEFAULT.includeCategories,
+                includeChapters = partialFlags?.includeChapters ?: DEFAULT.includeChapters,
+                includeTracking = partialFlags?.includeTracking ?: DEFAULT.includeTracking,
+                includeHistory = partialFlags?.includeHistory ?: DEFAULT.includeHistory,
+                includeClientData = partialFlags?.includeClientData ?: DEFAULT.includeClientData,
+                includeServerSettings = partialFlags?.includeServerSettings ?: DEFAULT.includeServerSettings,
+            )
+    }
+}
