@@ -89,17 +89,7 @@ object BackupController {
                 ctx.contentType("application/octet-stream")
                 ctx.future {
                     future {
-                        ProtoBackupExport.createBackup(
-                            BackupFlags(
-                                includeManga = true,
-                                includeCategories = true,
-                                includeChapters = true,
-                                includeTracking = true,
-                                includeHistory = true,
-                                includeClientData = true,
-                                includeServerSettings = true,
-                            ),
-                        )
+                        ProtoBackupExport.createBackup(BackupFlags.DEFAULT)
                     }.thenApply { ctx.result(it) }
                 }
             },
@@ -124,17 +114,7 @@ object BackupController {
                 ctx.header("Content-Disposition", """attachment; filename="${Backup.getFilename()}"""")
                 ctx.future {
                     future {
-                        ProtoBackupExport.createBackup(
-                            BackupFlags(
-                                includeManga = true,
-                                includeCategories = true,
-                                includeChapters = true,
-                                includeTracking = true,
-                                includeHistory = true,
-                                includeClientData = true,
-                                includeServerSettings = true,
-                            ),
-                        )
+                        ProtoBackupExport.createBackup(BackupFlags.DEFAULT)
                     }.thenApply { ctx.result(it) }
                 }
             },

@@ -1,6 +1,17 @@
 package suwayomi.tachidesk.graphql.types
 
+import suwayomi.tachidesk.manga.impl.backup.IBackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
+
+data class PartialBackupFlags(
+    override val includeManga: Boolean?,
+    override val includeCategories: Boolean?,
+    override val includeChapters: Boolean?,
+    override val includeTracking: Boolean?,
+    override val includeHistory: Boolean?,
+    override val includeClientData: Boolean?,
+    override val includeServerSettings: Boolean?,
+) : IBackupFlags
 
 enum class BackupRestoreState {
     IDLE,
