@@ -1,6 +1,6 @@
 package suwayomi.tachidesk.manga.impl.backup
 
-import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
+import suwayomi.tachidesk.server.serverConfig
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -49,6 +49,17 @@ data class BackupFlags(
                 includeHistory = partialFlags?.includeHistory ?: DEFAULT.includeHistory,
                 includeClientData = partialFlags?.includeClientData ?: DEFAULT.includeClientData,
                 includeServerSettings = partialFlags?.includeServerSettings ?: DEFAULT.includeServerSettings,
+            )
+
+        fun fromServerConfig(): BackupFlags =
+            BackupFlags(
+                includeManga = serverConfig.autoBackupIncludeManga.value,
+                includeCategories = serverConfig.autoBackupIncludeCategories.value,
+                includeChapters = serverConfig.autoBackupIncludeChapters.value,
+                includeTracking = serverConfig.autoBackupIncludeTracking.value,
+                includeHistory = serverConfig.autoBackupIncludeHistory.value,
+                includeClientData = serverConfig.autoBackupIncludeClientData.value,
+                includeServerSettings = serverConfig.autoBackupIncludeServerSettings.value,
             )
     }
 }
