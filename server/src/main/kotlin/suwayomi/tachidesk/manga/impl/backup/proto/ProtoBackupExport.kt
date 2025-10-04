@@ -28,23 +28,20 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Manga
-import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupCategoryHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupGlobalMetaHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSettingsHandler
+import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSourceHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupHistory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSource
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupTracking
 import suwayomi.tachidesk.manga.impl.track.Track
-import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
-import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.serverConfig
@@ -181,7 +178,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                 Backup(
                     backupManga(databaseManga, flags),
                     BackupCategoryHandler.backup(flags),
-                    backupExtensionInfo(databaseManga, flags),
+                    BackupSourceHandler.backup(databaseManga, flags),
                     BackupGlobalMetaHandler.backup(flags),
                     BackupSettingsHandler.backup(flags),
                 )
@@ -308,31 +305,4 @@ object ProtoBackupExport : ProtoBackupBase() {
 
             backupManga
         }
-
-    private fun backupExtensionInfo(
-        mangas: List<ResultRow>,
-        flags: BackupFlags,
-    ): List<BackupSource> {
-        val inLibraryMangaSourceIds =
-            mangas
-                .asSequence()
-                .map { it[MangaTable.sourceReference] }
-                .distinct()
-                .toList()
-        val sources = SourceTable.selectAll().where { SourceTable.id inList inLibraryMangaSourceIds }
-        val sourceToMeta = Source.getSourcesMetaMaps(sources.map { it[SourceTable.id].value })
-
-        return inLibraryMangaSourceIds
-            .map { mangaSourceId ->
-                val source = sources.firstOrNull { it[SourceTable.id].value == mangaSourceId }
-                BackupSource(
-                    source?.get(SourceTable.name) ?: "",
-                    mangaSourceId,
-                ).apply {
-                    if (flags.includeClientData) {
-                        this.meta = sourceToMeta[mangaSourceId] ?: emptyMap()
-                    }
-                }
-            }.toList()
-    }
 }
