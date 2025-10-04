@@ -118,17 +118,7 @@ object ProtoBackupExport : ProtoBackupBase() {
     private fun createAutomatedBackup() {
         logger.info { "Creating automated backup..." }
 
-        createBackup(
-            BackupFlags(
-                includeManga = true,
-                includeCategories = true,
-                includeChapters = true,
-                includeTracking = true,
-                includeHistory = true,
-                includeClientData = true,
-                includeServerSettings = true,
-            ),
-        ).use { input ->
+        createBackup(BackupFlags.DEFAULT).use { input ->
             val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
             automatedBackupDir.mkdirs()
 

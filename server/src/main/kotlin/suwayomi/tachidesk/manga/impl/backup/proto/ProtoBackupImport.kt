@@ -142,16 +142,7 @@ object ProtoBackupImport : ProtoBackupBase() {
     @OptIn(DelicateCoroutinesApi::class)
     fun restore(
         sourceStream: InputStream,
-        flags: BackupFlags =
-            BackupFlags(
-                includeManga = true,
-                includeCategories = true,
-                includeChapters = true,
-                includeTracking = true,
-                includeHistory = true,
-                includeClientData = true,
-                includeServerSettings = true,
-            ),
+        flags: BackupFlags,
     ): String {
         val restoreId = System.currentTimeMillis().toString()
 
@@ -169,16 +160,7 @@ object ProtoBackupImport : ProtoBackupBase() {
     suspend fun restoreLegacy(
         sourceStream: InputStream,
         restoreId: String = "legacy",
-        flags: BackupFlags =
-            BackupFlags(
-                includeManga = true,
-                includeCategories = true,
-                includeChapters = true,
-                includeTracking = true,
-                includeHistory = true,
-                includeClientData = true,
-                includeServerSettings = true,
-            ),
+        flags: BackupFlags = BackupFlags.DEFAULT,
     ): ValidationResult =
         backupMutex.withLock {
             try {
