@@ -25,16 +25,15 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
+import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupCategoryHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupGlobalMetaHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupHistory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
@@ -181,7 +180,7 @@ object ProtoBackupExport : ProtoBackupBase() {
             transaction {
                 Backup(
                     backupManga(databaseManga, flags),
-                    backupCategories(flags),
+                    BackupCategoryHandler.backup(flags),
                     backupExtensionInfo(databaseManga, flags),
                     BackupGlobalMetaHandler.backup(flags),
                     BackupSettingsHandler.backup(flags),
@@ -309,27 +308,6 @@ object ProtoBackupExport : ProtoBackupBase() {
 
             backupManga
         }
-
-    private fun backupCategories(flags: BackupFlags): List<BackupCategory> {
-        val categories =
-            CategoryTable
-                .selectAll()
-                .orderBy(CategoryTable.order to SortOrder.ASC)
-                .map { CategoryTable.toDataClass(it) }
-        val categoryToMeta = Category.getCategoriesMetaMaps(categories.map { it.id })
-
-        return categories.map {
-            BackupCategory(
-                it.name,
-                it.order,
-                0, // not supported in Tachidesk
-            ).apply {
-                if (flags.includeClientData) {
-                    this.meta = categoryToMeta[it.id] ?: emptyMap()
-                }
-            }
-        }
-    }
 
     private fun backupExtensionInfo(
         mangas: List<ResultRow>,
