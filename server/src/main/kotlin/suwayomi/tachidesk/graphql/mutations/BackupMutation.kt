@@ -19,6 +19,12 @@ class BackupMutation {
     data class RestoreBackupInput(
         val clientMutationId: String? = null,
         val backup: UploadedFile,
+        val includeChapters: Boolean? = null,
+        val includeCategories: Boolean? = null,
+        val includeTracking: Boolean? = null,
+        val includeHistory: Boolean? = null,
+        val includeClientData: Boolean? = null,
+        val includeServerSettings: Boolean? = null,
     )
 
     data class RestoreBackupPayload(
@@ -32,7 +38,19 @@ class BackupMutation {
         val (clientMutationId, backup) = input
 
         return future {
-            val restoreId = ProtoBackupImport.restore(backup.content())
+            val restoreId =
+                ProtoBackupImport.restore(
+                    backup.content(),
+                    BackupFlags(
+                        includeManga = true,
+                        includeCategories = input.includeCategories ?: true,
+                        includeChapters = input.includeChapters ?: true,
+                        includeTracking = input.includeTracking ?: true,
+                        includeHistory = input.includeHistory ?: true,
+                        includeClientData = input.includeClientData ?: true,
+                        includeServerSettings = input.includeServerSettings ?: true,
+                    ),
+                )
 
             withTimeout(10.seconds) {
                 ProtoBackupImport.notifyFlow.first {
