@@ -42,6 +42,7 @@ import suwayomi.tachidesk.manga.impl.Source.modifySourceMetas
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.ValidationResult
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.validate
+import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupGlobalMetaHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
@@ -223,7 +224,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         if (flags.includeClientData) {
             updateRestoreState(id, BackupRestoreState.RestoringMeta(restoreSettings + restoreCategories + restoreMeta, restoreAmount))
 
-            restoreGlobalMeta(backup.meta)
+            BackupGlobalMetaHandler.restore(backup.meta)
 
             restoreSourceMeta(backup.backupSources)
         }
@@ -550,10 +551,6 @@ object ProtoBackupImport : ProtoBackupBase() {
 
         Tracker.updateTrackRecords(existingTracks)
         Tracker.insertTrackRecords(newTracks)
-    }
-
-    private fun restoreGlobalMeta(meta: Map<String, String>) {
-        GlobalMeta.modifyMetas(meta)
     }
 
     private fun restoreSourceMeta(backupSources: List<BackupSource>) {

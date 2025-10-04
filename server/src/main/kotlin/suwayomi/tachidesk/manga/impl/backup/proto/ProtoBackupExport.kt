@@ -25,13 +25,13 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.global.impl.GlobalMeta
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
+import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupGlobalMetaHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
@@ -183,7 +183,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                     backupManga(databaseManga, flags),
                     backupCategories(flags),
                     backupExtensionInfo(databaseManga, flags),
-                    backupGlobalMeta(flags),
+                    BackupGlobalMetaHandler.backup(flags),
                     BackupSettingsHandler.backup(flags),
                 )
             }
@@ -356,13 +356,5 @@ object ProtoBackupExport : ProtoBackupBase() {
                     }
                 }
             }.toList()
-    }
-
-    private fun backupGlobalMeta(flags: BackupFlags): Map<String, String> {
-        if (!flags.includeClientData) {
-            return emptyMap()
-        }
-
-        return GlobalMeta.getMetaMap()
     }
 }
