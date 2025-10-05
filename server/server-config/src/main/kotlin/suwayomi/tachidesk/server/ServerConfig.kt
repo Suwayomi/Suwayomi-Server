@@ -205,6 +205,7 @@ class ServerConfig(
         description = "Exclude entries with unread chapters from auto-download",
     )
 
+    @Deprecated("Will get removed", replaceWith = ReplaceWith("autoDownloadNewChaptersLimit"))
     val autoDownloadAheadLimit: MutableStateFlow<Int> by MigratedConfigValue(
         protoNumber = 19,
         defaultValue = 0,
@@ -303,6 +304,7 @@ class ServerConfig(
         description = "Update manga metadata and thumbnail along with the chapter list update during the library update.",
     )
 
+    @Deprecated("Will get removed", replaceWith = ReplaceWith("authMode"))
     val basicAuthEnabled: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 29,
         defaultValue = false,
@@ -349,6 +351,7 @@ class ServerConfig(
         group = SettingGroup.MISC,
     )
 
+    @Deprecated("Removed - does not do anything")
     val gqlDebugLogsEnabled: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 33,
         defaultValue = false,
@@ -838,8 +841,9 @@ class ServerConfig(
     /**                                                                    **/
     /**                          Renamed settings                          **/
     /**                                                                    **/
-
     /** ****************************************************************** **/
+
+    @Deprecated("Removed - prefer authUsername", replaceWith = ReplaceWith("authUsername"))
     val basicAuthUsername: MutableStateFlow<String> by MigratedConfigValue(
         protoNumber = 99991,
         defaultValue = "",
@@ -854,6 +858,7 @@ class ServerConfig(
         setMigrated = { authUsername.value = it },
     )
 
+    @Deprecated("Removed - prefer authPassword", replaceWith = ReplaceWith("authPassword"))
     val basicAuthPassword: MutableStateFlow<String> by MigratedConfigValue(
         protoNumber = 99992,
         defaultValue = "",
