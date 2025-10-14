@@ -128,7 +128,7 @@ Check our Official Docker release [Suwayomi Container](https://github.com/orgs/S
 ### Arch Linux
 You can install Suwayomi from the AUR:
 ```
-yay -S tachidesk
+yay -S suwayomi-server-bin
 ```
 
 ### Debian/Ubuntu

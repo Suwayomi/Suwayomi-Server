@@ -9,7 +9,6 @@ package suwayomi.tachidesk.manga.impl.backup.proto
 
 import android.app.Application
 import android.content.Context
-import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -20,32 +19,14 @@ import okio.Buffer
 import okio.Sink
 import okio.buffer
 import okio.gzip
-import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.global.impl.GlobalMeta
-import suwayomi.tachidesk.manga.impl.Category
-import suwayomi.tachidesk.manga.impl.CategoryManga
-import suwayomi.tachidesk.manga.impl.Chapter
-import suwayomi.tachidesk.manga.impl.Manga
-import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
+import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupCategoryHandler
+import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupGlobalMetaHandler
+import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupMangaHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSettingsHandler
+import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSourceHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupHistory
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSource
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupTracking
-import suwayomi.tachidesk.manga.impl.track.Track
-import suwayomi.tachidesk.manga.model.table.CategoryTable
-import suwayomi.tachidesk.manga.model.table.ChapterTable
-import suwayomi.tachidesk.manga.model.table.MangaStatus
-import suwayomi.tachidesk.manga.model.table.MangaTable
-import suwayomi.tachidesk.manga.model.table.SourceTable
-import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.HAScheduler
@@ -55,7 +36,6 @@ import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.InputStream
 import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.seconds
 
 object ProtoBackupExport : ProtoBackupBase() {
     private val logger = KotlinLogging.logger { }
@@ -169,20 +149,15 @@ object ProtoBackupExport : ProtoBackupBase() {
     fun createBackup(flags: BackupFlags): InputStream {
         // Create root object
 
-        val databaseManga =
-            if (flags.includeManga) {
-                transaction { MangaTable.selectAll().where { MangaTable.inLibrary eq true }.toList() }
-            } else {
-                emptyList()
-            }
+        val backupMangas = BackupMangaHandler.backup(flags)
 
         val backup: Backup =
             transaction {
                 Backup(
-                    backupManga(databaseManga, flags),
-                    backupCategories(flags),
-                    backupExtensionInfo(databaseManga, flags),
-                    backupGlobalMeta(flags),
+                    BackupMangaHandler.backup(flags),
+                    BackupCategoryHandler.backup(flags),
+                    BackupSourceHandler.backup(backupMangas, flags),
+                    BackupGlobalMetaHandler.backup(flags),
                     BackupSettingsHandler.backup(flags),
                 )
             }
@@ -196,172 +171,5 @@ object ProtoBackupExport : ProtoBackupBase() {
             .use { it.write(byteArray) }
 
         return byteStream.inputStream()
-    }
-
-    private fun backupManga(
-        databaseManga: List<ResultRow>,
-        flags: BackupFlags,
-    ): List<BackupManga> =
-        databaseManga.map { mangaRow ->
-            val backupManga =
-                BackupManga(
-                    source = mangaRow[MangaTable.sourceReference],
-                    url = mangaRow[MangaTable.url],
-                    title = mangaRow[MangaTable.title],
-                    artist = mangaRow[MangaTable.artist],
-                    author = mangaRow[MangaTable.author],
-                    description = mangaRow[MangaTable.description],
-                    genre = mangaRow[MangaTable.genre]?.split(", ") ?: emptyList(),
-                    status = MangaStatus.valueOf(mangaRow[MangaTable.status]).value,
-                    thumbnailUrl = mangaRow[MangaTable.thumbnail_url],
-                    dateAdded = mangaRow[MangaTable.inLibraryAt].seconds.inWholeMilliseconds,
-                    viewer = 0, // not supported in Tachidesk
-                    updateStrategy = UpdateStrategy.valueOf(mangaRow[MangaTable.updateStrategy]),
-                )
-
-            val mangaId = mangaRow[MangaTable.id].value
-
-            if (flags.includeClientData) {
-                backupManga.meta = Manga.getMangaMetaMap(mangaId)
-            }
-
-            if (flags.includeChapters || flags.includeHistory) {
-                val chapters =
-                    transaction {
-                        ChapterTable
-                            .selectAll()
-                            .where { ChapterTable.manga eq mangaId }
-                            .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
-                            .map {
-                                ChapterTable.toDataClass(it)
-                            }
-                    }
-                if (flags.includeChapters) {
-                    val chapterToMeta = Chapter.getChaptersMetaMaps(chapters.map { it.id })
-
-                    backupManga.chapters =
-                        chapters.map {
-                            BackupChapter(
-                                it.url,
-                                it.name,
-                                it.scanlator,
-                                it.read,
-                                it.bookmarked,
-                                it.lastPageRead,
-                                it.fetchedAt.seconds.inWholeMilliseconds,
-                                it.uploadDate,
-                                it.chapterNumber,
-                                chapters.size - it.index,
-                            ).apply {
-                                if (flags.includeClientData) {
-                                    this.meta = chapterToMeta[it.id] ?: emptyMap()
-                                }
-                            }
-                        }
-                }
-                if (flags.includeHistory) {
-                    backupManga.history =
-                        chapters.mapNotNull {
-                            if (it.lastReadAt > 0) {
-                                BackupHistory(
-                                    url = it.url,
-                                    lastRead = it.lastReadAt.seconds.inWholeMilliseconds,
-                                )
-                            } else {
-                                null
-                            }
-                        }
-                }
-            }
-
-            if (flags.includeCategories) {
-                backupManga.categories = CategoryManga.getMangaCategories(mangaId).map { it.order }
-            }
-
-            if (flags.includeTracking) {
-                val tracks =
-                    Track.getTrackRecordsByMangaId(mangaRow[MangaTable.id].value).mapNotNull {
-                        if (it.record == null) {
-                            null
-                        } else {
-                            BackupTracking(
-                                syncId = it.record.trackerId,
-                                // forced not null so its compatible with 1.x backup system
-                                libraryId = it.record.libraryId ?: 0,
-                                mediaId = it.record.remoteId,
-                                title = it.record.title,
-                                lastChapterRead = it.record.lastChapterRead.toFloat(),
-                                totalChapters = it.record.totalChapters,
-                                score = it.record.score.toFloat(),
-                                status = it.record.status,
-                                startedReadingDate = it.record.startDate,
-                                finishedReadingDate = it.record.finishDate,
-                                trackingUrl = it.record.remoteUrl,
-                                private = it.record.private,
-                            )
-                        }
-                    }
-                if (tracks.isNotEmpty()) {
-                    backupManga.tracking = tracks
-                }
-            }
-
-            backupManga
-        }
-
-    private fun backupCategories(flags: BackupFlags): List<BackupCategory> {
-        val categories =
-            CategoryTable
-                .selectAll()
-                .orderBy(CategoryTable.order to SortOrder.ASC)
-                .map { CategoryTable.toDataClass(it) }
-        val categoryToMeta = Category.getCategoriesMetaMaps(categories.map { it.id })
-
-        return categories.map {
-            BackupCategory(
-                it.name,
-                it.order,
-                0, // not supported in Tachidesk
-            ).apply {
-                if (flags.includeClientData) {
-                    this.meta = categoryToMeta[it.id] ?: emptyMap()
-                }
-            }
-        }
-    }
-
-    private fun backupExtensionInfo(
-        mangas: List<ResultRow>,
-        flags: BackupFlags,
-    ): List<BackupSource> {
-        val inLibraryMangaSourceIds =
-            mangas
-                .asSequence()
-                .map { it[MangaTable.sourceReference] }
-                .distinct()
-                .toList()
-        val sources = SourceTable.selectAll().where { SourceTable.id inList inLibraryMangaSourceIds }
-        val sourceToMeta = Source.getSourcesMetaMaps(sources.map { it[SourceTable.id].value })
-
-        return inLibraryMangaSourceIds
-            .map { mangaSourceId ->
-                val source = sources.firstOrNull { it[SourceTable.id].value == mangaSourceId }
-                BackupSource(
-                    source?.get(SourceTable.name) ?: "",
-                    mangaSourceId,
-                ).apply {
-                    if (flags.includeClientData) {
-                        this.meta = sourceToMeta[mangaSourceId] ?: emptyMap()
-                    }
-                }
-            }.toList()
-    }
-
-    private fun backupGlobalMeta(flags: BackupFlags): Map<String, String> {
-        if (!flags.includeClientData) {
-            return emptyMap()
-        }
-
-        return GlobalMeta.getMetaMap()
     }
 }
