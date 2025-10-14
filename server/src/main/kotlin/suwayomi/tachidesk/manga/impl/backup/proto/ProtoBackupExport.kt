@@ -98,7 +98,7 @@ object ProtoBackupExport : ProtoBackupBase() {
     private fun createAutomatedBackup() {
         logger.info { "Creating automated backup..." }
 
-        createBackup(BackupFlags.DEFAULT).use { input ->
+        createBackup(BackupFlags.fromServerConfig()).use { input ->
             val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
             automatedBackupDir.mkdirs()
 

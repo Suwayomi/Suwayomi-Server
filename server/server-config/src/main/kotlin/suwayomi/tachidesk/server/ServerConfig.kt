@@ -34,6 +34,7 @@ import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionType
 import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIInterface
+import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType
 import suwayomi.tachidesk.manga.impl.extension.repoMatchRegex
 import suwayomi.tachidesk.server.settings.BooleanSetting
@@ -204,6 +205,7 @@ class ServerConfig(
         description = "Exclude entries with unread chapters from auto-download",
     )
 
+    @Deprecated("Will get removed", replaceWith = ReplaceWith("autoDownloadNewChaptersLimit"))
     val autoDownloadAheadLimit: MutableStateFlow<Int> by MigratedConfigValue(
         protoNumber = 19,
         defaultValue = 0,
@@ -302,6 +304,7 @@ class ServerConfig(
         description = "Update manga metadata and thumbnail along with the chapter list update during the library update.",
     )
 
+    @Deprecated("Will get removed", replaceWith = ReplaceWith("authMode"))
     val basicAuthEnabled: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 29,
         defaultValue = false,
@@ -348,6 +351,7 @@ class ServerConfig(
         group = SettingGroup.MISC,
     )
 
+    @Deprecated("Removed - does not do anything")
     val gqlDebugLogsEnabled: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 33,
         defaultValue = false,
@@ -790,13 +794,56 @@ class ServerConfig(
         excludeFromBackup = true,
     )
 
+    val autoBackupIncludeManga: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 76,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeManga,
+    )
+
+    val autoBackupIncludeCategories: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 77,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeCategories,
+    )
+
+    val autoBackupIncludeChapters: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 78,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeChapters,
+    )
+
+    val autoBackupIncludeTracking: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 79,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeTracking,
+    )
+
+    val autoBackupIncludeHistory: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 80,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeHistory,
+    )
+
+    val autoBackupIncludeClientData: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 81,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeClientData,
+    )
+
+    val autoBackupIncludeServerSettings: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 82,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeServerSettings,
+    )
+
 
     /** ****************************************************************** **/
     /**                                                                    **/
     /**                          Renamed settings                          **/
     /**                                                                    **/
-
     /** ****************************************************************** **/
+
+    @Deprecated("Removed - prefer authUsername", replaceWith = ReplaceWith("authUsername"))
     val basicAuthUsername: MutableStateFlow<String> by MigratedConfigValue(
         protoNumber = 99991,
         defaultValue = "",
@@ -811,6 +858,7 @@ class ServerConfig(
         setMigrated = { authUsername.value = it },
     )
 
+    @Deprecated("Removed - prefer authPassword", replaceWith = ReplaceWith("authPassword"))
     val basicAuthPassword: MutableStateFlow<String> by MigratedConfigValue(
         protoNumber = 99992,
         defaultValue = "",
