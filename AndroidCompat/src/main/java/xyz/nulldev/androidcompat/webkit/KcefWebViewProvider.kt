@@ -498,7 +498,13 @@ class KcefWebViewProvider(
     }
 
     private inner class PermissionHandler : CefPermissionHandler {
-        override fun onRequestMediaAccessPermission(browser: CefBrowser, frame: CefFrame, requesting_url: String, requested_permissions: Int, callback: CefMediaAccessCallback): Boolean {
+        override fun onRequestMediaAccessPermission(
+            browser: CefBrowser,
+            frame: CefFrame,
+            requesting_url: String,
+            requested_permissions: Int,
+            callback: CefMediaAccessCallback,
+        ): Boolean {
             handler.post {
                 Log.v(TAG, "Checking permission for $requesting_url: $requested_permissions")
                 chromeClient.onPermissionRequest(CefPermissionRequest(requesting_url, requested_permissions, callback))
