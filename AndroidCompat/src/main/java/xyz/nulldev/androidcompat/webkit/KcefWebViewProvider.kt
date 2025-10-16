@@ -453,8 +453,11 @@ class KcefWebViewProvider(
             frame: CefFrame,
             request: CefRequest,
         ): CefResourceHandler? {
-            // TODO: we should be calling this on the handler, since CEF calls us on its IO thread
-            val response =
+            val isInitialLoad = frame.url == "" && request.method == "GET"
+            Log.v(TAG, "Request ${request.method} ${request.url} is initial? $isInitialLoad")
+            // NOTE: we should be calling this on the handler, since CEF calls us on its IO thread
+            // but docs say "This method is called on a thread other than the UI thread" so should be fine
+            val response = if (isInitialLoad) null else
                 viewClient.shouldInterceptRequest(
                     view,
                     CefWebResourceRequest(request, frame, false),
@@ -462,7 +465,6 @@ class KcefWebViewProvider(
             if (response == null) {
                 // prefer user's response override
                 urlHttpMapping.get(request.url.trimEnd('/'))?.let {
-                    Log.v(TAG, "Responding from predefined page for url ${request.url}")
                     return HtmlResponseResourceHandler(it)
                 }
             }
