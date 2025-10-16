@@ -15,6 +15,7 @@ import com.typesafe.config.ConfigRenderOptions
 import com.typesafe.config.ConfigValue
 import com.typesafe.config.parser.ConfigDocument
 import dev.datlag.kcef.KCEF
+import dev.datlag.kcef.KCEFBuilder.Settings.LogSeverity
 import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.createAppModule
 import eu.kanade.tachiyomi.network.NetworkHelper
@@ -522,6 +523,7 @@ fun applicationSetup() {
                 settings {
                     windowlessRenderingEnabled = true
                     cachePath = (Path(applicationDirs.dataRoot) / "cache/kcef").toString()
+                    logSeverity = if (serverConfig.debugLogsEnabled.value) LogSeverity.Verbose else LogSeverity.Default
                 }
                 appHandler(
                     KCEF.AppHandler(
