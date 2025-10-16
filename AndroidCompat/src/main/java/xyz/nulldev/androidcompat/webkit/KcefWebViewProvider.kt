@@ -390,7 +390,9 @@ class KcefWebViewProvider(
             Log.v(TAG, "Handling request from client's response for ${request.url}")
             try {
                 resolvedData = webResponse.data.readAllBytes()
+                Log.v(TAG, "Resolved client response for ${resolvedData?.size} bytes")
             } catch (e: IOException) {
+                Log.w(TAG, "Failed to read client data", e)
             }
             callback.Continue()
             return true
@@ -402,7 +404,7 @@ class KcefWebViewProvider(
             redirectUrl: StringRef,
         ) {
             super.getResponseHeaders(response, responseLength, redirectUrl)
-            webResponse.responseHeaders.forEach { response.setHeaderByName(it.key, it.value, true) }
+            webResponse.responseHeaders?.forEach { response.setHeaderByName(it.key, it.value, true) }
             response.status = webResponse.statusCode
             response.mimeType = webResponse.mimeType
         }
