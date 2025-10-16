@@ -432,7 +432,8 @@ class KcefWebViewProvider(
                 )
             if (response == null) {
                 // prefer user's response override
-                urlHttpMapping.get(request.url)?.let {
+                urlHttpMapping.get(request.url.trimEnd('/'))?.let {
+                    Log.v(TAG, "Responding from predefined page for url ${request.url}")
                     return HtmlResponseResourceHandler(it)
                 }
             }
@@ -615,7 +616,7 @@ class KcefWebViewProvider(
         browser =
             (
                 baseUrl?.let { url ->
-                    urlHttpMapping.put(url, data)
+                    urlHttpMapping.put(url.trimEnd('/'), data)
                     kcefClient!!.createBrowser(
                         url,
                         CefRendering.OFFSCREEN,
