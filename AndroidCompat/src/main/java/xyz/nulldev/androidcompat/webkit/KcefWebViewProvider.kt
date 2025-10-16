@@ -31,6 +31,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.textclassifier.TextClassifier
 import android.webkit.DownloadListener
+import android.webkit.PermissionRequest
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.ValueCallback
 import android.webkit.WebBackForwardList
@@ -62,11 +63,13 @@ import org.cef.browser.CefFrame
 import org.cef.browser.CefMessageRouter
 import org.cef.browser.CefRendering
 import org.cef.callback.CefCallback
+import org.cef.callback.CefMediaAccessCallback
 import org.cef.callback.CefQueryCallback
 import org.cef.handler.CefDisplayHandlerAdapter
 import org.cef.handler.CefLoadHandler
 import org.cef.handler.CefLoadHandlerAdapter
 import org.cef.handler.CefMessageRouterHandlerAdapter
+import org.cef.handler.CefPermissionHandler
 import org.cef.handler.CefRequestHandler
 import org.cef.handler.CefRequestHandlerAdapter
 import org.cef.handler.CefResourceHandler
@@ -164,6 +167,30 @@ class KcefWebViewProvider(
             val headers = mutableMapOf<String, String>()
             request?.getHeaderMap(headers)
             return headers
+        }
+    }
+
+    private class CefPermissionRequest(
+        private val url: String,
+        private val permissionMask: Int,
+        private val callback: CefMediaAccessCallback,
+    ) : PermissionRequest() {
+        override fun getOrigin(): Uri = Uri.parse(url)
+
+        override fun getResources(): Array<String> {
+            val retVal = mutableListOf<String>()
+            if ((permissionMask and (1 shl 0)) > 0) retVal.add(PermissionRequest.RESOURCE_AUDIO_CAPTURE)
+            if ((permissionMask and (1 shl 1)) > 0) retVal.add(PermissionRequest.RESOURCE_VIDEO_CAPTURE)
+            return retVal.toTypedArray()
+        }
+
+        override fun grant(resources: Array<String>) {
+            // TODO: respect given resource grant
+            callback.Continue(permissionMask)
+        }
+
+        override fun deny() {
+            callback.Cancel()
         }
     }
 
@@ -470,6 +497,16 @@ class KcefWebViewProvider(
         }
     }
 
+    private inner class PermissionHandler : CefPermissionHandler {
+        override fun onRequestMediaAccessPermission(browser: CefBrowser, frame: CefFrame, requesting_url: String, requested_permissions: Int, callback: CefMediaAccessCallback): Boolean {
+            handler.post {
+                Log.v(TAG, "Checking permission for $requesting_url: $requested_permissions")
+                chromeClient.onPermissionRequest(CefPermissionRequest(requesting_url, requested_permissions, callback))
+            }
+            return true
+        }
+    }
+
     override fun init(
         javaScriptInterfaces: Map<String, Any>?,
         privateBrowsing: Boolean,
@@ -481,6 +518,7 @@ class KcefWebViewProvider(
                 addDisplayHandler(DisplayHandler())
                 addLoadHandler(LoadHandler())
                 addRequestHandler(RequestHandler())
+                addPermissionHandler(PermissionHandler())
 
                 val config = CefMessageRouter.CefMessageRouterConfig()
                 config.jsQueryFunction = QUERY_FN

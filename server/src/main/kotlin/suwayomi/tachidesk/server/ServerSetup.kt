@@ -525,7 +525,7 @@ fun applicationSetup() {
                 }
                 appHandler(
                     KCEF.AppHandler(
-                        arrayOf("--disable-gpu", "--off-screen-rendering-enabled", "--disable-dev-shm-usage"),
+                        arrayOf("--disable-gpu", "--off-screen-rendering-enabled", "--disable-dev-shm-usage", "--enable-widevine-cdm"),
                     ),
                 )
 
