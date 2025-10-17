@@ -310,4 +310,11 @@ object JavalinSetup {
     fun <T : Any> Context.getAttribute(attribute: Attribute<T>): T = attribute(attribute.name)!!
 
     fun <T : Any> WsContext.getAttribute(attribute: Attribute<T>): T = attribute(attribute.name)!!
+
+    fun <T : Any> WsContext.getAttributeOrSet(
+        attribute: Attribute<T>,
+        set: () -> T,
+    ): T =
+        attribute(attribute.name)
+            ?: set().also { setAttribute(attribute, it) }
 }

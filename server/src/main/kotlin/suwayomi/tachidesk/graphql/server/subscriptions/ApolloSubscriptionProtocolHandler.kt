@@ -37,6 +37,8 @@ import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMess
 import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ServerMessages.GQL_ERROR
 import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ServerMessages.GQL_NEXT
 import suwayomi.tachidesk.graphql.server.toGraphQLContext
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
+import suwayomi.tachidesk.server.JavalinSetup.getAttributeOrSet
 import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.server.user.getUserFromToken
 
@@ -152,10 +154,14 @@ class ApolloSubscriptionProtocolHandler(
         context: WsContext,
     ): Flow<SubscriptionOperationMessage> {
         @Suppress("UNCHECKED_CAST")
-        val payload = operationMessage.payload as? Map<String, Any?>
-        val token = payload?.let { it[Header.AUTHORIZATION] as? String }
+        val user =
+            context.getAttributeOrSet(Attribute.TachideskUser) {
+                val payload = operationMessage.payload as? Map<String, Any?>
+                val token = payload?.let { it[Header.AUTHORIZATION] as? String }
+                getUserFromToken(token)
+            }
 
-        saveContext(getUserFromToken(token), context)
+        saveContext(user, context)
         return flowOf(acknowledgeMessage)
     }
 
