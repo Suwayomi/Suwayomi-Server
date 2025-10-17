@@ -44,6 +44,10 @@ object MangaTable : IntIdTable() {
 
     val lastFetchedAt = long("last_fetched_at").default(0)
     val chaptersLastFetchedAt = long("chapters_last_fetched_at").default(0)
+    var chaptersLastReadAt = long("chapters_last_read_at").default(0)
+    var chaptersLastUploadDate = long("chapters_last_upload_date").default(0)
+    var chaptersUnreadCount = integer("chapters_unread_count").default(0)
+    var chaptersTotalCount = integer("chapters_total_count").default(0)
 
     val updateStrategy = varchar("update_strategy", 256).default(UpdateStrategy.ALWAYS_UPDATE.name)
 }
@@ -75,6 +79,10 @@ fun MangaTable.toDataClass(
     realUrl = mangaEntry[realUrl],
     lastFetchedAt = mangaEntry[lastFetchedAt],
     chaptersLastFetchedAt = mangaEntry[chaptersLastFetchedAt],
+    chaptersLastReadAt = mangaEntry[chaptersLastReadAt],
+    chaptersLastUploadDate = mangaEntry[chaptersLastUploadDate],
+    chaptersUnreadCount = mangaEntry[chaptersUnreadCount],
+    chaptersTotalCount = mangaEntry[chaptersTotalCount],
     updateStrategy = UpdateStrategy.valueOf(mangaEntry[updateStrategy]),
 )
 

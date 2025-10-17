@@ -59,6 +59,11 @@ class MangaQuery {
         TITLE(MangaTable.title),
         IN_LIBRARY_AT(MangaTable.inLibraryAt),
         LAST_FETCHED_AT(MangaTable.lastFetchedAt),
+        CHAPTERS_LAST_FETCHED_AT(MangaTable.chaptersLastFetchedAt),
+        CHAPTERS_LAST_READ_AT(MangaTable.chaptersLastReadAt),
+        CHAPTERS_LAST_UPLOAD_DATE(MangaTable.chaptersLastUploadDate),
+        CHAPTERS_UNREAD_COUNT(MangaTable.chaptersUnreadCount),
+        CHAPTERS_TOTAL_COUNT(MangaTable.chaptersTotalCount),
         ;
 
         override fun greater(cursor: Cursor): Op<Boolean> =
@@ -67,6 +72,11 @@ class MangaQuery {
                 TITLE -> greaterNotUnique(MangaTable.title, MangaTable.id, cursor, String::toString)
                 IN_LIBRARY_AT -> greaterNotUnique(MangaTable.inLibraryAt, MangaTable.id, cursor, String::toLong)
                 LAST_FETCHED_AT -> greaterNotUnique(MangaTable.lastFetchedAt, MangaTable.id, cursor, String::toLong)
+                CHAPTERS_LAST_FETCHED_AT -> greaterNotUnique(MangaTable.chaptersLastFetchedAt, MangaTable.id, cursor, String::toLong)
+                CHAPTERS_LAST_READ_AT -> greaterNotUnique(MangaTable.chaptersLastReadAt, MangaTable.id, cursor, String::toLong)
+                CHAPTERS_LAST_UPLOAD_DATE -> greaterNotUnique(MangaTable.chaptersLastUploadDate, MangaTable.id, cursor, String::toLong)
+                CHAPTERS_UNREAD_COUNT -> greaterNotUnique(MangaTable.chaptersUnreadCount, MangaTable.id, cursor, String::toInt)
+                CHAPTERS_TOTAL_COUNT -> greaterNotUnique(MangaTable.chaptersTotalCount, MangaTable.id, cursor, String::toInt)
             }
 
         override fun less(cursor: Cursor): Op<Boolean> =
@@ -75,6 +85,11 @@ class MangaQuery {
                 TITLE -> lessNotUnique(MangaTable.title, MangaTable.id, cursor, String::toString)
                 IN_LIBRARY_AT -> lessNotUnique(MangaTable.inLibraryAt, MangaTable.id, cursor, String::toLong)
                 LAST_FETCHED_AT -> lessNotUnique(MangaTable.lastFetchedAt, MangaTable.id, cursor, String::toLong)
+                CHAPTERS_LAST_FETCHED_AT -> lessNotUnique(MangaTable.chaptersLastFetchedAt, MangaTable.id, cursor, String::toLong)
+                CHAPTERS_LAST_READ_AT -> lessNotUnique(MangaTable.chaptersLastReadAt, MangaTable.id, cursor, String::toLong)
+                CHAPTERS_LAST_UPLOAD_DATE -> lessNotUnique(MangaTable.chaptersLastUploadDate, MangaTable.id, cursor, String::toLong)
+                CHAPTERS_UNREAD_COUNT -> lessNotUnique(MangaTable.chaptersUnreadCount, MangaTable.id, cursor, String::toInt)
+                CHAPTERS_TOTAL_COUNT -> lessNotUnique(MangaTable.chaptersTotalCount, MangaTable.id, cursor, String::toInt)
             }
 
         override fun asCursor(type: MangaType): Cursor {
@@ -84,6 +99,11 @@ class MangaQuery {
                     TITLE -> type.id.toString() + "-" + type.title
                     IN_LIBRARY_AT -> type.id.toString() + "-" + type.inLibraryAt.toString()
                     LAST_FETCHED_AT -> type.id.toString() + "-" + type.lastFetchedAt.toString()
+                    CHAPTERS_LAST_FETCHED_AT -> type.id.toString() + "-" + type.chaptersLastFetchedAt.toString()
+                    CHAPTERS_LAST_READ_AT -> type.id.toString() + "-" + type.chaptersLastReadAt.toString()
+                    CHAPTERS_LAST_UPLOAD_DATE -> type.id.toString() + "-" + type.chaptersLastUploadDate.toString()
+                    CHAPTERS_UNREAD_COUNT -> type.id.toString() + "-" + type.chaptersUnreadCount.toString()
+                    CHAPTERS_TOTAL_COUNT -> type.id.toString() + "-" + type.chaptersTotalCount.toString()
                 }
             return Cursor(value)
         }
@@ -111,6 +131,10 @@ class MangaQuery {
         val realUrl: String? = null,
         val lastFetchedAt: Long? = null,
         val chaptersLastFetchedAt: Long? = null,
+        val chaptersLastReadAt: Long? = null,
+        val chaptersLastUploadDate: Long? = null,
+        val chaptersUnreadCount: Int? = null,
+        val chaptersTotalCount: Int? = null,
         val categoryIds: List<Int>? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
@@ -131,6 +155,10 @@ class MangaQuery {
             opAnd.eq(realUrl, MangaTable.realUrl)
             opAnd.eq(lastFetchedAt, MangaTable.lastFetchedAt)
             opAnd.eq(chaptersLastFetchedAt, MangaTable.chaptersLastFetchedAt)
+            opAnd.eq(chaptersLastReadAt, MangaTable.chaptersLastReadAt)
+            opAnd.eq(chaptersLastUploadDate, MangaTable.chaptersLastUploadDate)
+            opAnd.eq(chaptersUnreadCount, MangaTable.chaptersUnreadCount)
+            opAnd.eq(chaptersTotalCount, MangaTable.chaptersTotalCount)
             opAnd.andWhere(categoryIds) { CategoryMangaTable.category inList it }
 
             return opAnd.op
@@ -190,6 +218,10 @@ class MangaQuery {
         val realUrl: StringFilter? = null,
         val lastFetchedAt: LongFilter? = null,
         val chaptersLastFetchedAt: LongFilter? = null,
+        val chaptersLastReadAt: LongFilter? = null,
+        val chaptersLastUploadDate: LongFilter? = null,
+        val chaptersUnreadCount: IntFilter? = null,
+        val chaptersTotalCount: IntFilter? = null,
         val categoryId: IntFilter? = null,
         override val and: List<MangaFilter>? = null,
         override val or: List<MangaFilter>? = null,
@@ -213,6 +245,10 @@ class MangaQuery {
                 andFilterWithCompareString(MangaTable.realUrl, realUrl),
                 andFilterWithCompare(MangaTable.lastFetchedAt, lastFetchedAt),
                 andFilterWithCompare(MangaTable.chaptersLastFetchedAt, chaptersLastFetchedAt),
+                andFilterWithCompare(MangaTable.chaptersLastReadAt, chaptersLastReadAt),
+                andFilterWithCompare(MangaTable.chaptersLastUploadDate, chaptersLastUploadDate),
+                andFilterWithCompare(MangaTable.chaptersUnreadCount, chaptersUnreadCount),
+                andFilterWithCompare(MangaTable.chaptersTotalCount, chaptersTotalCount),
                 andFilterWithCompareEntity(CategoryMangaTable.category, categoryId),
             )
     }
