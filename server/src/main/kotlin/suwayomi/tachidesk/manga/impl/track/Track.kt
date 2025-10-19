@@ -414,8 +414,9 @@ object Track {
                     }.singleOrNull()
 
             if (existingRecord != null) {
+                track.id = existingRecord[TrackRecordTable.id].value
                 updateTrackRecord(track)
-                existingRecord[TrackRecordTable.id].value
+                track.id!!
             } else {
                 insertTrackRecord(track)
             }
