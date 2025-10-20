@@ -24,6 +24,7 @@ import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
+import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.ConversionUtil
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -142,12 +143,48 @@ object Page {
         image: Pair<InputStream, String>,
         format: String? = null,
     ): Pair<InputStream, String> {
-        val imageExtension = MimeUtils.guessExtensionFromMimeType(image.second) ?: image.second.removePrefix("image/")
+        var currentImage = image.first
+        var currentMimeType = image.second
 
-        val targetExtension =
-            (if (format != imageExtension) format else null)
-                ?: return image
+        val conversions = serverConfig.downloadConversions.value
+        val defaultConversion = conversions["default"]
+        val conversion = conversions[currentMimeType] ?: defaultConversion
 
+        // Apply HTTP conversion if configured (complementary with format conversion)
+        if (conversion != null && ConversionUtil.isHttpConversion(conversion)) {
+            try {
+                val convertedStream = ConversionUtil.imageHttpConvert(
+                    inputStream = currentImage,
+                    mimeType = currentMimeType,
+                    targetUrl = conversion.target,
+                )?.buffered()
+                if (convertedStream != null) {
+                    val mime = ImageUtil.findImageType(convertedStream.buffered())?.mime
+                        ?: "image/jpeg"
+
+                    // Update current image to converted version
+                    currentImage = convertedStream
+                    currentMimeType = mime
+                }
+            } catch (_: Exception) {
+                // HTTP conversion failed, continue with original image
+            }
+        }
+
+        // Apply format conversion if requested
+        val imageExtension = MimeUtils.guessExtensionFromMimeType(currentMimeType)
+            ?: currentMimeType.removePrefix("image/")
+        val targetExtension = (if (format != imageExtension) format else null)
+            ?: return currentImage to currentMimeType
+
+        return convertToFormat(currentImage, currentMimeType, targetExtension)
+    }
+
+    private fun convertToFormat(
+        inputStream: InputStream,
+        sourceMimeType: String,
+        targetExtension: String,
+    ): Pair<InputStream, String> {
         val outStream = ByteArrayOutputStream()
         val writers = ImageIO.getImageWritersBySuffix(targetExtension)
         val writer = writers.next()
@@ -155,7 +192,7 @@ object Page {
             writer.setOutput(o)
 
             val inImage =
-                ConversionUtil.readImage(image.first, image.second)
+                ConversionUtil.readImage(inputStream, sourceMimeType)
                     ?: throw NoSuchElementException("No conversion to $targetExtension possible")
             writer.write(inImage)
         }
