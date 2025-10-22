@@ -518,6 +518,7 @@ object MangaController {
                             }
                     }
                 } else {
+                    ctx.disableCompression()
                     val shouldMarkAsRead = markAsRead ?: false
                     ctx.future {
                         future { ChapterDownloadHelper.getCbzForDownload(chapterId, shouldMarkAsRead) }
