@@ -523,7 +523,7 @@ object MangaController {
                     ctx.future {
                         future { ChapterDownloadHelper.getCbzForDownload(chapterId, shouldMarkAsRead) }
                             .thenApply { (inputStream, fileName, fileSize) ->
-                                ctx.header("Content-Type", "application/vnd.comicbook+zip")
+                                ctx.header("Content-Type", "application/x-cbr")
                                 ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
                                 ctx.header("Content-Length", fileSize.toString())
                                 ctx.result(inputStream)

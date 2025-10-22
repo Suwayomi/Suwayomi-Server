@@ -104,7 +104,7 @@ object ChapterDownloadHelper {
         val (chapterData, fileName) = getChapterWithCbzFileName(chapterId)
 
         val fileSize = provider(chapterData.mangaId, chapterData.id).getArchiveSize()
-        val contentType = "application/vnd.comicbook+zip"
+        val contentType = "application/x-cbr"
 
         return Triple(fileName, fileSize, contentType)
     }
