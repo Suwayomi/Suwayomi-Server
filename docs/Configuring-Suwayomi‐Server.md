@@ -202,7 +202,7 @@ server.opdsChapterSortOrder = "DESC"
 
 ### KOReader Sync
 ```
-server.koreaderSyncServerUrl = "http://localhost:17200"
+server.koreaderSyncServerUrl = "https://sync.koreader.rocks/"
 server.koreaderSyncUsername = ""
 server.koreaderSyncUserkey = ""
 server.koreaderSyncDeviceId = ""
@@ -211,7 +211,7 @@ server.koreaderSyncPercentageTolerance = 1.0E-15 # range: [1.0E-15, 1.0]
 server.koreaderSyncStrategyForward = PROMPT # PROMPT, KEEP_LOCAL, KEEP_REMOTE, DISABLED
 server.koreaderSyncStrategyBackward = DISABLED # PROMPT, KEEP_LOCAL, KEEP_REMOTE, DISABLED
 ```
-- `server.koreaderSyncServerUrl` where KOReader Sync Server is running.
+- `server.koreaderSyncServerUrl` where KOReader Sync Server is running. Public servers (e.g.,  `https://sync.koreader.rocks/`, `https://kosync.ak-team.com:3042/`) or self-hosted instances can also be used.
 - `server.koreaderSyncUsername` the username with which to authenticate at the KOReader instance.
 - `server.koreaderSyncUserkey` the password/key with which to authenticate at the KOReader instance.
 - `server.koreaderSyncDeviceId` a unique ID to identify Suwayomi at the KOReader Sync Server. Leave blank to auto-generate.
