@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import org.jetbrains.exposed.sql.SortOrder
 import suwayomi.tachidesk.graphql.types.AuthMode
+import suwayomi.tachidesk.graphql.types.CbzMediaType
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.graphql.types.DownloadConversion
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
@@ -835,6 +836,17 @@ class ServerConfig(
         group = SettingGroup.BACKUP,
         defaultValue = BackupFlags.DEFAULT.includeServerSettings,
     )
+
+    val opdsCbzMimetype: MutableStateFlow<CbzMediaType> by EnumSetting(
+        protoNumber = 83,
+        group = SettingGroup.OPDS,
+        defaultValue = CbzMediaType.MODERN,
+        enumClass = CbzMediaType::class,
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.CbzMediaType")),
+        excludeFromBackup = true,
+        description = "Controls the MimeType that Suwayomi sends in OPDS entries for CBZ archives. Also affects global CBZ download. Modern follows recent IANA standard (2017), while LEGACY (deprecated mimetype for .cbz) and COMPATIBLE (deprecated mimetype for all comic archives) might be more compatible with older clients.",
+    )
+
 
 
     /** ****************************************************************** **/

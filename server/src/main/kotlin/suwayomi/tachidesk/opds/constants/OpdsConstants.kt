@@ -40,5 +40,4 @@ object OpdsConstants {
     const val TYPE_ATOM_XML_ENTRY_PROFILE_OPDS = "application/atom+xml;type=entry;profile=opds-catalog"
     const val TYPE_OPENSEARCH_DESCRIPTION = "application/opensearchdescription+xml"
     const val TYPE_IMAGE_JPEG = "image/jpeg"
-    const val TYPE_CBZ = "application/x-cbr"
 }
