@@ -507,6 +507,7 @@ object MangaController {
             },
             behaviorOf = { ctx, chapterId, markAsRead ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.disableCompression()
                 if (ctx.method() == HandlerType.HEAD) {
                     ctx.future {
                         future { ChapterDownloadHelper.getCbzMetadataForDownload(chapterId) }
@@ -518,7 +519,6 @@ object MangaController {
                             }
                     }
                 } else {
-                    ctx.disableCompression()
                     val shouldMarkAsRead = markAsRead ?: false
                     ctx.future {
                         future { ChapterDownloadHelper.getCbzForDownload(chapterId, shouldMarkAsRead) }
