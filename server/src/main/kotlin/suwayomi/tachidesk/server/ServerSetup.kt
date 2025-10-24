@@ -32,7 +32,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.cef.network.CefCookieManager
 import org.koin.core.context.startKoin
@@ -543,12 +542,10 @@ fun applicationSetup() {
 
     Runtime.getRuntime().addShutdownHook(
         thread(start = false) {
-            runBlocking {
-                val logger = KotlinLogging.logger("KCEF")
-                logger.debug { "Shutting down KCEF" }
-                KCEF.dispose()
-                logger.debug { "KCEF shutdown complete" }
-            }
+            val logger = KotlinLogging.logger("KCEF")
+            logger.debug { "Shutting down KCEF" }
+            KCEF.disposeBlocking()
+            logger.debug { "KCEF shutdown complete" }
         },
     )
 }
