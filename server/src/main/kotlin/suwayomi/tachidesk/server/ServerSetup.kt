@@ -527,7 +527,17 @@ fun applicationSetup() {
                 }
                 appHandler(
                     KCEF.AppHandler(
-                        arrayOf("--disable-gpu", "--off-screen-rendering-enabled", "--disable-dev-shm-usage", "--enable-widevine-cdm"),
+                        arrayOf(
+                            "--disable-gpu",
+                            // #1486 needed to be able to render without a window
+                            "--off-screen-rendering-enabled",
+                            // #1489 since /dev/shm is restricted in docker (OOM)
+                            "--disable-dev-shm-usage",
+                            // #1723 support Widevine (incomplete)
+                            "--enable-widevine-cdm",
+                            // #1736 JCEF does implement stack guards properly
+                            "--change-stack-guard-on-fork=disable",
+                        ),
                     ),
                 )
 
