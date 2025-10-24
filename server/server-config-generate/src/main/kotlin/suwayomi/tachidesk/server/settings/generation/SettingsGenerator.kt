@@ -45,6 +45,8 @@ object SettingsGenerator {
                     // Ignore errors during registration
                 }
             }
+        } catch (e: IllegalStateException) {
+            throw e
         } catch (e: Exception) {
             // Registration failed, but we tried
         }
