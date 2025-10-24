@@ -358,7 +358,7 @@ object OpdsEntryBuilder {
                     "/api/v1/chapter/${chapter.id}/download?markAsRead=${serverConfig.opdsMarkAsReadOnDownload.value}",
                     serverConfig.opdsCbzMimetype.value.mediaType,
                     MR.strings.opds_linktitle_download_cbz.localized(locale),
-                    length = cbzFileSize!!,
+                    length = cbzFileSize,
                 ),
             )
         }
