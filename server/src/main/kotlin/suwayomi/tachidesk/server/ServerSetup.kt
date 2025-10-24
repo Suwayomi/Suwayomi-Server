@@ -71,6 +71,7 @@ import java.net.Authenticator
 import java.net.PasswordAuthentication
 import java.security.Security
 import java.util.Locale
+import kotlin.concurrent.thread
 import kotlin.io.path.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.div
@@ -548,4 +549,13 @@ fun applicationSetup() {
             onError = { it?.printStackTrace() },
         )
     }
+
+    Runtime.getRuntime().addShutdownHook(
+        thread(start = false) {
+            val logger = KotlinLogging.logger("KCEF")
+            logger.debug { "Shutting down KCEF" }
+            KCEF.disposeBlocking()
+            logger.debug { "KCEF shutdown complete" }
+        },
+    )
 }
