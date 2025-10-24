@@ -29,6 +29,7 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.formParam
 import suwayomi.tachidesk.server.util.handler
@@ -507,10 +508,12 @@ object MangaController {
             },
             behaviorOf = { ctx, chapterId, markAsRead ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.disableCompression()
+                val contentType = serverConfig.opdsCbzMimetype.value.mediaType
                 if (ctx.method() == HandlerType.HEAD) {
                     ctx.future {
                         future { ChapterDownloadHelper.getCbzMetadataForDownload(chapterId) }
-                            .thenApply { (fileName, fileSize, contentType) ->
+                            .thenApply { (fileName, fileSize) ->
                                 ctx.header("Content-Type", contentType)
                                 ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
                                 ctx.header("Content-Length", fileSize.toString())
@@ -522,7 +525,7 @@ object MangaController {
                     ctx.future {
                         future { ChapterDownloadHelper.getCbzForDownload(chapterId, shouldMarkAsRead) }
                             .thenApply { (inputStream, fileName, fileSize) ->
-                                ctx.header("Content-Type", "application/vnd.comicbook+zip")
+                                ctx.header("Content-Type", contentType)
                                 ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
                                 ctx.header("Content-Length", fileSize.toString())
                                 ctx.result(inputStream)

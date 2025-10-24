@@ -336,6 +336,14 @@ object OpdsEntryBuilder {
             }
 
         val entryTitle = "$titlePrefix ${chapter.name}"
+        val cbzFileSize =
+            if (chapter.downloaded) {
+                withContext(Dispatchers.IO) {
+                    runCatching { ChapterDownloadHelper.getArchiveStreamWithSize(manga.id, chapter.id).second }.getOrNull()
+                }
+            } else {
+                null
+            }
 
         val links = mutableListOf<OpdsLinkXml>()
         chapter.url?.let {
@@ -348,8 +356,9 @@ object OpdsEntryBuilder {
                 OpdsLinkXml(
                     OpdsConstants.LINK_REL_ACQUISITION_OPEN_ACCESS,
                     "/api/v1/chapter/${chapter.id}/download?markAsRead=${serverConfig.opdsMarkAsReadOnDownload.value}",
-                    OpdsConstants.TYPE_CBZ,
+                    serverConfig.opdsCbzMimetype.value.mediaType,
                     MR.strings.opds_linktitle_download_cbz.localized(locale),
+                    length = cbzFileSize,
                 ),
             )
         }
@@ -410,15 +419,6 @@ object OpdsEntryBuilder {
                 ),
             )
         }
-
-        val cbzFileSize =
-            if (chapter.downloaded) {
-                withContext(Dispatchers.IO) {
-                    runCatching { ChapterDownloadHelper.getArchiveStreamWithSize(manga.id, chapter.id).second }.getOrNull()
-                }
-            } else {
-                null
-            }
 
         return OpdsEntryXml(
             id = "urn:suwayomi:chapter:${chapter.id}:metadata$idSuffix",
