@@ -33,21 +33,18 @@ private class GraphqlActualFloatCoercing : Coercing<Float, Double> {
     private fun parseValueImpl(
         input: Any,
         locale: Locale,
-    ): Float {
-        if (input is Int) {
-            return input.toFloat()
-        }
-        if (input !is Double) {
-            throw CoercingParseValueException(
+    ): Float =
+        when (input) {
+            is Int -> input.toFloat()
+            is Double -> input.toFloat()
+            else -> throw CoercingParseValueException(
                 CoercingUtil.i18nMsg(
                     locale,
-                    "String.unexpectedRawValueType",
+                    "Float.unexpectedRawValueType",
                     CoercingUtil.typeName(input),
                 ),
             )
         }
-        return input.toFloat()
-    }
 
     private fun parseLiteralImpl(
         input: Any,
@@ -58,7 +55,7 @@ private class GraphqlActualFloatCoercing : Coercing<Float, Double> {
                 CoercingUtil.i18nMsg(
                     locale,
                     "Scalar.unexpectedAstType",
-                    "StringValue",
+                    "FloatValue",
                     CoercingUtil.typeName(input),
                 ),
             )
@@ -73,7 +70,7 @@ private class GraphqlActualFloatCoercing : Coercing<Float, Double> {
                 toDoubleImpl(input) ?: throw CoercingSerializeException(
                     CoercingUtil.i18nMsg(
                         Locale.getDefault(),
-                        "String.unexpectedRawValueType",
+                        "Float.unexpectedRawValueType",
                         CoercingUtil.typeName(input),
                     ),
                 ),
@@ -84,7 +81,7 @@ private class GraphqlActualFloatCoercing : Coercing<Float, Double> {
         toDoubleImpl(dataFetcherResult) ?: throw CoercingSerializeException(
             CoercingUtil.i18nMsg(
                 Locale.getDefault(),
-                "String.unexpectedRawValueType",
+                "Float.unexpectedRawValueType",
                 CoercingUtil.typeName(dataFetcherResult),
             ),
         )
@@ -98,7 +95,7 @@ private class GraphqlActualFloatCoercing : Coercing<Float, Double> {
         toDoubleImpl(dataFetcherResult) ?: throw CoercingSerializeException(
             CoercingUtil.i18nMsg(
                 locale,
-                "String.unexpectedRawValueType",
+                "Float.unexpectedRawValueType",
                 CoercingUtil.typeName(dataFetcherResult),
             ),
         )
