@@ -600,7 +600,8 @@ class ServerConfig(
     val koreaderSyncServerUrl: MutableStateFlow<String> by StringSetting(
         protoNumber = 59,
         group = SettingGroup.KOREADER_SYNC,
-        defaultValue = "http://localhost:17200",
+        defaultValue = "https://sync.koreader.rocks/",
+        description = "KOReader Sync Server URL. Public alternative: https://kosync.ak-team.com:3042/",
     )
 
     val koreaderSyncUsername: MutableStateFlow<String> by StringSetting(
