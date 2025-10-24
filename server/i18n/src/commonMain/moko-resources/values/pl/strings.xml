@@ -53,4 +53,9 @@
     <string name="opds_feeds_categories_title">Kategorie</string>
     <string name="opds_feeds_genres_entry_content">Przeglądaj mangi według tagów gatunku</string>
     <string name="opds_feeds_status_entry_content">Przeglądaj mangi według statusu publikacji</string>
+    <string name="opds_feeds_source_specific_popular_title">Źródło: %1$s - Popularne</string>
+    <string name="opds_feeds_library_source_specific_title">Biblioteka - Źródło: %1$s</string>
+    <string name="opds_feeds_source_specific_latest_title">Źródło: %1$s - Ostatnie</string>
+    <string name="opds_feeds_search_results_title">Wyniki Wyszukiwania</string>
+    <string name="opds_feeds_history_title">Historia</string>
 </resources>
