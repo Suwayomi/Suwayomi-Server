@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.cef.network.CefCookieManager
 import org.koin.core.context.startKoin
@@ -71,6 +72,7 @@ import java.net.Authenticator
 import java.net.PasswordAuthentication
 import java.security.Security
 import java.util.Locale
+import kotlin.concurrent.thread
 import kotlin.io.path.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.div
@@ -538,4 +540,15 @@ fun applicationSetup() {
             onError = { it?.printStackTrace() },
         )
     }
+
+    Runtime.getRuntime().addShutdownHook(
+        thread(start = false) {
+            runBlocking {
+                val logger = KotlinLogging.logger("KCEF")
+                logger.debug { "Shutting down KCEF" }
+                KCEF.dispose()
+                logger.debug { "KCEF shutdown complete" }
+            }
+        },
+    )
 }
