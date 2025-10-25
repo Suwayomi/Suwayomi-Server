@@ -2,12 +2,20 @@
 
 package kotlinx.coroutines.android
 
-import android.os.*
-import android.view.*
-import kotlinx.coroutines.*
-import kotlinx.coroutines.internal.*
-import java.lang.reflect.*
-import kotlin.coroutines.*
+import android.os.Handler
+import android.os.Looper
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.DisposableHandle
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.InternalCoroutinesApi
+import kotlinx.coroutines.MainCoroutineDispatcher
+import kotlinx.coroutines.NonDisposableHandle
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.internal.MainDispatcherFactory
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Dispatches execution onto Android [Handler].
@@ -15,7 +23,9 @@ import kotlin.coroutines.*
  * This class provides type-safety and a point for future extensions.
  */
 @OptIn(InternalCoroutinesApi::class)
-public sealed class HandlerDispatcher : MainCoroutineDispatcher(), Delay {
+public sealed class HandlerDispatcher :
+    MainCoroutineDispatcher(),
+    Delay {
     /**
      * Returns dispatcher that executes coroutines immediately when it is already in the right context
      * (current looper is the same as this handler's looper) without an additional [re-dispatch][CoroutineDispatcher.dispatch].
@@ -47,7 +57,6 @@ public sealed class HandlerDispatcher : MainCoroutineDispatcher(), Delay {
 
 @OptIn(InternalCoroutinesApi::class)
 internal class AndroidDispatcherFactory : MainDispatcherFactory {
-
     override fun createDispatcher(allFactories: List<MainDispatcherFactory>): MainCoroutineDispatcher {
         val mainLooper = Looper.getMainLooper() ?: throw IllegalStateException("The main looper is not available")
         return HandlerContext(mainLooper.asHandler())
@@ -90,8 +99,9 @@ internal val Main: HandlerDispatcher? = runCatching { HandlerContext(Looper.getM
 internal class HandlerContext private constructor(
     private val handler: Handler,
     private val name: String?,
-    private val invokeImmediately: Boolean
-) : HandlerDispatcher(), Delay {
+    private val invokeImmediately: Boolean,
+) : HandlerDispatcher(),
+    Delay {
     /**
      * Creates [CoroutineDispatcher] for the given Android [handler].
      *
@@ -100,26 +110,36 @@ internal class HandlerContext private constructor(
      */
     constructor(
         handler: Handler,
-        name: String? = null
+        name: String? = null,
     ) : this(handler, name, false)
 
-    override val immediate: HandlerContext = if (invokeImmediately) this else
-        HandlerContext(handler, name, true)
+    override val immediate: HandlerContext =
+        if (invokeImmediately) {
+            this
+        } else {
+            HandlerContext(handler, name, true)
+        }
 
-    override fun isDispatchNeeded(context: CoroutineContext): Boolean {
-        return !invokeImmediately || Looper.myLooper() != handler.looper
-    }
+    override fun isDispatchNeeded(context: CoroutineContext): Boolean = !invokeImmediately || Looper.myLooper() != handler.looper
 
-    override fun dispatch(context: CoroutineContext, block: Runnable) {
+    override fun dispatch(
+        context: CoroutineContext,
+        block: Runnable,
+    ) {
         if (!handler.post(block)) {
             cancelOnRejection(context, block)
         }
     }
 
-    override fun scheduleResumeAfterDelay(timeMillis: Long, continuation: CancellableContinuation<Unit>) {
-        val block = Runnable {
-            with(continuation) { resumeUndispatched(Unit) }
-        }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun scheduleResumeAfterDelay(
+        timeMillis: Long,
+        continuation: CancellableContinuation<Unit>,
+    ) {
+        val block =
+            Runnable {
+                with(continuation) { resumeUndispatched(Unit) }
+            }
         if (handler.postDelayed(block, timeMillis.coerceAtMost(MAX_DELAY))) {
             continuation.invokeOnCancellation { handler.removeCallbacks(block) }
         } else {
@@ -127,7 +147,11 @@ internal class HandlerContext private constructor(
         }
     }
 
-    override fun invokeOnTimeout(timeMillis: Long, block: Runnable, context: CoroutineContext): DisposableHandle {
+    override fun invokeOnTimeout(
+        timeMillis: Long,
+        block: Runnable,
+        context: CoroutineContext,
+    ): DisposableHandle {
         if (handler.postDelayed(block, timeMillis.coerceAtMost(MAX_DELAY))) {
             return DisposableHandle { handler.removeCallbacks(block) }
         }
@@ -135,18 +159,23 @@ internal class HandlerContext private constructor(
         return NonDisposableHandle
     }
 
-    private fun cancelOnRejection(context: CoroutineContext, block: Runnable) {
+    private fun cancelOnRejection(
+        context: CoroutineContext,
+        block: Runnable,
+    ) {
         context.cancel(CancellationException("The task was rejected, the handler underlying the dispatcher '${toString()}' was closed"))
         Dispatchers.IO.dispatch(context, block)
     }
 
-    override fun toString(): String = toStringInternalImpl() ?: run {
-        val str = name ?: handler.toString()
-        if (invokeImmediately) "$str.immediate" else str
-    }
+    override fun toString(): String =
+        toStringInternalImpl() ?: run {
+            val str = name ?: handler.toString()
+            if (invokeImmediately) "$str.immediate" else str
+        }
 
     override fun equals(other: Any?): Boolean =
         other is HandlerContext && other.handler === handler && other.invokeImmediately == invokeImmediately
+
     // inlining `Boolean.hashCode()` for Android compatibility, as requested by Animal Sniffer
     override fun hashCode(): Int = System.identityHashCode(handler) xor if (invokeImmediately) 1231 else 1237
 }
