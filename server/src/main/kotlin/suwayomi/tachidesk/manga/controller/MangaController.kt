@@ -31,6 +31,7 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.user.requireUser
+import suwayomi.tachidesk.server.user.requireUserWithBasicFallback
 import suwayomi.tachidesk.server.util.formParam
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
@@ -465,7 +466,7 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, chapterIndex, index, updateProgress, format ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
                 ctx.future {
                     future {
                         Page.getPageImage(
