@@ -46,7 +46,6 @@ import suwayomi.tachidesk.graphql.queries.UpdateQuery
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLCursor
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLDurationAsString
-import suwayomi.tachidesk.graphql.server.primitives.GraphQLFloatAsDouble
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLLongAsString
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLUpload
 import suwayomi.tachidesk.graphql.subscriptions.DownloadSubscription
@@ -65,7 +64,6 @@ class CustomSchemaGeneratorHooks : FlowSubscriptionSchemaGeneratorHooks() {
     override fun willGenerateGraphQLType(type: KType): GraphQLType? =
         when (type.classifier as? KClass<*>) {
             Long::class -> GraphQLLongAsString // encode to string for JS
-            Float::class -> GraphQLFloatAsDouble // encode float as double
             Duration::class -> GraphQLDurationAsString // encode Duration as ISO-8601 string
             Cursor::class -> GraphQLCursor
             UploadedFile::class -> GraphQLUpload
