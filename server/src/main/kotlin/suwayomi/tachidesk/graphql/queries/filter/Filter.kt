@@ -304,7 +304,26 @@ data class DoubleFilter(
     override val lessThanOrEqualTo: Double? = null,
     override val greaterThan: Double? = null,
     override val greaterThanOrEqualTo: Double? = null,
-) : ComparableScalarFilter<Double>
+) : ComparableScalarFilter<Double> {
+    fun toFloatFilter(): FloatFilter =
+        FloatFilter(
+            isNull = isNull,
+            equalTo = equalTo?.toFloat(),
+            notEqualTo = notEqualTo?.toFloat(),
+            notEqualToAll = notEqualToAll?.map { it.toFloat() },
+            notEqualToAny = notEqualToAny?.map { it.toFloat() },
+            distinctFrom = distinctFrom?.toFloat(),
+            distinctFromAll = distinctFromAll?.map { it.toFloat() },
+            distinctFromAny = distinctFromAny?.map { it.toFloat() },
+            notDistinctFrom = notDistinctFrom?.toFloat(),
+            `in` = `in`?.map { it.toFloat() },
+            notIn = notIn?.map { it.toFloat() },
+            lessThan = lessThan?.toFloat(),
+            lessThanOrEqualTo = lessThanOrEqualTo?.toFloat(),
+            greaterThan = greaterThan?.toFloat(),
+            greaterThanOrEqualTo = greaterThanOrEqualTo?.toFloat(),
+        )
+}
 
 data class StringFilter(
     override val isNull: Boolean? = null,
