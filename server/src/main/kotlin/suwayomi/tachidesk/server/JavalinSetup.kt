@@ -42,6 +42,7 @@ import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.ServerSubpath
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import java.io.IOException
+import java.net.URI
 import java.net.URLEncoder
 import java.util.Locale
 import java.util.concurrent.CompletableFuture
@@ -149,6 +150,10 @@ object JavalinSetup {
 
             if (isValid) {
                 val redirect = ctx.queryParam("redirect") ?: ServerSubpath.maybeAddAsPrefix("/")
+                val uri = URI(redirect)
+                if (uri.host != null || uri.scheme != null) {
+                    throw IllegalArgumentException("Given redirect is not relative, refusing")
+                }
                 // NOTE: We currently have no session handler attached.
                 // Thus, all sessions are stored in memory and not persisted.
                 // Furthermore, default session timeout appears to be 30m
