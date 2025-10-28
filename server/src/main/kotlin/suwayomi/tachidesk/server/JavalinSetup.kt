@@ -199,7 +199,8 @@ object JavalinSetup {
             }
 
             if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid() && !isApi) {
-                val url = "$loginPath?redirect=" + URLEncoder.encode(ctx.fullUrl(), Charsets.UTF_8)
+                val url =
+                    "$loginPath?redirect=" + URLEncoder.encode(ctx.path() + (ctx.queryString()?.let { "?" + it } ?: ""), Charsets.UTF_8)
                 ctx.header("Location", url)
                 throw RedirectResponse(HttpStatus.SEE_OTHER)
             }
