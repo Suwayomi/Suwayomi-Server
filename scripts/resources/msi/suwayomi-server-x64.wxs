@@ -17,6 +17,7 @@
         <Directory Id="INSTALLDIR" Name="Suwayomi-Server" >
           <Directory Id="jre"/>
           <Directory Id="electron"/>
+          <Directory Id="natives"/>
           <Directory Id="bin"/>
         </Directory>
       </Directory>
@@ -62,6 +63,7 @@
       <ComponentRef Id="SuwayomiLauncherBAT" />
       <ComponentRef Id="ProgramMenuDir" />
       <ComponentGroupRef Id="electron" />
+      <ComponentGroupRef Id="natives" />
     </Feature>
 
     <Icon Id="Suwayomi.ico" SourceFile="$(var.Icon)" />
