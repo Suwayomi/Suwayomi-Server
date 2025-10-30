@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="opds_feeds_root">Catalogo OPDS di Suwayomi</string>
     <string name="opds_feeds_manga_chapters">%1$s Capitoli</string>
     <string name="opds_feeds_chapter_details">%1$s | %2$s | Dettagli</string>
@@ -67,4 +67,45 @@
     <string name="opds_facet_all_statuses">Tutt gli stati</string>
     <string name="opds_facet_all_languages">Tutte le lingue</string>
     <string name="opds_facet_all_genres">Tutti i generi</string>
+    <string name="opds_linktitle_catalog_root">Radice del catalogo</string>
+    <string name="opds_linktitle_search_catalog">Cerca nel catalogo</string>
+    <string name="opds_linktitle_first_page">Prima Pagina</string>
+    <string name="opds_linktitle_previous_page">Pagina Precedente</string>
+    <string name="opds_linktitle_next_page">Pagina Successiva</string>
+    <string name="opds_linktitle_last_page">Ultima Pagina</string>
+    <string name="opds_linktitle_self_feed">Feed corrente</string>
+    <string name="opds_linktitle_view_on_web">Guarda sul Web</string>
+    <string name="opds_linktitle_stream_pages_start">Leggi online</string>
+    <string name="opds_linktitle_stream_pages_continue">Continua lettura online</string>
+    <string name="opds_linktitle_stream_pages_start_local">Leggi online (Progressi Locali)</string>
+    <string name="opds_linktitle_stream_pages_continue_local">Continua lettura online (Progressi Locali)</string>
+    <string name="opds_linktitle_stream_pages_start_remote">Leggi online (Sincronizzato da %1$s)</string>
+    <string name="opds_linktitle_stream_pages_continue_remote">Continua lettura online (Sincronizzato da %1$s)</string>
+    <string name="opds_linktitle_download_cbz">Scarica come CBZ</string>
+    <string name="opds_linktitle_chapter_cover">Copertina Capitolo</string>
+    <string name="opds_linktitle_view_chapter_details">Visualizza i dettagli del capitolo e ottieni le pagine</string>
+    <string name="opds_chapter_status_read">✅</string>
+    <string name="opds_chapter_status_in_progress">⌛</string>
+    <string name="opds_chapter_status_unread">⭕</string>
+    <string name="opds_chapter_status_downloaded">⬇️</string>
+    <string name="opds_chapter_status_synced">🌐</string>
+    <string name="opds_chapter_details_base">Serie: %1$s | %2$s</string>
+    <string name="opds_chapter_details_scanlator">| di %1$s</string>
+    <string name="opds_chapter_details_progress">| Progresso: %1$d of %2$d</string>
+    <string name="opds_manga_summary_status">Stato: %1$s</string>
+    <string name="opds_manga_summary_source">Fonte: %1$s</string>
+    <string name="opds_manga_summary_language">Lingua: %1$s</string>
+    <string name="manga_status_ongoing">In corso</string>
+    <string name="manga_status_completed">Concluso</string>
+    <string name="manga_status_licensed">Licenziato</string>
+    <string name="manga_status_publishing_finished">Pubblicazione Terminata</string>
+    <string name="manga_status_cancelled">Cancellato</string>
+    <string name="manga_status_on_hiatus">In Pausa</string>
+    <string name="manga_status_unknown">Sconosciuto</string>
+    <string name="label_error">Errore</string>
+    <string name="label_version">Versione <xliff:g id="version" example="v2.0.1833">%1$s</xliff:g></string>
+    <string name="label_close">Chiudi</string>
+    <string name="webview_label_title">WebView di Suwayomi</string>
+    <string name="webview_label_disconnected">Disconnesso, ricarica per favore</string>
+    <string name="webview_label_reversescroll">Scorrimento inverso</string>
 </resources>
