@@ -457,6 +457,7 @@ object MangaController {
             pathParam<Int>("index"),
             queryParam<Boolean?>("updateProgress"),
             queryParam<String?>("format"),
+            queryParam<Boolean?>("opds"),
             documentWith = {
                 withOperation {
                     summary("Get a chapter page")
@@ -465,8 +466,13 @@ object MangaController {
                     )
                 }
             },
-            behaviorOf = { ctx, mangaId, chapterIndex, index, updateProgress, format ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
+            behaviorOf = { ctx, mangaId, chapterIndex, index, updateProgress, format, opds ->
+                if (opds == true) {
+                    ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
+                } else {
+                    ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                }
+
                 ctx.future {
                     future {
                         Page.getPageImage(

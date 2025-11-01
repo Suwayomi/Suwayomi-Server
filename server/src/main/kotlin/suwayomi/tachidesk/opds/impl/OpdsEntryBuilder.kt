@@ -365,7 +365,7 @@ object OpdsEntryBuilder {
         if (chapter.pageCount > 0) {
             val basePageHref =
                 "/api/v1/manga/${manga.id}/chapter/${chapter.sourceOrder}/page/{pageNumber}" +
-                    "?updateProgress=${serverConfig.opdsEnablePageReadProgress.value}"
+                    "?updateProgress=${serverConfig.opdsEnablePageReadProgress.value}&opds=true"
 
             val title: String =
                 when {
