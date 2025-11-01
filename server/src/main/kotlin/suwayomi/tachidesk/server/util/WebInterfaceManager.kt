@@ -160,6 +160,8 @@ object WebInterfaceManager {
             return
         }
 
+        File(applicationDirs.webUIServe).mkdirs()
+
         config.staticFiles.add { staticFiles ->
             if (ServerSubpath.isDefined()) staticFiles.hostedPath = ServerSubpath.normalized()
             // Use canonical path to avoid Jetty alias issues
