@@ -2,6 +2,7 @@
 
 Suwayomi-Server.jar         usr/share/java/suwayomi-server/bin/
 Suwayomi-Launcher.jar       usr/share/java/suwayomi-server/
+natives/*                   usr/share/java/suwayomi-server/natives/
 suwayomi-server.png         usr/share/pixmaps/
 suwayomi-server.desktop     usr/share/applications/
 suwayomi-launcher.desktop   usr/share/applications/
