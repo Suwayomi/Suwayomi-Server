@@ -8,8 +8,8 @@ import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.KoSyncConnectPayload
+import suwayomi.tachidesk.graphql.types.KoSyncStatusPayload
 import suwayomi.tachidesk.graphql.types.LogoutKoSyncAccountPayload
-import suwayomi.tachidesk.graphql.types.SettingsType
 import suwayomi.tachidesk.graphql.types.SyncConflictInfoType
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -26,14 +26,12 @@ class KoreaderSyncMutation {
     @RequireAuth
     fun connectKoSyncAccount(input: ConnectKoSyncAccountInput): CompletableFuture<KoSyncConnectPayload> =
         future {
-            val result = KoreaderSyncService.connect(input.username, input.password)
+            val (message, status) = KoreaderSyncService.connect(input.username, input.password)
 
             KoSyncConnectPayload(
                 clientMutationId = input.clientMutationId,
-                success = result.success,
-                message = result.message,
-                username = result.username,
-                settings = SettingsType(),
+                message = message,
+                status = status,
             )
         }
 
@@ -47,8 +45,7 @@ class KoreaderSyncMutation {
             KoreaderSyncService.logout()
             LogoutKoSyncAccountPayload(
                 clientMutationId = input.clientMutationId,
-                success = true,
-                settings = SettingsType(),
+                status = KoSyncStatusPayload(isLoggedIn = false, username = null),
             )
         }
 
