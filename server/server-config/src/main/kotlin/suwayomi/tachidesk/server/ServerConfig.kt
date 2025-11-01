@@ -7,6 +7,8 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.app.Application
+import android.content.Context
 import com.typesafe.config.Config
 import io.github.config4k.toConfig
 import kotlinx.coroutines.CoroutineScope
@@ -55,17 +57,21 @@ import suwayomi.tachidesk.server.settings.StringSetting
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.SystemPropertyOverridableConfigModule
 import kotlin.collections.associate
+import kotlin.getValue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import uy.kohesive.injekt.injectLazy
 
 val mutableConfigValueScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
 const val SERVER_CONFIG_MODULE_NAME = "server"
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
+
+private val application: Application by injectLazy()
 
 // Settings are ordered by "protoNumber".
 class ServerConfig(
@@ -604,24 +610,57 @@ class ServerConfig(
         description = "KOReader Sync Server URL. Public alternative: https://kosync.ak-team.com:3042/",
     )
 
+    @Deprecated("Moved to preference store. User is supposed to use a login/logout mutation")
     val koreaderSyncUsername: MutableStateFlow<String> by StringSetting(
         protoNumber = 60,
         group = SettingGroup.KOREADER_SYNC,
         defaultValue = "",
         excludeFromBackup = true,
+        deprecated = SettingsRegistry.SettingDeprecated(
+            replaceWith = "MOVE TO PREFERENCES",
+            message = "Moved to preference store. User is supposed to use a login/logout mutation",
+            migrateConfig = { value, config ->
+                val koreaderPreferences = application.getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
+                koreaderPreferences.edit().putString("username", value.unwrapped() as? String).apply()
+
+                config
+            }
+        ),
     )
 
+    @Deprecated("Moved to preference store. User is supposed to use a login/logout mutation")
     val koreaderSyncUserkey: MutableStateFlow<String> by StringSetting(
         protoNumber = 61,
         group = SettingGroup.KOREADER_SYNC,
         defaultValue = "",
         excludeFromBackup = true,
+        deprecated = SettingsRegistry.SettingDeprecated(
+            replaceWith = "MOVE TO PREFERENCES",
+            message = "Moved to preference store. User is supposed to use a login/logout mutation",
+            migrateConfig = { value, config ->
+                val koreaderPreferences = application.getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
+                koreaderPreferences.edit().putString("user_key", value.unwrapped() as? String).apply()
+
+                config
+            }
+        ),
     )
 
+    @Deprecated("Moved to preference store. Is supposed to be random and gets auto generated")
     val koreaderSyncDeviceId: MutableStateFlow<String> by StringSetting(
         protoNumber = 62,
         group = SettingGroup.KOREADER_SYNC,
         defaultValue = "",
+        deprecated = SettingsRegistry.SettingDeprecated(
+            replaceWith = "MOVE TO PREFERENCES",
+            message = "Moved to preference store. Is supposed to be random and gets auto generated",
+            migrateConfig = { value, config ->
+                val koreaderPreferences = application.getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
+                koreaderPreferences.edit().putString("device_id", value.unwrapped() as? String).apply()
+
+                config
+            }
+        ),
     )
 
     val koreaderSyncChecksumMethod: MutableStateFlow<KoreaderSyncChecksumMethod> by EnumSetting(

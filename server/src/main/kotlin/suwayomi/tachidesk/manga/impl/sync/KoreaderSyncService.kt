@@ -1,5 +1,7 @@
 package suwayomi.tachidesk.manga.impl.sync
 
+import android.app.Application
+import android.content.Context
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.await
 import eu.kanade.tachiyomi.util.lang.Hash
@@ -22,12 +24,20 @@ import suwayomi.tachidesk.manga.impl.util.KoreaderHelper
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.serverConfig
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.util.UUID
 import kotlin.math.abs
 
 object KoreaderSyncService {
+    private val preferences = Injekt.get<Application>().getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
+
+    private const val USERNAME_KEY = "username"
+    private const val USERKEY_KEY = "user_key"
+    private const val DEVICE_ID_KEY = "client_id"
+
     private val logger = KotlinLogging.logger {}
     private val network: NetworkHelper by injectLazy()
     private val json: Json by injectLazy()
@@ -62,9 +72,8 @@ object KoreaderSyncService {
     )
 
     data class ConnectResult(
-        val success: Boolean,
         val message: String? = null,
-        val username: String? = null,
+        val status: KoSyncStatusPayload,
     )
 
     private data class AuthResult(
@@ -86,7 +95,8 @@ object KoreaderSyncService {
             .build()
 
     private suspend fun getOrGenerateDeviceId(): String {
-        var deviceId = serverConfig.koreaderSyncDeviceId.value
+        var deviceId = preferences.getString(DEVICE_ID_KEY, "")!!
+
         if (deviceId.isBlank()) {
             deviceId =
                 UUID
@@ -95,7 +105,7 @@ object KoreaderSyncService {
                     .replace("-", "")
                     .uppercase()
             logger.info { "[KOSYNC] Generated new KOSync Device ID: $deviceId" }
-            serverConfig.koreaderSyncDeviceId.value = deviceId
+            preferences.edit().putString(DEVICE_ID_KEY, deviceId).apply()
         }
         return deviceId
     }
@@ -230,6 +240,24 @@ object KoreaderSyncService {
         }
     }
 
+    private fun getCredentials(): Pair<String, String> {
+        val username = preferences.getString(USERNAME_KEY, "")!!
+        val userkey = preferences.getString(USERKEY_KEY, "")!!
+
+        return Pair(username, userkey)
+    }
+
+    private fun setCredentials(
+        username: String,
+        userkey: String,
+    ) {
+        preferences
+            .edit()
+            .putString(USERNAME_KEY, username)
+            .putString(USERKEY_KEY, userkey)
+            .apply()
+    }
+
     suspend fun connect(
         username: String,
         password: String,
@@ -238,34 +266,30 @@ object KoreaderSyncService {
         val authResult = authorize(username, userkey)
 
         if (authResult.success) {
-            serverConfig.koreaderSyncUsername.value = username
-            serverConfig.koreaderSyncUserkey.value = userkey
-            return ConnectResult(true, "Login successful.", username)
+            setCredentials(username, userkey)
+            return ConnectResult("Login successful.", KoSyncStatusPayload(isLoggedIn = true, username = username))
         }
 
         if (authResult.isUserNotFoundError) {
             logger.info { "[KOSYNC CONNECT] Authorization failed, attempting to register new user." }
             val registerResult = register(username, userkey)
             return if (registerResult.success) {
-                serverConfig.koreaderSyncUsername.value = username
-                serverConfig.koreaderSyncUserkey.value = userkey
-                ConnectResult(true, "Registration successful.", username)
+                setCredentials(username, userkey)
+                ConnectResult("Registration successful.", KoSyncStatusPayload(isLoggedIn = true, username = username))
             } else {
-                ConnectResult(false, registerResult.message ?: "Registration failed.", null)
+                ConnectResult(registerResult.message ?: "Registration failed.", KoSyncStatusPayload(isLoggedIn = false, username = null))
             }
         }
 
-        return ConnectResult(false, authResult.message ?: "Authentication failed.", null)
+        return ConnectResult(authResult.message ?: "Authentication failed.", KoSyncStatusPayload(isLoggedIn = false, username = null))
     }
 
     suspend fun logout() {
-        serverConfig.koreaderSyncUsername.value = ""
-        serverConfig.koreaderSyncUserkey.value = ""
+        setCredentials("", "")
     }
 
     suspend fun getStatus(): KoSyncStatusPayload {
-        val username = serverConfig.koreaderSyncUsername.value
-        val userkey = serverConfig.koreaderSyncUserkey.value
+        val (username, userkey) = getCredentials()
         if (username.isBlank() || userkey.isBlank()) {
             return KoSyncStatusPayload(isLoggedIn = false, username = null)
         }
@@ -284,8 +308,7 @@ object KoreaderSyncService {
             return
         }
 
-        val username = serverConfig.koreaderSyncUsername.value
-        val userkey = serverConfig.koreaderSyncUserkey.value
+        val (username, userkey) = getCredentials()
         if (username.isBlank() || userkey.isBlank()) return
 
         logger.info { "[KOSYNC PUSH] Init." }
@@ -363,8 +386,7 @@ object KoreaderSyncService {
             return null
         }
 
-        val username = serverConfig.koreaderSyncUsername.value
-        val userkey = serverConfig.koreaderSyncUserkey.value
+        val (username, userkey) = getCredentials()
         if (username.isBlank() || userkey.isBlank()) return null
 
         val chapterHash = getOrGenerateChapterHash(chapterId)
