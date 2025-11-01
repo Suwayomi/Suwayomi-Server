@@ -84,6 +84,8 @@ object WebInterfaceManager {
     private val preferences = Injekt.get<Application>().getSharedPreferences("server_util", Context.MODE_PRIVATE)
     private var currentUpdateTaskId: String = ""
 
+    private var isSetupComplete = false
+
     private val json: Json by injectLazy()
     private val network: NetworkHelper by injectLazy()
 
@@ -181,6 +183,7 @@ object WebInterfaceManager {
         @OptIn(DelicateCoroutinesApi::class)
         GlobalScope.launch(Dispatchers.IO) {
             setupWebUI()
+            isSetupComplete = true
         }
     }
 
@@ -251,25 +254,27 @@ object WebInterfaceManager {
         val lastAutomatedUpdate = preferences.getLong(LAST_WEBUI_UPDATE_CHECK_KEY, System.currentTimeMillis())
 
         val task = {
-            val log =
-                KotlinLogging.logger(
-                    "${logger.name}::scheduleWebUIUpdateCheck(" +
-                        "flavor= ${WebUIFlavor.current.uiName}, " +
-                        "channel= ${serverConfig.webUIChannel.value}, " +
-                        "interval= ${serverConfig.webUIUpdateCheckInterval.value}h, " +
-                        "lastAutomatedUpdate= ${
-                            Date(
-                                lastAutomatedUpdate,
-                            )
-                        })",
-                )
-            log.debug { "called" }
+            if (isSetupComplete) {
+                val log =
+                    KotlinLogging.logger(
+                        "${logger.name}::scheduleWebUIUpdateCheck(" +
+                            "flavor= ${WebUIFlavor.current.uiName}, " +
+                            "channel= ${serverConfig.webUIChannel.value}, " +
+                            "interval= ${serverConfig.webUIUpdateCheckInterval.value}h, " +
+                            "lastAutomatedUpdate= ${
+                                Date(
+                                    lastAutomatedUpdate,
+                                )
+                            })",
+                    )
+                log.debug { "called" }
 
-            runBlocking {
-                try {
-                    checkForUpdate(WebUIFlavor.current)
-                } catch (e: Exception) {
-                    log.error(e) { "failed due to" }
+                runBlocking {
+                    try {
+                        checkForUpdate(WebUIFlavor.current)
+                    } catch (e: Exception) {
+                        log.error(e) { "failed due to" }
+                    }
                 }
             }
         }
