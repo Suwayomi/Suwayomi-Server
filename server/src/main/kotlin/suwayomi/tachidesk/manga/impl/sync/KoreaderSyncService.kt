@@ -129,7 +129,7 @@ object KoreaderSyncService {
             val newHash =
                 when (checksumMethod) {
                     KoreaderSyncChecksumMethod.BINARY -> {
-                        logger.info { "[KOSYNC HASH] No hash for chapterId=$chapterId. Generating from downloaded content." }
+                        logger.debug { "[KOSYNC HASH] No hash for chapterId=$chapterId. Generating from downloaded content." }
                         try {
                             // Always create a CBZ in memory if it doesn't exist
                             val (stream, _) = ChapterDownloadHelper.getArchiveStreamWithSize(mangaId, chapterId)
@@ -151,7 +151,7 @@ object KoreaderSyncService {
                         }
                     }
                     KoreaderSyncChecksumMethod.FILENAME -> {
-                        logger.info { "[KOSYNC HASH] No hash for chapterId=$chapterId. Generating from filename." }
+                        logger.debug { "[KOSYNC HASH] No hash for chapterId=$chapterId. Generating from filename." }
                         (ChapterTable innerJoin MangaTable)
                             .select(ChapterTable.name, MangaTable.title)
                             .where { ChapterTable.id eq chapterId }
@@ -311,8 +311,6 @@ object KoreaderSyncService {
         val (username, userkey) = getCredentials()
         if (username.isBlank() || userkey.isBlank()) return
 
-        logger.info { "[KOSYNC PUSH] Init." }
-
         val chapterHash = getOrGenerateChapterHash(chapterId)
         if (chapterHash.isNullOrBlank()) {
             logger.info { "[KOSYNC PUSH] Aborted for chapterId=$chapterId: No hash." }
@@ -357,13 +355,11 @@ object KoreaderSyncService {
                     addHeader("x-auth-key", userkey)
                 }
 
-            logger.info { "[KOSYNC PUSH] PUT request to URL: ${request.url}" }
-            logger.info { "[KOSYNC PUSH] Sending data: $requestBody" }
+            logger.info { "[KOSYNC PUSH] url= ${request.url} - Sending data: $requestBody" }
 
             network.client.newCall(request).await().use { response ->
                 val responseBody = response.body.string()
-                logger.info { "[KOSYNC PUSH] PUT response status: ${response.code}" }
-                logger.info { "[KOSYNC PUSH] PUT response body: $responseBody" }
+                logger.debug { "[KOSYNC PUSH] PUT response status: ${response.code}; response body: $responseBody" }
                 if (!response.isSuccessful) {
                     logger.warn { "[KOSYNC PUSH] Failed for chapterId=$chapterId: ${response.code}" }
                 } else {
@@ -391,7 +387,7 @@ object KoreaderSyncService {
 
         val chapterHash = getOrGenerateChapterHash(chapterId)
         if (chapterHash.isNullOrBlank()) {
-            logger.info { "[KOSYNC PULL] Aborted for chapterId=$chapterId: No hash." }
+            logger.debug { "[KOSYNC PULL] Aborted for chapterId=$chapterId: No hash." }
             return null
         }
 
@@ -402,14 +398,12 @@ object KoreaderSyncService {
                     addHeader("x-auth-user", username)
                     addHeader("x-auth-key", userkey)
                 }
-            logger.info { "[KOSYNC PULL] GET request to URL: ${request.url}" }
-
             network.client.newCall(request).await().use { response ->
-                logger.info { "[KOSYNC PULL] GET response status: ${response.code}" }
+                logger.debug { "[KOSYNC PULL] GET response status: ${response.code}" }
 
                 if (response.isSuccessful) {
                     val body = response.body.string()
-                    logger.info { "[KOSYNC PULL] GET response body: $body" }
+                    logger.debug { "[KOSYNC PULL] GET response body: $body" }
                     if (body.isBlank() || body == "{}") return null
 
                     val progressResponse = json.decodeFromString(KoreaderProgressResponse.serializer(), body)
