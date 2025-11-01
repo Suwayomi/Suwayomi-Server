@@ -611,11 +611,10 @@ class ServerConfig(
     )
 
     @Deprecated("Moved to preference store. User is supposed to use a login/logout mutation")
-    val koreaderSyncUsername: MutableStateFlow<String> by StringSetting(
+    val koreaderSyncUsername: MutableStateFlow<String> by MigratedConfigValue(
         protoNumber = 60,
         group = SettingGroup.KOREADER_SYNC,
         defaultValue = "",
-        excludeFromBackup = true,
         deprecated = SettingsRegistry.SettingDeprecated(
             replaceWith = "MOVE TO PREFERENCES",
             message = "Moved to preference store. User is supposed to use a login/logout mutation",
@@ -629,11 +628,10 @@ class ServerConfig(
     )
 
     @Deprecated("Moved to preference store. User is supposed to use a login/logout mutation")
-    val koreaderSyncUserkey: MutableStateFlow<String> by StringSetting(
+    val koreaderSyncUserkey: MutableStateFlow<String> by MigratedConfigValue(
         protoNumber = 61,
         group = SettingGroup.KOREADER_SYNC,
         defaultValue = "",
-        excludeFromBackup = true,
         deprecated = SettingsRegistry.SettingDeprecated(
             replaceWith = "MOVE TO PREFERENCES",
             message = "Moved to preference store. User is supposed to use a login/logout mutation",
@@ -647,7 +645,7 @@ class ServerConfig(
     )
 
     @Deprecated("Moved to preference store. Is supposed to be random and gets auto generated")
-    val koreaderSyncDeviceId: MutableStateFlow<String> by StringSetting(
+    val koreaderSyncDeviceId: MutableStateFlow<String> by MigratedConfigValue(
         protoNumber = 62,
         group = SettingGroup.KOREADER_SYNC,
         defaultValue = "",
