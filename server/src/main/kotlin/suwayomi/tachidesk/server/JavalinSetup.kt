@@ -319,8 +319,15 @@ object JavalinSetup {
 
     fun <T : Any> WsContext.getAttributeOrSet(
         attribute: Attribute<T>,
+        replaceIf: (T) -> Boolean = { false },
         set: () -> T,
-    ): T =
-        attribute(attribute.name)
-            ?: set().also { setAttribute(attribute, it) }
+    ): T {
+        var item: T? = attribute(attribute.name)
+
+        if (item != null && replaceIf(item)) {
+            item = null
+        }
+
+        return item ?: set().also { setAttribute(attribute, it) }
+    }
 }
