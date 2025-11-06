@@ -251,4 +251,8 @@ tasks {
     processResources {
         dependsOn(":server:server-config-generate:generateSettings")
     }
+
+    processTestResources {
+        dependsOn(":server:server-config-generate:generateSettings")
+    }
 }

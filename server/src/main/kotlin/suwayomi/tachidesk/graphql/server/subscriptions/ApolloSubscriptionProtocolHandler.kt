@@ -155,7 +155,10 @@ class ApolloSubscriptionProtocolHandler(
     ): Flow<SubscriptionOperationMessage> {
         @Suppress("UNCHECKED_CAST")
         val user =
-            context.getAttributeOrSet(Attribute.TachideskUser) {
+            context.getAttributeOrSet(
+                Attribute.TachideskUser,
+                replaceIf = { it == UserType.Visitor },
+            ) {
                 val payload = operationMessage.payload as? Map<String, Any?>
                 val token = payload?.let { it[Header.AUTHORIZATION] as? String }
                 getUserFromToken(token)
