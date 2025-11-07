@@ -143,8 +143,8 @@ fun OkHttpClient.newCachelessCallWithProgress(
 context(Json)
 inline fun <reified T> Response.parseAs(): T = decodeFromJsonResponse(serializer(), this)
 
-context(Json)
 @OptIn(ExperimentalSerializationApi::class)
+context(Json)
 fun <T> decodeFromJsonResponse(
     deserializer: DeserializationStrategy<T>,
     response: Response,

@@ -6,6 +6,7 @@ import kotlinx.coroutines.withTimeout
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.asDataFetcherResult
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.DownloadStatus
 import suwayomi.tachidesk.manga.impl.Chapter
@@ -28,6 +29,7 @@ class DownloadMutation {
         val chapters: List<ChapterType>,
     )
 
+    @RequireAuth
     fun deleteDownloadedChapters(input: DeleteDownloadedChaptersInput): DataFetcherResult<DeleteDownloadedChaptersPayload?> {
         val (clientMutationId, chapters) = input
 
@@ -57,6 +59,7 @@ class DownloadMutation {
         val chapters: ChapterType,
     )
 
+    @RequireAuth
     fun deleteDownloadedChapter(input: DeleteDownloadedChapterInput): DataFetcherResult<DeleteDownloadedChapterPayload?> {
         val (clientMutationId, chapter) = input
 
@@ -83,6 +86,7 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
+    @RequireAuth
     fun enqueueChapterDownloads(
         input: EnqueueChapterDownloadsInput,
     ): CompletableFuture<DataFetcherResult<EnqueueChapterDownloadsPayload?>> {
@@ -99,7 +103,7 @@ class DownloadMutation {
                             DownloadStatus(
                                 DownloadManager.updates
                                     .first {
-                                        DownloadManager.getStatus().queue.any { it.chapter.id in chapters }
+                                        DownloadManager.getStatus().queue.any { it.chapterId in chapters }
                                     }.let { DownloadManager.getStatus() },
                             )
                         },
@@ -118,6 +122,7 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
+    @RequireAuth
     fun enqueueChapterDownload(input: EnqueueChapterDownloadInput): CompletableFuture<DataFetcherResult<EnqueueChapterDownloadPayload?>> {
         val (clientMutationId, chapter) = input
 
@@ -131,7 +136,7 @@ class DownloadMutation {
                         withTimeout(30.seconds) {
                             DownloadStatus(
                                 DownloadManager.updates
-                                    .first { it.updates.any { it.downloadChapter.chapter.id == chapter } }
+                                    .first { it.updates.any { it.downloadQueueItem.chapterId == chapter } }
                                     .let { DownloadManager.getStatus() },
                             )
                         },
@@ -150,6 +155,7 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
+    @RequireAuth
     fun dequeueChapterDownloads(
         input: DequeueChapterDownloadsInput,
     ): CompletableFuture<DataFetcherResult<DequeueChapterDownloadsPayload?>> {
@@ -167,7 +173,7 @@ class DownloadMutation {
                                 DownloadManager.updates
                                     .first {
                                         it.updates.any {
-                                            it.downloadChapter.chapter.id in chapters && it.type == DEQUEUED
+                                            it.downloadQueueItem.chapterId in chapters && it.type == DEQUEUED
                                         }
                                     }.let { DownloadManager.getStatus() },
                             )
@@ -187,6 +193,7 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
+    @RequireAuth
     fun dequeueChapterDownload(input: DequeueChapterDownloadInput): CompletableFuture<DataFetcherResult<DequeueChapterDownloadPayload?>> {
         val (clientMutationId, chapter) = input
 
@@ -202,7 +209,7 @@ class DownloadMutation {
                                 DownloadManager.updates
                                     .first {
                                         it.updates.any {
-                                            it.downloadChapter.chapter.id == chapter && it.type == DEQUEUED
+                                            it.downloadQueueItem.chapterId == chapter && it.type == DEQUEUED
                                         }
                                     }.let { DownloadManager.getStatus() },
                             )
@@ -221,6 +228,7 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
+    @RequireAuth
     fun startDownloader(input: StartDownloaderInput): CompletableFuture<DataFetcherResult<StartDownloaderPayload?>> =
         future {
             asDataFetcherResult {
@@ -249,6 +257,7 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
+    @RequireAuth
     fun stopDownloader(input: StopDownloaderInput): CompletableFuture<DataFetcherResult<StopDownloaderPayload?>> =
         future {
             asDataFetcherResult {
@@ -277,6 +286,7 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
+    @RequireAuth
     fun clearDownloader(input: ClearDownloaderInput): CompletableFuture<DataFetcherResult<ClearDownloaderPayload?>> =
         future {
             asDataFetcherResult {
@@ -307,6 +317,7 @@ class DownloadMutation {
         val downloadStatus: DownloadStatus,
     )
 
+    @RequireAuth
     fun reorderChapterDownload(input: ReorderChapterDownloadInput): CompletableFuture<DataFetcherResult<ReorderChapterDownloadPayload?>> {
         val (clientMutationId, chapter, to) = input
 
@@ -320,7 +331,7 @@ class DownloadMutation {
                         withTimeout(30.seconds) {
                             DownloadStatus(
                                 DownloadManager.updates
-                                    .first { it.updates.indexOfFirst { it.downloadChapter.chapter.id == chapter } <= to }
+                                    .first { it.updates.indexOfFirst { it.downloadQueueItem.chapterId == chapter } <= to }
                                     .let { DownloadManager.getStatus() },
                             )
                         },

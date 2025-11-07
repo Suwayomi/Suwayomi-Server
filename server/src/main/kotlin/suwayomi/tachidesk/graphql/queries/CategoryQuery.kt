@@ -17,6 +17,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
 import suwayomi.tachidesk.graphql.queries.filter.HasGetOp
@@ -42,6 +43,7 @@ import suwayomi.tachidesk.manga.model.table.CategoryTable
 import java.util.concurrent.CompletableFuture
 
 class CategoryQuery {
+    @RequireAuth
     fun category(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Int,
@@ -120,6 +122,7 @@ class CategoryQuery {
             )
     }
 
+    @RequireAuth
     fun categories(
         condition: CategoryCondition? = null,
         filter: CategoryFilter? = null,

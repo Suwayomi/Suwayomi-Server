@@ -8,6 +8,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.global.impl.GlobalMeta
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
 import suwayomi.tachidesk.graphql.asDataFetcherResult
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.GlobalMetaType
 
 class MetaMutation {
@@ -21,6 +22,7 @@ class MetaMutation {
         val meta: GlobalMetaType,
     )
 
+    @RequireAuth
     fun setGlobalMeta(input: SetGlobalMetaInput): DataFetcherResult<SetGlobalMetaPayload?> {
         val (clientMutationId, meta) = input
 
@@ -41,6 +43,7 @@ class MetaMutation {
         val meta: GlobalMetaType?,
     )
 
+    @RequireAuth
     fun deleteGlobalMeta(input: DeleteGlobalMetaInput): DataFetcherResult<DeleteGlobalMetaPayload?> {
         val (clientMutationId, key) = input
 

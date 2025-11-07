@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.graphql.queries
 
 import io.javalin.http.UploadedFile
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.BackupRestoreStatus
 import suwayomi.tachidesk.graphql.types.toStatus
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
@@ -25,6 +26,7 @@ class BackupQuery {
         val missingTrackers: List<ValidateBackupTracker>,
     )
 
+    @RequireAuth
     fun validateBackup(input: ValidateBackupInput): ValidateBackupResult {
         val result = ProtoBackupValidator.validate(input.backup.content())
         return ValidateBackupResult(
@@ -33,5 +35,6 @@ class BackupQuery {
         )
     }
 
+    @RequireAuth
     fun restoreStatus(id: String): BackupRestoreStatus? = ProtoBackupImport.getRestoreState(id)?.toStatus()
 }

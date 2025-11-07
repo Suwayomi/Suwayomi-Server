@@ -48,7 +48,8 @@ object Page {
 
     suspend fun getPageImage(
         mangaId: Int,
-        chapterIndex: Int,
+        chapterId: Int? = null,
+        chapterIndex: Int? = null,
         index: Int,
         format: String? = null,
         progressFlow: ((StateFlow<Int>) -> Unit)? = null,
@@ -56,12 +57,17 @@ object Page {
         val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
         val chapterEntry =
             transaction {
-                ChapterTable
-                    .selectAll()
-                    .where {
-                        (ChapterTable.sourceOrder eq chapterIndex) and
-                            (ChapterTable.manga eq mangaId)
-                    }.first()
+                if (chapterId != null) {
+                    ChapterTable
+                        .selectAll()
+                        .where { ChapterTable.id eq chapterId }
+                        .first()
+                } else {
+                    ChapterTable
+                        .selectAll()
+                        .where { ChapterTable.manga eq mangaId and (ChapterTable.sourceOrder eq chapterIndex!!) }
+                        .first()
+                }
             }
         val chapterId = chapterEntry[ChapterTable.id].value
 
@@ -112,14 +118,11 @@ object Page {
 
         if (pageEntry[PageTable.imageUrl] == null) {
             val trueImageUrl = getTrueImageUrl(tachiyomiPage, source)
-            if (trueImageUrl.length <= 2048) {
-                transaction {
-                    PageTable.update({ (PageTable.chapter eq chapterId) and (PageTable.index eq index) }) {
-                        it[imageUrl] = trueImageUrl
-                    }
+            transaction {
+                PageTable.update({ (PageTable.chapter eq chapterId) and (PageTable.index eq index) }) {
+                    it[imageUrl] = trueImageUrl
                 }
             }
-            tachiyomiPage.imageUrl = trueImageUrl
         }
 
         val fileName = getPageName(index, chapterEntry[ChapterTable.pageCount])

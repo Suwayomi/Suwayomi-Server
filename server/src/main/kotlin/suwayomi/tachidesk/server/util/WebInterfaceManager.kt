@@ -14,13 +14,14 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.awaitSuccess
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.javalin.config.JavalinConfig
+import io.javalin.http.staticfiles.Location
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -35,6 +36,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import net.lingala.zip4j.ZipFile
+import org.eclipse.jetty.server.handler.ContextHandler
 import suwayomi.tachidesk.graphql.types.AboutWebUI
 import suwayomi.tachidesk.graphql.types.UpdateState
 import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
@@ -82,11 +84,12 @@ object WebInterfaceManager {
     private val preferences = Injekt.get<Application>().getSharedPreferences("server_util", Context.MODE_PRIVATE)
     private var currentUpdateTaskId: String = ""
 
+    private var isSetupComplete = false
+
     private val json: Json by injectLazy()
     private val network: NetworkHelper by injectLazy()
 
-    private val notifyFlow =
-        MutableSharedFlow<WebUIUpdateStatus>(extraBufferCapacity = 1, onBufferOverflow = DROP_OLDEST)
+    private val notifyFlow = MutableSharedFlow<WebUIUpdateStatus?>()
 
     private val statusFlow = MutableSharedFlow<WebUIUpdateStatus>()
     val status =
@@ -100,7 +103,10 @@ object WebInterfaceManager {
         scope.launch {
             @OptIn(FlowPreview::class)
             notifyFlow.sample(1.seconds).collect {
-                statusFlow.emit(it)
+                if (it != null) {
+                    logger.debug { "notifyFlow: sampling $it" }
+                    statusFlow.emit(it)
+                }
             }
         }
 
@@ -151,8 +157,79 @@ object WebInterfaceManager {
 
     private var serveWebUI: () -> Unit = {}
 
-    fun setServeWebUI(serveWebUI: () -> Unit) {
-        this.serveWebUI = serveWebUI
+    fun setup(config: JavalinConfig) {
+        if (!serverConfig.webUIEnabled.value) {
+            return
+        }
+
+        File(applicationDirs.webUIServe).mkdirs()
+
+        config.staticFiles.add { staticFiles ->
+            if (ServerSubpath.isDefined()) staticFiles.hostedPath = ServerSubpath.normalized()
+            // Use canonical path to avoid Jetty alias issues
+            staticFiles.directory = File(applicationDirs.webUIServe).canonicalPath
+            staticFiles.location = Location.EXTERNAL
+            staticFiles.aliasCheck = ContextHandler.ApproveAliases()
+        }
+
+        serveWebUI = {
+            val updatedServableRoot = createServableRoot()
+            config.spaRoot.addFile(ServerSubpath.asRootPath(), "$updatedServableRoot/index.html", Location.EXTERNAL)
+
+            logger.info {
+                "Serving SPA files for ${serverConfig.webUIFlavor.value}" +
+                    if (ServerSubpath.isDefined()) " under subpath '${ServerSubpath.normalized()}'" else ""
+            }
+        }
+
+        @OptIn(DelicateCoroutinesApi::class)
+        GlobalScope.launch(Dispatchers.IO) {
+            setupWebUI()
+            isSetupComplete = true
+        }
+    }
+
+    private fun createServableRoot(): String {
+        val tempWebUIRoot = createServableDirectory()
+        val orgIndexHtml = File("$tempWebUIRoot/index.html")
+
+        if (orgIndexHtml.exists()) {
+            val originalIndexHtml = orgIndexHtml.readText()
+            val subpathInjectionScript =
+                """
+                <script>
+                    "// <<suwayomi-subpath-injection>>"
+                    const baseTag = document.createElement('base');
+                    baseTag.href = location.origin + "${ServerSubpath.asRootPath()}";
+                    document.head.appendChild(baseTag);
+                </script>
+                """.trimIndent()
+
+            val indexHtmlWithSubpathInjection =
+                originalIndexHtml.replace(
+                    "<head>",
+                    "<head>$subpathInjectionScript",
+                )
+
+            orgIndexHtml.writeText(indexHtmlWithSubpathInjection)
+        }
+
+        return tempWebUIRoot
+    }
+
+    private fun createServableDirectory(): String {
+        val originalWebUIRoot = applicationDirs.webUIRoot
+        val tempWebUIRoot = applicationDirs.webUIServe
+
+        File(tempWebUIRoot).deleteRecursively()
+        File(tempWebUIRoot).mkdirs()
+
+        File(originalWebUIRoot).copyRecursively(File(tempWebUIRoot))
+
+        logger.debug { "Created servable WebUI directory at: $tempWebUIRoot" }
+
+        // Return canonical path to avoid Jetty alias issues
+        return File(tempWebUIRoot).canonicalPath
     }
 
     private fun setServedWebUIFlavor(flavor: WebUIFlavor) {
@@ -164,7 +241,6 @@ object WebInterfaceManager {
 
     private fun isAutoUpdateEnabled(): Boolean = serverConfig.webUIUpdateCheckInterval.value.toInt() > 0
 
-    @OptIn(DelicateCoroutinesApi::class)
     private fun scheduleWebUIUpdateCheck() {
         HAScheduler.descheduleCron(currentUpdateTaskId)
 
@@ -180,25 +256,27 @@ object WebInterfaceManager {
         val lastAutomatedUpdate = preferences.getLong(LAST_WEBUI_UPDATE_CHECK_KEY, System.currentTimeMillis())
 
         val task = {
-            val log =
-                KotlinLogging.logger(
-                    "${logger.name}::scheduleWebUIUpdateCheck(" +
-                        "flavor= ${WebUIFlavor.current.uiName}, " +
-                        "channel= ${serverConfig.webUIChannel.value}, " +
-                        "interval= ${serverConfig.webUIUpdateCheckInterval.value}h, " +
-                        "lastAutomatedUpdate= ${
-                            Date(
-                                lastAutomatedUpdate,
-                            )
-                        })",
-                )
-            log.debug { "called" }
+            if (isSetupComplete) {
+                val log =
+                    KotlinLogging.logger(
+                        "${logger.name}::scheduleWebUIUpdateCheck(" +
+                            "flavor= ${WebUIFlavor.current.uiName}, " +
+                            "channel= ${serverConfig.webUIChannel.value}, " +
+                            "interval= ${serverConfig.webUIUpdateCheckInterval.value}h, " +
+                            "lastAutomatedUpdate= ${
+                                Date(
+                                    lastAutomatedUpdate,
+                                )
+                            })",
+                    )
+                log.debug { "called" }
 
-            runBlocking {
-                try {
-                    checkForUpdate(WebUIFlavor.current)
-                } catch (e: Exception) {
-                    log.error(e) { "failed due to" }
+                runBlocking {
+                    try {
+                        checkForUpdate(WebUIFlavor.current)
+                    } catch (e: Exception) {
+                        log.error(e) { "failed due to" }
+                    }
                 }
             }
         }
@@ -206,6 +284,7 @@ object WebInterfaceManager {
         val wasPreviousUpdateCheckTriggered =
             (System.currentTimeMillis() - lastAutomatedUpdate) < updateInterval.inWholeMilliseconds
         if (!wasPreviousUpdateCheckTriggered) {
+            @OptIn(DelicateCoroutinesApi::class)
             GlobalScope.launch(Dispatchers.IO) {
                 task()
             }
@@ -217,6 +296,7 @@ object WebInterfaceManager {
 
     suspend fun setupWebUI() {
         if (serverConfig.webUIFlavor.value == WebUIFlavor.CUSTOM) {
+            serveWebUI()
             return
         }
 
@@ -230,11 +310,13 @@ object WebInterfaceManager {
             val currentVersion = getLocalVersion()
 
             log.info { "found webUI files - version= $currentVersion" }
+            serveWebUI()
 
             val hasFlavorChanged = flavor.uiName != servedFlavor.uiName
             if (hasFlavorChanged) {
                 try {
                     doInitialSetup(flavor)
+                    serveWebUI()
                     return
                 } catch (e: Exception) {
                     log.warn(e) { "Failed to install the version of the new flavor, proceeding with version of previous flavor" }
@@ -245,6 +327,7 @@ object WebInterfaceManager {
             if (!isLocalWebUIValid(flavorToValidate, applicationDirs.webUIRoot)) {
                 try {
                     doInitialSetup(flavorToValidate, isInvalid = true)
+                    serveWebUI()
                 } catch (e: Exception) {
                     log.warn(e) { "WebUI is invalid and failed to install a valid version, proceeding with invalid version" }
                 }
@@ -264,6 +347,7 @@ object WebInterfaceManager {
 
                 try {
                     setupBundledWebUI()
+                    serveWebUI()
                 } catch (e: Exception) {
                     log.error(e) { "failed the update to the bundled webUI" }
                 }
@@ -275,6 +359,7 @@ object WebInterfaceManager {
         log.warn { "no webUI files found, starting download..." }
         try {
             doInitialSetup(flavor)
+            serveWebUI()
         } catch (e: Exception) {
             log.error(e) {
                 "Failed to setup the webUI. Unable to start the server with a served webUI, change the settings to start" +
@@ -383,6 +468,7 @@ object WebInterfaceManager {
         log.info { "An update is available, starting download..." }
         try {
             downloadVersion(flavor, getLatestCompatibleVersion(flavor))
+            serveWebUI()
         } catch (e: Exception) {
             log.warn(e) { "failed due to" }
         }
@@ -592,6 +678,7 @@ object WebInterfaceManager {
             val status = getStatus(version, state, progress)
 
             if (immediate) {
+                notifyFlow.emit(null)
                 statusFlow.emit(status)
                 return@launch
             }
@@ -604,12 +691,14 @@ object WebInterfaceManager {
         flavor: WebUIFlavor,
         version: String,
     ) {
-        scope.launch {
+        @OptIn(DelicateCoroutinesApi::class)
+        GlobalScope.launch(Dispatchers.IO) {
             downloadVersion(flavor, version)
+            serveWebUI()
         }
     }
 
-    suspend fun downloadVersion(
+    private suspend fun downloadVersion(
         flavor: WebUIFlavor,
         version: String,
     ) {
@@ -643,8 +732,6 @@ object WebInterfaceManager {
             setServedWebUIFlavor(flavor)
 
             emitStatus(version, FINISHED, 100, immediate = true)
-
-            serveWebUI()
         } catch (e: Exception) {
             emitStatus(version, ERROR, 0, immediate = true)
             throw e

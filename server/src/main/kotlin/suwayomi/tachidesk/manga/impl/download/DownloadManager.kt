@@ -31,12 +31,14 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
+import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Error
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Queued
 import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdate
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdates
+import suwayomi.tachidesk.manga.impl.download.model.OldDownloadStatus
 import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
@@ -58,9 +60,9 @@ private val logger = KotlinLogging.logger {}
 object DownloadManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val clients = ConcurrentHashMap<String, WsContext>()
-    private val downloadQueue = CopyOnWriteArrayList<DownloadChapter>()
+    private val downloadQueue = CopyOnWriteArrayList<DownloadQueueItem>()
     private val downloadUpdates = CopyOnWriteArraySet<DownloadUpdate>()
-    private val downloaders = ConcurrentHashMap<String, Downloader>()
+    private val downloaders = ConcurrentHashMap<Long, Downloader>()
 
     private const val DOWNLOAD_QUEUE_KEY = "downloadQueueKey"
     private val sharedPreferences =
@@ -76,7 +78,7 @@ object DownloadManager {
     private fun saveDownloadQueue() {
         sharedPreferences
             .edit()
-            .putStringSet(DOWNLOAD_QUEUE_KEY, downloadQueue.map { it.chapter.id.toString() }.toSet())
+            .putStringSet(DOWNLOAD_QUEUE_KEY, downloadQueue.map { it.chapterId.toString() }.toSet())
             .apply()
     }
 
@@ -157,12 +159,6 @@ object DownloadManager {
         saveQueueFlow.onEach { saveDownloadQueue() }.launchIn(scope)
     }
 
-    private fun sendStatusToAllClients(status: DownloadStatus) {
-        clients.forEach {
-            it.value.send(status)
-        }
-    }
-
     private fun notifyAllClients(
         immediate: Boolean = false,
         downloads: List<DownloadUpdate> = emptyList(),
@@ -171,11 +167,11 @@ object DownloadManager {
         val outdatedUpdates =
             downloadUpdates.filter { update ->
                 downloads.any { download ->
-                    download.downloadChapter.chapter.id ==
-                        update.downloadChapter.chapter.id
+                    download.downloadQueueItem.chapterId ==
+                        update.downloadQueueItem.chapterId
                 }
             }
-        downloadUpdates.removeAll(outdatedUpdates)
+        downloadUpdates.removeAll(outdatedUpdates.toSet())
         downloadUpdates.addAll(downloads)
 
         // There is a problem where too many immediate updates can cause the client to lag out (e.g., in case it has to
@@ -196,10 +192,14 @@ object DownloadManager {
 
         if (immediate) {
             val status = getStatus()
-
             scope.launch {
                 statusFlow.emit(status)
-                sendStatusToAllClients(status)
+                if (clients.isNotEmpty()) {
+                    val status = getOldStatus(status)
+                    clients.forEach {
+                        it.value.send(status)
+                    }
+                }
             }
 
             return
@@ -218,6 +218,40 @@ object DownloadManager {
                 Status.Stopped
             },
             downloadQueue.toList(),
+        )
+
+    fun getOldStatus(status: DownloadStatus): OldDownloadStatus =
+        OldDownloadStatus(
+            status.status,
+            run {
+                val items = status.queue
+                val mangaIds = items.map { it.mangaId }.toSet()
+                val chapterIds = items.map { it.chapterId }.toSet()
+                transaction {
+                    val mangas =
+                        MangaTable
+                            .selectAll()
+                            .where { MangaTable.id inList mangaIds }
+                            .associateBy({ it[MangaTable.id].value }, { MangaTable.toDataClass(it) })
+                    val chapters =
+                        ChapterTable
+                            .selectAll()
+                            .where { ChapterTable.id inList chapterIds }
+                            .associateBy({ it[ChapterTable.id].value }, { ChapterTable.toDataClass(it) })
+                    items.mapNotNull {
+                        DownloadChapter(
+                            it.chapterIndex,
+                            it.mangaId,
+                            chapters[it.chapterId] ?: return@mapNotNull null,
+                            mangas[it.mangaId] ?: return@mapNotNull null,
+                            it.position,
+                            it.state,
+                            it.progress,
+                            it.tries,
+                        )
+                    }
+                }
+            },
         )
 
     private fun getDownloadUpdates(addInitial: Boolean = false): DownloadUpdates =
@@ -261,10 +295,10 @@ object DownloadManager {
                         "Failed: ${downloadQueue.size - availableDownloads.size}"
                 }
 
-                if (runningDownloaders.size < serverConfig.maxSourcesInParallel.value.coerceAtLeast(1)) {
+                if (runningDownloaders.size < serverConfig.maxSourcesInParallel.value) {
                     availableDownloads
                         .asSequence()
-                        .map { it.manga.sourceId }
+                        .map { it.sourceId }
                         .distinct()
                         .minus(
                             runningDownloaders.map { it.sourceId }.toSet(),
@@ -285,7 +319,7 @@ object DownloadManager {
         }
     }
 
-    private fun getDownloader(sourceId: String) =
+    private fun getDownloader(sourceId: Long) =
         downloaders.getOrPut(sourceId) {
             Downloader(
                 scope = scope,
@@ -375,18 +409,19 @@ object DownloadManager {
     private fun addToQueue(
         manga: MangaDataClass,
         chapter: ChapterDataClass,
-    ): DownloadChapter? {
-        val downloadChapter = downloadQueue.firstOrNull { it.mangaId == manga.id && it.chapterIndex == chapter.index }
+    ): DownloadQueueItem? {
+        val downloadChapter = downloadQueue.firstOrNull { it.chapterId == chapter.id }
 
         val addToQueue = downloadChapter == null
         if (addToQueue) {
             val newDownloadChapter =
-                DownloadChapter(
+                DownloadQueueItem(
+                    chapter.id,
                     chapter.index,
                     manga.id,
-                    chapter,
-                    manga,
+                    manga.sourceId.toLong(),
                     downloadQueue.size,
+                    0,
                 )
             downloadQueue.add(newDownloadChapter)
             triggerSaveDownloadQueue()
@@ -394,12 +429,12 @@ object DownloadManager {
             return newDownloadChapter
         }
 
-        val retryDownload = downloadChapter?.state == Error
+        val retryDownload = downloadChapter.state == Error
         if (retryDownload) {
             logger.debug { "Chapter ${chapter.id} download failed, retry download ($downloadChapter)" }
 
-            downloadChapter?.state = Queued
-            downloadChapter?.progress = 0f
+            downloadChapter.state = Queued
+            downloadChapter.progress = 0f
 
             return downloadChapter
         }
@@ -410,7 +445,7 @@ object DownloadManager {
 
     fun dequeue(input: EnqueueInput) {
         if (input.chapterIds.isNullOrEmpty()) return
-        dequeue(downloadQueue.filter { it.chapter.id in input.chapterIds }.toSet())
+        dequeue(downloadQueue.filter { it.chapterId in input.chapterIds }.toSet())
     }
 
     fun dequeue(
@@ -424,10 +459,10 @@ object DownloadManager {
         mangaIds: List<Int>,
         chaptersToIgnore: List<Int> = emptyList(),
     ) {
-        dequeue(downloadQueue.filter { it.mangaId in mangaIds && it.chapter.id !in chaptersToIgnore }.toSet())
+        dequeue(downloadQueue.filter { it.mangaId in mangaIds && it.chapterId !in chaptersToIgnore }.toSet())
     }
 
-    private fun dequeue(chapterDownloads: Set<DownloadChapter>) {
+    private fun dequeue(chapterDownloads: Set<DownloadQueueItem>) {
         logger.debug { "dequeue ${chapterDownloads.size} chapters [${chapterDownloads.joinToString(separator = ", ") { "$it" }}]" }
 
         downloadQueue.removeAll(chapterDownloads)
@@ -453,14 +488,14 @@ object DownloadManager {
         to: Int,
     ) {
         val download =
-            downloadQueue.find { it.chapter.id == chapterId }
+            downloadQueue.find { it.chapterId == chapterId }
                 ?: return
 
         reorder(download, to)
     }
 
     private fun reorder(
-        download: DownloadChapter,
+        download: DownloadQueueItem,
         to: Int,
     ) {
         require(to >= 0) { "'to' must be over or equal to 0" }
@@ -505,12 +540,4 @@ object DownloadManager {
         triggerSaveDownloadQueue()
         notifyAllClients(false, removedDownloads)
     }
-}
-
-enum class DownloaderState(
-    val state: Int,
-) {
-    Stopped(0),
-    Running(1),
-    Paused(2),
 }

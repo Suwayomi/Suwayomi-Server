@@ -11,6 +11,7 @@ import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.UpdateStatus
 import suwayomi.tachidesk.graphql.types.UpdaterUpdates
 import suwayomi.tachidesk.manga.impl.update.IUpdater
@@ -21,6 +22,7 @@ class UpdateSubscription {
     private val updater: IUpdater by injectLazy()
 
     @GraphQLDeprecated("Replaced with updates", ReplaceWith("updates(input)"))
+    @RequireAuth
     fun updateStatusChanged(): Flow<UpdateStatus> =
         updater.status.map { updateStatus ->
             UpdateStatus(updateStatus)
@@ -37,6 +39,7 @@ class UpdateSubscription {
         val maxUpdates: Int?,
     )
 
+    @RequireAuth
     fun libraryUpdateStatusChanged(input: LibraryUpdateStatusChangedInput): Flow<UpdaterUpdates> {
         val omitUpdates = input.maxUpdates != null
         val maxUpdates = input.maxUpdates ?: 50

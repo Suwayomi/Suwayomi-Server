@@ -79,6 +79,20 @@ object WebView : Websocket<String>() {
         val deltaY: Float? = null,
     ) : TypeObject()
 
+    @Serializable
+    @SerialName("paste")
+    data class JsPasteMessage(
+        val data: String,
+    ) : TypeObject()
+
+    @Serializable
+    @SerialName("copy")
+    class JsCopyMessage : TypeObject()
+
+    @Serializable
+    @SerialName("ping")
+    class JsPingMessage : TypeObject()
+
     override fun handleRequest(ctx: WsMessageContext) {
         val dr = driver ?: return
         try {
@@ -88,14 +102,22 @@ object WebView : Websocket<String>() {
                     val url = event.url
                     dr.loadUrl(url)
                     dr.resize(event.width, event.height)
-                    logger.info { "Loading URL $url" }
+                    logger.debug { "Loading URL $url" }
                 }
                 is ResizeMessage -> {
                     dr.resize(event.width, event.height)
-                    logger.info { "Resize browser" }
                 }
                 is JsEventMessage -> {
                     dr.event(event)
+                }
+                is JsPasteMessage -> {
+                    dr.paste(event.data)
+                }
+                is JsCopyMessage -> {
+                    dr.copy()
+                }
+                is JsPingMessage -> {
+                    notifyAllClients("{\"type\":\"pong\"}")
                 }
             }
         } catch (e: Exception) {

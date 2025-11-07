@@ -11,12 +11,14 @@ import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.DownloadStatus
 import suwayomi.tachidesk.graphql.types.DownloadUpdates
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 
 class DownloadSubscription {
     @GraphQLDeprecated("Replaced with downloadStatusChanged", ReplaceWith("downloadStatusChanged(input)"))
+    @RequireAuth
     fun downloadChanged(): Flow<DownloadStatus> =
         DownloadManager.status.map { downloadStatus ->
             DownloadStatus(downloadStatus)
@@ -33,6 +35,7 @@ class DownloadSubscription {
         val maxUpdates: Int?,
     )
 
+    @RequireAuth
     fun downloadStatusChanged(input: DownloadChangedInput): Flow<DownloadUpdates> {
         val omitUpdates = input.maxUpdates != null
         val maxUpdates = input.maxUpdates ?: 50

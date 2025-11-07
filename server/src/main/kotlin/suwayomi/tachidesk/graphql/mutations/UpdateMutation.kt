@@ -4,6 +4,7 @@ import graphql.execution.DataFetcherResult
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
 import suwayomi.tachidesk.graphql.asDataFetcherResult
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.LibraryUpdateStatus
 import suwayomi.tachidesk.graphql.types.UpdateStatus
 import suwayomi.tachidesk.manga.impl.Category
@@ -26,6 +27,7 @@ class UpdateMutation {
         val updateStatus: LibraryUpdateStatus,
     )
 
+    @RequireAuth
     fun updateLibrary(input: UpdateLibraryInput): CompletableFuture<DataFetcherResult<UpdateLibraryPayload?>> {
         updater.addCategoriesToUpdateQueue(
             Category.getCategoryList().filter { input.categories?.contains(it.id) ?: true },
@@ -57,6 +59,7 @@ class UpdateMutation {
         val updateStatus: UpdateStatus,
     )
 
+    @RequireAuth
     fun updateLibraryManga(input: UpdateLibraryMangaInput): CompletableFuture<DataFetcherResult<UpdateLibraryMangaPayload?>> {
         updateLibrary(
             UpdateLibraryInput(
@@ -88,6 +91,7 @@ class UpdateMutation {
         val updateStatus: UpdateStatus,
     )
 
+    @RequireAuth
     fun updateCategoryManga(input: UpdateCategoryMangaInput): CompletableFuture<DataFetcherResult<UpdateCategoryMangaPayload?>> {
         updateLibrary(
             UpdateLibraryInput(
@@ -117,6 +121,7 @@ class UpdateMutation {
         val clientMutationId: String?,
     )
 
+    @RequireAuth
     fun updateStop(input: UpdateStopInput): UpdateStopPayload {
         updater.reset()
         return UpdateStopPayload(input.clientMutationId)

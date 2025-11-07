@@ -6,6 +6,7 @@ import io.javalin.http.UploadedFile
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.asDataFetcherResult
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.ExtensionType
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList
@@ -73,6 +74,7 @@ class ExtensionMutation {
         }
     }
 
+    @RequireAuth
     fun updateExtension(input: UpdateExtensionInput): CompletableFuture<DataFetcherResult<UpdateExtensionPayload?>> {
         val (clientMutationId, id, patch) = input
 
@@ -97,6 +99,7 @@ class ExtensionMutation {
         }
     }
 
+    @RequireAuth
     fun updateExtensions(input: UpdateExtensionsInput): CompletableFuture<DataFetcherResult<UpdateExtensionsPayload?>> {
         val (clientMutationId, ids, patch) = input
 
@@ -129,6 +132,7 @@ class ExtensionMutation {
         val extensions: List<ExtensionType>,
     )
 
+    @RequireAuth
     fun fetchExtensions(input: FetchExtensionsInput): CompletableFuture<DataFetcherResult<FetchExtensionsPayload?>> {
         val (clientMutationId) = input
 
@@ -162,6 +166,7 @@ class ExtensionMutation {
         val extension: ExtensionType,
     )
 
+    @RequireAuth
     fun installExternalExtension(
         input: InstallExternalExtensionInput,
     ): CompletableFuture<DataFetcherResult<InstallExternalExtensionPayload?>> {

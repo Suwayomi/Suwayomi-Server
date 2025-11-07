@@ -27,7 +27,10 @@ import org.cef.network.CefCookieManager
 import org.cef.network.CefRequest
 import uy.kohesive.injekt.injectLazy
 import java.awt.Component
+import java.awt.HeadlessException
 import java.awt.Rectangle
+import java.awt.Toolkit
+import java.awt.datatransfer.DataFlavor
 import java.awt.event.InputEvent
 import java.awt.event.KeyEvent
 import java.awt.event.MouseEvent
@@ -113,6 +116,12 @@ class KcefWebView {
         val error: String? = null,
     ) : Event()
 
+    @Serializable
+    @SerialName("copy")
+    private data class CopyEvent(
+        val content: String,
+    ) : Event()
+
     private inner class DisplayHandler : CefDisplayHandlerAdapter() {
         override fun onConsoleMessage(
             browser: CefBrowser,
@@ -126,7 +135,7 @@ class KcefWebView {
                     ConsoleEvent(level.ordinal, message, source, line),
                 ),
             )
-            logger.debug { "$source:$line: $message" }
+            logger.trace { "$source:$line: $message" }
             return true
         }
 
@@ -164,7 +173,7 @@ class KcefWebView {
             frame: CefFrame,
             httpStatusCode: Int,
         ) {
-            logger.info { "Load event: ${frame.name} - ${frame.url}" }
+            logger.trace { "Load event: ${frame.name} - ${frame.url}" }
             if (httpStatusCode > 0 && frame.isMain) handleLoad(frame.url, httpStatusCode)
             flush()
         }
@@ -190,7 +199,7 @@ class KcefWebView {
             requestInitiator: String,
             disableDefaultHandling: BoolRef,
         ): CefResourceRequestHandler? {
-            logger.info { "Load resource: ${frame.name} - ${request.url}" }
+            logger.trace { "Load resource: ${frame.name} - ${request.url}" }
             return null
         }
     }
@@ -244,7 +253,7 @@ class KcefWebView {
                 addRequestHandler(RequestHandler())
             }
 
-        logger.info { "Start loading cookies" }
+        logger.debug { "Start loading cookies" }
         CefCookieManager.getGlobalManager().apply {
             val cookies = networkHelper.cookieStore.getStoredCookies()
             for (cookie in cookies) {
@@ -298,7 +307,7 @@ class KcefWebView {
 
     private fun flush() {
         if (browser == null) return
-        logger.info { "Start cookie flush" }
+        logger.trace { "Start cookie flush" }
         CefCookieManager.getGlobalManager().visitAllCookies { it, _, _, _ ->
             try {
                 networkHelper.cookieStore.addAll(
@@ -346,6 +355,16 @@ class KcefWebView {
         modifier: Int,
     ): KeyEvent? {
         val char = if (msg.key?.length == 1) msg.key[0] else KeyEvent.CHAR_UNDEFINED
+        return keyEvent(char, component, id, modifier, msg.key)
+    }
+
+    private fun keyEvent(
+        char: Char,
+        component: Component,
+        id: Int,
+        modifier: Int,
+        strKey: String? = null,
+    ): KeyEvent? {
         val code =
             when (char.uppercaseChar()) {
                 in 'A'..'Z', in '0'..'9' -> char.uppercaseChar().code
@@ -379,7 +398,7 @@ class KcefWebView {
                 ' ' -> KeyEvent.VK_SPACE
                 '_' -> KeyEvent.VK_UNDERSCORE
                 else ->
-                    when (msg.key) {
+                    when (strKey) {
                         "Alt" -> KeyEvent.VK_ALT
                         "Backspace" -> KeyEvent.VK_BACK_SPACE
                         "Delete" -> KeyEvent.VK_DELETE
@@ -447,8 +466,9 @@ class KcefWebView {
         val clickY = msg.clickY
         val modifier =
             (
-                (if (msg.altKey == true) InputEvent.ALT_DOWN_MASK else 0) or
-                    (if (msg.ctrlKey == true) InputEvent.CTRL_DOWN_MASK else 0) or
+                // Alt support is removed, since browsers already translate, so this messes with translation, see #1575
+                // (if (msg.altKey == true) InputEvent.ALT_DOWN_MASK else 0) or
+                (if (msg.ctrlKey == true) InputEvent.CTRL_DOWN_MASK else 0) or
                     (if (msg.shiftKey == true) InputEvent.SHIFT_DOWN_MASK else 0) or
                     (if (msg.metaKey == true) InputEvent.META_DOWN_MASK else 0)
             )
@@ -560,6 +580,39 @@ class KcefWebView {
         }
     }
 
+    fun paste(msg: String) {
+        val component = browser?.uiComponent ?: return
+        for (c in msg) {
+            browser!!.sendKeyEvent(keyEvent(c, component, KeyEvent.KEY_PRESSED, 0)!!)
+            keyEvent(c, component, KeyEvent.KEY_TYPED, 0)?.let { browser!!.sendKeyEvent(it) }
+            browser!!.sendKeyEvent(keyEvent(c, component, KeyEvent.KEY_RELEASED, 0)!!)
+        }
+    }
+
+    fun copy() {
+        val frame = browser?.focusedFrame ?: return
+        frame.copy()
+        val clip =
+            try {
+                Toolkit.getDefaultToolkit().getSystemClipboard()
+            } catch (e: HeadlessException) {
+                logger.warn(e) { "Failed to get clipboard" }
+                return
+            }
+        val text =
+            try {
+                clip.getData(DataFlavor.stringFlavor) as String
+            } catch (e: Exception) {
+                logger.warn(e) { "Failed to get clipboard contents" }
+                return
+            }
+        WebView.notifyAllClients(
+            Json.encodeToString<Event>(
+                CopyEvent(text),
+            ),
+        )
+    }
+
     fun canGoBack(): Boolean = browser!!.canGoBack()
 
     fun goBack() {
@@ -578,7 +631,7 @@ class KcefWebView {
         error: String? = null,
     ) {
         browser!!.evaluateJavaScript("return document.title") {
-            logger.info { "Load finished with title $it" }
+            logger.trace { "Load finished with title $it" }
             WebView.notifyAllClients(
                 Json.encodeToString<Event>(
                     LoadEvent(url, it ?: "", status, error),

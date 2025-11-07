@@ -14,11 +14,15 @@ import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import suwayomi.tachidesk.graphql.types.DownloadConversion
 import suwayomi.tachidesk.manga.impl.Page
-import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
+import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
+import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
+import suwayomi.tachidesk.manga.impl.util.KoreaderHelper
 import suwayomi.tachidesk.manga.impl.util.createComicInfoFile
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
-import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPaths
+import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
+import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -29,6 +33,7 @@ import java.io.InputStream
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
+import javax.imageio.ImageWriter
 
 sealed class FileType {
     data class RegularFile(
@@ -41,20 +46,20 @@ sealed class FileType {
 
     fun getName(): String =
         when (this) {
-            is FileType.RegularFile -> {
+            is RegularFile -> {
                 this.file.name
             }
-            is FileType.ZipFile -> {
+            is ZipFile -> {
                 this.entry.name
             }
         }
 
     fun getExtension(): String =
         when (this) {
-            is FileType.RegularFile -> {
+            is RegularFile -> {
                 this.file.extension
             }
-            is FileType.ZipFile -> {
+            is ZipFile -> {
                 this.entry.name.substringAfterLast(".")
             }
         }
@@ -100,10 +105,31 @@ abstract class ChaptersFilesProvider<Type : FileType>(
 
     @OptIn(FlowPreview::class)
     private suspend fun downloadImpl(
-        download: DownloadChapter,
+        download: DownloadQueueItem,
         scope: CoroutineScope,
-        step: suspend (DownloadChapter?, Boolean) -> Unit,
+        step: suspend (DownloadQueueItem?, Boolean) -> Unit,
     ): Boolean {
+        val existingDownloadPageCount =
+            try {
+                getImageCount()
+            } catch (_: Exception) {
+                0
+            }
+        val pageCount = download.pageCount
+
+        check(pageCount > 0) { "pageCount must be greater than 0 - ChapterForDownload#getChapterDownloadReady not called" }
+        check(existingDownloadPageCount == 0 || existingDownloadPageCount == pageCount) {
+            "existingDownloadPageCount must be 0 or equal to pageCount - ChapterForDownload#getChapterDownloadReady not called"
+        }
+
+        val doesUnrecognizedDownloadExist = existingDownloadPageCount == pageCount
+        if (doesUnrecognizedDownloadExist) {
+            download.progress = 1f
+            step(download, false)
+
+            return true
+        }
+
         extractExistingDownload()
 
         val finalDownloadFolder = path
@@ -112,57 +138,45 @@ abstract class ChaptersFilesProvider<Type : FileType>(
         val downloadCacheFolder = File(cacheChapterDir)
         downloadCacheFolder.mkdirs()
 
-        val pageCount = download.chapter.pageCount
-        if (
-            downloadCacheFolder
-                .listFiles()
-                .orEmpty()
-                .filter { it.name != COMIC_INFO_FILE }
-                .size >= pageCount
-        ) {
-            download.progress = 1f
-            step(download, false)
-        } else {
-            for (pageNum in 0 until pageCount) {
-                var pageProgressJob: Job? = null
-                val fileName = Page.getPageName(pageNum, pageCount) // might have to change this to index stored in database
+        for (pageNum in 0 until pageCount) {
+            var pageProgressJob: Job? = null
+            val fileName = Page.getPageName(pageNum, pageCount) // might have to change this to index stored in database
 
-                val pageExistsInFinalDownloadFolder = ImageResponse.findFileNameStartingWith(finalDownloadFolder, fileName) != null
-                val pageExistsInCacheDownloadFolder = ImageResponse.findFileNameStartingWith(cacheChapterDir, fileName) != null
+            val pageExistsInFinalDownloadFolder = ImageResponse.findFileNameStartingWith(finalDownloadFolder, fileName) != null
+            val pageExistsInCacheDownloadFolder = ImageResponse.findFileNameStartingWith(cacheChapterDir, fileName) != null
 
-                val doesPageAlreadyExist = pageExistsInFinalDownloadFolder || pageExistsInCacheDownloadFolder
-                if (doesPageAlreadyExist) {
-                    continue
-                }
-
-                try {
-                    Page
-                        .getPageImage(
-                            mangaId = download.mangaId,
-                            chapterIndex = download.chapterIndex,
-                            index = pageNum,
-                        ) { flow ->
-                            pageProgressJob =
-                                flow
-                                    .sample(100)
-                                    .distinctUntilChanged()
-                                    .onEach {
-                                        download.progress = (pageNum.toFloat() + (it.toFloat() * 0.01f)) / pageCount
-                                        step(
-                                            null,
-                                            false,
-                                        ) // don't throw on canceled download here since we can't do anything
-                                    }.launchIn(scope)
-                        }.first
-                        .close()
-                } finally {
-                    // always cancel the page progress job even if it throws an exception to avoid memory leaks
-                    pageProgressJob?.cancel()
-                }
-                // TODO: retry on error with 2,4,8 seconds of wait
-                download.progress = ((pageNum + 1).toFloat()) / pageCount
-                step(download, false)
+            val doesPageAlreadyExist = pageExistsInFinalDownloadFolder || pageExistsInCacheDownloadFolder
+            if (doesPageAlreadyExist) {
+                continue
             }
+
+            try {
+                Page
+                    .getPageImage(
+                        mangaId = download.mangaId,
+                        chapterId = download.chapterId,
+                        index = pageNum,
+                    ) { flow ->
+                        pageProgressJob =
+                            flow
+                                .sample(100)
+                                .distinctUntilChanged()
+                                .onEach {
+                                    download.progress = (pageNum.toFloat() + (it.toFloat() * 0.01f)) / pageCount
+                                    step(
+                                        null,
+                                        false,
+                                    ) // don't throw on canceled download here since we can't do anything
+                                }.launchIn(scope)
+                    }.first
+                    .close()
+            } finally {
+                // always cancel the page progress job even if it throws an exception to avoid memory leaks
+                pageProgressJob?.cancel()
+            }
+            // TODO: retry on error with 2,4,8 seconds of wait
+            download.progress = ((pageNum + 1).toFloat()) / pageCount
+            step(download, false)
         }
 
         createComicInfoFile(
@@ -175,13 +189,20 @@ abstract class ChaptersFilesProvider<Type : FileType>(
             },
         )
 
-        maybeConvertChapterImages(downloadCacheFolder)
+        maybeConvertPages(downloadCacheFolder)
 
         handleSuccessfulDownload()
 
-        transaction {
-            ChapterTable.update({ ChapterTable.id eq chapterId }) {
-                it[ChapterTable.pageCount] = getImageCount()
+        // Calculate and save Koreader hash for CBZ files
+        val chapterFile = File(getChapterCbzPath(mangaId, chapterId))
+        if (chapterFile.exists()) {
+            val koreaderHash = KoreaderHelper.hashContents(chapterFile)
+            if (koreaderHash != null) {
+                transaction {
+                    ChapterTable.update({ ChapterTable.id eq chapterId }) {
+                        it[ChapterTable.koreaderHash] = koreaderHash
+                    }
+                }
             }
         }
 
@@ -190,70 +211,115 @@ abstract class ChaptersFilesProvider<Type : FileType>(
         return true
     }
 
-    override fun download(): FileDownload3Args<DownloadChapter, CoroutineScope, suspend (DownloadChapter?, Boolean) -> Unit> =
+    /**
+     * This function should never be called without calling [getChapterDownloadReady] beforehand.
+     */
+    override fun download(): FileDownload3Args<DownloadQueueItem, CoroutineScope, suspend (DownloadQueueItem?, Boolean) -> Unit> =
         FileDownload3Args(::downloadImpl)
 
     abstract override fun delete(): Boolean
 
     abstract fun getAsArchiveStream(): Pair<InputStream, Long>
 
-    private fun maybeConvertChapterImages(chapterCacheFolder: File) {
-        if (chapterCacheFolder.isDirectory) {
-            val conv = serverConfig.downloadConversions.value
+    abstract fun getArchiveSize(): Long
+
+    private fun maybeConvertPages(chapterCacheFolder: File) {
+        val conversions = serverConfig.downloadConversions.value
+
+        if (!chapterCacheFolder.isDirectory || conversions.isEmpty()) {
+            return
+        }
+
+        val pages =
             chapterCacheFolder
                 .listFiles()
                 .orEmpty()
                 .filter { it.name != COMIC_INFO_FILE }
-                .forEach {
-                    val imageType = MimeUtils.guessMimeTypeFromExtension(it.extension) ?: return@forEach
-                    val targetConversion =
-                        conv.getOrElse(imageType) {
-                            conv.getOrElse("default") {
-                                logger.debug { "Skipping conversion of $it since no conversion specified" }
-                                return@forEach
-                            }
-                        }
-                    val targetMime = targetConversion.target
-                    if (imageType == targetMime || targetMime == "none") return@forEach // nothing to do
-                    logger.debug { "Converting $it to $targetMime" }
-                    val targetExtension = MimeUtils.guessExtensionFromMimeType(targetMime) ?: targetMime.removePrefix("image/")
 
-                    val outFile = File(it.parentFile, it.nameWithoutExtension + "." + targetExtension)
+        val pagesByMimeType =
+            pages
+                .groupBy { MimeUtils.guessMimeTypeFromExtension(it.extension) }
+                .mapValues { it.value.map { it.nameWithoutExtension } }
 
-                    val writers = ImageIO.getImageWritersByMIMEType(targetMime)
-                    val writer =
-                        try {
-                            writers.next()
-                        } catch (_: NoSuchElementException) {
-                            logger.warn { "Conversion aborted: No reader for target format $targetMime" }
-                            return@forEach
-                        }
-                    val writerParams = writer.defaultWriteParam
-                    targetConversion.compressionLevel?.let {
-                        writerParams.compressionMode = ImageWriteParam.MODE_EXPLICIT
-                        writerParams.compressionQuality = it.toFloat()
-                    }
-                    val success =
-                        try {
-                            ImageIO.createImageOutputStream(outFile).use { outStream ->
-                                writer.setOutput(outStream)
+        logger.debug { "maybeConvertPages: pagesByMimeType= $pagesByMimeType; conversions= $conversions" }
 
-                                val inImage = ConversionUtil.readImage(it) ?: return@use false
-                                writer.write(null, IIOImage(inImage, null, null), writerParams)
+        pages.forEach { page ->
+            val imageType = MimeUtils.guessMimeTypeFromExtension(page.extension) ?: return@forEach
 
-                                true
-                            }
-                        } catch (e: Exception) {
-                            logger.warn(e) { "Conversion aborted: for image $it" }
-                            false
-                        }
-                    writer.dispose()
-                    if (success) {
-                        it.delete()
-                    } else {
-                        outFile.delete()
-                    }
-                }
+            val defaultConversion = conversions["default"]
+            val conversion = conversions[imageType]
+            val targetConversion = conversion ?: defaultConversion ?: return@forEach
+
+            val (targetMime) = targetConversion
+            val requiresConversion = imageType != targetMime && targetMime != "none"
+            if (!requiresConversion) {
+                return@forEach
+            }
+
+            convertPage(page, targetConversion)
         }
+    }
+
+    private fun convertPage(
+        page: File,
+        conversion: DownloadConversion,
+    ) {
+        val (targetMime, compressionLevel) = conversion
+
+        val targetExtension =
+            MimeUtils.guessExtensionFromMimeType(targetMime) ?: targetMime.removePrefix("image/")
+
+        val convertedPage = File(page.parentFile, page.nameWithoutExtension + "." + targetExtension)
+
+        val conversionWriter = getConversionWriter(targetMime, compressionLevel)
+        if (conversionWriter == null) {
+            logger.warn { "Conversion aborted: No reader for target format $targetMime" }
+            return
+        }
+
+        val (writer, writerParams) = conversionWriter
+
+        val success =
+            try {
+                ImageIO.createImageOutputStream(convertedPage).use { outStream ->
+                    writer.setOutput(outStream)
+
+                    val inImage = ConversionUtil.readImage(page) ?: return@use false
+                    writer.write(null, IIOImage(inImage, null, null), writerParams)
+
+                    true
+                }
+            } catch (e: Exception) {
+                logger.warn(e) { "Conversion aborted: for image $page" }
+                false
+            }
+        writer.dispose()
+
+        if (success) {
+            page.delete()
+        } else {
+            convertedPage.delete()
+        }
+    }
+
+    private fun getConversionWriter(
+        targetMime: String,
+        compressionLevel: Double?,
+    ): Pair<ImageWriter, ImageWriteParam>? {
+        val writers = ImageIO.getImageWritersByMIMEType(targetMime)
+        val writer =
+            try {
+                writers.next()
+            } catch (_: NoSuchElementException) {
+                return null
+            }
+
+        val writerParams = writer.defaultWriteParam
+        compressionLevel?.let {
+            writerParams.compressionMode = ImageWriteParam.MODE_EXPLICIT
+            writerParams.compressionQuality = it.toFloat()
+        }
+
+        return writer to writerParams
     }
 }

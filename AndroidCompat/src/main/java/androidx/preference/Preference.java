@@ -10,6 +10,9 @@ package androidx.preference;
 import android.content.Context;
 import android.content.SharedPreferences;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -22,7 +25,7 @@ public class Preference {
     @JsonIgnore
     protected Context context;
 
-    private boolean isVisible;
+    private boolean isVisible = true;
     private boolean isEnabled = true;
     private String key;
     private CharSequence title;
@@ -130,33 +133,34 @@ public class Preference {
     /** Tachidesk specific API */
     @SuppressWarnings("unchecked")
     public Object getCurrentValue() {
-        switch (getDefaultValueType()) {
-            case "String":
-                return sharedPreferences.getString(key, (String)defaultValue);
-            case "Boolean":
-                return sharedPreferences.getBoolean(key, (Boolean)defaultValue);
-            case "Set<String>":
-                return sharedPreferences.getStringSet(key, (Set<String>)defaultValue);
-            default:
-                throw new RuntimeException("Unsupported type");
+        if (key == null) {
+            return Objects.requireNonNullElseGet(defaultValue, () -> switch (getDefaultValueType()) {
+                case "String" -> "";
+                case "Boolean" -> false;
+                case "Set<String>" -> new HashSet<>();
+                default -> throw new RuntimeException("Unsupported type");
+            });
         }
+        return switch (getDefaultValueType()) {
+            case "String" -> sharedPreferences.getString(key, (String) defaultValue);
+            case "Boolean" -> sharedPreferences.getBoolean(key, (Boolean) defaultValue);
+            case "Set<String>" -> sharedPreferences.getStringSet(key, (Set<String>) defaultValue);
+            default -> throw new RuntimeException("Unsupported type");
+        };
     }
 
     /** Tachidesk specific API */
     @SuppressWarnings("unchecked")
     public void saveNewValue(Object value) {
+        if (key == null) {
+            return;
+        }
         switch (getDefaultValueType()) {
-            case "String":
-                sharedPreferences.edit().putString(key, (String)value).apply();
-                break;
-            case "Boolean":
-                sharedPreferences.edit().putBoolean(key, (Boolean)value).apply();
-                break;
-            case "Set<String>":
-                sharedPreferences.edit().putStringSet(key, (Set<String>)value).apply();
-                break;
-            default:
-                throw new RuntimeException("Unsupported type");
+            case "String" -> sharedPreferences.edit().putString(key, (String) value).apply();
+            case "Boolean" -> sharedPreferences.edit().putBoolean(key, (Boolean) value).apply();
+            case "Set<String>" ->
+                    sharedPreferences.edit().putStringSet(key, (Set<String>) value).apply();
+            default -> throw new RuntimeException("Unsupported type");
         }
     }
 }

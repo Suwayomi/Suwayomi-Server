@@ -9,3 +9,6 @@ ij_kotlin_name_count_to_use_star_import_for_members=2147483647
 ktlint_standard_discouraged-comment-location=disabled
 ktlint_standard_if-else-wrapping=disabled
 ktlint_standard_no-consecutive-comments=disabled
+
+[**/generated/**]
+ktlint=disabled

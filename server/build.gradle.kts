@@ -52,7 +52,9 @@ dependencies {
 
     // Exposed ORM
     implementation(libs.bundles.exposed)
+    implementation(libs.postgres)
     implementation(libs.h2)
+    implementation(libs.hikaricp)
 
     // Exposed Migrations
     implementation(libs.exposed.migrations)
@@ -92,6 +94,9 @@ dependencies {
     // i18n
     implementation(projects.server.i18n)
 
+    // Settings module
+    implementation(projects.server.serverConfig)
+
     // uncomment to test extensions directly
 //    implementation(fileTree("lib/"))
     implementation(kotlin("script-runtime"))
@@ -101,6 +106,8 @@ dependencies {
     implementation(libs.cron4j)
 
     implementation(libs.cronUtils)
+
+    implementation(libs.jwt)
 
     compileOnly(libs.kte)
 }
@@ -121,6 +128,15 @@ sourceSets {
     main {
         resources {
             srcDir("src/main/resources")
+            srcDir("build/generated/src/main/resources")
+        }
+        kotlin {
+            srcDir("build/generated/src/main/kotlin")
+        }
+    }
+    test {
+        resources {
+            srcDir("build/generated/src/test/resources")
         }
     }
 }
@@ -226,5 +242,17 @@ tasks {
 
     runKtlintCheckOverMainSourceSet {
         mustRunAfter(generateJte)
+    }
+
+    compileKotlin {
+        dependsOn(":server:server-config-generate:generateSettings")
+    }
+
+    processResources {
+        dependsOn(":server:server-config-generate:generateSettings")
+    }
+
+    processTestResources {
+        dependsOn(":server:server-config-generate:generateSettings")
     }
 }

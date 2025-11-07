@@ -12,6 +12,7 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.asDataFetcherResult
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.FilterChange
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.graphql.types.Preference
@@ -39,6 +40,7 @@ class SourceMutation {
         val meta: SourceMetaType,
     )
 
+    @RequireAuth
     fun setSourceMeta(input: SetSourceMetaInput): DataFetcherResult<SetSourceMetaPayload?> {
         val (clientMutationId, meta) = input
 
@@ -61,6 +63,7 @@ class SourceMutation {
         val source: SourceType?,
     )
 
+    @RequireAuth
     fun deleteSourceMeta(input: DeleteSourceMetaInput): DataFetcherResult<DeleteSourceMetaPayload?> {
         val (clientMutationId, sourceId, key) = input
 
@@ -116,6 +119,7 @@ class SourceMutation {
         val hasNextPage: Boolean,
     )
 
+    @RequireAuth
     fun fetchSourceManga(input: FetchSourceMangaInput): CompletableFuture<DataFetcherResult<FetchSourceMangaPayload?>> {
         val (clientMutationId, sourceId, type, page, query, filters) = input
 
@@ -182,6 +186,7 @@ class SourceMutation {
         val source: SourceType,
     )
 
+    @RequireAuth
     fun updateSourcePreference(input: UpdateSourcePreferenceInput): DataFetcherResult<UpdateSourcePreferencePayload?> {
         val (clientMutationId, sourceId, change) = input
 

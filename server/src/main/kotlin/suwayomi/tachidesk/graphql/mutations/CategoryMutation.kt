@@ -12,6 +12,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.asDataFetcherResult
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.CategoryMetaType
 import suwayomi.tachidesk.graphql.types.CategoryType
 import suwayomi.tachidesk.graphql.types.MangaType
@@ -35,6 +36,7 @@ class CategoryMutation {
         val meta: CategoryMetaType,
     )
 
+    @RequireAuth
     fun setCategoryMeta(input: SetCategoryMetaInput): DataFetcherResult<SetCategoryMetaPayload?> =
         asDataFetcherResult {
             val (clientMutationId, meta) = input
@@ -56,6 +58,7 @@ class CategoryMutation {
         val category: CategoryType,
     )
 
+    @RequireAuth
     fun deleteCategoryMeta(input: DeleteCategoryMetaInput): DataFetcherResult<DeleteCategoryMetaPayload?> =
         asDataFetcherResult {
             val (clientMutationId, categoryId, key) = input
@@ -150,6 +153,7 @@ class CategoryMutation {
         }
     }
 
+    @RequireAuth
     fun updateCategory(input: UpdateCategoryInput): DataFetcherResult<UpdateCategoryPayload?> =
         asDataFetcherResult {
             val (clientMutationId, id, patch) = input
@@ -167,6 +171,7 @@ class CategoryMutation {
             )
         }
 
+    @RequireAuth
     fun updateCategories(input: UpdateCategoriesInput): DataFetcherResult<UpdateCategoriesPayload?> =
         asDataFetcherResult {
             val (clientMutationId, ids, patch) = input
@@ -195,6 +200,7 @@ class CategoryMutation {
         val position: Int,
     )
 
+    @RequireAuth
     fun updateCategoryOrder(input: UpdateCategoryOrderInput): DataFetcherResult<UpdateCategoryOrderPayload?> =
         asDataFetcherResult {
             val (clientMutationId, categoryId, position) = input
@@ -253,6 +259,7 @@ class CategoryMutation {
         val category: CategoryType,
     )
 
+    @RequireAuth
     fun createCategory(input: CreateCategoryInput): DataFetcherResult<CreateCategoryPayload?> =
         asDataFetcherResult {
             val (clientMutationId, name, order, default, includeInUpdate, includeInDownload) = input
@@ -312,6 +319,7 @@ class CategoryMutation {
         val mangas: List<MangaType>,
     )
 
+    @RequireAuth
     fun deleteCategory(input: DeleteCategoryInput): DataFetcherResult<DeleteCategoryPayload?> {
         return asDataFetcherResult {
             val (clientMutationId, categoryId) = input
@@ -401,6 +409,7 @@ class CategoryMutation {
         }
     }
 
+    @RequireAuth
     fun updateMangaCategories(input: UpdateMangaCategoriesInput): DataFetcherResult<UpdateMangaCategoriesPayload?> =
         asDataFetcherResult {
             val (clientMutationId, id, patch) = input
@@ -418,6 +427,7 @@ class CategoryMutation {
             )
         }
 
+    @RequireAuth
     fun updateMangasCategories(input: UpdateMangasCategoriesInput): DataFetcherResult<UpdateMangasCategoriesPayload?> =
         asDataFetcherResult {
             val (clientMutationId, ids, patch) = input

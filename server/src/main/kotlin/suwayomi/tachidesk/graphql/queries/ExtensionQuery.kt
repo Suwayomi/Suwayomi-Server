@@ -19,6 +19,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
 import suwayomi.tachidesk.graphql.queries.filter.HasGetOp
@@ -43,6 +44,7 @@ import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import java.util.concurrent.CompletableFuture
 
 class ExtensionQuery {
+    @RequireAuth
     fun extension(
         dataFetchingEnvironment: DataFetchingEnvironment,
         pkgName: String,
@@ -152,6 +154,7 @@ class ExtensionQuery {
             )
     }
 
+    @RequireAuth
     fun extensions(
         condition: ExtensionCondition? = null,
         filter: ExtensionFilter? = null,

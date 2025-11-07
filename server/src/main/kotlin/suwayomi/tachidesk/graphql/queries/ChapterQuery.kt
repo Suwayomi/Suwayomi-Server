@@ -18,9 +18,10 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
+import suwayomi.tachidesk.graphql.queries.filter.DoubleFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
-import suwayomi.tachidesk.graphql.queries.filter.FloatFilter
 import suwayomi.tachidesk.graphql.queries.filter.HasGetOp
 import suwayomi.tachidesk.graphql.queries.filter.IntFilter
 import suwayomi.tachidesk.graphql.queries.filter.LongFilter
@@ -51,6 +52,7 @@ import java.util.concurrent.CompletableFuture
  * - Get page list?
  */
 class ChapterQuery {
+    @RequireAuth
     fun chapter(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Int,
@@ -156,7 +158,7 @@ class ChapterQuery {
         val url: StringFilter? = null,
         val name: StringFilter? = null,
         val uploadDate: LongFilter? = null,
-        val chapterNumber: FloatFilter? = null,
+        val chapterNumber: DoubleFilter? = null,
         val scanlator: StringFilter? = null,
         val mangaId: IntFilter? = null,
         val isRead: BooleanFilter? = null,
@@ -179,7 +181,7 @@ class ChapterQuery {
                 andFilterWithCompareString(ChapterTable.url, url),
                 andFilterWithCompareString(ChapterTable.name, name),
                 andFilterWithCompare(ChapterTable.date_upload, uploadDate),
-                andFilterWithCompare(ChapterTable.chapter_number, chapterNumber),
+                andFilterWithCompare(ChapterTable.chapter_number, chapterNumber?.toFloatFilter()),
                 andFilterWithCompareString(ChapterTable.scanlator, scanlator),
                 andFilterWithCompareEntity(ChapterTable.manga, mangaId),
                 andFilterWithCompare(ChapterTable.isRead, isRead),
@@ -196,6 +198,7 @@ class ChapterQuery {
         fun getLibraryOp() = andFilterWithCompare(MangaTable.inLibrary, inLibrary)
     }
 
+    @RequireAuth
     fun chapters(
         condition: ChapterCondition? = null,
         filter: ChapterFilter? = null,

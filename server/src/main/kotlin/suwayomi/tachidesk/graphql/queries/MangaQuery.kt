@@ -16,6 +16,7 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
 import suwayomi.tachidesk.graphql.queries.filter.ComparableScalarFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
@@ -45,6 +46,7 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.util.concurrent.CompletableFuture
 
 class MangaQuery {
+    @RequireAuth
     fun manga(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Int,
@@ -215,6 +217,7 @@ class MangaQuery {
             )
     }
 
+    @RequireAuth
     fun mangas(
         condition: MangaCondition? = null,
         filter: MangaFilter? = null,

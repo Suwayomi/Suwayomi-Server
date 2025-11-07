@@ -8,6 +8,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.asDataFetcherResult
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.MangaMetaType
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.impl.Library
@@ -90,6 +91,7 @@ class MangaMutation {
         }
     }
 
+    @RequireAuth
     fun updateManga(input: UpdateMangaInput): CompletableFuture<DataFetcherResult<UpdateMangaPayload?>> {
         val (clientMutationId, id, patch) = input
 
@@ -110,6 +112,7 @@ class MangaMutation {
         }
     }
 
+    @RequireAuth
     fun updateMangas(input: UpdateMangasInput): CompletableFuture<DataFetcherResult<UpdateMangasPayload?>> {
         val (clientMutationId, ids, patch) = input
 
@@ -140,6 +143,7 @@ class MangaMutation {
         val manga: MangaType,
     )
 
+    @RequireAuth
     fun fetchManga(input: FetchMangaInput): CompletableFuture<DataFetcherResult<FetchMangaPayload?>> {
         val (clientMutationId, id) = input
 
@@ -169,6 +173,7 @@ class MangaMutation {
         val meta: MangaMetaType,
     )
 
+    @RequireAuth
     fun setMangaMeta(input: SetMangaMetaInput): DataFetcherResult<SetMangaMetaPayload?> {
         val (clientMutationId, meta) = input
 
@@ -191,6 +196,7 @@ class MangaMutation {
         val manga: MangaType,
     )
 
+    @RequireAuth
     fun deleteMangaMeta(input: DeleteMangaMetaInput): DataFetcherResult<DeleteMangaMetaPayload?> {
         val (clientMutationId, mangaId, key) = input
 

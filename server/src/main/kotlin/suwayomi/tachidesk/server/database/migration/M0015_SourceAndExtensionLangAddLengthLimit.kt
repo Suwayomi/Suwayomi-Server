@@ -8,12 +8,13 @@ package suwayomi.tachidesk.server.database.migration
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import de.neonew.exposed.migrations.helpers.SQLMigration
+import suwayomi.tachidesk.server.database.migration.helpers.MAYBE_TYPE_PREFIX
 
 @Suppress("ClassName", "unused")
 class M0015_SourceAndExtensionLangAddLengthLimit : SQLMigration() {
     override val sql =
         """
-        ALTER TABLE SOURCE ALTER COLUMN LANG VARCHAR(32);
-        ALTER TABLE EXTENSION ALTER COLUMN LANG VARCHAR(32);
+        ALTER TABLE SOURCE ALTER COLUMN LANG ${MAYBE_TYPE_PREFIX}VARCHAR(32);
+        ALTER TABLE EXTENSION ALTER COLUMN LANG ${MAYBE_TYPE_PREFIX}VARCHAR(32);
         """.trimIndent()
 }

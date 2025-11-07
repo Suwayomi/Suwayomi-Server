@@ -28,10 +28,6 @@ object ProtoBackupValidator {
     )
 
     fun validate(backup: Backup): ValidationResult {
-        if (backup.backupManga.isEmpty()) {
-            throw Exception("Backup does not contain any manga.")
-        }
-
         val sources = backup.getSourceMap()
 
         val missingSources =

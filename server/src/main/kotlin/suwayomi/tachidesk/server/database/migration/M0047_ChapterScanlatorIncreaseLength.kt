@@ -8,11 +8,12 @@ package suwayomi.tachidesk.server.database.migration
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import de.neonew.exposed.migrations.helpers.SQLMigration
+import suwayomi.tachidesk.server.database.migration.helpers.MAYBE_TYPE_PREFIX
 
 @Suppress("ClassName", "unused")
 class M0047_ChapterScanlatorIncreaseLength : SQLMigration() {
     override val sql =
         """
-        ALTER TABLE CHAPTER ALTER COLUMN SCANLATOR VARCHAR(256);
+        ALTER TABLE CHAPTER ALTER COLUMN SCANLATOR ${MAYBE_TYPE_PREFIX}VARCHAR(256);
         """.trimIndent()
 }

@@ -19,10 +19,12 @@ enum class ExitCode(
     MutexCheckFailedTachideskRunning(1),
     MutexCheckFailedAnotherAppRunning(2),
     WebUISetupFailure(3),
+    ConfigMigrationMisconfiguredFailure(4),
+    DbMigrationFailure(5),
 }
 
 fun shutdownApp(exitCode: ExitCode) {
-    logger.info { "Shutting Down Suwayomi-Server. Goodbye!" }
+    logger.info { "Shutting Down Suwayomi-Server. Goodbye! (reason= ${exitCode.code} (${exitCode.name}))" }
 
     exitProcess(exitCode.code)
 }

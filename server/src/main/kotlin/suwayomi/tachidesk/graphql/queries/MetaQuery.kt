@@ -18,6 +18,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.queries.filter.Filter
 import suwayomi.tachidesk.graphql.queries.filter.HasGetOp
 import suwayomi.tachidesk.graphql.queries.filter.OpAnd
@@ -38,6 +39,7 @@ import suwayomi.tachidesk.graphql.types.GlobalMetaType
 import java.util.concurrent.CompletableFuture
 
 class MetaQuery {
+    @RequireAuth
     fun meta(
         dataFetchingEnvironment: DataFetchingEnvironment,
         key: String,
@@ -104,6 +106,7 @@ class MetaQuery {
             )
     }
 
+    @RequireAuth
     fun metas(
         condition: MetaCondition? = null,
         filter: MetaFilter? = null,

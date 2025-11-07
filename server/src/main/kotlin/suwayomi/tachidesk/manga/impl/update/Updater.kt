@@ -96,8 +96,7 @@ class Updater : IUpdater {
         serverConfig.subscribeTo(serverConfig.globalUpdateInterval, ::scheduleUpdateTask)
         serverConfig.subscribeTo(
             serverConfig.maxSourcesInParallel,
-            { value ->
-                val newMaxPermits = value.coerceAtLeast(1).coerceAtMost(20)
+            { newMaxPermits ->
                 val permitDifference = maxSourcesInParallel - newMaxPermits
                 maxSourcesInParallel = newMaxPermits
 
@@ -160,10 +159,7 @@ class Updater : IUpdater {
             return
         }
 
-        val updateInterval =
-            serverConfig.globalUpdateInterval.value.hours
-                .coerceAtLeast(6.hours)
-                .inWholeMilliseconds
+        val updateInterval = serverConfig.globalUpdateInterval.value.hours.inWholeMilliseconds
         val lastAutomatedUpdate = getLastAutomatedUpdateTimestamp()
         val isInitialScheduling = lastAutomatedUpdate == 0L
 

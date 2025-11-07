@@ -10,6 +10,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
 import suwayomi.tachidesk.graphql.queries.filter.DoubleFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
@@ -43,6 +44,7 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
 
 class TrackQuery {
+    @RequireAuth
     fun tracker(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Int,
@@ -114,6 +116,7 @@ class TrackQuery {
         val not: TrackerFilter? = null,
     )
 
+    @RequireAuth
     fun trackers(
         condition: TrackerCondition? = null,
         @GraphQLDeprecated(
@@ -237,6 +240,7 @@ class TrackQuery {
         )
     }
 
+    @RequireAuth
     fun trackRecord(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Int,
@@ -388,6 +392,7 @@ class TrackQuery {
             )
     }
 
+    @RequireAuth
     fun trackRecords(
         condition: TrackRecordCondition? = null,
         filter: TrackRecordFilter? = null,
@@ -490,6 +495,7 @@ class TrackQuery {
         val trackSearches: List<TrackSearchType>,
     )
 
+    @RequireAuth
     fun searchTracker(input: SearchTrackerInput): CompletableFuture<SearchTrackerPayload> =
         future {
             val tracker =

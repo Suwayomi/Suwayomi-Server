@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.MangasPage
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.and
@@ -83,7 +84,7 @@ object MangaList {
                     .mapNotNull { sManga ->
                         existingMangaUrlsToId[sManga.url]?.let { sManga to it }
                     }.filterNot { (_, resultRow) ->
-                        resultRow[MangaTable.inLibrary]
+                        resultRow[MangaTable.inLibrary] && resultRow[MangaTable.sourceReference] != LocalSource.ID
                     }
 
             if (mangaToUpdate.isNotEmpty()) {
