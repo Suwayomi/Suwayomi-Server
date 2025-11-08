@@ -91,7 +91,9 @@ object WebInterfaceManager {
     private val json: Json by injectLazy()
     private val network: NetworkHelper by injectLazy()
 
-    private val versionMappingCache = Cache.Builder<String, JsonArray>().expireAfterWrite(5.minutes).build()
+    private val CACHE_DURATION = 5.minutes
+    private val versionMappingCache = Cache.Builder<String, JsonArray>().expireAfterWrite(CACHE_DURATION).build()
+    private val previewVersionCache = Cache.Builder<String, String>().expireAfterWrite(CACHE_DURATION).build()
 
     private val notifyFlow = MutableSharedFlow<WebUIUpdateStatus?>()
 
@@ -586,16 +588,21 @@ object WebInterfaceManager {
     }
 
     private suspend fun fetchPreviewVersion(flavor: WebUIFlavor): String =
-        executeWithRetry(KotlinLogging.logger("${logger.name} fetchPreviewVersion(${flavor.uiName})"), {
-            val releaseInfoJson =
-                network.client
-                    .newCall(GET(flavor.latestReleaseInfoUrl))
-                    .awaitSuccess()
-                    .body
-                    .string()
-            Json.decodeFromString<JsonObject>(releaseInfoJson)["tag_name"]?.jsonPrimitive?.content
-                ?: throw Exception("Failed to get the preview version tag")
-        })
+        previewVersionCache.get(flavor.uiName) {
+            executeWithRetry(
+                KotlinLogging.logger("${logger.name} fetchPreviewVersion(${flavor.uiName})"),
+                {
+                    val releaseInfoJson =
+                        network.client
+                            .newCall(GET(flavor.latestReleaseInfoUrl))
+                            .awaitSuccess()
+                            .body
+                            .string()
+                    Json.decodeFromString<JsonObject>(releaseInfoJson)["tag_name"]?.jsonPrimitive?.content
+                        ?: throw Exception("Failed to get the preview version tag")
+                },
+            )
+        }
 
     private suspend fun fetchServerMappingFile(flavor: WebUIFlavor): JsonArray =
         versionMappingCache.get(flavor.uiName) {
