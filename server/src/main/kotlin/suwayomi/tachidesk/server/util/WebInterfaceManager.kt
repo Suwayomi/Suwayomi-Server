@@ -224,7 +224,7 @@ object WebInterfaceManager {
         File(tempWebUIRoot).deleteRecursively()
         File(tempWebUIRoot).mkdirs()
 
-        File(originalWebUIRoot).copyRecursively(File(tempWebUIRoot))
+        File(originalWebUIRoot).copyRecursively(File(tempWebUIRoot), overwrite = true)
 
         logger.debug { "Created servable WebUI directory at: $tempWebUIRoot" }
 
