@@ -102,6 +102,15 @@ fun updateMangaDownloadDir(
 
     return try {
         Files.move(oldDirFile.toPath(), newDirFile.toPath())
+
+        if (oldDirFile.exists()) {
+            return false
+        }
+
+        if (!newDirFile.exists()) {
+            return false
+        }
+
         true
     } catch (_: Exception) {
         false
