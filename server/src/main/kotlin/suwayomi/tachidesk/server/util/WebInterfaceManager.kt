@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -62,6 +63,7 @@ import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Date
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
 
@@ -545,6 +547,7 @@ object WebInterfaceManager {
         execute: suspend () -> T,
         maxRetries: Int = 3,
         retryCount: Int = 0,
+        timeout: Duration = 2.seconds,
     ): T {
         try {
             return execute()
@@ -552,6 +555,7 @@ object WebInterfaceManager {
             log.warn(e) { "(retry $retryCount/$maxRetries) failed due to" }
 
             if (retryCount < maxRetries) {
+                delay(timeout.times(retryCount + 1))
                 return executeWithRetry(log, execute, maxRetries, retryCount + 1)
             }
 
