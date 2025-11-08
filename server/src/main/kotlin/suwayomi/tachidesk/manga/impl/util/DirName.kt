@@ -16,6 +16,7 @@ import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.util.SafePath
 import java.io.File
+import java.nio.file.Files
 
 private val applicationDirs: ApplicationDirs by injectLazy()
 
@@ -95,9 +96,14 @@ fun updateMangaDownloadDir(
     val oldDirFile = File(oldDir)
     val newDirFile = File(newDir)
 
-    return if (oldDirFile.exists()) {
-        oldDirFile.renameTo(newDirFile)
-    } else {
+    if (!oldDirFile.exists()) {
+        return true
+    }
+
+    return try {
+        Files.move(oldDirFile.toPath(), newDirFile.toPath())
         true
+    } catch (_: Exception) {
+        false
     }
 }
