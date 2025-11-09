@@ -42,9 +42,9 @@ main() {
     gcc -fPIC -I$JAVA_HOME/include -I$JAVA_HOME/include/linux -shared scripts/resources/catch_abort.c -lpthread -o scripts/resources/catch_abort.so
   fi
 
-  JRE_ZULU="21.44.17_21.0.8"
-  JRE_RELEASE="jre${JRE_ZULU#*_}" # e.g. jre21.0.8
-  ZULU_RELEASE="zulu${JRE_ZULU%_*}" # e.g. zulu21.44.17
+  JRE_ZULU="25.30.17_25.0.1"
+  JRE_RELEASE="jre${JRE_ZULU#*_}" # e.g. jre25.0.1
+  ZULU_RELEASE="zulu${JRE_ZULU%_*}" # e.g. zulu25.30.17
 
   case "$OS" in
     debian-all)

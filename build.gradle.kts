@@ -31,8 +31,9 @@ allprojects {
 subprojects {
     plugins.withType<JavaPlugin> {
         extensions.configure<JavaPluginExtension> {
-            sourceCompatibility = JavaVersion.VERSION_21
-            targetCompatibility = JavaVersion.VERSION_21
+            val javaVersion = JavaVersion.toVersion(libs.versions.jvmTarget.get())
+            sourceCompatibility = javaVersion
+            targetCompatibility = javaVersion
         }
     }
 
@@ -51,7 +52,7 @@ subprojects {
                 dependsOn("ktlintFormat")
             }
             compilerOptions {
-                jvmTarget = JvmTarget.JVM_21
+                jvmTarget = JvmTarget.fromTarget(libs.versions.jvmTarget.get())
                 freeCompilerArgs.add("-Xcontext-receivers")
             }
         }
