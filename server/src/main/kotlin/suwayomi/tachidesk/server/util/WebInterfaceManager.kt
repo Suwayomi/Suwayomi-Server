@@ -14,6 +14,7 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.awaitSuccess
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.github.reactivecircus.cache4k.Cache
 import io.javalin.config.JavalinConfig
 import io.javalin.http.staticfiles.Location
 import kotlinx.coroutines.CoroutineScope
@@ -65,6 +66,7 @@ import java.security.MessageDigest
 import java.util.Date
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 private val applicationDirs: ApplicationDirs by injectLazy()
@@ -90,6 +92,10 @@ object WebInterfaceManager {
 
     private val json: Json by injectLazy()
     private val network: NetworkHelper by injectLazy()
+
+    private val CACHE_DURATION = 5.minutes
+    private val versionMappingCache = Cache.Builder<String, JsonArray>().expireAfterWrite(CACHE_DURATION).build()
+    private val previewVersionCache = Cache.Builder<String, String>().expireAfterWrite(CACHE_DURATION).build()
 
     private val notifyFlow = MutableSharedFlow<WebUIUpdateStatus?>()
 
@@ -586,31 +592,38 @@ object WebInterfaceManager {
     }
 
     private suspend fun fetchPreviewVersion(flavor: WebUIFlavor): String =
-        executeWithRetry(KotlinLogging.logger("${logger.name} fetchPreviewVersion(${flavor.uiName})"), {
-            val releaseInfoJson =
-                network.client
-                    .newCall(GET(flavor.latestReleaseInfoUrl))
-                    .awaitSuccess()
-                    .body
-                    .string()
-            Json.decodeFromString<JsonObject>(releaseInfoJson)["tag_name"]?.jsonPrimitive?.content
-                ?: throw Exception("Failed to get the preview version tag")
-        })
-
-    private suspend fun fetchServerMappingFile(flavor: WebUIFlavor): JsonArray =
-        executeWithRetry(
-            KotlinLogging.logger("$logger fetchServerMappingFile(${flavor.uiName})"),
-            {
-                json
-                    .parseToJsonElement(
+        previewVersionCache.get(flavor.uiName) {
+            executeWithRetry(
+                KotlinLogging.logger("${logger.name} fetchPreviewVersion(${flavor.uiName})"),
+                {
+                    val releaseInfoJson =
                         network.client
-                            .newCall(GET(flavor.versionMappingUrl))
+                            .newCall(GET(flavor.latestReleaseInfoUrl))
                             .awaitSuccess()
                             .body
-                            .string(),
-                    ).jsonArray
-            },
-        )
+                            .string()
+                    Json.decodeFromString<JsonObject>(releaseInfoJson)["tag_name"]?.jsonPrimitive?.content
+                        ?: throw Exception("Failed to get the preview version tag")
+                },
+            )
+        }
+
+    private suspend fun fetchServerMappingFile(flavor: WebUIFlavor): JsonArray =
+        versionMappingCache.get(flavor.uiName) {
+            executeWithRetry(
+                KotlinLogging.logger("$logger fetchServerMappingFile(${flavor.uiName})"),
+                {
+                    json
+                        .parseToJsonElement(
+                            network.client
+                                .newCall(GET(flavor.versionMappingUrl))
+                                .awaitSuccess()
+                                .body
+                                .string(),
+                        ).jsonArray
+                },
+            )
+        }
 
     private suspend fun getLatestCompatibleVersion(flavor: WebUIFlavor): String {
         if (serverConfig.webUIChannel.value == WebUIChannel.BUNDLED) {
