@@ -61,7 +61,7 @@ This structure is chosen to
 ### Prerequisites
 You need these software packages installed in order to build the project
 
-- Java Development Kit version 21 or newer(we suggest using Temurin instead of Oracle JDK)
+- Java Development Kit version 21 or newer(we suggest using Zulu or Temurin instead of Oracle JDK)
 
 ### building the full-blown jar (Suwayomi-Server + Suwayomi-WebUI bundle)
 Run `./gradlew server:downloadWebUI server:shadowJar`, the resulting built jar file will be `server/build/Suwayomi-Server-vX.Y.Z-rxxx.jar`.

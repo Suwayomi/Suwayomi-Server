@@ -1,1 +1,1 @@
-start "" jre/bin/javaw -jar Suwayomi-Launcher.jar
+start "" jre/bin/javaw --add-exports=java.desktop/sun.awt=ALL-UNNAMED -jar Suwayomi-Launcher.jar

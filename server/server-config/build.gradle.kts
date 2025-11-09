@@ -34,12 +34,16 @@ dependencies {
     
     // GraphQL types used in ServerConfig
     implementation(libs.graphql.kotlin.scheme)
-    
+
+    // Dependency Injection
+    implementation(libs.injekt)
+
     // AndroidCompat for SystemPropertyOverridableConfigModule
     implementation(projects.androidCompat.config)
     
     // Serialization
     implementation(libs.serialization.json)
     implementation(libs.serialization.protobuf)
+    implementation(project(":AndroidCompat"))
 }
 

@@ -7,6 +7,8 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.app.Application
+import android.content.Context
 import com.typesafe.config.Config
 import io.github.config4k.toConfig
 import kotlinx.coroutines.CoroutineScope
@@ -25,6 +27,7 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import org.jetbrains.exposed.sql.SortOrder
 import suwayomi.tachidesk.graphql.types.AuthMode
+import suwayomi.tachidesk.graphql.types.CbzMediaType
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.graphql.types.DownloadConversion
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
@@ -34,6 +37,7 @@ import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionType
 import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIInterface
+import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType
 import suwayomi.tachidesk.manga.impl.extension.repoMatchRegex
 import suwayomi.tachidesk.server.settings.BooleanSetting
@@ -53,17 +57,21 @@ import suwayomi.tachidesk.server.settings.StringSetting
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.SystemPropertyOverridableConfigModule
 import kotlin.collections.associate
+import kotlin.getValue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import uy.kohesive.injekt.injectLazy
 
 val mutableConfigValueScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
 const val SERVER_CONFIG_MODULE_NAME = "server"
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
+
+private val application: Application by injectLazy()
 
 // Settings are ordered by "protoNumber".
 class ServerConfig(
@@ -77,6 +85,7 @@ class ServerConfig(
         group = SettingGroup.NETWORK,
         defaultValue = "0.0.0.0",
         pattern = "^((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4}$".toRegex(),
+        excludeFromBackup = true,
     )
 
     val port: MutableStateFlow<Int> by IntSetting(
@@ -85,6 +94,7 @@ class ServerConfig(
         defaultValue = 4567,
         min = 1,
         max = 65535,
+        excludeFromBackup = true,
     )
 
     val socksProxyEnabled: MutableStateFlow<Boolean> by BooleanSetting(
@@ -117,12 +127,14 @@ class ServerConfig(
         protoNumber = 7,
         group = SettingGroup.PROXY,
         defaultValue = "",
+        excludeFromBackup = true,
     )
 
     val socksProxyPassword: MutableStateFlow<String> by StringSetting(
         protoNumber = 8,
         group = SettingGroup.PROXY,
         defaultValue = "",
+        excludeFromBackup = true,
     )
 
     val webUIFlavor: MutableStateFlow<WebUIFlavor> by EnumSetting(
@@ -153,6 +165,7 @@ class ServerConfig(
         group = SettingGroup.WEB_UI,
         defaultValue = "",
         mustExist = true,
+        excludeFromBackup = true,
     )
 
     val webUIChannel: MutableStateFlow<WebUIChannel> by EnumSetting(
@@ -183,6 +196,7 @@ class ServerConfig(
         group = SettingGroup.DOWNLOADER,
         defaultValue = "",
         mustExist = true,
+        excludeFromBackup = true,
     )
 
     val autoDownloadNewChapters: MutableStateFlow<Boolean> by BooleanSetting(
@@ -198,6 +212,7 @@ class ServerConfig(
         description = "Exclude entries with unread chapters from auto-download",
     )
 
+    @Deprecated("Will get removed", replaceWith = ReplaceWith("autoDownloadNewChaptersLimit"))
     val autoDownloadAheadLimit: MutableStateFlow<Int> by MigratedConfigValue(
         protoNumber = 19,
         defaultValue = 0,
@@ -296,6 +311,7 @@ class ServerConfig(
         description = "Update manga metadata and thumbnail along with the chapter list update during the library update.",
     )
 
+    @Deprecated("Will get removed", replaceWith = ReplaceWith("authMode"))
     val basicAuthEnabled: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 29,
         defaultValue = false,
@@ -326,12 +342,14 @@ class ServerConfig(
         protoNumber = 30,
         group = SettingGroup.AUTH,
         defaultValue = "",
+        excludeFromBackup = true,
     )
 
     val authPassword: MutableStateFlow<String> by StringSetting(
         protoNumber = 31,
         group = SettingGroup.AUTH,
         defaultValue = "",
+        excludeFromBackup = true,
     )
 
     val debugLogsEnabled: MutableStateFlow<Boolean> by BooleanSetting(
@@ -340,6 +358,7 @@ class ServerConfig(
         group = SettingGroup.MISC,
     )
 
+    @Deprecated("Removed - does not do anything")
     val gqlDebugLogsEnabled: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 33,
         defaultValue = false,
@@ -386,6 +405,7 @@ class ServerConfig(
         group = SettingGroup.BACKUP,
         defaultValue = "",
         mustExist = true,
+        excludeFromBackup = true,
     )
 
     val backupTime: MutableStateFlow<String> by StringSetting(
@@ -417,12 +437,14 @@ class ServerConfig(
         group = SettingGroup.LOCAL_SOURCE,
         defaultValue = "",
         mustExist = true,
+        excludeFromBackup = true,
     )
 
     val flareSolverrEnabled: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 43,
         defaultValue = false,
         group = SettingGroup.CLOUDFLARE,
+        excludeFromBackup = true,
     )
 
     val flareSolverrUrl: MutableStateFlow<String> by StringSetting(
@@ -512,6 +534,7 @@ class ServerConfig(
         defaultValue = AuthMode.NONE,
         enumClass = AuthMode::class,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.AuthMode")),
+        excludeFromBackup = true,
     )
 
     val downloadConversions: MutableStateFlow<Map<String, DownloadConversion>> by MapSetting<String, DownloadConversion>(
@@ -583,25 +606,59 @@ class ServerConfig(
     val koreaderSyncServerUrl: MutableStateFlow<String> by StringSetting(
         protoNumber = 59,
         group = SettingGroup.KOREADER_SYNC,
-        defaultValue = "http://localhost:17200",
+        defaultValue = "https://sync.koreader.rocks/",
+        description = "KOReader Sync Server URL. Public alternative: https://kosync.ak-team.com:3042/",
     )
 
-    val koreaderSyncUsername: MutableStateFlow<String> by StringSetting(
+    @Deprecated("Moved to preference store. User is supposed to use a login/logout mutation")
+    val koreaderSyncUsername: MutableStateFlow<String> by MigratedConfigValue(
         protoNumber = 60,
         group = SettingGroup.KOREADER_SYNC,
         defaultValue = "",
+        deprecated = SettingsRegistry.SettingDeprecated(
+            replaceWith = "MOVE TO PREFERENCES",
+            message = "Moved to preference store. User is supposed to use a login/logout mutation",
+            migrateConfig = { value, config ->
+                val koreaderPreferences = application.getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
+                koreaderPreferences.edit().putString("username", value.unwrapped() as? String).apply()
+
+                config
+            }
+        ),
     )
 
-    val koreaderSyncUserkey: MutableStateFlow<String> by StringSetting(
+    @Deprecated("Moved to preference store. User is supposed to use a login/logout mutation")
+    val koreaderSyncUserkey: MutableStateFlow<String> by MigratedConfigValue(
         protoNumber = 61,
         group = SettingGroup.KOREADER_SYNC,
         defaultValue = "",
+        deprecated = SettingsRegistry.SettingDeprecated(
+            replaceWith = "MOVE TO PREFERENCES",
+            message = "Moved to preference store. User is supposed to use a login/logout mutation",
+            migrateConfig = { value, config ->
+                val koreaderPreferences = application.getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
+                koreaderPreferences.edit().putString("user_key", value.unwrapped() as? String).apply()
+
+                config
+            }
+        ),
     )
 
-    val koreaderSyncDeviceId: MutableStateFlow<String> by StringSetting(
+    @Deprecated("Moved to preference store. Is supposed to be random and gets auto generated")
+    val koreaderSyncDeviceId: MutableStateFlow<String> by MigratedConfigValue(
         protoNumber = 62,
         group = SettingGroup.KOREADER_SYNC,
         defaultValue = "",
+        deprecated = SettingsRegistry.SettingDeprecated(
+            replaceWith = "MOVE TO PREFERENCES",
+            message = "Moved to preference store. Is supposed to be random and gets auto generated",
+            migrateConfig = { value, config ->
+                val koreaderPreferences = application.getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
+                koreaderPreferences.edit().putString("device_id", value.unwrapped() as? String).apply()
+
+                config
+            }
+        ),
     )
 
     val koreaderSyncChecksumMethod: MutableStateFlow<KoreaderSyncChecksumMethod> by EnumSetting(
@@ -724,24 +781,28 @@ class ServerConfig(
         defaultValue = DatabaseType.H2,
         enumClass = DatabaseType::class,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.DatabaseType")),
+        excludeFromBackup = true,
     )
 
     val databaseUrl: MutableStateFlow<String> by StringSetting(
         protoNumber = 70,
         group = SettingGroup.DATABASE,
         defaultValue = "postgresql://localhost:5432/suwayomi",
+        excludeFromBackup = true,
     )
 
     val databaseUsername: MutableStateFlow<String> by StringSetting(
         protoNumber = 71,
         group = SettingGroup.DATABASE,
         defaultValue = "",
+        excludeFromBackup = true,
     )
 
     val databasePassword: MutableStateFlow<String> by StringSetting(
         protoNumber = 72,
         group = SettingGroup.DATABASE,
         defaultValue = "",
+        excludeFromBackup = true,
     )
 
     val koreaderSyncStrategyForward: MutableStateFlow<KoreaderSyncConflictStrategy> by EnumSetting(
@@ -769,14 +830,70 @@ class ServerConfig(
         pattern = "^(/[a-zA-Z0-9._-]+)*$".toRegex(),
         description = "Serve WebUI under a subpath (e.g., /manga). Leave empty for root path. Must start with / if specified.",
         requiresRestart = true,
+        excludeFromBackup = true,
     )
+
+    val autoBackupIncludeManga: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 76,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeManga,
+    )
+
+    val autoBackupIncludeCategories: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 77,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeCategories,
+    )
+
+    val autoBackupIncludeChapters: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 78,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeChapters,
+    )
+
+    val autoBackupIncludeTracking: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 79,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeTracking,
+    )
+
+    val autoBackupIncludeHistory: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 80,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeHistory,
+    )
+
+    val autoBackupIncludeClientData: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 81,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeClientData,
+    )
+
+    val autoBackupIncludeServerSettings: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 82,
+        group = SettingGroup.BACKUP,
+        defaultValue = BackupFlags.DEFAULT.includeServerSettings,
+    )
+
+    val opdsCbzMimetype: MutableStateFlow<CbzMediaType> by EnumSetting(
+        protoNumber = 83,
+        group = SettingGroup.OPDS,
+        defaultValue = CbzMediaType.MODERN,
+        enumClass = CbzMediaType::class,
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.CbzMediaType")),
+        excludeFromBackup = true,
+        description = "Controls the MimeType that Suwayomi sends in OPDS entries for CBZ archives. Also affects global CBZ download. Modern follows recent IANA standard (2017), while LEGACY (deprecated mimetype for .cbz) and COMPATIBLE (deprecated mimetype for all comic archives) might be more compatible with older clients.",
+    )
+
+
 
     /** ****************************************************************** **/
     /**                                                                    **/
     /**                          Renamed settings                          **/
     /**                                                                    **/
-
     /** ****************************************************************** **/
+
+    @Deprecated("Removed - prefer authUsername", replaceWith = ReplaceWith("authUsername"))
     val basicAuthUsername: MutableStateFlow<String> by MigratedConfigValue(
         protoNumber = 99991,
         defaultValue = "",
@@ -791,6 +908,7 @@ class ServerConfig(
         setMigrated = { authUsername.value = it },
     )
 
+    @Deprecated("Removed - prefer authPassword", replaceWith = ReplaceWith("authPassword"))
     val basicAuthPassword: MutableStateFlow<String> by MigratedConfigValue(
         protoNumber = 99992,
         defaultValue = "",

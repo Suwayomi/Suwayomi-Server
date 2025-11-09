@@ -100,12 +100,11 @@ object ChapterDownloadHelper {
         return Triple(cbzFile.first, fileName, cbzFile.second)
     }
 
-    fun getCbzMetadataForDownload(chapterId: Int): Triple<String, Long, String> { // fileName, fileSize, contentType
+    fun getCbzMetadataForDownload(chapterId: Int): Pair<String, Long> { // fileName, fileSize
         val (chapterData, fileName) = getChapterWithCbzFileName(chapterId)
 
         val fileSize = provider(chapterData.mangaId, chapterData.id).getArchiveSize()
-        val contentType = "application/vnd.comicbook+zip"
 
-        return Triple(fileName, fileSize, contentType)
+        return Pair(fileName, fileSize)
     }
 }

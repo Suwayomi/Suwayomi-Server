@@ -19,6 +19,8 @@ data class OpdsLinkXml(
     // Thread count
     @XmlSerialName("count", OpdsConstants.NS_THREAD, "thr")
     val thrCount: Int? = null,
+    // link download size in bytes
+    val length: Long? = null,
     // OPDS-PSE attributes
     @XmlSerialName("count", OpdsConstants.NS_PSE, "pse")
     val pseCount: Int? = null,

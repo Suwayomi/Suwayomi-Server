@@ -191,6 +191,7 @@ server.opdsMarkAsReadOnDownload = false
 server.opdsShowOnlyUnreadChapters = false
 server.opdsShowOnlyDownloadedChapters = false
 server.opdsChapterSortOrder = "DESC"
+server.opdsCbzMimetype = "MODERN"
 ```
 - `server.opdsUseBinaryFileSizes = false` controls if Suwayomi should display file sizes in binary units (KiB, MiB, GiB) or decimal (KB, MB, GB) in OPDS listings.
 - `server.opdsItemsPerPage = 50` sets the number of items per page in OPDS listings. Range: 10 <= n <= 5000.
@@ -199,10 +200,11 @@ server.opdsChapterSortOrder = "DESC"
 - `server.opdsShowOnlyUnreadChapters = false` controls if OPDS listings should only include unread chapters.
 - `server.opdsShowOnlyDownloadedChapters = false` controls if OPDS listings should only include downloaded chapters.
 - `server.opdsChapterSortOrder = "DESC"` sets the default chapter sort order in OPDS listings, either `"ASC"` or `"DESC"`
+- `server.opdsCbzMimetype = "MODERN"` controls which mimetype to use for CBZ downloads. This affects the offered link in OPDS, as well as the content type of the CBZ download. Allowed is MODERN (current IANA standard), LEGACY (deprecated mimetype for .cbz) and COMPATIBLE (deprecated mimetype for all comic archives). Use LEGACY or COMPATIBLE if older clients don't offer the chapter download (note that the chapter needs to first be downloaded in Suwayomi, before it is available in OPDS).
 
 ### KOReader Sync
 ```
-server.koreaderSyncServerUrl = "http://localhost:17200"
+server.koreaderSyncServerUrl = "https://sync.koreader.rocks/"
 server.koreaderSyncUsername = ""
 server.koreaderSyncUserkey = ""
 server.koreaderSyncDeviceId = ""
@@ -211,7 +213,7 @@ server.koreaderSyncPercentageTolerance = 1.0E-15 # range: [1.0E-15, 1.0]
 server.koreaderSyncStrategyForward = PROMPT # PROMPT, KEEP_LOCAL, KEEP_REMOTE, DISABLED
 server.koreaderSyncStrategyBackward = DISABLED # PROMPT, KEEP_LOCAL, KEEP_REMOTE, DISABLED
 ```
-- `server.koreaderSyncServerUrl` where KOReader Sync Server is running.
+- `server.koreaderSyncServerUrl` where KOReader Sync Server is running. Public servers (e.g.,  `https://sync.koreader.rocks/`, `https://kosync.ak-team.com:3042/`) or self-hosted instances can also be used.
 - `server.koreaderSyncUsername` the username with which to authenticate at the KOReader instance.
 - `server.koreaderSyncUserkey` the password/key with which to authenticate at the KOReader instance.
 - `server.koreaderSyncDeviceId` a unique ID to identify Suwayomi at the KOReader Sync Server. Leave blank to auto-generate.

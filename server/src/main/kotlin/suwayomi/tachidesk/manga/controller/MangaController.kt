@@ -29,7 +29,9 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.user.requireUser
+import suwayomi.tachidesk.server.user.requireUserWithBasicFallback
 import suwayomi.tachidesk.server.util.formParam
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
@@ -455,6 +457,7 @@ object MangaController {
             pathParam<Int>("index"),
             queryParam<Boolean?>("updateProgress"),
             queryParam<String?>("format"),
+            queryParam<Boolean?>("opds"),
             documentWith = {
                 withOperation {
                     summary("Get a chapter page")
@@ -463,8 +466,13 @@ object MangaController {
                     )
                 }
             },
-            behaviorOf = { ctx, mangaId, chapterIndex, index, updateProgress, format ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+            behaviorOf = { ctx, mangaId, chapterIndex, index, updateProgress, format, opds ->
+                if (opds == true) {
+                    ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
+                } else {
+                    ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                }
+
                 ctx.future {
                     future {
                         Page.getPageImage(
@@ -507,10 +515,12 @@ object MangaController {
             },
             behaviorOf = { ctx, chapterId, markAsRead ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.disableCompression()
+                val contentType = serverConfig.opdsCbzMimetype.value.mediaType
                 if (ctx.method() == HandlerType.HEAD) {
                     ctx.future {
                         future { ChapterDownloadHelper.getCbzMetadataForDownload(chapterId) }
-                            .thenApply { (fileName, fileSize, contentType) ->
+                            .thenApply { (fileName, fileSize) ->
                                 ctx.header("Content-Type", contentType)
                                 ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
                                 ctx.header("Content-Length", fileSize.toString())
@@ -522,7 +532,7 @@ object MangaController {
                     ctx.future {
                         future { ChapterDownloadHelper.getCbzForDownload(chapterId, shouldMarkAsRead) }
                             .thenApply { (inputStream, fileName, fileSize) ->
-                                ctx.header("Content-Type", "application/vnd.comicbook+zip")
+                                ctx.header("Content-Type", contentType)
                                 ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
                                 ctx.header("Content-Length", fileSize.toString())
                                 ctx.result(inputStream)
