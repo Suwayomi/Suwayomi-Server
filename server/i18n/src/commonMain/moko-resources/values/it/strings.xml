@@ -108,4 +108,18 @@
     <string name="webview_label_title">WebView di Suwayomi</string>
     <string name="webview_label_disconnected">Disconnesso, ricarica per favore</string>
     <string name="webview_label_reversescroll">Scorrimento inverso</string>
+    <string name="webview_label_bindingshint">Nota: finché il focus è nella parte WebView, il browser non gestirà alcuna combinazione di tasti, incluso l\'aggiornamento.</string>
+    <string name="webview_label_init">Inizializzando... Attendere, prego</string>
+    <string name="webview_label_getstarted">Inserisci un URL per iniziare</string>
+    <string name="webview_label_loading">Caricando la pagina...</string>
+    <string name="webview_label_copy">Copia negli Appunti</string>
+    <string name="webview_label_copy_description">La copia automatica negli appunti non è riuscita. Utilizzare il campo sottostante per copiare manualmente il valore.</string>
+    <string name="webview_label_login_required">La tua configurazione richiede l\'accesso. Inserisci nome utente e password.</string>
+    <string name="webview_placeholder_url">Inserisci URL...</string>
+    <string name="login_label_title">Accesso Suwayomi</string>
+    <string name="login_label_username">Nome Utente</string>
+    <string name="login_label_password">Password</string>
+    <string name="login_label_login">Accedi</string>
+    <string name="login_placeholder_username">Digita il nome utente...</string>
+    <string name="login_placeholder_password">Segreto...</string>
 </resources>
