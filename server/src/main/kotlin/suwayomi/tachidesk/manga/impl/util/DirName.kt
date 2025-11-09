@@ -7,6 +7,8 @@ package suwayomi.tachidesk.manga.impl.util
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import io.github.oshai.kotlinlogging.KLogger
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
@@ -16,8 +18,11 @@ import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.util.SafePath
 import java.io.File
+import java.nio.file.Files
 
 private val applicationDirs: ApplicationDirs by injectLazy()
+
+private val logger = KotlinLogging.logger { }
 
 private fun getMangaDir(mangaId: Int): String =
     transaction {
@@ -95,9 +100,24 @@ fun updateMangaDownloadDir(
     val oldDirFile = File(oldDir)
     val newDirFile = File(newDir)
 
-    return if (oldDirFile.exists()) {
-        oldDirFile.renameTo(newDirFile)
-    } else {
+    if (!oldDirFile.exists()) {
+        return true
+    }
+
+    return try {
+        Files.move(oldDirFile.toPath(), newDirFile.toPath())
+
+        if (oldDirFile.exists()) {
+            return false
+        }
+
+        if (!newDirFile.exists()) {
+            return false
+        }
+
         true
+    } catch (e: Exception) {
+        logger.error(e) { "updateMangaDownloadDir: failed to rename manga download folder from \"$oldDir\" to \"$newDir\"" }
+        false
     }
 }
