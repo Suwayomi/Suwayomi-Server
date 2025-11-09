@@ -162,12 +162,12 @@ object Page {
                     val mime = ImageUtil.findImageType(processedStream)?.mime
                         ?: "image/jpeg"
 
-                    // Update current image to converted version
+                    // Update current image to post-processed version
                     currentImage = processedStream
                     currentMimeType = mime
                 }
             } catch (_: Exception) {
-                // HTTP conversion failed, continue with original image
+                // HTTP post-processing failed, continue with original image
             }
         }
 
