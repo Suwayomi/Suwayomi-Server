@@ -11,7 +11,7 @@
         "/scripts/bundler.sh/"
       ],
       "matchStrings": [
-        "JRE_RELEASE=[\"'](?<currentValue>.+?)[\"']\\s+"
+        "JRE_ZULU=[\"'](?<currentValue>.+?)[\"']"
       ],
       "depNameTemplate": "zulu",
       "datasourceTemplate": "custom.zulu",
