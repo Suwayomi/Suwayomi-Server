@@ -150,20 +150,20 @@ object Page {
         val defaultConversion = conversions["default"]
         val conversion = conversions[currentMimeType] ?: defaultConversion
 
-        // Apply HTTP conversion if configured (complementary with format conversion)
-        if (conversion != null && ConversionUtil.isHttpConversion(conversion)) {
+        // Apply HTTP post-process if configured (complementary with format conversion)
+        if (conversion != null && ConversionUtil.isHttpPostProcess(conversion)) {
             try {
-                val convertedStream = ConversionUtil.imageHttpConvert(
+                val processedStream = ConversionUtil.imageHttpPostProcess(
                     inputStream = currentImage,
                     mimeType = currentMimeType,
                     targetUrl = conversion.target,
                 )?.buffered()
-                if (convertedStream != null) {
-                    val mime = ImageUtil.findImageType(convertedStream.buffered())?.mime
+                if (processedStream != null) {
+                    val mime = ImageUtil.findImageType(processedStream)?.mime
                         ?: "image/jpeg"
 
                     // Update current image to converted version
-                    currentImage = convertedStream
+                    currentImage = processedStream
                     currentMimeType = mime
                 }
             } catch (_: Exception) {

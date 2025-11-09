@@ -64,10 +64,10 @@ object ConversionUtil {
     private val networkService: NetworkHelper by injectLazy()
 
     /**
-     * Send image to external HTTP service for conversion
-     * Returns the converted image stream or null if failed
+     * Send image to external HTTP service for post-processing
+     * Returns the processed image stream or null if failed
      */
-    suspend fun imageHttpConvert(
+    suspend fun imageHttpPostProcess(
         imageFile: File,
         targetUrl: String,
     ): InputStream? =
@@ -99,7 +99,7 @@ object ConversionUtil {
     /**
      * Overload that takes InputStream and mimeType, creates temp file for HTTP upload
      */
-    suspend fun imageHttpConvert(
+    suspend fun imageHttpPostProcess(
         inputStream: InputStream,
         mimeType: String,
         targetUrl: String,
@@ -114,7 +114,7 @@ object ConversionUtil {
             }
 
             // Convert using file method
-            val result = imageHttpConvert(tempFile, targetUrl)
+            val result = imageHttpPostProcess(tempFile, targetUrl)
 
             // Clean up temp file
             tempFile.delete()
@@ -128,6 +128,6 @@ object ConversionUtil {
     /**
      * Check if a DownloadConversion target is an HTTP URL
      */
-    fun isHttpConversion(conversion: DownloadConversion): Boolean =
+    fun isHttpPostProcess(conversion: DownloadConversion): Boolean =
         conversion.target.startsWith("http://") || conversion.target.startsWith("https://")
 }
