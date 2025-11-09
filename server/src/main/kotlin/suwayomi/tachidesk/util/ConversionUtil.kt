@@ -86,9 +86,10 @@ object ConversionUtil {
                         imageFile.asRequestBody(contentType.toMediaType()),
                     ).build()
 
-            val response = networkService.client
-                .newCall(POST(targetUrl, body = requestBody))
-                .await()
+            val response =
+                networkService.client
+                    .newCall(POST(targetUrl, body = requestBody))
+                    .await()
             logger.debug { "HTTP conversion successful for ${imageFile.name}" }
             response.body.byteStream()
         } catch (e: Exception) {

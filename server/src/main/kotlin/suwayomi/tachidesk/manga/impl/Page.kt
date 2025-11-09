@@ -153,14 +153,17 @@ object Page {
         // Apply HTTP post-process if configured (complementary with format conversion)
         if (conversion != null && ConversionUtil.isHttpPostProcess(conversion)) {
             try {
-                val processedStream = ConversionUtil.imageHttpPostProcess(
-                    inputStream = currentImage,
-                    mimeType = currentMimeType,
-                    targetUrl = conversion.target,
-                )?.buffered()
+                val processedStream =
+                    ConversionUtil
+                        .imageHttpPostProcess(
+                            inputStream = currentImage,
+                            mimeType = currentMimeType,
+                            targetUrl = conversion.target,
+                        )?.buffered()
                 if (processedStream != null) {
-                    val mime = ImageUtil.findImageType(processedStream)?.mime
-                        ?: "image/jpeg"
+                    val mime =
+                        ImageUtil.findImageType(processedStream)?.mime
+                            ?: "image/jpeg"
 
                     // Update current image to post-processed version
                     currentImage = processedStream
@@ -172,10 +175,12 @@ object Page {
         }
 
         // Apply format conversion if requested
-        val imageExtension = MimeUtils.guessExtensionFromMimeType(currentMimeType)
-            ?: currentMimeType.removePrefix("image/")
-        val targetExtension = (if (format != imageExtension) format else null)
-            ?: return currentImage to currentMimeType
+        val imageExtension =
+            MimeUtils.guessExtensionFromMimeType(currentMimeType)
+                ?: currentMimeType.removePrefix("image/")
+        val targetExtension =
+            (if (format != imageExtension) format else null)
+                ?: return currentImage to currentMimeType
 
         return convertToFormat(currentImage, currentMimeType, targetExtension)
     }
