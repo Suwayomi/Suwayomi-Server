@@ -5,7 +5,7 @@ Follow the steps below to create local manga.
 
 If you add more chapters then you'll have to manually refresh the chapter list.
 
-Supported chapter formats are folder with pictures inside (such as `.jpg`, `.png`, etc), `ZIP`/`CBZ`, `RAR`/`CBR` and `EPUB`. But expect better performance with directories and `ZIP`/`CBZ`.
+Supported chapter formats are folder with pictures inside (such as `.jpg`, `.png`, etc.), `ZIP`/`CBZ`, `RAR`/`CBR` and `EPUB`. But expect better performance with directories and `ZIP`/`CBZ`.
 
 **Note:** While Suwayomi does support chapters compressed as **RAR** or **CBR**, note that **RAR** or **CBR** files using the **RAR5** format are not supported yet.
 
@@ -111,7 +111,7 @@ Archive files such as `ZIP`/`CBZ` are supported but the folder structure inside 
 
 It is possible to add details to local manga. Like manga from other catalogs, you add information about the manga such as the author, artist, description, and genre tags.
 
-To import details along with your local manga, you have to create a json file. It can be named anything but it must be placed within the **Manga** folder. A standard file name is `details.json`. This file will contain the extended details about the manga in the `JSON` format. You can see the example below on how to build the file. Once the file is there, the app should load the data when you first open the manga or you can pull down to refresh the details.
+To import details along with your local manga, you have to create a json file. It can be named anything but it must be placed within the **Manga** folder. A standard file name is `details.json`. This file will contain the extended details about the manga in the `JSON` format. You can see the example below on how to build the file. Once the file is there, the app should load the data when you first open the manga, or you can pull down to refresh the details.
 
 You can copy the following example and edit the details as needed:
 ``` json

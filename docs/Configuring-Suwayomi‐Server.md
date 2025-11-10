@@ -23,7 +23,7 @@ The configuration file is written in HOCON. Google is your friend if you want to
 server.ip = "0.0.0.0"
 server.port = 4567
 ```
-- `server.ip` can be a IP or domain name.
+- `server.ip` can be an IP or domain name.
 
 ### Socks5 proxy
 ```
@@ -78,7 +78,7 @@ server.downloadConversions = {}
 - `server.excludeEntryWithUnreadChapters = true` controls if Suwayomi will download new chapters for titles with unread chapters (requires `server.autoDownloadNewChapters`).
 - `server.autoDownloadNewChaptersLimit = 0` sets how many chapters should be downloaded at most, `0` to disable the limit; if the limit is reached, new chapters will not be downloaded (requires `server.autoDownloadNewChapters`).
 - `server.autoDownloadIgnoreReUploads = false` controls if Suwayomi will re-download re-uploads on update (requires `server.autoDownloadNewChapters`).
-- `server.downloadConversions = {}` configures optional image conversions for all downloads. This is an [JSON object](https://en.wikipedia.org/wiki/JSON#Syntax), with the source image [mime type](https://en.wikipedia.org/wiki/Media_type) as the key and an object with the target mime type and options as value.  
+- `server.downloadConversions = {}` configures optional image conversions for all downloads. This is an [JSON object](https://en.wikipedia.org/wiki/JSON#Syntax), with the source image [mime type](https://en.wikipedia.org/wiki/Media_type) as the key and an object with the target mime type or url and options as value.  
   The following options are both valid:  
   ```
   server.downloadConversions = { "image/webp" : { target : "image/jpeg", compressionLevel = 0.8 }}
@@ -87,8 +87,12 @@ server.downloadConversions = {}
     target = "image/jpeg"   # image type to convert to
     compressionLevel = 0.8  # quality in range [0,1], leave away to use default compression
   }
+  # -- a url example --
+  server.downloadConversions = { "default" : { target : "http://localhost:9999" }}
   ```  
   A source mime type `default` can be used as fallback to convert all images; a target mime type of `none` can be used to disable conversion for a particular format.
+- `server.serveConversions = {}` configures optional image conversions before serving the image to the client. It follows the same format as `server.downloadConversions`.
+
 
 ### Updater
 ```

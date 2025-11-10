@@ -537,8 +537,8 @@ class ServerConfig(
         excludeFromBackup = true,
     )
 
-    val downloadConversions: MutableStateFlow<Map<String, DownloadConversion>> by MapSetting<String, DownloadConversion>(
-        protoNumber = 57,
+    fun createDownloadConversionsMap(protoNumber: Int, key: String) = MapSetting<String, DownloadConversion>(
+        protoNumber = protoNumber,
         defaultValue = emptyMap(),
         group = SettingGroup.DOWNLOADER,
         typeInfo =
@@ -590,11 +590,15 @@ class ServerConfig(
         description =
             """
             map input mime type to conversion information, or "default" for others
-            server.downloadConversions."image/webp" = {
-              target = "image/jpeg"   # image type to convert to
+            server.$key."image/webp" = {
+              target = "image/jpeg"   # image type to convert to, can also be a url to an external server
               compressionLevel = 0.8  # quality in range [0,1], leave away to use default compression
             }
             """.trimIndent(),
+    )
+    val downloadConversions: MutableStateFlow<Map<String, DownloadConversion>> by createDownloadConversionsMap(
+        protoNumber = 57,
+        key = "downloadConversions"
     )
 
     val jwtAudience: MutableStateFlow<String> by StringSetting(
@@ -883,6 +887,11 @@ class ServerConfig(
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.CbzMediaType")),
         excludeFromBackup = true,
         description = "Controls the MimeType that Suwayomi sends in OPDS entries for CBZ archives. Also affects global CBZ download. Modern follows recent IANA standard (2017), while LEGACY (deprecated mimetype for .cbz) and COMPATIBLE (deprecated mimetype for all comic archives) might be more compatible with older clients.",
+    )
+
+    val serveConversions: MutableStateFlow<Map<String, DownloadConversion>> by createDownloadConversionsMap(
+        protoNumber = 84,
+        key = "serveConversions"
     )
 
 

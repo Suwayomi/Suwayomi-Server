@@ -52,6 +52,7 @@ object Page {
         chapterId: Int? = null,
         chapterIndex: Int? = null,
         index: Int,
+        isDownloader: Boolean = false,
         format: String? = null,
         progressFlow: ((StateFlow<Int>) -> Unit)? = null,
     ): Pair<InputStream, String> {
@@ -74,7 +75,11 @@ object Page {
 
         try {
             if (chapterEntry[ChapterTable.isDownloaded]) {
-                return convertImageResponse(ChapterDownloadHelper.getImage(mangaId, chapterId, index), format)
+                return convertImageResponse(
+                    ChapterDownloadHelper.getImage(mangaId, chapterId, index),
+                    isDownloader,
+                    format
+                )
             }
         } catch (_: Exception) {
             // ignore and fetch again
@@ -103,13 +108,18 @@ object Page {
             // is of archive format
             if (LocalSource.pageCache.containsKey(chapterEntry[ChapterTable.url])) {
                 val pageStream = LocalSource.pageCache[chapterEntry[ChapterTable.url]]!![index]
-                return convertImageResponse(pageStream() to (ImageUtil.findImageType { pageStream() }?.mime ?: "image/jpeg"), format)
+                return convertImageResponse(
+                    pageStream() to (ImageUtil.findImageType { pageStream() }?.mime ?: "image/jpeg"),
+                    false,
+                    format,
+                )
             }
 
             // is of directory format
             val imageFile = File(tachiyomiPage.imageUrl!!)
             return convertImageResponse(
                 imageFile.inputStream() to (ImageUtil.findImageType { imageFile.inputStream() }?.mime ?: "image/jpeg"),
+                false,
                 format,
             )
         }
@@ -135,23 +145,25 @@ object Page {
             getImageResponse(cacheSaveDir, fileName) {
                 source.getImage(tachiyomiPage)
             },
+            isDownloader,
             format,
         )
     }
 
     private suspend fun convertImageResponse(
         image: Pair<InputStream, String>,
+        isDownloader: Boolean,
         format: String? = null,
     ): Pair<InputStream, String> {
         var currentImage = image.first
         var currentMimeType = image.second
 
-        val conversions = serverConfig.downloadConversions.value
+        val conversions = serverConfig.serveConversions.value
         val defaultConversion = conversions["default"]
         val conversion = conversions[currentMimeType] ?: defaultConversion
 
         // Apply HTTP post-process if configured (complementary with format conversion)
-        if (conversion != null && ConversionUtil.isHttpPostProcess(conversion)) {
+        if (!isDownloader && conversion != null && ConversionUtil.isHttpPostProcess(conversion)) {
             try {
                 val processedStream =
                     ConversionUtil
