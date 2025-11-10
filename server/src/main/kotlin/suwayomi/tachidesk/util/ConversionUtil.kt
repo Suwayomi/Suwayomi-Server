@@ -9,6 +9,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import suwayomi.tachidesk.graphql.types.DownloadConversion
+import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import uy.kohesive.injekt.injectLazy
 import java.awt.image.BufferedImage
 import java.io.File
@@ -70,11 +71,10 @@ object ConversionUtil {
     suspend fun imageHttpPostProcess(
         imageFile: File,
         targetUrl: String,
+        mimeType: String,
     ): InputStream? =
         try {
             logger.debug { "Sending ${imageFile.name} to HTTP converter: $targetUrl" }
-
-            val contentType = MimeUtils.guessMimeTypeFromExtension(imageFile.extension) ?: "application/octet-stream"
 
             val requestBody =
                 MultipartBody
@@ -83,7 +83,7 @@ object ConversionUtil {
                     .addFormDataPart(
                         "image",
                         imageFile.name,
-                        imageFile.asRequestBody(contentType.toMediaType()),
+                        imageFile.asRequestBody(mimeType.toMediaType()),
                     ).build()
 
             val response =
@@ -115,7 +115,7 @@ object ConversionUtil {
             }
 
             // Convert using file method
-            val result = imageHttpPostProcess(tempFile, targetUrl)
+            val result = imageHttpPostProcess(tempFile, targetUrl, mimeType)
 
             // Clean up temp file
             tempFile.delete()
