@@ -249,10 +249,12 @@ public final class MimeUtils {
         add("audio/x-scpls", "pls");
         add("audio/x-sd2", "sd2");
         add("audio/x-wav", "wav");
+        add("image/avif", "avif");
         // image/bmp isn't IANA, so image/x-ms-bmp should come first.
         add("image/x-ms-bmp", "bmp");
         add("image/bmp", "bmp");
         add("image/gif", "gif");
+        add("image/heif", "heif");
         // image/ico isn't IANA, so image/x-icon should come first.
         add("image/x-icon", "ico");
         add("image/ico", "cur");
@@ -262,6 +264,7 @@ public final class MimeUtils {
         add("image/jpeg", "jpg");
         add("image/jpeg", "jpeg");
         add("image/jpeg", "jpe");
+        add("image/jxl", "jxl");
         add("image/pcx", "pcx");
         add("image/png", "png");
         add("image/svg+xml", "svg");
