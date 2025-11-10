@@ -78,7 +78,7 @@ object Page {
                 return convertImageResponse(
                     ChapterDownloadHelper.getImage(mangaId, chapterId, index),
                     isDownloader,
-                    format
+                    format,
                 )
             }
         } catch (_: Exception) {

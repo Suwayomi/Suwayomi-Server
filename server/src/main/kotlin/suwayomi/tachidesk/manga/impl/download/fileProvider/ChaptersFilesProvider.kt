@@ -251,8 +251,9 @@ abstract class ChaptersFilesProvider<Type : FileType>(
             val targetConversion = conversion ?: defaultConversion ?: return@forEach
 
             val (targetMime) = targetConversion
-            val requiresConversion = ConversionUtil.isHttpPostProcess(targetConversion) ||
-                imageType != targetMime && targetMime != "none"
+            val requiresConversion =
+                ConversionUtil.isHttpPostProcess(targetConversion) ||
+                    imageType != targetMime && targetMime != "none"
             if (!requiresConversion) {
                 return@forEach
             }
