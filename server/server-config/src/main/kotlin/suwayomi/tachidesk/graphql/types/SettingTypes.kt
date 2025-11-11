@@ -10,12 +10,12 @@ data class DownloadConversionHeader(
     val value: String,
 )
 
-data class DownloadConversion(
+class DownloadConversion(
     val target: String,
     val compressionLevel: Double? = null,
     val callTimeout: Duration? = null,
     val connectTimeout: Duration? = null,
-    val headers: List<DownloadConversionHeader>? = null,
+    val headers: Array<DownloadConversionHeader>? = null,
 )
 
 interface SettingsDownloadConversion {

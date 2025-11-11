@@ -589,7 +589,7 @@ class ServerConfig(
                                         header.name,
                                         header.value,
                                     )
-                                },
+                                }?.toTypedArray(),
                             )
                     }
                 },
