@@ -44,10 +44,11 @@ class ThumbnailFileProvider(
             return true
         }
 
-        Manga.fetchMangaThumbnail(mangaId).first.use { image ->
+        val (inputStream, mime) = Manga.fetchMangaThumbnail(mangaId)
+        inputStream.use { image ->
             makeSureDownloadDirExists()
             val filePath = getThumbnailDownloadPath(mangaId)
-            ImageResponse.saveImage(filePath, image)
+            ImageResponse.saveImage(filePath, image, mime)
         }
 
         return true
