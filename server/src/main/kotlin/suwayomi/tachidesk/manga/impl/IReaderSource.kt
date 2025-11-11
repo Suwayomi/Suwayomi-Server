@@ -8,9 +8,10 @@ package suwayomi.tachidesk.manga.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import ireader.core.source.HttpSource
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.ireader.core_api.source.CatalogSource
+import org.ireader.core_api.source.HttpSource
 import suwayomi.tachidesk.manga.impl.extension.ireader.IReaderExtension.getExtensionIconUrl
 import suwayomi.tachidesk.manga.impl.util.PackageTools
 import suwayomi.tachidesk.manga.model.dataclass.IReaderSourceDataClass
@@ -24,7 +25,7 @@ object IReaderSource {
     private val logger = KotlinLogging.logger {}
     private val applicationDirs: ApplicationDirs by injectLazy()
     
-    private val sourceCache = mutableMapOf<Long, ireader.core.source.CatalogSource>()
+    private val sourceCache = mutableMapOf<Long, CatalogSource>()
 
     fun getSourceList(): List<IReaderSourceDataClass> {
         return transaction {
@@ -70,7 +71,7 @@ object IReaderSource {
         }
     }
 
-    fun getCatalogueSourceOrNull(sourceId: Long): ireader.core.source.CatalogSource? {
+    fun getCatalogueSourceOrNull(sourceId: Long): CatalogSource? {
         return sourceCache.getOrPut(sourceId) {
             val sourceRecord = transaction {
                 IReaderSourceTable.selectAll().where { IReaderSourceTable.id eq sourceId }.firstOrNull()
@@ -94,10 +95,10 @@ object IReaderSource {
 
             try {
                 val extensionInstance = PackageTools.loadExtensionSources(jarPath, className)
-                val sources = when (extensionInstance) {
-                    is ireader.core.source.Source -> listOf(extensionInstance as ireader.core.source.CatalogSource)
-                    is ireader.core.source.SourceFactory -> 
-                        extensionInstance.createSources().map { it as ireader.core.source.CatalogSource }
+                val sources: List<CatalogSource> = when (extensionInstance) {
+                    is org.ireader.core_api.source.Source -> listOf(extensionInstance as CatalogSource)
+                    is org.ireader.core_api.source.SourceFactory -> 
+                        extensionInstance.createSources().map { it as CatalogSource }
                     else -> emptyList()
                 }
 

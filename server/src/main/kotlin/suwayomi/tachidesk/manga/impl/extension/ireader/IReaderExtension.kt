@@ -11,9 +11,9 @@ import android.net.Uri
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import io.github.oshai.kotlinlogging.KotlinLogging
-import ireader.core.source.CatalogSource
-import ireader.core.source.Source
-import ireader.core.source.SourceFactory
+import org.ireader.core_api.source.CatalogSource
+import org.ireader.core_api.source.Source
+import org.ireader.core_api.source.SourceFactory
 import okhttp3.CacheControl
 import okio.buffer
 import okio.sink
