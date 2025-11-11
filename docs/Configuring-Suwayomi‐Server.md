@@ -79,7 +79,7 @@ server.downloadConversions = {}
 - `server.autoDownloadNewChaptersLimit = 0` sets how many chapters should be downloaded at most, `0` to disable the limit; if the limit is reached, new chapters will not be downloaded (requires `server.autoDownloadNewChapters`).
 - `server.autoDownloadIgnoreReUploads = false` controls if Suwayomi will re-download re-uploads on update (requires `server.autoDownloadNewChapters`).
 - `server.downloadConversions = {}` configures optional image conversions for all downloads. This is an [JSON object](https://en.wikipedia.org/wiki/JSON#Syntax), with the source image [mime type](https://en.wikipedia.org/wiki/Media_type) as the key and an object with the target mime type or url and options as value.  
-  The following options are both valid:  
+  The following options are all valid:  
   ```
   server.downloadConversions = { "image/webp" : { target : "image/jpeg", compressionLevel = 0.8 }}
   # -- or --
@@ -88,9 +88,22 @@ server.downloadConversions = {}
     compressionLevel = 0.8  # quality in range [0,1], leave away to use default compression
   }
   # -- a url example --
-  server.downloadConversions = { "default" : { target : "http://localhost:9999" }}
+  server.downloadConversions = { "default" : { target : "http://localhost:9999/convert" }}
+  # -- a url with all parameters example --
+  server.downloadConversions = { 
+      "default" : {
+          target : "http://localhost:9999/convert",
+          callTimeout : 10m,
+          connectTimeout : 10s,
+          headers : [
+              { name : "authorization", value : "MyPassword" }
+          ] 
+      }
+  }
   ```  
   A source mime type `default` can be used as fallback to convert all images; a target mime type of `none` can be used to disable conversion for a particular format.
+  
+  This is an example curl command for what Suwayomi-Server will send to the conversion url: `curl -X POST "http://localhost:9999/convert" -F "image=@cat.png;type=image/png"`
 - `server.serveConversions = {}` configures optional image conversions before serving the image to the client. It follows the same format as `server.downloadConversions`.
 
 

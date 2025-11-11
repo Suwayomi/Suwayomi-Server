@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 package libcore.net;
+import android.annotation.Nullable;
+
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -441,6 +443,7 @@ public final class MimeUtils {
      * @return The extension has been registered for
      * the given case insensitive MIME type or null if there is none.
      */
+    @Nullable
     public static String guessExtensionFromMimeType(String mimeType) {
         if (mimeType == null || mimeType.isEmpty()) {
             return null;

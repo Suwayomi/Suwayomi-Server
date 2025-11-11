@@ -30,14 +30,17 @@ import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.graphql.types.CbzMediaType
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.graphql.types.DownloadConversion
+import suwayomi.tachidesk.graphql.types.DownloadConversionHeader
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy
 import suwayomi.tachidesk.graphql.types.KoreaderSyncLegacyStrategy
+import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionHeaderType
 import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionType
 import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIInterface
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionHeaderType
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType
 import suwayomi.tachidesk.manga.impl.extension.repoMatchRegex
 import suwayomi.tachidesk.server.settings.BooleanSetting
@@ -559,6 +562,14 @@ class ServerConfig(
                             it.key,
                             it.value.target,
                             it.value.compressionLevel,
+                            it.value.callTimeout,
+                            it.value.connectTimeout,
+                            it.value.headers?.map { header ->
+                                SettingsDownloadConversionHeaderType(
+                                    header.name,
+                                    header.value,
+                                )
+                            },
                         )
                     }
                 },
@@ -571,6 +582,14 @@ class ServerConfig(
                             DownloadConversion(
                                 target = it.target,
                                 compressionLevel = it.compressionLevel,
+                                callTimeout = it.callTimeout,
+                                connectTimeout = it.connectTimeout,
+                                headers = it.headers?.map { header ->
+                                    DownloadConversionHeader(
+                                        header.name,
+                                        header.value,
+                                    )
+                                },
                             )
                     }
                 },
@@ -583,6 +602,14 @@ class ServerConfig(
                             it.key,
                             it.value.target,
                             it.value.compressionLevel,
+                            it.value.callTimeout,
+                            it.value.connectTimeout,
+                            it.value.headers?.map { header ->
+                                BackupSettingsDownloadConversionHeaderType(
+                                    header.name,
+                                    header.value,
+                                )
+                            },
                         )
                     }
                 },
@@ -673,6 +700,7 @@ class ServerConfig(
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod")),
     )
 
+    @Suppress("DEPRECATION")
     @Deprecated("Use koreaderSyncStrategyForward and koreaderSyncStrategyBackward instead")
     val koreaderSyncStrategy: MutableStateFlow<KoreaderSyncLegacyStrategy> by MigratedConfigValue(
         protoNumber = 64,
@@ -711,15 +739,11 @@ class ServerConfig(
         ),
         readMigrated = {
             // This is a best-effort reverse mapping. It's not perfect but covers common cases.
-            when {
-                koreaderSyncStrategyForward.value == KoreaderSyncConflictStrategy.PROMPT &&
-                    koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.PROMPT -> KoreaderSyncLegacyStrategy.PROMPT
-                koreaderSyncStrategyForward.value == KoreaderSyncConflictStrategy.KEEP_REMOTE &&
-                    koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.KEEP_LOCAL -> KoreaderSyncLegacyStrategy.SILENT
-                koreaderSyncStrategyForward.value == KoreaderSyncConflictStrategy.KEEP_LOCAL &&
-                    koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.KEEP_LOCAL -> KoreaderSyncLegacyStrategy.SEND
-                koreaderSyncStrategyForward.value == KoreaderSyncConflictStrategy.KEEP_REMOTE &&
-                    koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.KEEP_REMOTE -> KoreaderSyncLegacyStrategy.RECEIVE
+            when (koreaderSyncStrategyForward.value) {
+                KoreaderSyncConflictStrategy.PROMPT if koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.PROMPT -> KoreaderSyncLegacyStrategy.PROMPT
+                KoreaderSyncConflictStrategy.KEEP_REMOTE if koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.KEEP_LOCAL -> KoreaderSyncLegacyStrategy.SILENT
+                KoreaderSyncConflictStrategy.KEEP_LOCAL if koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.KEEP_LOCAL -> KoreaderSyncLegacyStrategy.SEND
+                KoreaderSyncConflictStrategy.KEEP_REMOTE if koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.KEEP_REMOTE -> KoreaderSyncLegacyStrategy.RECEIVE
                 else -> KoreaderSyncLegacyStrategy.DISABLED
             }
         },

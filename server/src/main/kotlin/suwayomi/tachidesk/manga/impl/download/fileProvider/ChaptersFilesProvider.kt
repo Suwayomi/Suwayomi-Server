@@ -151,11 +151,12 @@ abstract class ChaptersFilesProvider<Type : FileType>(
 
             try {
                 Page
-                    .getPageImage(
+                    .getPageImageDownload(
                         mangaId = download.mangaId,
                         chapterId = download.chapterId,
                         index = pageNum,
-                        isDownloader = true,
+                        downloadCacheFolder,
+                        fileName,
                     ) { flow ->
                         pageProgressJob =
                             flow
@@ -168,8 +169,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                                         false,
                                     ) // don't throw on canceled download here since we can't do anything
                                 }.launchIn(scope)
-                    }.first
-                    .close()
+                    }
             } finally {
                 // always cancel the page progress job even if it throws an exception to avoid memory leaks
                 pageProgressJob?.cancel()
@@ -188,8 +188,6 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                 ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first()
             },
         )
-
-        maybeConvertPages(downloadCacheFolder)
 
         handleSuccessfulDownload()
 
@@ -222,106 +220,4 @@ abstract class ChaptersFilesProvider<Type : FileType>(
     abstract fun getAsArchiveStream(): Pair<InputStream, Long>
 
     abstract fun getArchiveSize(): Long
-
-    private fun maybeConvertPages(chapterCacheFolder: File) {
-        val conversions = serverConfig.downloadConversions.value
-
-        if (!chapterCacheFolder.isDirectory || conversions.isEmpty()) {
-            return
-        }
-
-        val pages =
-            chapterCacheFolder
-                .listFiles()
-                .orEmpty()
-                .filter { it.name != COMIC_INFO_FILE }
-
-        val pagesByMimeType =
-            pages
-                .groupBy { MimeUtils.guessMimeTypeFromExtension(it.extension) }
-                .mapValues { it.value.map { it.nameWithoutExtension } }
-
-        logger.debug { "maybeConvertPages: pagesByMimeType= $pagesByMimeType; conversions= $conversions" }
-
-        pages.forEach { page ->
-            val imageType = MimeUtils.guessMimeTypeFromExtension(page.extension) ?: return@forEach
-
-            val defaultConversion = conversions["default"]
-            val conversion = conversions[imageType]
-            val targetConversion = conversion ?: defaultConversion ?: return@forEach
-
-            val (targetMime) = targetConversion
-            val requiresConversion =
-                ConversionUtil.isHttpPostProcess(targetConversion) ||
-                    imageType != targetMime && targetMime != "none"
-            if (!requiresConversion) {
-                return@forEach
-            }
-
-            convertPage(page, targetConversion)
-        }
-    }
-
-    private fun convertPage(
-        page: File,
-        conversion: DownloadConversion,
-    ) {
-        val (targetMime, compressionLevel) = conversion
-
-        val targetExtension =
-            MimeUtils.guessExtensionFromMimeType(targetMime) ?: targetMime.removePrefix("image/")
-
-        val convertedPage = File(page.parentFile, page.nameWithoutExtension + "." + targetExtension)
-
-        val conversionWriter = getConversionWriter(targetMime, compressionLevel)
-        if (conversionWriter == null) {
-            logger.warn { "Conversion aborted: No reader for target format $targetMime" }
-            return
-        }
-
-        val (writer, writerParams) = conversionWriter
-
-        val success =
-            try {
-                ImageIO.createImageOutputStream(convertedPage).use { outStream ->
-                    writer.setOutput(outStream)
-
-                    val inImage = ConversionUtil.readImage(page) ?: return@use false
-                    writer.write(null, IIOImage(inImage, null, null), writerParams)
-
-                    true
-                }
-            } catch (e: Exception) {
-                logger.warn(e) { "Conversion aborted: for image $page" }
-                false
-            }
-        writer.dispose()
-
-        if (success) {
-            page.delete()
-        } else {
-            convertedPage.delete()
-        }
-    }
-
-    private fun getConversionWriter(
-        targetMime: String,
-        compressionLevel: Double?,
-    ): Pair<ImageWriter, ImageWriteParam>? {
-        val writers = ImageIO.getImageWritersByMIMEType(targetMime)
-        val writer =
-            try {
-                writers.next()
-            } catch (_: NoSuchElementException) {
-                return null
-            }
-
-        val writerParams = writer.defaultWriteParam
-        compressionLevel?.let {
-            writerParams.compressionMode = ImageWriteParam.MODE_EXPLICIT
-            writerParams.compressionQuality = it.toFloat()
-        }
-
-        return writer to writerParams
-    }
 }
