@@ -8,16 +8,32 @@
 
 package ireader.core.http
 
-import io.ktor.client.*
-import ireader.core.http.BrowserEngine
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.json.Json
 
 interface HttpClientsInterface {
-  val browser: BrowserEngine
-  val default: HttpClient
-  val cloudflareClient: HttpClient
+    val default: HttpClient
+    val cloudflareClient: HttpClient
 }
-expect class HttpClients : HttpClientsInterface{
-  override val browser: BrowserEngine
-  override val default: HttpClient
-  override val cloudflareClient: HttpClient
+
+/**
+ * Simple JVM implementation of HttpClients for IReader extensions
+ */
+class HttpClients : HttpClientsInterface {
+    override val default: HttpClient =
+        HttpClient(OkHttp) {
+            install(ContentNegotiation) {
+                json(
+                    Json {
+                        ignoreUnknownKeys = true
+                        isLenient = true
+                    },
+                )
+            }
+        }
+
+    override val cloudflareClient: HttpClient = default
 }

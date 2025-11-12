@@ -14,9 +14,8 @@ data class MangaInfo(
     val description: String = "",
     val genres: List<String> = emptyList(),
     val status: Long = UNKNOWN,
-    val cover: String = ""
+    val cover: String = "",
 ) {
-
     companion object {
         const val UNKNOWN = 0L
         const val ONGOING = 1L

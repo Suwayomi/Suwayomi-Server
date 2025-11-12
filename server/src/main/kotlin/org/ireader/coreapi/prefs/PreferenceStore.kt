@@ -1,12 +1,11 @@
-package ireader.core.prefs
+package org.ireader.coreapi.prefs
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.modules.SerializersModule
 import java.util.prefs.Preferences
 
 /**
- * Implementation of IReader's PreferenceStore
- * Must be in ireader.core.prefs package to match extension expectations
+ * Simple implementation of IReader's PreferenceStore using Java Preferences API
  */
 class PreferenceStoreImpl(
     private val packageName: String,
@@ -55,14 +54,16 @@ class PreferenceStoreImpl(
         defaultValue: T,
         serializer: KSerializer<T>,
         serializersModule: SerializersModule,
-    ): Preference<T> =
-        ObjectPreferenceImpl(
+    ): Preference<T> {
+        // Simplified implementation - just store as string
+        return ObjectPreferenceImpl(
             key,
             defaultValue,
             { it.toString() },
             { defaultValue },
             prefs,
         )
+    }
 }
 
 interface PreferenceStore {

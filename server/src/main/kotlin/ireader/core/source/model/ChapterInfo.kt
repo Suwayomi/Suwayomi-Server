@@ -8,7 +8,7 @@ data class ChapterInfo(
     var dateUpload: Long = 0,
     var number: Float = -1f,
     var scanlator: String = "",
-    var type: Long = ChapterInfo.NOVEL
+    var type: Long = ChapterInfo.NOVEL,
 ) {
     companion object {
         const val MIX = 0L
@@ -16,6 +16,5 @@ data class ChapterInfo(
         const val MUSIC = 2L
         const val MANGA = 3L
         const val MOVIE = 4L
-
     }
 }
