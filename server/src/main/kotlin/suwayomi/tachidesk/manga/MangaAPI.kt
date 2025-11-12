@@ -20,6 +20,7 @@ import suwayomi.tachidesk.manga.controller.CategoryController
 import suwayomi.tachidesk.manga.controller.DownloadController
 import suwayomi.tachidesk.manga.controller.ExtensionController
 import suwayomi.tachidesk.manga.controller.IReaderExtensionController
+import suwayomi.tachidesk.manga.controller.IReaderNovelController
 import suwayomi.tachidesk.manga.controller.IReaderSourceController
 import suwayomi.tachidesk.manga.controller.MangaController
 import suwayomi.tachidesk.manga.controller.SourceController
@@ -54,6 +55,16 @@ object MangaAPI {
             path("source") {
                 get("list", IReaderSourceController.list)
                 get("{sourceId}", IReaderSourceController.retrieve)
+                
+                // Novel browsing
+                get("{sourceId}/popular/{page}", IReaderNovelController.popular)
+                get("{sourceId}/latest/{page}", IReaderNovelController.latest)
+                get("{sourceId}/search", IReaderNovelController.search)
+                
+                // Novel details and chapters
+                get("{sourceId}/details", IReaderNovelController.details)
+                get("{sourceId}/chapters", IReaderNovelController.chapters)
+                get("{sourceId}/chapter", IReaderNovelController.chapterContent)
             }
         }
 

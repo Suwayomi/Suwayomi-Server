@@ -67,6 +67,17 @@ dependencies {
     implementation(libs.okhttp.core)
     implementation(libs.rxjava)
     implementation(libs.jsoup)
+    
+    // IReader extension dependencies - these must be provided by the server
+    // Extensions are compiled with compileOnly and expect the runtime to provide these
+    implementation("io.ktor:ktor-client-core:3.1.2")
+    implementation("io.ktor:ktor-client-cio:3.1.2")
+    implementation("io.ktor:ktor-client-okhttp:3.1.2")
+    implementation("io.ktor:ktor-client-content-negotiation:3.1.2")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:3.1.2")
+    implementation("io.ktor:ktor-serialization-gson:3.1.2")
+    implementation("io.ktor:ktor-serialization-jackson:3.1.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
 
     // ComicInfo
     implementation(libs.serialization.xml.core)

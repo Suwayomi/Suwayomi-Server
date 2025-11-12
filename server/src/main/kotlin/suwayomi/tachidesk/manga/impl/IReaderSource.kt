@@ -10,8 +10,7 @@ package suwayomi.tachidesk.manga.impl
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.ireader.core_api.source.CatalogSource
-import org.ireader.core_api.source.HttpSource
+import ireader.core.source.Source
 import suwayomi.tachidesk.manga.impl.extension.ireader.IReaderExtension.getExtensionIconUrl
 import suwayomi.tachidesk.manga.impl.util.PackageTools
 import suwayomi.tachidesk.manga.model.dataclass.IReaderSourceDataClass
@@ -25,25 +24,28 @@ object IReaderSource {
     private val logger = KotlinLogging.logger {}
     private val applicationDirs: ApplicationDirs by injectLazy()
     
-    private val sourceCache = mutableMapOf<Long, CatalogSource>()
+    private val sourceCache = mutableMapOf<Long, ireader.core.source.CatalogSource>()
 
     fun getSourceList(): List<IReaderSourceDataClass> {
         return transaction {
-            IReaderSourceTable.selectAll().mapNotNull {
-                val source = getCatalogueSourceOrNull(it[IReaderSourceTable.id].value) ?: return@mapNotNull null
+            IReaderSourceTable.selectAll().map {
                 val sourceExtension = IReaderExtensionTable.selectAll()
                     .where { IReaderExtensionTable.id eq it[IReaderSourceTable.extension] }.first()
 
+                val sourceId = it[IReaderSourceTable.id].value
+                val catalogSource = getCatalogueSourceOrNull(sourceId)
+                val baseUrl: String? = null // BaseUrl extraction would require reflection
+
                 IReaderSourceDataClass(
-                    id = it[IReaderSourceTable.id].value.toString(),
+                    id = sourceId.toString(),
                     name = it[IReaderSourceTable.name],
                     lang = it[IReaderSourceTable.lang],
                     iconUrl = getExtensionIconUrl(sourceExtension[IReaderExtensionTable.apkName]),
                     supportsLatest = true,
                     isConfigurable = false,
                     isNsfw = it[IReaderSourceTable.isNsfw],
-                    displayName = source.toString(),
-                    baseUrl = runCatching { (source as? HttpSource)?.baseUrl }.getOrNull(),
+                    displayName = catalogSource?.name ?: it[IReaderSourceTable.name],
+                    baseUrl = baseUrl,
                 )
             }
         }
@@ -53,9 +55,11 @@ object IReaderSource {
         return transaction {
             val source = IReaderSourceTable.selectAll().where { IReaderSourceTable.id eq sourceId }.firstOrNull() 
                 ?: return@transaction null
-            val catalogueSource = getCatalogueSourceOrNull(sourceId) ?: return@transaction null
             val extension = IReaderExtensionTable.selectAll()
                 .where { IReaderExtensionTable.id eq source[IReaderSourceTable.extension] }.first()
+
+            val catalogSource = getCatalogueSourceOrNull(sourceId)
+            val baseUrl: String? = null // BaseUrl extraction would require reflection
 
             IReaderSourceDataClass(
                 id = sourceId.toString(),
@@ -65,48 +69,99 @@ object IReaderSource {
                 supportsLatest = true,
                 isConfigurable = false,
                 isNsfw = source[IReaderSourceTable.isNsfw],
-                displayName = catalogueSource.toString(),
-                baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
+                displayName = catalogSource?.name ?: source[IReaderSourceTable.name],
+                baseUrl = baseUrl,
             )
         }
     }
 
-    fun getCatalogueSourceOrNull(sourceId: Long): CatalogSource? {
-        return sourceCache.getOrPut(sourceId) {
-            val sourceRecord = transaction {
-                IReaderSourceTable.selectAll().where { IReaderSourceTable.id eq sourceId }.firstOrNull()
-            } ?: return null
+    private fun implementsInterface(obj: Any, interfaceName: String): Boolean {
+        fun checkClass(clazz: Class<*>?): Boolean {
+            if (clazz == null) return false
+            if (clazz.interfaces.any { it.name == interfaceName }) return true
+            if (checkClass(clazz.superclass)) return true
+            return clazz.interfaces.any { checkClass(it) }
+        }
+        return checkClass(obj.javaClass)
+    }
 
-            val extensionId = sourceRecord[IReaderSourceTable.extension].value
-            val extensionRecord = transaction {
-                IReaderExtensionTable.selectAll().where { IReaderExtensionTable.id eq extensionId }.first()
-            }
+    fun getCatalogueSourceOrNull(sourceId: Long): ireader.core.source.CatalogSource? {
+        // Check cache first
+        sourceCache[sourceId]?.let { return it }
+        
+        // Load source if not cached
+        val sourceRecord = transaction {
+            IReaderSourceTable.selectAll().where { IReaderSourceTable.id eq sourceId }.firstOrNull()
+        } ?: return null
 
-            val apkName = extensionRecord[IReaderExtensionTable.apkName]
-            val className = extensionRecord[IReaderExtensionTable.classFQName]
+        val extensionId = sourceRecord[IReaderSourceTable.extension].value
+        val extensionRecord = transaction {
+            IReaderExtensionTable.selectAll().where { IReaderExtensionTable.id eq extensionId }.first()
+        }
+
+        val apkName = extensionRecord[IReaderExtensionTable.apkName]
+        val pkgName = extensionRecord[IReaderExtensionTable.pkgName]
+        val className = extensionRecord[IReaderExtensionTable.classFQName]
+        
+        val fileNameWithoutType = apkName.substringBefore(".apk")
+        val jarPath = "${applicationDirs.extensionsRoot}/ireader/$fileNameWithoutType.jar"
+
+        if (!File(jarPath).exists()) {
+            logger.warn { "IReader extension jar not found: $jarPath" }
+            return null
+        }
+
+        return try {
+            // Load the extension with proper Dependencies
+            val classLoader = PackageTools.jarLoaderMap[jarPath] ?: java.net.URLClassLoader(
+                arrayOf(java.nio.file.Path.of(jarPath).toUri().toURL()),
+                this::class.java.classLoader
+            )
+            val classToLoad = Class.forName(className, false, classLoader)
+            PackageTools.jarLoaderMap[jarPath] = classLoader
             
-            val fileNameWithoutType = apkName.substringBefore(".apk")
-            val jarPath = "${applicationDirs.extensionsRoot}/ireader/$fileNameWithoutType.jar"
-
-            if (!File(jarPath).exists()) {
-                logger.warn { "IReader extension jar not found: $jarPath" }
-                return null
+            // Create Dependencies
+            val httpClients = ireader.core.http.HttpClients()
+            val preferences = ireader.core.prefs.PreferenceStoreImpl(pkgName)
+            val dependencies = ireader.core.source.Dependencies(httpClients, preferences)
+            
+            // Instantiate the extension
+            val extensionInstance = try {
+                classToLoad.getDeclaredConstructor(ireader.core.source.Dependencies::class.java)
+                    .newInstance(dependencies)
+            } catch (e: NoSuchMethodException) {
+                classToLoad.getDeclaredConstructor().newInstance()
             }
-
-            try {
-                val extensionInstance = PackageTools.loadExtensionSources(jarPath, className)
-                val sources: List<CatalogSource> = when (extensionInstance) {
-                    is org.ireader.core_api.source.Source -> listOf(extensionInstance as CatalogSource)
-                    is org.ireader.core_api.source.SourceFactory -> 
-                        extensionInstance.createSources().map { it as CatalogSource }
-                    else -> emptyList()
+            
+            // Handle SourceFactory or Source
+            val sourceInstances = when {
+                implementsInterface(extensionInstance, "ireader.core.source.SourceFactory") -> {
+                    val method = extensionInstance.javaClass.getMethod("createSources")
+                    method.invoke(extensionInstance) as List<*>
                 }
-
-                sources.firstOrNull { it.id == sourceId }
-            } catch (e: Exception) {
-                logger.error(e) { "Failed to load IReader source $sourceId" }
-                null
+                implementsInterface(extensionInstance, "ireader.core.source.Source") -> {
+                    listOf(extensionInstance)
+                }
+                else -> {
+                    logger.error { "Extension doesn't implement Source or SourceFactory: ${extensionInstance.javaClass.name}" }
+                    return null
+                }
             }
+            
+            // Find the source with matching ID
+            val sourceInstance = sourceInstances.firstOrNull { sourceObj ->
+                val idMethod = sourceObj?.javaClass?.getMethod("getId")
+                val id = idMethod?.invoke(sourceObj) as? Long
+                id == sourceId
+            } ?: return null
+            
+            // Create a wrapper that implements CatalogSource using reflection
+            val wrapper = IReaderSourceWrapper(sourceInstance)
+            sourceCache[sourceId] = wrapper
+            wrapper
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to load IReader source $sourceId" }
+            null
         }
     }
 
