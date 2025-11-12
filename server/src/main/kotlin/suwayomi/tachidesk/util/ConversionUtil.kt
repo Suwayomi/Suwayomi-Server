@@ -90,7 +90,7 @@ object ConversionUtil {
                                     .Builder()
                                     .apply {
                                         conversion.headers?.forEach {
-                                            set(it.name, it.value)
+                                            set(it.key, it.value)
                                         }
                                     }.build(),
                         ),

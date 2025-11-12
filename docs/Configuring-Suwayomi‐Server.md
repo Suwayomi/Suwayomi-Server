@@ -95,9 +95,9 @@ server.downloadConversions = {}
           target : "http://localhost:9999/convert",
           callTimeout : 10m,
           connectTimeout : 10s,
-          headers : [
-              { name : "authorization", value : "MyPassword" }
-          ] 
+          headers : { 
+              "authorization" : "MyPassword"
+          }
       }
   }
   ```  

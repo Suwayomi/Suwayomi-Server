@@ -30,8 +30,7 @@ import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.graphql.types.CbzMediaType
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.graphql.types.DownloadConversion
-import suwayomi.tachidesk.graphql.types.DownloadConversionHeader
-import suwayomi.tachidesk.graphql.types.HeaderList
+import suwayomi.tachidesk.graphql.types.HeaderMap
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy
 import suwayomi.tachidesk.graphql.types.KoreaderSyncLegacyStrategy
@@ -567,7 +566,7 @@ class ServerConfig(
                             it.value.connectTimeout,
                             it.value.headers?.map { header ->
                                 SettingsDownloadConversionHeaderType(
-                                    header.name,
+                                    header.key,
                                     header.value,
                                 )
                             },
@@ -585,12 +584,9 @@ class ServerConfig(
                                 compressionLevel = it.compressionLevel,
                                 callTimeout = it.callTimeout,
                                 connectTimeout = it.connectTimeout,
-                                headers = it.headers?.map { header ->
-                                    DownloadConversionHeader(
-                                        header.name,
-                                        header.value,
-                                    )
-                                }?.let { HeaderList(it) },
+                                headers = it.headers?.associate { header ->
+                                    header.name to header.value
+                                }?.let { HeaderMap(it) },
                             )
                     }
                 },
@@ -607,7 +603,7 @@ class ServerConfig(
                             it.value.connectTimeout,
                             it.value.headers?.map { header ->
                                 BackupSettingsDownloadConversionHeaderType(
-                                    header.name,
+                                    header.key,
                                     header.value,
                                 )
                             },
