@@ -32,9 +32,10 @@ class M0053_IReaderTables : AddTableMigration() {
 
     private class IReaderSourceTable : IdTable<Long>() {
         override val id = long("id").entityId()
+        override val primaryKey = PrimaryKey(id)
         val name = varchar("name", 128)
         val lang = varchar("lang", 32)
-        val extension = integer("extension").references(IReaderExtensionTable().id)
+        val extension = reference("extension", IReaderExtensionTable())
         val isNsfw = bool("is_nsfw").default(false)
     }
 
