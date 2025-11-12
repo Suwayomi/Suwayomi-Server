@@ -3,7 +3,6 @@ package suwayomi.tachidesk.manga.impl.backup.proto.models
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
-import suwayomi.tachidesk.graphql.types.DownloadConversionHeader
 import suwayomi.tachidesk.graphql.types.SettingsDownloadConversion
 import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionHeader
 import kotlin.time.Duration

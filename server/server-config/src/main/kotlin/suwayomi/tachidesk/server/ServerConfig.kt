@@ -30,7 +30,6 @@ import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.graphql.types.CbzMediaType
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.graphql.types.DownloadConversion
-import suwayomi.tachidesk.graphql.types.HeaderMap
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy
 import suwayomi.tachidesk.graphql.types.KoreaderSyncLegacyStrategy
