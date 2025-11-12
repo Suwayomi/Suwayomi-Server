@@ -6,13 +6,9 @@ import com.typesafe.config.ConfigValue
 import io.github.config4k.ClassContainer
 import io.github.config4k.CustomType
 import io.github.config4k.extract
-import io.github.config4k.readers.SelectReader
 import io.github.config4k.toConfig
 import suwayomi.tachidesk.graphql.types.DownloadConversion
-import suwayomi.tachidesk.server.ServerConfig
-import kotlin.collections.associate
 import kotlin.time.Duration
-import kotlin.to
 
 class DownloadConversionType : CustomType {
     override fun parse(
