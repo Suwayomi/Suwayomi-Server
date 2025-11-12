@@ -2,6 +2,7 @@ package suwayomi.tachidesk.server.util
 
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
+import com.typesafe.config.ConfigValue
 import io.github.config4k.ClassContainer
 import io.github.config4k.CustomType
 import io.github.config4k.extract
@@ -44,49 +45,33 @@ class DownloadConversionType : CustomType {
         name: String,
     ): Config {
         val conversion = obj as DownloadConversion
-        val builder =
-            ConfigFactory
-                .empty()
+        val builder = ConfigFactory.empty()
 
-        val config =
+        var config =
             builder
-                .withValue("target", conversion.target.toConfig("target").root())
-                .withValueIfPresent("compressionLevel", conversion.compressionLevel?.toConfig("compressionLevel"))
-                .withValueIfPresent("callTimeout", conversion.callTimeout?.toString()?.toConfig("callTimeout"))
-                .withValueIfPresent("connectTimeout", conversion.connectTimeout?.toString()?.toConfig("connectTimeout"))
+                .withValue("$name.target", conversion.target.asConfigValue())
+                .withValueIfPresent("$name.compressionLevel", conversion.compressionLevel)
+                .withValueIfPresent("$name.callTimeout", conversion.callTimeout?.toString())
+                .withValueIfPresent("$name.connectTimeout", conversion.connectTimeout?.toString())
 
         if (conversion.headers != null) {
-            val headersConfig =
-                conversion.headers.entries.associate { (key, value) ->
-                    key to value.toConfig(key)
-                }
-            config.withValue("headers", headersConfig.toConfig("headers").root())
+            config =
+                config
+                    .withValue("$name.headers", conversion.headers.asConfigValue())
         }
 
-        return config.withValue("name", name.toConfig("name").root())
+        return config
     }
-
-    private fun Config.getDurationOrNull(path: String): Duration? =
-        try {
-            Duration.parse(getString(path))
-        } catch (_: Exception) {
-            null
-        }
-
-    private fun Config.getDoubleOrNull(path: String): Double? =
-        try {
-            getDouble(path)
-        } catch (_: Exception) {
-            null
-        }
 
     private fun Config.withValueIfPresent(
         key: String,
         value: Any?,
     ): Config =
         if (value != null) {
-            withValue(key, value.toConfig(key).root())
+            withValue(key, value.asConfigValue())
         } else {
             this
         }
+
+    private fun Any.asConfigValue(): ConfigValue = toConfig("internal").getValue("internal")
 }
