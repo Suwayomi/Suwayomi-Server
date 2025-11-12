@@ -19,9 +19,6 @@ import suwayomi.tachidesk.manga.controller.BackupController
 import suwayomi.tachidesk.manga.controller.CategoryController
 import suwayomi.tachidesk.manga.controller.DownloadController
 import suwayomi.tachidesk.manga.controller.ExtensionController
-import suwayomi.tachidesk.manga.controller.IReaderExtensionController
-import suwayomi.tachidesk.manga.controller.IReaderNovelController
-import suwayomi.tachidesk.manga.controller.IReaderSourceController
 import suwayomi.tachidesk.manga.controller.MangaController
 import suwayomi.tachidesk.manga.controller.SourceController
 import suwayomi.tachidesk.manga.controller.TrackController
@@ -38,34 +35,6 @@ object MangaAPI {
             get("uninstall/{pkgName}", ExtensionController.uninstall)
 
             get("icon/{apkName}", ExtensionController.icon)
-        }
-
-        path("ireader") {
-            path("extension") {
-                get("list", IReaderExtensionController.list)
-
-                get("install/{pkgName}", IReaderExtensionController.install)
-                post("install", IReaderExtensionController.installFile)
-                get("update/{pkgName}", IReaderExtensionController.update)
-                get("uninstall/{pkgName}", IReaderExtensionController.uninstall)
-
-                get("icon/{apkName}", IReaderExtensionController.icon)
-            }
-
-            path("source") {
-                get("list", IReaderSourceController.list)
-                get("{sourceId}", IReaderSourceController.retrieve)
-
-                // Novel browsing
-                get("{sourceId}/popular/{page}", IReaderNovelController.popular)
-                get("{sourceId}/latest/{page}", IReaderNovelController.latest)
-                get("{sourceId}/search", IReaderNovelController.search)
-
-                // Novel details and chapters
-                get("{sourceId}/details", IReaderNovelController.details)
-                get("{sourceId}/chapters", IReaderNovelController.chapters)
-                get("{sourceId}/chapter", IReaderNovelController.chapterContent)
-            }
         }
 
         path("source") {
