@@ -481,8 +481,13 @@ object IReaderExtension {
     }
 
     suspend fun updateExtension(pkgName: String): Int {
+        logger.debug { "Attempting to update extension: $pkgName" }
+        logger.debug { "Available updates in updateMap: ${IReaderExtensionsList.updateMap.keys}" }
+        
         val targetExtension = IReaderExtensionsList.updateMap.remove(pkgName)
-            ?: throw Exception("No update available for $pkgName. Please refresh the extension list first by calling /api/v1/ireader/extension/list")
+            ?: throw Exception("No update available for $pkgName. Available updates: ${IReaderExtensionsList.updateMap.keys}. Please refresh the extension list first by calling /api/v1/ireader/extension/list")
+        
+        logger.info { "Updating extension $pkgName from version ${targetExtension.versionName}" }
         uninstallExtension(pkgName)
         transaction {
             IReaderExtensionTable.update({ IReaderExtensionTable.pkgName eq pkgName }) {

@@ -89,6 +89,7 @@ object IReaderExtensionsList {
 
                     // Populate updateMap for extensions with updates
                     if (hasUpdate) {
+                        logger.info { "Update available for ${ext.pkgName}: v$installedVersion -> v${ext.versionCode}" }
                         updateMap[ext.pkgName] = IReaderExtensionDataClass(
                             repo = ext.repo,
                             apkName = ext.apkName,
