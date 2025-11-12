@@ -30,6 +30,7 @@ class BrowserEngine : BrowserEngineInterface {
         throw UnsupportedOperationException("Browser engine is not supported on server. Use HttpClient instead.")
     }
 }
+
 /**
  * This object is representing the result of an request
  * @param responseBody - the response responseBody

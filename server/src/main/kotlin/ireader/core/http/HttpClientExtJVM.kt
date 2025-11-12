@@ -15,4 +15,3 @@ import okhttp3.OkHttpClient
 
 val HttpClient.okhttp: OkHttpClient
     get() = (engineConfig as OkHttpConfig).preconfigured!!
-

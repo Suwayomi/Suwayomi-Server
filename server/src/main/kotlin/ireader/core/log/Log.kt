@@ -16,7 +16,6 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 object Log {
     private val logger = KotlinLogging.logger {}
 
-
     /**
      * Logs a lazy message at verbose level. The message will be only evaluated if the log entry is
      * really output.

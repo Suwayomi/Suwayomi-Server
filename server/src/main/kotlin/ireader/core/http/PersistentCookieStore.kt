@@ -7,31 +7,35 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
 
-
-class PersistentCookieStore(private val preferenceStore: PreferenceStore) {
-
+class PersistentCookieStore(
+    private val preferenceStore: PreferenceStore,
+) {
     private val cookieMap = ConcurrentHashMap<String, List<Cookie>>()
 
     val keyPref = preferenceStore.getString("cookie_manager_keys")
     val keys = mutableListOf<String>()
     val cookieSeparator = "#COOKIE_SEPARATOR#"
+
     fun decodePrefsCookies() {
         keys.addAll(keyPref.get().split(cookieSeparator))
     }
 
     init {
         decodePrefsCookies()
-        val cookies = keys.map {
-            it to preferenceStore.getString(it).get()
-        }
+        val cookies =
+            keys.map {
+                it to preferenceStore.getString(it).get()
+            }
         for ((key, value) in cookies) {
             @Suppress("UNCHECKED_CAST")
             val cookies = value as? Set<String>
             if (cookies != null) {
                 try {
                     val url = "http://$key".toHttpUrlOrNull() ?: continue
-                    val nonExpiredCookies = cookies.mapNotNull { Cookie.parse(url, it) }
-                        .filter { !it.hasExpired() }
+                    val nonExpiredCookies =
+                        cookies
+                            .mapNotNull { Cookie.parse(url, it) }
+                            .filter { !it.hasExpired() }
                     cookieMap.put(key, nonExpiredCookies)
                 } catch (e: Exception) {
                     // Ignore
@@ -41,7 +45,10 @@ class PersistentCookieStore(private val preferenceStore: PreferenceStore) {
     }
 
     @Synchronized
-    fun addAll(url: HttpUrl, cookies: List<Cookie>) {
+    fun addAll(
+        url: HttpUrl,
+        cookies: List<Cookie>,
+    ) {
         val key = url.toUri().host
 
         // Append or replace the cookies for this domain.
@@ -58,10 +65,12 @@ class PersistentCookieStore(private val preferenceStore: PreferenceStore) {
         cookieMap.put(key, cookiesForDomain)
 
         // Get cookies to be stored in disk
-        val newValues = cookiesForDomain.asSequence()
-            .filter { it.persistent && !it.hasExpired() }
-            .map(Cookie::toString)
-            .toSet()
+        val newValues =
+            cookiesForDomain
+                .asSequence()
+                .filter { it.persistent && !it.hasExpired() }
+                .map(Cookie::toString)
+                .toSet()
 
         keyPref.set(keys.joinToString(cookieSeparator))
         preferenceStore.getStringSet(key).set(newValues)
@@ -81,9 +90,7 @@ class PersistentCookieStore(private val preferenceStore: PreferenceStore) {
 
     fun get(uri: URI) = get(uri.host)
 
-    private fun get(url: String): List<Cookie> {
-        return cookieMap[url].orEmpty().filter { !it.hasExpired() }
-    }
+    private fun get(url: String): List<Cookie> = cookieMap[url].orEmpty().filter { !it.hasExpired() }
 
     private fun Cookie.hasExpired() = System.currentTimeMillis() >= expiresAt
 }

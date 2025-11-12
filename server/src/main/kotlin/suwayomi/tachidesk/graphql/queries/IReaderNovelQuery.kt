@@ -21,18 +21,14 @@ class IReaderNovelQuery {
     fun ireaderPopularNovels(
         sourceId: Long,
         page: Int = 1,
-    ): IReaderNovelsPageType {
-        return IReaderNovelsPageType(IReaderNovel.getPopularNovels(sourceId, page))
-    }
+    ): IReaderNovelsPageType = IReaderNovelsPageType(IReaderNovel.getPopularNovels(sourceId, page))
 
     @RequireAuth
     @GraphQLDescription("Get latest novels from an IReader source")
     fun ireaderLatestNovels(
         sourceId: Long,
         page: Int = 1,
-    ): IReaderNovelsPageType {
-        return IReaderNovelsPageType(IReaderNovel.getLatestNovels(sourceId, page))
-    }
+    ): IReaderNovelsPageType = IReaderNovelsPageType(IReaderNovel.getLatestNovels(sourceId, page))
 
     @RequireAuth
     @GraphQLDescription("Search for novels in an IReader source")
@@ -40,34 +36,26 @@ class IReaderNovelQuery {
         sourceId: Long,
         query: String,
         page: Int = 1,
-    ): IReaderNovelsPageType {
-        return IReaderNovelsPageType(IReaderNovel.searchNovels(sourceId, query, page))
-    }
+    ): IReaderNovelsPageType = IReaderNovelsPageType(IReaderNovel.searchNovels(sourceId, query, page))
 
     @RequireAuth
     @GraphQLDescription("Get detailed information about a novel")
     fun ireaderNovelDetails(
         sourceId: Long,
         novelUrl: String,
-    ): IReaderNovelType {
-        return IReaderNovelType(IReaderNovel.getNovelDetails(sourceId, novelUrl))
-    }
+    ): IReaderNovelType = IReaderNovelType(IReaderNovel.getNovelDetails(sourceId, novelUrl))
 
     @RequireAuth
     @GraphQLDescription("Get the list of chapters for a novel")
     fun ireaderNovelChapters(
         sourceId: Long,
         novelUrl: String,
-    ): List<IReaderChapterType> {
-        return IReaderNovel.getChapterList(sourceId, novelUrl).map { IReaderChapterType(it) }
-    }
+    ): List<IReaderChapterType> = IReaderNovel.getChapterList(sourceId, novelUrl).map { IReaderChapterType(it) }
 
     @RequireAuth
     @GraphQLDescription("Get the content/pages of a chapter")
     fun ireaderChapterContent(
         sourceId: Long,
         chapterUrl: String,
-    ): List<IReaderPageType> {
-        return IReaderNovel.getChapterContent(sourceId, chapterUrl).map { IReaderPageType.fromPage(it) }
-    }
+    ): List<IReaderPageType> = IReaderNovel.getChapterContent(sourceId, chapterUrl).map { IReaderPageType.fromPage(it) }
 }

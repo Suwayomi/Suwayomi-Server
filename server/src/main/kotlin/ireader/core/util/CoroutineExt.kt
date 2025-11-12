@@ -10,4 +10,5 @@ fun createCoroutineScope(coroutineContext: CoroutineContext): CoroutineScope = C
 
 val DefaultDispatcher: CoroutineDispatcher = Dispatchers.IO
 
-fun createICoroutineScope(dispatcher: CoroutineContext = SupervisorJob() + DefaultDispatcher): CoroutineScope = createCoroutineScope(dispatcher)
+fun createICoroutineScope(dispatcher: CoroutineContext = SupervisorJob() + DefaultDispatcher): CoroutineScope =
+    createCoroutineScope(dispatcher)

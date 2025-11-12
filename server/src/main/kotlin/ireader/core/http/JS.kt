@@ -19,32 +19,24 @@ class JS : Closeable {
      * Evaluates the given JavaScript [script] and returns its result as [String] or throws an
      * exception.
      */
-    fun evaluateAsString(script: String): String {
-        throw UnsupportedOperationException("JavaScript execution is not supported on server")
-    }
+    fun evaluateAsString(script: String): String = throw UnsupportedOperationException("JavaScript execution is not supported on server")
 
     /**
      * Evaluates the given JavaScript [script] and returns its result as [Int] or throws an exception.
      */
-    fun evaluateAsInt(script: String): Int {
-        throw UnsupportedOperationException("JavaScript execution is not supported on server")
-    }
+    fun evaluateAsInt(script: String): Int = throw UnsupportedOperationException("JavaScript execution is not supported on server")
 
     /**
      * Evaluates the given JavaScript [script] and returns its result as [Double] or throws an
      * exception.
      */
-    fun evaluateAsDouble(script: String): Double {
-        throw UnsupportedOperationException("JavaScript execution is not supported on server")
-    }
+    fun evaluateAsDouble(script: String): Double = throw UnsupportedOperationException("JavaScript execution is not supported on server")
 
     /**
      * Evaluates the given JavaScript [script] and returns its result as [Boolean] or throws an
      * exception.
      */
-    fun evaluateAsBoolean(script: String): Boolean {
-        throw UnsupportedOperationException("JavaScript execution is not supported on server")
-    }
+    fun evaluateAsBoolean(script: String): Boolean = throw UnsupportedOperationException("JavaScript execution is not supported on server")
 
     /**
      * Closes this instance. No evaluations can be made on this instance after calling this method.

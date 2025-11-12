@@ -115,9 +115,7 @@ class IReaderExtensionMutation {
 
     @RequireAuth
     @GraphQLDescription("Update an IReader extension")
-    fun updateIReaderExtension(
-        input: UpdateIReaderExtensionInput,
-    ): CompletableFuture<DataFetcherResult<UpdateIReaderExtensionPayload?>> {
+    fun updateIReaderExtension(input: UpdateIReaderExtensionInput): CompletableFuture<DataFetcherResult<UpdateIReaderExtensionPayload?>> {
         val (clientMutationId, pkgName) = input
 
         return future {

@@ -14,13 +14,9 @@ class WebViewManger {
     var webUrl: String? = null
     var inProgress: Boolean = false
 
-    fun init(): Any {
-        throw UnsupportedOperationException("WebView is not supported on server")
-    }
+    fun init(): Any = throw UnsupportedOperationException("WebView is not supported on server")
 
-    fun update() {
-        throw UnsupportedOperationException("WebView is not supported on server")
-    }
+    fun update(): Unit = throw UnsupportedOperationException("WebView is not supported on server")
 
     fun destroy() {
         // Nothing to destroy in stub implementation

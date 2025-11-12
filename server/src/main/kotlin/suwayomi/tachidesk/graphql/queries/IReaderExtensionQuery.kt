@@ -19,17 +19,14 @@ import java.util.concurrent.CompletableFuture
 class IReaderExtensionQuery {
     @RequireAuth
     @GraphQLDescription("Get list of all IReader extensions")
-    fun ireaderExtensions(): CompletableFuture<List<IReaderExtensionType>> {
-        return future {
+    fun ireaderExtensions(): CompletableFuture<List<IReaderExtensionType>> =
+        future {
             IReaderExtensionsList.getExtensionList().map { IReaderExtensionType(it) }
         }
-    }
 
     @RequireAuth
     @GraphQLDescription("Get list of all IReader sources")
-    fun ireaderSources(): List<IReaderSourceType> {
-        return IReaderSource.getSourceList().map { IReaderSourceType(it) }
-    }
+    fun ireaderSources(): List<IReaderSourceType> = IReaderSource.getSourceList().map { IReaderSourceType(it) }
 
     @RequireAuth
     @GraphQLDescription("Get a specific IReader source by ID")

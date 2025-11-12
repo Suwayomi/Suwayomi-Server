@@ -173,6 +173,7 @@ private class PreferenceImpl<T>(
         return MutableStateFlow(get()).asStateFlow()
     }
 }
+
 private class ObjectPreferenceImpl<T>(
     private val key: String,
     private val defaultValue: T,

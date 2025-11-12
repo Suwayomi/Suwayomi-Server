@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.onStart
  * this interface must be provided through a [PreferenceStore].
  */
 interface Preference<T> {
-
     /**
      * Returns the key of this preference.
      */
@@ -61,8 +60,9 @@ interface Preference<T> {
 }
 
 fun <T> Preference<T>.getAsFlow(action: (suspend (T) -> Unit)? = null): Flow<T> {
-    val flow = changes()
-        .onStart { emit(get()) }
+    val flow =
+        changes()
+            .onStart { emit(get()) }
     return if (action != null) {
         flow.onEach(action = action)
     } else {
