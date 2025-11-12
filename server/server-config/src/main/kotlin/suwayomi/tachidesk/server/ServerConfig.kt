@@ -914,6 +914,14 @@ class ServerConfig(
         key = "serveConversions"
     )
 
+    val useHikariConnectionPool: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 85,
+        group = SettingGroup.DATABASE,
+        defaultValue = true,
+        excludeFromBackup = true,
+        description = "Use Hikari Connection Pool to connect to the database.",
+    )
+
 
 
     /** ****************************************************************** **/
