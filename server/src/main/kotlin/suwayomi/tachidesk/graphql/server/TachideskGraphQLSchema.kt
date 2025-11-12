@@ -52,6 +52,7 @@ import suwayomi.tachidesk.graphql.server.primitives.GraphQLDurationAsString
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLLongAsString
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLUpload
 import suwayomi.tachidesk.graphql.subscriptions.DownloadSubscription
+import suwayomi.tachidesk.graphql.subscriptions.IReaderExtensionSubscription
 import suwayomi.tachidesk.graphql.subscriptions.InfoSubscription
 import suwayomi.tachidesk.graphql.subscriptions.UpdateSubscription
 import kotlin.reflect.KClass
@@ -122,6 +123,7 @@ val schema =
         subscriptions =
             listOf(
                 TopLevelObject(DownloadSubscription()),
+                TopLevelObject(IReaderExtensionSubscription()),
                 TopLevelObject(InfoSubscription()),
                 TopLevelObject(UpdateSubscription()),
             ),

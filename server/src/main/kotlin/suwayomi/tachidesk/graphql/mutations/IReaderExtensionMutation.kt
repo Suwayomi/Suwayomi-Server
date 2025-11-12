@@ -9,6 +9,7 @@ package suwayomi.tachidesk.graphql.mutations
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import graphql.execution.DataFetcherResult
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.http.UploadedFile
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -21,6 +22,8 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
 
 class IReaderExtensionMutation {
+    private val logger = KotlinLogging.logger {}
+
     data class InstallIReaderExtensionInput(
         val clientMutationId: String? = null,
         @GraphQLDescription("Package name of the extension to install")
@@ -164,6 +167,49 @@ class IReaderExtensionMutation {
                 UninstallIReaderExtensionPayload(
                     clientMutationId = clientMutationId,
                     success = true,
+                )
+            }
+        }
+    }
+
+    data class UpdateAllIReaderExtensionsInput(
+        val clientMutationId: String? = null,
+    )
+
+    data class UpdateAllIReaderExtensionsPayload(
+        val clientMutationId: String?,
+        @GraphQLDescription("Number of extensions queued for update")
+        val updatedCount: Int,
+    )
+
+    @RequireAuth
+    @GraphQLDescription("Update all IReader extensions that have updates available")
+    fun updateAllIReaderExtensions(
+        input: UpdateAllIReaderExtensionsInput,
+    ): CompletableFuture<DataFetcherResult<UpdateAllIReaderExtensionsPayload?>> {
+        val (clientMutationId) = input
+
+        return future {
+            asDataFetcherResult {
+                val extensionsToUpdate =
+                    transaction {
+                        IReaderExtensionTable
+                            .selectAll()
+                            .where { IReaderExtensionTable.hasUpdate eq true }
+                            .map { it[IReaderExtensionTable.pkgName] }
+                    }
+
+                extensionsToUpdate.forEach { pkgName ->
+                    try {
+                        IReaderExtension.updateExtension(pkgName)
+                    } catch (e: Exception) {
+                        logger.error(e) { "Failed to update extension $pkgName" }
+                    }
+                }
+
+                UpdateAllIReaderExtensionsPayload(
+                    clientMutationId = clientMutationId,
+                    updatedCount = extensionsToUpdate.size,
                 )
             }
         }
