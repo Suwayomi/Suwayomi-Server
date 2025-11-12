@@ -33,11 +33,13 @@ import suwayomi.tachidesk.graphql.types.DownloadConversion
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy
 import suwayomi.tachidesk.graphql.types.KoreaderSyncLegacyStrategy
+import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionHeaderType
 import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionType
 import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIInterface
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionHeaderType
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType
 import suwayomi.tachidesk.manga.impl.extension.repoMatchRegex
 import suwayomi.tachidesk.server.settings.BooleanSetting
@@ -537,8 +539,8 @@ class ServerConfig(
         excludeFromBackup = true,
     )
 
-    val downloadConversions: MutableStateFlow<Map<String, DownloadConversion>> by MapSetting<String, DownloadConversion>(
-        protoNumber = 57,
+    fun createDownloadConversionsMap(protoNumber: Int, key: String) = MapSetting<String, DownloadConversion>(
+        protoNumber = protoNumber,
         defaultValue = emptyMap(),
         group = SettingGroup.DOWNLOADER,
         typeInfo =
@@ -559,6 +561,14 @@ class ServerConfig(
                             it.key,
                             it.value.target,
                             it.value.compressionLevel,
+                            it.value.callTimeout,
+                            it.value.connectTimeout,
+                            it.value.headers?.map { header ->
+                                SettingsDownloadConversionHeaderType(
+                                    header.key,
+                                    header.value,
+                                )
+                            },
                         )
                     }
                 },
@@ -571,6 +581,11 @@ class ServerConfig(
                             DownloadConversion(
                                 target = it.target,
                                 compressionLevel = it.compressionLevel,
+                                callTimeout = it.callTimeout,
+                                connectTimeout = it.connectTimeout,
+                                headers = it.headers?.associate { header ->
+                                    header.name to header.value
+                                },
                             )
                     }
                 },
@@ -583,6 +598,14 @@ class ServerConfig(
                             it.key,
                             it.value.target,
                             it.value.compressionLevel,
+                            it.value.callTimeout,
+                            it.value.connectTimeout,
+                            it.value.headers?.map { header ->
+                                BackupSettingsDownloadConversionHeaderType(
+                                    header.key,
+                                    header.value,
+                                )
+                            },
                         )
                     }
                 },
@@ -590,11 +613,15 @@ class ServerConfig(
         description =
             """
             map input mime type to conversion information, or "default" for others
-            server.downloadConversions."image/webp" = {
-              target = "image/jpeg"   # image type to convert to
+            server.$key."image/webp" = {
+              target = "image/jpeg"   # image type to convert to, can also be a url to an external server
               compressionLevel = 0.8  # quality in range [0,1], leave away to use default compression
             }
             """.trimIndent(),
+    )
+    val downloadConversions: MutableStateFlow<Map<String, DownloadConversion>> by createDownloadConversionsMap(
+        protoNumber = 57,
+        key = "downloadConversions"
     )
 
     val jwtAudience: MutableStateFlow<String> by StringSetting(
@@ -669,6 +696,7 @@ class ServerConfig(
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod")),
     )
 
+    @Suppress("DEPRECATION")
     @Deprecated("Use koreaderSyncStrategyForward and koreaderSyncStrategyBackward instead")
     val koreaderSyncStrategy: MutableStateFlow<KoreaderSyncLegacyStrategy> by MigratedConfigValue(
         protoNumber = 64,
@@ -707,15 +735,11 @@ class ServerConfig(
         ),
         readMigrated = {
             // This is a best-effort reverse mapping. It's not perfect but covers common cases.
-            when {
-                koreaderSyncStrategyForward.value == KoreaderSyncConflictStrategy.PROMPT &&
-                    koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.PROMPT -> KoreaderSyncLegacyStrategy.PROMPT
-                koreaderSyncStrategyForward.value == KoreaderSyncConflictStrategy.KEEP_REMOTE &&
-                    koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.KEEP_LOCAL -> KoreaderSyncLegacyStrategy.SILENT
-                koreaderSyncStrategyForward.value == KoreaderSyncConflictStrategy.KEEP_LOCAL &&
-                    koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.KEEP_LOCAL -> KoreaderSyncLegacyStrategy.SEND
-                koreaderSyncStrategyForward.value == KoreaderSyncConflictStrategy.KEEP_REMOTE &&
-                    koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.KEEP_REMOTE -> KoreaderSyncLegacyStrategy.RECEIVE
+            when (koreaderSyncStrategyForward.value) {
+                KoreaderSyncConflictStrategy.PROMPT if koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.PROMPT -> KoreaderSyncLegacyStrategy.PROMPT
+                KoreaderSyncConflictStrategy.KEEP_REMOTE if koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.KEEP_LOCAL -> KoreaderSyncLegacyStrategy.SILENT
+                KoreaderSyncConflictStrategy.KEEP_LOCAL if koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.KEEP_LOCAL -> KoreaderSyncLegacyStrategy.SEND
+                KoreaderSyncConflictStrategy.KEEP_REMOTE if koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.KEEP_REMOTE -> KoreaderSyncLegacyStrategy.RECEIVE
                 else -> KoreaderSyncLegacyStrategy.DISABLED
             }
         },
@@ -883,6 +907,11 @@ class ServerConfig(
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.CbzMediaType")),
         excludeFromBackup = true,
         description = "Controls the MimeType that Suwayomi sends in OPDS entries for CBZ archives. Also affects global CBZ download. Modern follows recent IANA standard (2017), while LEGACY (deprecated mimetype for .cbz) and COMPATIBLE (deprecated mimetype for all comic archives) might be more compatible with older clients.",
+    )
+
+    val serveConversions: MutableStateFlow<Map<String, DownloadConversion>> by createDownloadConversionsMap(
+        protoNumber = 84,
+        key = "serveConversions"
     )
 
     val useHikariConnectionPool: MutableStateFlow<Boolean> by BooleanSetting(

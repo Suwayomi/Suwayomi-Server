@@ -475,7 +475,7 @@ object MangaController {
 
                 ctx.future {
                     future {
-                        Page.getPageImage(
+                        Page.getPageImageServe(
                             mangaId = mangaId,
                             chapterIndex = chapterIndex,
                             index = index,
