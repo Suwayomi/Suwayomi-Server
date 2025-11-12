@@ -55,12 +55,12 @@ object MangaAPI {
             path("source") {
                 get("list", IReaderSourceController.list)
                 get("{sourceId}", IReaderSourceController.retrieve)
-                
+
                 // Novel browsing
                 get("{sourceId}/popular/{page}", IReaderNovelController.popular)
                 get("{sourceId}/latest/{page}", IReaderNovelController.latest)
                 get("{sourceId}/search", IReaderNovelController.search)
-                
+
                 // Novel details and chapters
                 get("{sourceId}/details", IReaderNovelController.details)
                 get("{sourceId}/chapters", IReaderNovelController.chapters)

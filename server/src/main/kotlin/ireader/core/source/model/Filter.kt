@@ -10,8 +10,10 @@ package ireader.core.source.model
  * when performing a global search.
  */
 @Suppress("unused")
-sealed class Filter<V>(val name: String, val initialValue: V) {
-
+sealed class Filter<V>(
+    val name: String,
+    val initialValue: V,
+) {
     /**
      * The value of this filter, with the initial value set.
      */
@@ -21,50 +23,67 @@ sealed class Filter<V>(val name: String, val initialValue: V) {
      * Whether this filter has been updated. If this method returns true, the catalog won't receive
      * this filter when performing a search.
      */
-    open fun isDefaultValue(): Boolean {
-        return initialValue == value
-    }
+    open fun isDefaultValue(): Boolean = initialValue == value
 
     /**
      * Base filters.
      */
 
-    class Note(name: String) : Filter<Unit>(name, Unit)
+    class Note(
+        name: String,
+    ) : Filter<Unit>(name, Unit)
 
-    open class Text(name: String, value: String = "") : Filter<String>(name, value)
+    open class Text(
+        name: String,
+        value: String = "",
+    ) : Filter<String>(name, value)
 
     open class Check(
         name: String,
         val allowsExclusion: Boolean = false,
-        value: Boolean? = null
+        value: Boolean? = null,
     ) : Filter<Boolean?>(name, value)
 
     open class Select(
         name: String,
         val options: Array<String>,
-        value: Int = 0
+        value: Int = 0,
     ) : Filter<Int>(name, value)
 
-    open class Group(name: String, val filters: List<Filter<*>>) : Filter<Unit>(name, Unit)
+    open class Group(
+        name: String,
+        val filters: List<Filter<*>>,
+    ) : Filter<Unit>(name, Unit)
 
     open class Sort(
         name: String,
         val options: Array<String>,
-        value: Selection? = null
+        value: Selection? = null,
     ) : Filter<Sort.Selection?>(name, value) {
-
-        data class Selection(val index: Int, val ascending: Boolean)
+        data class Selection(
+            val index: Int,
+            val ascending: Boolean,
+        )
     }
 
     /**
      * Common filters.
      */
 
-    class Title(name: String = "Title") : Text(name)
+    class Title(
+        name: String = "Title",
+    ) : Text(name)
 
-    class Author(name: String = "Author") : Text(name)
+    class Author(
+        name: String = "Author",
+    ) : Text(name)
 
-    class Artist(name: String = "Artist") : Text(name)
+    class Artist(
+        name: String = "Artist",
+    ) : Text(name)
 
-    class Genre(name: String, allowsExclusion: Boolean = false) : Check(name, allowsExclusion)
+    class Genre(
+        name: String,
+        allowsExclusion: Boolean = false,
+    ) : Check(name, allowsExclusion)
 }

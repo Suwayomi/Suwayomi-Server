@@ -8,7 +8,6 @@ import ireader.core.source.model.Listing
 import ireader.core.source.model.MangasPageInfo
 
 interface CatalogSource : ireader.core.source.Source {
-
     companion object {
         const val TYPE_NOVEL = 0
         const val TYPE_MANGA = 1
@@ -17,8 +16,15 @@ interface CatalogSource : ireader.core.source.Source {
 
     override val lang: String
 
-    suspend fun getMangaList(sort: Listing?, page: Int): MangasPageInfo
-    suspend fun getMangaList(filters: FilterList, page: Int): MangasPageInfo
+    suspend fun getMangaList(
+        sort: Listing?,
+        page: Int,
+    ): MangasPageInfo
+
+    suspend fun getMangaList(
+        filters: FilterList,
+        page: Int,
+    ): MangasPageInfo
 
     fun getListings(): List<Listing>
 

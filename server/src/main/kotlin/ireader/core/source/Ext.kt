@@ -8,12 +8,6 @@ import org.jsoup.nodes.Document
 
 inline fun <reified T> Iterable<*>.findInstance() = find { it is T } as? T
 
-suspend fun HttpResponse.asJsoup(html: String? = null): Document {
+suspend fun HttpResponse.asJsoup(html: String? = null): Document = Jsoup.parse(html ?: this.bodyAsText(), request.url.toString())
 
-    return Jsoup.parse(html ?: this.bodyAsText(), request.url.toString())
-}
-
-fun String.asJsoup(html: String? = null): Document {
-
-    return Jsoup.parse(html ?: this)
-}
+fun String.asJsoup(html: String? = null): Document = Jsoup.parse(html ?: this)

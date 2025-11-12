@@ -20,68 +20,87 @@ import kotlinx.coroutines.runBlocking
 
 object IReaderNovel {
     private val logger = KotlinLogging.logger {}
-    
-    fun getPopularNovels(sourceId: Long, page: Int): MangasPageInfo {
-        return runBlocking {
-            val source = IReaderSource.getCatalogueSourceOrNull(sourceId) as? CatalogSource
-                ?: throw Exception("Source not found or not a CatalogSource")
-            
+
+    fun getPopularNovels(
+        sourceId: Long,
+        page: Int,
+    ): MangasPageInfo =
+        runBlocking {
+            val source =
+                IReaderSource.getCatalogueSourceOrNull(sourceId) as? CatalogSource
+                    ?: throw Exception("Source not found or not a CatalogSource")
+
             val listings = source.getListings()
             val listing = listings.firstOrNull()
-            
+
             source.getMangaList(listing, page)
         }
-    }
-    
-    fun getLatestNovels(sourceId: Long, page: Int): MangasPageInfo {
-        return runBlocking {
-            val source = IReaderSource.getCatalogueSourceOrNull(sourceId) as? CatalogSource
-                ?: throw Exception("Source not found or not a CatalogSource")
-            
+
+    fun getLatestNovels(
+        sourceId: Long,
+        page: Int,
+    ): MangasPageInfo =
+        runBlocking {
+            val source =
+                IReaderSource.getCatalogueSourceOrNull(sourceId) as? CatalogSource
+                    ?: throw Exception("Source not found or not a CatalogSource")
+
             val listings = source.getListings()
             val listing = listings.getOrNull(1) ?: listings.firstOrNull()
-            
+
             source.getMangaList(listing, page)
         }
-    }
-    
-    fun searchNovels(sourceId: Long, query: String, page: Int): MangasPageInfo {
-        return runBlocking {
-            val source = IReaderSource.getCatalogueSourceOrNull(sourceId) as? CatalogSource
-                ?: throw Exception("Source not found or not a CatalogSource")
-            
+
+    fun searchNovels(
+        sourceId: Long,
+        query: String,
+        page: Int,
+    ): MangasPageInfo =
+        runBlocking {
+            val source =
+                IReaderSource.getCatalogueSourceOrNull(sourceId) as? CatalogSource
+                    ?: throw Exception("Source not found or not a CatalogSource")
+
             val filters: FilterList = listOf(Filter.Title(query))
             source.getMangaList(filters, page)
         }
-    }
-    
-    fun getNovelDetails(sourceId: Long, novelUrl: String): MangaInfo {
-        return runBlocking {
-            val source = IReaderSource.getCatalogueSourceOrNull(sourceId)
-                ?: throw Exception("Source not found")
-            
+
+    fun getNovelDetails(
+        sourceId: Long,
+        novelUrl: String,
+    ): MangaInfo =
+        runBlocking {
+            val source =
+                IReaderSource.getCatalogueSourceOrNull(sourceId)
+                    ?: throw Exception("Source not found")
+
             val manga = MangaInfo(key = novelUrl, title = "")
             source.getMangaDetails(manga, emptyList())
         }
-    }
-    
-    fun getChapterList(sourceId: Long, novelUrl: String): List<ChapterInfo> {
-        return runBlocking {
-            val source = IReaderSource.getCatalogueSourceOrNull(sourceId)
-                ?: throw Exception("Source not found")
-            
+
+    fun getChapterList(
+        sourceId: Long,
+        novelUrl: String,
+    ): List<ChapterInfo> =
+        runBlocking {
+            val source =
+                IReaderSource.getCatalogueSourceOrNull(sourceId)
+                    ?: throw Exception("Source not found")
+
             val manga = MangaInfo(key = novelUrl, title = "")
             source.getChapterList(manga, emptyList())
         }
-    }
-    
-    fun getChapterContent(sourceId: Long, chapterUrl: String): List<Page> {
-        return runBlocking {
-            val source = IReaderSource.getCatalogueSourceOrNull(sourceId)
-                ?: throw Exception("Source not found")
-            
+
+    fun getChapterContent(
+        sourceId: Long,
+        chapterUrl: String,
+    ): List<Page> =
+        runBlocking {
+            val source =
+                IReaderSource.getCatalogueSourceOrNull(sourceId)
+                    ?: throw Exception("Source not found")
+
             val chapter = ChapterInfo(key = chapterUrl, name = "")
             source.getPageList(chapter, emptyList())
         }
-    }
 }

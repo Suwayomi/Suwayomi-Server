@@ -17,9 +17,9 @@ import java.security.MessageDigest
  * A simple implementation for sources from a website.
  */
 @Suppress("unused", "unused_parameter")
-abstract class HttpSource(private val dependencies: ireader.core.source.Dependencies) :
-    ireader.core.source.CatalogSource {
-
+abstract class HttpSource(
+    private val dependencies: ireader.core.source.Dependencies,
+) : ireader.core.source.CatalogSource {
     /**
      * Base url of the website without the trailing slash, like: http://mysite.com
      */
@@ -38,7 +38,7 @@ abstract class HttpSource(private val dependencies: ireader.core.source.Dependen
      * of the MD5 of the string: sourcename/language/versionId
      * Note the generated id sets the sign bit to 0.
      */
-    override val id : Long by lazy {
+    override val id: Long by lazy {
         val key = "${name.lowercase()}/$lang/$versionId"
         val bytes = MessageDigest.getInstance("MD5").digest(key.toByteArray())
         (0..7).map { bytes[it].toLong() and 0xff shl 8 * (7 - it) }.reduce(Long::or) and Long.MAX_VALUE
@@ -57,32 +57,27 @@ abstract class HttpSource(private val dependencies: ireader.core.source.Dependen
      */
     override fun toString() = "$name (${lang.uppercase()})"
 
-    open suspend fun getPage(page: PageUrl): PageComplete {
+    open suspend fun getPage(page: PageUrl): PageComplete =
         throw Exception("Incomplete source implementation. Please override getPage when using PageUrl")
-    }
 
-    open fun getImageRequest(page: ImageUrl): Pair<HttpClient, HttpRequestBuilder> {
-        return client to HttpRequestBuilder().apply {
-            url(page.url)
-        }
-    }
+    open fun getImageRequest(page: ImageUrl): Pair<HttpClient, HttpRequestBuilder> =
+        client to
+            HttpRequestBuilder().apply {
+                url(page.url)
+            }
 
-    open fun getCoverRequest(url: String): Pair<HttpClient, HttpRequestBuilder> {
-        return client to HttpRequestBuilder().apply {
-            url(url)
-        }
-    }
+    open fun getCoverRequest(url: String): Pair<HttpClient, HttpRequestBuilder> =
+        client to
+            HttpRequestBuilder().apply {
+                url(url)
+            }
 
-    override fun getListings(): List<Listing> {
-        return emptyList()
-    }
+    override fun getListings(): List<Listing> = emptyList()
 
     /**
      * the commands that are used
      * to decrease the request to servers
      * @return [CommandList] check out [Command]
      */
-    override fun getCommands(): CommandList {
-        return emptyList()
-    }
+    override fun getCommands(): CommandList = emptyList()
 }

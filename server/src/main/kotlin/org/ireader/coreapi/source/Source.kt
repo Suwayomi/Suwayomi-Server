@@ -1,4 +1,4 @@
-package org.ireader.core_api.source
+package org.ireader.coreapi.source
 
 /**
  * IReader Source interfaces - mirrors the structure from IReader's source-api

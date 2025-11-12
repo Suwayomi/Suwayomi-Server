@@ -19,7 +19,6 @@ import suwayomi.tachidesk.server.util.queryParam
 import suwayomi.tachidesk.server.util.withOperation
 
 object IReaderNovelController {
-    
     val popular =
         handler(
             pathParam<Long>("sourceId"),
@@ -40,7 +39,7 @@ object IReaderNovelController {
                 httpCode(HttpStatus.NOT_FOUND)
             },
         )
-    
+
     val latest =
         handler(
             pathParam<Long>("sourceId"),
@@ -61,7 +60,7 @@ object IReaderNovelController {
                 httpCode(HttpStatus.NOT_FOUND)
             },
         )
-    
+
     val search =
         handler(
             pathParam<Long>("sourceId"),
@@ -83,7 +82,7 @@ object IReaderNovelController {
                 httpCode(HttpStatus.NOT_FOUND)
             },
         )
-    
+
     val details =
         handler(
             pathParam<Long>("sourceId"),
@@ -104,7 +103,7 @@ object IReaderNovelController {
                 httpCode(HttpStatus.NOT_FOUND)
             },
         )
-    
+
     val chapters =
         handler(
             pathParam<Long>("sourceId"),
@@ -125,7 +124,7 @@ object IReaderNovelController {
                 httpCode(HttpStatus.NOT_FOUND)
             },
         )
-    
+
     val chapterContent =
         handler(
             pathParam<Long>("sourceId"),

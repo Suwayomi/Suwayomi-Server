@@ -1,4 +1,4 @@
-package org.ireader.core_api.http
+package org.ireader.coreapi.http
 
 /**
  * Stub implementations for IReader's HTTP clients

@@ -67,7 +67,7 @@ dependencies {
     implementation(libs.okhttp.core)
     implementation(libs.rxjava)
     implementation(libs.jsoup)
-    
+
     // IReader extension dependencies - these must be provided by the server
     // Extensions are compiled with compileOnly and expect the runtime to provide these
     implementation("io.ktor:ktor-client-core:3.1.2")
@@ -253,6 +253,7 @@ tasks {
 
     runKtlintCheckOverMainSourceSet {
         mustRunAfter(generateJte)
+        dependsOn(":server:server-config-generate:generateSettings")
     }
 
     compileKotlin {

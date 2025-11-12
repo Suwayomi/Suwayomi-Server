@@ -25,8 +25,8 @@ object IReaderExtensionsList {
 
     private const val IREADER_REPO_URL = "https://raw.githubusercontent.com/IReaderorg/IReader-extensions/repo/index.json"
 
-    fun extensionTableAsDataClass(): List<IReaderExtensionDataClass> {
-        return transaction {
+    fun extensionTableAsDataClass(): List<IReaderExtensionDataClass> =
+        transaction {
             IReaderExtensionTable.selectAll().map {
                 IReaderExtensionDataClass(
                     repo = it[IReaderExtensionTable.repo],
@@ -44,7 +44,6 @@ object IReaderExtensionsList {
                 )
             }
         }
-    }
 
     suspend fun getExtensionList(): List<IReaderExtensionDataClass> {
         // Fetch from GitHub and update database
@@ -60,18 +59,20 @@ object IReaderExtensionsList {
 
     private fun updateExtensionDatabase(onlineExtensions: List<OnlineIReaderExtension>) {
         transaction {
-            val installedExtensions = IReaderExtensionTable
-                .selectAll()
-                .toList()
-                .associateBy { it[IReaderExtensionTable.pkgName] }
+            val installedExtensions =
+                IReaderExtensionTable
+                    .selectAll()
+                    .toList()
+                    .associateBy { it[IReaderExtensionTable.pkgName] }
 
             val onlinePkgs = onlineExtensions.map { it.pkgName }.toSet()
-            
+
             // Remove uninstalled extensions that are no longer in the repo
-            val extensionsToRemove = installedExtensions
-                .filter { !it.value[IReaderExtensionTable.isInstalled] && !onlinePkgs.contains(it.key) }
-                .map { it.key }
-            
+            val extensionsToRemove =
+                installedExtensions
+                    .filter { !it.value[IReaderExtensionTable.isInstalled] && !onlinePkgs.contains(it.key) }
+                    .map { it.key }
+
             if (extensionsToRemove.isNotEmpty()) {
                 IReaderExtensionTable.deleteWhere {
                     pkgName inList extensionsToRemove
@@ -90,20 +91,21 @@ object IReaderExtensionsList {
                     // Populate updateMap for extensions with updates
                     if (hasUpdate) {
                         logger.info { "Update available for ${ext.pkgName}: v$installedVersion -> v${ext.versionCode}" }
-                        updateMap[ext.pkgName] = IReaderExtensionDataClass(
-                            repo = ext.repo,
-                            apkName = ext.apkName,
-                            iconUrl = ext.iconUrl,
-                            name = ext.name,
-                            pkgName = ext.pkgName,
-                            versionName = ext.versionName,
-                            versionCode = ext.versionCode,
-                            lang = ext.lang,
-                            isNsfw = ext.isNsfw,
-                            installed = true,
-                            hasUpdate = true,
-                            obsolete = false
-                        )
+                        updateMap[ext.pkgName] =
+                            IReaderExtensionDataClass(
+                                repo = ext.repo,
+                                apkName = ext.apkName,
+                                iconUrl = ext.iconUrl,
+                                name = ext.name,
+                                pkgName = ext.pkgName,
+                                versionName = ext.versionName,
+                                versionCode = ext.versionCode,
+                                lang = ext.lang,
+                                isNsfw = ext.isNsfw,
+                                installed = true,
+                                hasUpdate = true,
+                                obsolete = false,
+                            )
                     }
 
                     IReaderExtensionTable.update({ IReaderExtensionTable.pkgName eq ext.pkgName }) {
