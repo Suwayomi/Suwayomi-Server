@@ -36,7 +36,7 @@ class DownloadConversionType : CustomType {
     }
 
     override fun testParse(clazz: ClassContainer): Boolean =
-        clazz.mapperClass.qualifiedName == "suwayomi.tachidesk.launcher.config.ServerConfig.DownloadConversion"
+        clazz.mapperClass.qualifiedName == "suwayomi.tachidesk.graphql.types.DownloadConversion"
 
     override fun testToConfig(obj: Any): Boolean = obj is DownloadConversion
 
