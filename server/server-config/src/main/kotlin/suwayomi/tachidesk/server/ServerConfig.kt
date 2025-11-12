@@ -890,6 +890,7 @@ class ServerConfig(
         group = SettingGroup.DATABASE,
         defaultValue = true,
         excludeFromBackup = true,
+        description = "Use Hikari Connection Pool to connect to the database.",
     )
 
 
