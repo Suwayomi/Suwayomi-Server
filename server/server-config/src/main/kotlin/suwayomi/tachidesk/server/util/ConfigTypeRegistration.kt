@@ -14,6 +14,7 @@ object ConfigTypeRegistration {
 
         registerCustomType(MutableStateFlowType())
         registerCustomType(DurationType())
+        registerCustomType(DownloadConversionType())
 
         registered = true
     }

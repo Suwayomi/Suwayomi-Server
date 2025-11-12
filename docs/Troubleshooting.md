@@ -1,5 +1,5 @@
 ## General Troubleshooting
-This guide will try to fix Suwayomi by reseting it to a clean install state.
+This guide will try to fix Suwayomi by reseting it to a clean installation state.
 
 - Make sure you have a recent backup of your library or create one in the app (if possible) because we **are going to wipe all Suwayomi data**.
 - Make sure Suwayomi is not running (right click on tray icon and quit or kill it through the way your Operating System provides)
