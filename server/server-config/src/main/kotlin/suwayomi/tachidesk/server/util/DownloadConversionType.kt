@@ -4,6 +4,7 @@ import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import io.github.config4k.ClassContainer
 import io.github.config4k.CustomType
+import io.github.config4k.extract
 import io.github.config4k.readers.SelectReader
 import io.github.config4k.toConfig
 import suwayomi.tachidesk.graphql.types.DownloadConversion
@@ -18,20 +19,11 @@ class DownloadConversionType : CustomType {
         config: Config,
         name: String,
     ): Any? {
-        val target = config.getString("$name.target")
-        val compressionLevel = config.getDoubleOrNull("$name.compressionLevel")
-        val callTimeout = config.getDurationOrNull("$name.callTimeout")
-        val connectTimeout = config.getDurationOrNull("$name.connectTimeout")
-
-        val headers =
-            try {
-                val headersConfig = config.getConfig("$name.headers")
-                headersConfig.entrySet().associate { entry ->
-                    entry.key to headersConfig.getString(entry.key)
-                }
-            } catch (_: Exception) {
-                null
-            }
+        val target = config.extract<String>("$name.target")
+        val compressionLevel = config.extract<Double?>("$name.compressionLevel")
+        val callTimeout = config.extract<Duration?>("$name.callTimeout")
+        val connectTimeout = config.extract<Duration?>("$name.connectTimeout")
+        val headers = config.extract<Map<String, String>?>("$name.headers")
 
         return DownloadConversion(
             target = target,
