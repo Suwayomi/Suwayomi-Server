@@ -31,6 +31,7 @@ import suwayomi.tachidesk.graphql.types.CbzMediaType
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.graphql.types.DownloadConversion
 import suwayomi.tachidesk.graphql.types.DownloadConversionHeader
+import suwayomi.tachidesk.graphql.types.HeaderList
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy
 import suwayomi.tachidesk.graphql.types.KoreaderSyncLegacyStrategy
@@ -589,7 +590,7 @@ class ServerConfig(
                                         header.name,
                                         header.value,
                                     )
-                                }?.toTypedArray(),
+                                }?.let { HeaderList(it) },
                             )
                     }
                 },

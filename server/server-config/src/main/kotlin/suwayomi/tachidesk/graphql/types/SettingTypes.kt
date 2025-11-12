@@ -15,8 +15,12 @@ class DownloadConversion(
     val compressionLevel: Double? = null,
     val callTimeout: Duration? = null,
     val connectTimeout: Duration? = null,
-    val headers: Array<DownloadConversionHeader>? = null,
+    val headers: HeaderList? = null,
 )
+
+class HeaderList(
+    list: List<DownloadConversionHeader>,
+) : List<DownloadConversionHeader> by list
 
 interface SettingsDownloadConversion {
     val mimeType: String
