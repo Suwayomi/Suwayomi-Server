@@ -11,6 +11,7 @@ import org.jetbrains.exposed.dao.id.IdTable
 
 object IReaderSourceTable : IdTable<Long>() {
     override val id = long("id").entityId()
+    override val primaryKey = PrimaryKey(id)
     val name = varchar("name", 128)
     val lang = varchar("lang", 32)
     val extension = reference("extension", IReaderExtensionTable)
