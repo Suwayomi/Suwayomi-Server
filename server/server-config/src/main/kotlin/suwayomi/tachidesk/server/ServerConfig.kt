@@ -586,7 +586,7 @@ class ServerConfig(
                                 connectTimeout = it.connectTimeout,
                                 headers = it.headers?.associate { header ->
                                     header.name to header.value
-                                }?.let { HeaderMap(it) },
+                                },
                             )
                     }
                 },
