@@ -885,6 +885,13 @@ class ServerConfig(
         description = "Controls the MimeType that Suwayomi sends in OPDS entries for CBZ archives. Also affects global CBZ download. Modern follows recent IANA standard (2017), while LEGACY (deprecated mimetype for .cbz) and COMPATIBLE (deprecated mimetype for all comic archives) might be more compatible with older clients.",
     )
 
+    val useHikariConnectionPool: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 85,
+        group = SettingGroup.DATABASE,
+        defaultValue = true,
+        excludeFromBackup = true,
+    )
+
 
 
     /** ****************************************************************** **/
