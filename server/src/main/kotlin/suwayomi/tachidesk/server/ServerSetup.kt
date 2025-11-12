@@ -399,7 +399,7 @@ fun applicationSetup() {
             serverConfig.databaseUrl,
             serverConfig.databaseUsername,
             serverConfig.databasePassword,
-            serverConfig.useHikariConnectionPool
+            serverConfig.useHikariConnectionPool,
         ) { vargs ->
             DatabaseSettings(
                 vargs[0] as DatabaseType,
