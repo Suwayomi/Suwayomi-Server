@@ -12,36 +12,44 @@ import okio.Closeable
 
 /**
  * A wrapper to allow executing JavaScript code without knowing the implementation details.
+ * Stub implementation for JVM - JavaScript execution not supported on server
  */
-@Suppress("NO_ACTUAL_FOR_EXPECT")
-expect class JS : Closeable {
+class JS : Closeable {
+    /**
+     * Evaluates the given JavaScript [script] and returns its result as [String] or throws an
+     * exception.
+     */
+    fun evaluateAsString(script: String): String {
+        throw UnsupportedOperationException("JavaScript execution is not supported on server")
+    }
 
-  /**
-   * Evaluates the given JavaScript [script] and returns its result as [String] or throws an
-   * exception.
-   */
-  fun evaluateAsString(script: String): String
+    /**
+     * Evaluates the given JavaScript [script] and returns its result as [Int] or throws an exception.
+     */
+    fun evaluateAsInt(script: String): Int {
+        throw UnsupportedOperationException("JavaScript execution is not supported on server")
+    }
 
-  /**
-   * Evaluates the given JavaScript [script] and returns its result as [Int] or throws an exception.
-   */
-  fun evaluateAsInt(script: String): Int
+    /**
+     * Evaluates the given JavaScript [script] and returns its result as [Double] or throws an
+     * exception.
+     */
+    fun evaluateAsDouble(script: String): Double {
+        throw UnsupportedOperationException("JavaScript execution is not supported on server")
+    }
 
-  /**
-   * Evaluates the given JavaScript [script] and returns its result as [Double] or throws an
-   * exception.
-   */
-  fun evaluateAsDouble(script: String): Double
+    /**
+     * Evaluates the given JavaScript [script] and returns its result as [Boolean] or throws an
+     * exception.
+     */
+    fun evaluateAsBoolean(script: String): Boolean {
+        throw UnsupportedOperationException("JavaScript execution is not supported on server")
+    }
 
-  /**
-   * Evaluates the given JavaScript [script] and returns its result as [Boolean] or throws an
-   * exception.
-   */
-  fun evaluateAsBoolean(script: String): Boolean
-
-  /**
-   * Closes this instance. No evaluations can be made on this instance after calling this method.
-   */
-  override fun close()
-
+    /**
+     * Closes this instance. No evaluations can be made on this instance after calling this method.
+     */
+    override fun close() {
+        // Nothing to close in stub implementation
+    }
 }

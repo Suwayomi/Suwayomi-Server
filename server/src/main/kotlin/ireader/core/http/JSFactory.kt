@@ -10,13 +10,11 @@ package ireader.core.http
 
 /**
  * A factory for creating [JS] instances.
+ * Stub implementation for JVM
  */
-@Suppress("NO_ACTUAL_FOR_EXPECT")
-expect class JSFactory {
-
-  /**
-   * Returns a new instance of [JS].
-   */
-  fun create(): JS
-
+class JSFactory {
+    /**
+     * Returns a new instance of [JS].
+     */
+    fun create(): JS = JS()
 }

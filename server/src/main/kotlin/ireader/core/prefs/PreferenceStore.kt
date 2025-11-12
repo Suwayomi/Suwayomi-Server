@@ -1,5 +1,10 @@
 package ireader.core.prefs
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.modules.SerializersModule
 import java.util.prefs.Preferences
@@ -111,19 +116,7 @@ interface PreferenceStore {
     ): Preference<T>
 }
 
-interface Preference<T> {
-    fun key(): String
-
-    fun get(): T
-
-    fun set(value: T)
-
-    fun isSet(): Boolean
-
-    fun delete()
-
-    fun defaultValue(): T
-}
+// Preference interface is defined in Preference.kt
 
 private class PreferenceImpl<T>(
     private val key: String,
@@ -169,8 +162,17 @@ private class PreferenceImpl<T>(
     override fun delete() {
         prefs.remove(key)
     }
-}
 
+    override fun changes(): Flow<T> {
+        // Stub implementation - preference changes not supported on server
+        return kotlinx.coroutines.flow.flowOf(get())
+    }
+
+    override fun stateIn(scope: CoroutineScope): StateFlow<T> {
+        // Stub implementation - returns current value as StateFlow
+        return MutableStateFlow(get()).asStateFlow()
+    }
+}
 private class ObjectPreferenceImpl<T>(
     private val key: String,
     private val defaultValue: T,
@@ -203,5 +205,15 @@ private class ObjectPreferenceImpl<T>(
 
     override fun delete() {
         prefs.remove(key)
+    }
+
+    override fun changes(): Flow<T> {
+        // Stub implementation - preference changes not supported on server
+        return kotlinx.coroutines.flow.flowOf(get())
+    }
+
+    override fun stateIn(scope: CoroutineScope): StateFlow<T> {
+        // Stub implementation - returns current value as StateFlow
+        return MutableStateFlow(get()).asStateFlow()
     }
 }

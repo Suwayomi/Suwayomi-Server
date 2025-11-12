@@ -1,17 +1,28 @@
 package ireader.core.http
 
-expect class WebViewManger {
+import org.jsoup.Jsoup
 
-    var isInit :Boolean
-    var userAgent : String
-    var selector: String?
-    var html: org.jsoup.nodes.Document
-    var webUrl: String?
-    var inProgress: Boolean
+/**
+ * Stub implementation of WebViewManager for JVM
+ * WebView functionality is not supported on server
+ */
+class WebViewManger {
+    var isInit: Boolean = false
+    var userAgent: String = ireader.core.http.DEFAULT_USER_AGENT
+    var selector: String? = null
+    var html: org.jsoup.nodes.Document = Jsoup.parse("")
+    var webUrl: String? = null
+    var inProgress: Boolean = false
 
-    fun init() : Any
+    fun init(): Any {
+        throw UnsupportedOperationException("WebView is not supported on server")
+    }
 
-    fun update()
+    fun update() {
+        throw UnsupportedOperationException("WebView is not supported on server")
+    }
 
-    fun destroy()
+    fun destroy() {
+        // Nothing to destroy in stub implementation
+    }
 }

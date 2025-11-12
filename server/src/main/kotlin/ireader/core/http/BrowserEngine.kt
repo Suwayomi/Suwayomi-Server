@@ -3,27 +3,32 @@ package ireader.core.http
 import okhttp3.Cookie
 import okhttp3.Headers
 
-interface  BrowserEngineInterface {
+interface BrowserEngineInterface {
     suspend fun fetch(
         url: String,
         selector: String? = null,
         headers: Headers? = null,
         timeout: Long = 50000L,
-        userAgent: String = DEFAULT_USER_AGENT
+        userAgent: String = ireader.core.http.DEFAULT_USER_AGENT,
     ): Result
 }
 
-
-
-
-expect class BrowserEngine : BrowserEngineInterface {
+/**
+ * Stub implementation of BrowserEngine for JVM
+ * IReader extensions that need browser functionality won't work,
+ * but basic HTTP sources will function
+ */
+class BrowserEngine : BrowserEngineInterface {
     override suspend fun fetch(
         url: String,
         selector: String?,
         headers: Headers?,
         timeout: Long,
         userAgent: String,
-    ): Result
+    ): Result {
+        // Stub implementation - browser features not supported on server
+        throw UnsupportedOperationException("Browser engine is not supported on server. Use HttpClient instead.")
+    }
 }
 /**
  * This object is representing the result of an request
