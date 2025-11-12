@@ -5,11 +5,6 @@ import kotlin.time.Duration
 // These types belong to SettingsType.kt. However, since that file is auto-generated, these types need to be placed in
 // a "static" file.
 
-data class DownloadConversionHeader(
-    val name: String,
-    val value: String,
-)
-
 class DownloadConversion(
     val target: String,
     val compressionLevel: Double? = null,
