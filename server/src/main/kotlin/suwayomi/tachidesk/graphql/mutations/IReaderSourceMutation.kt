@@ -11,40 +11,63 @@ import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import graphql.execution.DataFetcherResult
 import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.types.IReaderNovelsPageType
+import suwayomi.tachidesk.manga.impl.IReaderNovel
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
 
 class IReaderSourceMutation {
-    data class SetIReaderSourcePreferenceInput(
+    enum class FetchIReaderNovelType {
+        SEARCH,
+        POPULAR,
+        LATEST,
+    }
+
+    data class FetchIReaderNovelsInput(
         val clientMutationId: String? = null,
         @GraphQLDescription("Source ID")
         val sourceId: Long,
-        @GraphQLDescription("Preference key")
-        val key: String,
-        @GraphQLDescription("Preference value")
-        val value: String,
+        @GraphQLDescription("Type of fetch operation")
+        val type: FetchIReaderNovelType,
+        @GraphQLDescription("Page number (1-indexed)")
+        val page: Int = 1,
+        @GraphQLDescription("Search query (required for SEARCH type)")
+        val query: String? = null,
     )
 
-    data class SetIReaderSourcePreferencePayload(
+    data class FetchIReaderNovelsPayload(
         val clientMutationId: String?,
-        val success: Boolean,
+        val novels: IReaderNovelsPageType,
     )
 
     @RequireAuth
-    @GraphQLDescription("Set a preference for an IReader source")
-    fun setIReaderSourcePreference(
-        input: SetIReaderSourcePreferenceInput,
-    ): CompletableFuture<DataFetcherResult<SetIReaderSourcePreferencePayload?>> {
-        val (clientMutationId, sourceId, key, value) = input
+    @GraphQLDescription("Fetch novels from an IReader source")
+    fun fetchIReaderNovels(
+        input: FetchIReaderNovelsInput,
+    ): CompletableFuture<DataFetcherResult<FetchIReaderNovelsPayload?>> {
+        val (clientMutationId, sourceId, type, page, query) = input
 
         return future {
             asDataFetcherResult {
-                // Placeholder for when preference support is fully implemented
-                // IReader sources use PreferenceStore which is currently stubbed
+                require(page > 0) { "Page must be greater than 0" }
 
-                SetIReaderSourcePreferencePayload(
+                val novelsPage =
+                    when (type) {
+                        FetchIReaderNovelType.SEARCH -> {
+                            require(query != null && query.isNotBlank()) { "Query cannot be empty for SEARCH type" }
+                            IReaderNovel.searchNovels(sourceId, query, page)
+                        }
+                        FetchIReaderNovelType.POPULAR -> {
+                            IReaderNovel.getPopularNovels(sourceId, page)
+                        }
+                        FetchIReaderNovelType.LATEST -> {
+                            IReaderNovel.getLatestNovels(sourceId, page)
+                        }
+                    }
+
+                FetchIReaderNovelsPayload(
                     clientMutationId = clientMutationId,
-                    success = true,
+                    novels = IReaderNovelsPageType(novelsPage),
                 )
             }
         }
