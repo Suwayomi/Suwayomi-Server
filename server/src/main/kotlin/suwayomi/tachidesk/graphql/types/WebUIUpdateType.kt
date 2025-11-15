@@ -3,6 +3,7 @@ package suwayomi.tachidesk.graphql.types
 data class AboutWebUI(
     val channel: WebUIChannel,
     val tag: String,
+    val updateTimestamp: Long,
 )
 
 data class WebUIUpdateCheck(
