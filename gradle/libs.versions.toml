@@ -173,7 +173,7 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin"}
 
 # Linter
-ktlint = { id = "org.jlleitschuh.gradle.ktlint", version = "13.1.0"}
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version = "14.0.1"}
 
 # Build config
 buildconfig = { id = "com.github.gmazzo.buildconfig", version = "5.7.1"}
