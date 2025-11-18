@@ -99,7 +99,7 @@ sort = "com.github.gpanther:java-nat-sort:natural-comparator-1.1"
 android-stubs = "com.github.Suwayomi:android-jar:1.0.0"
 
 # Asm modificiation
-asm = "org.ow2.asm:asm:9.8" # version locked by Dex2Jar
+asm = "org.ow2.asm:asm:9.9" # version locked by Dex2Jar
 dex2jar-translator = { module = "de.femtopedia.dex2jar:dex-translator", version.ref = "dex2jar" }
 dex2jar-tools = { module = "de.femtopedia.dex2jar:dex-tools", version.ref = "dex2jar" }
 
