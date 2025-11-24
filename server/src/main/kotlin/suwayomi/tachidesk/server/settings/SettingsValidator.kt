@@ -3,7 +3,7 @@ package suwayomi.tachidesk.server.settings
 import suwayomi.tachidesk.graphql.types.Settings
 
 object SettingsValidator {
-    private fun validateSingle(
+    fun validate(
         name: String,
         value: Any?,
     ): String? {
@@ -19,16 +19,16 @@ object SettingsValidator {
         return metadata.validator?.invoke(maybeConvertedValue)
     }
 
-    private fun validateAll(
+    fun validate(
         values: Map<String, Any?>,
         ignoreNull: Boolean?,
     ): List<String> =
         values
             .filterValues { value -> ignoreNull == false || value != null }
-            .mapNotNull { (name, value) -> validateSingle(name, value)?.let { error -> "$name: $error" } }
+            .mapNotNull { (name, value) -> validate(name, value)?.let { error -> "$name: $error" } }
 
     fun validate(
         settings: Settings,
         ignoreNull: Boolean = false,
-    ): List<String> = validateAll(settings.asMap(), ignoreNull)
+    ): List<String> = validate(settings.asMap(), ignoreNull)
 }
