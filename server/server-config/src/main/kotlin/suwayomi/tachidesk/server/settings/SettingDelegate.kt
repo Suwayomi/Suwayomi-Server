@@ -109,7 +109,7 @@ open class SettingDelegate<T : Any>(
             val error = validate(initialValue)
             if (error != null) {
                 KotlinLogging.logger { }.warn {
-                    "Invalid config value ($initialValue) for $moduleName.$propertyName: $error. Using default value: $defaultValue"
+                    "Invalid config value for $moduleName.$propertyName: $error. Using default value: $defaultValue"
                 }
 
                 stateFlow.value = toValidValue?.let { it(initialValue) } ?: defaultValue
