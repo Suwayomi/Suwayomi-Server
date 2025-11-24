@@ -8,7 +8,15 @@ object SettingsValidator {
         value: Any?,
     ): String? {
         val metadata = SettingsRegistry.get(name) ?: return null
-        return metadata.validator?.invoke(value)
+
+        val maybeConvertedValue =
+            if (value != null) {
+                metadata.typeInfo.convertToInternalType?.invoke(value) ?: value
+            } else {
+                value
+            }
+
+        return metadata.validator?.invoke(maybeConvertedValue)
     }
 
     private fun validateAll(
