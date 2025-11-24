@@ -36,7 +36,7 @@ object SettingsUpdater {
                 val isValid = validationError == null
 
                 if (!isValid) {
-                    logger.warn { "Invalid setting $validationError. Ignoring update." }
+                    logger.warn { "Invalid value for setting $name: $validationError. Ignoring update." }
 
                     return
                 }
