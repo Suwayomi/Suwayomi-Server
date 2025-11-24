@@ -406,8 +406,8 @@ class DisableableDoubleSetting(
         validator = { value ->
             when {
                 value == 0.0 -> null
-                min != null && value < min -> "Value must 0.0 or be at least $min"
-                max != null && value > max -> "Value must 0.0 or not exceed $max"
+                min != null && value < min -> "Value must be 0.0 or be at least $min"
+                max != null && value > max -> "Value must be 0.0 or not exceed $max"
                 else -> null
             }
         },
