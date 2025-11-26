@@ -74,6 +74,7 @@ object SettingsRegistry {
         val requiresRestart: Boolean,
         val description: String? = null,
         val excludeFromBackup: Boolean? = null,
+        val privacySafe: Boolean
     )
 
     private val settings = mutableMapOf<String, SettingMetadata>()

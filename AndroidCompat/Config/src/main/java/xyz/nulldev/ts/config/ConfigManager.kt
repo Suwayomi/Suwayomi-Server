@@ -178,6 +178,23 @@ open class ConfigManager {
         userConfigFile.writeText(newUserConfigDoc.render())
         getUserConfig().entrySet().forEach { internalConfig = internalConfig.withValue(it.key, it.value) }
     }
+
+    fun getRedactedConfig(nonPrivacySafeKeys: List<String>): Config {
+        val entries =
+            config.entrySet().associate { entry ->
+                val key = entry.key
+                val value =
+                    if (nonPrivacySafeKeys.any { key.split(".").getOrNull(1) == it }) {
+                        "[REDACTED]"
+                    } else {
+                        entry.value.unwrapped()
+                    }
+
+                key to value
+            }
+
+        return ConfigFactory.parseMap(entries)
+    }
 }
 
 object GlobalConfigManager : ConfigManager()
