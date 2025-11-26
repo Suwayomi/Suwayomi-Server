@@ -84,6 +84,7 @@ object WebInterfaceManager {
 
     private const val LAST_WEBUI_UPDATE_CHECK_KEY = "lastWebUIUpdateCheck"
     private const val SERVED_WEBUI_FLAVOR_KEY = "servedWebUIFlavor"
+    private const val VERSION_UPDATE_TIMESTAMP_KEY = "webUIVersionUpdateTimestamp"
 
     private val preferences = Injekt.get<Application>().getSharedPreferences("server_util", Context.MODE_PRIVATE)
     private var currentUpdateTaskId: String = ""
@@ -141,6 +142,7 @@ object WebInterfaceManager {
         return AboutWebUI(
             channel = serverConfig.webUIChannel.value,
             tag = currentVersion,
+            updateTimestamp = preferences.getLong(VERSION_UPDATE_TIMESTAMP_KEY, System.currentTimeMillis()),
         )
     }
 
@@ -476,6 +478,7 @@ object WebInterfaceManager {
         log.info { "An update is available, starting download..." }
         try {
             downloadVersion(flavor, getLatestCompatibleVersion(flavor))
+            preferences.edit().putLong(VERSION_UPDATE_TIMESTAMP_KEY, System.currentTimeMillis()).apply()
             serveWebUI()
         } catch (e: Exception) {
             log.warn(e) { "failed due to" }
