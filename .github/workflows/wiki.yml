@@ -19,13 +19,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: ${{github.repository}}
           path: ${{github.repository}}
 
       - name: Checkout Wiki
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: ${{github.repository}}.wiki
           path: ${{github.repository}}.wiki
