@@ -429,8 +429,8 @@ class DisableableDoubleSetting(
         validator = { value ->
             when {
                 value == 0.0 -> null
-                min != null && value < min -> "Value (${maybeRedact(value, privacySafe)}) must 0.0 or be at least $min"
-                max != null && value > max -> "Value (${maybeRedact(value, privacySafe)}) must 0.0 or not exceed $max"
+                min != null && value < min -> "Value (${maybeRedact(value, privacySafe)}) must be 0.0 or be at least $min"
+                max != null && value > max -> "Value (${maybeRedact(value, privacySafe)}) must be 0.0 or not exceed $max"
                 else -> null
             }
         },
