@@ -109,7 +109,7 @@ open class SettingDelegate<T : Any>(
             val error = validate(initialValue)
             if (error != null) {
                 KotlinLogging.logger { }.warn {
-                    "Invalid config value ($initialValue) for $moduleName.$propertyName: $error. Using default value: $defaultValue"
+                    "Invalid config value for $moduleName.$propertyName: $error. Using default value: $defaultValue"
                 }
 
                 stateFlow.value = toValidValue?.let { it(initialValue) } ?: defaultValue
@@ -406,8 +406,8 @@ class DisableableDoubleSetting(
         validator = { value ->
             when {
                 value == 0.0 -> null
-                min != null && value < min -> "Value must 0.0 or be at least $min"
-                max != null && value > max -> "Value must 0.0 or not exceed $max"
+                min != null && value < min -> "Value must be 0.0 or be at least $min"
+                max != null && value > max -> "Value must be 0.0 or not exceed $max"
                 else -> null
             }
         },
