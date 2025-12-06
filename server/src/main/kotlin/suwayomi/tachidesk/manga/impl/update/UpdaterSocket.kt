@@ -26,8 +26,11 @@ object UpdaterSocket : Websocket<UpdateStatus>() {
 
     override fun handleRequest(ctx: WsMessageContext) {
         when (ctx.message()) {
-            "STATUS" -> notifyClient(ctx, updater.statusDeprecated.value)
-            else ->
+            "STATUS" -> {
+                notifyClient(ctx, updater.statusDeprecated.value)
+            }
+
+            else -> {
                 ctx.send(
                     """
                         |Invalid command.
@@ -37,6 +40,7 @@ object UpdaterSocket : Websocket<UpdateStatus>() {
                         |
                     """.trimMargin(),
                 )
+            }
         }
     }
 

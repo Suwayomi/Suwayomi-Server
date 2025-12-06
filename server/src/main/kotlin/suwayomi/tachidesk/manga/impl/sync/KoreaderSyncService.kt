@@ -150,6 +150,7 @@ object KoreaderSyncService {
                             null
                         }
                     }
+
                     KoreaderSyncChecksumMethod.FILENAME -> {
                         logger.debug { "[KOSYNC HASH] No hash for chapterId=$chapterId. Generating from filename." }
                         (ChapterTable innerJoin MangaTable)

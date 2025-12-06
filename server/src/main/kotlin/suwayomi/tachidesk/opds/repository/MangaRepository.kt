@@ -108,7 +108,7 @@ object MangaRepository {
             // Efficiently get the name of the primary filter item
             val specificFilterName =
                 when (criteria.primaryFilter) {
-                    PrimaryFilterType.SOURCE ->
+                    PrimaryFilterType.SOURCE -> {
                         criteria.sourceId?.let {
                             SourceTable
                                 .select(SourceTable.name)
@@ -116,7 +116,9 @@ object MangaRepository {
                                 .firstOrNull()
                                 ?.get(SourceTable.name)
                         }
-                    PrimaryFilterType.CATEGORY ->
+                    }
+
+                    PrimaryFilterType.CATEGORY -> {
                         criteria.categoryId?.let {
                             CategoryTable
                                 .select(CategoryTable.name)
@@ -124,10 +126,25 @@ object MangaRepository {
                                 .firstOrNull()
                                 ?.get(CategoryTable.name)
                         }
-                    PrimaryFilterType.GENRE -> criteria.genre
-                    PrimaryFilterType.STATUS -> criteria.statusId.toString() // Controller will map this to a localized string
-                    PrimaryFilterType.LANGUAGE -> criteria.langCode // Controller will map this to a display name
-                    else -> null
+                    }
+
+                    PrimaryFilterType.GENRE -> {
+                        criteria.genre
+                    }
+
+                    // Controller will map this to a localized string
+                    PrimaryFilterType.STATUS -> {
+                        criteria.statusId.toString()
+                    }
+
+                    // Controller will map this to a display name
+                    PrimaryFilterType.LANGUAGE -> {
+                        criteria.langCode
+                    }
+
+                    else -> {
+                        null
+                    }
                 }
 
             applyMangaLibrarySortAndFilter(query, sort, filter)

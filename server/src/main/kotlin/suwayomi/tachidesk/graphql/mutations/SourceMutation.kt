@@ -135,9 +135,11 @@ class SourceMutation {
                                 filters = updateFilterList(source, filters),
                             )
                         }
+
                         FetchSourceMangaType.POPULAR -> {
                             source.getPopularManga(page)
                         }
+
                         FetchSourceMangaType.LATEST -> {
                             if (!source.supportsLatest) throw Exception("Source does not support latest")
                             source.getLatestUpdates(page)

@@ -319,6 +319,7 @@ object OpdsEntryBuilder {
                     }
                 titlePrefix = statusKey.localized(locale)
             }
+
             is ProgressSource.Remote -> {
                 idSuffix = ":remote"
                 titlePrefix = MR.strings.opds_chapter_status_synced.localized(locale, progressSource.device)
@@ -378,6 +379,7 @@ object OpdsEntryBuilder {
                             }
                         titleRes.localized(locale)
                     }
+
                     progressSource is ProgressSource.Local -> {
                         val titleRes =
                             if (progressSource.lastPageRead > 0) {
@@ -387,6 +389,7 @@ object OpdsEntryBuilder {
                             }
                         titleRes.localized(locale)
                     }
+
                     progressSource is ProgressSource.Remote -> {
                         val titleRes =
                             if (progressSource.lastPageRead > 0) {
@@ -396,7 +399,11 @@ object OpdsEntryBuilder {
                             }
                         titleRes.localized(locale, progressSource.device)
                     }
-                    else -> "" // Should not happen
+
+                    else -> {
+                        // Should not happen
+                        ""
+                    }
                 }
 
             links.add(

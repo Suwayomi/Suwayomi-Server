@@ -49,6 +49,7 @@ sealed class FileType {
             is RegularFile -> {
                 this.file.name
             }
+
             is ZipFile -> {
                 this.entry.name
             }
@@ -59,6 +60,7 @@ sealed class FileType {
             is RegularFile -> {
                 this.file.extension
             }
+
             is ZipFile -> {
                 this.entry.name.substringAfterLast(".")
             }

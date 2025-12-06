@@ -12,6 +12,7 @@ import android.content.Context
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.awaitSuccess
+import eu.kanade.tachiyomi.util.lang.launchIO
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.reactivecircus.cache4k.Cache
@@ -193,7 +194,7 @@ object WebInterfaceManager {
         }
 
         @OptIn(DelicateCoroutinesApi::class)
-        GlobalScope.launch(Dispatchers.IO) {
+        GlobalScope.launchIO {
             setupWebUI()
             isSetupComplete = true
         }
@@ -400,7 +401,7 @@ object WebInterfaceManager {
             try {
                 downloadVersion(flavor, getVersion())
                 true
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 false
             } ||
                 isLocalWebUIValid
@@ -427,7 +428,7 @@ object WebInterfaceManager {
 
         try {
             setupBundledWebUI()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             throw Exception("Unable to setup a webUI")
         }
     }
@@ -498,7 +499,7 @@ object WebInterfaceManager {
     private fun getLocalVersion(path: String = applicationDirs.webUIRoot): String =
         try {
             File("$path/revision").readText().trim()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             "r-1"
         }
 
@@ -585,7 +586,7 @@ object WebInterfaceManager {
                     .string()
                     .trim()
             })
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             ""
         }
 
@@ -712,7 +713,7 @@ object WebInterfaceManager {
         version: String,
     ) {
         @OptIn(DelicateCoroutinesApi::class)
-        GlobalScope.launch(Dispatchers.IO) {
+        GlobalScope.launchIO {
             downloadVersion(flavor, version)
             serveWebUI()
         }
