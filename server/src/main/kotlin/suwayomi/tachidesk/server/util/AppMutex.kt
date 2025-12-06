@@ -72,6 +72,7 @@ object AppMutex {
             AppMutexState.Clear -> {
                 logger.info { "Mutex status is clear, Resuming startup." }
             }
+
             AppMutexState.TachideskInstanceRunning -> {
                 logger.info { "Another instance of Suwayomi-Server is running on $appIP:${serverConfig.port.value}" }
 
@@ -82,6 +83,7 @@ object AppMutex {
 
                 shutdownApp(MutexCheckFailedTachideskRunning)
             }
+
             AppMutexState.OtherApplicationRunning -> {
                 logger.error { "A non Suwayomi-Server application is running on $appIP:${serverConfig.port.value}, aborting startup." }
                 shutdownApp(MutexCheckFailedAnotherAppRunning)

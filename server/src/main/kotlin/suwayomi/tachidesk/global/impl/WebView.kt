@@ -104,18 +104,23 @@ object WebView : Websocket<String>() {
                     dr.resize(event.width, event.height)
                     logger.debug { "Loading URL $url" }
                 }
+
                 is ResizeMessage -> {
                     dr.resize(event.width, event.height)
                 }
+
                 is JsEventMessage -> {
                     dr.event(event)
                 }
+
                 is JsPasteMessage -> {
                     dr.paste(event.data)
                 }
+
                 is JsCopyMessage -> {
                     dr.copy()
                 }
+
                 is JsPingMessage -> {
                     notifyAllClients("{\"type\":\"pong\"}")
                 }

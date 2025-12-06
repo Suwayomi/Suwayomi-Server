@@ -48,7 +48,10 @@ private fun getChapterDir(
                     chapterEntry[ChapterTable.scanlator] != null -> {
                         "${chapterEntry[ChapterTable.scanlator]}_${chapterEntry[ChapterTable.name]}"
                     }
-                    else -> chapterEntry[ChapterTable.name]
+
+                    else -> {
+                        chapterEntry[ChapterTable.name]
+                    }
                 },
             )
 

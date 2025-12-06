@@ -155,30 +155,40 @@ object OpdsFeedBuilder {
 
         val feedTitle =
             when (criteria.primaryFilter) {
-                PrimaryFilterType.SOURCE ->
+                PrimaryFilterType.SOURCE -> {
                     MR.strings.opds_feeds_library_source_specific_title.localized(
                         locale,
                         result.feedTitleComponent ?: criteria.sourceId.toString(),
                     )
-                PrimaryFilterType.CATEGORY ->
+                }
+
+                PrimaryFilterType.CATEGORY -> {
                     MR.strings.opds_feeds_category_specific_title.localized(
                         locale,
                         result.feedTitleComponent ?: criteria.categoryId.toString(),
                     )
-                PrimaryFilterType.GENRE ->
+                }
+
+                PrimaryFilterType.GENRE -> {
                     MR.strings.opds_feeds_genre_specific_title.localized(
                         locale,
                         result.feedTitleComponent ?: "Unknown",
                     )
+                }
+
                 PrimaryFilterType.STATUS -> {
                     val statusName = NavigationRepository.getStatuses(locale).find { it.id == criteria.statusId }?.title
                     MR.strings.opds_feeds_status_specific_title.localized(locale, statusName ?: criteria.statusId.toString())
                 }
+
                 PrimaryFilterType.LANGUAGE -> {
                     val langName = Locale.forLanguageTag(criteria.langCode ?: "").getDisplayName(locale)
                     MR.strings.opds_feeds_language_specific_title.localized(locale, langName)
                 }
-                else -> MR.strings.opds_feeds_all_series_in_library_title.localized(locale)
+
+                else -> {
+                    MR.strings.opds_feeds_all_series_in_library_title.localized(locale)
+                }
             }
 
         val feedUrl =

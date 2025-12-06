@@ -16,11 +16,17 @@ fun Track.toApiStatus() =
 fun Track.toApiScore(scoreType: String?): String =
     when (scoreType) {
         // 10 point
-        "POINT_10" -> (score.toInt() / 10).toString()
+        "POINT_10" -> {
+            (score.toInt() / 10).toString()
+        }
+
         // 100 point
-        "POINT_100" -> score.toInt().toString()
+        "POINT_100" -> {
+            score.toInt().toString()
+        }
+
         // 5 stars
-        "POINT_5" ->
+        "POINT_5" -> {
             when {
                 score == 0.0 -> "0"
                 score < 30 -> "1"
@@ -29,15 +35,24 @@ fun Track.toApiScore(scoreType: String?): String =
                 score < 90 -> "4"
                 else -> "5"
             }
+        }
+
         // Smiley
-        "POINT_3" ->
+        "POINT_3" -> {
             when {
                 score == 0.0 -> "0"
                 score <= 35 -> ":("
                 score <= 60 -> ":|"
                 else -> ":)"
             }
+        }
+
         // 10 point decimal
-        "POINT_10_DECIMAL" -> (score / 10).toString()
-        else -> throw NotImplementedError("Unknown score type")
+        "POINT_10_DECIMAL" -> {
+            (score / 10).toString()
+        }
+
+        else -> {
+            throw NotImplementedError("Unknown score type")
+        }
     }

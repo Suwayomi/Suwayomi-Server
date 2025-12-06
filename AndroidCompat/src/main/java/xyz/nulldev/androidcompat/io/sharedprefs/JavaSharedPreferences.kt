@@ -242,13 +242,14 @@ class JavaSharedPreferences(
                         }
                         notify(it.key)
                     }
+
                     is Action.Remove -> {
                         preferences.remove(it.key)
-                        /**
-                         * Set<String> are stored like
-                         * key.0 = value1
-                         * key.1 = value2
-                         * key.size = 2
+                        /*
+                         Set<String> are stored like
+                         key.0 = value1
+                         key.1 = value2
+                         key.size = 2
                          */
                         preferences.keys.forEach { key ->
                             if (key.startsWith(it.key + ".")) {
@@ -258,7 +259,10 @@ class JavaSharedPreferences(
 
                         notify(it.key)
                     }
-                    Action.Clear -> preferences.clear()
+
+                    Action.Clear -> {
+                        preferences.clear()
+                    }
                 }
             }
         }

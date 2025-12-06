@@ -69,56 +69,82 @@ class Anilist(
         when (trackPreferences.getScoreType(this)) {
             // 10 point
             POINT_10 -> IntRange(0, 10).map(Int::toString)
+
             // 100 point
             POINT_100 -> IntRange(0, 100).map(Int::toString)
+
             // 5 stars
             POINT_5 -> IntRange(0, 5).map { "$it ★" }
+
             // Smiley
             POINT_3 -> listOf("-", "😦", "😐", "😊")
+
             // 10 point decimal
             POINT_10_DECIMAL -> IntRange(0, 100).map { (it / 10f).toString() }
+
             else -> throw Exception("Unknown score type")
         }
 
     override fun indexToScore(index: Int): Double =
         when (trackPreferences.getScoreType(this)) {
             // 10 point
-            POINT_10 -> index * 10.0
+            POINT_10 -> {
+                index * 10.0
+            }
+
             // 100 point
-            POINT_100 -> index.toDouble()
+            POINT_100 -> {
+                index.toDouble()
+            }
+
             // 5 stars
-            POINT_5 ->
+            POINT_5 -> {
                 when (index) {
                     0 -> 0.0
                     else -> index * 20.0 - 10.0
                 }
+            }
+
             // Smiley
-            POINT_3 ->
+            POINT_3 -> {
                 when (index) {
                     0 -> 0.0
                     else -> index * 25.0 + 10.0
                 }
+            }
+
             // 10 point decimal
-            POINT_10_DECIMAL -> index.toDouble()
-            else -> throw Exception("Unknown score type")
+            POINT_10_DECIMAL -> {
+                index.toDouble()
+            }
+
+            else -> {
+                throw Exception("Unknown score type")
+            }
         }
 
     override fun displayScore(track: Track): String {
         val score = track.score
         return when (val type = trackPreferences.getScoreType(this)) {
-            POINT_5 ->
+            POINT_5 -> {
                 when (score) {
                     0.0 -> "0 ★"
                     else -> "${((score + 10) / 20).toInt()} ★"
                 }
-            POINT_3 ->
+            }
+
+            POINT_3 -> {
                 when {
                     score == 0.0 -> "0"
                     score <= 35 -> "😦"
                     score <= 60 -> "😐"
                     else -> "😊"
                 }
-            else -> track.toApiScore(type)
+            }
+
+            else -> {
+                track.toApiScore(type)
+            }
         }
     }
 

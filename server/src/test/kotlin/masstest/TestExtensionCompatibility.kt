@@ -61,9 +61,11 @@ class TestExtensionCompatibility {
                     it.obsolete -> {
                         uninstallExtension(it.pkgName)
                     }
+
                     it.hasUpdate -> {
                         updateExtension(it.pkgName)
                     }
+
                     else -> {
                         uninstallExtension(it.pkgName)
                         installExtension(it.pkgName)

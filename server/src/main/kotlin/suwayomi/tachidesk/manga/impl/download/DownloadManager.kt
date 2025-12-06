@@ -120,8 +120,11 @@ object DownloadManager {
 
     fun handleRequest(ctx: WsMessageContext) {
         when (ctx.message()) {
-            "STATUS" -> notifyClient(ctx)
-            else ->
+            "STATUS" -> {
+                notifyClient(ctx)
+            }
+
+            else -> {
                 ctx.send(
                     """
                         |Invalid command.
@@ -131,6 +134,7 @@ object DownloadManager {
                         |
                     """.trimMargin(),
                 )
+            }
         }
     }
 

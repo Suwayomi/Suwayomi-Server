@@ -110,6 +110,7 @@ class LocalSource(
                             mangaDirs.sortedWith(compareByDescending(String.CASE_INSENSITIVE_ORDER) { it.name })
                         }
                 }
+
                 is OrderBy.Latest -> {
                     mangaDirs =
                         if (filter.state!!.ascending) {
@@ -246,6 +247,7 @@ class LocalSource(
                         }
                     }
                 }
+
                 is Format.Rar -> {
                     JunrarArchive(chapter).use { rar ->
                         rar.fileHeaders.firstOrNull { it.fileName == COMIC_INFO_FILE }?.let { comicInfoFile ->
@@ -255,6 +257,7 @@ class LocalSource(
                         }
                     }
                 }
+
                 else -> {}
             }
         }
@@ -337,6 +340,7 @@ class LocalSource(
                         )
                     }
             }
+
             is Format.Zip -> {
                 val loader = ZipPageLoader(format.file)
                 val pages = loader.getPages()
@@ -344,6 +348,7 @@ class LocalSource(
 
                 pages
             }
+
             is Format.Rar -> {
                 val loader = RarPageLoader(format.file)
                 val pages = loader.getPages()
@@ -351,6 +356,7 @@ class LocalSource(
 
                 pages
             }
+
             is Format.Epub -> {
                 val loader = EpubPageLoader(format.file)
                 val pages = loader.getPages()
@@ -390,6 +396,7 @@ class LocalSource(
 
                     entry?.let { coverManager.update(manga, it.inputStream()) }
                 }
+
                 is Format.Zip -> {
                     ZipFile.builder().setFile(format.file).get().use { zip ->
                         val entry =
@@ -401,6 +408,7 @@ class LocalSource(
                         entry?.let { coverManager.update(manga, zip.getInputStream(it)) }
                     }
                 }
+
                 is Format.Rar -> {
                     JunrarArchive(format.file).use { archive ->
                         val entry =
@@ -411,6 +419,7 @@ class LocalSource(
                         entry?.let { coverManager.update(manga, archive.getInputStream(it)) }
                     }
                 }
+
                 is Format.Epub -> {
                     EpubFile(format.file).use { epub ->
                         val entry =

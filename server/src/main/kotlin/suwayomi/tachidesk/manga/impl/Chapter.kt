@@ -513,25 +513,33 @@ object Chapter {
         // Make sure some filter is defined
         val condition =
             when {
-                mangaId != null ->
+                mangaId != null -> {
                     // mangaId is not null, scope query under manga
                     when {
-                        input.chapterIds != null ->
+                        input.chapterIds != null -> {
                             Op.build { (ChapterTable.manga eq mangaId) and (ChapterTable.id inList input.chapterIds) }
+                        }
 
-                        input.chapterIndexes != null ->
+                        input.chapterIndexes != null -> {
                             Op.build { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder inList input.chapterIndexes) }
+                        }
 
-                        else -> null
+                        else -> {
+                            null
+                        }
                     }
+                }
 
                 else -> {
                     // mangaId is null, only chapterIndexes is valid for this case
                     when {
-                        input.chapterIds != null ->
+                        input.chapterIds != null -> {
                             Op.build { (ChapterTable.id inList input.chapterIds) }
+                        }
 
-                        else -> null
+                        else -> {
+                            null
+                        }
                     }
                 }
             } ?: return
