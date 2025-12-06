@@ -19,6 +19,7 @@ import java.util.concurrent.CompletableFuture
 class KoreaderSyncMutation {
     data class ConnectKoSyncAccountInput(
         val clientMutationId: String? = null,
+        val serverAddress: String,
         val username: String,
         val password: String,
     )
@@ -26,7 +27,7 @@ class KoreaderSyncMutation {
     @RequireAuth
     fun connectKoSyncAccount(input: ConnectKoSyncAccountInput): CompletableFuture<KoSyncConnectPayload> =
         future {
-            val (message, status) = KoreaderSyncService.connect(input.username, input.password)
+            val (message, status) = KoreaderSyncService.connect(input.serverAddress, input.username, input.password)
 
             KoSyncConnectPayload(
                 clientMutationId = input.clientMutationId,
@@ -45,7 +46,7 @@ class KoreaderSyncMutation {
             KoreaderSyncService.logout()
             LogoutKoSyncAccountPayload(
                 clientMutationId = input.clientMutationId,
-                status = KoSyncStatusPayload(isLoggedIn = false, username = null),
+                status = KoSyncStatusPayload(isLoggedIn = false, serverAddress = null, username = null),
             )
         }
 

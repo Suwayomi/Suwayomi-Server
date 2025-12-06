@@ -34,6 +34,7 @@ import kotlin.math.abs
 object KoreaderSyncService {
     private val preferences = Injekt.get<Application>().getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
 
+    private const val SERVER_ADDRESS_KEY = "server_address"
     private const val USERNAME_KEY = "username"
     private const val USERKEY_KEY = "user_key"
     private const val DEVICE_ID_KEY = "client_id"
@@ -178,6 +179,7 @@ object KoreaderSyncService {
     }
 
     private suspend fun register(
+        serverAddress: String,
         username: String,
         userkey: String,
     ): AuthResult {
@@ -187,7 +189,7 @@ object KoreaderSyncService {
                 put("password", userkey)
             }
         val request =
-            buildRequest("${serverConfig.koreaderSyncServerUrl.value.removeSuffix("/")}/users/create") {
+            buildRequest("${serverAddress.removeSuffix("/")}/users/create") {
                 post(payload.toString().toRequestBody("application/json".toMediaType()))
             }
 
@@ -215,11 +217,12 @@ object KoreaderSyncService {
     }
 
     private suspend fun authorize(
+        serverAddress: String,
         username: String,
         userkey: String,
     ): AuthResult {
         val request =
-            buildRequest("${serverConfig.koreaderSyncServerUrl.value.removeSuffix("/")}/users/auth") {
+            buildRequest("${serverAddress.removeSuffix("/")}/users/auth") {
                 get()
                 addHeader("x-auth-user", username)
                 addHeader("x-auth-key", userkey)
@@ -240,61 +243,88 @@ object KoreaderSyncService {
         }
     }
 
-    private fun getCredentials(): Pair<String, String> {
+    private fun getCredentials(): Triple<String, String, String> {
+        val serverAddress = preferences.getString(SERVER_ADDRESS_KEY, "https://sync.koreader.rocks/")!!
         val username = preferences.getString(USERNAME_KEY, "")!!
         val userkey = preferences.getString(USERKEY_KEY, "")!!
 
-        return Pair(username, userkey)
+        return Triple(serverAddress, username, userkey)
     }
 
     private fun setCredentials(
+        serverAddress: String,
         username: String,
         userkey: String,
     ) {
         preferences
             .edit()
+            .putString(SERVER_ADDRESS_KEY, serverAddress)
             .putString(USERNAME_KEY, username)
             .putString(USERKEY_KEY, userkey)
             .apply()
     }
 
+    private fun clearCredentials() {
+        preferences.edit().clear().apply()
+    }
+
     suspend fun connect(
+        serverAddress: String,
         username: String,
         password: String,
     ): ConnectResult {
         val userkey = Hash.md5(password)
-        val authResult = authorize(username, userkey)
+        val authResult = authorize(serverAddress, username, userkey)
 
         if (authResult.success) {
-            setCredentials(username, userkey)
-            return ConnectResult("Login successful.", KoSyncStatusPayload(isLoggedIn = true, username = username))
+            setCredentials(serverAddress, username, userkey)
+            return ConnectResult(
+                "Login successful.",
+                KoSyncStatusPayload(isLoggedIn = true, serverAddress = serverAddress, username = username),
+            )
         }
 
         if (authResult.isUserNotFoundError) {
             logger.info { "[KOSYNC CONNECT] Authorization failed, attempting to register new user." }
-            val registerResult = register(username, userkey)
+            val registerResult = register(serverAddress, username, userkey)
             return if (registerResult.success) {
-                setCredentials(username, userkey)
-                ConnectResult("Registration successful.", KoSyncStatusPayload(isLoggedIn = true, username = username))
+                setCredentials(serverAddress, username, userkey)
+                ConnectResult(
+                    "Registration successful.",
+                    KoSyncStatusPayload(isLoggedIn = true, serverAddress = serverAddress, username = username),
+                )
             } else {
-                ConnectResult(registerResult.message ?: "Registration failed.", KoSyncStatusPayload(isLoggedIn = false, username = null))
+                ConnectResult(
+                    registerResult.message ?: "Registration failed.",
+                    KoSyncStatusPayload(isLoggedIn = false, serverAddress = null, username = null),
+                )
             }
         }
 
-        return ConnectResult(authResult.message ?: "Authentication failed.", KoSyncStatusPayload(isLoggedIn = false, username = null))
+        return ConnectResult(
+            authResult.message ?: "Authentication failed.",
+            KoSyncStatusPayload(isLoggedIn = false, serverAddress = null, username = null),
+        )
     }
 
-    suspend fun logout() {
-        setCredentials("", "")
+    fun logout() {
+        clearCredentials()
     }
 
     suspend fun getStatus(): KoSyncStatusPayload {
-        val (username, userkey) = getCredentials()
+        val (serverAddress, username, userkey) = getCredentials()
+
         if (username.isBlank() || userkey.isBlank()) {
-            return KoSyncStatusPayload(isLoggedIn = false, username = null)
+            return KoSyncStatusPayload(isLoggedIn = false, serverAddress = null, username = null)
         }
-        val authResult = authorize(username, userkey)
-        return KoSyncStatusPayload(isLoggedIn = authResult.success, username = if (authResult.success) username else null)
+
+        val authResult = authorize(serverAddress, username, userkey)
+
+        return if (authResult.success) {
+            KoSyncStatusPayload(isLoggedIn = true, serverAddress = serverAddress, username = username)
+        } else {
+            KoSyncStatusPayload(isLoggedIn = false, serverAddress = null, username = null)
+        }
     }
 
     suspend fun pushProgress(chapterId: Int) {
@@ -308,8 +338,8 @@ object KoreaderSyncService {
             return
         }
 
-        val (username, userkey) = getCredentials()
-        if (username.isBlank() || userkey.isBlank()) return
+        val (serverAddress, username, userkey) = getCredentials()
+        if (serverAddress.isBlank() || username.isBlank() || userkey.isBlank()) return
 
         val chapterHash = getOrGenerateChapterHash(chapterId)
         if (chapterHash.isNullOrBlank()) {
@@ -349,7 +379,7 @@ object KoreaderSyncService {
 
             val requestBody = json.encodeToString(KoreaderProgressPayload.serializer(), payload)
             val request =
-                buildRequest("${serverConfig.koreaderSyncServerUrl.value.removeSuffix("/")}/syncs/progress") {
+                buildRequest("${serverAddress.removeSuffix("/")}/syncs/progress") {
                     put(requestBody.toRequestBody("application/json".toMediaType()))
                     addHeader("x-auth-user", username)
                     addHeader("x-auth-key", userkey)
@@ -382,8 +412,8 @@ object KoreaderSyncService {
             return null
         }
 
-        val (username, userkey) = getCredentials()
-        if (username.isBlank() || userkey.isBlank()) return null
+        val (serverAddress, username, userkey) = getCredentials()
+        if (serverAddress.isBlank() || username.isBlank() || userkey.isBlank()) return null
 
         val chapterHash = getOrGenerateChapterHash(chapterId)
         if (chapterHash.isNullOrBlank()) {
@@ -393,7 +423,7 @@ object KoreaderSyncService {
 
         try {
             val request =
-                buildRequest("${serverConfig.koreaderSyncServerUrl.value.removeSuffix("/")}/syncs/progress/$chapterHash") {
+                buildRequest("${serverAddress.removeSuffix("/")}/syncs/progress/$chapterHash") {
                     get()
                     addHeader("x-auth-user", username)
                     addHeader("x-auth-key", userkey)
@@ -433,9 +463,7 @@ object KoreaderSyncService {
                         }
 
                         val localPercentage =
-                            if (localProgress?.pageCount ?: 0 >
-                                0
-                            ) {
+                            if ((localProgress?.pageCount ?: 0) > 0) {
                                 (localProgress!!.lastPageRead + 1).toFloat() / localProgress.pageCount
                             } else {
                                 0f

@@ -688,12 +688,22 @@ class ServerConfig(
         defaultValue = "suwayomi-server-api",
     )
 
-    val koreaderSyncServerUrl: MutableStateFlow<String> by StringSetting(
+    @Deprecated("Moved to preference store. User is supposed to use a login/logout mutation")
+    val koreaderSyncServerUrl: MutableStateFlow<String> by MigratedConfigValue(
         protoNumber = 59,
         group = SettingGroup.KOREADER_SYNC,
         privacySafe = true,
         defaultValue = "https://sync.koreader.rocks/",
-        description = "KOReader Sync Server URL. Public alternative: https://kosync.ak-team.com:3042/",
+        deprecated = SettingsRegistry.SettingDeprecated(
+            replaceWith = "MOVE TO PREFERENCES",
+            message = "Moved to preference store. User is supposed to use a login/logout mutation",
+            migrateConfig = { value, config ->
+                val koreaderPreferences = application.getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
+                koreaderPreferences.edit().putString("server_address", value.unwrapped() as? String).apply()
+
+                config
+            }
+        ),
     )
 
     @Deprecated("Moved to preference store. User is supposed to use a login/logout mutation")
